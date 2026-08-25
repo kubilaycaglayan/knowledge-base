@@ -73,4 +73,23 @@ class PathAuthorizationApiTest {
         mvc.perform(get("/api/v1/paths/"+pathId+"/summary").with(authentication(auth)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.trackedSeconds").value(org.hamcrest.Matchers.greaterThanOrEqualTo(4)));
     }
+
+    @Test void pathSummaryExcludesTimeExplicitlyTrackedOnAnotherPath() throws Exception {
+        UUID owner=UUID.randomUUID(), pathId=UUID.randomUUID(), otherPathId=UUID.randomUUID(), itemId=UUID.randomUUID();
+        Path path=new Path(owner,"Learning",null); Item item=new Item(owner,"Shared item",ItemType.PROJECT,null);
+        TimeEntry selected=new TimeEntry(owner,pathId,itemId,java.time.Instant.now().minusSeconds(300),"selected",TimeSource.WEB); selected.stop(selected.getStartedAt().plusSeconds(120));
+        TimeEntry other=new TimeEntry(owner,otherPathId,itemId,java.time.Instant.now().minusSeconds(300),"other",TimeSource.WEB); other.stop(other.getStartedAt().plusSeconds(900));
+        TimeEntry itemOnly=new TimeEntry(owner,null,itemId,java.time.Instant.now().minusSeconds(300),"item only",TimeSource.WEB); itemOnly.stop(itemOnly.getStartedAt().plusSeconds(60));
+        when(paths.findByIdAndUserId(pathId,owner)).thenReturn(Optional.of(path));
+        when(pathItems.findItemIds(pathId)).thenReturn(List.of(itemId));
+        when(items.findAllByUserIdAndIdIn(owner,List.of(itemId))).thenReturn(List.of(item));
+        when(timeEntries.findAllByUserIdAndPathIdOrderByStartedAtDesc(owner,pathId)).thenReturn(List.of(selected));
+        when(timeEntries.findRecentForPathAndItems(eq(owner),eq(pathId),eq(List.of(itemId)),any(org.springframework.data.domain.Pageable.class))).thenReturn(List.of(selected,itemOnly));
+        when(activities.findTop50ByUserIdAndPathIdOrderByOccurredAtDesc(owner,pathId)).thenReturn(List.of());
+        when(activities.findRecentForPathAndItems(eq(owner),eq(pathId),eq(List.of(itemId)),any(org.springframework.data.domain.Pageable.class))).thenReturn(List.of());
+        var auth=new UsernamePasswordAuthenticationToken(owner.toString(),null,List.of());
+
+        mvc.perform(get("/api/v1/paths/"+pathId+"/summary").with(authentication(auth)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.trackedSeconds").value(180));
+    }
 }

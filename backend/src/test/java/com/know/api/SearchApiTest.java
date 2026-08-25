@@ -41,6 +41,6 @@ class SearchApiTest {
         verify(paths).findAllByUserIdAndNameContainingIgnoreCase(any(),eq("java"),argThat(page -> page.getPageSize()==100));
         verify(items).findAllByUserIdAndTitleContainingIgnoreCase(any(),eq("java"),argThat(page -> page.getPageSize()==100));
         verify(notes).findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentContainingIgnoreCase(any(),eq("java"),any(),eq("java"),argThat(page -> page.getPageSize()==100));
-        verify(activities).search(any(),org.mockito.ArgumentMatchers.eq("java"),any());
+        verify(activities).search(any(),org.mockito.ArgumentMatchers.eq("java"),argThat(page -> page.getPageSize()==100));
     }
 }

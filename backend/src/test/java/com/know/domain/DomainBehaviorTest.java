@@ -16,6 +16,15 @@ class DomainBehaviorTest {
         assertEquals(ItemStatus.COMPLETED, item.getStatus());
     }
 
+    @Test void reducingCompletedProgressReopensTheItem() {
+        Item item = new Item(UUID.randomUUID(), "Course", ItemType.COURSE, null);
+        item.setProgress((short) 100);
+        item.setProgress((short) 40);
+        assertEquals(ItemStatus.ACTIVE, item.getStatus());
+        item.setProgress((short) 0);
+        assertEquals(ItemStatus.PLANNED, item.getStatus());
+    }
+
     @Test void stoppedTimeEntryStoresDurationAndCannotRemainRunning() {
         Instant start = Instant.parse("2026-08-25T10:00:00Z");
         TimeEntry entry = new TimeEntry(UUID.randomUUID(), null, null, start, "Reading", TimeSource.MANUAL);
