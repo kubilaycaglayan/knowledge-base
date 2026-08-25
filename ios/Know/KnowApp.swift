@@ -12,7 +12,7 @@ struct TimerRequest: Codable { let pathId: String?; let itemId: String?; let des
 struct TimerUpdateRequest: Codable { let pathId: String?; let itemId: String?; let startedAt: String; let description: String? }
 struct PathRequest: Codable { let name: String; let description: String? }
 struct ItemRequest: Codable { let title: String; let type: String; let description: String?; let status: String?; let pathIds: [UUID]; let tags: [String] }
-struct Statistics: Codable { let todaySeconds: Int64; let weekSeconds: Int64; let monthSeconds: Int64; let todayByPath: [String:Int64]; let todayByItem: [String:Int64]; let completedItems: Int64; let activeItems: Int64; let recentProgressChanges: [ProgressChange] }
+struct Statistics: Codable { let todaySeconds: Int64; let weekSeconds: Int64; let monthSeconds: Int64; let todayByPath: [String:Int64]; let todayByItem: [String:Int64]; let weekByPath: [String:Int64]; let weekByItem: [String:Int64]; let completedItems: Int64; let activeItems: Int64; let recentProgressChanges: [ProgressChange] }
 struct ProgressChange: Codable { let itemId: UUID; let previousProgress: Int; let newProgress: Int; let changedAt: String }
 struct AuthResponse: Codable { let token: String; let userId: UUID; let email: String; let displayName: String }
 
@@ -138,6 +138,8 @@ struct DashboardView: View {
         selectedItem = current.itemId?.uuidString ?? ""
         if let date = ISO8601DateFormatter().date(from: current.startedAt) { timerStartedAt = date }
     }
+    private func pathName(_ id: String) -> String { model.paths.first(where: { $0.id.uuidString == id })?.name ?? id }
+    private func itemName(_ id: String) -> String { model.items.first(where: { $0.id.uuidString == id })?.title ?? id }
     var body: some View {
         NavigationStack {
             List {
@@ -148,6 +150,20 @@ struct DashboardView: View {
                         LabeledContent("This week", value: formatSeconds(stats.weekSeconds))
                         LabeledContent("This month", value: formatSeconds(stats.monthSeconds))
                         LabeledContent("Completed items", value: "\(stats.completedItems)")
+                    }
+                    if !stats.weekByPath.isEmpty {
+                        Section("This week by path") {
+                            ForEach(stats.weekByPath.sorted(by: { $0.key < $1.key }), id: \.key) { entry in
+                                LabeledContent(pathName(entry.key), value: formatSeconds(entry.value))
+                            }
+                        }
+                    }
+                    if !stats.weekByItem.isEmpty {
+                        Section("This week by item") {
+                            ForEach(stats.weekByItem.sorted(by: { $0.key < $1.key }), id: \.key) { entry in
+                                LabeledContent(itemName(entry.key), value: formatSeconds(entry.value))
+                            }
+                        }
                     }
                 }
                 Section("Focus today") {

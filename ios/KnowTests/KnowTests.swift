@@ -91,11 +91,13 @@ final class KnowTests: XCTestCase {
     func testStatisticsDecodesRecentProgressChanges() throws {
         let itemId = UUID()
         let payload = """
-        {"todaySeconds":120,"weekSeconds":120,"monthSeconds":120,"todayByPath":{},"todayByItem":{},"completedItems":1,"activeItems":2,"recentProgressChanges":[{"itemId":"\(itemId.uuidString)","previousProgress":25,"newProgress":50,"changedAt":"2026-08-25T12:00:00Z"}]}
+        {"todaySeconds":120,"weekSeconds":120,"monthSeconds":120,"todayByPath":{},"todayByItem":{},"weekByPath":{"path-1":3600},"weekByItem":{"item-1":1800},"completedItems":1,"activeItems":2,"recentProgressChanges":[{"itemId":"\(itemId.uuidString)","previousProgress":25,"newProgress":50,"changedAt":"2026-08-25T12:00:00Z"}]}
         """.data(using: .utf8)!
         let stats = try JSONDecoder().decode(Statistics.self, from: payload)
 
         XCTAssertEqual(stats.completedItems, 1)
+        XCTAssertEqual(stats.weekByPath["path-1"], 3600)
+        XCTAssertEqual(stats.weekByItem["item-1"], 1800)
         XCTAssertEqual(stats.recentProgressChanges.first?.itemId, itemId)
         XCTAssertEqual(stats.recentProgressChanges.first?.newProgress, 50)
     }
