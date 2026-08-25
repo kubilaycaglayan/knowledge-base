@@ -15,7 +15,7 @@ services:
       DATABASE_USERNAME: ${POSTGRES_USER:-know}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,chrome-extension://*}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     depends_on: {db: {condition: service_healthy}}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
@@ -33,5 +33,11 @@ services:
     ports: ["80:80", "443:443"]
     volumes: [./deployment/Caddyfile:/etc/caddy/Caddyfile, caddy-data:/data, caddy-config:/config]
     depends_on: [web, api]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost/ | grep -q 'id=\"app\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 volumes: {know-db: {}, caddy-data: {}, caddy-config: {}}

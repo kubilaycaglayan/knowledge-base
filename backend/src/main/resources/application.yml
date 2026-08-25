@@ -13,7 +13,7 @@ server:
   port: ${PORT:8080}
 app:
   jwt-secret: ${JWT_SECRET:}
-  cors-origins: ${CORS_ORIGINS:http://localhost:5173,chrome-extension://*}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173}
 management:
   endpoints:
     web:

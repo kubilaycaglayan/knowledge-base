@@ -9,7 +9,7 @@ backup_dir=""
 restore_db=""
 cleanup() {
   if [[ -n "$restore_db" ]]; then docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$restore_db" >/dev/null 2>&1 || true; fi
-  docker compose down >/dev/null
+  docker compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
   if [[ -n "$backup_dir" && -d "$backup_dir" ]]; then rm -rf "$backup_dir"; fi
 }
 trap cleanup EXIT
@@ -24,6 +24,13 @@ for attempt in {1..30}; do
 done
 docker compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
+  proxy_id="$(docker compose ps -q proxy)"
+  for attempt in {1..30}; do
+    proxy_health="$(docker inspect -f '{{.State.Health.Status}}' "$proxy_id" 2>/dev/null || true)"
+    if [[ "$proxy_health" == "healthy" ]]; then break; fi
+    if [[ "$proxy_health" == "unhealthy" || "$attempt" == 30 ]]; then echo "web proxy health check failed" >&2; exit 1; fi
+    sleep 2
+  done
   for attempt in {1..30}; do
     if curl -kfsSL https://localhost/ | grep -q 'id="app"'; then break; fi
     if [[ "$attempt" == 30 ]]; then echo "web proxy did not become ready" >&2; exit 1; fi
@@ -47,6 +54,8 @@ if api --header='Content-Type: application/json' --post-data="{\"email\":\"${ema
 
 path="$(api "${header[@]}" --header='Content-Type: application/json' --post-data='{"name":"Smoke path"}' http://localhost:8080/api/v1/paths)"
 path_id="$(printf '%s' "$path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+other_path="$(api "${header[@]}" --header='Content-Type: application/json' --post-data='{"name":"Other smoke path"}' http://localhost:8080/api/v1/paths)"
+other_path_id="$(printf '%s' "$other_path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 other_auth="$(api --header='Content-Type: application/json' --post-data="{\"email\":\"other-$email\",\"password\":\"correct-horse-battery\"}" http://localhost:8080/api/v1/auth/register)"
 other_token="$(printf '%s' "$other_auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 other_header=(--header="Authorization: Bearer $other_token")
@@ -60,12 +69,15 @@ api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body
 progress="$(api "${header[@]}" --header='Content-Type: application/json' --post-data='{"progress":50}' "http://localhost:8080/api/v1/items/$item_id/progress")"
 printf '%s' "$progress" | grep -q '"progress":50'
 api "${header[@]}" --header='Content-Type: application/json' --post-data='{"progress":100}' "http://localhost:8080/api/v1/items/$item_id/progress" | grep -q '"status":"COMPLETED"'
+api "${header[@]}" --header='Content-Type: application/json' --post-data='{"progress":50}' "http://localhost:8080/api/v1/items/$item_id/progress" | grep -q '"status":"ACTIVE"'
+api "${header[@]}" --header='Content-Type: application/json' --post-data='{"progress":100}' "http://localhost:8080/api/v1/items/$item_id/progress" | grep -q '"status":"COMPLETED"'
 note="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"itemId\":\"$item_id\",\"title\":\"Smoke note\",\"content\":\"Persisted knowledge\"}" http://localhost:8080/api/v1/notes)"
 note_id="$(printf '%s' "$note" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data='{"title":"Edited smoke note","content":"Updated knowledge"}' "http://localhost:8080/api/v1/notes/$note_id" | grep -q 'Updated knowledge'
 activity_id="$(api "${header[@]}" "http://localhost:8080/api/v1/activities?itemId=$item_id" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -n 1)"
 [[ -n "$activity_id" ]]
 api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"activityId\":\"$activity_id\",\"title\":\"Activity reflection\",\"content\":\"The smoke workflow persisted this reflection.\"}" http://localhost:8080/api/v1/notes >/dev/null
+if api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$other_path_id\",\"itemId\":\"$item_id\",\"description\":\"Mismatched smoke timer\"}" http://localhost:8080/api/v1/timers >/dev/null; then echo "unrelated path/item timer was allowed" >&2; exit 1; fi
 api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"Smoke session\"}" http://localhost:8080/api/v1/timers >/dev/null
 if api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"duplicate smoke timer\"}" http://localhost:8080/api/v1/timers >/dev/null; then echo "duplicate timer was allowed" >&2; exit 1; fi
 api "${header[@]}" http://localhost:8080/api/v1/timers/current | grep -q '"running":true'
@@ -73,10 +85,14 @@ api "${header[@]}" --post-data='' --header='Content-Type: application/json' http
 api "${header[@]}" --post-data='{"description":"cancelled smoke timer"}' --header='Content-Type: application/json' http://localhost:8080/api/v1/timers >/dev/null
 api "${header[@]}" --post-data='' --header='Content-Type: application/json' http://localhost:8080/api/v1/timers/cancel >/dev/null
 if [[ -n "$(api "${header[@]}" http://localhost:8080/api/v1/timers/current)" ]]; then echo "timer cancellation failed" >&2; exit 1; fi
-manual="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"2026-08-25T10:00:00Z\",\"endedAt\":\"2026-08-25T10:30:00Z\",\"description\":\"Editable session\"}" http://localhost:8080/api/v1/time-entries)"
+smoke_date="$(date -u +%Y-%m-%d)"
+manual="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"${smoke_date}T10:00:00Z\",\"endedAt\":\"${smoke_date}T10:30:00Z\",\"description\":\"Editable session\"}" http://localhost:8080/api/v1/time-entries)"
 time_id="$(printf '%s' "$manual" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
-api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"2026-08-25T11:00:00Z\",\"endedAt\":\"2026-08-25T11:45:00Z\",\"description\":\"Edited session\"}" "http://localhost:8080/api/v1/time-entries/$time_id" | grep -q '"durationSeconds":2700'
+api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"${smoke_date}T11:00:00Z\",\"endedAt\":\"${smoke_date}T11:45:00Z\",\"description\":\"Edited session\"}" "http://localhost:8080/api/v1/time-entries/$time_id" | grep -q '"durationSeconds":2700'
 api "${header[@]}" "http://localhost:8080/api/v1/time-entries" | grep -q 'Edited session'
+month_start="$(date -u +%Y-%m-01T10:00:00Z)"
+month_end="$(date -u -d "$month_start + 10 minutes" +%Y-%m-%dT%H:%M:%SZ)"
+api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$month_start\",\"endedAt\":\"$month_end\",\"description\":\"Earlier current-month session\"}" http://localhost:8080/api/v1/time-entries >/dev/null
 summary="$(api "${header[@]}" "http://localhost:8080/api/v1/paths/$path_id/summary")"
 printf '%s' "$summary" | grep -q 'Smoke path'
 summary_seconds="$(printf '%s' "$summary" | sed -n 's/.*"trackedSeconds":\([0-9]*\).*/\1/p')"
@@ -86,7 +102,10 @@ api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Completed' | grep -q '
 api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke' | grep -q 'ACTIVITY'
 api "${header[@]}" "http://localhost:8080/api/v1/activities?itemId=$item_id" | grep -q 'PROGRESS_CHANGED'
 api "${header[@]}" "http://localhost:8080/api/v1/activities?itemId=$item_id&from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z" | grep -q 'PROGRESS_CHANGED'
-api "${header[@]}" http://localhost:8080/api/v1/statistics | grep -q 'completedItems'
+statistics="$(api "${header[@]}" http://localhost:8080/api/v1/statistics)"
+printf '%s' "$statistics" | grep -q 'completedItems'
+month_seconds="$(printf '%s' "$statistics" | sed -n 's/.*"monthSeconds":\([0-9]*\).*/\1/p')"
+(( month_seconds >= 3300 ))
 if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   backup_dir="$(mktemp -d)"
   backup_file="$backup_dir/know.sql"
