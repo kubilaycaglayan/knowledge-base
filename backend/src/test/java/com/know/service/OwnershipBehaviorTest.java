@@ -148,7 +148,7 @@ class OwnershipBehaviorTest {
         UUID user=UUID.randomUUID(), pathId=UUID.randomUUID(), itemId=UUID.randomUUID(); TimeEntry running=new TimeEntry(user,pathId,itemId,java.time.Instant.now().minusSeconds(5),"live",TimeSource.WEB);
         when(entries.findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(eq(user),any(),any())).thenReturn(List.of(running)); when(items.countByUserIdAndStatus(any(),any())).thenReturn(0L); when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
         TimerService.Statistics result=new TimerService(entries,paths,items,mock(PathItemRepository.class),progress,activities).statistics(user);
-        assertTrue(result.todayByPath().get(pathId)>=4); assertTrue(result.todayByItem().get(itemId)>=4);
+        assertTrue(result.todayByPath().get(pathId)>=4); assertTrue(result.todayByItem().get(itemId)>=4); assertTrue(result.weekByPath().get(pathId)>=4); assertTrue(result.weekByItem().get(itemId)>=4);
     }
 
     @Test void statisticsQueryCoversTheEntireCurrentMonthWhenItExceedsTheWeekWindow() {

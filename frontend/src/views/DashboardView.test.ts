@@ -110,4 +110,21 @@ describe('DashboardView timer flow', () => {
     expect(wrapper.text()).toContain('A very long session description')
     expect(wrapper.text()).toContain('…')
   })
+
+  it('shows weekly time breakdowns by path and item', async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === '/paths') return [{ id: 'path-a', name: 'Algorithms', status: 'ACTIVE' }]
+      if (path === '/items') return [{ id: 'item-a', title: 'Graphs', pathIds: ['path-a'] }]
+      if (path === '/timers/current') return null
+      if (path === '/statistics') return { todaySeconds: 0, weekSeconds: 3600, monthSeconds: 3600, todayByPath: {}, todayByItem: {}, weekByPath: { 'path-a': 3600 }, weekByItem: { 'item-a': 1800 }, completedItems: 0, activeItems: 1, recentProgressChanges: [] }
+      if (path === '/time-entries') return []
+      return undefined
+    })
+    const wrapper = mount(DashboardView)
+    await flushPromises()
+    expect(wrapper.text()).toContain('TIME BY PATH THIS WEEK')
+    expect(wrapper.text()).toContain('Algorithms')
+    expect(wrapper.text()).toContain('TIME BY ITEM THIS WEEK')
+    expect(wrapper.text()).toContain('Graphs')
+  })
 })
