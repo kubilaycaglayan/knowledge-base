@@ -22,6 +22,7 @@ node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
 node scripts/check-accessibility.mjs
 node scripts/check-security.mjs
+node scripts/check-cleanup.mjs
 bash -n scripts/smoke.sh deployment/backup.sh
 JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
 SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=know-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
