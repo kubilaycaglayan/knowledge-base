@@ -136,31 +136,42 @@ class OwnershipBehaviorTest {
     @Test void statisticsIncludesCompletionCountsAndRecentProgress() {
         TimeEntryRepository entries=mock(TimeEntryRepository.class); PathRepository paths=mock(PathRepository.class); ItemRepository items=mock(ItemRepository.class); ProgressEntryRepository progress=mock(ProgressEntryRepository.class); ActivityRepository activities=mock(ActivityRepository.class);
         UUID user=UUID.randomUUID(), itemId=UUID.randomUUID();
-        when(entries.findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(eq(user),any(),any())).thenReturn(List.of());
+        when(entries.findOverlappingByUserId(eq(user),any(),any())).thenReturn(List.of());
         when(items.countByUserIdAndStatus(user,ItemStatus.COMPLETED)).thenReturn(3L); when(items.countByUserIdAndStatus(user,ItemStatus.ACTIVE)).thenReturn(2L);
         when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of(new ProgressEntry(user,itemId,(short)20,(short)40)));
         TimerService.Statistics result=new TimerService(entries,paths,items,mock(PathItemRepository.class),progress,activities).statistics(user);
-        assertEquals(3,result.completedItems()); assertEquals(2,result.activeItems()); assertEquals(itemId,result.recentProgressChanges().getFirst().itemId()); verify(entries,times(1)).findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(eq(user),any(),any());
+        assertEquals(3,result.completedItems()); assertEquals(2,result.activeItems()); assertEquals(itemId,result.recentProgressChanges().getFirst().itemId()); verify(entries,times(1)).findOverlappingByUserId(eq(user),any(),any());
     }
 
     @Test void statisticsBreakdownsIncludeElapsedRunningTime() {
         TimeEntryRepository entries=mock(TimeEntryRepository.class); PathRepository paths=mock(PathRepository.class); ItemRepository items=mock(ItemRepository.class); ProgressEntryRepository progress=mock(ProgressEntryRepository.class); ActivityRepository activities=mock(ActivityRepository.class);
         UUID user=UUID.randomUUID(), pathId=UUID.randomUUID(), itemId=UUID.randomUUID(); TimeEntry running=new TimeEntry(user,pathId,itemId,java.time.Instant.now().minusSeconds(5),"live",TimeSource.WEB);
-        when(entries.findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(eq(user),any(),any())).thenReturn(List.of(running)); when(items.countByUserIdAndStatus(any(),any())).thenReturn(0L); when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
+        when(entries.findOverlappingByUserId(eq(user),any(),any())).thenReturn(List.of(running)); when(items.countByUserIdAndStatus(any(),any())).thenReturn(0L); when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
         TimerService.Statistics result=new TimerService(entries,paths,items,mock(PathItemRepository.class),progress,activities).statistics(user);
         assertTrue(result.todayByPath().get(pathId)>=4); assertTrue(result.todayByItem().get(itemId)>=4); assertTrue(result.weekByPath().get(pathId)>=4); assertTrue(result.weekByItem().get(itemId)>=4);
+    }
+
+    @Test void statisticsClipEntriesThatCrossTheUtcDayBoundary() {
+        TimeEntryRepository entries=mock(TimeEntryRepository.class); PathRepository paths=mock(PathRepository.class); ItemRepository items=mock(ItemRepository.class); ProgressEntryRepository progress=mock(ProgressEntryRepository.class); ActivityRepository activities=mock(ActivityRepository.class);
+        UUID user=UUID.randomUUID(); var dayStart=java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        TimeEntry crossing=new TimeEntry(user,null,null,dayStart.minusSeconds(60),"crossing",TimeSource.MANUAL); crossing.stop(dayStart.plusSeconds(60));
+        when(entries.findOverlappingByUserId(eq(user),any(),any())).thenReturn(List.of(crossing)); when(items.countByUserIdAndStatus(any(),any())).thenReturn(0L); when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
+
+        TimerService.Statistics result=new TimerService(entries,paths,items,mock(PathItemRepository.class),progress,activities).statistics(user);
+
+        assertEquals(60,result.todaySeconds()); assertEquals(120,result.weekSeconds()); assertEquals(120,result.monthSeconds());
     }
 
     @Test void statisticsQueryCoversTheEntireCurrentMonthWhenItExceedsTheWeekWindow() {
         TimeEntryRepository entries=mock(TimeEntryRepository.class); PathRepository paths=mock(PathRepository.class); ItemRepository items=mock(ItemRepository.class); ProgressEntryRepository progress=mock(ProgressEntryRepository.class); ActivityRepository activities=mock(ActivityRepository.class);
         UUID user=UUID.randomUUID();
-        when(entries.findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(eq(user),any(),any())).thenReturn(List.of());
+        when(entries.findOverlappingByUserId(eq(user),any(),any())).thenReturn(List.of());
         when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
         TimerService service=new TimerService(entries,paths,items,mock(PathItemRepository.class),progress,activities);
         service.statistics(user);
 
         var from=org.mockito.ArgumentCaptor.forClass(java.time.Instant.class);
-        verify(entries).findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(eq(user),from.capture(),any());
+        verify(entries).findOverlappingByUserId(eq(user),from.capture(),any());
         var today=java.time.LocalDate.now(java.time.ZoneOffset.UTC);
         var weekStart=today.minusDays(6).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
         var monthStart=today.withDayOfMonth(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
@@ -172,7 +183,7 @@ class OwnershipBehaviorTest {
         UUID user=UUID.randomUUID(); var today=java.time.LocalDate.now(java.time.ZoneOffset.UTC); var monthStart=today.withDayOfMonth(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant(); var weekStart=today.minusDays(6).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
         TimeEntry older=new TimeEntry(user,null,null,monthStart.plusSeconds(3600),"older",TimeSource.MANUAL); older.stop(older.getStartedAt().plusSeconds(60));
         TimeEntry recent=new TimeEntry(user,null,null,weekStart.plusSeconds(3600),"recent",TimeSource.MANUAL); recent.stop(recent.getStartedAt().plusSeconds(120));
-        when(entries.findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(eq(user),any(),any())).thenReturn(List.of(recent,older)); when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
+        when(entries.findOverlappingByUserId(eq(user),any(),any())).thenReturn(List.of(recent,older)); when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
         TimerService.Statistics result=new TimerService(entries,paths,items,mock(PathItemRepository.class),progress,activities).statistics(user);
         assertEquals(120,result.weekSeconds()); assertEquals(180,result.monthSeconds());
     }
