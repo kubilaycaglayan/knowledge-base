@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-know}
+      POSTGRES_USER: ${POSTGRES_USER:-know}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
+    volumes: [know-db:/var/lib/postgresql/data]
+    healthcheck: {test: [CMD-SHELL, 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'], interval: 10s, timeout: 5s, retries: 5}
+    restart: unless-stopped
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-know}
+      DATABASE_USERNAME: ${POSTGRES_USER:-know}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,chrome-extension://*}
+    depends_on: {db: {condition: service_healthy}}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+  web:
+    build: ./frontend
+    depends_on: [api]
+    restart: unless-stopped
+  proxy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    volumes: [./deployment/Caddyfile:/etc/caddy/Caddyfile, caddy-data:/data, caddy-config:/config]
+    depends_on: [web, api]
+    restart: unless-stopped
+volumes: {know-db: {}, caddy-data: {}, caddy-config: {}}

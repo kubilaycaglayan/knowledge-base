@@ -1,0 +1,51 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run backend tests
+        run: docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
+
+  web-and-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build web client
+        working-directory: frontend
+        run: npm ci && npm test && npm run build
+      - name: Validate extension and deployment scripts
+        run: node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node -e "JSON.parse(require('fs').readFileSync('chrome-extension/manifest.json','utf8'))" && bash -n scripts/smoke.sh deployment/backup.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+      POSTGRES_PASSWORD: ci-only-database-password
+      SMOKE_FULL_STACK: "1"
+      SMOKE_BACKUP_RESTORE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise deployed-shaped stack
+        run: ./scripts/smoke.sh
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Swift package
+        working-directory: ios
+        run: swift package dump-package && swiftc -parse Know/KnowApp.swift KnowTests/KnowTests.swift && swift test && swift build
+      - name: Build native iOS client
+        working-directory: ios
+        run: xcodebuild -scheme Know -destination 'generic/platform=iOS' -derivedDataPath .build/DerivedData build CODE_SIGNING_ALLOWED=NO
