@@ -132,6 +132,12 @@ struct DashboardView: View {
     private var timerItems: [Item] {
         itemsForTimerPath(UUID(uuidString: selectedPath), from: model.items)
     }
+    private func syncTimerSelection() {
+        guard let current = model.timer else { return }
+        selectedPath = current.pathId?.uuidString ?? ""
+        selectedItem = current.itemId?.uuidString ?? ""
+        if let date = ISO8601DateFormatter().date(from: current.startedAt) { timerStartedAt = date }
+    }
     var body: some View {
         NavigationStack {
             List {
@@ -170,7 +176,9 @@ struct DashboardView: View {
             }
             .navigationTitle("know.")
             .refreshable { await model.refresh() }
-            .onAppear { if let startedAt = model.timer?.startedAt, let date = ISO8601DateFormatter().date(from: startedAt) { timerStartedAt = date } }
+            .onAppear { syncTimerSelection() }
+            .onChange(of: model.timer?.pathId) { _, _ in syncTimerSelection() }
+            .onChange(of: model.timer?.itemId) { _, _ in syncTimerSelection() }
             .onChange(of: model.timer?.startedAt) { _, value in if let value, let date = ISO8601DateFormatter().date(from: value) { timerStartedAt = date } }
             .toolbar { Button("Sign out") { model.signOut() } }
         }

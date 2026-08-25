@@ -38,6 +38,8 @@ const required = [
   ['ios/Know/KnowApp.swift', 'accessibilityIdentifier("timer.path")', 'native timer path selector identifier'],
   ['ios/Know/KnowApp.swift', 'accessibilityIdentifier("timer.item")', 'native timer item selector identifier'],
   ['ios/Know/KnowApp.swift', 'accessibilityIdentifier("timer.toggle")', 'native timer control identifier'],
+  ['ios/Know/KnowApp.swift', 'accessibilityIdentifier("timer.start")', 'native active timer start editor identifier'],
+  ['ios/Know/KnowApp.swift', 'accessibilityIdentifier("timer.configure")', 'native active timer configuration identifier'],
   ['ios/KnowUITests/KnowUITests.swift', 'app.textFields["auth.email"]', 'native UI test email target'],
   ['ios/KnowUITests/KnowUITests.swift', 'app.secureTextFields["auth.password"]', 'native UI test password target'],
   ['ios/KnowUITests/KnowUITests.swift', 'app.buttons["auth.submit"]', 'native UI test submit target'],
