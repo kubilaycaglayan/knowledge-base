@@ -14,6 +14,12 @@
 }
 
 :80 {
+	@production {
+		host {$DOMAIN:localhost}
+		not host localhost
+	}
+	redir @production https://{host}{uri} permanent
+
 	import security_headers
 
 	handle /api/* {
