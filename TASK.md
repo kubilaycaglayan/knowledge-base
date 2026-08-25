@@ -1171,3 +1171,7 @@ Shared production backend
 +
 Ubuntu Server deployment through a rented HTTPS domain
 ```
+
+# Test Environment Cleanup
+
+Agents must clean disposable Docker test environments after smoke/integration runs. Do not leave `know-*` or `try-know-be` smoke images, stopped containers, unused volumes, or BuildKit cache from this repository accumulating on the host. Prefer updating the smoke/test scripts so cleanup is automatic, scoped to this project, and does not affect unrelated Docker workloads.
