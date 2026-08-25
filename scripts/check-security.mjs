@@ -18,6 +18,7 @@ const checks = [
   [compose.includes('DOMAIN: "${DOMAIN:-localhost}"'), 'Compose passes the Caddy domain into the proxy'],
   [compose.includes('127.0.0.1:${PROXY_DEV_PORT:-3000}:80'), 'local convenience proxy port binds only to loopback'],
   [compose.includes('127.0.0.1:${DB_DEV_PORT:-5432}:5432'), 'local database convenience port binds only to loopback'],
+  [compose.match(/logging: \{driver: json-file, options: \{max-size: "10m", max-file: "3"\}\}/g)?.length === 4, 'all Compose services use bounded JSON log rotation'],
   [envExample.includes('chrome-extension://replace-with-extension-id'), 'environment template requires an explicit extension origin'],
   [!envExample.includes('chrome-extension://*'), 'environment template does not allow all extension origins'],
   [proxy.includes('Content-Security-Policy'), 'proxy emits CSP'],
