@@ -25,7 +25,7 @@ jobs:
         working-directory: frontend
         run: npm ci && npm test && npm run build
       - name: Validate extension and deployment scripts
-        run: node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cleanup.mjs && node -e "JSON.parse(require('fs').readFileSync('chrome-extension/manifest.json','utf8'))" && bash -n scripts/smoke.sh deployment/backup.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+        run: node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cleanup.mjs && node -e "JSON.parse(require('fs').readFileSync('chrome-extension/manifest.json','utf8'))" && bash -n scripts/smoke.sh deployment/backup.sh deployment/preflight.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
   smoke:
     runs-on: ubuntu-latest
