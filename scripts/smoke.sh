@@ -38,8 +38,8 @@ for attempt in {1..30}; do
   sleep 2
 done
 docker compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
-allowed_cors="$(docker compose exec -T api wget -S -O /dev/null --method=OPTIONS --header='Origin: http://localhost:5173' --header='Access-Control-Request-Method: GET' http://localhost:8080/api/v1/paths 2>&1 || true)"
-printf '%s' "$allowed_cors" | grep -qi 'access-control-allow-origin: http://localhost:5173'
+allowed_cors="$(docker compose exec -T api wget -S -O /dev/null --method=OPTIONS --header='Origin: http://localhost:5177' --header='Access-Control-Request-Method: GET' http://localhost:8080/api/v1/paths 2>&1 || true)"
+printf '%s' "$allowed_cors" | grep -qi 'access-control-allow-origin: http://localhost:5177'
 blocked_cors="$(docker compose exec -T api wget -S -O /dev/null --method=OPTIONS --header='Origin: https://untrusted.example' --header='Access-Control-Request-Method: GET' http://localhost:8080/api/v1/paths 2>&1 || true)"
 if printf '%s' "$blocked_cors" | grep -qi 'access-control-allow-origin:'; then echo "untrusted CORS origin was allowed" >&2; exit 1; fi
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
@@ -59,7 +59,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^x-frame-options: DENY'
   curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^content-security-policy:'
   curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^permissions-policy:'
-  curl -kfsSI -X OPTIONS -H 'Origin: http://localhost:5173' -H 'Access-Control-Request-Method: GET' "https://localhost:${PROXY_HTTPS_PORT}"/api/v1/paths | grep -qi '^access-control-allow-origin: http://localhost:5173'
+  curl -kfsSI -X OPTIONS -H 'Origin: http://localhost:5177' -H 'Access-Control-Request-Method: GET' "https://localhost:${PROXY_HTTPS_PORT}"/api/v1/paths | grep -qi '^access-control-allow-origin: http://localhost:5177'
   if curl -kfsSI -X OPTIONS -H 'Origin: https://untrusted.example' -H 'Access-Control-Request-Method: GET' "https://localhost:${PROXY_HTTPS_PORT}"/api/v1/paths | grep -qi '^access-control-allow-origin:'; then echo "untrusted CORS origin was allowed" >&2; exit 1; fi
   proxy_email="proxy-$(date +%s%N)@example.com"
   curl -kfsSL -H 'Content-Type: application/json' --data "{\"email\":\"$proxy_email\",\"password\":\"correct-horse-battery\"}" "https://localhost:${PROXY_HTTPS_PORT}/api/v1/auth/register" | grep -q '"token"'

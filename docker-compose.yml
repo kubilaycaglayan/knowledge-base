@@ -11,12 +11,13 @@ services:
     restart: unless-stopped
   api:
     build: ./backend
+    ports: ["127.0.0.1:${API_DEV_PORT:-8080}:8080"]
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-know}
       DATABASE_USERNAME: ${POSTGRES_USER:-know}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5177}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     depends_on: {db: {condition: service_healthy}}
     healthcheck:
