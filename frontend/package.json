@@ -1,0 +1,1 @@
+{"name":"know-web","private":true,"version":"0.1.0","type":"module","scripts":{"dev":"vite","build":"tsc --noEmit && vite build","test":"vitest run","preview":"vite preview"},"dependencies":{"@vitejs/plugin-vue":"latest","typescript":"latest","vite":"latest","vue":"latest","vue-router":"latest"},"devDependencies":{"@vue/test-utils":"^2.4.11","jsdom":"^30.0.1","vitest":"^4.1.11"}}
