@@ -1,0 +1,8 @@
+.env
+!.env.example
+node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+backend/build/
+.gradle/
+.DS_Store
