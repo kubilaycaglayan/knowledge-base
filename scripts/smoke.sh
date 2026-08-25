@@ -6,10 +6,11 @@ set -euo pipefail
 if (( ${#JWT_SECRET} < 32 )); then echo "JWT_SECRET must be at least 32 characters" >&2; exit 1; fi
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   : "${DB_DEV_PORT:=15432}"
+  : "${API_DEV_PORT:=18081}"
   : "${PROXY_DEV_PORT:=18000}"
   : "${PROXY_HTTP_PORT:=18080}"
   : "${PROXY_HTTPS_PORT:=18443}"
-  export DB_DEV_PORT PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
+  export DB_DEV_PORT API_DEV_PORT PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
 fi
 
 backup_dir=""
