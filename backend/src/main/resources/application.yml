@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/know}
+    username: ${DATABASE_USERNAME:know}
+    password: ${DATABASE_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+server:
+  port: ${PORT:8080}
+app:
+  jwt-secret: ${JWT_SECRET:}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173,chrome-extension://*}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

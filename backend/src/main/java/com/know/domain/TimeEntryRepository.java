@@ -1,0 +1,3 @@
+package com.know.domain;
+import org.springframework.data.jpa.repository.*;import java.time.Instant;import java.util.*;
+public interface TimeEntryRepository extends JpaRepository<TimeEntry,UUID>{Optional<TimeEntry> findByUserIdAndEndedAtIsNull(UUID userId);Optional<TimeEntry> findByIdAndUserId(UUID id,UUID userId);List<TimeEntry> findAllByUserIdOrderByStartedAtDesc(UUID userId);List<TimeEntry> findAllByUserIdAndPathIdOrderByStartedAtDesc(UUID userId,UUID pathId);List<TimeEntry> findAllByUserIdAndItemIdInOrderByStartedAtDesc(UUID userId,Collection<UUID> itemIds);List<TimeEntry> findAllByUserIdAndStartedAtBetweenOrderByStartedAtDesc(UUID userId,Instant from,Instant to);}
