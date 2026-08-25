@@ -5,6 +5,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-know}
       POSTGRES_USER: ${POSTGRES_USER:-know}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
+    ports: ["127.0.0.1:${DB_DEV_PORT:-5432}:5432"]
     volumes: [know-db:/var/lib/postgresql/data]
     healthcheck: {test: [CMD-SHELL, 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'], interval: 10s, timeout: 5s, retries: 5}
     restart: unless-stopped
@@ -16,6 +17,7 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     depends_on: {db: {condition: service_healthy}}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
@@ -25,12 +27,17 @@ services:
       start_period: 20s
     restart: unless-stopped
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     depends_on: [api]
     restart: unless-stopped
   proxy:
     image: caddy:2-alpine
-    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: "${DOMAIN:-localhost}"
+    ports: ["127.0.0.1:${PROXY_DEV_PORT:-3000}:80", "${PROXY_HTTP_PORT:-80}:80", "${PROXY_HTTPS_PORT:-443}:443"]
     volumes: [./deployment/Caddyfile:/etc/caddy/Caddyfile, caddy-data:/data, caddy-config:/config]
     depends_on: [web, api]
     healthcheck:

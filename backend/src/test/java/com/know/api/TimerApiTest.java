@@ -57,4 +57,15 @@ class TimerApiTest {
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(service);
     }
+
+    @Test void runningTimerConfigurationPassesEditableStartAndTargets() throws Exception {
+        UUID user=UUID.randomUUID(), timer=UUID.randomUUID(), path=UUID.randomUUID();
+        var auth=new UsernamePasswordAuthenticationToken(user.toString(),null,List.of());
+        when(service.configureRunning(eq(user),eq(timer),eq(path),isNull(),any(Instant.class),eq("Chapter 5")))
+                .thenReturn(new TimerService.TimeView(timer,path,null,Instant.parse("2026-08-25T10:00:00Z"),null,null,"Chapter 5",TimeSource.WEB,true));
+        mvc.perform(put("/api/v1/timers/"+timer).with(authentication(auth)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pathId\":\""+path+"\",\"startedAt\":\"2026-08-25T10:00:00Z\",\"description\":\"Chapter 5\"}"))
+                .andExpect(status().isOk());
+        verify(service).configureRunning(eq(user),eq(timer),eq(path),isNull(),eq(Instant.parse("2026-08-25T10:00:00Z")),eq("Chapter 5"));
+    }
 }

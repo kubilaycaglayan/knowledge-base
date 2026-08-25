@@ -32,4 +32,13 @@ describe('PathsView', () => {
     expect(wrapper.text()).not.toContain('Graph theory — 40%')
     expect(wrapper.text()).toContain('Sorting — 80%')
   })
+
+  it('submits a selected path color from the twelve-color picker', async () => {
+    const wrapper = mount(PathsView)
+    await flushPromises()
+    await wrapper.get('input[aria-label="New path name"]').setValue('Reading')
+    await wrapper.get('button[aria-label="Choose path color #4C6FFF"]').trigger('click')
+    await wrapper.get('form').trigger('submit')
+    expect(vi.mocked(api)).toHaveBeenCalledWith('/paths', expect.objectContaining({ method: 'POST', body: expect.stringContaining('"color":"#4C6FFF"') }))
+  })
 })

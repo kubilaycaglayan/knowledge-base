@@ -78,6 +78,16 @@ final class KnowTests: XCTestCase {
         XCTAssertFalse(isUITesting(arguments: ["Know"]))
     }
 
+    @MainActor
+    func testAuthenticatedUITestingFixtureSkipsNetworkRefresh() async {
+        let model = AppModel(api: APIClient(base: URL(string: "https://example.test/api/v1")!), arguments: ["Know", "-ui-testing", "-ui-testing-authenticated"])
+
+        XCTAssertEqual(model.paths.first?.name, "UI Test Path")
+        XCTAssertEqual(model.items.first?.title, "UI Test Item")
+        await model.refresh()
+        XCTAssertNil(model.error)
+    }
+
     func testStatisticsDecodesRecentProgressChanges() throws {
         let itemId = UUID()
         let payload = """

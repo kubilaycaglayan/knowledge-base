@@ -9,6 +9,7 @@ struct Note: Codable, Identifiable { let id: UUID; let pathId: UUID?; let itemId
 struct Activity: Codable, Identifiable { let id: UUID; let type: String; let title: String; let detail: String?; let occurredAt: String }
 struct TimerState: Codable, Identifiable { let id: UUID; let pathId: UUID?; let itemId: UUID?; let startedAt: String; let endedAt: String?; let description: String?; let running: Bool }
 struct TimerRequest: Codable { let pathId: String?; let itemId: String?; let description: String; let source: String }
+struct TimerUpdateRequest: Codable { let pathId: String?; let itemId: String?; let startedAt: String; let description: String? }
 struct PathRequest: Codable { let name: String; let description: String? }
 struct ItemRequest: Codable { let title: String; let type: String; let description: String?; let status: String?; let pathIds: [UUID]; let tags: [String] }
 struct Statistics: Codable { let todaySeconds: Int64; let weekSeconds: Int64; let monthSeconds: Int64; let todayByPath: [String:Int64]; let todayByItem: [String:Int64]; let completedItems: Int64; let activeItems: Int64; let recentProgressChanges: [ProgressChange] }
@@ -62,13 +63,14 @@ struct APIClient {
 
 @MainActor final class AppModel:ObservableObject {
     @Published var token=KeychainTokenStore.read();@Published var paths:[Path]=[];@Published var items:[Item]=[];@Published var notes:[Note]=[];@Published var activities:[Activity]=[];@Published var timer:TimerState?;@Published var stats:Statistics?;@Published var error:String?;@Published var isLoading=false
-    let api:APIClient
-    init(api:APIClient=APIClient()){self.api=api;if isUITesting(){token=nil}}
+    let api:APIClient; private let uiTesting:Bool
+    init(api:APIClient=APIClient(),arguments:[String]=ProcessInfo.processInfo.arguments){self.api=api;uiTesting=isUITesting(arguments:arguments);if uiTesting{token=nil};if arguments.contains("-ui-testing-authenticated"){let pathId=UUID(uuidString:"00000000-0000-4000-8000-000000000001")!;token="ui-test-token";paths=[Path(id:pathId,name:"UI Test Path",description:"Fixture path",status:"ACTIVE")];items=[Item(id:UUID(uuidString:"00000000-0000-4000-8000-000000000002")!,title:"UI Test Item",type:"COURSE",description:nil,status:"PLANNED",progress:0,pathIds:[pathId],tags:[])]}}
     var signedIn:Bool{token != nil}
     func handle(_ failure:Error,_ message:String){if let failure=failure as? APIError { switch failure { case .unauthorized: signOut(); case .offline: error="No network connection. Reconnect and try again." } } else {error=message}}
     func authenticate(email:String,password:String,register:Bool) async {do{let body=try JSONEncoder().encode(["email":email,"password":password]);let result:AuthResponse=try await api.request(register ? "/auth/register":"/auth/login",method:"POST",body:body);token=result.token;KeychainTokenStore.save(result.token);await refresh()}catch{handle(error,"Authentication failed. Check your credentials.")}}
-    func refresh() async {guard let token else{return};isLoading=true;defer{isLoading=false};do{async let p:[Path]=api.request("/paths",token:token);async let i:[Item]=api.request("/items",token:token);async let n:[Note]=api.request("/notes",token:token);async let a:[Activity]=api.request("/activities",token:token);async let s:Statistics=api.request("/statistics",token:token);paths=try await p;items=try await i;notes=try await n;activities=try await a;stats=try await s;timer=try await api.optional("/timers/current",token:token)}catch{handle(error,"Could not refresh your workspace.")}}
+    func refresh() async {guard let token else{return};if uiTesting{return};isLoading=true;defer{isLoading=false};do{async let p:[Path]=api.request("/paths",token:token);async let i:[Item]=api.request("/items",token:token);async let n:[Note]=api.request("/notes",token:token);async let a:[Activity]=api.request("/activities",token:token);async let s:Statistics=api.request("/statistics",token:token);paths=try await p;items=try await i;notes=try await n;activities=try await a;stats=try await s;timer=try await api.optional("/timers/current",token:token)}catch{handle(error,"Could not refresh your workspace.")}}
     func toggleTimer(pathId:UUID?=nil,itemId:UUID?=nil) async {guard let token else{return};do{if timer != nil{try await api.empty("/timers/stop",method:"POST",token:token);timer=nil}else{let data=try JSONEncoder().encode(TimerRequest(pathId:pathId?.uuidString,itemId:itemId?.uuidString,description:"iOS session",source:"IOS"));timer=try await api.request("/timers",method:"POST",body:data,token:token)}}catch{handle(error,"Could not update the timer.")}}
+    func configureTimer(pathId:UUID?,itemId:UUID?,startedAt:Date,description:String?) async {guard let token,let current=timer else{return};do{let formatter=ISO8601DateFormatter();let data=try JSONEncoder().encode(TimerUpdateRequest(pathId:pathId?.uuidString,itemId:itemId?.uuidString,startedAt:formatter.string(from:startedAt),description:description));timer=try await api.request("/timers/\(current.id)",method:"PUT",body:data,token:token)}catch{handle(error,"Could not save the active timer settings.")}}
     func cancelTimer() async {guard let token else{return};do{try await api.empty("/timers/cancel",method:"POST",token:token);timer=nil}catch{handle(error,"Could not cancel the timer.")}}
     func updateProgress(itemId:UUID,value:Int) async {guard let token else{return};do{let body=try JSONEncoder().encode(["progress":max(0,min(100,value))]);let _:Item=try await api.request("/items/\(itemId)/progress",method:"POST",body:body,token:token);await refresh()}catch{handle(error,"Could not update progress.")}}
     func createNote(itemId:UUID,title:String,content:String) async {guard let token else{return};do{let body=try JSONEncoder().encode(["itemId":itemId.uuidString,"title":title,"content":content]);let _:Note=try await api.request("/notes",method:"POST",body:body,token:token);await refresh()}catch{handle(error,"Could not save the note.")}}
@@ -106,7 +108,7 @@ struct LoginView: View {
                 SecureField("Password", text: $password).accessibilityIdentifier("auth.password")
                 Button(register ? "Create account" : "Sign in") { Task { await model.authenticate(email: email, password: password, register: register) } }.accessibilityIdentifier("auth.submit")
             }
-            Section { Button(register ? "Already have an account? Sign in" : "New here? Create an account") { register.toggle() } }
+            Section { Button(register ? "Already have an account? Sign in" : "New here? Create an account") { register.toggle() }.accessibilityIdentifier("auth.mode") }
         }.padding(.top, 40)
     }
 }
@@ -126,6 +128,7 @@ struct DashboardView: View {
     @EnvironmentObject var model: AppModel
     @State private var selectedPath = ""
     @State private var selectedItem = ""
+    @State private var timerStartedAt = Date()
     private var timerItems: [Item] {
         itemsForTimerPath(UUID(uuidString: selectedPath), from: model.items)
     }
@@ -143,19 +146,18 @@ struct DashboardView: View {
                 }
                 Section("Focus today") {
                     Text(model.timer == nil ? "No active timer" : "Timer running").foregroundStyle(.secondary)
-                    if model.timer == nil {
-                        Picker("Path", selection: $selectedPath) {
+                    Picker("Path", selection: $selectedPath) {
                             Text("No path").tag("")
                             ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in Text(path.name).tag(path.id.uuidString) }
-                        }.accessibilityIdentifier("timer.path")
-                        Picker("Item", selection: $selectedItem) {
+                    }.accessibilityIdentifier("timer.path")
+                    Picker("Item", selection: $selectedItem) {
                             Text("No item").tag("")
                             ForEach(timerItems) { item in Text(item.title).tag(item.id.uuidString) }
-                        }.accessibilityIdentifier("timer.item")
-                            .onChange(of: selectedPath) { _, _ in
+                    }.accessibilityIdentifier("timer.item")
+                        .onChange(of: selectedPath) { _, _ in
                                 if !timerItems.contains(where: { $0.id.uuidString == selectedItem }) { selectedItem = "" }
-                            }
-                    }
+                        }
+                    if model.timer != nil { DatePicker("Timer start", selection: $timerStartedAt, displayedComponents: [.date, .hourAndMinute]).accessibilityIdentifier("timer.start"); Button("Save timer settings") { Task { await model.configureTimer(pathId: UUID(uuidString: selectedPath), itemId: UUID(uuidString: selectedItem), startedAt: timerStartedAt, description: model.timer?.description) } }.accessibilityIdentifier("timer.configure") }
                     Button(model.timer == nil ? "Start a session" : "Stop session") { Task { await model.toggleTimer(pathId: UUID(uuidString: selectedPath), itemId: UUID(uuidString: selectedItem)) } }.accessibilityIdentifier("timer.toggle")
                     if model.timer != nil { Button("Cancel", role: .destructive) { Task { await model.cancelTimer() } } }
                 }
@@ -168,6 +170,8 @@ struct DashboardView: View {
             }
             .navigationTitle("know.")
             .refreshable { await model.refresh() }
+            .onAppear { if let startedAt = model.timer?.startedAt, let date = ISO8601DateFormatter().date(from: startedAt) { timerStartedAt = date } }
+            .onChange(of: model.timer?.startedAt) { _, value in if let value, let date = ISO8601DateFormatter().date(from: value) { timerStartedAt = date } }
             .toolbar { Button("Sign out") { model.signOut() } }
         }
     }
@@ -224,7 +228,7 @@ struct ItemsView: View {
                 NavigationStack {
                     Form {
                         TextField("Title", text: $title).accessibilityIdentifier("items.title")
-                        Picker("Type", selection: $type) { Text("Custom").tag("CUSTOM"); Text("Book").tag("BOOK"); Text("Course").tag("COURSE"); Text("Project").tag("PROJECT"); Text("Article").tag("ARTICLE"); Text("Video").tag("VIDEO") }.accessibilityIdentifier("items.type")
+                        Picker("Type", selection: $type) { ForEach(["CUSTOM","BOOK","COURSE","PROJECT","ARTICLE","MOVIE","EXERCISE","HOBBY","VIDEO","PAPER"], id: \.self) { value in Text(value.capitalized).tag(value) } }.accessibilityIdentifier("items.type")
                         Section("Active paths") {
                             ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in
                                 Toggle(path.name, isOn: Binding(get: { selectedPaths.contains(path.id) }, set: { isSelected in if isSelected { selectedPaths.insert(path.id) } else { selectedPaths.remove(path.id) } }))
@@ -264,7 +268,7 @@ struct ItemDetailView: View {
             }
             Section("Notes") {
                 ForEach(model.notes.filter { $0.itemId == item.id }) { note in VStack(alignment: .leading) { Text(note.title).font(.headline); Text(note.content).font(.subheadline) } }
-                Button("Add note") { addingNote = true }
+                Button("Add note") { addingNote = true }.accessibilityIdentifier("item.note.add")
             }
         }
         .navigationTitle(item.title)

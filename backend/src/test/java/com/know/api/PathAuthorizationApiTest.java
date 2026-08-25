@@ -53,6 +53,17 @@ class PathAuthorizationApiTest {
         verifyNoInteractions(paths);
     }
 
+    @Test void pathColorsAcceptPaletteHexValuesAndRejectUnsafeValues() throws Exception {
+        UUID owner=UUID.randomUUID(); var auth=new UsernamePasswordAuthenticationToken(owner.toString(),null,List.of());
+        when(paths.save(any(Path.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        mvc.perform(post("/api/v1/paths").with(authentication(auth)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Blue path\",\"color\":\"#4C6FFF\"}"))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/v1/paths").with(authentication(auth)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Unsafe path\",\"color\":\"red\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
     @Test void authenticatedUserCannotReadAnotherUsersPath() throws Exception {
         UUID owner=UUID.randomUUID(), pathId=UUID.randomUUID();
         when(paths.findByIdAndUserId(pathId,owner)).thenReturn(Optional.empty());

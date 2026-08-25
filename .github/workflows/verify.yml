@@ -48,4 +48,13 @@ jobs:
         run: swift package dump-package && swiftc -parse Know/KnowApp.swift KnowTests/KnowTests.swift KnowUITests/KnowUITests.swift && swift test && swift build
       - name: Build native iOS client
         working-directory: ios
-        run: xcodebuild -scheme Know -destination 'generic/platform=iOS' -derivedDataPath .build/DerivedData build CODE_SIGNING_ALLOWED=NO
+        run: |
+          brew install xcodegen
+          xcodegen generate --spec project.yml
+          xcodebuild -project Know.xcodeproj -scheme Know -destination 'generic/platform=iOS' -derivedDataPath .build/DerivedData build CODE_SIGNING_ALLOWED=NO
+      - name: Execute Xcode unit/UI test targets
+        working-directory: ios
+        run: |
+          simulator_name="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1; exit}')"
+          if [[ -z "$simulator_name" ]]; then echo "No available iPhone simulator found" >&2; exit 1; fi
+          xcodebuild test -project Know.xcodeproj -scheme Know -destination "platform=iOS Simulator,name=$simulator_name" -derivedDataPath .build/UITestDerivedData CODE_SIGNING_ALLOWED=NO

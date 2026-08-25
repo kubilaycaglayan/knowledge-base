@@ -20,11 +20,14 @@ docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --n
 (cd frontend && npm ci && npm run build)
 node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
+node scripts/check-accessibility.mjs
+node scripts/check-security.mjs
 bash -n scripts/smoke.sh deployment/backup.sh
 JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
+SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=know-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
 ```
 
-On macOS, open `ios/Package.swift` in Xcode or run the macOS CI build. SwiftUI and UI-test verification cannot be performed in the Linux development environment.
+On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS app and UI tests, run `brew install xcodegen`, then `(cd ios && xcodegen generate --spec project.yml)` and the generated `ios/Know.xcodeproj` build/test scheme used by CI. SwiftUI and UI-test verification cannot be performed in the Linux development environment.
 
 ## Safety and design rules
 

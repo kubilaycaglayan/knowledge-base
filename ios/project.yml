@@ -1,0 +1,57 @@
+name: Know
+options:
+  minimumXcodeGenVersion: 2.38.0
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: 5.9
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
+targets:
+  Know:
+    type: application
+    platform: iOS
+    sources:
+      - path: Know
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.know.ios
+        PRODUCT_NAME: Know
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_TESTABILITY: YES
+  KnowTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: KnowTests
+    dependencies:
+      - target: Know
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.know.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Know.app/Know"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  KnowUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: KnowUITests
+    dependencies:
+      - target: Know
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.know.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Know
+schemes:
+  Know:
+    build:
+      targets:
+        Know: all
+        KnowTests: [test]
+        KnowUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - name: KnowTests
+        - name: KnowUITests

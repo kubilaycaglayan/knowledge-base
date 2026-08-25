@@ -4,18 +4,33 @@ set -euo pipefail
 : "${JWT_SECRET:?Set JWT_SECRET to a random value before running smoke tests}"
 : "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to the password used by the database volume}"
 if (( ${#JWT_SECRET} < 32 )); then echo "JWT_SECRET must be at least 32 characters" >&2; exit 1; fi
+if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
+  : "${DB_DEV_PORT:=15432}"
+  : "${PROXY_DEV_PORT:=18000}"
+  : "${PROXY_HTTP_PORT:=18080}"
+  : "${PROXY_HTTPS_PORT:=18443}"
+  export DB_DEV_PORT PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
+fi
 
 backup_dir=""
 restore_db=""
+buildx_builder=""
 cleanup() {
   if [[ -n "$restore_db" ]]; then docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$restore_db" >/dev/null 2>&1 || true; fi
   docker compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
+  if [[ -n "$buildx_builder" ]]; then docker buildx rm --force "$buildx_builder" >/dev/null 2>&1 || true; fi
   if [[ -n "$backup_dir" && -d "$backup_dir" ]]; then rm -rf "$backup_dir"; fi
 }
 trap cleanup EXIT
 
 services=(db api)
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then services+=(web proxy); fi
+buildx_builder="know-smoke-${COMPOSE_PROJECT_NAME:-try-know-be}-${BASHPID}-$(date +%s%N)"
+if ! docker buildx create --name "$buildx_builder" --driver docker-container >/dev/null 2>&1; then
+  echo "Smoke tests require Docker Buildx so their build cache can be cleaned safely" >&2
+  exit 1
+fi
+export BUILDX_BUILDER="$buildx_builder"
 docker compose up -d "${services[@]}" --build >/dev/null
 for attempt in {1..30}; do
   if docker compose exec -T api wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then break; fi
@@ -23,6 +38,10 @@ for attempt in {1..30}; do
   sleep 2
 done
 docker compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
+allowed_cors="$(docker compose exec -T api wget -S -O /dev/null --method=OPTIONS --header='Origin: http://localhost:5173' --header='Access-Control-Request-Method: GET' http://localhost:8080/api/v1/paths 2>&1 || true)"
+printf '%s' "$allowed_cors" | grep -qi 'access-control-allow-origin: http://localhost:5173'
+blocked_cors="$(docker compose exec -T api wget -S -O /dev/null --method=OPTIONS --header='Origin: https://untrusted.example' --header='Access-Control-Request-Method: GET' http://localhost:8080/api/v1/paths 2>&1 || true)"
+if printf '%s' "$blocked_cors" | grep -qi 'access-control-allow-origin:'; then echo "untrusted CORS origin was allowed" >&2; exit 1; fi
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   proxy_id="$(docker compose ps -q proxy)"
   for attempt in {1..30}; do
@@ -32,16 +51,18 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
     sleep 2
   done
   for attempt in {1..30}; do
-    if curl -kfsSL https://localhost/ | grep -q 'id="app"'; then break; fi
+    if curl -kfsSL "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -q 'id="app"'; then break; fi
     if [[ "$attempt" == 30 ]]; then echo "web proxy did not become ready" >&2; exit 1; fi
     sleep 2
   done
-  curl -kfsSI https://localhost/ | grep -qi '^x-content-type-options: nosniff'
-  curl -kfsSI https://localhost/ | grep -qi '^x-frame-options: DENY'
-  curl -kfsSI https://localhost/ | grep -qi '^content-security-policy:'
-  curl -kfsSI https://localhost/ | grep -qi '^permissions-policy:'
+  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^x-content-type-options: nosniff'
+  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^x-frame-options: DENY'
+  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^content-security-policy:'
+  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^permissions-policy:'
+  curl -kfsSI -X OPTIONS -H 'Origin: http://localhost:5173' -H 'Access-Control-Request-Method: GET' "https://localhost:${PROXY_HTTPS_PORT}"/api/v1/paths | grep -qi '^access-control-allow-origin: http://localhost:5173'
+  if curl -kfsSI -X OPTIONS -H 'Origin: https://untrusted.example' -H 'Access-Control-Request-Method: GET' "https://localhost:${PROXY_HTTPS_PORT}"/api/v1/paths | grep -qi '^access-control-allow-origin:'; then echo "untrusted CORS origin was allowed" >&2; exit 1; fi
   proxy_email="proxy-$(date +%s%N)@example.com"
-  curl -kfsSL -H 'Content-Type: application/json' --data "{\"email\":\"$proxy_email\",\"password\":\"correct-horse-battery\"}" https://localhost/api/v1/auth/register | grep -q '"token"'
+  curl -kfsSL -H 'Content-Type: application/json' --data "{\"email\":\"$proxy_email\",\"password\":\"correct-horse-battery\"}" "https://localhost:${PROXY_HTTPS_PORT}/api/v1/auth/register" | grep -q '"token"'
 fi
 
 api() { docker compose exec -T api wget -qO- "$@"; }
@@ -50,21 +71,29 @@ auth="$(api --header='Content-Type: application/json' --post-data="{\"email\":\"
 token="$(printf '%s' "$auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 [[ -n "$token" ]]
 header=(--header="Authorization: Bearer $token")
+if api --header='Content-Type: application/json' --post-data='{"idToken":"not-a-real-google-token"}' http://localhost:8080/api/v1/auth/google >/dev/null; then echo "invalid Google identity token was accepted" >&2; exit 1; fi
 if api --header='Content-Type: application/json' --post-data="{\"email\":\"${email^^}\",\"password\":\"correct-horse-battery\"}" http://localhost:8080/api/v1/auth/register >/dev/null; then echo "case-variant email was accepted" >&2; exit 1; fi
 
 path="$(api "${header[@]}" --header='Content-Type: application/json' --post-data='{"name":"Smoke path"}' http://localhost:8080/api/v1/paths)"
 path_id="$(printf '%s' "$path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 other_path="$(api "${header[@]}" --header='Content-Type: application/json' --post-data='{"name":"Other smoke path"}' http://localhost:8080/api/v1/paths)"
 other_path_id="$(printf '%s' "$other_path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+import_start="$(date -u -d '20 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
+import_end="$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
+clockify_import="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"timeentries\":[{\"_id\":\"clockify-smoke-1\",\"description\":\"Imported smoke session\",\"projectName\":\"Imported Clockify path\",\"timeInterval\":{\"start\":\"$import_start\",\"end\":\"$import_end\"}}]}" http://localhost:8080/api/v1/imports/clockify)"
+printf '%s' "$clockify_import" | grep -q '"imported":1'
+printf '%s' "$clockify_import" | grep -q '"createdPaths":1'
+api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"timeentries\":[{\"_id\":\"clockify-smoke-1\",\"description\":\"Imported smoke session\",\"projectName\":\"Imported Clockify path\",\"timeInterval\":{\"start\":\"$import_start\",\"end\":\"$import_end\"}}]}" http://localhost:8080/api/v1/imports/clockify | grep -q '"skipped":1'
 other_auth="$(api --header='Content-Type: application/json' --post-data="{\"email\":\"other-$email\",\"password\":\"correct-horse-battery\"}" http://localhost:8080/api/v1/auth/register)"
 other_token="$(printf '%s' "$other_auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 other_header=(--header="Authorization: Bearer $other_token")
 if api "${other_header[@]}" "http://localhost:8080/api/v1/paths/$path_id" >/dev/null; then echo "cross-user path access was allowed" >&2; exit 1; fi
-item="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"title\":\"Smoke item\",\"type\":\"PROJECT\",\"pathIds\":[\"$path_id\"],\"tags\":[\"smoke\"]}" http://localhost:8080/api/v1/items)"
+item="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"title\":\"Smoke item\",\"type\":\"MOVIE\",\"pathIds\":[\"$path_id\"],\"tags\":[\"smoke\"]}" http://localhost:8080/api/v1/items)"
 item_id="$(printf '%s' "$item" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 printf '%s' "$item" | grep -q '"smoke"'
+printf '%s' "$item" | grep -q '"type":"MOVIE"'
 api "${header[@]}" http://localhost:8080/api/v1/items | grep -q 'Smoke item'
-api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data="{\"title\":\"Smoke item\",\"type\":\"PROJECT\",\"status\":\"ACTIVE\",\"pathIds\":[\"$path_id\"],\"tags\":[\"smoke\"]}" "http://localhost:8080/api/v1/items/$item_id" | grep -q 'Smoke item'
+api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data="{\"title\":\"Smoke item\",\"type\":\"PAPER\",\"status\":\"ACTIVE\",\"pathIds\":[\"$path_id\"],\"tags\":[\"smoke\"]}" "http://localhost:8080/api/v1/items/$item_id" | grep -q '"type":"PAPER"'
 
 progress="$(api "${header[@]}" --header='Content-Type: application/json' --post-data='{"progress":50}' "http://localhost:8080/api/v1/items/$item_id/progress")"
 printf '%s' "$progress" | grep -q '"progress":50'
@@ -78,7 +107,10 @@ activity_id="$(api "${header[@]}" "http://localhost:8080/api/v1/activities?itemI
 [[ -n "$activity_id" ]]
 api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"activityId\":\"$activity_id\",\"title\":\"Activity reflection\",\"content\":\"The smoke workflow persisted this reflection.\"}" http://localhost:8080/api/v1/notes >/dev/null
 if api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$other_path_id\",\"itemId\":\"$item_id\",\"description\":\"Mismatched smoke timer\"}" http://localhost:8080/api/v1/timers >/dev/null; then echo "unrelated path/item timer was allowed" >&2; exit 1; fi
-api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"Smoke session\"}" http://localhost:8080/api/v1/timers >/dev/null
+running_timer="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"Smoke session\"}" http://localhost:8080/api/v1/timers)"
+timer_id="$(printf '%s' "$running_timer" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+timer_start="$(date -u -d '30 seconds ago' +%Y-%m-%dT%H:%M:%SZ)"
+api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$timer_start\",\"description\":\"Reconfigured smoke session\"}" "http://localhost:8080/api/v1/timers/$timer_id" | grep -q 'Reconfigured smoke session'
 if api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"duplicate smoke timer\"}" http://localhost:8080/api/v1/timers >/dev/null; then echo "duplicate timer was allowed" >&2; exit 1; fi
 api "${header[@]}" http://localhost:8080/api/v1/timers/current | grep -q '"running":true'
 api "${header[@]}" --post-data='' --header='Content-Type: application/json' http://localhost:8080/api/v1/timers/stop >/dev/null

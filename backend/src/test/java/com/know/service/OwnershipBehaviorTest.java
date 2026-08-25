@@ -80,6 +80,15 @@ class OwnershipBehaviorTest {
         verify(entries,never()).save(any());
     }
 
+    @Test void runningTimerCanBeReconfiguredWithoutHidingOwnershipChecks() {
+        TimeEntryRepository entries=mock(TimeEntryRepository.class); PathRepository paths=mock(PathRepository.class); ItemRepository items=mock(ItemRepository.class); PathItemRepository pathItems=mock(PathItemRepository.class); ActivityRepository activities=mock(ActivityRepository.class);
+        UUID user=UUID.randomUUID(), timerId=UUID.randomUUID(), pathId=UUID.randomUUID();
+        TimeEntry running=new TimeEntry(user,null,null,java.time.Instant.now().minusSeconds(30),"old",TimeSource.WEB);
+        when(entries.findByIdAndUserId(timerId,user)).thenReturn(Optional.of(running)); when(entries.save(running)).thenReturn(running); when(paths.findByIdAndUserId(pathId,user)).thenReturn(Optional.of(new Path(user,"Algorithms",null)));
+        TimerService.TimeView result=new TimerService(entries,paths,items,pathItems,mock(ProgressEntryRepository.class),activities).configureRunning(user,timerId,pathId,null,java.time.Instant.now().minusSeconds(60),"new");
+        assertEquals(pathId,result.pathId()); assertEquals("new",result.description()); assertTrue(result.running()); verify(entries).save(running);
+    }
+
     @Test void timerCancellationDeletesOnlyTheUsersRunningTimer() {
         TimeEntryRepository entries=mock(TimeEntryRepository.class); PathRepository paths=mock(PathRepository.class); ItemRepository items=mock(ItemRepository.class); ActivityRepository activities=mock(ActivityRepository.class);
         UUID user=UUID.randomUUID(), timerId=UUID.randomUUID(); TimeEntry running=new TimeEntry(user,null,null,java.time.Instant.now(),"cancel",TimeSource.WEB);
