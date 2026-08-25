@@ -14,10 +14,11 @@ class OwnershipBehaviorTest {
         Item first=new Item(UUID.randomUUID(),"First",ItemType.CUSTOM,null), second=new Item(UUID.randomUUID(),"Second",ItemType.CUSTOM,null);
         PathItemRepository.ItemPathProjection pathRow=mock(PathItemRepository.ItemPathProjection.class); when(pathRow.getItemId()).thenReturn(first.getId()); when(pathRow.getPathId()).thenReturn(UUID.randomUUID());
         ItemTagRepository.ItemTagProjection tagRow=mock(ItemTagRepository.ItemTagProjection.class); when(tagRow.getItemId()).thenReturn(second.getId()); when(tagRow.getName()).thenReturn("java");
-        when(items.findAllByUserIdOrderByUpdatedAtDesc(any())).thenReturn(List.of(first,second)); when(pathItems.findRelationships(any())).thenReturn(List.of(pathRow)); when(itemTags.findRelationships(any())).thenReturn(List.of(tagRow));
+        when(items.findAllByUserIdOrderByUpdatedAtDesc(any(),any())).thenReturn(List.of(first,second)); when(pathItems.findRelationships(any())).thenReturn(List.of(pathRow)); when(itemTags.findRelationships(any())).thenReturn(List.of(tagRow));
         KnowledgeService service=new KnowledgeService(items,paths,pathItems,tags,itemTags,activities,progress,notes);
         List<KnowledgeService.ItemView> result=service.listItems(UUID.randomUUID());
         assertEquals(2,result.size()); assertEquals(1,result.get(0).pathIds().size()); assertEquals(List.of("java"),result.get(1).tags()); verify(pathItems,never()).findPathIds(any()); verify(itemTags,never()).findTags(any());
+        verify(items).findAllByUserIdOrderByUpdatedAtDesc(any(),argThat(page->page.getPageSize()==100));
     }
 
     @Test void itemCannotBeAttachedToAnotherUsersPath() {
@@ -66,6 +67,13 @@ class OwnershipBehaviorTest {
         UUID user=UUID.randomUUID(); when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.empty()); when(entries.save(any(TimeEntry.class))).thenAnswer(invocation->invocation.getArgument(0));
         TimerService.TimeView result=new TimerService(entries,paths,items,mock(PathItemRepository.class),mock(ProgressEntryRepository.class),activities).start(user,null,null,"iOS",TimeSource.IOS);
         assertEquals(TimeSource.IOS,result.source()); verify(entries).save(argThat(entry->entry.getSource()==TimeSource.IOS));
+    }
+
+    @Test void timerHistoryUsesABoundedPage() {
+        TimeEntryRepository entries=mock(TimeEntryRepository.class); PathRepository paths=mock(PathRepository.class); ItemRepository items=mock(ItemRepository.class); UUID user=UUID.randomUUID();
+        when(entries.findAllByUserIdOrderByStartedAtDesc(eq(user),any())).thenReturn(List.of());
+        new TimerService(entries,paths,items,mock(PathItemRepository.class),mock(ProgressEntryRepository.class),mock(ActivityRepository.class)).history(user);
+        verify(entries).findAllByUserIdOrderByStartedAtDesc(eq(user),argThat(page->page.getPageSize()==100));
     }
 
     @Test void timerRejectsAnItemThatIsNotAttachedToTheSelectedPath() {

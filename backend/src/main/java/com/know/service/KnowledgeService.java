@@ -45,7 +45,7 @@ public class KnowledgeService {
     }
     public Item findItem(UUID userId,UUID id) { return items.findByIdAndUserId(id,userId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Item not found")); }
     public List<ItemView> listItems(UUID userId) {
-        List<Item> all=items.findAllByUserIdOrderByUpdatedAtDesc(userId); if(all.isEmpty())return List.of();
+        List<Item> all=items.findAllByUserIdOrderByUpdatedAtDesc(userId,PageRequest.of(0,100)); if(all.isEmpty())return List.of();
         List<UUID> ids=all.stream().map(Item::getId).toList(); Map<UUID,List<UUID>> pathsByItem=new HashMap<>(); pathItems.findRelationships(ids).forEach(row->pathsByItem.computeIfAbsent(row.getItemId(),ignored->new ArrayList<>()).add(row.getPathId()));
         Map<UUID,List<String>> tagsByItem=new HashMap<>(); itemTags.findRelationships(ids).forEach(row->tagsByItem.computeIfAbsent(row.getItemId(),ignored->new ArrayList<>()).add(row.getName()));
         return all.stream().map(item->view(item,pathsByItem.getOrDefault(item.getId(),List.of()),tagsByItem.getOrDefault(item.getId(),List.of()))).toList();
@@ -65,7 +65,7 @@ public class KnowledgeService {
         if(pathId!=null)paths.findByIdAndUserId(pathId,userId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Path not found")); if(itemId!=null)findItem(userId,itemId); if(activityId!=null)activityRepository.findByIdAndUserId(activityId,userId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Activity not found"));
         Note n=notes.save(new Note(userId,pathId,itemId,activityId,title,content));activityRepository.save(new Activity(userId,pathId,itemId,ActivityType.NOTE_CREATED,"Added note: "+title,null));return noteView(n);
     }
-    public List<NoteView> listNotes(UUID userId){return notes.findAllByUserIdOrderByUpdatedAtDesc(userId).stream().map(this::noteView).toList();}
+    public List<NoteView> listNotes(UUID userId){return notes.findAllByUserIdOrderByUpdatedAtDesc(userId,PageRequest.of(0,100)).stream().map(this::noteView).toList();}
     @Transactional public NoteView updateNote(UUID userId,UUID id,String title,String content){Note note=notes.findByIdAndUserId(id,userId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Note not found"));note.update(title,content);return noteView(notes.save(note));}
     private NoteView noteView(Note n){return new NoteView(n.getId(),n.getPathId(),n.getItemId(),n.getActivityId(),n.getTitle(),n.getContent(),n.getCreatedAt(),n.getUpdatedAt());}
     public List<Activity> activities(UUID userId){return activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId);}
