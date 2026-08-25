@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Swift package
         working-directory: ios
-        run: swift package dump-package && swiftc -parse Know/KnowApp.swift KnowTests/KnowTests.swift && swift test && swift build
+        run: swift package dump-package && swiftc -parse Know/KnowApp.swift KnowTests/KnowTests.swift KnowUITests/KnowUITests.swift && swift test && swift build
       - name: Build native iOS client
         working-directory: ios
         run: xcodebuild -scheme Know -destination 'generic/platform=iOS' -derivedDataPath .build/DerivedData build CODE_SIGNING_ALLOWED=NO

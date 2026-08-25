@@ -15,6 +15,15 @@ struct Statistics: Codable { let todaySeconds: Int64; let weekSeconds: Int64; le
 struct ProgressChange: Codable { let itemId: UUID; let previousProgress: Int; let newProgress: Int; let changedAt: String }
 struct AuthResponse: Codable { let token: String; let userId: UUID; let email: String; let displayName: String }
 
+func itemsForTimerPath(_ path: UUID?, from items: [Item]) -> [Item] {
+    guard let path else { return items }
+    return items.filter { $0.pathIds.contains(path) }
+}
+
+func isUITesting(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
+    arguments.contains("-ui-testing")
+}
+
 enum KeychainTokenStore {
     private static let service = "com.know.ios"; private static let account = "session"
     static func read() -> String? { var query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:service,kSecAttrAccount as String:account,kSecReturnData as String:true,kSecMatchLimit as String:kSecMatchLimitOne];var result:CFTypeRef?;guard SecItemCopyMatching(query as CFDictionary,&result)==errSecSuccess,let data=result as? Data else{return nil};return String(data:data,encoding:.utf8) }
@@ -54,7 +63,7 @@ struct APIClient {
 @MainActor final class AppModel:ObservableObject {
     @Published var token=KeychainTokenStore.read();@Published var paths:[Path]=[];@Published var items:[Item]=[];@Published var notes:[Note]=[];@Published var activities:[Activity]=[];@Published var timer:TimerState?;@Published var stats:Statistics?;@Published var error:String?;@Published var isLoading=false
     let api:APIClient
-    init(api:APIClient=APIClient()){self.api=api}
+    init(api:APIClient=APIClient()){self.api=api;if isUITesting(){token=nil}}
     var signedIn:Bool{token != nil}
     func handle(_ failure:Error,_ message:String){if let failure=failure as? APIError { switch failure { case .unauthorized: signOut(); case .offline: error="No network connection. Reconnect and try again." } } else {error=message}}
     func authenticate(email:String,password:String,register:Bool) async {do{let body=try JSONEncoder().encode(["email":email,"password":password]);let result:AuthResponse=try await api.request(register ? "/auth/register":"/auth/login",method:"POST",body:body);token=result.token;KeychainTokenStore.save(result.token);await refresh()}catch{handle(error,"Authentication failed. Check your credentials.")}}
@@ -93,8 +102,8 @@ struct LoginView: View {
         Form {
             Section { Text("know.").font(.largeTitle.bold()).foregroundStyle(.green); Text(register ? "Create your private workspace" : "Welcome back").font(.title3) }
             Section {
-                TextField("Email", text: $email).textInputAutocapitalization(.never).keyboardType(.emailAddress)
-                SecureField("Password", text: $password)
+                TextField("Email", text: $email).textInputAutocapitalization(.never).keyboardType(.emailAddress).accessibilityIdentifier("auth.email")
+                SecureField("Password", text: $password).accessibilityIdentifier("auth.password")
                 Button(register ? "Create account" : "Sign in") { Task { await model.authenticate(email: email, password: password, register: register) } }.accessibilityIdentifier("auth.submit")
             }
             Section { Button(register ? "Already have an account? Sign in" : "New here? Create an account") { register.toggle() } }
@@ -117,6 +126,9 @@ struct DashboardView: View {
     @EnvironmentObject var model: AppModel
     @State private var selectedPath = ""
     @State private var selectedItem = ""
+    private var timerItems: [Item] {
+        itemsForTimerPath(UUID(uuidString: selectedPath), from: model.items)
+    }
     var body: some View {
         NavigationStack {
             List {
@@ -138,8 +150,11 @@ struct DashboardView: View {
                         }.accessibilityIdentifier("timer.path")
                         Picker("Item", selection: $selectedItem) {
                             Text("No item").tag("")
-                            ForEach(model.items) { item in Text(item.title).tag(item.id.uuidString) }
+                            ForEach(timerItems) { item in Text(item.title).tag(item.id.uuidString) }
                         }.accessibilityIdentifier("timer.item")
+                            .onChange(of: selectedPath) { _, _ in
+                                if !timerItems.contains(where: { $0.id.uuidString == selectedItem }) { selectedItem = "" }
+                            }
                     }
                     Button(model.timer == nil ? "Start a session" : "Stop session") { Task { await model.toggleTimer(pathId: UUID(uuidString: selectedPath), itemId: UUID(uuidString: selectedItem)) } }.accessibilityIdentifier("timer.toggle")
                     if model.timer != nil { Button("Cancel", role: .destructive) { Task { await model.cancelTimer() } } }
@@ -174,11 +189,11 @@ struct PathsView: View {
             .toolbar { Button("Add path") { adding = true }.accessibilityIdentifier("paths.add") }
             .sheet(isPresented: $adding) {
                 NavigationStack {
-                    Form { TextField("Name", text: $name); TextEditor(text: $description).frame(minHeight: 100) }
+                    Form { TextField("Name", text: $name).accessibilityIdentifier("paths.name"); TextEditor(text: $description).frame(minHeight: 100).accessibilityIdentifier("paths.description") }
                         .navigationTitle("New path")
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { adding = false } }
-                            ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createPath(name: name, description: description); name = ""; description = ""; adding = false } }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+                            ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createPath(name: name, description: description); name = ""; description = ""; adding = false } }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("paths.save") }
                         }
                 }
             }
@@ -208,19 +223,19 @@ struct ItemsView: View {
             .sheet(isPresented: $adding) {
                 NavigationStack {
                     Form {
-                        TextField("Title", text: $title)
-                        Picker("Type", selection: $type) { Text("Custom").tag("CUSTOM"); Text("Book").tag("BOOK"); Text("Course").tag("COURSE"); Text("Project").tag("PROJECT"); Text("Article").tag("ARTICLE"); Text("Video").tag("VIDEO") }
+                        TextField("Title", text: $title).accessibilityIdentifier("items.title")
+                        Picker("Type", selection: $type) { Text("Custom").tag("CUSTOM"); Text("Book").tag("BOOK"); Text("Course").tag("COURSE"); Text("Project").tag("PROJECT"); Text("Article").tag("ARTICLE"); Text("Video").tag("VIDEO") }.accessibilityIdentifier("items.type")
                         Section("Active paths") {
                             ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in
                                 Toggle(path.name, isOn: Binding(get: { selectedPaths.contains(path.id) }, set: { isSelected in if isSelected { selectedPaths.insert(path.id) } else { selectedPaths.remove(path.id) } }))
                             }
                         }
-                        TextEditor(text: $description).frame(minHeight: 100)
+                        TextEditor(text: $description).frame(minHeight: 100).accessibilityIdentifier("items.description")
                     }
                     .navigationTitle("New item")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { adding = false } }
-                        ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createItem(title: title, type: type, description: description, pathIds: Array(selectedPaths)); title = ""; description = ""; type = "CUSTOM"; selectedPaths.removeAll(); adding = false } }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+                        ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createItem(title: title, type: type, description: description, pathIds: Array(selectedPaths)); title = ""; description = ""; type = "CUSTOM"; selectedPaths.removeAll(); adding = false } }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("items.save") }
                     }
                 }
             }
@@ -255,11 +270,11 @@ struct ItemDetailView: View {
         .navigationTitle(item.title)
         .sheet(isPresented: $addingNote) {
             NavigationStack {
-                Form { TextField("Title", text: $noteTitle); TextEditor(text: $noteContent).frame(minHeight: 140) }
+                Form { TextField("Title", text: $noteTitle).accessibilityIdentifier("item.note.title"); TextEditor(text: $noteContent).frame(minHeight: 140).accessibilityIdentifier("item.note.content") }
                     .navigationTitle("New note")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { addingNote = false } }
-                        ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createNote(itemId: item.id, title: noteTitle, content: noteContent); noteTitle = ""; noteContent = ""; addingNote = false } }.disabled(noteTitle.isEmpty || noteContent.isEmpty) }
+                        ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createNote(itemId: item.id, title: noteTitle, content: noteContent); noteTitle = ""; noteContent = ""; addingNote = false } }.disabled(noteTitle.isEmpty || noteContent.isEmpty).accessibilityIdentifier("item.note.save") }
                     }
             }
         }

@@ -63,6 +63,21 @@ final class KnowTests: XCTestCase {
         XCTAssertEqual(pathIds, [pathId.uuidString])
     }
 
+    func testTimerItemsAreScopedToSelectedPath() {
+        let path = UUID()
+        let otherPath = UUID()
+        let selected = Item(id: UUID(), title: "Graphs", type: "COURSE", description: nil, status: "ACTIVE", progress: 20, pathIds: [path], tags: [])
+        let unrelated = Item(id: UUID(), title: "Essays", type: "BOOK", description: nil, status: "PLANNED", progress: 0, pathIds: [otherPath], tags: [])
+
+        XCTAssertEqual(itemsForTimerPath(path, from: [selected, unrelated]).map(\.id), [selected.id])
+        XCTAssertEqual(itemsForTimerPath(nil, from: [selected, unrelated]).count, 2)
+    }
+
+    func testUITestingLaunchArgumentIsRecognized() {
+        XCTAssertTrue(isUITesting(arguments: ["Know", "-ui-testing"]))
+        XCTAssertFalse(isUITesting(arguments: ["Know"]))
+    }
+
     func testStatisticsDecodesRecentProgressChanges() throws {
         let itemId = UUID()
         let payload = """
