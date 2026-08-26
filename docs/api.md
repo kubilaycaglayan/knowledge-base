@@ -14,6 +14,7 @@ Authenticated endpoints currently include:
 - `GET /timers/current`, `POST /timers`, `PUT /timers/{id}`, `POST /timers/stop`, `POST /timers/cancel`, and `POST /time-entries`. `PUT /timers/{id}` edits the start time, path, item, and description of the owned running timer. Cancellation removes an active timer without recording time.
 - `GET /time-entries` lists owned history and `PUT /time-entries/{id}` edits completed entries.
 - `GET /statistics` for tracked seconds, current-day and rolling-week path/item aggregates, completion counts, and recent progress changes.
+- `GET /reports?period=WEEK|MONTH|YEAR&anchor=YYYY-MM-DD` for a day-by-day report with total time and path/item categories for the selected period. Weeks use Monday through Sunday in UTC; the anchor date may be any date in the requested period.
 - `GET /search?q=...` searches owned paths, items, note title/content, and recent activity.
 - `GET /activities` accepts optional `from`, `to`, `pathId`, `itemId`, and `type` filters.
 - `POST /imports/clockify` accepts a Clockify export’s `timeentries` array, maps `projectName` values to owned paths (creating missing paths), stores completed entries as `IMPORT`, and skips already imported `_id` values.
