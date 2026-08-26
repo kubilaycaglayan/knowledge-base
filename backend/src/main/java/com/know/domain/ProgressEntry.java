@@ -1,3 +1,55 @@
 package com.know.domain;
-import jakarta.persistence.*;import java.time.Instant;import java.util.UUID;
-@Entity @Table(name="progress_entry") public class ProgressEntry { @Id private UUID id=UUID.randomUUID();@Column(name="user_id",nullable=false)private UUID userId;@Column(name="item_id",nullable=false)private UUID itemId;@Column(name="previous_progress",nullable=false)private short previousProgress;@Column(name="new_progress",nullable=false)private short newProgress;@Column(name="changed_at",nullable=false)private Instant changedAt=Instant.now();protected ProgressEntry(){}public ProgressEntry(UUID userId,UUID itemId,short previousProgress,short newProgress){this.userId=userId;this.itemId=itemId;this.previousProgress=previousProgress;this.newProgress=newProgress;}public UUID getId(){return id;}public UUID getItemId(){return itemId;}public short getPreviousProgress(){return previousProgress;}public short getNewProgress(){return newProgress;}public Instant getChangedAt(){return changedAt;}}
+
+import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = "progress_entry")
+public class ProgressEntry {
+  @Id private UUID id = UUID.randomUUID();
+
+  @Column(name = "user_id", nullable = false)
+  private UUID userId;
+
+  @Column(name = "item_id", nullable = false)
+  private UUID itemId;
+
+  @Column(name = "previous_progress", nullable = false)
+  private short previousProgress;
+
+  @Column(name = "new_progress", nullable = false)
+  private short newProgress;
+
+  @Column(name = "changed_at", nullable = false)
+  private Instant changedAt = Instant.now();
+
+  protected ProgressEntry() {}
+
+  public ProgressEntry(UUID userId, UUID itemId, short previousProgress, short newProgress) {
+    this.userId = userId;
+    this.itemId = itemId;
+    this.previousProgress = previousProgress;
+    this.newProgress = newProgress;
+  }
+
+  public UUID getId() {
+    return id;
+  }
+
+  public UUID getItemId() {
+    return itemId;
+  }
+
+  public short getPreviousProgress() {
+    return previousProgress;
+  }
+
+  public short getNewProgress() {
+    return newProgress;
+  }
+
+  public Instant getChangedAt() {
+    return changedAt;
+  }
+}

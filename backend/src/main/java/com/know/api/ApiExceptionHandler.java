@@ -11,18 +11,21 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
-    record ErrorResponse(String error) {}
+  record ErrorResponse(String error) {}
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, ConstraintViolationException.class,
-            HttpMessageNotReadableException.class, IllegalArgumentException.class})
-    ResponseEntity<ErrorResponse> invalidRequest(Exception ignored) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("Invalid request"));
-    }
+  @ExceptionHandler({
+    MethodArgumentNotValidException.class,
+    ConstraintViolationException.class,
+    HttpMessageNotReadableException.class,
+    IllegalArgumentException.class
+  })
+  ResponseEntity<ErrorResponse> invalidRequest(Exception ignored) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("Invalid request"));
+  }
 
-    @ExceptionHandler(ResponseStatusException.class)
-    ResponseEntity<ErrorResponse> responseStatus(ResponseStatusException exception) {
-        return ResponseEntity
-            .status(exception.getStatusCode())
-            .body(new ErrorResponse(exception.getReason()));
-    }
+  @ExceptionHandler(ResponseStatusException.class)
+  ResponseEntity<ErrorResponse> responseStatus(ResponseStatusException exception) {
+    return ResponseEntity.status(exception.getStatusCode())
+        .body(new ErrorResponse(exception.getReason()));
+  }
 }

@@ -7,6 +7,15 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@OpenAPIDefinition(info=@Info(title="Know API",version="v1",description="Personal knowledge, activity, and time-tracking API"))
-@SecurityScheme(name="bearerAuth",type=SecuritySchemeType.HTTP,scheme="bearer",bearerFormat="JWT")
+@OpenAPIDefinition(
+    info =
+        @Info(
+            title = "Know API",
+            version = "v1",
+            description = "Personal knowledge, activity, and time-tracking API"))
+@SecurityScheme(
+    name = "bearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT")
 public class OpenApiConfig {}
