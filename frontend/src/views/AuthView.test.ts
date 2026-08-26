@@ -4,10 +4,31 @@ import { api } from "../lib/api";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
+type GoogleTestWindow = Window &
+  typeof globalThis & {
+    google?: {
+      accounts: {
+        id: {
+          initialize: ReturnType<typeof vi.fn>;
+          renderButton: ReturnType<typeof vi.fn>;
+        };
+      };
+    };
+  };
+
+const testWindow = window as GoogleTestWindow;
+
 describe("AuthView", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    delete testWindow.google;
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    delete testWindow.google;
   });
 
   it("registers, persists the token, and emits authentication", async () => {
@@ -37,5 +58,39 @@ describe("AuthView", () => {
 
     expect(wrapper.get('[role="alert"]').text()).toContain("valid email");
     expect(wrapper.emitted("authenticated")).toBeUndefined();
+  });
+
+  it("posts Google credentials to the backend verifier", async () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "google-client-id");
+    vi.mocked(api).mockResolvedValue({ token: "google-token" });
+    let callback: ((response: { credential: string }) => void) | undefined;
+    testWindow.google = {
+      accounts: {
+        id: {
+          initialize: vi.fn((options) => {
+            callback = options.callback;
+          }),
+          renderButton: vi.fn(),
+        },
+      },
+    };
+
+    const wrapper = mount(AuthView);
+    callback?.({ credential: "signed-google-id-token" });
+    await Promise.resolve();
+
+    expect(testWindow.google?.accounts.id.initialize).toHaveBeenCalledWith(
+      expect.objectContaining({ client_id: "google-client-id" }),
+    );
+    expect(testWindow.google?.accounts.id.renderButton).toHaveBeenCalled();
+    expect(api).toHaveBeenCalledWith(
+      "/auth/google",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ idToken: "signed-google-id-token" }),
+      }),
+    );
+    expect(localStorage.getItem("know_token")).toBe("google-token");
+    expect(wrapper.emitted("authenticated")).toHaveLength(1);
   });
 });
