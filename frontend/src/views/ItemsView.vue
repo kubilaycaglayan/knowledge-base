@@ -1,26 +1,285 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { api } from '../lib/api'
-type Path = { id: string; name: string; status: string }
-type Note = { id: string; itemId?: string; title: string; content: string }
-type Progress = { id: string; previousProgress: number; newProgress: number; changedAt: string }
-type Item = { id: string; title: string; description?: string; type: string; status: string; progress: number; pathIds: string[]; tags: string[] }
-const items = ref<Item[]>([]), paths = ref<Path[]>([]), notes = ref<Note[]>([]), history = ref<Progress[]>([])
-const itemTypes = ['CUSTOM', 'BOOK', 'COURSE', 'PROJECT', 'ARTICLE', 'MOVIE', 'EXERCISE', 'HOBBY', 'VIDEO', 'PAPER']
-const title = ref(''), type = ref('CUSTOM'), pathIds = ref<string[]>([]), tags = ref(''), expanded = ref(''), noteTitle = ref(''), noteContent = ref(''), error = ref('')
-const activePaths = computed(() => paths.value.filter(path => path.status === 'ACTIVE'))
-async function load() { try { [items.value, paths.value, notes.value] = await Promise.all([api<Item[]>('/items'), api<Path[]>('/paths'), api<Note[]>('/notes')]) } catch { error.value = 'Unable to load items.' } }
-async function add() { if (!title.value.trim()) return; try { await api('/items', { method: 'POST', body: JSON.stringify({ title: title.value, type: type.value, pathIds: pathIds.value, tags: tags.value.split(',').map(x => x.trim()).filter(Boolean) }) }); title.value = ''; tags.value = ''; pathIds.value = []; await load() } catch { error.value = 'Could not create item.' } }
-async function edit(item: Item) { const nextTitle = prompt('Item title', item.title); if (!nextTitle?.trim()) return; const nextType = prompt(`Type (${itemTypes.join(', ')})`, item.type)?.trim().toUpperCase(); if (!nextType || !itemTypes.includes(nextType)) { if (nextType) error.value = 'Choose one of the supported item types.'; return } const nextDescription = prompt('Description', item.description || ''); if (nextDescription === null) return; const nextStatus = prompt('Status (PLANNED, ACTIVE, PAUSED, COMPLETED, ABANDONED)', item.status); if (!nextStatus) return; try { await api(`/items/${item.id}`, { method: 'PUT', body: JSON.stringify({ title: nextTitle, type: nextType, description: nextDescription, status: nextStatus, pathIds: item.pathIds, tags: item.tags }) }); await load() } catch { error.value = 'Could not update item.' } }
-async function progress(item: Item) { const value = prompt('Progress (0–100)', String(item.progress)); if (value === null) return; try { await api(`/items/${item.id}/progress`, { method: 'POST', body: JSON.stringify({ progress: Number(value) }) }); await load() } catch { error.value = 'Could not update progress.' } }
-async function inspectHistory(item: Item) { try { history.value = await api<Progress[]>(`/items/${item.id}/progress`); expanded.value = item.id } catch { error.value = 'Could not load item history.' } }
-async function addNote(item: Item) { if (!noteTitle.value.trim() || !noteContent.value.trim()) return; try { await api('/notes', { method: 'POST', body: JSON.stringify({ itemId: item.id, title: noteTitle.value, content: noteContent.value }) }); noteTitle.value = ''; noteContent.value = ''; await load() } catch { error.value = 'Could not save note.' } }
-async function editNote(note: Note) { const nextTitle = prompt('Note title', note.title); if (!nextTitle?.trim()) return; const nextContent = prompt('Note content', note.content); if (nextContent === null || !nextContent.trim()) return; try { await api(`/notes/${note.id}`, { method: 'PUT', body: JSON.stringify({ title: nextTitle, content: nextContent }) }); await load() } catch { error.value = 'Could not update note.' } }
-function itemNotes(id: string) { return notes.value.filter(note => note.itemId === id) }
-function pathName(id: string) { return paths.value.find(path => path.id === id)?.name || id }
-onMounted(load)
+import { computed, onMounted, ref } from "vue";
+import { api } from "../lib/api";
+type Path = { id: string; name: string; status: string };
+type Note = { id: string; itemId?: string; title: string; content: string };
+type Progress = {
+  id: string;
+  previousProgress: number;
+  newProgress: number;
+  changedAt: string;
+};
+type Item = {
+  id: string;
+  title: string;
+  description?: string;
+  source?: string;
+  type: string;
+  status: string;
+  progress: number;
+  pathIds: string[];
+  tags: string[];
+};
+const items = ref<Item[]>([]),
+  paths = ref<Path[]>([]),
+  notes = ref<Note[]>([]),
+  history = ref<Progress[]>([]);
+const itemTypes = [
+  "CUSTOM",
+  "BOOK",
+  "COURSE",
+  "PROJECT",
+  "ARTICLE",
+  "MOVIE",
+  "EXERCISE",
+  "HOBBY",
+  "VIDEO",
+  "PAPER",
+];
+const title = ref(""),
+  source = ref(""),
+  type = ref("CUSTOM"),
+  pathIds = ref<string[]>([]),
+  tags = ref(""),
+  expanded = ref(""),
+  noteTitle = ref(""),
+  noteContent = ref(""),
+  error = ref("");
+const activePaths = computed(() =>
+  paths.value.filter((path) => path.status === "ACTIVE"),
+);
+async function load() {
+  try {
+    [items.value, paths.value, notes.value] = await Promise.all([
+      api<Item[]>("/items"),
+      api<Path[]>("/paths"),
+      api<Note[]>("/notes"),
+    ]);
+  } catch {
+    error.value = "Unable to load items.";
+  }
+}
+async function add() {
+  if (!title.value.trim()) return;
+  try {
+    await api("/items", {
+      method: "POST",
+      body: JSON.stringify({
+        title: title.value,
+        type: type.value,
+        source: source.value || null,
+        pathIds: pathIds.value,
+        tags: tags.value
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+      }),
+    });
+    title.value = "";
+    source.value = "";
+    tags.value = "";
+    pathIds.value = [];
+    await load();
+  } catch {
+    error.value = "Could not create item.";
+  }
+}
+async function edit(item: Item) {
+  const nextTitle = prompt("Item title", item.title);
+  if (!nextTitle?.trim()) return;
+  const nextType = prompt(`Type (${itemTypes.join(", ")})`, item.type)
+    ?.trim()
+    .toUpperCase();
+  if (!nextType || !itemTypes.includes(nextType)) {
+    if (nextType) error.value = "Choose one of the supported item types.";
+    return;
+  }
+  const nextDescription = prompt("Description", item.description || "");
+  if (nextDescription === null) return;
+  const nextSource = prompt("Source", item.source || "");
+  if (nextSource === null) return;
+  const nextStatus = prompt(
+    "Status (PLANNED, ACTIVE, PAUSED, COMPLETED, ABANDONED)",
+    item.status,
+  );
+  if (!nextStatus) return;
+  try {
+    await api(`/items/${item.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        title: nextTitle,
+        type: nextType,
+        description: nextDescription,
+        source: nextSource || null,
+        status: nextStatus,
+        pathIds: item.pathIds,
+        tags: item.tags,
+      }),
+    });
+    await load();
+  } catch {
+    error.value = "Could not update item.";
+  }
+}
+async function progress(item: Item) {
+  const value = prompt("Progress (0–100)", String(item.progress));
+  if (value === null) return;
+  try {
+    await api(`/items/${item.id}/progress`, {
+      method: "POST",
+      body: JSON.stringify({ progress: Number(value) }),
+    });
+    await load();
+  } catch {
+    error.value = "Could not update progress.";
+  }
+}
+async function inspectHistory(item: Item) {
+  try {
+    history.value = await api<Progress[]>(`/items/${item.id}/progress`);
+    expanded.value = item.id;
+  } catch {
+    error.value = "Could not load item history.";
+  }
+}
+async function addNote(item: Item) {
+  if (!noteTitle.value.trim() || !noteContent.value.trim()) return;
+  try {
+    await api("/notes", {
+      method: "POST",
+      body: JSON.stringify({
+        itemId: item.id,
+        title: noteTitle.value,
+        content: noteContent.value,
+      }),
+    });
+    noteTitle.value = "";
+    noteContent.value = "";
+    await load();
+  } catch {
+    error.value = "Could not save note.";
+  }
+}
+async function editNote(note: Note) {
+  const nextTitle = prompt("Note title", note.title);
+  if (!nextTitle?.trim()) return;
+  const nextContent = prompt("Note content", note.content);
+  if (nextContent === null || !nextContent.trim()) return;
+  try {
+    await api(`/notes/${note.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ title: nextTitle, content: nextContent }),
+    });
+    await load();
+  } catch {
+    error.value = "Could not update note.";
+  }
+}
+function itemNotes(id: string) {
+  return notes.value.filter((note) => note.itemId === id);
+}
+function pathName(id: string) {
+  return paths.value.find((path) => path.id === id)?.name || id;
+}
+onMounted(load);
 </script>
 
 <template>
-  <section><p class="eyebrow">RESOURCES</p><h1>Items</h1><p class="lede">Books, courses, projects, and anything else worth returning to.</p><form class="add item-form" @submit.prevent="add"><input v-model="title" placeholder="Add an item" aria-label="Item title"><select v-model="type" aria-label="Item type"><option v-for="itemType in itemTypes" :key="itemType">{{ itemType }}</option></select><fieldset class="path-picker"><legend>Active paths</legend><label v-for="path in activePaths" :key="path.id"><input v-model="pathIds" type="checkbox" :value="path.id">{{ path.name }}</label></fieldset><input v-model="tags" placeholder="Tags, comma separated" aria-label="Tags"><button class="primary">Add</button></form><p v-if="error" class="notice" role="alert">{{ error }}</p><div class="path-list"><article v-for="item in items" :key="item.id" class="item card"><div class="item-main"><p class="eyebrow">{{ item.type }} · {{ item.status }}</p><h2>{{ item.title }}</h2><p v-if="item.description" class="muted">{{ item.description }}</p><p><span v-for="id in item.pathIds" :key="id" class="pill path-pill">{{ pathName(id) }}</span> <span v-for="tag in item.tags" :key="tag" class="tag">#{{ tag }}</span></p><ProgressBar :value="item.progress"/><div class="item-actions"><button class="progress-button" @click="progress(item)">Update progress</button><button class="text-button" @click="edit(item)">Edit/status/type</button><button class="text-button" @click="inspectHistory(item)">History</button><button class="text-button" @click="expanded = expanded === item.id ? '' : item.id">{{ itemNotes(item.id).length }} notes</button></div><div v-if="expanded === item.id" class="note-editor"><div v-for="note in itemNotes(item.id)" :key="note.id" class="note"><strong>{{ note.title }}</strong><p>{{ note.content }}</p><button class="text-button" @click="editNote(note)">Edit note</button></div><div v-if="history.length" class="progress-history"><strong>Progress history</strong><p v-for="change in history" :key="change.id" class="muted">{{ change.previousProgress }}% → {{ change.newProgress }}% · {{ new Date(change.changedAt).toLocaleString() }}</p></div><input v-model="noteTitle" placeholder="Note title" aria-label="Note title"><textarea v-model="noteContent" placeholder="What did you learn?" rows="3" aria-label="Note content"></textarea><button class="primary" @click="addNote(item)">Save note</button></div></div></article><p v-if="!items.length && !error" class="empty">No resources yet.</p></div></section>
+  <section>
+    <p class="eyebrow">RESOURCES</p>
+    <h1>Items</h1>
+    <p class="lede">
+      Books, courses, projects, and anything else worth returning to.
+    </p>
+    <form class="add item-form" @submit.prevent="add">
+      <input
+        v-model="title"
+        placeholder="Add an item"
+        aria-label="Item title"
+      /><input
+        v-model="source"
+        placeholder="Source or link"
+        aria-label="Item source"
+      /><select v-model="type" aria-label="Item type">
+        <option v-for="itemType in itemTypes" :key="itemType">
+          {{ itemType }}
+        </option>
+      </select>
+      <fieldset class="path-picker">
+        <legend>Active paths</legend>
+        <label v-for="path in activePaths" :key="path.id"
+          ><input v-model="pathIds" type="checkbox" :value="path.id" />{{
+            path.name
+          }}</label
+        >
+      </fieldset>
+      <input
+        v-model="tags"
+        placeholder="Tags, comma separated"
+        aria-label="Tags"
+      /><button class="primary">Add</button>
+    </form>
+    <p v-if="error" class="notice" role="alert">{{ error }}</p>
+    <div class="path-list">
+      <article v-for="item in items" :key="item.id" class="item card">
+        <div class="item-main">
+          <p class="eyebrow">{{ item.type }} · {{ item.status }}</p>
+          <h2>{{ item.title }}</h2>
+          <p v-if="item.description" class="muted">{{ item.description }}</p>
+          <p v-if="item.source" class="muted">Source: {{ item.source }}</p>
+          <p>
+            <span v-for="id in item.pathIds" :key="id" class="pill path-pill">{{
+              pathName(id)
+            }}</span>
+            <span v-for="tag in item.tags" :key="tag" class="tag"
+              >#{{ tag }}</span
+            >
+          </p>
+          <ProgressBar :value="item.progress" />
+          <div class="item-actions">
+            <button class="progress-button" @click="progress(item)">
+              Update progress</button
+            ><button class="text-button" @click="edit(item)">
+              Edit/status/type</button
+            ><button class="text-button" @click="inspectHistory(item)">
+              History</button
+            ><button
+              class="text-button"
+              @click="expanded = expanded === item.id ? '' : item.id"
+            >
+              {{ itemNotes(item.id).length }} notes
+            </button>
+          </div>
+          <div v-if="expanded === item.id" class="note-editor">
+            <div v-for="note in itemNotes(item.id)" :key="note.id" class="note">
+              <strong>{{ note.title }}</strong>
+              <p>{{ note.content }}</p>
+              <button class="text-button" @click="editNote(note)">
+                Edit note
+              </button>
+            </div>
+            <div v-if="history.length" class="progress-history">
+              <strong>Progress history</strong>
+              <p v-for="change in history" :key="change.id" class="muted">
+                {{ change.previousProgress }}% → {{ change.newProgress }}% ·
+                {{ new Date(change.changedAt).toLocaleString() }}
+              </p>
+            </div>
+            <input
+              v-model="noteTitle"
+              placeholder="Note title"
+              aria-label="Note title"
+            /><textarea
+              v-model="noteContent"
+              placeholder="What did you learn?"
+              rows="3"
+              aria-label="Note content"
+            ></textarea
+            ><button class="primary" @click="addNote(item)">Save note</button>
+          </div>
+        </div>
+      </article>
+      <p v-if="!items.length && !error" class="empty">No resources yet.</p>
+    </div>
+  </section>
 </template>

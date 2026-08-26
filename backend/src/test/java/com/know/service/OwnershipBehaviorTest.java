@@ -30,7 +30,7 @@ class OwnershipBehaviorTest {
         when(items.save(any(Item.class))).thenAnswer(invocation->invocation.getArgument(0));
         when(paths.findByIdAndUserId(foreignPath,user)).thenReturn(Optional.empty());
         KnowledgeService service=new KnowledgeService(items,paths,pathItems,tags,itemTags,activities,progress,notes);
-        assertThrows(ResponseStatusException.class,()->service.createItem(user,"Private item",ItemType.CUSTOM,null,List.of(foreignPath),List.of()));
+        assertThrows(ResponseStatusException.class,()->service.createItem(user,"Private item",ItemType.CUSTOM,null,null,List.of(foreignPath),List.of()));
         verify(pathItems,never()).save(any());
     }
 
@@ -39,7 +39,7 @@ class OwnershipBehaviorTest {
         UUID user=UUID.randomUUID(), archivedId=UUID.randomUUID(); Path archived=new Path(user,"Archived",null); archived.archive();
         when(items.save(any(Item.class))).thenAnswer(invocation->invocation.getArgument(0)); when(paths.findByIdAndUserId(archivedId,user)).thenReturn(Optional.of(archived));
         KnowledgeService service=new KnowledgeService(items,paths,pathItems,tags,itemTags,activities,progress,notes);
-        assertThrows(ResponseStatusException.class,()->service.createItem(user,"New item",ItemType.CUSTOM,null,List.of(archivedId),List.of()));
+        assertThrows(ResponseStatusException.class,()->service.createItem(user,"New item",ItemType.CUSTOM,null,null,List.of(archivedId),List.of()));
         verify(pathItems,never()).save(any());
     }
 
@@ -48,7 +48,7 @@ class OwnershipBehaviorTest {
         UUID user=UUID.randomUUID(), archivedId=UUID.randomUUID(); Item item=new Item(user,"Existing item",ItemType.CUSTOM,null); Path archived=new Path(user,"Archived",null); archived.archive();
         when(items.findByIdAndUserId(item.getId(),user)).thenReturn(Optional.of(item)); when(items.save(any(Item.class))).thenAnswer(invocation->invocation.getArgument(0)); when(pathItems.findPathIds(item.getId())).thenReturn(List.of(archivedId)); when(paths.findByIdAndUserId(archivedId,user)).thenReturn(Optional.of(archived));
         KnowledgeService service=new KnowledgeService(items,paths,pathItems,tags,itemTags,activities,progress,notes);
-        assertDoesNotThrow(()->service.updateItem(user,item.getId(),item.getTitle(),item.getType(),item.getDescription(),item.getStatus(),List.of(archivedId),List.of()));
+        assertDoesNotThrow(()->service.updateItem(user,item.getId(),item.getTitle(),item.getType(),item.getDescription(),item.getSource(),item.getStatus(),List.of(archivedId),List.of()));
         verify(pathItems).deleteAllByIdItemId(item.getId());
         verify(pathItems).save(any(PathItem.class));
     }
@@ -128,7 +128,7 @@ class OwnershipBehaviorTest {
         UUID user=UUID.randomUUID(), itemId=UUID.randomUUID(); Item item=new Item(user,"Finish me",ItemType.PROJECT,null);
         when(items.findByIdAndUserId(itemId,user)).thenReturn(Optional.of(item)); when(items.save(any(Item.class))).thenAnswer(invocation->invocation.getArgument(0)); when(itemTags.findAllByIdItemId(itemId)).thenReturn(List.of());
         KnowledgeService service=new KnowledgeService(items,paths,pathItems,tags,itemTags,activities,progress,notes);
-        service.updateItem(user,itemId,item.getTitle(),item.getType(),item.getDescription(),ItemStatus.COMPLETED,null,null);
+        service.updateItem(user,itemId,item.getTitle(),item.getType(),item.getDescription(),item.getSource(),ItemStatus.COMPLETED,null,null);
         verify(activities).save(argThat(event->event.getType()==ActivityType.ITEM_COMPLETED));
         verify(progress).save(argThat(entry->entry.getPreviousProgress()==0&&entry.getNewProgress()==100));
     }

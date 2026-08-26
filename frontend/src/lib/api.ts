@@ -1,3 +1,27 @@
-export const resolveApiBase=(configured:string|undefined,isDev:boolean)=>configured||(isDev?'http://localhost:8080/api/v1':'/api/v1');
-const base=resolveApiBase(import.meta.env.VITE_API_URL,import.meta.env.DEV);
-export async function api<T>(path:string,options:RequestInit={}):Promise<T>{const token=localStorage.getItem('know_token');const res=await fetch(base+path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{}),...(token?{Authorization:`Bearer ${token}`}:{})}});if(res.status===401&&token){localStorage.removeItem('know_token');if(typeof window!=='undefined')window.location.reload()}if(!res.ok)throw new Error(await res.text()||res.statusText);if(res.status===204)return undefined as T;const body=await res.text();return (body?JSON.parse(body):undefined) as T}
+export const resolveApiBase = (
+  configured: string | undefined,
+  isDev: boolean,
+) => configured || (isDev ? "http://localhost:8080/api/v1" : "/api/v1");
+const base = resolveApiBase(import.meta.env.VITE_API_URL, import.meta.env.DEV);
+export async function api<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const token = localStorage.getItem("know_token");
+  const res = await fetch(base + path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (res.status === 401 && token) {
+    localStorage.removeItem("know_token");
+    if (typeof window !== "undefined") window.location.reload();
+  }
+  if (!res.ok) throw new Error((await res.text()) || res.statusText);
+  if (res.status === 204) return undefined as T;
+  const body = await res.text();
+  return (body ? JSON.parse(body) : undefined) as T;
+}

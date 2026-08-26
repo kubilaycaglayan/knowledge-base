@@ -39,6 +39,14 @@ class ItemApiTest {
         verifyNoInteractions(service);
     }
 
+    @Test void itemSourceIsValidatedBeforeServiceCall() throws Exception {
+        var auth=new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(),null,List.of());
+        mvc.perform(post("/api/v1/items").with(authentication(auth)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Sourceful\",\"source\":\""+"x".repeat(1001)+"\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
+
     @Test void progressRangeIsValidatedBeforeServiceCall() throws Exception {
         var auth=new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(),null,List.of());
         mvc.perform(post("/api/v1/items/"+UUID.randomUUID()+"/progress").with(authentication(auth))

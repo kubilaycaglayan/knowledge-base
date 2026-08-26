@@ -66,8 +66,8 @@ final class KnowTests: XCTestCase {
     func testTimerItemsAreScopedToSelectedPath() {
         let path = UUID()
         let otherPath = UUID()
-        let selected = Item(id: UUID(), title: "Graphs", type: "COURSE", description: nil, status: "ACTIVE", progress: 20, pathIds: [path], tags: [])
-        let unrelated = Item(id: UUID(), title: "Essays", type: "BOOK", description: nil, status: "PLANNED", progress: 0, pathIds: [otherPath], tags: [])
+        let selected = Item(id: UUID(), title: "Graphs", type: "COURSE", description: nil, source: nil, status: "ACTIVE", progress: 20, pathIds: [path], tags: [])
+        let unrelated = Item(id: UUID(), title: "Essays", type: "BOOK", description: nil, source: nil, status: "PLANNED", progress: 0, pathIds: [otherPath], tags: [])
 
         XCTAssertEqual(itemsForTimerPath(path, from: [selected, unrelated]).map(\.id), [selected.id])
         XCTAssertEqual(itemsForTimerPath(nil, from: [selected, unrelated]).count, 2)

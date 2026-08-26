@@ -4,14 +4,14 @@ import Foundation
 import Security
 
 struct Path: Codable, Identifiable { let id: UUID; let name: String; let description: String?; let status: String }
-struct Item: Codable, Identifiable { let id: UUID; let title: String; let type: String; let description: String?; let status: String; let progress: Int; let pathIds: [UUID]; let tags: [String] }
+struct Item: Codable, Identifiable { let id: UUID; let title: String; let type: String; let description: String?; let source: String?; let status: String; let progress: Int; let pathIds: [UUID]; let tags: [String] }
 struct Note: Codable, Identifiable { let id: UUID; let pathId: UUID?; let itemId: UUID?; let activityId: UUID?; let title: String; let content: String }
 struct Activity: Codable, Identifiable { let id: UUID; let type: String; let title: String; let detail: String?; let occurredAt: String }
 struct TimerState: Codable, Identifiable { let id: UUID; let pathId: UUID?; let itemId: UUID?; let startedAt: String; let endedAt: String?; let description: String?; let running: Bool }
 struct TimerRequest: Codable { let pathId: String?; let itemId: String?; let description: String; let source: String }
 struct TimerUpdateRequest: Codable { let pathId: String?; let itemId: String?; let startedAt: String; let description: String? }
 struct PathRequest: Codable { let name: String; let description: String? }
-struct ItemRequest: Codable { let title: String; let type: String; let description: String?; let status: String?; let pathIds: [UUID]; let tags: [String] }
+struct ItemRequest: Codable { let title: String; let type: String; let description: String?; let source: String?; let status: String?; let pathIds: [UUID]; let tags: [String] }
 struct Statistics: Codable { let todaySeconds: Int64; let weekSeconds: Int64; let monthSeconds: Int64; let todayByPath: [String:Int64]; let todayByItem: [String:Int64]; let weekByPath: [String:Int64]; let weekByItem: [String:Int64]; let completedItems: Int64; let activeItems: Int64; let recentProgressChanges: [ProgressChange] }
 struct ProgressChange: Codable { let itemId: UUID; let previousProgress: Int; let newProgress: Int; let changedAt: String }
 struct AuthResponse: Codable { let token: String; let userId: UUID; let email: String; let displayName: String }
@@ -64,7 +64,7 @@ struct APIClient {
 @MainActor final class AppModel:ObservableObject {
     @Published var token=KeychainTokenStore.read();@Published var paths:[Path]=[];@Published var items:[Item]=[];@Published var notes:[Note]=[];@Published var activities:[Activity]=[];@Published var timer:TimerState?;@Published var stats:Statistics?;@Published var error:String?;@Published var isLoading=false
     let api:APIClient; private let uiTesting:Bool
-    init(api:APIClient=APIClient(),arguments:[String]=ProcessInfo.processInfo.arguments){self.api=api;uiTesting=isUITesting(arguments:arguments);if uiTesting{token=nil};if arguments.contains("-ui-testing-authenticated"){let pathId=UUID(uuidString:"00000000-0000-4000-8000-000000000001")!;token="ui-test-token";paths=[Path(id:pathId,name:"UI Test Path",description:"Fixture path",status:"ACTIVE")];items=[Item(id:UUID(uuidString:"00000000-0000-4000-8000-000000000002")!,title:"UI Test Item",type:"COURSE",description:nil,status:"PLANNED",progress:0,pathIds:[pathId],tags:[])]}}
+    init(api:APIClient=APIClient(),arguments:[String]=ProcessInfo.processInfo.arguments){self.api=api;uiTesting=isUITesting(arguments:arguments);if uiTesting{token=nil};if arguments.contains("-ui-testing-authenticated"){let pathId=UUID(uuidString:"00000000-0000-4000-8000-000000000001")!;token="ui-test-token";paths=[Path(id:pathId,name:"UI Test Path",description:"Fixture path",status:"ACTIVE")];items=[Item(id:UUID(uuidString:"00000000-0000-4000-8000-000000000002")!,title:"UI Test Item",type:"COURSE",description:nil,source:nil,status:"PLANNED",progress:0,pathIds:[pathId],tags:[])]}}
     var signedIn:Bool{token != nil}
     func handle(_ failure:Error,_ message:String){if let failure=failure as? APIError { switch failure { case .unauthorized: signOut(); case .offline: error="No network connection. Reconnect and try again." } } else {error=message}}
     func authenticate(email:String,password:String,register:Bool) async {do{let body=try JSONEncoder().encode(["email":email,"password":password]);let result:AuthResponse=try await api.request(register ? "/auth/register":"/auth/login",method:"POST",body:body);token=result.token;KeychainTokenStore.save(result.token);await refresh()}catch{handle(error,"Authentication failed. Check your credentials.")}}
@@ -75,7 +75,7 @@ struct APIClient {
     func updateProgress(itemId:UUID,value:Int) async {guard let token else{return};do{let body=try JSONEncoder().encode(["progress":max(0,min(100,value))]);let _:Item=try await api.request("/items/\(itemId)/progress",method:"POST",body:body,token:token);await refresh()}catch{handle(error,"Could not update progress.")}}
     func createNote(itemId:UUID,title:String,content:String) async {guard let token else{return};do{let body=try JSONEncoder().encode(["itemId":itemId.uuidString,"title":title,"content":content]);let _:Note=try await api.request("/notes",method:"POST",body:body,token:token);await refresh()}catch{handle(error,"Could not save the note.")}}
     func createPath(name:String,description:String) async {guard let token else{return};do{let body=try JSONEncoder().encode(PathRequest(name:name,description:description.isEmpty ? nil : description));let _:Path=try await api.request("/paths",method:"POST",body:body,token:token);await refresh()}catch{handle(error,"Could not create the path.")}}
-    func createItem(title:String,type:String,description:String,pathIds:[UUID]) async {guard let token else{return};do{let body=try JSONEncoder().encode(ItemRequest(title:title,type:type,description:description.isEmpty ? nil : description,status:nil,pathIds:pathIds,tags:[]));let _:Item=try await api.request("/items",method:"POST",body:body,token:token);await refresh()}catch{handle(error,"Could not create the item.")}}
+    func createItem(title:String,type:String,description:String,source:String,pathIds:[UUID]) async {guard let token else{return};do{let body=try JSONEncoder().encode(ItemRequest(title:title,type:type,description:description.isEmpty ? nil : description,source:source.isEmpty ? nil : source,status:nil,pathIds:pathIds,tags:[]));let _:Item=try await api.request("/items",method:"POST",body:body,token:token);await refresh()}catch{handle(error,"Could not create the item.")}}
     func signOut(){token=nil;KeychainTokenStore.delete();paths=[];items=[];notes=[];activities=[];timer=nil;stats=nil}
 }
 
@@ -235,6 +235,7 @@ struct ItemsView: View {
     @State private var title = ""
     @State private var type = "CUSTOM"
     @State private var description = ""
+    @State private var source = ""
     @State private var selectedPaths = Set<UUID>()
     var body: some View {
         NavigationStack {
@@ -252,6 +253,7 @@ struct ItemsView: View {
                 NavigationStack {
                     Form {
                         TextField("Title", text: $title).accessibilityIdentifier("items.title")
+                        TextField("Source", text: $source).accessibilityIdentifier("items.source")
                         Picker("Type", selection: $type) { ForEach(["CUSTOM","BOOK","COURSE","PROJECT","ARTICLE","MOVIE","EXERCISE","HOBBY","VIDEO","PAPER"], id: \.self) { value in Text(value.capitalized).tag(value) } }.accessibilityIdentifier("items.type")
                         Section("Active paths") {
                             ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in
@@ -263,7 +265,7 @@ struct ItemsView: View {
                     .navigationTitle("New item")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { adding = false } }
-                        ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createItem(title: title, type: type, description: description, pathIds: Array(selectedPaths)); title = ""; description = ""; type = "CUSTOM"; selectedPaths.removeAll(); adding = false } }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("items.save") }
+                        ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await model.createItem(title: title, type: type, description: description, source: source, pathIds: Array(selectedPaths)); title = ""; description = ""; source = ""; type = "CUSTOM"; selectedPaths.removeAll(); adding = false } }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("items.save") }
                     }
                 }
             }

@@ -1,1 +1,15 @@
-<script setup lang="ts">defineProps<{value:number}>()</script><template><div class="progress-track" role="progressbar" aria-label="Item progress" :aria-valuenow="value" aria-valuemin="0" aria-valuemax="100"><span :style="{width:`${value}%`}"></span></div></template>
+<script setup lang="ts">
+defineProps<{ value: number }>();
+</script>
+<template>
+  <div
+    class="progress-track"
+    role="progressbar"
+    aria-label="Item progress"
+    :aria-valuenow="value"
+    aria-valuemin="0"
+    aria-valuemax="100"
+  >
+    <span :style="{ width: `${value}%` }"></span>
+  </div>
+</template>
