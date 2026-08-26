@@ -2,6 +2,7 @@ package com.know.service;
 
 import com.know.domain.*;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 import java.util.*;
@@ -25,7 +26,11 @@ class ClockifyImportServiceTest {
 
         assertEquals(1,result.imported()); assertEquals(1,result.createdPaths());
         verify(entries).save(argThat(saved -> saved.getSource()==TimeSource.IMPORT && saved.getExternalId().equals("clockify-1") && saved.getDurationSeconds()==1800));
-        verify(activities).save(any(Activity.class));
+        var activity = ArgumentCaptor.forClass(Activity.class);
+        verify(activities).save(activity.capture());
+        assertEquals(entry.timeInterval().start(), activity.getValue().getOccurredAt());
+        assertTrue(activity.getValue().getDetail().contains("2026-08-25T10:00:00Z"));
+        assertTrue(activity.getValue().getDetail().contains("2026-08-25T10:30:00Z"));
         var duplicate=service.importEntries(user,new ClockifyImportService.ClockifyImportRequest(List.of(entry)));
         assertEquals(0,duplicate.imported()); assertEquals(1,duplicate.skipped()); assertEquals(0,duplicate.createdPaths()); verify(entries,times(1)).save(any(TimeEntry.class));
     }

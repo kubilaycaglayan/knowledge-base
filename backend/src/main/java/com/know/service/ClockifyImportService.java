@@ -55,7 +55,9 @@ public class ClockifyImportService {
             TimeEntry entry = new TimeEntry(userId, path == null ? null : path.getId(), null, start, description, TimeSource.IMPORT, externalId);
             entry.stop(end);
             entries.save(entry);
-            activities.save(new Activity(userId, path == null ? null : path.getId(), null, ActivityType.TIME_TRACKED, "Imported Clockify session", description));
+            String activityDetail = "Session: " + start + " – " + end;
+            if (description != null && !description.isBlank()) activityDetail = description + " · " + activityDetail;
+            activities.save(new Activity(userId, path == null ? null : path.getId(), null, ActivityType.TIME_TRACKED, "Imported Clockify session", activityDetail, start));
             imported++;
         }
         return new ImportSummary(imported, skipped, createdPathKeys.size());

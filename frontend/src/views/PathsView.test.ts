@@ -13,7 +13,7 @@ describe('PathsView', () => {
       if (path === '/paths/path-1/summary') return {
         path: { id: 'path-1', name: 'Algorithms', status: 'ACTIVE' },
         itemIds: ['item-1', 'item-2'], itemProgress: { 'item-1': 40, 'item-2': 80 }, trackedSeconds: 120,
-        recentActivity: []
+        recentActivity: [{ id: 'activity-1', title: 'Imported Clockify session', detail: 'Session: 2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z', occurredAt: '2026-07-31T09:51:19Z' }]
       }
       return undefined
     })
@@ -27,6 +27,7 @@ describe('PathsView', () => {
 
     expect(wrapper.text()).toContain('Graph theory')
     expect(wrapper.text()).toContain('Sorting')
+    expect(wrapper.text()).toContain('2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z')
     await wrapper.get('input[aria-label="Filter path items"]').setValue('sort')
 
     expect(wrapper.text()).not.toContain('Graph theory — 40%')
