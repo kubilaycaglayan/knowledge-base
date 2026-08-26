@@ -8,9 +8,11 @@ The web has Vitest coverage for authentication success/failure, path-content fil
 
 Local verification:
 
-Smoke verification exercises both configured/unconfigured API CORS preflights on the development web origin `http://localhost:5177`; full-stack mode also waits for the Caddy HTTPS health check before exercising the public proxy. Full-stack smoke uses isolated host ports by default (`15432` for PostgreSQL, `18081` for the API, `18080`/`18443` for the public proxy, plus `18000` for the HTTP convenience mapping); override `DB_DEV_PORT`, `API_DEV_PORT`, `PROXY_DEV_PORT`, `PROXY_HTTP_PORT`, or `PROXY_HTTPS_PORT` when needed. Its exit trap removes only the smoke project’s containers, volumes, local images, exact temporary Buildx builder/cache, and `mktemp` backup directory; it does not run a host-wide Docker prune.
+Smoke verification exercises both configured/unconfigured API CORS preflights on the development web origin `http://localhost:5177`; full-stack mode also waits for the Caddy HTTPS health check before exercising the public proxy. Smoke uses isolated host ports by default (`15432` for PostgreSQL and `18081` for the API; full-stack mode adds `18080`/`18443` for the public proxy and `18000` for the HTTP convenience mapping); override `DB_DEV_PORT`, `API_DEV_PORT`, `PROXY_DEV_PORT`, `PROXY_HTTP_PORT`, or `PROXY_HTTPS_PORT` when needed. Its exit trap removes only the smoke project’s containers, volumes, local images, exact temporary Buildx builder/cache, and `mktemp` backup directory; it does not run a host-wide Docker prune.
 
 Smoke runs require Docker Buildx and clean up their Compose project containers, named volumes, local service images, and uniquely named temporary Buildx builders on exit. Use a distinct `COMPOSE_PROJECT_NAME` when running concurrent checks.
+
+The API smoke flow also exercises the authenticated monthly reports endpoint after creating current-month time entries, including its daily timeline and path breakdown fields.
 
 ```bash
 docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon

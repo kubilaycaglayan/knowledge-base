@@ -4,13 +4,14 @@ set -euo pipefail
 : "${JWT_SECRET:?Set JWT_SECRET to a random value before running smoke tests}"
 : "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to the password used by the database volume}"
 if (( ${#JWT_SECRET} < 32 )); then echo "JWT_SECRET must be at least 32 characters" >&2; exit 1; fi
+: "${DB_DEV_PORT:=15432}"
+: "${API_DEV_PORT:=18081}"
+export DB_DEV_PORT API_DEV_PORT
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
-  : "${DB_DEV_PORT:=15432}"
-  : "${API_DEV_PORT:=18081}"
   : "${PROXY_DEV_PORT:=18000}"
   : "${PROXY_HTTP_PORT:=18080}"
   : "${PROXY_HTTPS_PORT:=18443}"
-  export DB_DEV_PORT API_DEV_PORT PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
+  export PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
 fi
 
 backup_dir=""
@@ -119,9 +120,13 @@ api "${header[@]}" --post-data='{"description":"cancelled smoke timer"}' --heade
 api "${header[@]}" --post-data='' --header='Content-Type: application/json' http://localhost:8080/api/v1/timers/cancel >/dev/null
 if [[ -n "$(api "${header[@]}" http://localhost:8080/api/v1/timers/current)" ]]; then echo "timer cancellation failed" >&2; exit 1; fi
 smoke_date="$(date -u +%Y-%m-%d)"
-manual="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"${smoke_date}T10:00:00Z\",\"endedAt\":\"${smoke_date}T10:30:00Z\",\"description\":\"Editable session\"}" http://localhost:8080/api/v1/time-entries)"
+manual_start="$(date -u -d '2 hours ago' +%Y-%m-%dT%H:00:00Z)"
+manual_end="$(date -u -d '75 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
+manual="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$manual_start\",\"endedAt\":\"$manual_end\",\"description\":\"Editable session\"}" http://localhost:8080/api/v1/time-entries)"
 time_id="$(printf '%s' "$manual" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
-api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"${smoke_date}T11:00:00Z\",\"endedAt\":\"${smoke_date}T11:45:00Z\",\"description\":\"Edited session\"}" "http://localhost:8080/api/v1/time-entries/$time_id" | grep -q '"durationSeconds":2700'
+edited_start="$(date -u -d '105 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
+edited_end="$(date -u -d '60 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
+api "${header[@]}" --header='Content-Type: application/json' --method=PUT --body-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$edited_start\",\"endedAt\":\"$edited_end\",\"description\":\"Edited session\"}" "http://localhost:8080/api/v1/time-entries/$time_id" | grep -q '"durationSeconds":2700'
 api "${header[@]}" "http://localhost:8080/api/v1/time-entries" | grep -q 'Edited session'
 month_start="$(date -u +%Y-%m-01T10:00:00Z)"
 month_end="$(date -u -d "$month_start + 10 minutes" +%Y-%m-%dT%H:%M:%SZ)"
@@ -139,6 +144,10 @@ statistics="$(api "${header[@]}" http://localhost:8080/api/v1/statistics)"
 printf '%s' "$statistics" | grep -q 'completedItems'
 month_seconds="$(printf '%s' "$statistics" | sed -n 's/.*"monthSeconds":\([0-9]*\).*/\1/p')"
 (( month_seconds >= 3300 ))
+report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?period=MONTH&anchor=$smoke_date")"
+[[ "$report" == *'"period":"MONTH"'* ]]
+[[ "$report" == *'"days"'* ]]
+[[ "$report" == *'"paths"'* ]]
 if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   backup_dir="$(mktemp -d)"
   backup_file="$backup_dir/know.sql"
