@@ -44,14 +44,17 @@ describe("ReportsView", () => {
     ).toBe(true);
   });
 
-  it("requests the selected month view", async () => {
+  it.each(["month", "year"])("requests the selected %s view", async (label) => {
     const wrapper = mount(ReportsView);
     await flushPromises();
-    await wrapper.findAll('button[aria-pressed="false"]')[0].trigger("click");
+    await wrapper
+      .findAll('button[aria-pressed="false"]')
+      .find((button) => button.text() === label)!
+      .trigger("click");
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenLastCalledWith(
-      expect.stringContaining("/reports?period=MONTH"),
+      expect.stringContaining(`/reports?period=${label.toUpperCase()}`),
     );
   });
 });
