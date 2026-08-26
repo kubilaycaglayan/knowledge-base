@@ -25,6 +25,8 @@ describe('PathsView', () => {
     await wrapper.get('button.text-button').trigger('click')
     await flushPromises()
 
+    expect(wrapper.find('article.path.expanded .path-summary').exists()).toBe(true)
+    expect(wrapper.find('article.path.expanded').text()).toContain('PATH HISTORY')
     expect(wrapper.text()).toContain('Graph theory')
     expect(wrapper.text()).toContain('Sorting')
     expect(wrapper.text()).toContain('2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z')
