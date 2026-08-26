@@ -425,15 +425,14 @@ public class KnowledgeService {
         UUID itemId,
         ActivityType type
     ) {
-        return activityRepository.findFiltered(
-            userId,
-            from,
-            to,
-            pathId,
-            itemId,
-            type,
-            PageRequest.of(0, 100)
-        );
+        return activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId)
+            .stream()
+            .filter(activity -> from == null || !activity.getOccurredAt().isBefore(from))
+            .filter(activity -> to == null || !activity.getOccurredAt().isAfter(to))
+            .filter(activity -> pathId == null || pathId.equals(activity.getPathId()))
+            .filter(activity -> itemId == null || itemId.equals(activity.getItemId()))
+            .filter(activity -> type == null || type == activity.getType())
+            .toList();
     }
 
     public List<ProgressEntry> progress(UUID userId, UUID itemId) {

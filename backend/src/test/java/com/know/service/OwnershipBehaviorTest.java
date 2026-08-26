@@ -188,13 +188,20 @@ class OwnershipBehaviorTest {
         assertEquals(120,result.weekSeconds()); assertEquals(180,result.monthSeconds());
     }
 
-    @Test void filteredActivityQueriesUseAProviderBoundedPage() {
+    @Test void filteredActivityQueriesUseBoundedRecentActivities() {
         ActivityRepository activities=mock(ActivityRepository.class); UUID user=UUID.randomUUID();
-        when(activities.findFiltered(eq(user),any(),any(),any(),any(),any(),any())).thenReturn(List.of());
+        UUID matchingPath=UUID.randomUUID(), matchingItem=UUID.randomUUID(), otherItem=UUID.randomUUID();
+        java.time.Instant from=java.time.Instant.parse("2026-08-26T09:00:00Z");
+        java.time.Instant to=java.time.Instant.parse("2026-08-26T11:00:00Z");
+        Activity match=new Activity(user,matchingPath,matchingItem,ActivityType.PROGRESS_CHANGED,"Progress",null,java.time.Instant.parse("2026-08-26T10:00:00Z"));
+        Activity wrongItem=new Activity(user,matchingPath,otherItem,ActivityType.PROGRESS_CHANGED,"Other item",null,java.time.Instant.parse("2026-08-26T10:00:00Z"));
+        Activity tooOld=new Activity(user,matchingPath,matchingItem,ActivityType.PROGRESS_CHANGED,"Old",null,java.time.Instant.parse("2026-08-26T08:59:59Z"));
+        when(activities.findTop100ByUserIdOrderByOccurredAtDesc(user)).thenReturn(List.of(match,wrongItem,tooOld));
         KnowledgeService service=new KnowledgeService(mock(ItemRepository.class),mock(PathRepository.class),mock(PathItemRepository.class),mock(TagRepository.class),mock(ItemTagRepository.class),activities,mock(ProgressEntryRepository.class),mock(NoteRepository.class));
 
-        service.filteredActivities(user,null,null,null,null,null);
+        List<Activity> result=service.filteredActivities(user,from,to,matchingPath,matchingItem,ActivityType.PROGRESS_CHANGED);
 
-        verify(activities).findFiltered(eq(user),isNull(),isNull(),isNull(),isNull(),isNull(),argThat(page->page.getPageSize()==100));
+        assertEquals(List.of(match),result);
+        verify(activities).findTop100ByUserIdOrderByOccurredAtDesc(user);
     }
 }
