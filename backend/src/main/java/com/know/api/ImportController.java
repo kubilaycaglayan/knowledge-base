@@ -4,8 +4,10 @@ import com.know.service.ClockifyImportService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -17,5 +19,14 @@ public class ImportController {
     @PostMapping("/clockify")
     public ClockifyImportService.ImportSummary clockify(Authentication authentication, @Valid @RequestBody ImportRequest request) {
         return service.importEntries(UUID.fromString(authentication.getName()), new ClockifyImportService.ClockifyImportRequest(request.timeentries()));
+    }
+    @GetMapping("/clockify/batches")
+    public List<ClockifyImportService.ImportBatchView> batches(Authentication authentication) {
+        return service.listBatches(UUID.fromString(authentication.getName()));
+    }
+    @DeleteMapping("/clockify/batches/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public ClockifyImportService.UndoSummary undo(Authentication authentication, @PathVariable UUID id) {
+        return service.undoBatch(UUID.fromString(authentication.getName()), id);
     }
 }

@@ -15,10 +15,12 @@ public class Path {
     @Column(name="created_at",nullable=false) private Instant createdAt=Instant.now();
     @Column(name="updated_at",nullable=false) private Instant updatedAt=Instant.now();
     @Column(name="archived_at") private Instant archivedAt;
+    @Column(name="import_batch_id") private UUID importBatchId;
     protected Path(){}
     public Path(UUID userId,String name,String description){this(userId,name,description,null);}
     public Path(UUID userId,String name,String description,String color){this.userId=userId;this.name=name;this.description=description;if(color!=null&&!color.isBlank())this.color=color;}
-    public UUID getId(){return id;} public UUID getUserId(){return userId;} public String getName(){return name;} public String getDescription(){return description;} public String getColor(){return color;} public PathStatus getStatus(){return status;} public Instant getCreatedAt(){return createdAt;} public Instant getUpdatedAt(){return updatedAt;}
+    public UUID getId(){return id;} public UUID getUserId(){return userId;} public String getName(){return name;} public String getDescription(){return description;} public String getColor(){return color;} public PathStatus getStatus(){return status;} public Instant getCreatedAt(){return createdAt;} public Instant getUpdatedAt(){return updatedAt;} public UUID getImportBatchId(){return importBatchId;}
+    public void assignImportBatch(UUID importBatchId){this.importBatchId=importBatchId;}
     public void update(String name,String description,String color){this.name=name;this.description=description;if(color!=null&&!color.isBlank())this.color=color;this.updatedAt=Instant.now();}
     public void archive(){status=PathStatus.ARCHIVED; archivedAt=Instant.now(); updatedAt=Instant.now();}
 }

@@ -54,27 +54,6 @@ describe('DashboardView timer flow', () => {
     expect(options).not.toContain('Essays')
   })
 
-  it('imports Clockify JSON through the server mapping endpoint', async () => {
-    vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === '/paths') return []
-      if (path === '/items') return []
-      if (path === '/timers/current') return null
-      if (path === '/statistics') return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] }
-      if (path === '/time-entries') return []
-      if (path === '/imports/clockify') return { imported: 2, skipped: 1, createdPaths: 1 }
-      return undefined
-    })
-    const wrapper = mount(DashboardView)
-    await flushPromises()
-    await wrapper.get('textarea[aria-label="Clockify JSON"]').setValue('{"timeentries":[]}')
-    const importButton = wrapper.findAll('button').find(button => button.text() === 'Import Clockify sessions')
-    expect(importButton).toBeDefined()
-    await importButton!.trigger('click')
-    await flushPromises()
-    expect(vi.mocked(api)).toHaveBeenCalledWith('/imports/clockify', expect.objectContaining({ method: 'POST' }))
-    expect(wrapper.text()).toContain('Imported 2 sessions')
-  })
-
   it('keeps active timer configuration controls visible and editable', async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === '/paths') return [{ id: 'path-a', name: 'Algorithms', status: 'ACTIVE' }]

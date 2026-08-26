@@ -85,7 +85,12 @@ import_end="$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 clockify_import="$(api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"timeentries\":[{\"_id\":\"clockify-smoke-1\",\"description\":\"Imported smoke session\",\"projectName\":\"Imported Clockify path\",\"timeInterval\":{\"start\":\"$import_start\",\"end\":\"$import_end\"}}]}" http://localhost:8080/api/v1/imports/clockify)"
 printf '%s' "$clockify_import" | grep -q '"imported":1'
 printf '%s' "$clockify_import" | grep -q '"createdPaths":1'
+clockify_batch_id="$(printf '%s' "$clockify_import" | sed -n 's/.*"batchId":"\([^"]*\)".*/\1/p')"
+[[ -n "$clockify_batch_id" ]]
+api "${header[@]}" http://localhost:8080/api/v1/imports/clockify/batches | grep -q "$clockify_batch_id"
 api "${header[@]}" --header='Content-Type: application/json' --post-data="{\"timeentries\":[{\"_id\":\"clockify-smoke-1\",\"description\":\"Imported smoke session\",\"projectName\":\"Imported Clockify path\",\"timeInterval\":{\"start\":\"$import_start\",\"end\":\"$import_end\"}}]}" http://localhost:8080/api/v1/imports/clockify | grep -q '"skipped":1'
+api "${header[@]}" --method=DELETE "http://localhost:8080/api/v1/imports/clockify/batches/$clockify_batch_id" | grep -q '"deletedEntries":1'
+if api "${header[@]}" http://localhost:8080/api/v1/time-entries | grep -q 'Imported smoke session'; then echo "Clockify import undo did not remove imported time entries" >&2; exit 1; fi
 other_auth="$(api --header='Content-Type: application/json' --post-data="{\"email\":\"other-$email\",\"password\":\"correct-horse-battery\"}" http://localhost:8080/api/v1/auth/register)"
 other_token="$(printf '%s' "$other_auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 other_header=(--header="Authorization: Bearer $other_token")

@@ -10,4 +10,5 @@ public interface ActivityRepository extends JpaRepository<Activity,UUID>{
  @Query("select a from Activity a where a.userId=:userId and (lower(a.title) like lower(concat('%',:query,'%')) or lower(coalesce(a.detail,'')) like lower(concat('%',:query,'%'))) order by a.occurredAt desc")
  List<Activity> search(@Param("userId") UUID userId,@Param("query") String query,Pageable page);
  Optional<Activity> findByIdAndUserId(UUID id,UUID userId);
+ long deleteByUserIdAndImportBatchId(UUID userId,UUID importBatchId);
 }

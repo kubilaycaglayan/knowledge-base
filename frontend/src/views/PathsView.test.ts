@@ -8,7 +8,7 @@ describe('PathsView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === '/paths') return [{ id: 'path-1', name: 'Algorithms', status: 'ACTIVE' }]
+      if (path === '/paths') return [{ id: 'path-1', name: 'Algorithms', description: 'Problem solving', color: '#E8754E', status: 'ACTIVE' }]
       if (path === '/items') return [{ id: 'item-1', title: 'Graph theory' }, { id: 'item-2', title: 'Sorting' }]
       if (path === '/paths/path-1/summary') return {
         path: { id: 'path-1', name: 'Algorithms', status: 'ACTIVE' },
@@ -41,5 +41,21 @@ describe('PathsView', () => {
     await wrapper.get('button[aria-label="Choose path color #4C6FFF"]').trigger('click')
     await wrapper.get('form').trigger('submit')
     expect(vi.mocked(api)).toHaveBeenCalledWith('/paths', expect.objectContaining({ method: 'POST', body: expect.stringContaining('"color":"#4C6FFF"') }))
+  })
+
+  it('edits path name description and color inline', async () => {
+    const wrapper = mount(PathsView)
+    await flushPromises()
+
+    await wrapper.findAll('button.text-button').find(button => button.text() === 'Edit')!.trigger('click')
+    await wrapper.get('input[aria-label="Edit path name"]').setValue('Algorithms and Data Structures')
+    await wrapper.get('textarea[aria-label="Edit path description"]').setValue('CS fundamentals')
+    await wrapper.get('button[aria-label="Set edit path color #2188FF"]').trigger('click')
+    await wrapper.get('form.path-edit').trigger('submit')
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith('/paths/path-1', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ name: 'Algorithms and Data Structures', description: 'CS fundamentals', color: '#2188FF' })
+    }))
   })
 })
