@@ -28,7 +28,7 @@ const checks = [
   [proxy.includes('{$DOMAIN:localhost}') && proxy.includes(':80 {'), 'proxy supports the configured domain with a local listener fallback'],
   [proxy.includes('redir @production https://{host}{uri} permanent'), 'non-local production HTTP traffic redirects to HTTPS'],
   [application.includes('google-client-id: ${GOOGLE_CLIENT_ID:}'), 'Google client ID has no secret fallback'],
-  [authView.includes("'/auth/google'"), 'web authentication sends Google credentials to the backend verifier'],
+  [authView.includes('/auth/google') && authView.includes('JSON.stringify({ idToken })'), 'web authentication sends Google credentials to the backend verifier'],
   [proxy.includes('https://accounts.google.com/gsi/client'), 'proxy CSP permits the Google Identity Services client'],
   [preflight.includes('DOMAIN must be the real production hostname') && preflight.includes('CORS_ORIGINS must include https://${DOMAIN}'), 'deployment preflight rejects local domains and incomplete production CORS']
 ]
