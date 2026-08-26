@@ -8,6 +8,8 @@ const popup = read('chrome-extension/popup.js')
 const envExample = read('.env.example')
 const authView = read('frontend/src/views/AuthView.vue')
 const preflight = read('deployment/preflight.sh')
+const viteConfig = read('frontend/vite.config.ts')
+const runKnowSkill = read('.agents/skills/run-know/SKILL.md')
 
 const checks = [
   [application.includes('jwt-secret: ${JWT_SECRET:}'), 'JWT secret has no fallback value'],
@@ -30,7 +32,10 @@ const checks = [
   [application.includes('google-client-id: ${GOOGLE_CLIENT_ID:}'), 'Google client ID has no secret fallback'],
   [authView.includes('/auth/google') && authView.includes('JSON.stringify({ idToken })'), 'web authentication sends Google credentials to the backend verifier'],
   [proxy.includes('https://accounts.google.com/gsi/client'), 'proxy CSP permits the Google Identity Services client'],
-  [preflight.includes('DOMAIN must be the real production hostname') && preflight.includes('CORS_ORIGINS must include https://${DOMAIN}'), 'deployment preflight rejects local domains and incomplete production CORS']
+  [preflight.includes('DOMAIN must be the real production hostname') && preflight.includes('CORS_ORIGINS must include https://${DOMAIN}'), 'deployment preflight rejects local domains and incomplete production CORS'],
+  [viteConfig.includes("host:'0.0.0.0'") && viteConfig.includes('port:5177') && viteConfig.includes('strictPort:true'), 'Vite hot reload binds to the documented memorable remote-development port'],
+  [viteConfig.includes("proxy:{'/api':{target:'http://localhost:8080'"), 'Vite hot reload proxies API requests to the local backend'],
+  [runKnowSkill.includes('0.0.0.0:5177') && runKnowSkill.includes('ssh -L 5177:localhost:5177'), 'run-know skill documents remote hot-reload access']
 ]
 
 for (const [passed, description] of checks) if (!passed) throw new Error(`Security contract failed: ${description}`)
