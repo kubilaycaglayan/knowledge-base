@@ -17,7 +17,7 @@ Authenticated endpoints currently include:
 - `GET /reports?period=WEEK|MONTH|YEAR&anchor=YYYY-MM-DD` for a day-by-day report with total time and path/item categories for the selected period. Weeks use Monday through Sunday in UTC; the anchor date may be any date in the requested period.
 - `GET /search?q=...` searches owned paths, items, note title/content, and recent activity.
 - `GET /activities` accepts optional `from`, `to`, `pathId`, `itemId`, and `type` filters.
-- `POST /imports/clockify` accepts a Clockify export’s `timeentries` array, maps `projectName` values to owned paths (creating missing paths), stores completed entries as `IMPORT`, records an import batch, and skips already imported `_id` values. `GET /imports/clockify/batches` lists recent owned batches and `DELETE /imports/clockify/batches/{id}` undoes the imported time entries and activity records for that batch.
+- `POST /imports/clockify` accepts a Clockify export’s `timeentries` array, maps `projectName` values to owned paths (creating missing paths), stores completed entries as `IMPORT`, records an import batch, and skips already imported `_id` values. `GET /imports/clockify/batches` lists recent owned batches, including legacy imported entries backfilled during migration, and `DELETE /imports/clockify/batches/{id}` undoes the imported time entries and activity records for that batch.
 
 All resource lookups are scoped by the authenticated user. A user can have at most one running timer, enforced by both a service check and a PostgreSQL partial unique index.
 

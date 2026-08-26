@@ -54,6 +54,32 @@ describe('DashboardView timer flow', () => {
     expect(options).not.toContain('Essays')
   })
 
+  it('creates a new item from the session flow and selects it', async () => {
+    let created = false
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === '/paths') return [{ id: 'path-a', name: 'Algorithms', status: 'ACTIVE' }]
+      if (path === '/items' && options.method === 'POST') { created = true; return { id: 'item-new', title: 'Dijkstra notes', pathIds: ['path-a'] } }
+      if (path === '/items') return created ? [{ id: 'item-new', title: 'Dijkstra notes', pathIds: ['path-a'] }] : []
+      if (path === '/timers/current') return null
+      if (path === '/statistics') return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] }
+      if (path === '/time-entries') return []
+      return undefined
+    })
+    const wrapper = mount(DashboardView)
+    await flushPromises()
+
+    await wrapper.get('select[aria-label="Timer path"]').setValue('path-a')
+    await wrapper.get('input[aria-label="New session item title"]').setValue('Dijkstra notes')
+    await wrapper.findAll('button').find(button => button.text() === 'Create item')!.trigger('click')
+    await flushPromises()
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith('/items', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ title: 'Dijkstra notes', type: 'CUSTOM', pathIds: ['path-a'], tags: [] })
+    }))
+    expect((wrapper.get('select[aria-label="Timer item"]').element as HTMLSelectElement).value).toBe('item-new')
+  })
+
   it('keeps active timer configuration controls visible and editable', async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === '/paths') return [{ id: 'path-a', name: 'Algorithms', status: 'ACTIVE' }]

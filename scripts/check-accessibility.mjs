@@ -13,6 +13,7 @@ const required = [
   ['frontend/src/views/PathsView.vue', 'Choose path color', 'path color picker labels'],
   ['frontend/src/views/DashboardView.vue', 'aria-label="Search knowledge"', 'dashboard search label'],
   ['frontend/src/views/DashboardView.vue', 'aria-label="Timer start"', 'active timer start editor label'],
+  ['frontend/src/views/DashboardView.vue', 'aria-label="New session item title"', 'session item creation label'],
   ['frontend/src/views/ImportsView.vue', 'aria-label="Clockify JSON"', 'Clockify import input label'],
   ['frontend/src/views/ImportsView.vue', 'Import Clockify sessions', 'Clockify import action label'],
   ['frontend/src/views/TimelineView.vue', 'aria-label="Activity type"', 'timeline activity filter label'],
