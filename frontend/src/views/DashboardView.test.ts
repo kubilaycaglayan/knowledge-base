@@ -266,6 +266,81 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.text()).toContain("…");
   });
 
+  it("refreshes recent sessions after stopping the active timer", async () => {
+    let stopped = false;
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (path === "/paths")
+          return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
+        if (path === "/items") return [];
+        if (path === "/timers/current")
+          return stopped
+            ? null
+            : {
+                id: "timer-a",
+                pathId: "path-a",
+                startedAt: "2026-08-25T10:00:00Z",
+                description: "Focus session",
+                running: true,
+              };
+        if (path === "/statistics")
+          return {
+            todaySeconds: stopped ? 1800 : 0,
+            weekSeconds: stopped ? 1800 : 0,
+            monthSeconds: stopped ? 1800 : 0,
+            todayByPath: {},
+            todayByItem: {},
+            weekByPath: stopped ? { "path-a": 1800 } : {},
+            weekByItem: {},
+            completedItems: 0,
+            activeItems: 0,
+            recentProgressChanges: [],
+          };
+        if (path === "/time-entries")
+          return stopped
+            ? [
+                {
+                  id: "entry-a",
+                  pathId: "path-a",
+                  startedAt: "2026-08-25T10:00:00Z",
+                  endedAt: "2026-08-25T10:30:00Z",
+                  durationSeconds: 1800,
+                  description: "Finished focus session",
+                },
+              ]
+            : [];
+        if (path === "/timers/timer-a/stop" && options.method === "POST") {
+          stopped = true;
+          return {
+            id: "timer-a",
+            pathId: "path-a",
+            startedAt: "2026-08-25T10:00:00Z",
+            endedAt: "2026-08-25T10:30:00Z",
+            durationSeconds: 1800,
+            description: "Finished focus session",
+            running: false,
+          };
+        }
+        return undefined;
+      },
+    );
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Stop session");
+    expect(wrapper.text()).toContain("No recorded sessions yet.");
+    await wrapper.find("button.primary").trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/timers/timer-a/stop",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(wrapper.text()).toContain("Start a session");
+    expect(wrapper.text()).toContain("Finished focus session");
+    expect(wrapper.text()).toContain("1800s");
+  });
+
   it("shows weekly time breakdowns by path and item", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
