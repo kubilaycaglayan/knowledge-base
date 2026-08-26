@@ -16,9 +16,11 @@ fi
 
 backup_dir=""
 restore_db=""
+migration_db=""
 buildx_builder=""
 cleanup() {
   if [[ -n "$restore_db" ]]; then docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$restore_db" >/dev/null 2>&1 || true; fi
+  if [[ -n "$migration_db" ]]; then docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$migration_db" >/dev/null 2>&1 || true; fi
   docker compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
   if [[ -n "$buildx_builder" ]]; then docker buildx rm --force "$buildx_builder" >/dev/null 2>&1 || true; fi
   if [[ -n "$backup_dir" && -d "$backup_dir" ]]; then rm -rf "$backup_dir"; fi
@@ -44,6 +46,34 @@ allowed_cors="$(docker compose exec -T api wget -S -O /dev/null --method=OPTIONS
 printf '%s' "$allowed_cors" | grep -qi 'access-control-allow-origin: http://localhost:5177'
 blocked_cors="$(docker compose exec -T api wget -S -O /dev/null --method=OPTIONS --header='Origin: https://untrusted.example' --header='Access-Control-Request-Method: GET' http://localhost:8080/api/v1/paths 2>&1 || true)"
 if printf '%s' "$blocked_cors" | grep -qi 'access-control-allow-origin:'; then echo "untrusted CORS origin was allowed" >&2; exit 1; fi
+
+migration_db="migration_check_$(date +%s%N)"
+docker compose exec -T db createdb -U "${POSTGRES_USER:-know}" "$migration_db"
+for migration in backend/src/main/resources/db/migration/V{1..9}__*.sql; do
+  docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-know}" -d "$migration_db" < "$migration" >/dev/null
+done
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-know}" -d "$migration_db" >/dev/null <<'SQL'
+insert into app_user (id, email, password_hash, display_name)
+values ('00000000-0000-4000-8000-000000000001', 'legacy-import@example.com', 'hash', 'Legacy');
+insert into path (id, user_id, name)
+values ('00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'Legacy path');
+insert into time_entry (id, user_id, path_id, started_at, ended_at, duration_seconds, description, source, created_at)
+values
+  ('00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', '2026-08-25T09:00:00Z', '2026-08-25T10:00:00Z', 3600, 'Legacy import A', 'IMPORT', '2026-08-25T23:50:41Z'),
+  ('00000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', '2026-08-25T11:00:00Z', '2026-08-25T12:00:00Z', 3600, 'Legacy import B', 'IMPORT', '2026-08-25T23:52:41Z');
+insert into activity (id, user_id, path_id, type, title, detail, occurred_at)
+values
+  ('00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', 'TIME_TRACKED', 'Imported Clockify session', 'Legacy import A', '2026-08-25T09:00:00Z'),
+  ('00000000-0000-4000-8000-000000000006', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', 'TIME_TRACKED', 'Imported Clockify session', 'Legacy import B', '2026-08-25T11:00:00Z');
+SQL
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-know}" -d "$migration_db" < backend/src/main/resources/db/migration/V10__backfill_clockify_import_batches.sql >/dev/null
+legacy_batch_count="$(docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" -c "select count(*) from import_batch where user_id='00000000-0000-4000-8000-000000000001';")"
+[[ "$legacy_batch_count" == "2" ]]
+legacy_entry_count="$(docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" -c "select count(*) from time_entry where source='IMPORT' and import_batch_id is not null;")"
+[[ "$legacy_entry_count" == "2" ]]
+legacy_activity_count="$(docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" -c "select count(*) from activity where title='Imported Clockify session' and import_batch_id is not null;")"
+[[ "$legacy_activity_count" == "2" ]]
+
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   proxy_id="$(docker compose ps -q proxy)"
   for attempt in {1..30}; do
