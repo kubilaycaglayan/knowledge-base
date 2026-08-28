@@ -243,7 +243,7 @@ public class TimerService {
 
   public List<TimeView> history(UUID userId) {
     return entries
-        .findAllByUserIdOrderByStartedAtDesc(
+        .findAllByUserIdOrderByCompletionTimeDesc(
             userId, org.springframework.data.domain.PageRequest.of(0, 100))
         .stream()
         .map(this::view)
@@ -260,7 +260,7 @@ public class TimerService {
     long totalPages = Math.max(1, (total + safePageSize - 1) / safePageSize);
     List<TimeView> result =
         entries
-            .findAllByUserIdOrderByStartedAtDesc(
+            .findAllByUserIdOrderByCompletionTimeDesc(
                 userId, org.springframework.data.domain.PageRequest.of(safePage, safePageSize))
             .stream()
             .map(this::view)

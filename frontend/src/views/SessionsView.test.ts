@@ -16,7 +16,7 @@ describe("SessionsView", () => {
           sessions: [
           {
             id: "new",
-            startedAt: "2026-08-28T11:00:00Z",
+            startedAt: "2026-08-27T11:00:00Z",
             endedAt: "2026-08-28T12:00:00Z",
             durationSeconds: 3600,
             description: "Most recent",
@@ -26,7 +26,7 @@ describe("SessionsView", () => {
           },
           {
             id: "old",
-            startedAt: "2026-08-27T11:00:00Z",
+            startedAt: "2026-08-28T11:00:00Z",
             endedAt: "2026-08-27T12:00:00Z",
             durationSeconds: 3600,
             description: "Older",
@@ -42,7 +42,7 @@ describe("SessionsView", () => {
     });
   });
 
-  it("lists sessions newest first and shows nested path and item properties", async () => {
+  it("lists sessions by latest completion time and shows nested path and item properties", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     expect(wrapper.findAll("article.session-card")[0].text()).toContain("Most recent");

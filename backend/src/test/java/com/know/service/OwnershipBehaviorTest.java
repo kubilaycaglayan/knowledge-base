@@ -236,7 +236,7 @@ class OwnershipBehaviorTest {
     PathRepository paths = mock(PathRepository.class);
     ItemRepository items = mock(ItemRepository.class);
     UUID user = UUID.randomUUID();
-    when(entries.findAllByUserIdOrderByStartedAtDesc(eq(user), any())).thenReturn(List.of());
+    when(entries.findAllByUserIdOrderByCompletionTimeDesc(eq(user), any())).thenReturn(List.of());
     new TimerService(
             entries,
             paths,
@@ -246,7 +246,7 @@ class OwnershipBehaviorTest {
             mock(ActivityRepository.class))
         .history(user);
     verify(entries)
-        .findAllByUserIdOrderByStartedAtDesc(eq(user), argThat(page -> page.getPageSize() == 100));
+        .findAllByUserIdOrderByCompletionTimeDesc(eq(user), argThat(page -> page.getPageSize() == 100));
   }
 
   @Test

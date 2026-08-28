@@ -30,6 +30,12 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
   Optional<TimeEntry> findByUserIdAndSourceAndExternalId(
       UUID userId, TimeSource source, String externalId);
 
+  @Query(
+      "select t from TimeEntry t where t.userId=:userId"
+          + " order by t.endedAt desc nulls last, t.startedAt desc")
+  List<TimeEntry> findAllByUserIdOrderByCompletionTimeDesc(
+      @Param("userId") UUID userId, Pageable page);
+
   List<TimeEntry> findAllByUserIdOrderByStartedAtDesc(UUID userId, Pageable page);
 
   long countByUserId(UUID userId);
