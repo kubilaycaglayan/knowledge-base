@@ -25,6 +25,7 @@ const checks = [
   [envExample.includes('chrome-extension://replace-with-extension-id'), 'environment template requires an explicit extension origin'],
   [!envExample.includes('chrome-extension://*'), 'environment template does not allow all extension origins'],
   [proxy.includes('Content-Security-Policy'), 'proxy emits CSP'],
+  [proxy.includes('ws://localhost:* ws://127.0.0.1:*'), 'proxy CSP permits local Vite hot-reload websockets only on loopback hosts'],
   [proxy.includes('Permissions-Policy'), 'proxy emits Permissions-Policy'],
   [!popup.includes('innerHTML'), 'extension popup does not interpolate API data into innerHTML'],
   [proxy.includes('{$DOMAIN:localhost}') && proxy.includes(':80 {'), 'proxy supports the configured domain with a local listener fallback'],
@@ -35,7 +36,7 @@ const checks = [
   [preflight.includes('DOMAIN must be the real production hostname') && preflight.includes('CORS_ORIGINS must include https://${DOMAIN}'), 'deployment preflight rejects local domains and incomplete production CORS'],
   [viteConfig.includes("host:'0.0.0.0'") && viteConfig.includes('port:5177') && viteConfig.includes('strictPort:true'), 'Vite hot reload binds to the documented memorable remote-development port'],
   [viteConfig.includes("proxy:{'/api':{target:'http://localhost:8080'"), 'Vite hot reload proxies API requests to the local backend'],
-  [runKnowSkill.includes('0.0.0.0:5177') && runKnowSkill.includes('ssh -L 5177:localhost:5177'), 'run-know skill documents remote hot-reload access']
+  [runKnowSkill.includes('http://localhost:3000') && runKnowSkill.includes('0.0.0.0:5177') && runKnowSkill.includes('ssh -L 3000:localhost:3000'), 'run-know skill documents proxied and standalone hot-reload access']
 ]
 
 for (const [passed, description] of checks) if (!passed) throw new Error(`Security contract failed: ${description}`)

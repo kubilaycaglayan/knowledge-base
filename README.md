@@ -5,8 +5,8 @@ Know is a personal knowledge, learning-history, and activity tracker. The reposi
 ## Local development
 
 1. Copy `.env.example` to `.env` and set a long random secret for signing. Set `GOOGLE_CLIENT_ID` as well if Google sign-in is required for the web client.
-2. Start PostgreSQL and the API with `docker compose up --build`.
-3. For web development, run `cd frontend && npm install && npm run dev` and configure the API endpoint URL for your local server.
+2. Run `./scripts/run.sh` for the local hot-reload stack at `http://localhost:3000`.
+3. For a production-shaped local stack, run `docker compose up --build`.
 4. Load `chrome-extension/` as an unpacked extension in Chrome. Sign in in the popup; for a deployed API, configure its HTTPS `/api/v1` URL in the extension options page.
 
 Run the shared backend smoke test with `./scripts/smoke.sh` after setting the required environment variables. It starts the API and database, exercises authentication, paths, items, tags, progress, notes, timers, search, timeline filtering, and statistics, then stops the stack.

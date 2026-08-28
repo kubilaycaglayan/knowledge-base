@@ -1,8 +1,6 @@
-export const resolveApiBase = (
-  configured: string | undefined,
-  isDev: boolean,
-) => configured || (isDev ? "http://localhost:8080/api/v1" : "/api/v1");
-const base = resolveApiBase(import.meta.env.VITE_API_URL, import.meta.env.DEV);
+export const resolveApiBase = (configured: string | undefined) =>
+  configured || "/api/v1";
+const base = resolveApiBase(import.meta.env.VITE_API_URL);
 export async function api<T>(
   path: string,
   options: RequestInit = {},

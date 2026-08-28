@@ -1,0 +1,18 @@
+services:
+  web:
+    build: !reset null
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev"
+    environment:
+      VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    expose: ["5177"]
+  proxy:
+    environment:
+      WEB_UPSTREAM: web:5177
+
+volumes:
+  frontend-node-modules: {}

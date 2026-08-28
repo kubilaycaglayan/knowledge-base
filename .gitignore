@@ -7,3 +7,5 @@ frontend/tsconfig.tsbuildinfo
 backend/build/
 .gradle/
 .DS_Store
+backend/.idea
+.idea

@@ -268,7 +268,7 @@ onUnmounted(() => {
 <template>
   <section class="grid session-grid">
     <article class="card focus">
-      <p class="eyebrow">FOCUS TODAY</p>
+      <p class="eyebrow">FOCUS TODAY*</p>
       <strong>{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
       <p>{{ timer?.description || "Choose a path or item to begin." }}</p>
       <div class="timer-fields">
