@@ -251,12 +251,22 @@ onUnmounted(() => {
       <strong>{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
       <p>{{ timer?.description || "Choose a path or item to begin." }}</p>
       <div class="timer-fields">
-        <select v-model="pathId" aria-label="Timer path" @focus="load">
+        <select
+          v-model="pathId"
+          aria-label="Timer path"
+          @focus="load"
+          @change="configureTimer"
+        >
           <option value="">Choose a path</option>
           <option v-for="path in activePaths" :key="path.id" :value="path.id">
             {{ path.name }}
           </option></select
-        ><select v-model="itemId" aria-label="Timer item" @focus="load">
+        ><select
+          v-model="itemId"
+          aria-label="Timer item"
+          @focus="load"
+          @change="configureTimer"
+        >
           <option value="">Choose an item</option>
           <option v-for="item in timerItems" :key="item.id" :value="item.id">
             {{ item.title }}
@@ -275,11 +285,13 @@ onUnmounted(() => {
             Create item
           </button>
         </div>
-        <input
+        <textarea
+          rows="2"
           v-model="description"
           placeholder="What are you working on?"
           aria-label="Timer description"
-        /><input
+          @change="configureTimer"
+        ></textarea><input
           v-if="timer"
           v-model="timerStartedAt"
           type="datetime-local"

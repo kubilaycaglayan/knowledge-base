@@ -9,6 +9,7 @@
 }
 .auth input,
 .timer-fields input,
+.timer-fields textarea,
 .timer-fields select,
 .add select {
   border: 1px solid #dbe2da;
@@ -16,6 +17,10 @@
   padding: 13px 15px;
   font: inherit;
   background: #fff;
+}
+.timer-fields textarea {
+  min-height: 3.5em;
+  resize: vertical;
 }
 .text-button {
   border: 0;

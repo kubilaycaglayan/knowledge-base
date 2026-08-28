@@ -226,13 +226,22 @@ describe("DashboardView timer flow", () => {
       "/timers/timer-a",
       expect.objectContaining({ method: "PUT" }),
     );
-    const update = vi
-      .mocked(api)
-      .mock.calls.find(
-        ([path, options]) =>
-          path === "/timers/timer-a" && options?.method === "PUT",
-      );
-    expect(JSON.parse(update?.[1]?.body as string).endedAt).toBeUndefined();
+    await wrapper
+      .find('textarea[aria-label="Timer description"]')
+      .setValue("Updated description");
+    await flushPromises();
+    const updates = vi.mocked(api).mock.calls.filter(
+      ([path, options]) =>
+        path === "/timers/timer-a" && options?.method === "PUT",
+    );
+    expect(JSON.parse(updates[0]?.[1]?.body as string).endedAt).toBeUndefined();
+    expect(
+      updates.some(
+        ([, options]) =>
+          JSON.parse(options?.body as string).description ===
+          "Updated description",
+      ),
+    ).toBe(true);
   });
 
   it("updates the running clock when its start time is moved earlier", async () => {
