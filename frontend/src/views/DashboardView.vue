@@ -101,6 +101,7 @@ watch(pathId, (value) => {
 });
 function applyTimer(value: Timer | null) {
   timer.value = value;
+  timerNow.value = Date.now();
   if (value) {
     pathId.value = value.pathId || "";
     itemId.value = value.itemId || "";
@@ -111,6 +112,7 @@ function applyTimer(value: Timer | null) {
   }
 }
 async function load() {
+  const loadId = ++latestLoad;
   try {
     const data = await Promise.all([
       api<Path[]>("/paths"),
@@ -119,6 +121,7 @@ async function load() {
       api<Stats>("/statistics"),
       api<Entry[]>("/time-entries"),
     ]);
+    if (loadId !== latestLoad) return;
     paths.value = data[0];
     items.value = data[1];
     applyTimer(data[2]);
@@ -254,6 +257,7 @@ async function createTimerItem() {
   }
 }
 let timerTicker: number | undefined;
+let latestLoad = 0;
 onMounted(() => {
   void load();
   timerTicker = window.setInterval(() => {
@@ -305,13 +309,12 @@ onUnmounted(() => {
           v-model="timerStartedAt"
           type="datetime-local"
           aria-label="Timer start"
+          @change="configureTimer"
         />
       </div>
       <div class="item-actions">
         <button class="primary" @click="toggle">
           {{ timer ? "Stop session" : "Start a session" }}</button
-        ><button v-if="timer" class="text-button" @click="configureTimer">
-          Save timer settings</button
         ><button v-if="timer" class="text-button danger" @click="cancel">
           Cancel
         </button>

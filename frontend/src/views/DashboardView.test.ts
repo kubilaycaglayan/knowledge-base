@@ -216,16 +216,60 @@ describe("DashboardView timer flow", () => {
     const wrapper = mount(DashboardView);
     await flushPromises();
     expect(wrapper.find('input[aria-label="Timer start"]').exists()).toBe(true);
-    const save = wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Save timer settings");
-    expect(save).toBeDefined();
-    await save!.trigger("click");
+    expect(wrapper.text()).not.toContain("Save timer settings");
+    await wrapper
+      .find('input[aria-label="Timer start"]')
+      .setValue("2026-08-25T09:30");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/timers/timer-a",
       expect.objectContaining({ method: "PUT" }),
     );
+  });
+
+  it("updates the running clock when its start time is moved earlier", async () => {
+    vi.useFakeTimers({ now: new Date("2026-08-25T12:00:00Z") });
+    let startedAt = "2026-08-25T11:00:00Z";
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (path === "/paths") return [];
+        if (path === "/items") return [];
+        if (path === "/timers/current")
+          return {
+            id: "timer-a",
+            startedAt,
+            description: "Focus",
+            running: true,
+          };
+        if (path === "/statistics")
+          return {
+            todaySeconds: 0,
+            weekSeconds: 0,
+            monthSeconds: 0,
+            todayByPath: {},
+            todayByItem: {},
+            completedItems: 0,
+            activeItems: 0,
+            recentProgressChanges: [],
+          };
+        if (path === "/time-entries") return [];
+        if (path === "/timers/timer-a" && options.method === "PUT") {
+          startedAt = "2026-08-25T10:00:00Z";
+          return { id: "timer-a", startedAt, description: "Focus", running: true };
+        }
+        return undefined;
+      },
+    );
+
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+    expect(wrapper.find(".focus strong").text()).toBe("01:00:00");
+
+    await wrapper.find('input[aria-label="Timer start"]').setValue("2026-08-25T10:00");
+    await flushPromises();
+
+    expect(wrapper.find(".focus strong").text()).toBe("02:00:00");
+    vi.useRealTimers();
   });
 
   it("shows the path and shortened description for recent sessions", async () => {
