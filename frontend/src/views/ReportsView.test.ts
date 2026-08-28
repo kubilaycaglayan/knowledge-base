@@ -32,10 +32,7 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Time, day by day");
     expect(wrapper.text()).toContain("Wander");
     expect(wrapper.text()).toContain("Walking");
-    const dayLabel = new Date("2026-08-25T00:00:00Z").toLocaleDateString(
-      undefined,
-      { month: "short", day: "numeric", year: "numeric" },
-    );
+    const dayLabel = "25/08/2026";
     expect(wrapper.text()).toContain(dayLabel);
     expect(wrapper.find(".report-svg").exists()).toBe(true);
     expect(wrapper.find(".report-svg rect").exists()).toBe(true);

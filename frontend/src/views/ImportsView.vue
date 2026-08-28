@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatDateTime } from "../lib/date";
 
 type ImportBatch = {
   id: string;
@@ -22,7 +23,7 @@ const clockifyJson = ref(""),
   importSummary = ref(""),
   error = ref(""),
   batches = ref<ImportBatch[]>([]);
-const formatDate = (iso: string) => new Date(iso).toLocaleString();
+const formatDate = (iso: string) => formatDateTime(iso);
 
 async function load() {
   try {

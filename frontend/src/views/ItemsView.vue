@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatDateTime } from "../lib/date";
 type Path = { id: string; name: string; status: string };
 type Note = { id: string; itemId?: string; title: string; content: string };
 type Progress = {
@@ -262,7 +263,7 @@ onMounted(load);
               <strong>Progress history</strong>
               <p v-for="change in history" :key="change.id" class="muted">
                 {{ change.previousProgress }}% → {{ change.newProgress }}% ·
-                {{ new Date(change.changedAt).toLocaleString() }}
+                {{ formatDateTime(change.changedAt) }}
               </p>
             </div>
             <input

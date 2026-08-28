@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 
 type Path = {
@@ -316,7 +317,7 @@ onMounted(load);
               class="muted"
             >
               {{ activityTitle(event.title) }} ·
-              {{ new Date(event.occurredAt).toLocaleString()
+              {{ formatDateTime(event.occurredAt)
               }}<span v-if="event.detail"> · {{ event.detail }}</span
               ><span v-if="event.itemId"> · {{ itemName(event.itemId) }}</span>
             </p>

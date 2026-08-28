@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 
 type Path = { id: string; name: string; description?: string; status: string };
@@ -57,7 +58,7 @@ const localDateTime = (iso?: string) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 const isoDateTime = (value: string) => new Date(value).toISOString();
-const sessionDate = (iso: string) => new Date(iso).toLocaleString();
+const sessionDate = (iso: string) => formatDateTime(iso);
 const duration = (session: Session) =>
   session.running ? "Running" : formatTrackedDuration(session.durationSeconds || 0);
 

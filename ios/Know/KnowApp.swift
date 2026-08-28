@@ -603,6 +603,7 @@ struct DashboardView: View {
                             selection: $timerStartedAt,
                             displayedComponents: [.date, .hourAndMinute]
                         )
+                        .environment(\.locale, Locale(identifier: "en_GB"))
                         .accessibilityIdentifier("timer.start")
                         Button("Save timer settings") {
                             Task {

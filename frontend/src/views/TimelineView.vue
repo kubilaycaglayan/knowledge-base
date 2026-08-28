@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatDateTime } from "../lib/date";
 type Activity = {
   id: string;
   type: string;
@@ -153,7 +154,7 @@ onMounted(async () => {
         <div>
           <p class="eyebrow">
             {{ activity.type.replaceAll("_", " ") }} ·
-            {{ new Date(activity.occurredAt).toLocaleString() }}
+            {{ formatDateTime(activity.occurredAt) }}
           </p>
           <h2>{{ activity.title }}</h2>
           <p v-if="activity.detail">{{ activity.detail }}</p>

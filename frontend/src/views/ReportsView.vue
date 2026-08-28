@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 
 type Period = "WEEK" | "MONTH" | "YEAR";
@@ -26,12 +27,7 @@ const anchor = ref(new Date().toISOString().slice(0, 10));
 const report = ref<Report | null>(null);
 const error = ref("");
 const loading = ref(false);
-const dateLabel = (value: string) =>
-  new Date(`${value}T00:00:00Z`).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+const dateLabel = (value: string) => formatDate(`${value}T00:00:00Z`);
 const maxDay = computed(() =>
   Math.max(1, ...(report.value?.days.map((day) => day.totalSeconds) || [1])),
 );
