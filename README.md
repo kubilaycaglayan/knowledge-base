@@ -1,5 +1,7 @@
 # Know
 
+[Under construction]
+
 Know is a personal knowledge, learning-history, and activity tracker. The repository contains one canonical Spring Boot API, a Vue web client, a native SwiftUI client, and a focused Manifest V3 timer extension.
 
 ## Local development
