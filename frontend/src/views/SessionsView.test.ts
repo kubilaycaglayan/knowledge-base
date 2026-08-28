@@ -64,4 +64,19 @@ describe("SessionsView", () => {
       body: expect.stringContaining('"source":"IOS"'),
     }));
   });
+
+  it("confirms and soft-deletes a completed session", async () => {
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+
+    await wrapper.get("button.danger").trigger("click");
+    expect(wrapper.find(".prompt-dialog").text()).toContain(
+      "Remove this session? This cannot be undone.",
+    );
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/new", {
+      method: "DELETE",
+    });
+  });
 });

@@ -365,6 +365,20 @@ public class TimerService {
     return view(e);
   }
 
+  @Transactional
+  public void remove(UUID userId, UUID id) {
+    TimeEntry e =
+        entries
+            .findByIdAndUserId(id, userId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
+    if (e.running())
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Running timers must be stopped before removal");
+    e.softDelete();
+    entries.save(e);
+  }
+
   private void replaceItems(UUID entryId, Collection<UUID> itemIds) {
     if (entryItems == null) return;
     entryItems.deleteAllByIdTimeEntryId(entryId);

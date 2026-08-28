@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
+import PromptDialog from "../components/PromptDialog.vue";
 
 type Path = { id: string; name: string; description?: string; status: string };
 type Item = {
@@ -45,6 +46,7 @@ const page = ref(1);
 const totalPages = ref(1);
 const totalSessions = ref(0);
 const sources = ["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"];
+const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 
 const pathFor = (id?: string) => paths.value.find((path) => path.id === id);
 const itemFor = (id?: string) => items.value.find((item) => item.id === id);
@@ -130,10 +132,25 @@ async function save(session: Session) {
     saving.value = false;
   }
 }
+async function remove(session: Session) {
+  const confirmation = await promptDialog.value!.open(
+    "Remove this session? This cannot be undone.",
+    "",
+    { confirmation: true },
+  );
+  if (confirmation === null) return;
+  try {
+    await api(`/time-entries/${session.id}`, { method: "DELETE" });
+    await load(page.value);
+  } catch {
+    error.value = "Could not remove this session.";
+  }
+}
 onMounted(load);
 </script>
 
 <template>
+  <PromptDialog ref="promptDialog" />
   <section>
     <p class="eyebrow">TIME TRACKING</p>
     <h1>Sessions</h1>
@@ -148,6 +165,9 @@ onMounted(load);
           </div>
           <button class="text-button" :disabled="session.running" @click="beginEdit(session)">
             {{ session.running ? "Stop to edit" : "Edit session" }}
+          </button>
+          <button v-if="!session.running" class="text-button danger" @click="remove(session)">
+            Remove session
           </button>
         </div>
         <div v-if="editingId !== session.id" class="session-summary">

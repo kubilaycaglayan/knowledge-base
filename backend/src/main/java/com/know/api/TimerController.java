@@ -114,6 +114,12 @@ public class TimerController {
             user(a), id, r.pathId(), r.itemIds(), r.startedAt(), r.endedAt(), r.description(), r.source());
   }
 
+  @DeleteMapping("/time-entries/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void remove(Authentication a, @PathVariable UUID id) {
+    service.remove(user(a), id);
+  }
+
   @GetMapping("/statistics")
   public TimerService.Statistics statistics(Authentication a) {
     return service.statistics(user(a));

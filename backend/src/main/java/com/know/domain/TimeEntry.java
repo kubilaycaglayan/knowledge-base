@@ -1,11 +1,13 @@
 package com.know.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "time_entry")
+@SQLRestriction("deleted_at IS NULL")
 public class TimeEntry {
   @Id private UUID id = UUID.randomUUID();
 
@@ -40,6 +42,9 @@ public class TimeEntry {
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt = Instant.now();
+
+  @Column(name = "deleted_at")
+  private Instant deletedAt;
 
   protected TimeEntry() {}
 
@@ -116,6 +121,10 @@ public class TimeEntry {
 
   public boolean running() {
     return endedAt == null;
+  }
+
+  public void softDelete() {
+    deletedAt = Instant.now();
   }
 
   public void assignImportBatch(UUID importBatchId) {
