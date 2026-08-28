@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
 
 type Path = {
@@ -39,13 +39,13 @@ const colors = [
 ];
 const paths = ref<Path[]>([]),
   items = ref<Item[]>([]),
-  summary = ref<Summary | null>(null),
+  summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
   description = ref(""),
   selectedColor = ref(colors[0]),
   noteTitle = ref(""),
   noteContent = ref(""),
-  itemFilter = ref(""),
+  itemFilters = ref<Record<string, string>>({}),
   error = ref("");
 const editingId = ref(""),
   editName = ref(""),
@@ -55,14 +55,16 @@ const format = (seconds: number) =>
   `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 const itemName = (id: string) =>
   items.value.find((item) => item.id === id)?.title || id;
-const filteredItemIds = computed(
-  () =>
-    summary.value?.itemIds.filter((id) =>
+const filteredItemIds = (pathId: string) => {
+  const summary = summaries.value[pathId];
+  return (
+    summary?.itemIds.filter((id) =>
       itemName(id)
         .toLowerCase()
-        .includes(itemFilter.value.trim().toLowerCase()),
-    ) || [],
-);
+        .includes((itemFilters.value[pathId] || "").trim().toLowerCase()),
+    ) || []
+  );
+};
 async function load() {
   try {
     [paths.value, items.value] = await Promise.all([
@@ -92,16 +94,26 @@ async function add() {
     error.value = "Could not create path.";
   }
 }
-async function inspect(path: Path) {
+async function loadSummary(path: Path) {
   try {
-    summary.value = await api<Summary>(`/paths/${path.id}/summary`);
-    itemFilter.value = "";
+    summaries.value[path.id] = await api<Summary>(
+      `/paths/${path.id}/summary`,
+    );
+    itemFilters.value[path.id] = "";
   } catch {
     error.value = "Could not load path history.";
   }
 }
+async function inspect(path: Path) {
+  if (summaries.value[path.id]) {
+    delete summaries.value[path.id];
+    delete itemFilters.value[path.id];
+    return;
+  }
+  await loadSummary(path);
+}
 function expanded(path: Path) {
-  return summary.value?.path.id === path.id;
+  return Boolean(summaries.value[path.id]);
 }
 function startEdit(path: Path) {
   editingId.value = path.id;
@@ -128,7 +140,7 @@ async function saveEdit(path: Path) {
     });
     cancelEdit();
     await load();
-    if (summary.value?.path.id === path.id) await inspect(path);
+    if (summaries.value[path.id]) await loadSummary(path);
   } catch {
     error.value = "Could not update path.";
   }
@@ -137,20 +149,22 @@ async function archive(path: Path) {
   if (!confirm(`Archive ${path.name}?`)) return;
   try {
     await api(`/paths/${path.id}`, { method: "DELETE" });
-    summary.value = null;
+    delete summaries.value[path.id];
+    delete itemFilters.value[path.id];
     await load();
   } catch {
     error.value = "Could not archive path.";
   }
 }
-async function addNote() {
-  if (!summary.value || !noteTitle.value.trim() || !noteContent.value.trim())
+async function addNote(pathId: string) {
+  const summary = summaries.value[pathId];
+  if (!summary || !noteTitle.value.trim() || !noteContent.value.trim())
     return;
   try {
     await api("/notes", {
       method: "POST",
       body: JSON.stringify({
-        pathId: summary.value.path.id,
+        pathId: summary.path.id,
         title: noteTitle.value,
         content: noteContent.value,
       }),
@@ -254,29 +268,30 @@ onMounted(load);
               Archive
             </button>
           </div>
-          <div v-if="expanded(path) && summary" class="path-summary">
+          <div v-if="expanded(path) && summaries[path.id]" class="path-summary">
             <p class="eyebrow">PATH HISTORY</p>
             <p class="muted">
-              {{ format(summary.trackedSeconds) }} tracked ·
-              {{ summary.itemIds.length }} items
+              {{ format(summaries[path.id].trackedSeconds) }} tracked ·
+              {{ summaries[path.id].itemIds.length }} items
             </p>
             <p><strong>Associated items and progress</strong></p>
             <input
-              v-model="itemFilter"
+              v-model="itemFilters[path.id]"
               placeholder="Filter items in this path"
               aria-label="Filter path items"
             />
             <ul>
-              <li v-for="id in filteredItemIds" :key="id">
-                {{ itemName(id) }} — {{ summary.itemProgress[id] ?? 0 }}%
+              <li v-for="id in filteredItemIds(path.id)" :key="id">
+                {{ itemName(id) }} —
+                {{ summaries[path.id].itemProgress[id] ?? 0 }}%
               </li>
             </ul>
-            <p v-if="!filteredItemIds.length" class="muted">
+            <p v-if="!filteredItemIds(path.id).length" class="muted">
               No items match this filter.
             </p>
             <p><strong>Recent activity</strong></p>
             <p
-              v-for="event in summary.recentActivity"
+              v-for="event in summaries[path.id].recentActivity"
               :key="event.id"
               class="muted"
             >
@@ -296,7 +311,7 @@ onMounted(load);
                 rows="3"
                 aria-label="Path note content"
               ></textarea
-              ><button class="primary" @click="addNote">Save path note</button>
+              ><button class="primary" @click="addNote(path.id)">Save path note</button>
             </div>
           </div>
         </div>

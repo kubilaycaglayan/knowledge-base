@@ -65,6 +65,77 @@ describe("PathsView", () => {
     expect(wrapper.text()).toContain("Sorting — 80%");
   });
 
+  it("toggles path history closed when History is clicked again", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const historyButton = wrapper.get("button.text-button");
+
+    await historyButton.trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".path-summary").exists()).toBe(true);
+    expect(historyButton.attributes("aria-expanded")).toBe("true");
+
+    await historyButton.trigger("click");
+    expect(wrapper.find(".path-summary").exists()).toBe(false);
+    expect(historyButton.attributes("aria-expanded")).toBe("false");
+  });
+
+  it("keeps each path history open independently", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          {
+            id: "path-1",
+            name: "Algorithms",
+            description: "Problem solving",
+            color: "#E8754E",
+            status: "ACTIVE",
+          },
+          {
+            id: "path-2",
+            name: "Writing",
+            description: "Clear communication",
+            color: "#4C6FFF",
+            status: "ACTIVE",
+          },
+        ];
+      if (path === "/items") return [];
+      if (path === "/paths/path-1/summary")
+        return {
+          path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          itemIds: [],
+          itemProgress: {},
+          trackedSeconds: 120,
+          recentActivity: [],
+        };
+      if (path === "/paths/path-2/summary")
+        return {
+          path: { id: "path-2", name: "Writing", status: "ACTIVE" },
+          itemIds: [],
+          itemProgress: {},
+          trackedSeconds: 240,
+          recentActivity: [],
+        };
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const historyButtons = wrapper.findAll("button.text-button").filter(
+      (button) => button.text() === "History",
+    );
+
+    await historyButtons[0].trigger("click");
+    await flushPromises();
+    await historyButtons[1].trigger("click");
+    await flushPromises();
+
+    expect(wrapper.findAll(".path-summary")).toHaveLength(2);
+    expect(
+      wrapper.findAll("button[aria-expanded='true']"),
+    ).toHaveLength(2);
+  });
+
   it("submits a selected path color from the twelve-color picker", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
