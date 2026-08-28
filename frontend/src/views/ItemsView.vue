@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
+import PromptDialog from "../components/PromptDialog.vue";
 type Path = { id: string; name: string; status: string };
 type Note = { id: string; itemId?: string; title: string; content: string };
 type Progress = {
@@ -49,6 +50,7 @@ const title = ref(""),
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
 );
+const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 async function load() {
   try {
     [items.value, paths.value, notes.value] = await Promise.all([
@@ -86,20 +88,29 @@ async function add() {
   }
 }
 async function edit(item: Item) {
-  const nextTitle = prompt("Item title", item.title);
+  const nextTitle = await promptDialog.value!.open("Item title", item.title);
   if (!nextTitle?.trim()) return;
-  const nextType = prompt(`Type (${itemTypes.join(", ")})`, item.type)
+  const nextType = (
+    await promptDialog.value!.open(
+      `Type (${itemTypes.join(", ")})`,
+      item.type,
+    )
+  )
     ?.trim()
     .toUpperCase();
   if (!nextType || !itemTypes.includes(nextType)) {
     if (nextType) error.value = "Choose one of the supported item types.";
     return;
   }
-  const nextDescription = prompt("Description", item.description || "");
+  const nextDescription = await promptDialog.value!.open(
+    "Description",
+    item.description || "",
+    { multiline: true },
+  );
   if (nextDescription === null) return;
-  const nextSource = prompt("Source", item.source || "");
+  const nextSource = await promptDialog.value!.open("Source", item.source || "");
   if (nextSource === null) return;
-  const nextStatus = prompt(
+  const nextStatus = await promptDialog.value!.open(
     "Status (PLANNED, ACTIVE, PAUSED, COMPLETED, ABANDONED)",
     item.status,
   );
@@ -123,7 +134,10 @@ async function edit(item: Item) {
   }
 }
 async function progress(item: Item) {
-  const value = prompt("Progress (0–100)", String(item.progress));
+  const value = await promptDialog.value!.open(
+    "Progress (0–100)",
+    String(item.progress),
+  );
   if (value === null) return;
   try {
     await api(`/items/${item.id}/progress`, {
@@ -162,9 +176,13 @@ async function addNote(item: Item) {
   }
 }
 async function editNote(note: Note) {
-  const nextTitle = prompt("Note title", note.title);
+  const nextTitle = await promptDialog.value!.open("Note title", note.title);
   if (!nextTitle?.trim()) return;
-  const nextContent = prompt("Note content", note.content);
+  const nextContent = await promptDialog.value!.open(
+    "Note content",
+    note.content,
+    { multiline: true },
+  );
   if (nextContent === null || !nextContent.trim()) return;
   try {
     await api(`/notes/${note.id}`, {
@@ -186,6 +204,7 @@ onMounted(load);
 </script>
 
 <template>
+  <PromptDialog ref="promptDialog" />
   <section>
     <p class="eyebrow">RESOURCES</p>
     <h1>Items</h1>

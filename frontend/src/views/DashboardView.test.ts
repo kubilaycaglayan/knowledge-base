@@ -173,7 +173,6 @@ describe("DashboardView timer flow", () => {
   });
 
   it("creates and selects a path from the path dropdown", async () => {
-    const prompt = vi.spyOn(window, "prompt").mockReturnValue("Research");
     let created = false;
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
@@ -211,7 +210,14 @@ describe("DashboardView timer flow", () => {
     await pathSelect.setValue("__add_new_path__");
     await flushPromises();
 
-    expect(prompt).toHaveBeenCalledWith("New path name");
+    const promptInput = wrapper.get('input[aria-label="New path name"]');
+    await promptInput.setValue("Research");
+    await wrapper
+      .findAll(".prompt-dialog button")
+      .find((button) => button.text() === "OK")!
+      .trigger("click");
+    await flushPromises();
+
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/paths",
       expect.objectContaining({
@@ -224,7 +230,6 @@ describe("DashboardView timer flow", () => {
       }),
     );
     expect((pathSelect.element as HTMLSelectElement).value).toBe("path-new");
-    prompt.mockRestore();
   });
 
   it("keeps active timer configuration controls visible and editable", async () => {

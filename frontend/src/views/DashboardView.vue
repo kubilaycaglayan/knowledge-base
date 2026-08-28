@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { api } from "../lib/api";
 import { formatTrackedDuration } from "../lib/format";
+import PromptDialog from "../components/PromptDialog.vue";
 
 type Path = { id: string; name: string; status: string };
 type Item = { id: string; title: string; pathIds: string[] };
@@ -60,6 +61,7 @@ const pathId = ref(""),
   error = ref(""),
   newTimerItemTitle = ref("");
 const timerNow = ref(Date.now());
+const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const elapsed = () =>
   timer.value
     ? Math.max(
@@ -182,7 +184,7 @@ async function choosePath() {
     return;
   }
 
-  const name = window.prompt("New path name")?.trim();
+  const name = (await promptDialog.value!.open("New path name"))?.trim();
   pathId.value = "";
   if (!name) return;
 
@@ -225,8 +227,14 @@ async function search() {
   }
 }
 async function editEntry(entry: Entry) {
-  const start = prompt("Start (ISO time)", entry.startedAt);
-  const end = prompt("End (ISO time)", entry.endedAt || "");
+  const start = await promptDialog.value!.open(
+    "Start (ISO time)",
+    entry.startedAt,
+  );
+  const end = await promptDialog.value!.open(
+    "End (ISO time)",
+    entry.endedAt || "",
+  );
   if (!start || !end) return;
   try {
     await api(`/time-entries/${entry.id}`, {
@@ -283,6 +291,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <PromptDialog ref="promptDialog" />
   <section class="grid session-grid">
     <article class="card focus">
       <div class="focus-header">

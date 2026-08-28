@@ -194,6 +194,40 @@
 .muted {
   color: #75827c;
 }
+.prompt-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #173d3666;
+}
+.prompt-dialog {
+  width: min(520px, 100%);
+}
+.prompt-dialog h2 {
+  margin: 0 0 18px;
+  font-size: 21px;
+}
+.prompt-dialog input,
+.prompt-dialog textarea {
+  width: 100%;
+  border: 1px solid #dbe2da;
+  border-radius: 9px;
+  padding: 13px 15px;
+  font: inherit;
+  background: #fff;
+}
+.prompt-dialog textarea {
+  resize: vertical;
+}
+.prompt-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-top: 20px;
+}
 .search-box {
   margin-top: 18px;
 }
