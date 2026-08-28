@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatTrackedDuration } from "../lib/format";
 
 type Path = {
   id: string;
@@ -12,6 +13,8 @@ type Path = {
 type Item = { id: string; title: string };
 type Activity = {
   id: string;
+  type?: string;
+  itemId?: string;
   title: string;
   detail?: string;
   occurredAt: string;
@@ -51,10 +54,27 @@ const editingId = ref(""),
   editName = ref(""),
   editDescription = ref(""),
   editColor = ref(colors[0]);
-const format = (seconds: number) =>
-  `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+const activityTitle = (title: string) => {
+  const match = title.match(/^Tracked (\d+) seconds$/);
+  return match ? `Tracked ${formatTrackedDuration(Number(match[1]))}` : title;
+};
 const itemName = (id: string) =>
   items.value.find((item) => item.id === id)?.title || id;
+function recentActivity(pathId: string) {
+  const activity = summaries.value[pathId]?.recentActivity || [];
+  const stoppedTimers = activity.filter(
+    (event) => event.type === "TIMER_STOPPED",
+  );
+  return activity.filter((event) => {
+    if (event.type !== "TIMER_STARTED") return true;
+    return !stoppedTimers.some(
+      (stopped) =>
+        stopped.itemId === event.itemId &&
+        stopped.detail === event.detail &&
+        Date.parse(stopped.occurredAt) >= Date.parse(event.occurredAt),
+    );
+  });
+}
 const filteredItemIds = (pathId: string) => {
   const summary = summaries.value[pathId];
   return (
@@ -271,7 +291,7 @@ onMounted(load);
           <div v-if="expanded(path) && summaries[path.id]" class="path-summary">
             <p class="eyebrow">PATH HISTORY</p>
             <p class="muted">
-              {{ format(summaries[path.id].trackedSeconds) }} tracked ·
+              {{ formatTrackedDuration(summaries[path.id].trackedSeconds) }} tracked ·
               {{ summaries[path.id].itemIds.length }} items
             </p>
             <p><strong>Associated items and progress</strong></p>
@@ -291,13 +311,14 @@ onMounted(load);
             </p>
             <p><strong>Recent activity</strong></p>
             <p
-              v-for="event in summaries[path.id].recentActivity"
+              v-for="event in recentActivity(path.id)"
               :key="event.id"
               class="muted"
             >
-              {{ event.title }} ·
+              {{ activityTitle(event.title) }} ·
               {{ new Date(event.occurredAt).toLocaleString()
-              }}<span v-if="event.detail"> · {{ event.detail }}</span>
+              }}<span v-if="event.detail"> · {{ event.detail }}</span
+              ><span v-if="event.itemId"> · {{ itemName(event.itemId) }}</span>
             </p>
             <div class="note-editor">
               <strong>Path note</strong

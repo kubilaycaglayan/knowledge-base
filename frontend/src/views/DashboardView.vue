@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { api } from "../lib/api";
+import { formatTrackedDuration } from "../lib/format";
 
 type Path = { id: string; name: string; status: string };
 type Item = { id: string; title: string; pathIds: string[] };
@@ -53,14 +54,7 @@ const pathId = ref(""),
   timerStartedAt = ref(""),
   query = ref(""),
   error = ref(""),
-  startedAt = ref(""),
-  endedAt = ref(""),
   newTimerItemTitle = ref("");
-const format = (seconds: number) => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
-};
 const timerNow = ref(Date.now());
 const elapsed = () =>
   timer.value
@@ -185,25 +179,6 @@ async function cancel() {
     error.value = "Could not cancel the timer.";
   }
 }
-async function manual() {
-  try {
-    await api("/time-entries", {
-      method: "POST",
-      body: JSON.stringify({
-        pathId: pathId.value || null,
-        itemId: itemId.value || null,
-        startedAt: new Date(startedAt.value).toISOString(),
-        endedAt: new Date(endedAt.value).toISOString(),
-        description: description.value || null,
-      }),
-    });
-    startedAt.value = "";
-    endedAt.value = "";
-    await load();
-  } catch {
-    error.value = "Enter a valid start and end time.";
-  }
-}
 async function search() {
   if (!query.value.trim()) {
     results.value = [];
@@ -320,19 +295,6 @@ onUnmounted(() => {
         </button>
       </div>
     </article>
-    <article class="card">
-      <p class="eyebrow">MANUAL TIME</p>
-      <p class="muted">Add a completed session from your history.</p>
-      <input
-        v-model="startedAt"
-        type="datetime-local"
-        aria-label="Started at"
-      /><input
-        v-model="endedAt"
-        type="datetime-local"
-        aria-label="Ended at"
-      /><button class="primary" @click="manual">Save time</button>
-    </article>
   </section>
   <section class="hero">
     <p class="eyebrow">PERSONAL KNOWLEDGE SYSTEM</p>
@@ -345,15 +307,15 @@ onUnmounted(() => {
   <section class="stats">
     <article class="card">
       <p class="eyebrow">TODAY</p>
-      <h2>{{ format(stats?.todaySeconds || 0) }}</h2>
+      <h2>{{ formatTrackedDuration(stats?.todaySeconds || 0) }}</h2>
     </article>
     <article class="card">
       <p class="eyebrow">THIS WEEK</p>
-      <h2>{{ format(stats?.weekSeconds || 0) }}</h2>
+      <h2>{{ formatTrackedDuration(stats?.weekSeconds || 0) }}</h2>
     </article>
     <article class="card">
       <p class="eyebrow">THIS MONTH</p>
-      <h2>{{ format(stats?.monthSeconds || 0) }}</h2>
+      <h2>{{ formatTrackedDuration(stats?.monthSeconds || 0) }}</h2>
     </article>
     <article class="card">
       <p class="eyebrow">COMPLETED ITEMS</p>
@@ -365,7 +327,7 @@ onUnmounted(() => {
     <article class="card">
       <p class="eyebrow">TIME BY PATH THIS WEEK</p>
       <p v-for="(seconds, id) in stats?.weekByPath" :key="id">
-        {{ pathName(id) }} <strong>{{ format(seconds) }}</strong>
+        {{ pathName(id) }} <strong>{{ formatTrackedDuration(seconds) }}</strong>
       </p>
       <p v-if="!Object.keys(stats?.weekByPath || {}).length" class="muted">
         No path time yet.
@@ -374,7 +336,7 @@ onUnmounted(() => {
     <article class="card">
       <p class="eyebrow">TIME BY ITEM THIS WEEK</p>
       <p v-for="(seconds, id) in stats?.weekByItem" :key="id">
-        {{ itemName(id) }} <strong>{{ format(seconds) }}</strong>
+        {{ itemName(id) }} <strong>{{ formatTrackedDuration(seconds) }}</strong>
       </p>
       <p v-if="!Object.keys(stats?.weekByItem || {}).length" class="muted">
         No item time yet.
@@ -407,7 +369,7 @@ onUnmounted(() => {
       <span
         ><span class="session-path">{{ entryPathName(entry) }}</span> ·
         {{ shortDescription(entry) }}</span
-      ><span class="muted">{{ entry.durationSeconds || 0 }}s</span
+      ><span class="muted">{{ formatTrackedDuration(entry.durationSeconds || 0) }}</span
       ><button class="text-button" @click="editEntry(entry)">Edit</button>
     </div>
     <p v-if="!history.length" class="muted">No recorded sessions yet.</p>

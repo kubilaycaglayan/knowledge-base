@@ -382,7 +382,7 @@ describe("DashboardView timer flow", () => {
     );
     expect(wrapper.text()).toContain("Start a session");
     expect(wrapper.text()).toContain("Finished focus session");
-    expect(wrapper.text()).toContain("1800s");
+    expect(wrapper.text()).toContain("30 minutes");
   });
 
   it("shows weekly time breakdowns by path and item", async () => {

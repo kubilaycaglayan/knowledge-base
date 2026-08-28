@@ -11,6 +11,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 class OwnershipBehaviorTest {
   @Test
+  void trackedDurationIsFormattedForHumanReading() {
+    assertEquals("0 seconds", TimerService.formatTrackedDuration(0L));
+    assertEquals("1 second", TimerService.formatTrackedDuration(1L));
+    assertEquals("59 seconds", TimerService.formatTrackedDuration(59L));
+    assertEquals("1 minute", TimerService.formatTrackedDuration(60L));
+    assertEquals("23 minutes", TimerService.formatTrackedDuration(23 * 60L));
+    assertEquals("1h", TimerService.formatTrackedDuration(60 * 60L));
+    assertEquals("1h 23 minutes", TimerService.formatTrackedDuration(83 * 60L));
+    assertEquals("2h 1 minute", TimerService.formatTrackedDuration(121 * 60L + 59));
+    assertEquals("24h", TimerService.formatTrackedDuration(24 * 60 * 60L + 60));
+    assertEquals("25h", TimerService.formatTrackedDuration(25 * 60 * 60L + 23 * 60));
+  }
+
+  @Test
   void listingItemsLoadsPathAndTagRelationshipsInBulk() {
     ItemRepository items = mock(ItemRepository.class);
     PathRepository paths = mock(PathRepository.class);

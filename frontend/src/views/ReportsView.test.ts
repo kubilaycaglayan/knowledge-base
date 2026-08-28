@@ -40,7 +40,7 @@ describe("ReportsView", () => {
     expect(wrapper.find(".report-svg").exists()).toBe(true);
     expect(wrapper.find(".report-svg rect").exists()).toBe(true);
     expect(
-      wrapper.find(`[aria-label="${dayLabel}: 1h 0m tracked"]`).exists(),
+      wrapper.find(`[aria-label="${dayLabel}: 1h tracked"]`).exists(),
     ).toBe(true);
   });
 

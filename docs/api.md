@@ -8,7 +8,7 @@ Authenticated endpoints currently include:
 
 - `GET/POST /paths`, `GET/PUT/DELETE /paths/{id}`; delete archives rather than removing history.
 - Archived paths remain readable for history but cannot receive new item memberships or time entries; editing an item may retain an existing archived-path membership.
-- `GET /paths/{id}/summary` returns associated item IDs, their current progress, accumulated tracked seconds (including a running timer), and recent path activity; the web client supports filtering the associated items.
+- `GET /paths/{id}/summary` returns associated item IDs, their current progress, accumulated tracked seconds (including a running timer), and recent path activity; the web client supports filtering the associated items and merges completed timer start/stop events into one activity with its duration, description, and item.
 - `GET/POST /items`, `PUT /items/{id}`, and `POST/GET /items/{id}/progress`. Items include an optional `source` string for a link or origin note.
 - `GET/POST /notes`, `PUT /notes/{id}`, and `GET /activities`; notes accept exactly one optional `pathId`, `itemId`, or `activityId` target.
 - `GET /timers/current`, `POST /timers`, `PUT /timers/{id}`, `POST /timers/stop`, `POST /timers/cancel`, and `POST /time-entries`. `PUT /timers/{id}` edits the start time, path, item, and description of the owned running timer. Cancellation removes an active timer without recording time.

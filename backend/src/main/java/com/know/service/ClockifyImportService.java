@@ -137,7 +137,7 @@ public class ClockifyImportService {
   }
 
   public List<ImportBatchView> listBatches(UUID userId) {
-    return batches.findAllByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 1)).stream()
+    return batches.findAllByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 100)).stream()
         .map(ImportBatchView::of)
         .toList();
   }

@@ -136,6 +136,61 @@ describe("PathsView", () => {
     ).toHaveLength(2);
   });
 
+  it("merges a completed timer into one activity with its details", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          {
+            id: "path-1",
+            name: "Algorithms",
+            description: "Problem solving",
+            color: "#E8754E",
+            status: "ACTIVE",
+          },
+        ];
+      if (path === "/items")
+        return [{ id: "item-1", title: "Graph theory" }];
+      if (path === "/paths/path-1/summary")
+        return {
+          path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          itemIds: ["item-1"],
+          itemProgress: { "item-1": 40 },
+          trackedSeconds: 120,
+          recentActivity: [
+            {
+              id: "timer-stop",
+              type: "TIMER_STOPPED",
+              itemId: "item-1",
+              title: "Tracked 2000 seconds",
+              detail: "Read graph algorithms",
+              occurredAt: "2026-08-28T10:02:00Z",
+            },
+            {
+              id: "timer-start",
+              type: "TIMER_STARTED",
+              itemId: "item-1",
+              title: "Started a timer",
+              detail: "Read graph algorithms",
+              occurredAt: "2026-08-28T10:00:00Z",
+            },
+          ],
+        };
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+    await flushPromises();
+
+    const activityLines = wrapper.findAll(".path-summary > p.muted");
+    expect(activityLines).toHaveLength(2);
+    expect(activityLines[1].text()).toContain("Tracked 33 minutes");
+    expect(activityLines[1].text()).toContain("Read graph algorithms");
+    expect(activityLines[1].text()).toContain("Graph theory");
+    expect(wrapper.text()).not.toContain("Started a timer");
+  });
+
   it("submits a selected path color from the twelve-color picker", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { formatTrackedDuration } from "../lib/format";
 
 type Period = "WEEK" | "MONTH" | "YEAR";
 type Category = { id?: string; label: string; seconds: number };
@@ -25,11 +26,6 @@ const anchor = ref(new Date().toISOString().slice(0, 10));
 const report = ref<Report | null>(null);
 const error = ref("");
 const loading = ref(false);
-const format = (seconds: number) => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
-};
 const dateLabel = (value: string) =>
   new Date(`${value}T00:00:00Z`).toLocaleDateString(undefined, {
     month: "short",
@@ -143,7 +139,7 @@ onMounted(load);
         </article>
         <article class="card">
           <p class="eyebrow">TRACKED</p>
-          <h2>{{ format(report.totalSeconds) }}</h2>
+          <h2>{{ formatTrackedDuration(report.totalSeconds) }}</h2>
         </article>
         <article class="card">
           <p class="eyebrow">ACTIVE DAYS</p>
@@ -183,7 +179,7 @@ onMounted(load);
             rx="3"
           >
             <title>
-              {{ dateLabel(day.date) }}: {{ format(day.totalSeconds) }}
+              {{ dateLabel(day.date) }}: {{ formatTrackedDuration(day.totalSeconds) }}
             </title>
           </rect>
         </svg>
@@ -195,12 +191,12 @@ onMounted(load);
           >
             <div class="report-day-label">
               <strong>{{ dateLabel(day.date) }}</strong
-              ><span class="muted">{{ format(day.totalSeconds) }}</span>
+              ><span class="muted">{{ formatTrackedDuration(day.totalSeconds) }}</span>
             </div>
             <div
               class="report-bar"
               role="img"
-              :aria-label="`${dateLabel(day.date)}: ${format(day.totalSeconds)} tracked`"
+              :aria-label="`${dateLabel(day.date)}: ${formatTrackedDuration(day.totalSeconds)} tracked`"
             >
               <span :style="{ width: barWidth(day.totalSeconds) }"></span>
             </div>
@@ -209,7 +205,7 @@ onMounted(load);
                 v-for="category in day.paths"
                 :key="category.id || category.label"
                 class="pill"
-                >{{ category.label }} · {{ format(category.seconds) }}</span
+                >{{ category.label }} · {{ formatTrackedDuration(category.seconds) }}</span
               >
             </div>
             <p v-else class="muted report-empty-day">No tracked time</p>
@@ -226,7 +222,7 @@ onMounted(load);
             class="report-category"
           >
             <span>{{ category.label }}</span
-            ><strong>{{ format(category.seconds) }}</strong>
+            ><strong>{{ formatTrackedDuration(category.seconds) }}</strong>
           </div>
           <p v-if="!report.paths.length" class="muted">
             No path activity in this period.
@@ -241,7 +237,7 @@ onMounted(load);
             class="report-category"
           >
             <span>{{ category.label }}</span
-            ><strong>{{ format(category.seconds) }}</strong>
+            ><strong>{{ formatTrackedDuration(category.seconds) }}</strong>
           </div>
           <p v-if="!report.items.length" class="muted">
             No resource activity in this period.

@@ -57,6 +57,23 @@ public class TimerService {
     }
   }
 
+  static String formatTrackedDuration(Long durationSeconds) {
+    long seconds = Math.max(0, durationSeconds == null ? 0 : durationSeconds);
+    if (seconds < 60) return seconds + (seconds == 1 ? " second" : " seconds");
+
+    long minutes = seconds / 60;
+    if (minutes < 60) return minutes + (minutes == 1 ? " minute" : " minutes");
+
+    long hours = minutes / 60;
+    long remainingMinutes = minutes % 60;
+    if (hours >= 24) return hours + "h";
+    if (remainingMinutes == 0) return hours + "h";
+    return hours
+        + "h "
+        + remainingMinutes
+        + (remainingMinutes == 1 ? " minute" : " minutes");
+  }
+
   @Transactional
   public TimeView start(
       UUID userId, UUID pathId, UUID itemId, String description, TimeSource source) {
@@ -100,7 +117,7 @@ public class TimerService {
             e.getPathId(),
             e.getItemId(),
             ActivityType.TIMER_STOPPED,
-            "Tracked " + e.getDurationSeconds() + " seconds",
+            "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
             e.getDescription()));
     return TimeView.of(e);
   }
@@ -171,7 +188,7 @@ public class TimerService {
             pathId,
             itemId,
             ActivityType.TIME_TRACKED,
-            "Tracked " + e.getDurationSeconds() + " seconds",
+            "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
             description));
     return TimeView.of(e);
   }
