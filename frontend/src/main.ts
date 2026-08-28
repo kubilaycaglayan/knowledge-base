@@ -12,6 +12,7 @@ const router = createRouter({
     { path: "/paths", component: () => import("./views/PathsView.vue") },
     { path: "/items", component: () => import("./views/ItemsView.vue") },
     { path: "/timeline", component: () => import("./views/TimelineView.vue") },
+    { path: "/sessions", component: () => import("./views/SessionsView.vue") },
     { path: "/reports", component: () => import("./views/ReportsView.vue") },
     { path: "/imports", component: () => import("./views/ImportsView.vue") },
   ],

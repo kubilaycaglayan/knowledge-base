@@ -188,6 +188,24 @@ public class TimerService {
         .toList();
   }
 
+  public record HistoryPage(
+      List<TimeView> sessions, int page, int pageSize, long totalSessions, long totalPages) {}
+
+  public HistoryPage historyPage(UUID userId, int page, int pageSize) {
+    int safePage = Math.max(0, page);
+    int safePageSize = Math.min(50, Math.max(1, pageSize));
+    long total = entries.countByUserId(userId);
+    long totalPages = Math.max(1, (total + safePageSize - 1) / safePageSize);
+    List<TimeView> result =
+        entries
+            .findAllByUserIdOrderByStartedAtDesc(
+                userId, org.springframework.data.domain.PageRequest.of(safePage, safePageSize))
+            .stream()
+            .map(TimeView::of)
+            .toList();
+    return new HistoryPage(result, safePage, safePageSize, total, totalPages);
+  }
+
   @Transactional
   public TimeView manual(
       UUID userId,
@@ -222,6 +240,19 @@ public class TimerService {
       Instant startedAt,
       Instant endedAt,
       String description) {
+    return edit(userId, id, pathId, itemId, startedAt, endedAt, description, null);
+  }
+
+  @Transactional
+  public TimeView edit(
+      UUID userId,
+      UUID id,
+      UUID pathId,
+      UUID itemId,
+      Instant startedAt,
+      Instant endedAt,
+      String description,
+      TimeSource source) {
     if (startedAt == null || endedAt == null || endedAt.isBefore(startedAt))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range");
     validateTargets(userId, pathId, itemId);
@@ -233,7 +264,7 @@ public class TimerService {
     if (e.running())
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Running timers must be stopped before editing");
-    e.edit(pathId, itemId, startedAt, endedAt, description);
+    e.edit(pathId, itemId, startedAt, endedAt, description, source);
     entries.save(e);
     return TimeView.of(e);
   }

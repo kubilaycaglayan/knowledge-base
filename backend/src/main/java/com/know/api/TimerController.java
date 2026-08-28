@@ -35,7 +35,8 @@ public class TimerController {
       UUID itemId,
       @NotNull Instant startedAt,
       @NotNull Instant endedAt,
-      @Size(max = 500) String description) {}
+      @Size(max = 500) String description,
+      TimeSource source) {}
 
   private UUID user(Authentication a) {
     return UUID.fromString(a.getName());
@@ -84,7 +85,11 @@ public class TimerController {
   }
 
   @GetMapping("/time-entries")
-  public List<TimerService.TimeView> history(Authentication a) {
+  public Object history(
+      Authentication a,
+      @RequestParam(required = false) Integer page,
+      @RequestParam(defaultValue = "50") int size) {
+    if (page != null) return service.historyPage(user(a), page, size);
     return service.history(user(a));
   }
 
@@ -92,7 +97,7 @@ public class TimerController {
   public TimerService.TimeView edit(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody ManualRequest r) {
     return service.edit(
-        user(a), id, r.pathId(), r.itemId(), r.startedAt(), r.endedAt(), r.description());
+        user(a), id, r.pathId(), r.itemId(), r.startedAt(), r.endedAt(), r.description(), r.source());
   }
 
   @GetMapping("/statistics")

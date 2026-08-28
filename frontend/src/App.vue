@@ -16,6 +16,7 @@ function authenticated() {
       <a class="brand" href="/">know<span>.</span></a>
       <nav v-if="token">
         <RouterLink to="/">Overview</RouterLink
+          ><RouterLink to="/sessions">Sessions</RouterLink
         ><RouterLink to="/paths">Paths</RouterLink
         ><RouterLink to="/items">Items</RouterLink
         ><RouterLink to="/timeline">Timeline</RouterLink

@@ -31,6 +31,8 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
 
   List<TimeEntry> findAllByUserIdOrderByStartedAtDesc(UUID userId, Pageable page);
 
+  long countByUserId(UUID userId);
+
   List<TimeEntry> findAllByUserIdAndPathIdOrderByStartedAtDesc(UUID userId, UUID pathId);
 
   List<TimeEntry> findAllByUserIdAndItemIdInOrderByStartedAtDesc(

@@ -136,7 +136,13 @@ public class TimeEntry {
     this.description = description;
   }
 
-  public void edit(UUID pathId, UUID itemId, Instant start, Instant end, String description) {
+  public void edit(
+      UUID pathId,
+      UUID itemId,
+      Instant start,
+      Instant end,
+      String description,
+      TimeSource source) {
     if (running()) throw new IllegalStateException("Running entries cannot be edited");
     this.pathId = pathId;
     this.itemId = itemId;
@@ -144,5 +150,6 @@ public class TimeEntry {
     this.endedAt = end;
     this.durationSeconds = Math.max(0, Duration.between(start, end).toSeconds());
     this.description = description;
+    if (source != null) this.source = source;
   }
 }

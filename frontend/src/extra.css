@@ -239,6 +239,22 @@
 .history-box {
   margin-top: 18px;
 }
+.session-list { display: grid; gap: 14px; margin-top: 32px; max-height: 70vh; overflow-y: auto; padding: 2px 8px 2px 2px; }
+.session-card { padding: 24px; }
+.session-heading, .session-summary, .session-context { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.session-heading h2 { margin: 8px 0 0; font-size: 23px; }
+.session-summary { justify-content: flex-start; flex-wrap: wrap; color: #75827c; margin-top: 18px; }
+.session-summary span { background: #f4f5ef; border-radius: 20px; padding: 6px 10px; font-size: 13px; }
+.session-context { border-top: 1px solid #edf0ea; margin-top: 18px; padding-top: 14px; color: #75827c; font-size: 13px; flex-wrap: wrap; }
+.session-context span { flex: 1; min-width: 230px; }
+.session-edit { display: grid; gap: 14px; }
+.session-edit label { display: grid; gap: 6px; color: #497d6b; font-size: 13px; font-weight: 700; }
+.session-edit input, .session-edit select { border: 1px solid #dbe2da; border-radius: 9px; padding: 11px; font: inherit; background: #fff; }
+.session-pagination { display: flex; gap: 8px; flex-wrap: wrap; position: sticky; bottom: 12px; margin: 18px 0; padding: 10px; background: #f4f5efee; border: 1px solid #e3e7df; border-radius: 12px; }
+.page-number { min-width: 36px; padding: 8px 10px; border: 1px solid #dbe2da; border-radius: 8px; background: #fff; color: #497d6b; cursor: pointer; font: inherit; }
+.page-number[aria-current="page"] { background: #173d36; color: #fff; border-color: #173d36; font-weight: 700; }
+.session-edit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 650px) { .session-heading { align-items: flex-start; flex-direction: column; } .session-edit-grid { grid-template-columns: 1fr; } }
 .history-row {
   display: flex;
   gap: 14px;
