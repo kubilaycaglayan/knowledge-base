@@ -42,7 +42,7 @@ describe("PathsView", () => {
     });
   });
 
-  it("filters associated path items while preserving their progress", async () => {
+  it("shows associated path items with their progress", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
     await wrapper.get("button.text-button").trigger("click");
@@ -59,9 +59,9 @@ describe("PathsView", () => {
     expect(wrapper.text()).toContain(
       "2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z",
     );
-    await wrapper.get('input[aria-label="Filter path items"]').setValue("sort");
-
-    expect(wrapper.text()).not.toContain("Graph theory — 40%");
+    expect(wrapper.find(".activity-row time").text()).toContain("31/07/2026");
+    expect(wrapper.get(".activity-duration").text()).toBe("");
+    expect(wrapper.text()).toContain("Graph theory — 40%");
     expect(wrapper.text()).toContain("Sorting — 80%");
   });
 
@@ -183,11 +183,11 @@ describe("PathsView", () => {
     await wrapper.get("button.text-button").trigger("click");
     await flushPromises();
 
-    const activityLines = wrapper.findAll(".path-summary > p.muted");
-    expect(activityLines).toHaveLength(2);
-    expect(activityLines[1].text()).toContain("Tracked 33 minutes");
-    expect(activityLines[1].text()).toContain("Read graph algorithms");
-    expect(activityLines[1].text()).toContain("Graph theory");
+    const activityLine = wrapper.get(".activity-row");
+    expect(activityLine.text()).toContain("33 minutes");
+    expect(activityLine.text()).not.toContain("Tracked");
+    expect(activityLine.text()).toContain("Read graph algorithms");
+    expect(activityLine.text()).toContain("Graph theory");
     expect(wrapper.text()).not.toContain("Started a timer");
   });
 

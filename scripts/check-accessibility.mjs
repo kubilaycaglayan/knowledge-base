@@ -10,7 +10,6 @@ const required = [
   ['frontend/src/views/AuthView.vue', 'aria-label="Password"', 'web authentication password label'],
   ['frontend/src/views/ItemsView.vue', '<legend>Active paths</legend>', 'item path selector legend'],
   ['frontend/src/views/ItemsView.vue', 'aria-label="Item source"', 'item source label'],
-  ['frontend/src/views/PathsView.vue', 'aria-label="Filter path items"', 'path content filter label'],
   ['frontend/src/views/PathsView.vue', 'Choose path color', 'path color picker labels'],
   ['frontend/src/views/DashboardView.vue', 'aria-label="Search knowledge"', 'dashboard search label'],
   ['frontend/src/views/DashboardView.vue', 'aria-label="Timer start"', 'active timer start editor label'],

@@ -247,43 +247,43 @@ onUnmounted(() => {
 <template>
   <section class="grid session-grid">
     <article class="card focus">
-      <p class="eyebrow">FOCUS TODAY*</p>
-      <strong>{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
+      <div class="focus-header">
+        <div class="focus-timer">
+          <p class="eyebrow">FOCUS TODAY</p>
+          <strong>{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
+        </div>
+        <label class="timer-path-field">
+          <span>PATH</span>
+          <select v-model="pathId" aria-label="Timer path" @focus="load" @change="configureTimer">
+            <option value="">Choose a path</option>
+            <option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option>
+          </select>
+        </label>
+      </div>
       <p>{{ timer?.description || "Choose a path or item to begin." }}</p>
       <div class="timer-fields">
-        <select
-          v-model="pathId"
-          aria-label="Timer path"
-          @focus="load"
-          @change="configureTimer"
-        >
-          <option value="">Choose a path</option>
-          <option v-for="path in activePaths" :key="path.id" :value="path.id">
-            {{ path.name }}
-          </option></select
-        ><select
-          v-model="itemId"
-          aria-label="Timer item"
-          @focus="load"
-          @change="configureTimer"
-        >
-          <option value="">Choose an item</option>
-          <option v-for="item in timerItems" :key="item.id" :value="item.id">
-            {{ item.title }}
-          </option>
-        </select>
-        <div class="timer-item-create">
-          <input
-            v-model="newTimerItemTitle"
-            placeholder="New item for this session"
-            aria-label="New session item title"
-          /><button
-            class="text-button"
-            :disabled="!newTimerItemTitle.trim()"
-            @click="createTimerItem"
-          >
-            Create item
-          </button>
+        <div class="timer-item-panel">
+          <div class="timer-item-heading">
+            <span>ITEM</span>
+            <small>{{ timerItems.length }} related</small>
+          </div>
+          <select v-model="itemId" aria-label="Timer item" @focus="load" @change="configureTimer">
+            <option value="">Choose an item</option>
+            <option v-for="item in timerItems" :key="item.id" :value="item.id">{{ item.title }}</option>
+          </select>
+          <div class="timer-item-create">
+            <input
+              v-model="newTimerItemTitle"
+              placeholder="New item for this session"
+              aria-label="New session item title"
+            /><button
+              class="text-button"
+              :disabled="!newTimerItemTitle.trim()"
+              @click="createTimerItem"
+            >
+              Create item
+            </button>
+          </div>
         </div>
         <textarea
           rows="2"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
-import { formatDateTime } from "../lib/date";
+import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 
 type Path = {
@@ -49,16 +49,23 @@ const paths = ref<Path[]>([]),
   selectedColor = ref(colors[0]),
   noteTitle = ref(""),
   noteContent = ref(""),
-  itemFilters = ref<Record<string, string>>({}),
   error = ref("");
 const editingId = ref(""),
   editName = ref(""),
   editDescription = ref(""),
   editColor = ref(colors[0]);
-const activityTitle = (title: string) => {
+const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
-  return match ? `Tracked ${formatTrackedDuration(Number(match[1]))}` : title;
+  return match ? formatTrackedDuration(Number(match[1])) : "";
 };
+const activityDescription = (event: Activity) =>
+  [
+    /^Tracked \d+ seconds$/.test(event.title) ? undefined : event.title,
+    event.detail,
+    event.itemId && itemName(event.itemId),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 const itemName = (id: string) =>
   items.value.find((item) => item.id === id)?.title || id;
 function recentActivity(pathId: string) {
@@ -76,16 +83,6 @@ function recentActivity(pathId: string) {
     );
   });
 }
-const filteredItemIds = (pathId: string) => {
-  const summary = summaries.value[pathId];
-  return (
-    summary?.itemIds.filter((id) =>
-      itemName(id)
-        .toLowerCase()
-        .includes((itemFilters.value[pathId] || "").trim().toLowerCase()),
-    ) || []
-  );
-};
 async function load() {
   try {
     [paths.value, items.value] = await Promise.all([
@@ -120,7 +117,6 @@ async function loadSummary(path: Path) {
     summaries.value[path.id] = await api<Summary>(
       `/paths/${path.id}/summary`,
     );
-    itemFilters.value[path.id] = "";
   } catch {
     error.value = "Could not load path history.";
   }
@@ -128,7 +124,6 @@ async function loadSummary(path: Path) {
 async function inspect(path: Path) {
   if (summaries.value[path.id]) {
     delete summaries.value[path.id];
-    delete itemFilters.value[path.id];
     return;
   }
   await loadSummary(path);
@@ -171,7 +166,6 @@ async function archive(path: Path) {
   try {
     await api(`/paths/${path.id}`, { method: "DELETE" });
     delete summaries.value[path.id];
-    delete itemFilters.value[path.id];
     await load();
   } catch {
     error.value = "Could not archive path.";
@@ -296,31 +290,25 @@ onMounted(load);
               {{ summaries[path.id].itemIds.length }} items
             </p>
             <p><strong>Associated items and progress</strong></p>
-            <input
-              v-model="itemFilters[path.id]"
-              placeholder="Filter items in this path"
-              aria-label="Filter path items"
-            />
             <ul>
-              <li v-for="id in filteredItemIds(path.id)" :key="id">
+              <li v-for="id in summaries[path.id].itemIds" :key="id">
                 {{ itemName(id) }} —
                 {{ summaries[path.id].itemProgress[id] ?? 0 }}%
               </li>
             </ul>
-            <p v-if="!filteredItemIds(path.id).length" class="muted">
-              No items match this filter.
+            <p v-if="!summaries[path.id].itemIds.length" class="muted">
+              No items are associated with this path.
             </p>
             <p><strong>Recent activity</strong></p>
-            <p
+            <div
               v-for="event in recentActivity(path.id)"
               :key="event.id"
-              class="muted"
+              class="activity-row muted"
             >
-              {{ activityTitle(event.title) }} ·
-              {{ formatDateTime(event.occurredAt)
-              }}<span v-if="event.detail"> · {{ event.detail }}</span
-              ><span v-if="event.itemId"> · {{ itemName(event.itemId) }}</span>
-            </p>
+              <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
+              <span class="activity-duration">{{ activityDuration(event.title) }}</span>
+              <span class="activity-description">{{ activityDescription(event) }}</span>
+            </div>
             <div class="note-editor">
               <strong>Path note</strong
               ><input
