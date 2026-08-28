@@ -250,7 +250,7 @@ class OwnershipBehaviorTest {
   }
 
   @Test
-  void timerRejectsAnItemThatIsNotAttachedToTheSelectedPath() {
+  void timerAcceptsAnOwnedItemThatIsNotAttachedToTheSelectedPath() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
     ItemRepository items = mock(ItemRepository.class);
@@ -262,14 +262,12 @@ class OwnershipBehaviorTest {
         .thenReturn(Optional.of(new Path(user, "Algorithms", null)));
     when(items.findByIdAndUserId(itemId, user))
         .thenReturn(Optional.of(new Item(user, "Writing", ItemType.CUSTOM, null)));
-    when(pathItems.existsByIdPathIdAndIdItemId(pathId, itemId)).thenReturn(false);
+    when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
     TimerService service =
         new TimerService(
             entries, paths, items, pathItems, mock(ProgressEntryRepository.class), activities);
-    assertThrows(
-        ResponseStatusException.class,
-        () -> service.start(user, pathId, itemId, "wrong path", TimeSource.WEB));
-    verify(entries, never()).save(any());
+    assertDoesNotThrow(() -> service.start(user, pathId, itemId, "cross-path focus", TimeSource.WEB));
+    verify(entries).save(any(TimeEntry.class));
   }
 
   @Test

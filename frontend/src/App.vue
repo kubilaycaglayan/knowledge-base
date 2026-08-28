@@ -13,7 +13,7 @@ function authenticated() {
 <template>
   <div class="shell">
     <header>
-      <a class="brand" href="/">know<span>.</span></a>
+      <a class="brand" href="/">try<span>.</span>knowledge<span>.</span>base</a>
       <nav v-if="token">
         <RouterLink to="/">Overview</RouterLink
           ><RouterLink to="/sessions">Sessions</RouterLink

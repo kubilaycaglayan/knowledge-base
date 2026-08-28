@@ -308,12 +308,14 @@ activity_id="$(api "${header[@]}" "http://localhost:8080/api/v1/activities?itemI
 api "${header[@]}" "${content_json[@]}" \
   --post-data="{\"activityId\":\"$activity_id\",\"title\":\"Activity reflection\",\"content\":\"The smoke workflow persisted this reflection.\"}" \
   http://localhost:8080/api/v1/notes >/dev/null
-if api "${header[@]}" "${content_json[@]}" \
-  --post-data="{\"pathId\":\"$other_path_id\",\"itemId\":\"$item_id\",\"description\":\"Mismatched smoke timer\"}" \
-  http://localhost:8080/api/v1/timers >/dev/null; then
-  echo "unrelated path/item timer was allowed" >&2
-  exit 1
-fi
+free_item="$(api "${header[@]}" "${content_json[@]}" \
+  --post-data='{"title":"Unattached smoke item"}' \
+  http://localhost:8080/api/v1/items)"
+free_item_id="$(printf '%s' "$free_item" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+api "${header[@]}" "${content_json[@]}" \
+  --post-data="{\"pathId\":\"$other_path_id\",\"itemId\":\"$free_item_id\",\"description\":\"Independent smoke timer\"}" \
+  http://localhost:8080/api/v1/timers | grep -q 'Independent smoke timer'
+api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/stop >/dev/null
 running_timer="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"Smoke session\"}" http://localhost:8080/api/v1/timers)"
 timer_id="$(printf '%s' "$running_timer" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 timer_start="$(date -u -d '30 seconds ago' +%Y-%m-%dT%H:%M:%SZ)"

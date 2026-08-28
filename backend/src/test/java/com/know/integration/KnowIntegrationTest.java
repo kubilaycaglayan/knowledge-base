@@ -548,7 +548,7 @@ class KnowIntegrationTest {
   }
 
   @Test
-  void timerRejectsItemNotAttachedToPath() {
+  void timerAcceptsOwnedItemNotAttachedToPath() {
     String token = freshToken();
     ResponseEntity<JsonNode> path =
         post("/api/v1/paths", token, "{\"name\":\"Path A\",\"description\":null}");
@@ -557,7 +557,7 @@ class KnowIntegrationTest {
     ResponseEntity<JsonNode> item = post("/api/v1/items", token, "{\"title\":\"Unattached Item\"}");
     String itemId = item.getBody().get("id").asText();
 
-    // Item is not in Path A, so it should be rejected
+    // Item organization and timer targeting are independent.
     ResponseEntity<JsonNode> timerStart =
         post(
             "/api/v1/timers",
@@ -568,7 +568,9 @@ class KnowIntegrationTest {
                 + itemId
                 + "\","
                 + "\"description\":\"invalid combo\",\"source\":\"WEB\"}");
-    assertEquals(HttpStatus.BAD_REQUEST, timerStart.getStatusCode());
+    assertEquals(HttpStatus.CREATED, timerStart.getStatusCode());
+    String timerId = timerStart.getBody().get("id").asText();
+    post("/api/v1/timers/" + timerId + "/stop", token, "{}");
   }
 
   @Test

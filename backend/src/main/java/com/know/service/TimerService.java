@@ -481,9 +481,8 @@ public class TimerService {
               () ->
                   new ResponseStatusException(
                       HttpStatus.BAD_REQUEST, "Item does not belong to user"));
-      if (pathId != null && !pathItems.existsByIdPathIdAndIdItemId(pathId, itemId))
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST, "Item is not attached to the selected path");
+      // Paths and items are independent timer targets. An item may be used with
+      // any owned path without first being organized into that path.
     }
   }
 }

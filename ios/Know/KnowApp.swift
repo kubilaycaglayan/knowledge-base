@@ -110,9 +110,10 @@ struct AuthResponse: Codable {
     let displayName: String
 }
 
-func itemsForTimerPath(_ path: UUID?, from items: [Item]) -> [Item] {
-    guard let path else { return items }
-    return items.filter { $0.pathIds.contains(path) }
+func itemsForTimer(_ path: UUID?, from items: [Item]) -> [Item] {
+    // A timer can combine any owned item with any active path. Organization
+    // memberships remain useful for browsing, but are not a timer constraint.
+    items
 }
 
 func isUITesting(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
@@ -545,7 +546,7 @@ struct DashboardView: View {
     @State private var selectedItem = ""
     @State private var timerStartedAt = Date()
     private var timerItems: [Item] {
-        itemsForTimerPath(UUID(uuidString: selectedPath), from: model.items)
+        itemsForTimer(UUID(uuidString: selectedPath), from: model.items)
     }
     private func syncTimerSelection() {
         guard let current = model.timer else { return }

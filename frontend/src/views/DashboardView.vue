@@ -82,24 +82,13 @@ const shortDescription = (entry: Entry) => {
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
 );
-const timerItems = computed(() =>
-  pathId.value
-    ? items.value.filter((item) => item.pathIds.includes(pathId.value))
-    : items.value,
-);
+const timerItems = computed(() => items.value);
 const localDateTime = (iso: string) => {
   const date = new Date(iso);
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 const isoDateTime = (value: string) => new Date(value).toISOString();
-watch(pathId, (value) => {
-  itemIds.value = itemIds.value.filter((id) =>
-    !value || timerItems.value.some((item) => item.id === id),
-  );
-  if (value && !timerItems.value.some((item) => item.id === itemId.value))
-    itemId.value = "";
-});
 watch(itemIds, (value) => {
   itemId.value = value[0] || "";
 });
@@ -287,7 +276,7 @@ onUnmounted(() => {
         <div class="timer-item-panel">
           <div class="timer-item-heading">
             <span>ITEM</span>
-            <small>{{ timerItems.length }} related</small>
+            <small>{{ timerItems.length }} available</small>
           </div>
           <v-select
             v-model="itemIds"

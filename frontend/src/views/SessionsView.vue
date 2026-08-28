@@ -58,10 +58,7 @@ const sessionItemSummary = (session: Session) =>
       return `${item.title} · ${item.status}${item.progress !== undefined ? ` · ${item.progress}%` : ""}`;
     })
     .join(", ");
-const availableItems = computed(() => {
-  if (!draft.value?.pathId) return items.value;
-  return items.value.filter((item) => item.pathIds?.includes(draft.value!.pathId));
-});
+const availableItems = computed(() => items.value);
 const localDateTime = (iso?: string) => {
   if (!iso) return "";
   const date = new Date(iso);

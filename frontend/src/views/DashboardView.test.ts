@@ -71,7 +71,7 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.find("section").text()).toContain("FOCUS TODAY");
   });
 
-  it("only offers items attached to the selected timer path", async () => {
+  it("offers every owned item for the selected timer path", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [
@@ -105,7 +105,7 @@ describe("DashboardView timer flow", () => {
     const timerItemSelect = wrapper.findComponent({ name: "VSelect" });
     const selectItems = timerItemSelect.props("items") as { title: string }[];
     expect(selectItems.map((item) => item.title)).toContain("Graphs");
-    expect(selectItems.map((item) => item.title)).not.toContain("Essays");
+    expect(selectItems.map((item) => item.title)).toContain("Essays");
   });
 
   it("creates a new item from the session flow and selects it", async () => {
