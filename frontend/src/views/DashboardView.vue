@@ -308,7 +308,9 @@ onUnmounted(() => {
             @update:model-value="configureTimer"
           >
             <template #chip="{ item, props }">
-              <v-chip v-bind="props" :text="item.title" closable size="small" />
+              <v-chip v-bind="props" :text="item.title" closable size="small">
+                <template #close>×</template>
+              </v-chip>
             </template>
           </v-select>
           <div class="timer-item-create">

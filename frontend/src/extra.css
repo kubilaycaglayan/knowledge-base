@@ -141,6 +141,39 @@
 .timer-item-select .v-field__input,
 .timer-item-select .v-label,
 .timer-item-select .v-icon { color: #fff; }
+.timer-item-select .v-field__input > input {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  outline: none;
+  padding: 0;
+  box-shadow: none;
+}
+.timer-item-select .v-field--focused .v-field__outline {
+  --v-field-border-width: 1px;
+  --v-field-border-opacity: 1;
+  color: #4a7165;
+}
+.timer-item-select .v-field__append-inner > .v-icon,
+.timer-item-select .v-field__clearable > .v-icon {
+  color: #fff;
+  opacity: 1;
+}
+.timer-item-select .v-chip {
+  background: #497d6b;
+  color: #fff;
+}
+.timer-item-select .v-chip__close,
+.timer-item-select .v-chip__close .v-icon {
+  color: #fff;
+  opacity: 1;
+}
+.timer-item-select .v-chip__close {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
 .timer-item-panel input {
   border: 1px solid #4a7165;
   border-radius: 8px;
