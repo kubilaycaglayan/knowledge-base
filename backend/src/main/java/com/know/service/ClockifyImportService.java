@@ -1,14 +1,31 @@
 package com.know.service;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.know.domain.*;
 import java.time.Instant;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.know.domain.Activity;
+import com.know.domain.ActivityRepository;
+import com.know.domain.ActivityType;
+import com.know.domain.ImportBatch;
+import com.know.domain.ImportBatchRepository;
+import com.know.domain.Path;
+import com.know.domain.PathRepository;
+import com.know.domain.TimeEntry;
+import com.know.domain.TimeEntryRepository;
+import com.know.domain.TimeSource;
 
 @Service
 public class ClockifyImportService {

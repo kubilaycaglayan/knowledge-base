@@ -16,7 +16,7 @@ Know is a production-shaped monorepo for a personal knowledge and activity track
 Run the relevant checks before handing off changes:
 
 ```bash
-docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
+docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/know-gradle-project-cache-${USER:-agent}-${PPID}"
 (cd frontend && npm ci && npm run build)
 node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
@@ -37,4 +37,5 @@ On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS a
 - Scope every read and write by the authenticated user and preserve ownership checks for referenced paths, items, notes, and activities.
 - Keep timer state server-owned. Preserve the one-running-timer invariant and do not calculate historical duration only in a client.
 - Use `apply_patch` for source edits and avoid destructive repository commands.
+- When running Gradle outside the Dockerized development app, use a unique per-agent `--project-cache-dir` (for example, `/tmp/know-gradle-project-cache-${USER:-agent}-${PPID}`) so it cannot contend with the human development container; this isolates Gradle metadata only, not source or build outputs.
 - Update API documentation, tests, smoke coverage, and the roadmap when a product behavior changes.
