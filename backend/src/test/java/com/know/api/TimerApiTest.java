@@ -95,7 +95,13 @@ class TimerApiTest {
     UUID user = UUID.randomUUID(), timer = UUID.randomUUID(), path = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
     when(service.configureRunning(
-            eq(user), eq(timer), eq(path), isNull(), any(Instant.class), eq("Chapter 5")))
+            eq(user),
+            eq(timer),
+            eq(path),
+            isNull(),
+            any(Instant.class),
+            isNull(),
+            eq("Chapter 5")))
         .thenReturn(
             new TimerService.TimeView(
                 timer,
@@ -124,6 +130,7 @@ class TimerApiTest {
             eq(path),
             isNull(),
             eq(Instant.parse("2026-08-25T10:00:00Z")),
+            isNull(),
             eq("Chapter 5"));
   }
 }

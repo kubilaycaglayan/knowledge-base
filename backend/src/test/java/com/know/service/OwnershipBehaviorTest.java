@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.know.domain.*;
+import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
@@ -256,11 +257,46 @@ class OwnershipBehaviorTest {
         new TimerService(
                 entries, paths, items, pathItems, mock(ProgressEntryRepository.class), activities)
             .configureRunning(
-                user, timerId, pathId, null, java.time.Instant.now().minusSeconds(60), "new");
+                user,
+                timerId,
+                pathId,
+                null,
+                java.time.Instant.now().minusSeconds(60),
+                null,
+                "new");
     assertEquals(pathId, result.pathId());
     assertEquals("new", result.description());
     assertTrue(result.running());
     verify(entries).save(running);
+  }
+
+  @Test
+  void runningTimerCanBeEndedAtAnEditedTime() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    PathRepository paths = mock(PathRepository.class);
+    ItemRepository items = mock(ItemRepository.class);
+    ActivityRepository activities = mock(ActivityRepository.class);
+    UUID user = UUID.randomUUID(), timerId = UUID.randomUUID();
+    Instant start = Instant.now().minusSeconds(120);
+    Instant end = Instant.now().minusSeconds(60);
+    TimeEntry running = new TimeEntry(user, null, null, start, "focus", TimeSource.WEB);
+    when(entries.findByIdAndUserId(timerId, user)).thenReturn(Optional.of(running));
+    when(entries.save(running)).thenReturn(running);
+
+    TimerService.TimeView result =
+        new TimerService(
+                entries,
+                paths,
+                items,
+                mock(PathItemRepository.class),
+                mock(ProgressEntryRepository.class),
+                activities)
+            .configureRunning(user, timerId, null, null, start, end, "focus");
+
+    assertFalse(result.running());
+    assertEquals(end, result.endedAt());
+    assertEquals(60, result.durationSeconds());
+    verify(activities).save(any(Activity.class));
   }
 
   @Test

@@ -10,6 +10,7 @@ type Timer = {
   pathId?: string;
   itemId?: string;
   startedAt: string;
+  endedAt?: string;
   description?: string;
   running?: boolean;
 };
@@ -154,8 +155,7 @@ async function toggle() {
 async function configureTimer() {
   if (!timer.value || !timerStartedAt.value) return;
   try {
-    applyTimer(
-      await api<Timer>(`/timers/${timer.value.id}`, {
+    const updated = await api<Timer>(`/timers/${timer.value.id}`, {
         method: "PUT",
         body: JSON.stringify({
           pathId: pathId.value || null,
@@ -163,8 +163,8 @@ async function configureTimer() {
           startedAt: isoDateTime(timerStartedAt.value),
           description: description.value || null,
         }),
-      }),
-    );
+      });
+    applyTimer(updated.running === false ? null : updated);
     await load();
   } catch {
     error.value = "Could not save the active timer settings.";

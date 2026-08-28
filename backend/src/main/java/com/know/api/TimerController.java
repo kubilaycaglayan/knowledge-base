@@ -24,7 +24,11 @@ public class TimerController {
       UUID pathId, UUID itemId, @Size(max = 500) String description, TimeSource source) {}
 
   record RunningUpdateRequest(
-      UUID pathId, UUID itemId, @NotNull Instant startedAt, @Size(max = 500) String description) {}
+      UUID pathId,
+      UUID itemId,
+      @NotNull Instant startedAt,
+      Instant endedAt,
+      @Size(max = 500) String description) {}
 
   record ManualRequest(
       UUID pathId,
@@ -53,7 +57,7 @@ public class TimerController {
   public TimerService.TimeView configure(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody RunningUpdateRequest r) {
     return service.configureRunning(
-        user(a), id, r.pathId(), r.itemId(), r.startedAt(), r.description());
+        user(a), id, r.pathId(), r.itemId(), r.startedAt(), r.endedAt(), r.description());
   }
 
   @PostMapping({"/timers/stop", "/timers/{id}/stop"})

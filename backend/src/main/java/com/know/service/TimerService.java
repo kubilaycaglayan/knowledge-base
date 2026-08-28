@@ -138,10 +138,19 @@ public class TimerService {
 
   @Transactional
   public TimeView configureRunning(
-      UUID userId, UUID id, UUID pathId, UUID itemId, Instant startedAt, String description) {
-    if (startedAt == null || startedAt.isAfter(Instant.now()))
+      UUID userId,
+      UUID id,
+      UUID pathId,
+      UUID itemId,
+      Instant startedAt,
+      Instant endedAt,
+      String description) {
+    Instant now = Instant.now();
+    if (startedAt == null || startedAt.isAfter(now))
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Timer start cannot be in the future");
+    if (endedAt != null && (endedAt.isBefore(startedAt) || endedAt.isAfter(now)))
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid timer end time");
     validateTargets(userId, pathId, itemId);
     TimeEntry e =
         entries
@@ -152,6 +161,17 @@ public class TimerService {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Only a running timer can be configured");
     e.reconfigureRunning(pathId, itemId, startedAt, description);
+    if (endedAt != null) {
+      e.stop(endedAt);
+      activities.save(
+          new Activity(
+              userId,
+              e.getPathId(),
+              e.getItemId(),
+              ActivityType.TIMER_STOPPED,
+              "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
+              e.getDescription()));
+    }
     return TimeView.of(entries.save(e));
   }
 
