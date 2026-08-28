@@ -1,8 +1,12 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import DashboardView from "./DashboardView.vue";
 import { api } from "../lib/api";
+import vuetify from "../plugins/vuetify";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
+
+const mountDashboard = () =>
+  mount(DashboardView, { global: { plugins: [vuetify] } });
 
 describe("DashboardView timer flow", () => {
   beforeEach(() => {
@@ -37,7 +41,7 @@ describe("DashboardView timer flow", () => {
   });
 
   it("starts a server timer and can cancel the active session", async () => {
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
 
     expect(wrapper.text()).toContain("Start a session");
@@ -60,7 +64,7 @@ describe("DashboardView timer flow", () => {
   });
 
   it("keeps session start controls at the top of the dashboard", async () => {
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
 
     expect(wrapper.find("section").classes()).toContain("session-grid");
@@ -94,16 +98,14 @@ describe("DashboardView timer flow", () => {
       if (path === "/time-entries") return [];
       return undefined;
     });
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
 
     await wrapper.get('select[aria-label="Timer path"]').setValue("path-a");
-    const options = wrapper
-      .get('select[aria-label="Timer item"]')
-      .findAll("option")
-      .map((option) => option.text());
-    expect(options).toContain("Graphs");
-    expect(options).not.toContain("Essays");
+    const timerItemSelect = wrapper.findComponent({ name: "VSelect" });
+    const selectItems = timerItemSelect.props("items") as { title: string }[];
+    expect(selectItems.map((item) => item.title)).toContain("Graphs");
+    expect(selectItems.map((item) => item.title)).not.toContain("Essays");
   });
 
   it("creates a new item from the session flow and selects it", async () => {
@@ -140,7 +142,7 @@ describe("DashboardView timer flow", () => {
         return undefined;
       },
     );
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
 
     await wrapper.get('select[aria-label="Timer path"]').setValue("path-a");
@@ -166,11 +168,8 @@ describe("DashboardView timer flow", () => {
       }),
     );
     expect(
-      (
-        wrapper.get('select[aria-label="Timer item"]')
-          .element as HTMLSelectElement
-      ).value,
-    ).toBe("item-new");
+      (wrapper.findComponent({ name: "VSelect" }).props("modelValue") as string[]),
+    ).toEqual(["item-new"]);
   });
 
   it("keeps active timer configuration controls visible and editable", async () => {
@@ -213,7 +212,7 @@ describe("DashboardView timer flow", () => {
         return undefined;
       },
     );
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
     expect(wrapper.find('input[aria-label="Timer start"]').exists()).toBe(true);
     expect(wrapper.find('input[aria-label="Timer end"]').exists()).toBe(false);
@@ -278,7 +277,7 @@ describe("DashboardView timer flow", () => {
       },
     );
 
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
     expect(wrapper.find(".focus strong").text()).toBe("01:00:00");
 
@@ -320,7 +319,7 @@ describe("DashboardView timer flow", () => {
         ];
       return undefined;
     });
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
     expect(wrapper.text()).toContain("Algorithms");
     expect(wrapper.text()).toContain("A very long session description");
@@ -385,7 +384,7 @@ describe("DashboardView timer flow", () => {
         return undefined;
       },
     );
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
 
     expect(wrapper.text()).toContain("Stop session");
@@ -425,7 +424,7 @@ describe("DashboardView timer flow", () => {
       if (path === "/time-entries") return [];
       return undefined;
     });
-    const wrapper = mount(DashboardView);
+    const wrapper = mountDashboard();
     await flushPromises();
     expect(wrapper.text()).toContain("TIME BY PATH THIS WEEK");
     expect(wrapper.text()).toContain("Algorithms");

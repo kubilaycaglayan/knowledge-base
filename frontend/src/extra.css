@@ -107,8 +107,7 @@
   font-weight: 800;
   letter-spacing: 1.7px;
 }
-.timer-path-field select,
-.timer-item-panel select {
+.timer-path-field select {
   padding: 10px;
   border-radius: 8px;
   border: 1px solid #4a7165;
@@ -133,9 +132,15 @@
   color: #9db8ad;
   font-size: 12px;
 }
-.timer-item-panel select {
-  width: 100%;
+.timer-item-select { width: 100%; }
+.timer-item-select .v-field {
+  --v-field-border-opacity: 1;
+  color: #fff;
+  background: #204b41;
 }
+.timer-item-select .v-field__input,
+.timer-item-select .v-label,
+.timer-item-select .v-icon { color: #fff; }
 .timer-item-panel input {
   border: 1px solid #4a7165;
   border-radius: 8px;

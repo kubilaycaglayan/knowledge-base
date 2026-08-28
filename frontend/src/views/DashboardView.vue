@@ -271,7 +271,7 @@ onUnmounted(() => {
     <article class="card focus">
       <div class="focus-header">
         <div class="focus-timer">
-          <p class="eyebrow">FOCUS TODAY</p>
+          <p class="eyebrow">FOCUS TODAYs</p>
           <strong>{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
         </div>
         <label class="timer-path-field">
@@ -289,10 +289,28 @@ onUnmounted(() => {
             <span>ITEM</span>
             <small>{{ timerItems.length }} related</small>
           </div>
-          <select v-model="itemIds" aria-label="Timer item" multiple @focus="load" @change="configureTimer">
-            <option value="">Choose an item</option>
-            <option v-for="item in timerItems" :key="item.id" :value="item.id">{{ item.title }}</option>
-          </select>
+          <v-select
+            v-model="itemIds"
+            :items="timerItems"
+            item-title="title"
+            item-value="id"
+            label="Choose an item"
+            aria-label="Timer item"
+            autocomplete="off"
+            class="timer-item-select"
+            multiple
+            chips
+            closable-chips
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            @focus="load"
+            @update:model-value="configureTimer"
+          >
+            <template #chip="{ item, props }">
+              <v-chip v-bind="props" :text="item.title" closable size="small" />
+            </template>
+          </v-select>
           <div class="timer-item-create">
             <input
               v-model="newTimerItemTitle"

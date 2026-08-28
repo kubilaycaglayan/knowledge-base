@@ -10,5 +10,10 @@ export default defineConfig({
     strictPort: true,
     proxy: { "/api": { target: "http://localhost:8080", changeOrigin: true } },
   },
-  test: { environment: "jsdom", globals: true },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    css: true,
+    server: { deps: { inline: ["vuetify"] } },
+  },
 });
