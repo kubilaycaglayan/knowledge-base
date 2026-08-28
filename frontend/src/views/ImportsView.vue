@@ -71,7 +71,7 @@ onMounted(load);
 
 <template>
   <section>
-    <p class="eyebrow">CLOCKIFY IMPORTS</p>
+    <p class="eyebrow">CLOCKIFY IMPORTS=</p>
     <h1>Imports</h1>
     <p class="lede">
       Import completed Clockify sessions and undo a whole imported batch when

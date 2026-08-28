@@ -1,4 +1,20 @@
 services:
+  api:
+    build: !reset null
+    image: gradle:8.13-jdk21
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - |
+        ./gradlew classes --no-daemon
+        ./gradlew classes --continuous --no-daemon &
+        compiler_pid=$$!
+        trap 'kill "$$compiler_pid" 2>/dev/null || true' EXIT
+        exec ./gradlew bootRun --no-daemon
+    volumes:
+      - ./backend:/app
+      - gradle-cache:/home/gradle/.gradle
   web:
     build: !reset null
     image: node:22-alpine
@@ -15,4 +31,5 @@ services:
       WEB_UPSTREAM: web:5177
 
 volumes:
+  gradle-cache: {}
   frontend-node-modules: {}

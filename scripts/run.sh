@@ -8,7 +8,7 @@ export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-dev-postgres-password}"
 
 cd "$repo_root"
 
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 
 cat <<'EOF'
@@ -17,4 +17,6 @@ Know is available at:
   Web: http://localhost:3000 (Vite hot reload)
   API: http://localhost:3000/api/v1
   Health: http://localhost:8080/actuator/health
+
+Backend changes are picked up automatically by Spring DevTools.
 EOF
