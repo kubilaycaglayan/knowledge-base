@@ -172,6 +172,61 @@ describe("DashboardView timer flow", () => {
     ).toEqual(["item-new"]);
   });
 
+  it("creates and selects a path from the path dropdown", async () => {
+    const prompt = vi.spyOn(window, "prompt").mockReturnValue("Research");
+    let created = false;
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (path === "/paths" && options.method === "POST") {
+          created = true;
+          return { id: "path-new", name: "Research", status: "ACTIVE" };
+        }
+        if (path === "/paths") {
+          return created
+            ? [{ id: "path-new", name: "Research", status: "ACTIVE" }]
+            : [];
+        }
+        if (path === "/items") return [];
+        if (path === "/timers/current") return null;
+        if (path === "/statistics")
+          return {
+            todaySeconds: 0,
+            weekSeconds: 0,
+            monthSeconds: 0,
+            todayByPath: {},
+            todayByItem: {},
+            completedItems: 0,
+            activeItems: 0,
+            recentProgressChanges: [],
+          };
+        if (path === "/time-entries") return [];
+        return undefined;
+      },
+    );
+    const wrapper = mountDashboard();
+    await flushPromises();
+
+    const pathSelect = wrapper.get('select[aria-label="Timer path"]');
+    expect(pathSelect.text()).toContain("＋ Add a new path…");
+    await pathSelect.setValue("__add_new_path__");
+    await flushPromises();
+
+    expect(prompt).toHaveBeenCalledWith("New path name");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Research",
+          description: null,
+          color: "#E8754E",
+        }),
+      }),
+    );
+    expect((pathSelect.element as HTMLSelectElement).value).toBe("path-new");
+    prompt.mockRestore();
+  });
+
   it("keeps active timer configuration controls visible and editable", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {

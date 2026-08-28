@@ -82,6 +82,7 @@ const shortDescription = (entry: Entry) => {
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
 );
+const addPathOption = "__add_new_path__";
 const timerItems = computed(() => items.value);
 const localDateTime = (iso: string) => {
   const date = new Date(iso);
@@ -175,6 +176,32 @@ async function configureTimer() {
     error.value = "Could not save the active timer settings.";
   }
 }
+async function choosePath() {
+  if (pathId.value !== addPathOption) {
+    await configureTimer();
+    return;
+  }
+
+  const name = window.prompt("New path name")?.trim();
+  pathId.value = "";
+  if (!name) return;
+
+  try {
+    const created = await api<Path>("/paths", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        description: null,
+        color: "#E8754E",
+      }),
+    });
+    await load();
+    pathId.value = created.id;
+    await configureTimer();
+  } catch {
+    error.value = "Could not create path.";
+  }
+}
 async function cancel() {
   try {
     await api("/timers/cancel", { method: "POST", body: "{}" });
@@ -265,9 +292,10 @@ onUnmounted(() => {
         </div>
         <label class="timer-path-field">
           <span>PATH</span>
-          <select v-model="pathId" aria-label="Timer path" @focus="load" @change="configureTimer">
+          <select v-model="pathId" aria-label="Timer path" @focus="load" @change="choosePath">
             <option value="">Choose a path</option>
             <option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option>
+            <option :value="addPathOption">＋ Add a new path…</option>
           </select>
         </label>
       </div>
