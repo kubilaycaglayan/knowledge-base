@@ -13,7 +13,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 
 cat <<'EOF'
 
-Know is available at:
+Know development stack is available at:
   Web: http://localhost:3000 (Vite hot reload)
   API: http://localhost:3000/api/v1
   Health: http://localhost:8080/actuator/health
