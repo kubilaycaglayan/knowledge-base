@@ -13,6 +13,7 @@ describe("ReportsView", () => {
     VSelect: { template: "<select><option>Project</option></select>" },
     VTable: { template: "<table><slot /></table>" },
     VChart: { template: "<div />" },
+    ReportDateRange: { template: "<button class='test-range' @click=\"$emit('update:modelValue', { startDate: '2026-08-10', endDate: '2026-08-20' })\">Choose range</button>" },
   } };
   beforeEach(() => {
     vi.clearAllMocks();
@@ -24,20 +25,27 @@ describe("ReportsView", () => {
     await flushPromises();
     expect(wrapper.text()).toContain("Tracked time");
     expect(wrapper.text()).toContain("Wander");
-    expect(wrapper.text()).toContain("Summary");
+    expect(wrapper.text()).toContain("Weekly");
+    expect(wrapper.text()).toContain("Monthly");
+    expect(wrapper.text()).toContain("Yearly");
+    expect(wrapper.text()).not.toContain("Shared");
+    expect(wrapper.text()).not.toContain("Export");
+    expect(wrapper.text()).not.toContain("Apply filter");
+    expect(wrapper.text()).toContain("01:00:00");
     expect(wrapper.find(".report-echart").exists()).toBe(true);
     expect(wrapper.find(".donut-echart").exists()).toBe(true);
     expect(wrapper.find("button").exists()).toBe(true);
   });
 
-  it("exposes the weekly date range and applies filters", async () => {
+  it("loads quick periods and a custom date interval", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    expect(wrapper.text()).toContain("Aug 24 – Aug 30, 2026");
-    expect(wrapper.text()).toContain("Apply filter");
-    const apply = wrapper.findAll("button").find((button) => button.text().includes("Apply filter"));
-    await apply?.trigger("click");
-    await flushPromises();
     expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("/reports?period=WEEK"));
+    await wrapper.findAll("button").find((button) => button.text() === "Monthly")!.trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("period=MONTH"));
+    await wrapper.find(".test-range").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/reports?startDate=2026-08-10&endDate=2026-08-20");
   });
 });

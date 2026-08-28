@@ -49,6 +49,15 @@ public class ReportService {
     LocalDate selected = anchor == null ? LocalDate.now(ZoneOffset.UTC) : anchor;
     LocalDate fromDate = period.start(selected);
     LocalDate toDateExclusive = period.next(fromDate);
+    return report(userId, period.name(), fromDate, toDateExclusive);
+  }
+
+  public Report report(UUID userId, LocalDate fromDate, LocalDate toDate) {
+    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1));
+  }
+
+  private Report report(
+      UUID userId, String period, LocalDate fromDate, LocalDate toDateExclusive) {
     Instant from = fromDate.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant reportEnd = toDateExclusive.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant now = Instant.now();
@@ -103,7 +112,7 @@ public class ReportService {
     }
     long total = days.stream().mapToLong(Day::totalSeconds).sum();
     return new Report(
-        period.name(),
+        period,
         fromDate,
         toDateExclusive.minusDays(1),
         total,

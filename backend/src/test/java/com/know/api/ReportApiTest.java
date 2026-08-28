@@ -62,4 +62,28 @@ class ReportApiTest {
 
     verify(service).report(user, ReportService.Period.MONTH, java.time.LocalDate.of(2026, 7, 20));
   }
+
+  @Test
+  void customDateRangeReachesTheOwnedService() throws Exception {
+    UUID user = UUID.randomUUID();
+    var from = java.time.LocalDate.of(2026, 8, 24);
+    var to = java.time.LocalDate.of(2026, 8, 30);
+    when(service.report(user, from, to))
+        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of()));
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/reports").param("startDate", from.toString()).param("endDate", to.toString()).with(authentication(auth)))
+        .andExpect(status().isOk());
+
+    verify(service).report(user, from, to);
+  }
+
+  @Test
+  void incompleteOrReversedCustomRangeIsRejected() throws Exception {
+    var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    mvc.perform(get("/api/v1/reports").param("startDate", "2026-08-24").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+    mvc.perform(get("/api/v1/reports").param("startDate", "2026-08-30").param("endDate", "2026-08-24").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+  }
 }

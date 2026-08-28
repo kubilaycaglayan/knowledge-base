@@ -69,4 +69,19 @@ class ReportServiceTest {
     assertEquals(LocalDate.of(2024, 1, 1), report.from());
     assertEquals(LocalDate.of(2024, 12, 31), report.to());
   }
+
+  @Test
+  void customReportUsesTheInclusiveRequestedRange() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
+
+    ReportService.Report report =
+        new ReportService(entries, mock(PathRepository.class), mock(ItemRepository.class))
+            .report(UUID.randomUUID(), LocalDate.of(2026, 8, 24), LocalDate.of(2026, 8, 30));
+
+    assertEquals("CUSTOM", report.period());
+    assertEquals(7, report.days().size());
+    assertEquals(LocalDate.of(2026, 8, 24), report.from());
+    assertEquals(LocalDate.of(2026, 8, 30), report.to());
+  }
 }
