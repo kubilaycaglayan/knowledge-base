@@ -33,4 +33,15 @@ describe("PromptDialog", () => {
     await wrapper.get("button.primary").trigger("click");
     expect(await prompt).toBe("Existing");
   });
+
+  it("supports confirmation prompts without a text field", async () => {
+    const wrapper = mount(PromptDialog);
+    const prompt = wrapper.vm.open("Remove this path?", "", { confirmation: true });
+    await nextTick();
+
+    expect(wrapper.find("input, textarea").exists()).toBe(false);
+    expect(wrapper.get("button.primary").text()).toBe("Confirm");
+    await wrapper.get("button.primary").trigger("click");
+    expect(await prompt).toBe("");
+  });
 });

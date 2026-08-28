@@ -144,9 +144,9 @@ public class PathController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void archive(Authentication a, @PathVariable UUID id) {
+  public void delete(Authentication a, @PathVariable UUID id) {
     Path p = find(a, id);
-    p.archive();
+    p.delete();
     paths.save(p);
   }
 

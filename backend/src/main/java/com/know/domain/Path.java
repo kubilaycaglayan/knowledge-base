@@ -1,11 +1,13 @@
 package com.know.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "path")
+@SQLRestriction("deleted_at IS NULL")
 public class Path {
   @Id private UUID id = UUID.randomUUID();
 
@@ -32,6 +34,9 @@ public class Path {
 
   @Column(name = "archived_at")
   private Instant archivedAt;
+
+  @Column(name = "deleted_at")
+  private Instant deletedAt;
 
   @Column(name = "import_batch_id")
   private UUID importBatchId;
@@ -99,6 +104,11 @@ public class Path {
   public void archive() {
     status = PathStatus.ARCHIVED;
     archivedAt = Instant.now();
+    updatedAt = Instant.now();
+  }
+
+  public void delete() {
+    deletedAt = Instant.now();
     updatedAt = Instant.now();
   }
 }

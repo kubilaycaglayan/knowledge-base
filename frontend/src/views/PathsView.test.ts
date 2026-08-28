@@ -239,4 +239,22 @@ describe("PathsView", () => {
       }),
     );
   });
+
+  it("confirms and soft-deletes a path", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Remove")!
+      .trigger("click");
+
+    expect(wrapper.find(".prompt-dialog").text()).toContain(
+      "Remove Algorithms? This cannot be undone.",
+    );
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1", {
+      method: "DELETE",
+    });
+  });
 });

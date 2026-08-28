@@ -170,10 +170,10 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.CONFLICT, dup.getStatusCode());
   }
 
-  // Criteria: path CRUD (list / create / read / update / archive)
+  // Criteria: path CRUD (list / create / read / update / soft delete)
 
   @Test
-  void pathLifecycleCreateReadUpdateArchive() {
+  void pathLifecycleCreateReadUpdateSoftDelete() {
     String token = freshToken();
 
     // Create
@@ -216,11 +216,10 @@ class KnowIntegrationTest {
     }
     assertTrue(found, "path should appear in list");
 
-    // Archive
-    ResponseEntity<JsonNode> archived = delete("/api/v1/paths/" + pathId, token);
-    assertEquals(HttpStatus.NO_CONTENT, archived.getStatusCode());
-    assertEquals(
-        "ARCHIVED", get("/api/v1/paths/" + pathId, token).getBody().get("status").asText());
+    // Soft delete preserves the database row but hides it from normal reads.
+    ResponseEntity<JsonNode> deleted = delete("/api/v1/paths/" + pathId, token);
+    assertEquals(HttpStatus.NO_CONTENT, deleted.getStatusCode());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + pathId, token).getStatusCode());
   }
 
   @Test

@@ -413,6 +413,7 @@ Users can:
 * create paths
 * edit paths
 * archive paths
+* soft-delete paths with frontend confirmation
 * inspect path history
 * view associated items
 * see accumulated time

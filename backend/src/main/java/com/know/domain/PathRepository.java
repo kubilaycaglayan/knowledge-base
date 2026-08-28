@@ -15,6 +15,7 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
           "select p.* from path p"
               + " left join time_entry t on t.path_id=p.id and t.user_id=:userId"
               + " where p.user_id=:userId"
+              + " and p.deleted_at is null"
               + " group by p.id"
               + " order by case when max(t.started_at) is null then 1 else 0 end,"
               + " coalesce(max(t.started_at), p.updated_at) desc",

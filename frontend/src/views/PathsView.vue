@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
+import PromptDialog from "../components/PromptDialog.vue";
 
 type Path = {
   id: string;
@@ -54,6 +55,7 @@ const editingId = ref(""),
   editName = ref(""),
   editDescription = ref(""),
   editColor = ref(colors[0]);
+const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
   return match ? formatTrackedDuration(Number(match[1])) : "";
@@ -161,14 +163,19 @@ async function saveEdit(path: Path) {
     error.value = "Could not update path.";
   }
 }
-async function archive(path: Path) {
-  if (!confirm(`Archive ${path.name}?`)) return;
+async function remove(path: Path) {
+  const confirmation = await promptDialog.value!.open(
+    `Remove ${path.name}? This cannot be undone.`,
+    "",
+    { confirmation: true },
+  );
+  if (confirmation === null) return;
   try {
     await api(`/paths/${path.id}`, { method: "DELETE" });
     delete summaries.value[path.id];
     await load();
   } catch {
-    error.value = "Could not archive path.";
+    error.value = "Could not remove path.";
   }
 }
 async function addNote(pathId: string) {
@@ -194,6 +201,7 @@ onMounted(load);
 </script>
 
 <template>
+  <PromptDialog ref="promptDialog" />
   <section>
     <p class="eyebrow">ORGANIZE</p>
     <h1>Your paths</h1>
@@ -278,9 +286,9 @@ onMounted(load);
             ><button
               v-if="path.status === 'ACTIVE'"
               class="text-button danger"
-              @click="archive(path)"
+              @click="remove(path)"
             >
-              Archive
+              Remove
             </button>
           </div>
           <div v-if="expanded(path) && summaries[path.id]" class="path-summary">
