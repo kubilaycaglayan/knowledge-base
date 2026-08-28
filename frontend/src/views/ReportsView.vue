@@ -1,246 +1,50 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { format, parseISO } from "date-fns";
 import { api } from "../lib/api";
-import { formatDate } from "../lib/date";
-import { formatTrackedDuration } from "../lib/format";
+import ReportTabs from "../components/reports/ReportTabs.vue";
+import ReportDateRange from "../components/reports/ReportDateRange.vue";
+import ReportFilters, { type ReportFiltersModel } from "../components/reports/ReportFilters.vue";
+import SummaryBarChart from "../components/reports/SummaryBarChart.vue";
+import ProjectDonutChart from "../components/reports/ProjectDonutChart.vue";
+import ProjectDurationTable from "../components/reports/ProjectDurationTable.vue";
+import { formatDuration } from "../utils/duration";
+import type { ReportQuery } from "../utils/reportQuery";
 
-type Period = "WEEK" | "MONTH" | "YEAR";
 type Category = { id?: string; label: string; seconds: number };
-type Day = {
-  date: string;
-  totalSeconds: number;
-  paths: Category[];
-  items: Category[];
-};
-type Report = {
-  period: Period;
-  from: string;
-  to: string;
-  totalSeconds: number;
-  days: Day[];
-  paths: Category[];
-  items: Category[];
-};
+type Day = { date: string; totalSeconds: number; paths: Category[]; items: Category[] };
+type Report = { period: "WEEK" | "MONTH" | "YEAR"; from: string; to: string; totalSeconds: number; days: Day[]; paths: Category[]; items: Category[] };
 
-const period = ref<Period>("WEEK");
+const reportType = ref("Summary");
 const anchor = ref(new Date().toISOString().slice(0, 10));
 const report = ref<Report | null>(null);
 const error = ref("");
 const loading = ref(false);
-const dateLabel = (value: string) => formatDate(`${value}T00:00:00Z`);
-const maxDay = computed(() =>
-  Math.max(1, ...(report.value?.days.map((day) => day.totalSeconds) || [1])),
-);
-const barWidth = (seconds: number) =>
-  `${Math.max(0, Math.round((seconds / maxDay.value) * 100))}%`;
-const chartDays = computed(() => report.value?.days || []);
-const chartHeight = 180;
-const chartWidth = 720;
-const chartBarWidth = computed(() =>
-  Math.max(6, Math.floor(chartWidth / Math.max(1, chartDays.value.length)) - 4),
-);
-const chartX = (index: number) =>
-  Math.round(index * (chartWidth / Math.max(1, chartDays.value.length)) + 2);
-const chartY = (seconds: number) =>
-  Math.round(chartHeight - (seconds / maxDay.value) * (chartHeight - 20) - 10);
-const chartBarHeight = (seconds: number) =>
-  Math.max(2, chartHeight - chartY(seconds) - 10);
-const rangeLabel = computed(() =>
-  report.value
-    ? `${dateLabel(report.value.from)} – ${dateLabel(report.value.to)}`
-    : "",
-);
-async function load() {
-  loading.value = true;
-  error.value = "";
-  try {
-    report.value = await api<Report>(
-      `/reports?period=${period.value}&anchor=${anchor.value}`,
-    );
-  } catch {
-    error.value = "Unable to load the report.";
-  } finally {
-    loading.value = false;
-  }
-}
-function selectPeriod(value: Period) {
-  period.value = value;
-  void load();
-}
-function shiftAnchor(amount: number) {
-  const date = new Date(`${anchor.value}T00:00:00Z`);
-  if (period.value === "WEEK") date.setUTCDate(date.getUTCDate() + amount * 7);
-  else if (period.value === "MONTH")
-    date.setUTCMonth(date.getUTCMonth() + amount);
-  else date.setUTCFullYear(date.getUTCFullYear() + amount);
-  anchor.value = date.toISOString().slice(0, 10);
-  void load();
-}
-function resetAnchor() {
-  anchor.value = new Date().toISOString().slice(0, 10);
-  void load();
-}
+const appliedFilters = ref<ReportFiltersModel>({ team: "", client: "", project: "", task: "", tag: "", description: "" });
+const draftFilters = ref<ReportFiltersModel>({ ...appliedFilters.value });
+const categories = computed(() => { const source = report.value?.paths || []; return appliedFilters.value.project ? source.filter((item) => item.label === appliedFilters.value.project) : source; });
+const days = computed(() => (report.value?.days || []).map((day) => ({ ...day, paths: categories.value.filter((category) => day.paths.some((item) => item.id === category.id || item.label === category.label)) })));
+const filteredTotal = computed(() => days.value.reduce((sum, day) => sum + day.paths.reduce((dayTotal, item) => dayTotal + item.seconds, 0), 0));
+const dateRangeLabel = computed(() => report.value ? `${format(parseISO(report.value.from), "MMM d")} – ${format(parseISO(report.value.to), "MMM d, yyyy")}` : "This week");
+const projectOptions = computed(() => (report.value?.paths || []).map((item) => item.label));
+const activeDays = computed(() => days.value.filter((day) => day.totalSeconds > 0).length);
+
+function queryModel(): ReportQuery { return { startDate: report.value?.from || "", endDate: report.value?.to || "", teamIds: [], clientIds: [], projectIds: appliedFilters.value.project ? [appliedFilters.value.project] : [], taskIds: [], tagIds: [], description: appliedFilters.value.description }; }
+async function load() { loading.value = true; error.value = ""; try { const query = queryModel(); const params = new URLSearchParams({ period: "WEEK", anchor: anchor.value }); if (query.description) params.set("description", query.description); if (query.projectIds.length) params.set("project", query.projectIds[0]); report.value = await api<Report>(`/reports?${params.toString()}`); } catch { error.value = "Unable to load the report. Please try again."; } finally { loading.value = false; } }
+function shiftAnchor(amount: number) { const date = parseISO(anchor.value); date.setUTCDate(date.getUTCDate() + amount * 7); anchor.value = date.toISOString().slice(0, 10); void load(); }
+function applyFilters() { appliedFilters.value = { ...draftFilters.value }; void load(); }
+function exportReport() { const rows = [["Project", "Duration", "Seconds"], ...categories.value.map((item) => [item.label, formatDuration(item.seconds), String(item.seconds)])]; const blob = new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "know-report.csv"; link.click(); URL.revokeObjectURL(url); }
 onMounted(load);
 </script>
 
 <template>
-  <section>
-    <p class="eyebrow">MEASURE THE WORK</p>
-    <h1>Reports</h1>
-    <p class="lede">
-      See where your time went, day by day, across paths and resources.
-    </p>
-    <div class="report-toolbar card">
-      <div class="report-periods" role="group" aria-label="Report period">
-        <button
-          v-for="option in ['WEEK', 'MONTH', 'YEAR'] as Period[]"
-          :key="option"
-          class="text-button"
-          :aria-pressed="period === option"
-          @click="selectPeriod(option)"
-        >
-          {{ option.toLowerCase() }}
-        </button>
-      </div>
-      <div class="report-navigation">
-        <button
-          class="text-button"
-          aria-label="Previous report period"
-          @click="shiftAnchor(-1)"
-        >
-          ← Previous
-        </button>
-        <button class="text-button" @click="resetAnchor">Current</button>
-        <button
-          class="text-button"
-          aria-label="Next report period"
-          @click="shiftAnchor(1)"
-        >
-          Next →
-        </button>
-        <input
-          v-model="anchor"
-          type="date"
-          aria-label="Report anchor date"
-          @change="load"
-        />
-      </div>
-    </div>
+  <section class="reports-page">
+    <div class="reports-header"><div><p class="eyebrow">TIME REPORT</p><h1>Reports</h1><p class="lede">Understand where your time goes, project by project.</p></div><div class="reports-actions"><ReportDateRange :label="dateRangeLabel" :anchor="anchor" @previous="shiftAnchor(-1)" @next="shiftAnchor(1)" @update:anchor="anchor = $event; load()" /><v-btn color="primary" variant="outlined" append-icon="mdi-chevron-down" @click="exportReport">Export</v-btn></div></div>
+    <div class="reports-nav"><ReportTabs v-model="reportType" /><span class="report-type-note">{{ reportType }} report</span></div>
+    <ReportFilters v-model="draftFilters" :project-options="projectOptions" @apply="applyFilters" />
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
-    <div v-if="report && !loading" class="report-content">
-      <section class="report-summary stats">
-        <article class="card">
-          <p class="eyebrow">PERIOD</p>
-          <h2>{{ rangeLabel }}</h2>
-        </article>
-        <article class="card">
-          <p class="eyebrow">TRACKED</p>
-          <h2>{{ formatTrackedDuration(report.totalSeconds) }}</h2>
-        </article>
-        <article class="card">
-          <p class="eyebrow">ACTIVE DAYS</p>
-          <h2>
-            {{ report.days.filter((day) => day.totalSeconds > 0).length }}
-          </h2>
-        </article>
-      </section>
-      <section class="card report-chart">
-        <div class="report-heading">
-          <div>
-            <p class="eyebrow">DAILY TIMELINE</p>
-            <h2>Time, day by day</h2>
-          </div>
-          <span class="muted">{{ report.period.toLowerCase() }} view</span>
-        </div>
-        <svg
-          class="report-svg"
-          :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
-          role="img"
-          :aria-label="`Tracked time chart for ${rangeLabel}`"
-          preserveAspectRatio="none"
-        >
-          <line
-            x1="0"
-            :y1="chartHeight - 10"
-            :x2="chartWidth"
-            :y2="chartHeight - 10"
-          />
-          <rect
-            v-for="(day, index) in chartDays"
-            :key="day.date"
-            :x="chartX(index)"
-            :y="chartY(day.totalSeconds)"
-            :width="chartBarWidth"
-            :height="chartBarHeight(day.totalSeconds)"
-            rx="3"
-          >
-            <title>
-              {{ dateLabel(day.date) }}: {{ formatTrackedDuration(day.totalSeconds) }}
-            </title>
-          </rect>
-        </svg>
-        <div class="report-days">
-          <article
-            v-for="day in report.days"
-            :key="day.date"
-            class="report-day"
-          >
-            <div class="report-day-label">
-              <strong>{{ dateLabel(day.date) }}</strong
-              ><span class="muted">{{ formatTrackedDuration(day.totalSeconds) }}</span>
-            </div>
-            <div
-              class="report-bar"
-              role="img"
-              :aria-label="`${dateLabel(day.date)}: ${formatTrackedDuration(day.totalSeconds)} tracked`"
-            >
-              <span :style="{ width: barWidth(day.totalSeconds) }"></span>
-            </div>
-            <div v-if="day.paths.length" class="report-day-categories">
-              <span
-                v-for="category in day.paths"
-                :key="category.id || category.label"
-                class="pill"
-                >{{ category.label }} · {{ formatTrackedDuration(category.seconds) }}</span
-              >
-            </div>
-            <p v-else class="muted report-empty-day">No tracked time</p>
-          </article>
-        </div>
-      </section>
-      <section class="report-columns">
-        <article class="card">
-          <p class="eyebrow">PATHS</p>
-          <h2>Where time went</h2>
-          <div
-            v-for="category in report.paths"
-            :key="category.id || category.label"
-            class="report-category"
-          >
-            <span>{{ category.label }}</span
-            ><strong>{{ formatTrackedDuration(category.seconds) }}</strong>
-          </div>
-          <p v-if="!report.paths.length" class="muted">
-            No path activity in this period.
-          </p>
-        </article>
-        <article class="card">
-          <p class="eyebrow">RESOURCES</p>
-          <h2>What you worked on</h2>
-          <div
-            v-for="category in report.items"
-            :key="category.id || category.label"
-            class="report-category"
-          >
-            <span>{{ category.label }}</span
-            ><strong>{{ formatTrackedDuration(category.seconds) }}</strong>
-          </div>
-          <p v-if="!report.items.length" class="muted">
-            No resource activity in this period.
-          </p>
-        </article>
-      </section>
-    </div>
-    <p v-if="loading" class="empty" role="status">Loading report…</p>
+    <div v-if="loading" class="report-loading" role="status">Loading report…</div>
+    <template v-else-if="report"><section class="report-card report-chart-card"><div class="report-card-heading"><div><span class="section-kicker">SUMMARY</span><h2>Tracked time</h2></div><strong class="total-display">{{ formatDuration(filteredTotal) }}</strong></div><SummaryBarChart :days="days" :categories="categories" /><div class="chart-day-totals"><span v-for="day in days" :key="day.date">{{ format(parseISO(day.date), "EEE, MMM d") }} <b>{{ formatDuration(day.totalSeconds) }}</b></span></div></section><section class="report-card breakdown-card"><div class="breakdown-toolbar"><span>Group by</span><v-select :items="['Project']" model-value="Project" density="compact" variant="outlined" hide-details /><span class="muted">{{ activeDays }} active days</span></div><div class="breakdown-grid"><div><ProjectDurationTable :categories="categories" :total-seconds="filteredTotal" /></div><div class="donut-panel"><ProjectDonutChart :categories="categories" :total-seconds="filteredTotal" /></div></div></section></template>
+    <div v-else-if="!loading" class="empty report-card">No report data for this period.</div>
   </section>
 </template>

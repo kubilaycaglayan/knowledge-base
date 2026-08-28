@@ -2,56 +2,42 @@ import { flushPromises, mount } from "@vue/test-utils";
 import ReportsView from "./ReportsView.vue";
 import { api } from "../lib/api";
 
+vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
+
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("ReportsView", () => {
+  const global = { stubs: {
+    VBtn: { template: "<button><slot /></button>" },
+    VTextField: { template: "<input />" },
+    VSelect: { template: "<select><option>Project</option></select>" },
+    VTable: { template: "<table><slot /></table>" },
+    VChart: { template: "<div />" },
+  } };
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({
-      period: "WEEK",
-      from: "2026-08-24",
-      to: "2026-08-30",
-      totalSeconds: 5400,
-      days: [
-        {
-          date: "2026-08-25",
-          totalSeconds: 3600,
-          paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
-          items: [{ id: "item-1", label: "Walking", seconds: 1800 }],
-        },
-      ],
-      paths: [{ id: "path-1", label: "Wander", seconds: 5400 }],
-      items: [{ id: "item-1", label: "Walking", seconds: 5400 }],
-    });
+    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], items: [] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], items: [] });
   });
 
-  it("shows the daily timeline and path/resource categories", async () => {
-    const wrapper = mount(ReportsView);
+  it("shows the report dashboard with project breakdown and charts", async () => {
+    const wrapper = mount(ReportsView, { global });
     await flushPromises();
-
-    expect(wrapper.text()).toContain("Time, day by day");
+    expect(wrapper.text()).toContain("Tracked time");
     expect(wrapper.text()).toContain("Wander");
-    expect(wrapper.text()).toContain("Walking");
-    const dayLabel = "25/08/2026";
-    expect(wrapper.text()).toContain(dayLabel);
-    expect(wrapper.find(".report-svg").exists()).toBe(true);
-    expect(wrapper.find(".report-svg rect").exists()).toBe(true);
-    expect(
-      wrapper.find(`[aria-label="${dayLabel}: 1h tracked"]`).exists(),
-    ).toBe(true);
+    expect(wrapper.text()).toContain("Summary");
+    expect(wrapper.find(".report-echart").exists()).toBe(true);
+    expect(wrapper.find(".donut-echart").exists()).toBe(true);
+    expect(wrapper.find("button").exists()).toBe(true);
   });
 
-  it.each(["month", "year"])("requests the selected %s view", async (label) => {
-    const wrapper = mount(ReportsView);
+  it("exposes the weekly date range and applies filters", async () => {
+    const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    await wrapper
-      .findAll('button[aria-pressed="false"]')
-      .find((button) => button.text() === label)!
-      .trigger("click");
+    expect(wrapper.text()).toContain("Aug 24 – Aug 30, 2026");
+    expect(wrapper.text()).toContain("Apply filter");
+    const apply = wrapper.findAll("button").find((button) => button.text().includes("Apply filter"));
+    await apply?.trigger("click");
     await flushPromises();
-
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith(
-      expect.stringContaining(`/reports?period=${label.toUpperCase()}`),
-    );
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("/reports?period=WEEK"));
   });
 });
