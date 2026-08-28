@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
+import vuetify from "./plugins/vuetify";
 import "./style.css";
 import "./extra.css";
 import "./path-colors.css";
@@ -17,4 +18,8 @@ const router = createRouter({
     { path: "/imports", component: () => import("./views/ImportsView.vue") },
   ],
 });
-createApp(App).component("ProgressBar", ProgressBar).use(router).mount("#app");
+createApp(App)
+  .component("ProgressBar", ProgressBar)
+  .use(router)
+  .use(vuetify)
+  .mount("#app");
