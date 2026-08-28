@@ -38,6 +38,13 @@ const itemTypes = [
   "VIDEO",
   "PAPER",
 ];
+const itemStatuses = [
+  "PLANNED",
+  "ACTIVE",
+  "PAUSED",
+  "COMPLETED",
+  "ABANDONED",
+];
 const title = ref(""),
   source = ref(""),
   type = ref("CUSTOM"),
@@ -47,6 +54,15 @@ const title = ref(""),
   noteTitle = ref(""),
   noteContent = ref(""),
   error = ref("");
+const editVisible = ref(false),
+  editingItem = ref<Item | null>(null),
+  editTitle = ref(""),
+  editType = ref("CUSTOM"),
+  editDescription = ref(""),
+  editSource = ref(""),
+  editStatus = ref("PLANNED"),
+  editPathIds = ref<string[]>([]),
+  editTags = ref("");
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
 );
@@ -87,47 +103,45 @@ async function add() {
     error.value = "Could not create item.";
   }
 }
-async function edit(item: Item) {
-  const nextTitle = await promptDialog.value!.open("Item title", item.title);
-  if (!nextTitle?.trim()) return;
-  const nextType = (
-    await promptDialog.value!.open(
-      `Type (${itemTypes.join(", ")})`,
-      item.type,
-    )
-  )
-    ?.trim()
-    .toUpperCase();
-  if (!nextType || !itemTypes.includes(nextType)) {
-    if (nextType) error.value = "Choose one of the supported item types.";
+function edit(item: Item) {
+  editingItem.value = item;
+  editTitle.value = item.title;
+  editType.value = item.type;
+  editDescription.value = item.description || "";
+  editSource.value = item.source || "";
+  editStatus.value = item.status;
+  editPathIds.value = [...item.pathIds];
+  editTags.value = item.tags.join(", ");
+  editVisible.value = true;
+}
+function cancelEdit() {
+  editVisible.value = false;
+  editingItem.value = null;
+}
+async function saveEdit() {
+  const item = editingItem.value;
+  if (!item || !editTitle.value.trim()) return;
+  if (!itemTypes.includes(editType.value) || !itemStatuses.includes(editStatus.value)) {
+    error.value = "Choose valid item type and status values.";
     return;
   }
-  const nextDescription = await promptDialog.value!.open(
-    "Description",
-    item.description || "",
-    { multiline: true },
-  );
-  if (nextDescription === null) return;
-  const nextSource = await promptDialog.value!.open("Source", item.source || "");
-  if (nextSource === null) return;
-  const nextStatus = await promptDialog.value!.open(
-    "Status (PLANNED, ACTIVE, PAUSED, COMPLETED, ABANDONED)",
-    item.status,
-  );
-  if (!nextStatus) return;
   try {
     await api(`/items/${item.id}`, {
       method: "PUT",
       body: JSON.stringify({
-        title: nextTitle,
-        type: nextType,
-        description: nextDescription,
-        source: nextSource || null,
-        status: nextStatus,
-        pathIds: item.pathIds,
-        tags: item.tags,
+        title: editTitle.value.trim(),
+        type: editType.value,
+        description: editDescription.value,
+        source: editSource.value || null,
+        status: editStatus.value,
+        pathIds: editPathIds.value,
+        tags: editTags.value
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
       }),
     });
+    cancelEdit();
     await load();
   } catch {
     error.value = "Could not update item.";
@@ -205,6 +219,42 @@ onMounted(load);
 
 <template>
   <PromptDialog ref="promptDialog" />
+  <div v-if="editVisible" class="edit-dialog-backdrop">
+    <form
+      class="edit-dialog card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-item-title"
+      tabindex="-1"
+      @keydown.esc.prevent="cancelEdit"
+      @submit.prevent="saveEdit"
+    >
+      <h2 id="edit-item-title">Edit item</h2>
+      <label>Title<input v-model="editTitle" aria-label="Edit item title" required /></label>
+      <div class="edit-dialog-grid">
+        <label>Type<select v-model="editType" aria-label="Edit item type">
+          <option v-for="itemType in itemTypes" :key="itemType">{{ itemType }}</option>
+        </select></label>
+        <label>Status<select v-model="editStatus" aria-label="Edit item status">
+          <option v-for="itemStatus in itemStatuses" :key="itemStatus">{{ itemStatus }}</option>
+        </select></label>
+      </div>
+      <label>Description<textarea v-model="editDescription" aria-label="Edit item description" rows="4"></textarea></label>
+      <label>Source<input v-model="editSource" aria-label="Edit item source" /></label>
+      <fieldset class="path-picker edit-path-picker">
+        <legend>Paths</legend>
+        <label v-for="path in paths" :key="path.id"
+          ><input v-model="editPathIds" type="checkbox" :value="path.id" />{{ path.name }}</label
+        >
+        <span v-if="!paths.length" class="muted">No paths yet.</span>
+      </fieldset>
+      <label>Tags<input v-model="editTags" aria-label="Edit item tags" placeholder="Tags, comma separated" /></label>
+      <div class="prompt-dialog-actions">
+        <button type="button" class="text-button" @click="cancelEdit">Cancel</button>
+        <button class="primary">Save changes</button>
+      </div>
+    </form>
+  </div>
   <section>
     <p class="eyebrow">RESOURCES</p>
     <h1>Items</h1>

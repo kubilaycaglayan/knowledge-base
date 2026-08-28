@@ -77,4 +77,67 @@ describe("ItemsView", () => {
       }),
     );
   });
+
+  it("opens one dialog with all item properties and saves them together", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/items")
+        return [
+          {
+            id: "item-1",
+            title: "Existing item",
+            description: "Old description",
+            source: "Old source",
+            type: "BOOK",
+            status: "PLANNED",
+            progress: 20,
+            pathIds: ["path-1"],
+            tags: ["old"],
+          },
+        ];
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Learning", status: "ACTIVE" }];
+      if (path === "/notes") return [];
+      return undefined;
+    });
+    const wrapper = mount(ItemsView);
+    await flushPromises();
+
+    await wrapper.get("button.text-button").trigger("click");
+    expect(wrapper.find(".edit-dialog").exists()).toBe(true);
+    expect(wrapper.findAll(".edit-dialog")).toHaveLength(1);
+    expect(
+      (wrapper.get('input[aria-label="Edit item title"]').element as HTMLInputElement)
+        .value,
+    ).toBe("Existing item");
+    expect(
+      (wrapper.get('textarea[aria-label="Edit item description"]').element as HTMLTextAreaElement)
+        .value,
+    ).toBe("Old description");
+
+    await wrapper
+      .get('input[aria-label="Edit item title"]')
+      .setValue("Updated item");
+    await wrapper.get('select[aria-label="Edit item type"]').setValue("MOVIE");
+    await wrapper
+      .get('select[aria-label="Edit item status"]')
+      .setValue("ACTIVE");
+    await wrapper
+      .get('input[aria-label="Edit item tags"]')
+      .setValue("film, revisit");
+    await wrapper.get(".edit-dialog button.primary").trigger("submit");
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/items/item-1",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining('"title":"Updated item"'),
+      }),
+    );
+    const update = vi
+      .mocked(api)
+      .mock.calls.find(([path, options]) => path === "/items/item-1" && options);
+    expect(update?.[1]?.body).toContain('"type":"MOVIE"');
+    expect(update?.[1]?.body).toContain('"status":"ACTIVE"');
+    expect(update?.[1]?.body).toContain('"tags":["film","revisit"]');
+  });
 });
