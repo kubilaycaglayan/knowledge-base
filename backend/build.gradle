@@ -7,7 +7,11 @@ plugins {
 group = 'com.know'
 version = '0.1.0'
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
-repositories { mavenCentral() }
+// Docker builds this directory as a standalone Gradle project. The monorepo
+// supplies repositories centrally through the root settings.gradle instead.
+if (project == rootProject) {
+    repositories { mavenCentral() }
+}
 
 dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
