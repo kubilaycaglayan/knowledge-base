@@ -20,6 +20,7 @@ public class NoteController {
       UUID pathId,
       UUID itemId,
       UUID activityId,
+      UUID timeEntryId,
       @NotBlank @Size(max = 240) String title,
       @NotBlank @Size(max = 20000) String content) {}
 
@@ -38,7 +39,7 @@ public class NoteController {
   @PostMapping
   public KnowledgeService.NoteView create(Authentication a, @Valid @RequestBody NoteRequest r) {
     return service.createNote(
-        user(a), r.pathId(), r.itemId(), r.activityId(), r.title(), r.content());
+        user(a), r.pathId(), r.itemId(), r.activityId(), r.timeEntryId(), r.title(), r.content());
   }
 
   @PutMapping("/{id}")

@@ -306,7 +306,10 @@ This allows progress graphs and historical analysis later.
 
 ### Activity
 
-Activity is the historical event stream of the application.
+The timeline is assembled from purpose-specific history sources rather than a
+single activity table. Time entries represent sessions and their duration,
+progress entries represent progress changes, notes represent knowledge, and
+item events represent lifecycle events.
 
 Examples:
 
@@ -326,7 +329,9 @@ Completed a project
 
 The timeline is a core part of the product.
 
-Where reasonable, significant application actions should automatically generate activity records.
+Where reasonable, significant application actions should automatically generate
+records in the table that owns that history. Session descriptions and timing
+must not be copied into a second timeline table.
 
 The application should not require the user to manually duplicate information in both the entity and timeline.
 
@@ -955,7 +960,7 @@ Use roughly this order.
 
 ## Phase 3: Activity History
 
-* activity model
+* item event model for non-session lifecycle history
 * automatic activity generation
 * timeline
 * filtering
@@ -964,6 +969,8 @@ Use roughly this order.
 
 * timer API
 * time entries
+* many-to-many time-entry/item relationships
+* one duration per time entry regardless of item count
 * active timer rules
 * web timer UI
 * statistics

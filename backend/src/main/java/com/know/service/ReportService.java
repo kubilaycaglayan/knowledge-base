@@ -6,17 +6,29 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class ReportService {
   private final TimeEntryRepository entries;
   private final PathRepository paths;
   private final ItemRepository items;
+  private final TimeEntryItemRepository entryItems;
 
   public ReportService(TimeEntryRepository entries, PathRepository paths, ItemRepository items) {
+    this(entries, paths, items, null);
+  }
+
+  @Autowired
+  public ReportService(
+      TimeEntryRepository entries,
+      PathRepository paths,
+      ItemRepository items,
+      TimeEntryItemRepository entryItems) {
     this.entries = entries;
     this.paths = paths;
     this.items = items;
+    this.entryItems = entryItems;
   }
 
   public record Category(UUID id, String label, long seconds) {}
@@ -51,8 +63,7 @@ public class ReportService {
             .collect(Collectors.toSet());
     Set<UUID> itemIds =
         window.stream()
-            .map(TimeEntry::getItemId)
-            .filter(Objects::nonNull)
+        .flatMap(entry -> itemIds(entry).stream())
             .collect(Collectors.toSet());
     Map<UUID, String> pathNames =
         pathIds.isEmpty()
@@ -79,9 +90,9 @@ public class ReportService {
         if (seconds == 0) continue;
         reportSeconds += seconds;
         merge(dayPaths, entry.getPathId(), seconds);
-        merge(dayItems, entry.getItemId(), seconds);
+        itemIds(entry).forEach(itemId -> merge(dayItems, itemId, seconds));
         merge(allPaths, entry.getPathId(), seconds);
-        merge(allItems, entry.getItemId(), seconds);
+        itemIds(entry).forEach(itemId -> merge(allItems, itemId, seconds));
       }
       days.add(
           new Day(
@@ -103,6 +114,14 @@ public class ReportService {
 
   private static void merge(Map<UUID, Long> totals, UUID id, long seconds) {
     totals.merge(id, seconds, Long::sum);
+  }
+
+  private List<UUID> itemIds(TimeEntry entry) {
+    if (entryItems == null)
+      return entry.getItemId() == null ? List.of() : List.of(entry.getItemId());
+    return entryItems.findAllByIdTimeEntryId(entry.getId()).stream()
+        .map(TimeEntryItem::getItemId)
+        .toList();
   }
 
   private static List<Category> categories(

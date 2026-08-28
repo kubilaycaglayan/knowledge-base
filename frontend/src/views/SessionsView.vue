@@ -17,6 +17,7 @@ type Session = {
   id: string;
   pathId?: string;
   itemId?: string;
+  itemIds?: string[];
   startedAt: string;
   endedAt?: string;
   durationSeconds?: number;
@@ -26,7 +27,7 @@ type Session = {
 };
 type Draft = {
   pathId: string;
-  itemId: string;
+  itemIds: string[];
   startedAt: string;
   endedAt: string;
   description: string;
@@ -47,6 +48,16 @@ const sources = ["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"];
 
 const pathFor = (id?: string) => paths.value.find((path) => path.id === id);
 const itemFor = (id?: string) => items.value.find((item) => item.id === id);
+const sessionItemIds = (session: Session) =>
+  session.itemIds?.length ? session.itemIds : session.itemId ? [session.itemId] : [];
+const sessionItemSummary = (session: Session) =>
+  sessionItemIds(session)
+    .map((id) => {
+      const item = itemFor(id);
+      if (!item) return "Removed item";
+      return `${item.title} · ${item.status}${item.progress !== undefined ? ` · ${item.progress}%` : ""}`;
+    })
+    .join(", ");
 const availableItems = computed(() => {
   if (!draft.value?.pathId) return items.value;
   return items.value.filter((item) => item.pathIds?.includes(draft.value!.pathId));
@@ -84,7 +95,7 @@ function beginEdit(session: Session) {
   editingId.value = session.id;
   draft.value = {
     pathId: session.pathId || "",
-    itemId: session.itemId || "",
+    itemIds: session.itemIds?.length ? session.itemIds : session.itemId ? [session.itemId] : [],
     startedAt: localDateTime(session.startedAt),
     endedAt: localDateTime(session.endedAt),
     description: session.description || "",
@@ -107,7 +118,7 @@ async function save(session: Session) {
       method: "PUT",
       body: JSON.stringify({
         pathId: draft.value.pathId || null,
-        itemId: draft.value.itemId || null,
+        itemIds: draft.value.itemIds,
         startedAt: isoDateTime(draft.value.startedAt),
         endedAt: isoDateTime(draft.value.endedAt),
         description: draft.value.description || null,
@@ -145,7 +156,7 @@ onMounted(load);
         <div v-if="editingId !== session.id" class="session-summary">
           <span>{{ duration(session) }}</span>
           <span>{{ pathFor(session.pathId)?.name || "Unassigned path" }}</span>
-          <span>{{ itemFor(session.itemId)?.title || "Unassigned item" }}</span>
+          <span>{{ sessionItemSummary(session) || "Unassigned items" }}</span>
         </div>
         <form v-else-if="draft" class="session-edit" @submit.prevent="save(session)">
           <label>Description<input v-model="draft.description" aria-label="Edit session description" /></label>
@@ -154,7 +165,7 @@ onMounted(load);
               <option value="">Unassigned</option>
               <option v-for="path in paths" :key="path.id" :value="path.id">{{ path.name }}</option>
             </select></label>
-            <label>Item<select v-model="draft.itemId" aria-label="Edit session item">
+            <label>Items<select v-model="draft.itemIds" aria-label="Edit session item" multiple>
               <option value="">Unassigned</option>
               <option v-for="item in availableItems" :key="item.id" :value="item.id">{{ item.title }}</option>
             </select></label>
@@ -171,7 +182,7 @@ onMounted(load);
         </form>
         <div v-if="editingId !== session.id && (pathFor(session.pathId) || itemFor(session.itemId))" class="session-context">
           <span v-if="pathFor(session.pathId)"><strong>Path:</strong> {{ pathFor(session.pathId)?.name }} · {{ pathFor(session.pathId)?.description || "No description" }}</span>
-          <span v-if="itemFor(session.itemId)"><strong>Item:</strong> {{ itemFor(session.itemId)?.title }} · {{ itemFor(session.itemId)?.status }}{{ itemFor(session.itemId)?.progress !== undefined ? ` · ${itemFor(session.itemId)?.progress}%` : "" }}</span>
+          <span v-if="session.itemIds?.length || session.itemId"><strong>Item:</strong> {{ sessionItemSummary(session) }}</span>
         </div>
       </article>
       <p v-if="!sessions.length && !error" class="empty">No sessions recorded yet.</p>

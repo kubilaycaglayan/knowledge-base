@@ -9,6 +9,7 @@ type Timer = {
   id: string;
   pathId?: string;
   itemId?: string;
+  itemIds?: string[];
   startedAt: string;
   endedAt?: string;
   description?: string;
@@ -18,6 +19,7 @@ type Entry = {
   id: string;
   pathId?: string;
   itemId?: string;
+  itemIds?: string[];
   startedAt: string;
   endedAt?: string;
   durationSeconds?: number;
@@ -51,6 +53,7 @@ const paths = ref<Path[]>([]),
   results = ref<Result[]>([]);
 const pathId = ref(""),
   itemId = ref(""),
+  itemIds = ref<string[]>([]),
   description = ref(""),
   timerStartedAt = ref(""),
   query = ref(""),
@@ -91,15 +94,26 @@ const localDateTime = (iso: string) => {
 };
 const isoDateTime = (value: string) => new Date(value).toISOString();
 watch(pathId, (value) => {
+  itemIds.value = itemIds.value.filter((id) =>
+    !value || timerItems.value.some((item) => item.id === id),
+  );
   if (value && !timerItems.value.some((item) => item.id === itemId.value))
     itemId.value = "";
+});
+watch(itemIds, (value) => {
+  itemId.value = value[0] || "";
 });
 function applyTimer(value: Timer | null) {
   timer.value = value;
   timerNow.value = Date.now();
   if (value) {
     pathId.value = value.pathId || "";
-    itemId.value = value.itemId || "";
+    itemIds.value = value.itemIds?.length
+      ? value.itemIds
+      : value.itemId
+        ? [value.itemId]
+        : [];
+    itemId.value = itemIds.value[0] || value.itemId || "";
     description.value = value.description || "";
     timerStartedAt.value = localDateTime(value.startedAt);
   } else {
@@ -142,6 +156,7 @@ async function toggle() {
           body: JSON.stringify({
             pathId: pathId.value || null,
             itemId: itemId.value || null,
+            itemIds: itemIds.value,
             description: description.value || null,
           }),
         }),
@@ -160,6 +175,7 @@ async function configureTimer() {
         body: JSON.stringify({
           pathId: pathId.value || null,
           itemId: itemId.value || null,
+          itemIds: itemIds.value,
           startedAt: isoDateTime(timerStartedAt.value),
           description: description.value || null,
         }),
@@ -202,6 +218,11 @@ async function editEntry(entry: Entry) {
       body: JSON.stringify({
         pathId: entry.pathId || null,
         itemId: entry.itemId || null,
+        itemIds: entry.itemIds?.length
+          ? entry.itemIds
+          : entry.itemId
+            ? [entry.itemId]
+            : [],
         startedAt: new Date(start).toISOString(),
         endedAt: new Date(end).toISOString(),
         description: entry.description || null,
@@ -227,6 +248,7 @@ async function createTimerItem() {
     newTimerItemTitle.value = "";
     await load();
     itemId.value = created.id;
+    itemIds.value = [created.id];
   } catch {
     error.value = "Could not create the session item.";
   }
@@ -267,7 +289,7 @@ onUnmounted(() => {
             <span>ITEM</span>
             <small>{{ timerItems.length }} related</small>
           </div>
-          <select v-model="itemId" aria-label="Timer item" @focus="load" @change="configureTimer">
+          <select v-model="itemIds" aria-label="Timer item" multiple @focus="load" @change="configureTimer">
             <option value="">Choose an item</option>
             <option v-for="item in timerItems" :key="item.id" :value="item.id">{{ item.title }}</option>
           </select>

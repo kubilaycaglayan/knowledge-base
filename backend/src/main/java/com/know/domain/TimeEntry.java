@@ -15,8 +15,7 @@ public class TimeEntry {
   @Column(name = "path_id")
   private UUID pathId;
 
-  @Column(name = "item_id")
-  private UUID itemId;
+  @Transient private UUID legacyItemId;
 
   @Column(name = "started_at", nullable = false)
   private Instant startedAt;
@@ -64,7 +63,7 @@ public class TimeEntry {
       String externalId) {
     this.userId = userId;
     this.pathId = pathId;
-    this.itemId = itemId;
+    this.legacyItemId = itemId;
     this.startedAt = startedAt;
     this.description = description;
     this.source = source;
@@ -84,7 +83,7 @@ public class TimeEntry {
   }
 
   public UUID getItemId() {
-    return itemId;
+    return legacyItemId;
   }
 
   public Instant getStartedAt() {
@@ -131,7 +130,7 @@ public class TimeEntry {
   public void reconfigureRunning(UUID pathId, UUID itemId, Instant start, String description) {
     if (!running()) throw new IllegalStateException("Only running entries can be reconfigured");
     this.pathId = pathId;
-    this.itemId = itemId;
+    this.legacyItemId = itemId;
     this.startedAt = start;
     this.description = description;
   }
@@ -145,7 +144,7 @@ public class TimeEntry {
       TimeSource source) {
     if (running()) throw new IllegalStateException("Running entries cannot be edited");
     this.pathId = pathId;
-    this.itemId = itemId;
+    this.legacyItemId = itemId;
     this.startedAt = start;
     this.endedAt = end;
     this.durationSeconds = Math.max(0, Duration.between(start, end).toSeconds());

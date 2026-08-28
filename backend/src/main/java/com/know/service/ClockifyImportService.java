@@ -132,21 +132,6 @@ public class ClockifyImportService {
       entry.assignImportBatch(batch.getId());
       entry.stop(end);
       entries.save(entry);
-      String activityDetail = "Session: " + start + " – " + end;
-      if (description != null && !description.isBlank())
-        activityDetail = description + " · " + activityDetail;
-      Activity activity =
-          new Activity(
-              userId,
-              path == null ? null : path.getId(),
-              null,
-              entry.getId(),
-              ActivityType.TIME_TRACKED,
-              "Imported Clockify session",
-              activityDetail,
-              start);
-      activity.assignImportBatch(batch.getId());
-      activities.save(activity);
       imported++;
     }
     batch.complete(imported, skipped, createdPathKeys.size());

@@ -197,7 +197,7 @@ class OwnershipBehaviorTest {
   }
 
   @Test
-  void editingSessionSynchronizesItsPathHistoryActivity() {
+  void editingSessionUpdatesItsCanonicalSessionRecord() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
     ItemRepository items = mock(ItemRepository.class);
@@ -206,18 +206,8 @@ class OwnershipBehaviorTest {
     TimeEntry entry =
         new TimeEntry(user, null, null, Instant.parse("2026-08-28T10:00:00Z"), "Old", TimeSource.MANUAL);
     entry.stop(Instant.parse("2026-08-28T11:00:00Z"));
-    Activity activity =
-        new Activity(
-            user,
-            null,
-            null,
-            entry.getId(),
-            ActivityType.TIME_TRACKED,
-            "Tracked 1 hour",
-            "Old");
     when(entries.findByIdAndUserId(entry.getId(), user)).thenReturn(Optional.of(entry));
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    when(activities.findAllByTimeEntryId(entry.getId())).thenReturn(List.of(activity));
 
     new TimerService(
             entries,
@@ -235,9 +225,9 @@ class OwnershipBehaviorTest {
             Instant.parse("2026-08-28T12:30:00Z"),
             "Updated");
 
-    assertEquals("Updated", activity.getDetail());
-    assertEquals("Tracked 30 minutes", activity.getTitle());
-    verify(activities).save(activity);
+    assertEquals("Updated", entry.getDescription());
+    assertEquals(1800, entry.getDurationSeconds());
+    verify(activities, never()).save(any());
   }
 
   @Test
@@ -340,7 +330,7 @@ class OwnershipBehaviorTest {
     assertFalse(result.running());
     assertEquals(end, result.endedAt());
     assertEquals(60, result.durationSeconds());
-    verify(activities).save(any(Activity.class));
+    verify(activities, never()).save(any());
   }
 
   @Test

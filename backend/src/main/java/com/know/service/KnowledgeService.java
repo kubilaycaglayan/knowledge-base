@@ -22,6 +22,10 @@ import com.know.domain.ProgressEntry;
 import com.know.domain.ProgressEntryRepository;
 import com.know.domain.Tag;
 import com.know.domain.TagRepository;
+import com.know.domain.TimeEntry;
+import com.know.domain.TimeEntryItem;
+import com.know.domain.TimeEntryItemRepository;
+import com.know.domain.TimeEntryRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,9 +34,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.Comparator;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +54,8 @@ public class KnowledgeService {
   private final ActivityRepository activityRepository;
   private final ProgressEntryRepository progressRepository;
   private final NoteRepository notes;
+  private final TimeEntryRepository timeEntries;
+  private final TimeEntryItemRepository entryItems;
 
   public KnowledgeService(
       ItemRepository items,
@@ -58,6 +66,21 @@ public class KnowledgeService {
       ActivityRepository activityRepository,
       ProgressEntryRepository progressRepository,
       NoteRepository notes) {
+    this(items, paths, pathItems, tags, itemTags, activityRepository, progressRepository, notes, null, null);
+  }
+
+  @Autowired
+  public KnowledgeService(
+      ItemRepository items,
+      PathRepository paths,
+      PathItemRepository pathItems,
+      TagRepository tags,
+      ItemTagRepository itemTags,
+      ActivityRepository activityRepository,
+      ProgressEntryRepository progressRepository,
+      NoteRepository notes,
+      TimeEntryRepository timeEntries,
+      TimeEntryItemRepository entryItems) {
     this.items = items;
     this.paths = paths;
     this.pathItems = pathItems;
@@ -66,6 +89,8 @@ public class KnowledgeService {
     this.activityRepository = activityRepository;
     this.progressRepository = progressRepository;
     this.notes = notes;
+    this.timeEntries = timeEntries;
+    this.entryItems = entryItems;
   }
 
   public record ItemView(
@@ -86,6 +111,7 @@ public class KnowledgeService {
       UUID pathId,
       UUID itemId,
       UUID activityId,
+      UUID timeEntryId,
       String title,
       String content,
       Instant createdAt,
@@ -294,8 +320,18 @@ public class KnowledgeService {
   @Transactional
   public NoteView createNote(
       UUID userId, UUID pathId, UUID itemId, UUID activityId, String title, String content) {
+    return createNote(userId, pathId, itemId, activityId, null, title, content);
+  }
+
+  @Transactional
+  public NoteView createNote(
+      UUID userId, UUID pathId, UUID itemId, UUID activityId, UUID timeEntryId,
+      String title, String content) {
     int targets =
-        (pathId != null ? 1 : 0) + (itemId != null ? 1 : 0) + (activityId != null ? 1 : 0);
+        (pathId != null ? 1 : 0)
+            + (itemId != null ? 1 : 0)
+            + (activityId != null ? 1 : 0)
+            + (timeEntryId != null ? 1 : 0);
     if (targets > 1) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A note can have only one target");
     }
@@ -313,7 +349,13 @@ public class KnowledgeService {
           .orElseThrow(
               () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
     }
-    Note n = notes.save(new Note(userId, pathId, itemId, activityId, title, content));
+    if (timeEntryId != null && timeEntries != null) {
+      timeEntries
+          .findByIdAndUserId(timeEntryId, userId)
+          .orElseThrow(
+              () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
+    }
+    Note n = notes.save(new Note(userId, pathId, itemId, activityId, timeEntryId, title, content));
     activityRepository.save(
         new Activity(
             userId, pathId, itemId, ActivityType.NOTE_CREATED, "Added note: " + title, null));
@@ -342,6 +384,7 @@ public class KnowledgeService {
         n.getPathId(),
         n.getItemId(),
         n.getActivityId(),
+        n.getTimeEntryId(),
         n.getTitle(),
         n.getContent(),
         n.getCreatedAt(),
@@ -349,18 +392,65 @@ public class KnowledgeService {
   }
 
   public List<Activity> activities(UUID userId) {
-    return activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId);
+    return timeline(userId, null, null, null, null, null);
   }
 
   public List<Activity> filteredActivities(
       UUID userId, Instant from, Instant to, UUID pathId, UUID itemId, ActivityType type) {
-    return activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId).stream()
+    return timeline(userId, from, to, pathId, itemId, type);
+  }
+
+  private List<Activity> timeline(
+      UUID userId, Instant from, Instant to, UUID pathId, UUID itemId, ActivityType type) {
+    List<Activity> result = new ArrayList<>(
+        activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId));
+    result.removeIf(
+        activity ->
+            activity.getType() == ActivityType.TIMER_STARTED
+                || activity.getType() == ActivityType.TIMER_STOPPED
+                || activity.getType() == ActivityType.TIME_TRACKED);
+    if (timeEntries != null) {
+      timeEntries
+          .findAllByUserIdOrderByStartedAtDesc(userId, PageRequest.of(0, 100))
+          .stream()
+          .filter(entry -> itemId == null || itemIds(entry).contains(itemId))
+          .map(this::sessionActivity)
+          .forEach(result::add);
+    }
+    return result.stream()
         .filter(activity -> from == null || !activity.getOccurredAt().isBefore(from))
         .filter(activity -> to == null || !activity.getOccurredAt().isAfter(to))
         .filter(activity -> pathId == null || pathId.equals(activity.getPathId()))
-        .filter(activity -> itemId == null || itemId.equals(activity.getItemId()))
+        // Session rows are synthesized from the time-entry/item relationship. The
+        // item filter was already applied to the source entry above; do not apply
+        // the legacy single-item Activity filter to those synthesized rows.
+        .filter(
+            activity ->
+                itemId == null
+                    || itemId.equals(activity.getItemId())
+                    || activity.getTimeEntryId() != null)
         .filter(activity -> type == null || type == activity.getType())
+        .sorted(Comparator.comparing(Activity::getOccurredAt).reversed())
+        .limit(100)
         .toList();
+  }
+
+  private List<UUID> itemIds(TimeEntry entry) {
+    if (entryItems == null)
+      return entry.getItemId() == null ? List.of() : List.of(entry.getItemId());
+    return entryItems.findAllByIdTimeEntryId(entry.getId()).stream()
+        .map(TimeEntryItem::getItemId)
+        .toList();
+  }
+
+  private Activity sessionActivity(TimeEntry entry) {
+    long seconds = entry.getDurationSeconds() == null
+        ? Math.max(0, java.time.Duration.between(entry.getStartedAt(), Instant.now()).toSeconds())
+        : entry.getDurationSeconds();
+    return Activity.session(
+        entry.getUserId(), entry.getPathId(), itemIds(entry).stream().findFirst().orElse(entry.getItemId()), entry.getId(),
+        "Tracked " + seconds + " seconds", entry.getDescription(),
+        entry.getEndedAt() == null ? entry.getStartedAt() : entry.getEndedAt());
   }
 
   public List<ProgressEntry> progress(UUID userId, UUID itemId) {

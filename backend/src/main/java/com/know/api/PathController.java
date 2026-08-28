@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,8 @@ public class PathController {
   private final ItemRepository items;
   private final ActivityRepository activities;
   private final TimeEntryRepository timeEntries;
+  @Autowired(required = false)
+  private TimeEntryItemRepository entryItems;
 
   public PathController(
       PathRepository paths,
@@ -115,6 +118,14 @@ public class PathController {
       activities
           .findRecentForPathAndItems(owner, id, itemIds, PageRequest.of(0, 50))
           .forEach(event -> relevantActivity.put(event.getId(), event));
+    relevantActivity.values().removeIf(
+        event ->
+            event.getType() == ActivityType.TIMER_STARTED
+                || event.getType() == ActivityType.TIMER_STOPPED
+                || event.getType() == ActivityType.TIME_TRACKED);
+    relevantTimes.values().stream()
+        .map(entry -> sessionActivity(id, entry))
+        .forEach(event -> relevantActivity.put(event.getId(), event));
     List<Activity> recent =
         relevantActivity.values().stream()
             .sorted(Comparator.comparing(Activity::getOccurredAt).reversed())
@@ -149,5 +160,25 @@ public class PathController {
     return entry.getDurationSeconds() != null
         ? entry.getDurationSeconds()
         : Math.max(0, Duration.between(entry.getStartedAt(), Instant.now()).toSeconds());
+  }
+
+  private Activity sessionActivity(UUID pathId, TimeEntry entry) {
+    long seconds = liveSeconds(entry);
+    return Activity.session(
+        entry.getUserId(),
+        pathId,
+        firstItem(entry),
+        entry.getId(),
+        "Tracked " + seconds + " seconds",
+        entry.getDescription(),
+        entry.getEndedAt() == null ? entry.getStartedAt() : entry.getEndedAt());
+  }
+
+  private UUID firstItem(TimeEntry entry) {
+    if (entryItems == null) return entry.getItemId();
+    return entryItems.findAllByIdTimeEntryId(entry.getId()).stream()
+        .map(TimeEntryItem::getItemId)
+        .findFirst()
+        .orElse(null);
   }
 }

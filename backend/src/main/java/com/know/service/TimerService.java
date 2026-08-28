@@ -6,6 +6,7 @@ import java.util.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,6 +18,7 @@ public class TimerService {
   private final PathItemRepository pathItems;
   private final ProgressEntryRepository progress;
   private final ActivityRepository activities;
+  private final TimeEntryItemRepository entryItems;
 
   public TimerService(
       TimeEntryRepository entries,
@@ -25,29 +27,67 @@ public class TimerService {
       PathItemRepository pathItems,
       ProgressEntryRepository progress,
       ActivityRepository activities) {
+    this(entries, paths, items, pathItems, progress, activities, null);
+  }
+
+  @Autowired
+  public TimerService(
+      TimeEntryRepository entries,
+      PathRepository paths,
+      ItemRepository items,
+      PathItemRepository pathItems,
+      ProgressEntryRepository progress,
+      ActivityRepository activities,
+      TimeEntryItemRepository entryItems) {
     this.entries = entries;
     this.paths = paths;
     this.items = items;
     this.pathItems = pathItems;
     this.progress = progress;
     this.activities = activities;
+    this.entryItems = entryItems;
   }
 
   public record TimeView(
       UUID id,
       UUID pathId,
       UUID itemId,
+      List<UUID> itemIds,
       Instant startedAt,
       Instant endedAt,
       Long durationSeconds,
       String description,
       TimeSource source,
       boolean running) {
-    static TimeView of(TimeEntry e) {
+    public TimeView(
+        UUID id,
+        UUID pathId,
+        UUID itemId,
+        Instant startedAt,
+        Instant endedAt,
+        Long durationSeconds,
+        String description,
+        TimeSource source,
+        boolean running) {
+      this(
+          id,
+          pathId,
+          itemId,
+          itemId == null ? List.of() : List.of(itemId),
+          startedAt,
+          endedAt,
+          durationSeconds,
+          description,
+          source,
+          running);
+    }
+
+    static TimeView of(TimeEntry e, List<UUID> itemIds) {
       return new TimeView(
           e.getId(),
           e.getPathId(),
-          e.getItemId(),
+          itemIds.isEmpty() ? e.getItemId() : itemIds.get(0),
+          itemIds,
           e.getStartedAt(),
           e.getEndedAt(),
           e.getDurationSeconds(),
@@ -55,6 +95,18 @@ public class TimerService {
           e.getSource(),
           e.running());
     }
+  }
+
+  private List<UUID> itemIds(TimeEntry e) {
+    if (entryItems == null)
+      return e.getItemId() == null ? List.of() : List.of(e.getItemId());
+    return entryItems.findAllByIdTimeEntryId(e.getId()).stream()
+        .map(TimeEntryItem::getItemId)
+        .toList();
+  }
+
+  private TimeView view(TimeEntry e) {
+    return TimeView.of(e, itemIds(e));
   }
 
   static String formatTrackedDuration(Long durationSeconds) {
@@ -77,9 +129,16 @@ public class TimerService {
   @Transactional
   public TimeView start(
       UUID userId, UUID pathId, UUID itemId, String description, TimeSource source) {
+    return startWithItems(userId, pathId, itemId == null ? List.of() : List.of(itemId), description, source);
+  }
+
+  @Transactional
+  public TimeView startWithItems(
+      UUID userId, UUID pathId, Collection<UUID> itemIds, String description, TimeSource source) {
     if (entries.findByUserIdAndEndedAtIsNull(userId).isPresent())
       throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running");
-    validateTargets(userId, pathId, itemId);
+    validateTargets(userId, pathId, itemIds);
+    UUID legacyItemId = itemIds.stream().filter(Objects::nonNull).findFirst().orElse(null);
     TimeEntry e;
     try {
       e =
@@ -87,23 +146,15 @@ public class TimerService {
               new TimeEntry(
                   userId,
                   pathId,
-                  itemId,
+                  legacyItemId,
                   Instant.now(),
                   description,
                   source == null ? TimeSource.WEB : source));
     } catch (DataIntegrityViolationException ex) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running");
     }
-    activities.save(
-        new Activity(
-            userId,
-            pathId,
-            itemId,
-            e.getId(),
-            ActivityType.TIMER_STARTED,
-            "Started a timer",
-            description));
-    return TimeView.of(e);
+    replaceItems(e.getId(), itemIds);
+    return view(e);
   }
 
   @Transactional
@@ -114,11 +165,10 @@ public class TimerService {
             .filter(x -> x.getUserId().equals(userId))
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Timer not found"));
-    if (!e.running()) return TimeView.of(e);
+    if (!e.running()) return view(e);
     e.stop(Instant.now());
     entries.save(e);
-    saveStoppedActivity(userId, e);
-    return TimeView.of(e);
+    return view(e);
   }
 
   @Transactional
@@ -144,13 +194,32 @@ public class TimerService {
       Instant startedAt,
       Instant endedAt,
       String description) {
+    return configureWithItems(
+        userId,
+        id,
+        pathId,
+        itemId == null ? List.of() : List.of(itemId),
+        startedAt,
+        endedAt,
+        description);
+  }
+
+  @Transactional
+  public TimeView configureWithItems(
+      UUID userId,
+      UUID id,
+      UUID pathId,
+      Collection<UUID> itemIds,
+      Instant startedAt,
+      Instant endedAt,
+      String description) {
     Instant now = Instant.now();
     if (startedAt == null || startedAt.isAfter(now))
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Timer start cannot be in the future");
     if (endedAt != null && (endedAt.isBefore(startedAt) || endedAt.isAfter(now)))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid timer end time");
-    validateTargets(userId, pathId, itemId);
+    validateTargets(userId, pathId, itemIds);
     TimeEntry e =
         entries
             .findByIdAndUserId(id, userId)
@@ -159,24 +228,17 @@ public class TimerService {
     if (!e.running())
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Only a running timer can be configured");
-    e.reconfigureRunning(pathId, itemId, startedAt, description);
+    UUID legacyItemId = itemIds.stream().filter(Objects::nonNull).findFirst().orElse(null);
+    e.reconfigureRunning(pathId, legacyItemId, startedAt, description);
+    replaceItems(e.getId(), itemIds);
     if (endedAt != null) {
       e.stop(endedAt);
-      activities.save(
-          new Activity(
-              userId,
-              e.getPathId(),
-              e.getItemId(),
-              e.getId(),
-              ActivityType.TIMER_STOPPED,
-              "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
-              e.getDescription()));
     }
-    return TimeView.of(entries.save(e));
+    return view(entries.save(e));
   }
 
   public TimeView current(UUID userId) {
-    return entries.findByUserIdAndEndedAtIsNull(userId).map(TimeView::of).orElse(null);
+    return entries.findByUserIdAndEndedAtIsNull(userId).map(this::view).orElse(null);
   }
 
   public List<TimeView> history(UUID userId) {
@@ -184,7 +246,7 @@ public class TimerService {
         .findAllByUserIdOrderByStartedAtDesc(
             userId, org.springframework.data.domain.PageRequest.of(0, 100))
         .stream()
-        .map(TimeView::of)
+        .map(this::view)
         .toList();
   }
 
@@ -201,7 +263,7 @@ public class TimerService {
             .findAllByUserIdOrderByStartedAtDesc(
                 userId, org.springframework.data.domain.PageRequest.of(safePage, safePageSize))
             .stream()
-            .map(TimeView::of)
+            .map(this::view)
             .toList();
     return new HistoryPage(result, safePage, safePageSize, total, totalPages);
   }
@@ -214,22 +276,32 @@ public class TimerService {
       Instant startedAt,
       Instant endedAt,
       String description) {
+    return manualWithItems(
+        userId,
+        pathId,
+        itemId == null ? List.of() : List.of(itemId),
+        startedAt,
+        endedAt,
+        description);
+  }
+
+  @Transactional
+  public TimeView manualWithItems(
+      UUID userId,
+      UUID pathId,
+      Collection<UUID> itemIds,
+      Instant startedAt,
+      Instant endedAt,
+      String description) {
     if (startedAt == null || endedAt == null || endedAt.isBefore(startedAt))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range");
-    validateTargets(userId, pathId, itemId);
-    TimeEntry e = new TimeEntry(userId, pathId, itemId, startedAt, description, TimeSource.MANUAL);
+    validateTargets(userId, pathId, itemIds);
+    UUID legacyItemId = itemIds.stream().filter(Objects::nonNull).findFirst().orElse(null);
+    TimeEntry e = new TimeEntry(userId, pathId, legacyItemId, startedAt, description, TimeSource.MANUAL);
     e.stop(endedAt);
     entries.save(e);
-    activities.save(
-        new Activity(
-            userId,
-            pathId,
-            itemId,
-            e.getId(),
-            ActivityType.TIME_TRACKED,
-            "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
-            description));
-    return TimeView.of(e);
+    replaceItems(e.getId(), itemIds);
+    return view(e);
   }
 
   @Transactional
@@ -241,7 +313,7 @@ public class TimerService {
       Instant startedAt,
       Instant endedAt,
       String description) {
-    return edit(userId, id, pathId, itemId, startedAt, endedAt, description, null);
+    return editWithItems(userId, id, pathId, itemId == null ? List.of() : List.of(itemId), startedAt, endedAt, description, null);
   }
 
   @Transactional
@@ -254,9 +326,30 @@ public class TimerService {
       Instant endedAt,
       String description,
       TimeSource source) {
+    return editWithItems(
+        userId,
+        id,
+        pathId,
+        itemId == null ? List.of() : List.of(itemId),
+        startedAt,
+        endedAt,
+        description,
+        source);
+  }
+
+  @Transactional
+  public TimeView editWithItems(
+      UUID userId,
+      UUID id,
+      UUID pathId,
+      Collection<UUID> itemIds,
+      Instant startedAt,
+      Instant endedAt,
+      String description,
+      TimeSource source) {
     if (startedAt == null || endedAt == null || endedAt.isBefore(startedAt))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range");
-    validateTargets(userId, pathId, itemId);
+    validateTargets(userId, pathId, itemIds);
     TimeEntry e =
         entries
             .findByIdAndUserId(id, userId)
@@ -265,43 +358,21 @@ public class TimerService {
     if (e.running())
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Running timers must be stopped before editing");
-    e.edit(pathId, itemId, startedAt, endedAt, description, source);
+    UUID legacyItemId = itemIds.stream().filter(Objects::nonNull).findFirst().orElse(null);
+    e.edit(pathId, legacyItemId, startedAt, endedAt, description, source);
     entries.save(e);
-    syncActivities(e);
-    return TimeView.of(e);
+    replaceItems(e.getId(), itemIds);
+    return view(e);
   }
 
-  private void saveStoppedActivity(UUID userId, TimeEntry e) {
-    activities.save(
-        new Activity(
-            userId,
-            e.getPathId(),
-            e.getItemId(),
-            e.getId(),
-            ActivityType.TIMER_STOPPED,
-            "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
-            e.getDescription(),
-            e.getEndedAt()));
-  }
-
-  private void syncActivities(TimeEntry e) {
-    activities.findAllByTimeEntryId(e.getId()).forEach(activity -> {
-      String title = activity.getTitle();
-      Instant occurredAt = activity.getOccurredAt();
-      if (activity.getType() == ActivityType.TIMER_STARTED) {
-        occurredAt = e.getStartedAt();
-      } else if (activity.getType() == ActivityType.TIMER_STOPPED) {
-        title = "Tracked " + formatTrackedDuration(e.getDurationSeconds());
-        occurredAt = e.getEndedAt();
-      } else if (activity.getType() == ActivityType.TIME_TRACKED
-          && title.startsWith("Tracked ")) {
-        title = "Tracked " + formatTrackedDuration(e.getDurationSeconds());
-        occurredAt = e.getEndedAt();
-      }
-      activity.updateForTimeEntry(
-          e.getPathId(), e.getItemId(), title, e.getDescription(), occurredAt);
-      activities.save(activity);
-    });
+  private void replaceItems(UUID entryId, Collection<UUID> itemIds) {
+    if (entryItems == null) return;
+    entryItems.deleteAllByIdTimeEntryId(entryId);
+    itemIds.stream()
+        .filter(Objects::nonNull)
+        .distinct()
+        .map(itemId -> new TimeEntryItem(entryId, itemId))
+        .forEach(entryItems::save);
   }
 
   public Statistics statistics(UUID userId) {
@@ -327,9 +398,9 @@ public class TimerService {
         sum(window, weekStart, now),
         sum(window, monthStart, now),
         group(window, dayStart, now, TimeEntry::getPathId),
-        group(window, dayStart, now, TimeEntry::getItemId),
+        groupItems(window, dayStart, now),
         group(window, weekStart, now, TimeEntry::getPathId),
-        group(window, weekStart, now, TimeEntry::getItemId),
+        groupItems(window, weekStart, now),
         items.countByUserIdAndStatus(userId, ItemStatus.COMPLETED),
         items.countByUserIdAndStatus(userId, ItemStatus.ACTIVE),
         changes);
@@ -360,6 +431,16 @@ public class TimerService {
     return out;
   }
 
+  private Map<UUID, Long> groupItems(List<TimeEntry> list, Instant from, Instant to) {
+    Map<UUID, Long> out = new LinkedHashMap<>();
+    for (TimeEntry entry : list) {
+      long seconds = secondsIn(entry, from, to);
+      if (seconds == 0) continue;
+      for (UUID itemId : itemIds(entry)) out.merge(itemId, seconds, Long::sum);
+    }
+    return out;
+  }
+
   public record ProgressChange(
       UUID itemId, short previousProgress, short newProgress, Instant changedAt) {}
 
@@ -376,6 +457,10 @@ public class TimerService {
       List<ProgressChange> recentProgressChanges) {}
 
   private void validateTargets(UUID userId, UUID pathId, UUID itemId) {
+    validateTargets(userId, pathId, itemId == null ? List.of() : List.of(itemId));
+  }
+
+  private void validateTargets(UUID userId, UUID pathId, Collection<UUID> itemIds) {
     if (pathId != null) {
       Path path =
           paths
@@ -388,15 +473,17 @@ public class TimerService {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "Archived paths cannot receive new time");
     }
-    if (itemId != null)
+    for (UUID itemId : itemIds) {
+      if (itemId == null) continue;
       items
           .findByIdAndUserId(itemId, userId)
           .orElseThrow(
               () ->
                   new ResponseStatusException(
                       HttpStatus.BAD_REQUEST, "Item does not belong to user"));
-    if (pathId != null && itemId != null && !pathItems.existsByIdPathIdAndIdItemId(pathId, itemId))
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Item is not attached to the selected path");
+      if (pathId != null && !pathItems.existsByIdPathIdAndIdItemId(pathId, itemId))
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "Item is not attached to the selected path");
+    }
   }
 }

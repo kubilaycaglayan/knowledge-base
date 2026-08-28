@@ -628,7 +628,7 @@ class KnowIntegrationTest {
         post("/api/v1/items", token, "{\"title\":\"Activity Check\",\"type\":\"COURSE\"}");
     String itemId = item.getBody().get("id").asText();
 
-    // Start timer, then expect TIMER_STARTED
+    // Start timer; sessions are now read from time_entry rather than persisted as activity rows.
     ResponseEntity<JsonNode> timerRes =
         post("/api/v1/timers", token, "{\"description\":\"Activity timer\",\"source\":\"WEB\"}");
     String timerId = timerRes.getBody().get("id").asText();
@@ -645,7 +645,7 @@ class KnowIntegrationTest {
       if ("TIMER_STARTED".equals(type)) hasTimerStarted = true;
     }
     assertTrue(hasItemCreated, "ITEM_CREATED activity expected");
-    assertTrue(hasTimerStarted, "TIMER_STARTED activity expected");
+    assertFalse(hasTimerStarted, "timer transition activity should not be persisted");
   }
 
   @Test

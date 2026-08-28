@@ -18,8 +18,11 @@ public class Note {
   @Column(name = "item_id")
   private UUID itemId;
 
-  @Column(name = "activity_id")
+  @Column(name = "item_event_id")
   private UUID activityId;
+
+  @Column(name = "time_entry_id")
+  private UUID timeEntryId;
 
   @Column(nullable = false, length = 240)
   private String title;
@@ -45,6 +48,13 @@ public class Note {
     this.content = content;
   }
 
+  public Note(
+      UUID userId, UUID pathId, UUID itemId, UUID activityId, UUID timeEntryId,
+      String title, String content) {
+    this(userId, pathId, itemId, activityId, title, content);
+    this.timeEntryId = timeEntryId;
+  }
+
   public UUID getId() {
     return id;
   }
@@ -59,6 +69,10 @@ public class Note {
 
   public UUID getActivityId() {
     return activityId;
+  }
+
+  public UUID getTimeEntryId() {
+    return timeEntryId;
   }
 
   public String getTitle() {

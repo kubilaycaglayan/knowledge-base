@@ -10,6 +10,7 @@ type Activity = {
   occurredAt: string;
   pathId?: string;
   itemId?: string;
+  timeEntryId?: string;
 };
 type Path = { id: string; name: string };
 type Item = { id: string; title: string };
@@ -77,7 +78,9 @@ async function saveActivityNote() {
     await api("/notes", {
       method: "POST",
       body: JSON.stringify({
-        activityId: noteActivityId.value,
+        ...(activities.value.find((activity) => activity.id === noteActivityId.value)?.timeEntryId
+          ? { timeEntryId: activities.value.find((activity) => activity.id === noteActivityId.value)?.timeEntryId }
+          : { activityId: noteActivityId.value }),
         title: noteTitle.value,
         content: noteContent.value,
       }),

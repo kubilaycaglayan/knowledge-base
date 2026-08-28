@@ -27,6 +27,7 @@ struct Note: Codable, Identifiable {
     let pathId: UUID?
     let itemId: UUID?
     let activityId: UUID?
+    let timeEntryId: UUID?
     let title: String
     let content: String
 }
@@ -37,12 +38,14 @@ struct Activity: Codable, Identifiable {
     let title: String
     let detail: String?
     let occurredAt: String
+    let timeEntryId: UUID?
 }
 
 struct TimerState: Codable, Identifiable {
     let id: UUID
     let pathId: UUID?
     let itemId: UUID?
+    let itemIds: [UUID]
     let startedAt: String
     let endedAt: String?
     let description: String?
@@ -52,6 +55,7 @@ struct TimerState: Codable, Identifiable {
 struct TimerRequest: Codable {
     let pathId: String?
     let itemId: String?
+    let itemIds: [String]?
     let description: String
     let source: String
 }
@@ -59,6 +63,7 @@ struct TimerRequest: Codable {
 struct TimerUpdateRequest: Codable {
     let pathId: String?
     let itemId: String?
+    let itemIds: [String]?
     let startedAt: String
     let description: String?
 }
@@ -351,6 +356,7 @@ struct APIClient {
                     TimerRequest(
                         pathId: pathId?.uuidString,
                         itemId: itemId?.uuidString,
+                        itemIds: itemId.map { [$0.uuidString] },
                         description: "iOS session",
                         source: "IOS"
                     )
@@ -375,6 +381,7 @@ struct APIClient {
                 TimerUpdateRequest(
                     pathId: pathId?.uuidString,
                     itemId: itemId?.uuidString,
+                    itemIds: itemId.map { [$0.uuidString] },
                     startedAt: formatter.string(from: startedAt),
                     description: description
                 )

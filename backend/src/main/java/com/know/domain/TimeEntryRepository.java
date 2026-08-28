@@ -8,8 +8,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
   @Query(
-      "select t from TimeEntry t where t.userId=:userId and t.itemId in :itemIds and (t.pathId is"
-          + " null or t.pathId=:pathId) order by t.startedAt desc")
+      "select distinct t from TimeEntry t join TimeEntryItem ti on ti.id.timeEntryId=t.id"
+          + " where t.userId=:userId and ti.id.itemId in :itemIds and (t.pathId is null"
+          + " or t.pathId=:pathId) order by t.startedAt desc")
   List<TimeEntry> findRecentForPathAndItems(
       @Param("userId") UUID userId,
       @Param("pathId") UUID pathId,
@@ -34,9 +35,6 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
   long countByUserId(UUID userId);
 
   List<TimeEntry> findAllByUserIdAndPathIdOrderByStartedAtDesc(UUID userId, UUID pathId);
-
-  List<TimeEntry> findAllByUserIdAndItemIdInOrderByStartedAtDesc(
-      UUID userId, Collection<UUID> itemIds);
 
   long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
 }

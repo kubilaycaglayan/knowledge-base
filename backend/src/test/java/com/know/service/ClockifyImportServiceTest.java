@@ -59,12 +59,7 @@ class ClockifyImportServiceTest {
                         && saved.getExternalId().equals("clockify-1")
                         && saved.getDurationSeconds() == 1800
                         && result.batchId().equals(saved.getImportBatchId())));
-    var activity = ArgumentCaptor.forClass(Activity.class);
-    verify(activities).save(activity.capture());
-    assertEquals(result.batchId(), activity.getValue().getImportBatchId());
-    assertEquals(entry.timeInterval().start(), activity.getValue().getOccurredAt());
-    assertTrue(activity.getValue().getDetail().contains("2026-08-25T10:00:00Z"));
-    assertTrue(activity.getValue().getDetail().contains("2026-08-25T10:30:00Z"));
+    verify(activities, never()).save(any());
     var duplicate =
         service.importEntries(
             user, new ClockifyImportService.ClockifyImportRequest(List.of(entry)));

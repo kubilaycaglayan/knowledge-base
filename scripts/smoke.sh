@@ -28,7 +28,9 @@ cleanup() {
   if [[ -n "$migration_db" ]]; then
     docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$migration_db" >/dev/null 2>&1 || true
   fi
-  docker compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
+  # Preserve the database volume. Smoke runs should use an isolated
+  # COMPOSE_PROJECT_NAME when disposable database state is desired.
+  docker compose down --remove-orphans --rmi local >/dev/null 2>&1 || true
   if [[ -n "$buildx_builder" ]]; then
     docker buildx rm --force "$buildx_builder" >/dev/null 2>&1 || true
   fi
@@ -142,6 +144,16 @@ docker compose exec -T db psql -v ON_ERROR_STOP=1 \
   -U "${POSTGRES_USER:-know}" \
   -d "$migration_db" \
   < backend/src/main/resources/db/migration/V10__backfill_clockify_import_batches.sql >/dev/null
+for migration in backend/src/main/resources/db/migration/V{11..12}__*.sql; do
+  docker compose exec -T db psql -v ON_ERROR_STOP=1 \
+    -U "${POSTGRES_USER:-know}" \
+    -d "$migration_db" < "$migration" >/dev/null
+done
+for migration in backend/src/main/resources/db/migration/V{13..16}__*.sql; do
+  docker compose exec -T db psql -v ON_ERROR_STOP=1 \
+    -U "${POSTGRES_USER:-know}" \
+    -d "$migration_db" < "$migration" >/dev/null
+done
 legacy_batch_count="$(
   docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
     -c "select count(*) from import_batch where user_id='00000000-0000-4000-8000-000000000001';"
@@ -154,9 +166,10 @@ legacy_entry_count="$(
 [[ "$legacy_entry_count" == "2" ]]
 legacy_activity_count="$(
   docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
-    -c "select count(*) from activity where title='Imported Clockify session' and import_batch_id is not null;"
+    -c "select count(*) from item_event where title='Imported Clockify session' and import_batch_id is not null;"
 )"
 [[ "$legacy_activity_count" == "2" ]]
+[[ "$(docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" -c "select to_regclass('public.activity');")" == "" ]]
 
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   proxy_id="$(docker compose ps -q proxy)"

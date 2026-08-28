@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "activity")
+@Table(name = "item_event")
 public class Activity {
   @Id private UUID id = UUID.randomUUID();
 
@@ -73,6 +73,13 @@ public class Activity {
       String title, String detail, Instant occurredAt) {
     this(userId, pathId, itemId, type, title, detail, occurredAt);
     this.timeEntryId = timeEntryId;
+  }
+
+  public static Activity session(
+      UUID userId, UUID pathId, UUID itemId, UUID timeEntryId, String title, String detail,
+      Instant occurredAt) {
+    return new Activity(
+        userId, pathId, itemId, timeEntryId, ActivityType.TIME_TRACKED, title, detail, occurredAt);
   }
 
   public UUID getId() {
