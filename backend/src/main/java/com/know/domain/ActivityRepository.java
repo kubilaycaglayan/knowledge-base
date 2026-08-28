@@ -30,5 +30,7 @@ public interface ActivityRepository extends JpaRepository<Activity, UUID> {
 
   Optional<Activity> findByIdAndUserId(UUID id, UUID userId);
 
+  List<Activity> findAllByTimeEntryId(UUID timeEntryId);
+
   long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
 }

@@ -96,7 +96,13 @@ public class TimerService {
     }
     activities.save(
         new Activity(
-            userId, pathId, itemId, ActivityType.TIMER_STARTED, "Started a timer", description));
+            userId,
+            pathId,
+            itemId,
+            e.getId(),
+            ActivityType.TIMER_STARTED,
+            "Started a timer",
+            description));
     return TimeView.of(e);
   }
 
@@ -111,14 +117,7 @@ public class TimerService {
     if (!e.running()) return TimeView.of(e);
     e.stop(Instant.now());
     entries.save(e);
-    activities.save(
-        new Activity(
-            userId,
-            e.getPathId(),
-            e.getItemId(),
-            ActivityType.TIMER_STOPPED,
-            "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
-            e.getDescription()));
+    saveStoppedActivity(userId, e);
     return TimeView.of(e);
   }
 
@@ -168,6 +167,7 @@ public class TimerService {
               userId,
               e.getPathId(),
               e.getItemId(),
+              e.getId(),
               ActivityType.TIMER_STOPPED,
               "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
               e.getDescription()));
@@ -225,6 +225,7 @@ public class TimerService {
             userId,
             pathId,
             itemId,
+            e.getId(),
             ActivityType.TIME_TRACKED,
             "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
             description));
@@ -266,7 +267,41 @@ public class TimerService {
           HttpStatus.CONFLICT, "Running timers must be stopped before editing");
     e.edit(pathId, itemId, startedAt, endedAt, description, source);
     entries.save(e);
+    syncActivities(e);
     return TimeView.of(e);
+  }
+
+  private void saveStoppedActivity(UUID userId, TimeEntry e) {
+    activities.save(
+        new Activity(
+            userId,
+            e.getPathId(),
+            e.getItemId(),
+            e.getId(),
+            ActivityType.TIMER_STOPPED,
+            "Tracked " + formatTrackedDuration(e.getDurationSeconds()),
+            e.getDescription(),
+            e.getEndedAt()));
+  }
+
+  private void syncActivities(TimeEntry e) {
+    activities.findAllByTimeEntryId(e.getId()).forEach(activity -> {
+      String title = activity.getTitle();
+      Instant occurredAt = activity.getOccurredAt();
+      if (activity.getType() == ActivityType.TIMER_STARTED) {
+        occurredAt = e.getStartedAt();
+      } else if (activity.getType() == ActivityType.TIMER_STOPPED) {
+        title = "Tracked " + formatTrackedDuration(e.getDurationSeconds());
+        occurredAt = e.getEndedAt();
+      } else if (activity.getType() == ActivityType.TIME_TRACKED
+          && title.startsWith("Tracked ")) {
+        title = "Tracked " + formatTrackedDuration(e.getDurationSeconds());
+        occurredAt = e.getEndedAt();
+      }
+      activity.updateForTimeEntry(
+          e.getPathId(), e.getItemId(), title, e.getDescription(), occurredAt);
+      activities.save(activity);
+    });
   }
 
   public Statistics statistics(UUID userId) {

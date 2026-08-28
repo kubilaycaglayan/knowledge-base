@@ -140,6 +140,7 @@ public class ClockifyImportService {
               userId,
               path == null ? null : path.getId(),
               null,
+              entry.getId(),
               ActivityType.TIME_TRACKED,
               "Imported Clockify session",
               activityDetail,

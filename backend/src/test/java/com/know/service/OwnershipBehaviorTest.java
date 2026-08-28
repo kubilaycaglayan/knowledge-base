@@ -197,6 +197,50 @@ class OwnershipBehaviorTest {
   }
 
   @Test
+  void editingSessionSynchronizesItsPathHistoryActivity() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    PathRepository paths = mock(PathRepository.class);
+    ItemRepository items = mock(ItemRepository.class);
+    ActivityRepository activities = mock(ActivityRepository.class);
+    UUID user = UUID.randomUUID();
+    TimeEntry entry =
+        new TimeEntry(user, null, null, Instant.parse("2026-08-28T10:00:00Z"), "Old", TimeSource.MANUAL);
+    entry.stop(Instant.parse("2026-08-28T11:00:00Z"));
+    Activity activity =
+        new Activity(
+            user,
+            null,
+            null,
+            entry.getId(),
+            ActivityType.TIME_TRACKED,
+            "Tracked 1 hour",
+            "Old");
+    when(entries.findByIdAndUserId(entry.getId(), user)).thenReturn(Optional.of(entry));
+    when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(activities.findAllByTimeEntryId(entry.getId())).thenReturn(List.of(activity));
+
+    new TimerService(
+            entries,
+            paths,
+            items,
+            mock(PathItemRepository.class),
+            mock(ProgressEntryRepository.class),
+            activities)
+        .edit(
+            user,
+            entry.getId(),
+            null,
+            null,
+            Instant.parse("2026-08-28T12:00:00Z"),
+            Instant.parse("2026-08-28T12:30:00Z"),
+            "Updated");
+
+    assertEquals("Updated", activity.getDetail());
+    assertEquals("Tracked 30 minutes", activity.getTitle());
+    verify(activities).save(activity);
+  }
+
+  @Test
   void timerHistoryUsesABoundedPage() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);

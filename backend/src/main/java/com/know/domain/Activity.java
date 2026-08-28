@@ -18,6 +18,9 @@ public class Activity {
   @Column(name = "item_id")
   private UUID itemId;
 
+  @Column(name = "time_entry_id")
+  private UUID timeEntryId;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private ActivityType type;
@@ -42,6 +45,13 @@ public class Activity {
   }
 
   public Activity(
+      UUID userId, UUID pathId, UUID itemId, UUID timeEntryId, ActivityType type,
+      String title, String detail) {
+    this(userId, pathId, itemId, type, title, detail, Instant.now());
+    this.timeEntryId = timeEntryId;
+  }
+
+  public Activity(
       UUID userId,
       UUID pathId,
       UUID itemId,
@@ -58,6 +68,13 @@ public class Activity {
     this.occurredAt = occurredAt;
   }
 
+  public Activity(
+      UUID userId, UUID pathId, UUID itemId, UUID timeEntryId, ActivityType type,
+      String title, String detail, Instant occurredAt) {
+    this(userId, pathId, itemId, type, title, detail, occurredAt);
+    this.timeEntryId = timeEntryId;
+  }
+
   public UUID getId() {
     return id;
   }
@@ -68,6 +85,10 @@ public class Activity {
 
   public UUID getItemId() {
     return itemId;
+  }
+
+  public UUID getTimeEntryId() {
+    return timeEntryId;
   }
 
   public ActivityType getType() {
@@ -92,5 +113,14 @@ public class Activity {
 
   public void assignImportBatch(UUID importBatchId) {
     this.importBatchId = importBatchId;
+  }
+
+  public void updateForTimeEntry(
+      UUID pathId, UUID itemId, String title, String detail, Instant occurredAt) {
+    this.pathId = pathId;
+    this.itemId = itemId;
+    this.title = title;
+    this.detail = detail;
+    this.occurredAt = occurredAt;
   }
 }
