@@ -12,6 +12,11 @@ test('item choices follow the selected path', () => {
   assert.equal(itemsForPath(items, '').length, 2)
 })
 
+test('already attached item remains available across independent path selections', () => {
+  const items = [{ id: 'one', pathIds: ['path-a'] }, { id: 'two', pathIds: ['path-b'] }]
+  assert.deepEqual(itemsForPath(items, 'path-a', 'two').map(item => item.id), ['one', 'two'])
+})
+
 test('timer requests carry the extension source and nullable selections', () => {
   assert.deepEqual(timerStartPayload('', 'item-id', ''), { pathId: null, itemId: 'item-id', description: null, source: 'CHROME_EXTENSION' })
 })

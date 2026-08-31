@@ -298,6 +298,7 @@ async function createTimerItem() {
     await load();
     itemId.value = created.id;
     itemIds.value = [created.id];
+    await configureTimer();
   } catch {
     error.value = "Could not create the session item.";
   }

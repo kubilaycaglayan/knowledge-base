@@ -228,6 +228,70 @@ describe("DashboardView timer flow", () => {
     ).toEqual(["item-new"]);
   });
 
+  it("persists a newly created item on an already running timer", async () => {
+    let created = false;
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (path === "/paths")
+          return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
+        if (path === "/items" && options.method === "POST") {
+          created = true;
+          return { id: "item-new", title: "Dijkstra notes", pathIds: [] };
+        }
+        if (path === "/items")
+          return created
+            ? [{ id: "item-new", title: "Dijkstra notes", pathIds: [] }]
+            : [];
+        if (path === "/timers/current")
+          return {
+            id: "timer-1",
+            pathId: "path-a",
+            startedAt: new Date().toISOString(),
+            running: true,
+          };
+        if (path === "/timers/timer-1" && options.method === "PUT")
+          return {
+            id: "timer-1",
+            pathId: "path-a",
+            itemId: "item-new",
+            itemIds: ["item-new"],
+            startedAt: new Date().toISOString(),
+            running: true,
+          };
+        if (path === "/statistics")
+          return {
+            todaySeconds: 0,
+            weekSeconds: 0,
+            monthSeconds: 0,
+            todayByPath: {},
+            todayByItem: {},
+            completedItems: 0,
+            activeItems: 0,
+            recentProgressChanges: [],
+          };
+        if (path === "/time-entries") return [];
+        return undefined;
+      },
+    );
+    const wrapper = mountDashboard();
+    await flushPromises();
+
+    await wrapper
+      .get('input[aria-label="New session item title"]')
+      .setValue("Dijkstra notes");
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text() === "Create item")!
+      .trigger("click");
+    await flushPromises();
+
+    const update = vi
+      .mocked(api)
+      .mock.calls.find(([path, options]) => path === "/timers/timer-1" && options?.method === "PUT");
+    expect(update).toBeDefined();
+    expect(JSON.parse(update![1]?.body as string).itemIds).toEqual(["item-new"]);
+  });
+
   it("creates and selects a path from the path dropdown", async () => {
     let created = false;
     vi.mocked(api).mockImplementation(

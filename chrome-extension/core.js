@@ -4,7 +4,9 @@
   else root.KnowCore = api
 })(typeof globalThis === 'undefined' ? this : globalThis, function () {
   function activePaths(paths) { return paths.filter(path => path.status === 'ACTIVE') }
-  function itemsForPath(items, pathId) { return items.filter(item => !pathId || item.pathIds.includes(pathId)) }
+  function itemsForPath(items, pathId, selectedItemId) {
+    return items.filter(item => !pathId || item.pathIds.includes(pathId) || item.id === selectedItemId)
+  }
   function timerStartPayload(pathId, itemId, description) {
     return { pathId: pathId || null, itemId: itemId || null, description: description || null, source: 'CHROME_EXTENSION' }
   }
