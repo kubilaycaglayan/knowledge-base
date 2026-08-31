@@ -38,11 +38,23 @@ fi
 
 wxt_log="$repo_root/chrome-extension/.wxt-dev.log"
 wxt_pid_file="$repo_root/chrome-extension/.wxt-dev.pid"
+wxt_port=43127
 if [[ -f "$wxt_pid_file" ]] && kill -0 "$(<"$wxt_pid_file")" 2>/dev/null; then
-  echo "Chrome extension WXT development server is already running (PID $(<"$wxt_pid_file"))."
+  printf 'WXT: status=running port=%s pid=%s log=%s\n' "$wxt_port" "$(<"$wxt_pid_file")" "$wxt_log"
 else
-  echo "Starting Chrome extension WXT development server in the background..."
-  (cd "$repo_root/chrome-extension" && nohup npm run dev -- --host 0.0.0.0 --port 43127 >"$wxt_log" 2>&1 < /dev/null & echo $! >"$wxt_pid_file")
-  echo "WXT PID: $(<"$wxt_pid_file")"
-  echo "WXT log: $wxt_log"
+  : > "$wxt_log"
+  (cd "$repo_root/chrome-extension" && nohup npm run dev -- --host 0.0.0.0 --port "$wxt_port" >"$wxt_log" 2>&1 < /dev/null & echo $! >"$wxt_pid_file")
+  wxt_status=starting
+  for _ in {1..20}; do
+    if ! kill -0 "$(<"$wxt_pid_file")" 2>/dev/null; then
+      wxt_status=failed
+      break
+    fi
+    if rg -q 'Started dev server @' "$wxt_log"; then
+      wxt_status=running
+      break
+    fi
+    sleep 0.25
+  done
+  printf 'WXT: status=%s port=%s pid=%s log=%s\n' "$wxt_status" "$(<"$wxt_pid_file")" "$wxt_log"
 fi
