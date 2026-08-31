@@ -7,7 +7,7 @@ export default defineConfig({
     version: "0.1.0",
     description: "Explicitly track time against your Know paths and items.",
     permissions: ["storage"],
-    host_permissions: ["http://localhost:8080/*"],
+    host_permissions: ["http://localhost:8080/*", "https://app.clockify.me/*"],
     optional_host_permissions: ["http://*/*", "https://*/*"],
     options_ui: {
       open_in_tab: true,
