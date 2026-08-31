@@ -40,6 +40,10 @@ describe("DashboardView timer flow", () => {
     );
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("starts a server timer and can cancel the active session", async () => {
     const wrapper = mountDashboard();
     await flushPromises();
@@ -466,6 +470,121 @@ describe("DashboardView timer flow", () => {
 
     expect(wrapper.find(".focus strong").text()).toBe("02:00:00");
     vi.useRealTimers();
+  });
+
+  it("syncs timer starts and stops made by another client", async () => {
+    vi.useFakeTimers();
+    let serverTimer: {
+      id: string;
+      startedAt: string;
+      description: string;
+      running: boolean;
+    } | null = null;
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/items" || path === "/time-entries") return [];
+      if (path === "/timers/current") return serverTimer;
+      if (path === "/statistics")
+        return {
+          todaySeconds: 0,
+          weekSeconds: 0,
+          monthSeconds: 0,
+          todayByPath: {},
+          todayByItem: {},
+          completedItems: 0,
+          activeItems: 0,
+          recentProgressChanges: [],
+        };
+      return undefined;
+    });
+
+    const wrapper = mountDashboard();
+    await flushPromises();
+    expect(wrapper.text()).toContain("Start a session");
+
+    serverTimer = {
+      id: "extension-timer",
+      startedAt: new Date().toISOString(),
+      description: "From the extension",
+      running: true,
+    };
+    await vi.advanceTimersByTimeAsync(2000);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Stop session");
+    expect(wrapper.text()).toContain("From the extension");
+
+    serverTimer = null;
+    await vi.advanceTimersByTimeAsync(2000);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Start a session");
+  });
+
+  it("syncs metadata changes on the same running timer", async () => {
+    vi.useFakeTimers();
+    let serverTimer: Record<string, unknown> | null = {
+      id: "timer-1",
+      startedAt: "2026-08-25T11:00:00Z",
+      pathId: "path-a",
+      itemIds: ["item-a", "item-b"],
+      description: "Original description",
+      running: true,
+    };
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+          { id: "path-b", name: "Writing", status: "ACTIVE" },
+        ];
+      if (path === "/items")
+        return [
+          { id: "item-a", title: "Graphs", pathIds: ["path-a"] },
+          { id: "item-b", title: "Essays", pathIds: ["path-b"] },
+        ];
+      if (path === "/timers/current") return serverTimer;
+      if (path === "/statistics")
+        return {
+          todaySeconds: 0,
+          weekSeconds: 0,
+          monthSeconds: 0,
+          todayByPath: {},
+          todayByItem: {},
+          completedItems: 0,
+          activeItems: 0,
+          recentProgressChanges: [],
+        };
+      if (path === "/time-entries") return [];
+      return undefined;
+    });
+
+    const wrapper = mountDashboard();
+    await flushPromises();
+    expect(
+      (wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value,
+    ).toBe("path-a");
+    expect(
+      (wrapper.get('textarea[aria-label="Timer description"]').element as HTMLTextAreaElement)
+        .value,
+    ).toBe("Original description");
+
+    serverTimer = {
+      ...serverTimer,
+      pathId: "path-b",
+      itemIds: ["item-b", "item-a"],
+      description: "Updated from another client",
+    };
+    await vi.advanceTimersByTimeAsync(2000);
+    await flushPromises();
+
+    expect(
+      (wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value,
+    ).toBe("path-b");
+    expect(
+      (wrapper.get('textarea[aria-label="Timer description"]').element as HTMLTextAreaElement)
+        .value,
+    ).toBe("Updated from another client");
+    expect(wrapper.findComponent({ name: "VSelect" }).props("modelValue")).toEqual([
+      "item-b",
+      "item-a",
+    ]);
   });
 
   it("shows the path and shortened description for recent sessions", async () => {

@@ -304,15 +304,51 @@ async function createTimerItem() {
   }
 }
 let timerTicker: number | undefined;
+let timerSyncTicker: number | undefined;
+let timerSyncInFlight = false;
 let latestLoad = 0;
+
+const sameTimer = (left: Timer | null, right: Timer | null) =>
+  left?.id === right?.id &&
+  left?.startedAt === right?.startedAt &&
+  left?.endedAt === right?.endedAt &&
+  left?.description === right?.description &&
+  left?.pathId === right?.pathId &&
+  left?.itemId === right?.itemId &&
+  JSON.stringify([...(left?.itemIds || [])].sort()) ===
+    JSON.stringify([...(right?.itemIds || [])].sort()) &&
+  left?.running === right?.running;
+
+async function syncTimerState() {
+  if (timerSyncInFlight) return;
+  timerSyncInFlight = true;
+  try {
+    const serverTimer = await api<Timer | null>("/timers/current");
+    if (sameTimer(timer.value, serverTimer)) return;
+
+    // The timer endpoint is authoritative because another client (such as the
+    // extension) may have started or stopped the session since this page loaded.
+    applyTimer(serverTimer);
+    await load();
+  } catch {
+    // A transient sync failure should not interrupt an otherwise usable page.
+  } finally {
+    timerSyncInFlight = false;
+  }
+}
+
 onMounted(() => {
   void load();
   timerTicker = window.setInterval(() => {
     timerNow.value = Date.now();
   }, 1000);
+  timerSyncTicker = window.setInterval(() => {
+    void syncTimerState();
+  }, 2000);
 });
 onUnmounted(() => {
   if (timerTicker) window.clearInterval(timerTicker);
+  if (timerSyncTicker) window.clearInterval(timerSyncTicker);
 });
 </script>
 

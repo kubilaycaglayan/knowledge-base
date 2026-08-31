@@ -4,6 +4,7 @@ let currentTimer = null;
 let timerTicker = null;
 let liveSyncTicker = null;
 let liveSyncInFlight = false;
+let descriptionSaveTicker = null;
 let paths = [];
 let items = [];
 const timerSelectionKey = "timerSelection";
@@ -13,6 +14,17 @@ function showTimer(timer) {
   $("status").textContent = KnowCore.timerStatus(timer);
   if (timerTicker) clearInterval(timerTicker);
   timerTicker = timer ? setInterval(() => { $("status").textContent = KnowCore.timerStatus(currentTimer); }, 1000) : null;
+}
+
+function timerStateChanged(previous, next) {
+  const itemIds = (timer) => [...(timer?.itemIds || (timer?.itemId ? [timer.itemId] : []))].sort();
+  return previous?.id !== next?.id
+    || previous?.startedAt !== next?.startedAt
+    || previous?.endedAt !== next?.endedAt
+    || previous?.description !== next?.description
+    || previous?.pathId !== next?.pathId
+    || JSON.stringify(itemIds(previous)) !== JSON.stringify(itemIds(next))
+    || previous?.running !== next?.running;
 }
 
 async function request(path, options = {}) {
@@ -55,6 +67,30 @@ function timerSelection(timer) {
 async function persistTimerSelection() {
   await chrome.storage.local.set({ [timerSelectionKey]: { pathId: $("path").value, itemIds: selectedItemIds($("item")), description: $("description").value } });
 }
+async function configureCurrentTimer() {
+  if (!currentTimer) {
+    await persistTimerSelection();
+    return;
+  }
+  const updated = await request(`/timers/${currentTimer.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      pathId: $("path").value || null,
+      itemIds: selectedItemIds($("item")),
+      startedAt: currentTimer.startedAt,
+      description: $("description").value || null,
+    }),
+  });
+  showTimer(updated);
+  await chrome.storage.local.set({ activeTimer: updated });
+  await restoreTimerSelection(timerSelection(updated));
+}
+async function flushDescriptionSave() {
+  if (!descriptionSaveTicker) return;
+  clearTimeout(descriptionSaveTicker);
+  descriptionSaveTicker = null;
+  await configureCurrentTimer();
+}
 async function resetTimerForm() {
   $("path").value = "";
   Array.from($("item").options).forEach((option) => { option.selected = false; });
@@ -73,7 +109,7 @@ async function syncTimerState() {
       showTimer(null);
       $("toggle").textContent = "Start timer";
       await loadSessions();
-    } else if (timer && (!currentTimer || timer.id !== currentTimer.id)) {
+    } else if (timer && timerStateChanged(currentTimer, timer)) {
       showTimer(timer);
       await chrome.storage.local.set({ activeTimer: timer });
       await restoreTimerSelection(timerSelection(timer));
@@ -151,7 +187,10 @@ async function load() {
     [paths, items] = await Promise.all([request("/paths"), request("/items")]);
     const timer = await request("/timers/current");
     fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
-    $("path").onchange = () => { renderTimerItems(selectedItemIds($("item"))); persistTimerSelection(); };
+    $("path").onchange = async () => {
+      renderTimerItems(selectedItemIds($("item")));
+      try { await configureCurrentTimer(); } catch { $("error").textContent = "Could not update the timer."; }
+    };
     if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
     else {
       showTimer(null); $("toggle").textContent = "Start timer"; await chrome.storage.local.remove("activeTimer");
@@ -171,12 +210,20 @@ $("logout").onclick = async () => { await chrome.storage.local.clear(); location
 $("toggle").onclick = async () => {
   try {
     const current = await request("/timers/current");
-    if (KnowCore.timerIsRunning(current)) { await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); $("toggle").textContent = "Start timer"; await loadSessions(); }
+    if (KnowCore.timerIsRunning(current)) { await flushDescriptionSave(); await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); $("toggle").textContent = "Start timer"; await loadSessions(); }
     else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedItemIds($("item")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); $("toggle").textContent = "Stop timer"; }
   } catch { $("error").textContent = "Could not update timer."; }
 };
-$("item").onchange = persistTimerSelection;
-$("description").oninput = persistTimerSelection;
+$("item").onchange = async () => {
+  try { await configureCurrentTimer(); } catch { $("error").textContent = "Could not update the timer."; }
+};
+$("description").oninput = () => {
+  void persistTimerSelection();
+  if (descriptionSaveTicker) clearTimeout(descriptionSaveTicker);
+  descriptionSaveTicker = setTimeout(async () => {
+    try { await configureCurrentTimer(); } catch { $("error").textContent = "Could not update the timer."; }
+  }, 300);
+};
 $("sessions").onclick = async (event) => {
   const article = event.target.closest("article"); if (!article) return;
   const sessionId = article.dataset.id;
