@@ -2,6 +2,10 @@
 !.env.example
 secrets
 node_modules/
+.wxt/
+chrome-extension/.output/
+chrome-extension/.wxt-dev.log
+chrome-extension/.wxt-dev.pid
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
 backend/build/

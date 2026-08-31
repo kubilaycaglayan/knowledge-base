@@ -1,0 +1,15 @@
+{
+  "name": "know-chrome-extension",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "wxt -b chrome",
+    "build": "wxt build -b chrome",
+    "prepare": "wxt prepare"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.4",
+    "wxt": "^0.21.4"
+  }
+}
