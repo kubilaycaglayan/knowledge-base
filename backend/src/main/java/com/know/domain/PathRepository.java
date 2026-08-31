@@ -1,5 +1,6 @@
 package com.know.domain;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +12,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PathRepository extends JpaRepository<Path, UUID> {
+  interface LatestSessionProjection {
+    UUID getPathId();
+
+    Instant getLatestStartedAt();
+  }
+
   @Query(
       value =
           "select p.* from path p"
@@ -22,6 +29,13 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
               + " coalesce(max(t.started_at), p.updated_at) desc",
       nativeQuery = true)
   List<Path> findAllByUserIdOrderByUpdatedAtDesc(@Param("userId") UUID userId, Pageable page);
+
+  @Query(
+      "select t.pathId as pathId, max(t.startedAt) as latestStartedAt"
+          + " from TimeEntry t where t.userId = :userId and t.pathId in :pathIds"
+          + " group by t.pathId")
+  List<LatestSessionProjection> findLatestSessionsByUserIdAndPathIdIn(
+      @Param("userId") UUID userId, @Param("pathIds") Collection<UUID> pathIds);
 
   Optional<Path> findByIdAndUserId(UUID id, UUID userId);
 

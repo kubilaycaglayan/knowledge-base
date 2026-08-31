@@ -65,6 +65,30 @@ describe("PathsView", () => {
     expect(wrapper.text()).toContain("Sorting — 80%");
   });
 
+  it("shows backend-provided activity labels on paths", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          { id: "today", name: "Today", status: "ACTIVE", activityLabel: "today" },
+          { id: "week", name: "Week", status: "ACTIVE", activityLabel: "this week" },
+          { id: "month", name: "Month", status: "ACTIVE", activityLabel: "this month" },
+          { id: "passive", name: "Passive", status: "ACTIVE", activityLabel: "passive" },
+        ];
+      if (path === "/items") return [];
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.findAll(".activity-pill").map((pill) => pill.text())).toEqual([
+      "today",
+      "this week",
+      "this month",
+      "passive",
+    ]);
+  });
+
   it("toggles path history closed when History is clicked again", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();

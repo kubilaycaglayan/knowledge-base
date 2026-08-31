@@ -346,6 +346,16 @@
   }
 }
 
+.activity-pill {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  color: #a64f32;
+  background: #fff0e9;
+  font-size: 12px;
+}
+
 /* Reports dashboard */
 .reports-page { max-width: 1280px; margin: 0 auto; color: #35414a; }
 .reports-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 30px; }

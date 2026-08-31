@@ -5,6 +5,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,15 +52,17 @@ public class PathController {
       String description,
       String color,
       PathStatus status,
+      String activityLabel,
       java.time.Instant createdAt,
       java.time.Instant updatedAt) {
-    static PathResponse of(Path p) {
+    static PathResponse of(Path p, String activityLabel) {
       return new PathResponse(
           p.getId(),
           p.getName(),
           p.getDescription(),
           p.getColor(),
           p.getStatus(),
+          activityLabel,
           p.getCreatedAt(),
           p.getUpdatedAt());
     }
@@ -77,20 +81,28 @@ public class PathController {
 
   @GetMapping
   public List<PathResponse> list(Authentication a) {
-    return paths.findAllByUserIdOrderByUpdatedAtDesc(user(a), PageRequest.of(0, 100)).stream()
-        .map(PathResponse::of)
+    UUID owner = user(a);
+    List<Path> ownedPaths =
+        paths.findAllByUserIdOrderByUpdatedAtDesc(owner, PageRequest.of(0, 100));
+    Map<UUID, String> labels = activityLabels(owner, ownedPaths);
+    return ownedPaths.stream()
+        .map(path -> PathResponse.of(path, labels.get(path.getId())))
         .toList();
   }
 
   @PostMapping
   public ResponseEntity<PathResponse> create(Authentication a, @Valid @RequestBody PathRequest r) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(PathResponse.of(paths.save(new Path(user(a), r.name(), r.description(), r.color()))));
+        .body(
+            PathResponse.of(
+                paths.save(new Path(user(a), r.name(), r.description(), r.color())), null));
   }
 
   @GetMapping("/{id}")
   public PathResponse get(Authentication a, @PathVariable UUID id) {
-    return PathResponse.of(find(a, id));
+    UUID owner = user(a);
+    Path path = find(a, id);
+    return PathResponse.of(path, activityLabels(owner, List.of(path)).get(path.getId()));
   }
 
   @GetMapping("/{id}/summary")
@@ -132,7 +144,7 @@ public class PathController {
             .sorted(Comparator.comparing(Activity::getOccurredAt).reversed())
             .limit(50)
             .toList();
-    return new PathSummary(PathResponse.of(path), itemIds, progress, seconds, recent);
+    return new PathSummary(PathResponse.of(path, null), itemIds, progress, seconds, recent);
   }
 
   @PutMapping("/{id}")
@@ -140,7 +152,7 @@ public class PathController {
       Authentication a, @PathVariable UUID id, @Valid @RequestBody PathRequest r) {
     Path p = find(a, id);
     p.update(r.name(), r.description(), r.color());
-    return PathResponse.of(paths.save(p));
+    return PathResponse.of(paths.save(p), activityLabels(user(a), List.of(p)).get(p.getId()));
   }
 
   @DeleteMapping("/{id}")
@@ -162,6 +174,29 @@ public class PathController {
     return paths
         .findByIdAndUserId(id, user(a))
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Path not found"));
+  }
+
+  private Map<UUID, String> activityLabels(UUID owner, List<Path> ownedPaths) {
+    if (ownedPaths.isEmpty()) return Map.of();
+    List<UUID> pathIds = ownedPaths.stream().map(Path::getId).toList();
+    Instant now = Instant.now();
+    Instant todayStart = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant();
+    Instant weekStart = now.minus(Duration.ofDays(7));
+    Instant monthStart = now.minus(Duration.ofDays(28));
+    Map<UUID, String> labels = new HashMap<>();
+    paths.findLatestSessionsByUserIdAndPathIdIn(owner, pathIds).forEach(
+        session ->
+            labels.put(
+                session.getPathId(),
+                session.getLatestStartedAt().compareTo(todayStart) >= 0
+                    ? "today"
+                    : session.getLatestStartedAt().compareTo(weekStart) >= 0
+                        ? "this week"
+                        : session.getLatestStartedAt().compareTo(monthStart) >= 0
+                            ? "this month"
+                            : "passive"));
+    ownedPaths.forEach(path -> labels.putIfAbsent(path.getId(), "passive"));
+    return labels;
   }
 
   private long liveSeconds(TimeEntry entry) {

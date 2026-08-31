@@ -98,6 +98,37 @@ class PathAuthorizationApiTest {
   }
 
   @Test
+  void pathListIncludesBackendComputedActivityLabels() throws Exception {
+    UUID owner = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+    Path today = new Path(owner, "Today", null);
+    Path week = new Path(owner, "Week", null);
+    Path month = new Path(owner, "Month", null);
+    Path passive = new Path(owner, "Passive", null);
+    java.time.Instant now = java.time.Instant.now();
+    List<Path> pathsInOrder = List.of(today, week, month, passive);
+    List<PathRepository.LatestSessionProjection> latestSessions = new ArrayList<>();
+    for (int i = 0; i < pathsInOrder.size() - 1; i++) {
+      var latest = mock(PathRepository.LatestSessionProjection.class);
+      when(latest.getPathId()).thenReturn(pathsInOrder.get(i).getId());
+      when(latest.getLatestStartedAt())
+          .thenReturn(now.minus(java.time.Duration.ofDays(i == 0 ? 0 : i == 1 ? 1 : 8)));
+      latestSessions.add(latest);
+    }
+    when(paths.findAllByUserIdOrderByUpdatedAtDesc(eq(owner), any()))
+        .thenReturn(pathsInOrder);
+    when(paths.findLatestSessionsByUserIdAndPathIdIn(eq(owner), any()))
+        .thenReturn(latestSessions);
+
+    mvc.perform(get("/api/v1/paths").with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].activityLabel").value("today"))
+        .andExpect(jsonPath("$[1].activityLabel").value("this week"))
+        .andExpect(jsonPath("$[2].activityLabel").value("this month"))
+        .andExpect(jsonPath("$[3].activityLabel").value("passive"));
+  }
+
+  @Test
   void restoringAnotherUsersOrMissingPathIsRejected() throws Exception {
     UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID();
     when(paths.restoreByIdAndUserId(pathId, owner)).thenReturn(0);
