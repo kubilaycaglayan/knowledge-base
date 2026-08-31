@@ -159,6 +159,9 @@ describe("DashboardView timer flow", () => {
 
     await recentPaths[1].trigger("click");
     expect((wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value).toBe("path-b");
+    await wrapper.get('select[aria-label="Timer path"]').trigger("focus");
+    await flushPromises();
+    expect((wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value).toBe("path-b");
   });
 
   it("creates a new item from the session flow and selects it", async () => {

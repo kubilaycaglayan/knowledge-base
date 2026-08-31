@@ -110,7 +110,7 @@ const isoDateTime = (value: string) => new Date(value).toISOString();
 watch(itemIds, (value) => {
   itemId.value = value[0] || "";
 });
-function applyTimer(value: Timer | null) {
+function applyTimer(value: Timer | null, resetIdleForm = true) {
   timer.value = value;
   timerNow.value = Date.now();
   if (value) {
@@ -123,7 +123,7 @@ function applyTimer(value: Timer | null) {
     itemId.value = itemIds.value[0] || value.itemId || "";
     description.value = value.description || "";
     timerStartedAt.value = localDateTime(value.startedAt);
-  } else {
+  } else if (resetIdleForm) {
     pathId.value = "";
     itemIds.value = [];
     itemId.value = "";
@@ -132,7 +132,7 @@ function applyTimer(value: Timer | null) {
     newTimerItemTitle.value = "";
   }
 }
-async function load() {
+async function load(preserveIdleForm = false) {
   const loadId = ++latestLoad;
   try {
     const data = await Promise.all([
@@ -145,7 +145,8 @@ async function load() {
     if (loadId !== latestLoad) return;
     paths.value = data[0];
     items.value = data[1];
-    applyTimer(data[2]);
+    const hadActiveTimer = Boolean(timer.value);
+    applyTimer(data[2], !preserveIdleForm || hadActiveTimer);
     stats.value = data[3];
     history.value = data[4];
   } catch {
@@ -326,7 +327,7 @@ onUnmounted(() => {
         <div class="timer-path-group">
           <label class="timer-path-field">
             <span>PATH</span>
-            <select v-model="pathId" aria-label="Timer path" @focus="load" @change="choosePath">
+          <select v-model="pathId" aria-label="Timer path" @focus="load(true)" @change="choosePath">
               <option value="">Choose a path</option>
               <option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option>
               <option :value="addPathOption">＋ Add a new path…</option>
@@ -370,7 +371,7 @@ onUnmounted(() => {
             variant="outlined"
             density="comfortable"
             hide-details
-            @focus="load"
+            @focus="load(true)"
             @update:model-value="configureTimer"
           >
             <template #chip="{ item, props }">
