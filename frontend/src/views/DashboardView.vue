@@ -323,27 +323,29 @@ onUnmounted(() => {
           <p class="eyebrow">FOCUS TODAYs</p>
           <strong>{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
         </div>
-        <label class="timer-path-field">
-          <span>PATH</span>
-          <select v-model="pathId" aria-label="Timer path" @focus="load" @change="choosePath">
-            <option value="">Choose a path</option>
-            <option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option>
-            <option :value="addPathOption">＋ Add a new path…</option>
-          </select>
-        </label>
-        <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths">
-          <span>RECENT</span>
-          <button
-            v-for="path in recentPaths"
-            :key="path.id"
-            type="button"
-            class="recent-path"
-            :class="{ selected: path.id === pathId }"
-            :aria-label="`Use ${path.name}`"
-            @click="chooseRecentPath(path.id)"
-          >
-            {{ path.name }}
-          </button>
+        <div class="timer-path-group">
+          <label class="timer-path-field">
+            <span>PATH</span>
+            <select v-model="pathId" aria-label="Timer path" @focus="load" @change="choosePath">
+              <option value="">Choose a path</option>
+              <option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option>
+              <option :value="addPathOption">＋ Add a new path…</option>
+            </select>
+          </label>
+          <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths">
+            <span>RECENT</span>
+            <button
+              v-for="path in recentPaths"
+              :key="path.id"
+              type="button"
+              class="recent-path"
+              :class="{ selected: path.id === pathId }"
+              :aria-label="`Use ${path.name}`"
+              @click="chooseRecentPath(path.id)"
+            >
+              {{ path.name }}
+            </button>
+          </div>
         </div>
       </div>
       <p>{{ timer?.description || "Choose a path or item to begin." }}</p>

@@ -91,14 +91,17 @@
   letter-spacing: -3px;
   margin: 22px 0 2px;
 }
+.timer-path-group {
+  min-width: 190px;
+  margin-top: 2px;
+}
 .timer-path-field,
 .timer-item-heading {
   display: grid;
   gap: 7px;
 }
 .timer-path-field {
-  min-width: 190px;
-  margin-top: 2px;
+  min-width: 0;
 }
 .timer-path-field span,
 .timer-item-heading span {
