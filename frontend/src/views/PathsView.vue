@@ -278,7 +278,12 @@ onBeforeUnmount(() => {
       <button class="primary">Add path</button>
     </form>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
-    <p v-if="pendingDelete" class="notice undo-notice" role="status" aria-live="polite">
+    <p
+      v-if="pendingDelete"
+      class="snackbar undo-snackbar"
+      role="status"
+      aria-live="polite"
+    >
       Removed “{{ pendingDelete.name }}”.
       <button class="text-button" type="button" @click="undoRemove">Undo</button>
     </p>

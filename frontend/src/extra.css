@@ -225,6 +225,35 @@
 .muted {
   color: #75827c;
 }
+.snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: max-content;
+  max-width: calc(100vw - 36px);
+  margin: 0;
+  padding: 14px 18px;
+  transform: translateX(-50%);
+  border: 1px solid #dbe2da;
+  border-radius: 10px;
+  background: #173d36;
+  color: #fff;
+  box-shadow: 0 8px 30px #29443833;
+}
+.snackbar .text-button {
+  color: #f5ac7e;
+  font-weight: 700;
+}
+@media (max-width: 650px) {
+  .snackbar {
+    bottom: 18px;
+    max-width: calc(100vw - 28px);
+  }
+}
 .prompt-dialog-backdrop {
   position: fixed;
   inset: 0;

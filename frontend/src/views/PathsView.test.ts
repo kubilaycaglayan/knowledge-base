@@ -303,7 +303,9 @@ describe("PathsView", () => {
       method: "DELETE",
     });
     expect(wrapper.text()).toContain('Removed “Algorithms”.');
-    await wrapper.get(".undo-notice button").trigger("click");
+    expect(wrapper.get(".undo-snackbar").attributes("role")).toBe("status");
+    expect(wrapper.get(".undo-snackbar").classes()).toContain("snackbar");
+    await wrapper.get(".undo-snackbar button").trigger("click");
     expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1/restore", {
       method: "POST",
     });
