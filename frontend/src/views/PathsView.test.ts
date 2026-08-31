@@ -191,6 +191,28 @@ describe("PathsView", () => {
     expect(wrapper.text()).not.toContain("Started a timer");
   });
 
+  it("makes URLs clickable in path and history descriptions", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Algorithms", description: "Read https://example.com/guide." , status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/paths/path-1/summary")
+        return {
+          path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          itemIds: [], itemProgress: {}, trackedSeconds: 0,
+          recentActivity: [{ id: "activity-1", title: "Session", detail: "See https://example.com/session", occurredAt: "2026-08-28T10:00:00Z" }],
+        };
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    expect(wrapper.get('a[href="https://example.com/guide"]').attributes("target")).toBe("_blank");
+    await wrapper.get("button.text-button").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('a[href="https://example.com/session"]').attributes("rel")).toBe("noopener noreferrer");
+  });
+
   it("submits a selected path color from the twelve-color picker", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
@@ -240,7 +262,7 @@ describe("PathsView", () => {
     );
   });
 
-  it("confirms and soft-deletes a path", async () => {
+  it("confirms removal and offers a timed undo", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
 
@@ -250,11 +272,16 @@ describe("PathsView", () => {
       .trigger("click");
 
     expect(wrapper.find(".prompt-dialog").text()).toContain(
-      "Remove Algorithms? This cannot be undone.",
+      "Remove Algorithms? You can undo this for a few seconds.",
     );
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1", {
       method: "DELETE",
+    });
+    expect(wrapper.text()).toContain('Removed “Algorithms”.');
+    await wrapper.get(".undo-notice button").trigger("click");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1/restore", {
+      method: "POST",
     });
   });
 });

@@ -6,7 +6,7 @@ Interactive OpenAPI documentation is available at `/swagger-ui.html`; the machin
 
 Authenticated endpoints currently include:
 
-- `GET/POST /paths`, `GET/PUT/DELETE /paths/{id}`; delete is a soft delete that records `deleted_at`, removes the path from normal API results, and preserves its historical database references.
+- `GET/POST /paths`, `GET/PUT/DELETE /paths/{id}`, and `POST /paths/{id}/restore`; delete is a soft delete that records `deleted_at`, removes the path from normal API results, and preserves its historical database references. Restore is owner-scoped and clears the marker so the path and all preserved relationships are available again.
 - Archived paths remain readable for history but cannot receive new item memberships or time entries; editing an item may retain an existing archived-path membership.
 - `GET /paths/{id}/summary` returns associated item IDs, their current progress, accumulated tracked seconds (including a running timer), and recent path activity; the web client supports filtering the associated items and merges completed timer start/stop events into one activity with its duration, description, and item.
 - `GET/POST /items`, `PUT /items/{id}`, and `POST/GET /items/{id}/progress`. Items include an optional `source` string for a link or origin note.

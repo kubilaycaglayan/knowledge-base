@@ -98,6 +98,16 @@ class PathAuthorizationApiTest {
   }
 
   @Test
+  void restoringAnotherUsersOrMissingPathIsRejected() throws Exception {
+    UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID();
+    when(paths.restoreByIdAndUserId(pathId, owner)).thenReturn(0);
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+
+    mvc.perform(post("/api/v1/paths/" + pathId + "/restore").with(authentication(auth)))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
   void pathSummaryIncludesElapsedRunningTimer() throws Exception {
     UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID();
     Path path = new Path(owner, "Learning", null);

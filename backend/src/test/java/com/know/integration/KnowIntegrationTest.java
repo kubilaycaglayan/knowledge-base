@@ -220,6 +220,10 @@ class KnowIntegrationTest {
     ResponseEntity<JsonNode> deleted = delete("/api/v1/paths/" + pathId, token);
     assertEquals(HttpStatus.NO_CONTENT, deleted.getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + pathId, token).getStatusCode());
+
+    ResponseEntity<JsonNode> restored = post("/api/v1/paths/" + pathId + "/restore", token, "{}");
+    assertEquals(HttpStatus.OK, restored.getStatusCode());
+    assertEquals(HttpStatus.OK, get("/api/v1/paths/" + pathId, token).getStatusCode());
   }
 
   @Test

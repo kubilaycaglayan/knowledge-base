@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -23,6 +24,14 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
   List<Path> findAllByUserIdOrderByUpdatedAtDesc(@Param("userId") UUID userId, Pageable page);
 
   Optional<Path> findByIdAndUserId(UUID id, UUID userId);
+
+  @Modifying
+  @Query(
+      value =
+          "update path set deleted_at = null, updated_at = now()"
+              + " where id = :id and user_id = :userId and deleted_at is not null",
+      nativeQuery = true)
+  int restoreByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
 
   List<Path> findByUserIdAndIdIn(UUID userId, Collection<UUID> ids);
 

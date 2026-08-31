@@ -12,6 +12,7 @@ import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/v1/paths")
@@ -148,6 +149,13 @@ public class PathController {
     Path p = find(a, id);
     p.delete();
     paths.save(p);
+  }
+
+  @PostMapping("/{id}/restore")
+  @Transactional
+  public void restore(Authentication a, @PathVariable UUID id) {
+    if (paths.restoreByIdAndUserId(id, user(a)) == 0)
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Path not found");
   }
 
   private Path find(Authentication a, UUID id) {

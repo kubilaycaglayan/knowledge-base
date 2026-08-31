@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
@@ -28,6 +28,7 @@ type Summary = {
   trackedSeconds: number;
   recentActivity: Activity[];
 };
+type DescriptionPart = { text: string; url?: string };
 const colors = [
   "#E8754E",
   "#D64550",
@@ -56,18 +57,42 @@ const editingId = ref(""),
   editDescription = ref(""),
   editColor = ref(colors[0]);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
+const pendingDelete = ref<Path | null>(null);
+let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
   return match ? formatTrackedDuration(Number(match[1])) : "";
 };
-const activityDescription = (event: Activity) =>
-  [
+const linkPattern = /https?:\/\/[^\s<>]+/g;
+function linkParts(text?: string): DescriptionPart[] {
+  if (!text) return [];
+  const parts: DescriptionPart[] = [];
+  let lastIndex = 0;
+  for (const match of text.matchAll(linkPattern)) {
+    const url = match[0];
+    const start = match.index ?? 0;
+    const trailing = url.match(/[),.!?;:]+$/)?.[0] || "";
+    const cleanUrl = trailing ? url.slice(0, -trailing.length) : url;
+    if (start > lastIndex) parts.push({ text: text.slice(lastIndex, start) });
+    parts.push({ text: cleanUrl, url: cleanUrl });
+    if (trailing) parts.push({ text: trailing });
+    lastIndex = start + url.length;
+  }
+  if (lastIndex < text.length) parts.push({ text: text.slice(lastIndex) });
+  return parts;
+}
+function activityDescriptionParts(event: Activity): DescriptionPart[] {
+  return [
     /^Tracked \d+ seconds$/.test(event.title) ? undefined : event.title,
     event.detail,
     event.itemId && itemName(event.itemId),
   ]
-    .filter(Boolean)
-    .join(" · ");
+    .filter((value): value is string => Boolean(value))
+    .flatMap((value, index, values) => [
+      ...(index ? [{ text: " · " }] : []),
+      ...linkParts(value),
+    ]);
+}
 const itemName = (id: string) =>
   items.value.find((item) => item.id === id)?.title || id;
 function recentActivity(pathId: string) {
@@ -165,7 +190,7 @@ async function saveEdit(path: Path) {
 }
 async function remove(path: Path) {
   const confirmation = await promptDialog.value!.open(
-    `Remove ${path.name}? This cannot be undone.`,
+    `Remove ${path.name}? You can undo this for a few seconds.`,
     "",
     { confirmation: true },
   );
@@ -173,9 +198,28 @@ async function remove(path: Path) {
   try {
     await api(`/paths/${path.id}`, { method: "DELETE" });
     delete summaries.value[path.id];
-    await load();
+    paths.value = paths.value.filter((candidate) => candidate.id !== path.id);
+    if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
+    pendingDelete.value = path;
+    pendingDeleteTimer = setTimeout(() => {
+      pendingDelete.value = null;
+      pendingDeleteTimer = undefined;
+    }, 8000);
   } catch {
     error.value = "Could not remove path.";
+  }
+}
+async function undoRemove() {
+  const path = pendingDelete.value;
+  if (!path) return;
+  try {
+    await api(`/paths/${path.id}/restore`, { method: "POST" });
+    paths.value = [path, ...paths.value];
+    pendingDelete.value = null;
+    if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
+    pendingDeleteTimer = undefined;
+  } catch {
+    error.value = "Could not undo path removal.";
   }
 }
 async function addNote(pathId: string) {
@@ -198,6 +242,9 @@ async function addNote(pathId: string) {
   }
 }
 onMounted(load);
+onBeforeUnmount(() => {
+  if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
+});
 </script>
 
 <template>
@@ -231,6 +278,10 @@ onMounted(load);
       <button class="primary">Add path</button>
     </form>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
+    <p v-if="pendingDelete" class="notice undo-notice" role="status" aria-live="polite">
+      Removed “{{ pendingDelete.name }}”.
+      <button class="text-button" type="button" @click="undoRemove">Undo</button>
+    </p>
     <div class="path-list">
       <article
         v-for="path in paths"
@@ -273,7 +324,13 @@ onMounted(load);
             :style="{ backgroundColor: path.color || colors[0] }"
           ></span>
           <h2>{{ path.name }}</h2>
-          <p>{{ path.description || "No description yet" }}</p>
+          <p v-if="path.description">
+            <template v-for="(part, index) in linkParts(path.description)" :key="index">
+              <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
+              <template v-else>{{ part.text }}</template>
+            </template>
+          </p>
+          <p v-else>No description yet</p>
           <div class="item-actions">
             <span class="pill">{{ path.status.toLowerCase() }}</span
             ><button
@@ -315,7 +372,12 @@ onMounted(load);
             >
               <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
               <span class="activity-duration">{{ activityDuration(event.title) }}</span>
-              <span class="activity-description">{{ activityDescription(event) }}</span>
+              <span class="activity-description">
+                <template v-for="(part, index) in activityDescriptionParts(event)" :key="index">
+                  <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
+                  <template v-else>{{ part.text }}</template>
+                </template>
+              </span>
             </div>
             <div class="note-editor">
               <strong>Path note</strong
