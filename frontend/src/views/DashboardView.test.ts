@@ -108,6 +108,59 @@ describe("DashboardView timer flow", () => {
     expect(selectItems.map((item) => item.title)).toContain("Essays");
   });
 
+  it("shows the five most recently used paths and selects one when clicked", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+          { id: "path-b", name: "Writing", status: "ACTIVE" },
+          { id: "path-c", name: "Reading", status: "ACTIVE" },
+          { id: "path-d", name: "Music", status: "ACTIVE" },
+          { id: "path-e", name: "Travel", status: "ACTIVE" },
+          { id: "path-f", name: "Cooking", status: "ACTIVE" },
+        ];
+      if (path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics")
+        return {
+          todaySeconds: 0,
+          weekSeconds: 0,
+          monthSeconds: 0,
+          todayByPath: {},
+          todayByItem: {},
+          completedItems: 0,
+          activeItems: 0,
+          recentProgressChanges: [],
+        };
+      if (path === "/time-entries")
+        return [
+          { id: "entry-1", pathId: "path-a", startedAt: "2026-08-25T10:00:00Z" },
+          { id: "entry-2", pathId: "path-a", startedAt: "2026-08-24T10:00:00Z" },
+          { id: "entry-3", pathId: "path-b", startedAt: "2026-08-23T10:00:00Z" },
+          { id: "entry-4", pathId: "path-c", startedAt: "2026-08-22T10:00:00Z" },
+          { id: "entry-5", pathId: "path-d", startedAt: "2026-08-21T10:00:00Z" },
+          { id: "entry-6", pathId: "path-e", startedAt: "2026-08-20T10:00:00Z" },
+          { id: "entry-7", pathId: "path-f", startedAt: "2026-08-19T10:00:00Z" },
+        ];
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+
+    const recentPaths = wrapper.findAll(".recent-path");
+    expect(recentPaths).toHaveLength(5);
+    expect(recentPaths.map((button) => button.text())).toEqual([
+      "Algorithms",
+      "Writing",
+      "Reading",
+      "Music",
+      "Travel",
+    ]);
+
+    await recentPaths[1].trigger("click");
+    expect((wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value).toBe("path-b");
+  });
+
   it("creates a new item from the session flow and selects it", async () => {
     let created = false;
     vi.mocked(api).mockImplementation(
@@ -459,6 +512,10 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.text()).toContain("Start a session");
     expect(wrapper.text()).toContain("Finished focus session");
     expect(wrapper.text()).toContain("30 minutes");
+    expect((wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value).toBe("");
+    expect((wrapper.get('textarea[aria-label="Timer description"]').element as HTMLTextAreaElement).value).toBe("");
+    expect((wrapper.get('input[aria-label="New session item title"]').element as HTMLInputElement).value).toBe("");
+    expect(wrapper.findComponent({ name: "VSelect" }).props("modelValue")).toEqual([]);
   });
 
   it("shows weekly time breakdowns by path and item", async () => {

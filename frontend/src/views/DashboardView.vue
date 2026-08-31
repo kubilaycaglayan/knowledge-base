@@ -84,6 +84,21 @@ const shortDescription = (entry: Entry) => {
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
 );
+const recentPaths = computed(() => {
+  const seen = new Set<string>();
+  const recentPathIds = history.value
+    .map((entry) => entry.pathId)
+    .filter((id): id is string => Boolean(id))
+    .filter((id) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  return recentPathIds
+    .map((id) => paths.value.find((path) => path.id === id))
+    .filter((path): path is Path => Boolean(path && path.status === "ACTIVE"))
+    .slice(0, 5);
+});
 const addPathOption = "__add_new_path__";
 const timerItems = computed(() => items.value);
 const localDateTime = (iso: string) => {
@@ -109,7 +124,12 @@ function applyTimer(value: Timer | null) {
     description.value = value.description || "";
     timerStartedAt.value = localDateTime(value.startedAt);
   } else {
+    pathId.value = "";
+    itemIds.value = [];
+    itemId.value = "";
+    description.value = "";
     timerStartedAt.value = "";
+    newTimerItemTitle.value = "";
   }
 }
 async function load() {
@@ -203,6 +223,10 @@ async function choosePath() {
   } catch {
     error.value = "Could not create path.";
   }
+}
+async function chooseRecentPath(id: string) {
+  pathId.value = id;
+  await configureTimer();
 }
 async function cancel() {
   try {
@@ -307,6 +331,20 @@ onUnmounted(() => {
             <option :value="addPathOption">＋ Add a new path…</option>
           </select>
         </label>
+        <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths">
+          <span>RECENT</span>
+          <button
+            v-for="path in recentPaths"
+            :key="path.id"
+            type="button"
+            class="recent-path"
+            :class="{ selected: path.id === pathId }"
+            :aria-label="`Use ${path.name}`"
+            @click="chooseRecentPath(path.id)"
+          >
+            {{ path.name }}
+          </button>
+        </div>
       </div>
       <p>{{ timer?.description || "Choose a path or item to begin." }}</p>
       <div class="timer-fields">
