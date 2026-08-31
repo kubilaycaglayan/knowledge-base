@@ -20,12 +20,17 @@
         <p id="status" role="status" aria-live="polite">No active timer</p>
         <label for="path">Path</label>
         <select id="path"><option value="">Select a path</option></select>
-        <label for="item">Item</label>
-        <select id="item"><option value="">Select an item (optional)</option></select>
+        <label for="item">Items</label>
+        <select id="item" multiple size="4" aria-describedby="item-help"></select>
+        <small id="item-help">Hold Ctrl/Cmd to select multiple items.</small>
         <label for="description">Description</label>
-        <input id="description" autocomplete="off" placeholder="What are you working on?" />
+        <textarea id="description" rows="2" autocomplete="off" placeholder="What are you working on?"></textarea>
         <button id="toggle">Start timer</button>
         <button id="logout" class="secondary">Sign out</button>
+        <section class="history" aria-labelledby="history-title">
+          <h2 id="history-title">Recent sessions</h2>
+          <div id="sessions"></div>
+        </section>
       </section>
       <button id="options" class="secondary">API settings</button>
       <p id="error" role="alert"></p>

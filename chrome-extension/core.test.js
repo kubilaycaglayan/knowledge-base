@@ -6,19 +6,19 @@ test('only active paths are offered to the timer', () => {
   assert.deepEqual(activePaths([{ id: 'active', status: 'ACTIVE' }, { id: 'archived', status: 'ARCHIVED' }]).map(path => path.id), ['active'])
 })
 
-test('item choices follow the selected path', () => {
+test('all items are available for any selected path', () => {
   const items = [{ id: 'one', pathIds: ['path-a'] }, { id: 'two', pathIds: ['path-b'] }]
-  assert.deepEqual(itemsForPath(items, 'path-a').map(item => item.id), ['one'])
+  assert.deepEqual(itemsForPath(items, 'path-a').map(item => item.id), ['one', 'two'])
   assert.equal(itemsForPath(items, '').length, 2)
 })
 
-test('already attached item remains available across independent path selections', () => {
+test('items remain available across independent path selections', () => {
   const items = [{ id: 'one', pathIds: ['path-a'] }, { id: 'two', pathIds: ['path-b'] }]
-  assert.deepEqual(itemsForPath(items, 'path-a', 'two').map(item => item.id), ['one', 'two'])
+  assert.deepEqual(itemsForPath(items, 'path-a', ['two']).map(item => item.id), ['one', 'two'])
 })
 
 test('timer requests carry the extension source and nullable selections', () => {
-  assert.deepEqual(timerStartPayload('', 'item-id', ''), { pathId: null, itemId: 'item-id', description: null, source: 'CHROME_EXTENSION' })
+  assert.deepEqual(timerStartPayload('', ['item-id'], ''), { pathId: null, itemIds: ['item-id'], description: null, source: 'CHROME_EXTENSION' })
 })
 
 test('current timer state preserves the server description', () => {
