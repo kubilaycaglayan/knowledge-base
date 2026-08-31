@@ -938,6 +938,40 @@ class KnowIntegrationTest {
   }
 
   @Test
+  void clockifyImportSkipsSoftDeletedExternalId() {
+    String token = freshToken();
+    String entryId = "deleted-dup-" + UUID.randomUUID();
+    String description = "Soft-deleted Clockify import " + UUID.randomUUID();
+    String payload =
+        "{\"timeentries\":[{\"_id\":\""
+            + entryId
+            + "\",\"description\":\""
+            + description
+            + "\",\"timeInterval\":{\"start\":\"2024-07-02T09:00:00Z\","
+            + "\"end\":\"2024-07-02T10:00:00Z\",\"duration\":3600}}]}";
+
+    ResponseEntity<JsonNode> first = post("/api/v1/imports/clockify", token, payload);
+    assertEquals(HttpStatus.OK, first.getStatusCode());
+    JsonNode history = get("/api/v1/time-entries", token).getBody();
+    String timeEntryId = null;
+    for (JsonNode entry : history) {
+      if (description.equals(entry.get("description").asText())) {
+        timeEntryId = entry.get("id").asText();
+        break;
+      }
+    }
+    assertNotNull(timeEntryId);
+    assertEquals(
+        HttpStatus.NO_CONTENT,
+        delete("/api/v1/time-entries/" + timeEntryId, token).getStatusCode());
+
+    ResponseEntity<JsonNode> reimport = post("/api/v1/imports/clockify", token, payload);
+    assertEquals(HttpStatus.OK, reimport.getStatusCode());
+    assertEquals(0, reimport.getBody().get("imported").asInt());
+    assertEquals(1, reimport.getBody().get("skipped").asInt());
+  }
+
+  @Test
   void clockifyImportBatchesListedAndUndone() {
     String token = freshToken();
 

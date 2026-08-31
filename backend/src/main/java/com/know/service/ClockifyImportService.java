@@ -26,6 +26,7 @@ import com.know.domain.PathRepository;
 import com.know.domain.TimeEntry;
 import com.know.domain.TimeEntryRepository;
 import com.know.domain.TimeSource;
+import com.know.domain.UserRepository;
 
 @Service
 public class ClockifyImportService {
@@ -33,16 +34,19 @@ public class ClockifyImportService {
   private final TimeEntryRepository entries;
   private final ActivityRepository activities;
   private final ImportBatchRepository batches;
+  private final UserRepository users;
 
   public ClockifyImportService(
       PathRepository paths,
       TimeEntryRepository entries,
       ActivityRepository activities,
-      ImportBatchRepository batches) {
+      ImportBatchRepository batches,
+      UserRepository users) {
     this.paths = paths;
     this.entries = entries;
     this.activities = activities;
     this.batches = batches;
+    this.users = users;
   }
 
   public record ClockifyImportRequest(List<ClockifyEntry> timeentries) {}
@@ -81,11 +85,16 @@ public class ClockifyImportService {
 
   @Transactional
   public ImportSummary importEntries(UUID userId, ClockifyImportRequest request) {
+    // Clockify can publish the same report response more than once. Locking the
+    // owning user serializes imports for that user, including the duplicate
+    // lookup and insert, so the unique identity index remains a safe backstop.
+    users.findForUpdateById(userId);
     if (request == null || request.timeentries() == null || request.timeentries().size() > 2000) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Clockify import must contain at most 2000 time entries");
     }
     Map<String, Path> pathCache = new HashMap<>();
+    Set<String> seenExternalIds = new HashSet<>();
     int imported = 0, skipped = 0;
     Set<String> createdPathKeys = new HashSet<>();
     ImportBatch batch = batches.save(new ImportBatch(userId, TimeSource.IMPORT));
@@ -108,10 +117,13 @@ public class ClockifyImportService {
             HttpStatus.BAD_REQUEST, "Each Clockify entry needs a valid time interval");
       }
       String externalId = normalize(source.id());
+      if (externalId != null && !seenExternalIds.add(externalId)) {
+        skipped++;
+        continue;
+      }
       if (externalId != null
-          && entries
-              .findByUserIdAndSourceAndExternalId(userId, TimeSource.IMPORT, externalId)
-              .isPresent()) {
+          && entries.existsImportIdentityIncludingDeleted(
+              userId, TimeSource.IMPORT.name(), externalId)) {
         skipped++;
         continue;
       }

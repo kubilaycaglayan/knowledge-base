@@ -31,6 +31,16 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
       UUID userId, TimeSource source, String externalId);
 
   @Query(
+      value =
+          "select exists(select 1 from time_entry"
+              + " where user_id=:userId and source=:source and external_id=:externalId)",
+      nativeQuery = true)
+  boolean existsImportIdentityIncludingDeleted(
+      @Param("userId") UUID userId,
+      @Param("source") String source,
+      @Param("externalId") String externalId);
+
+  @Query(
       "select t from TimeEntry t where t.userId=:userId"
           + " order by t.endedAt desc nulls last, t.startedAt desc")
   List<TimeEntry> findAllByUserIdOrderByCompletionTimeDesc(

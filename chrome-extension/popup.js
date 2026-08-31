@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const defaultApi = "http://localhost:8080/api/v1";
+const debug = (...args) => console.warn("[Know extension]", ...args);
 let currentTimer = null;
 let timerTicker = null;
 let liveSyncTicker = null;
@@ -29,9 +30,25 @@ function timerStateChanged(previous, next) {
 
 async function request(path, options = {}) {
   const { token, apiBase } = await chrome.storage.local.get(["token", "apiBase"]);
-  const r = await fetch((apiBase || defaultApi) + path, {
+  const base = apiBase || defaultApi;
+  const url = base + path;
+  debug("Preparing popup API request", {
+    method: options.method || "GET",
+    apiBase: base,
+    path,
+    tokenPresent: Boolean(token),
+    tokenLength: typeof token === "string" ? token.length : 0,
+  });
+  const r = await fetch(url, {
     ...options,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}`, ...(options.headers || {}) },
+  });
+  debug("Popup API response", {
+    requestUrl: url,
+    responseUrl: r.url,
+    status: r.status,
+    redirected: r.redirected,
+    contentType: r.headers.get("content-type"),
   });
   if (r.status === 401 && token) {
     await chrome.storage.local.remove(["token", "activeTimer"]);
