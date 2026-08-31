@@ -2,6 +2,8 @@ const $ = (id) => document.getElementById(id);
 const defaultApi = "http://localhost:8080/api/v1";
 let currentTimer = null;
 let timerTicker = null;
+let liveSyncTicker = null;
+let liveSyncInFlight = false;
 let paths = [];
 let items = [];
 const timerSelectionKey = "timerSelection";
@@ -58,6 +60,37 @@ async function resetTimerForm() {
   Array.from($("item").options).forEach((option) => { option.selected = false; });
   $("description").value = "";
   await persistTimerSelection();
+}
+async function syncTimerState() {
+  if (liveSyncInFlight) return;
+  liveSyncInFlight = true;
+  try {
+    const timer = await request("/timers/current");
+    if (!timer && currentTimer) {
+      currentTimer = null;
+      await chrome.storage.local.remove("activeTimer");
+      await resetTimerForm();
+      showTimer(null);
+      $("toggle").textContent = "Start timer";
+      await loadSessions();
+    } else if (timer && (!currentTimer || timer.id !== currentTimer.id)) {
+      showTimer(timer);
+      await chrome.storage.local.set({ activeTimer: timer });
+      await restoreTimerSelection(timerSelection(timer));
+      $("toggle").textContent = "Stop timer";
+    }
+  } catch {
+    // The popup's normal load/request error handling remains authoritative.
+  } finally {
+    liveSyncInFlight = false;
+  }
+}
+function startLiveTimerSync() {
+  if (liveSyncTicker) clearInterval(liveSyncTicker);
+  // The popup is short-lived, so keep the authoritative server state fresh
+  // only while it is open. This catches stops made in the web app without a
+  // user action in the extension.
+  liveSyncTicker = setInterval(syncTimerState, 2000);
 }
 function hasOption(select, value) { return value && Array.from(select.options).some((option) => option.value === value); }
 function renderTimerItems(selectedIds = []) { fillOptions($("item"), "Select items (optional)", KnowCore.itemsForPath(items, $("path").value, selectedIds), selectedIds); }
@@ -120,8 +153,12 @@ async function load() {
     fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
     $("path").onchange = () => { renderTimerItems(selectedItemIds($("item"))); persistTimerSelection(); };
     if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
-    else { showTimer(null); $("toggle").textContent = "Start timer"; await chrome.storage.local.remove("activeTimer"); await restoreTimerSelection(savedSelection || timerSelection(activeTimer)); }
-    $("auth").hidden = true; $("workspace").hidden = false; await loadSessions();
+    else {
+      showTimer(null); $("toggle").textContent = "Start timer"; await chrome.storage.local.remove("activeTimer");
+      if (activeTimer) await resetTimerForm();
+      else await restoreTimerSelection(savedSelection || timerSelection(activeTimer));
+    }
+    $("auth").hidden = true; $("workspace").hidden = false; await loadSessions(); startLiveTimerSync();
   } catch { $("error").textContent = "Sign in failed or the API is unavailable."; }
 }
 async function login() {
