@@ -1,5 +1,19 @@
 const $ = (id) => document.getElementById(id);
 const defaultApi = "http://localhost:8080/api/v1";
+let currentTimer = null;
+let timerTicker = null;
+
+function showTimer(timer) {
+  currentTimer = timer;
+  $("status").textContent = KnowCore.timerStatus(timer);
+  if (timerTicker) clearInterval(timerTicker);
+  timerTicker = timer
+    ? setInterval(() => {
+        $("status").textContent = KnowCore.timerStatus(currentTimer);
+      }, 1000)
+    : null;
+}
+
 async function request(path, options = {}) {
   const { token, apiBase } = await chrome.storage.local.get([
     "token",
@@ -48,11 +62,11 @@ async function load() {
     $("path").onchange();
     const timer = await request("/timers/current");
     if (timer) {
-      $("status").textContent = KnowCore.timerStatus(timer);
+      showTimer(timer);
       $("toggle").textContent = "Stop timer";
       await chrome.storage.local.set({ activeTimer: timer });
     } else {
-      $("status").textContent = KnowCore.timerStatus(null);
+      showTimer(null);
       $("toggle").textContent = "Start timer";
       await chrome.storage.local.remove("activeTimer");
     }
@@ -89,7 +103,7 @@ $("toggle").onclick = async () => {
     if (KnowCore.timerIsRunning(current)) {
       await request("/timers/stop", { method: "POST", body: "{}" });
       await chrome.storage.local.remove("activeTimer");
-      $("status").textContent = KnowCore.timerStatus(null);
+      showTimer(null);
       $("toggle").textContent = "Start timer";
     } else {
       const timer = await request("/timers", {
@@ -103,7 +117,7 @@ $("toggle").onclick = async () => {
         ),
       });
       await chrome.storage.local.set({ activeTimer: timer });
-      $("status").textContent = KnowCore.timerStatus(timer);
+      showTimer(timer);
       $("toggle").textContent = "Stop timer";
     }
   } catch (e) {
