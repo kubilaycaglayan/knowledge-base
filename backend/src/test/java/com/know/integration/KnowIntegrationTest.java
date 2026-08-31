@@ -551,6 +551,50 @@ class KnowIntegrationTest {
   }
 
   @Test
+  void timerHistoryProvidesRecentPathUsageInDescendingOrder() {
+    String token = freshToken();
+    String firstPath =
+        post("/api/v1/paths", token, "{\"name\":\"First Recent Path\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    String secondPath =
+        post("/api/v1/paths", token, "{\"name\":\"Second Recent Path\"}")
+            .getBody()
+            .get("id")
+            .asText();
+
+    String newer = Instant.now().minus(15, ChronoUnit.MINUTES).toString();
+    String older = Instant.now().minus(30, ChronoUnit.MINUTES).toString();
+    post(
+        "/api/v1/time-entries",
+        token,
+        "{\"pathId\":\""
+            + firstPath
+            + "\",\"startedAt\":\""
+            + newer
+            + "\",\"endedAt\":\""
+            + Instant.now().minus(10, ChronoUnit.MINUTES)
+            + "\"}");
+    post(
+        "/api/v1/time-entries",
+        token,
+        "{\"pathId\":\""
+            + secondPath
+            + "\",\"startedAt\":\""
+            + older
+            + "\",\"endedAt\":\""
+            + Instant.now().minus(25, ChronoUnit.MINUTES)
+            + "\"}");
+
+    ResponseEntity<JsonNode> history = get("/api/v1/time-entries", token);
+    assertEquals(HttpStatus.OK, history.getStatusCode());
+    assertTrue(history.getBody().isArray());
+    assertEquals(firstPath, history.getBody().get(0).get("pathId").asText());
+    assertEquals(secondPath, history.getBody().get(1).get("pathId").asText());
+  }
+
+  @Test
   void timerAcceptsOwnedItemNotAttachedToPath() {
     String token = freshToken();
     ResponseEntity<JsonNode> path =
