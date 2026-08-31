@@ -42,7 +42,7 @@ if [[ -f "$wxt_pid_file" ]] && kill -0 "$(<"$wxt_pid_file")" 2>/dev/null; then
   echo "Chrome extension WXT development server is already running (PID $(<"$wxt_pid_file"))."
 else
   echo "Starting Chrome extension WXT development server in the background..."
-  (cd "$repo_root/chrome-extension" && nohup npm run dev >"$wxt_log" 2>&1 < /dev/null & echo $! >"$wxt_pid_file")
+  (cd "$repo_root/chrome-extension" && nohup npm run dev -- --host 0.0.0.0 --port 43127 >"$wxt_log" 2>&1 < /dev/null & echo $! >"$wxt_pid_file")
   echo "WXT PID: $(<"$wxt_pid_file")"
   echo "WXT log: $wxt_log"
 fi
