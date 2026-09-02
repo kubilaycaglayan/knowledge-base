@@ -224,6 +224,7 @@ auth="$(api "${content_json[@]}" --post-data="{\"email\":\"$email\",\"password\"
 token="$(printf '%s' "$auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 [[ -n "$token" ]]
 header=(--header="Authorization: Bearer $token")
+api http://localhost:8080/api/v1/auth/google/config | grep -q '"clientId"'
 if api "${content_json[@]}" --post-data='{"idToken":"not-a-real-google-token"}' \
   http://localhost:8080/api/v1/auth/google >/dev/null; then
   echo "invalid Google identity token was accepted" >&2
