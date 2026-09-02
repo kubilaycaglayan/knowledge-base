@@ -2,7 +2,7 @@
 # the origin stays private and cloudflared connects to the proxy over Docker.
 services:
   proxy:
-    ports: []
+    ports: !reset []
     volumes:
       - ./deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro
   cloudflared:
@@ -17,4 +17,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
