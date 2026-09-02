@@ -39,14 +39,46 @@ fi
 wxt_log="$repo_root/chrome-extension/.wxt-dev.log"
 wxt_pid_file="$repo_root/chrome-extension/.wxt-dev.pid"
 wxt_port=43127
-if [[ -f "$wxt_pid_file" ]] && kill -0 "$(<"$wxt_pid_file")" 2>/dev/null; then
-  printf 'WXT: status=running port=%s pid=%s log=%s\n' "$wxt_port" "$(<"$wxt_pid_file")" "$wxt_log"
-else
+is_wxt_process() {
+  local pid="$1"
+  local command
+
+  command="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+  [[ "$command" == *"npm run dev"* || "$command" == *"/node_modules/.bin/wxt"* ]]
+}
+
+if [[ -f "$wxt_pid_file" ]]; then
+  wxt_pid="$(<"$wxt_pid_file")"
+
+  # Older versions stored the development.sh wrapper PID. If it is still
+  # alive, adopt its npm child so status output and future checks use the
+  # actual WXT process tree.
+  if ! is_wxt_process "$wxt_pid"; then
+    child_pid="$(pgrep -P "$wxt_pid" -f 'npm run dev' | head -n 1 || true)"
+    if [[ -n "$child_pid" ]]; then
+      wxt_pid="$child_pid"
+      printf '%s\n' "$wxt_pid" >"$wxt_pid_file"
+    fi
+  fi
+
+  if is_wxt_process "$wxt_pid"; then
+    printf 'WXT: status=running port=%s pid=%s log=%s\n' "$wxt_port" "$wxt_pid" "$wxt_log"
+  else
+    wxt_pid=""
+  fi
+fi
+
+if [[ -z "${wxt_pid:-}" ]]; then
   : > "$wxt_log"
-  (cd "$repo_root/chrome-extension" && nohup npm run dev -- --host 0.0.0.0 --port "$wxt_port" >"$wxt_log" 2>&1 < /dev/null & echo $! >"$wxt_pid_file")
+  (
+    cd "$repo_root/chrome-extension"
+    nohup npm run dev -- --host 0.0.0.0 --port "$wxt_port" >"$wxt_log" 2>&1 < /dev/null &
+    printf '%s\n' "$!" >"$wxt_pid_file"
+  )
   wxt_status=starting
   for _ in {1..20}; do
-    if ! kill -0 "$(<"$wxt_pid_file")" 2>/dev/null; then
+    wxt_pid="$(<"$wxt_pid_file")"
+    if ! kill -0 "$wxt_pid" 2>/dev/null; then
       wxt_status=failed
       break
     fi
@@ -56,5 +88,7 @@ else
     fi
     sleep 0.25
   done
-  printf 'WXT: status=%s port=%s pid=%s log=%s\n' "$wxt_status" "$(<"$wxt_pid_file")" "$wxt_log"
+  printf 'WXT: status=%s port=%s pid=%s log=%s\n' "$wxt_status" "$wxt_port" "$wxt_pid" "$wxt_log"
+else
+  :
 fi
