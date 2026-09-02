@@ -1,0 +1,12 @@
+services:
+  desec-ddns:
+    build:
+      context: ./deployment
+      dockerfile: desec-ipv6-updater.Dockerfile
+    network_mode: host
+    environment:
+      DESEC_DDNS_TOKEN: ${DESEC_DDNS_TOKEN:?Set DESEC_DDNS_TOKEN in the environment}
+      DESEC_ZONE: ${DESEC_ZONE:-blaqc.space}
+      DESEC_SUBNAME: ${DESEC_SUBNAME:-tryknowledgebase}
+    restart: unless-stopped
+    logging: {driver: json-file, options: {max-size: "10m", max-file: "3"}}

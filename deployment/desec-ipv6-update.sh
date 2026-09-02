@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 : "${DESEC_DDNS_TOKEN:?DESEC_DDNS_TOKEN is required}"
 : "${DESEC_ZONE:?DESEC_ZONE is required}"
@@ -11,10 +11,13 @@ command -v jq >/dev/null || { printf 'jq is required\n' >&2; exit 1; }
 api_base="https://desec.io/api/v1/domains/${DESEC_ZONE}/rrsets/${DESEC_SUBNAME}/AAAA/"
 current_ipv6="$(curl --fail --ipv6 --silent --show-error https://checkipv6.dedyn.io/ | tr -d '[:space:]')"
 
-if [[ ! "$current_ipv6" =~ : ]]; then
+case "$current_ipv6" in
+  *:*) ;;
+  *)
   printf 'deSEC update failed: address detector returned a non-IPv6 value\n' >&2
   exit 1
-fi
+  ;;
+esac
 
 response_file="$(mktemp)"
 trap 'rm -f "$response_file"' EXIT
