@@ -3,6 +3,30 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: production
 
+  backup:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-know}
+      PGUSER: ${POSTGRES_USER:-know}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-3600}
+      BACKUP_RETENTION_COUNT: ${BACKUP_RETENTION_COUNT:-168}
+    volumes:
+      - ./backups:/backups
+      - ./deployment/backup-loop.sh:/usr/local/bin/knowledge-base-backup-loop:ro
+    entrypoint: ["/usr/local/bin/knowledge-base-backup-loop"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 # Production-only safety overlay. The database volume is external so Compose
 # cannot remove it during normal production lifecycle commands.
 volumes:

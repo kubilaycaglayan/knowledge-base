@@ -1,0 +1,3 @@
+# Keep local database dumps out of Git while preserving this bind-mount directory.
+*
+!.gitignore

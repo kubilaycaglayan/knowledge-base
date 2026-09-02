@@ -1,5 +1,7 @@
 .env
 !.env.example
+backups/*
+!backups/.gitignore
 secrets
 node_modules/
 .wxt/
