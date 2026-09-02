@@ -2,7 +2,7 @@
 
 The API is rooted at `/api/v1`. Public endpoints are `POST /auth/register`, `POST /auth/login`, and `POST /auth/google`, returning a bearer JWT. Google login accepts a Google Identity Services ID token; the API verifies its signature, audience, issuer, and verified email before linking or creating the account. Clients send `Authorization: Bearer <token>`.
 
-Interactive OpenAPI documentation is available at `/swagger-ui.html`; the machine-readable contract is at `/v3/api-docs`.
+Interactive OpenAPI documentation is available at `/swagger-ui.html` during development; the machine-readable contract is at `/v3/api-docs`. Both endpoints are disabled in the production Spring profile.
 
 Authenticated endpoints currently include:
 
