@@ -1,5 +1,7 @@
 .env
 !.env.example
+.env.development
+.env.production
 backups/*
 !backups/.gitignore
 secrets
