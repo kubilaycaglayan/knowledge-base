@@ -1,6 +1,12 @@
-# Production-only safety overlay. The legacy Docker volume name is retained
-# so the existing production database remains attached during deployment.
+# Production-only safety overlay. The database volume is external so Compose
+# cannot remove it during normal production lifecycle commands.
 volumes:
   know-db:
-    name: try-know-be_know-db
+    name: knowledge-base_know-db
+    external: true
+  caddy-data:
+    name: knowledge-base_caddy-data
+    external: true
+  caddy-config:
+    name: knowledge-base_caddy-config
     external: true

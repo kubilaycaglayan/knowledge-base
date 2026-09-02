@@ -1,6 +1,6 @@
 # Knowledge Base repository guidance
 
-The application name is **Knowledge Base**. Use `Knowledge Base` as the product name and `knowledge-base` / `KnowledgeBase` as new code, Compose, deployment, and documentation identifiers. Do not introduce `Know`, `know`, or `try-know-be` as new names. Existing legacy Java packages, iOS target paths, database names, Docker volume names, and historical data identifiers must be treated as compatibility-sensitive and changed only through an explicit migration.
+The application name is **Knowledge Base**. Use `Knowledge Base` as the product name and `knowledge-base` / `KnowledgeBase` as code, Compose, deployment, and documentation identifiers. Existing legacy Java packages, iOS target paths, database names, Docker volume names, and historical data identifiers must be treated as compatibility-sensitive and changed only through an explicit migration.
 
 Knowledge Base is a production-shaped monorepo for a personal knowledge and activity tracker. Keep PostgreSQL as the system of record and keep domain rules in the Spring service/domain layer so Vue, SwiftUI, and the Manifest V3 extension remain thin API clients.
 
