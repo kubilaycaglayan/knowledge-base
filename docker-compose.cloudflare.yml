@@ -1,0 +1,20 @@
+# Cloudflare Tunnel production overlay. Cloudflare terminates public HTTPS;
+# the origin stays private and cloudflared connects to the proxy over Docker.
+services:
+  proxy:
+    ports: []
+    volumes:
+      - ./deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      proxy:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+

@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base}"
-compose_files=(-f docker-compose.yml -f docker-compose.production.yml)
+compose_files=(-f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
 
 docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
   echo 'Refusing production rebuild: protected database volume knowledge-base_know-db does not exist.' >&2
