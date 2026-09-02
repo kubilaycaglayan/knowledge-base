@@ -3,10 +3,14 @@ set -euo pipefail
 
 fail() { printf 'Deployment preflight failed: %s\n' "$1" >&2; exit 1; }
 
-: "${DOMAIN:?Set DOMAIN to the deployed hostname}"
-: "${JWT_SECRET:?Set JWT_SECRET to a random value}"
-: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a strong value}"
-: "${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN to the tunnel token}"
+missing_env=0
+for env_name in DOMAIN JWT_SECRET POSTGRES_PASSWORD CLOUDFLARE_TUNNEL_TOKEN; do
+  if [[ -z "${!env_name:-}" ]]; then
+    printf '⚠️ Missing required production environment value: %s\n' "$env_name" >&2
+    missing_env=1
+  fi
+done
+(( missing_env == 0 )) || fail 'one or more required production environment values are missing'
 
 [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || fail 'DOMAIN must be a hostname without a scheme, path, or port'
 [[ "$DOMAIN" != 'localhost' && "$DOMAIN" != 'example.com' ]] || fail 'DOMAIN must be the real production hostname'

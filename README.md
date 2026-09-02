@@ -34,6 +34,8 @@ The repository includes `.env.example` as a public template. Copy it to the appr
 
 Do not commit either file, `secrets`, passwords, signing material, production hostnames that should stay private, or user data. Production deployment refuses to run when `.env.production` is missing.
 
+Production preflight logs a `⚠️` warning for each missing required environment value before stopping the deployment.
+
 Environment variable keys and private configuration reminders are maintained in the local untracked `secrets` file and `.env.example`. Those files are intentionally kept out of version control or provided as sanitized templates to prevent exposing private configuration and keys publicly.
 
 ## Current foundation
