@@ -11,7 +11,7 @@ Knowledge Base is a production-shaped monorepo for a personal knowledge and acti
 - `ios/`: native SwiftUI package using the shared `/api/v1` API.
 - `chrome-extension/`: explicit timer-only Manifest V3 client.
 - `deployment/`, `docker-compose.yml`: Ubuntu deployment, Caddy HTTPS, backup, and persistent PostgreSQL configuration.
-- `scripts/smoke.sh`: deployed-shaped end-to-end verification.
+- `scripts/run-smoke-tests.sh`: deployed-shaped end-to-end verification.
 
 ## Required checks
 
@@ -24,10 +24,10 @@ node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
 node scripts/check-accessibility.mjs
 node scripts/check-security.mjs
-node scripts/check-cleanup.mjs
-bash -n scripts/smoke.sh deployment/backup.sh deployment/preflight.sh
-JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
-SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
+node scripts/check-smoke-cleanup.mjs
+bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh
+JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
+SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
 ```
 
 On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS app and UI tests, run `brew install xcodegen`, then `(cd ios && xcodegen generate --spec project.yml)` and the generated `ios/Know.xcodeproj` build/test scheme used by CI. SwiftUI and UI-test verification cannot be performed in the Linux development environment.

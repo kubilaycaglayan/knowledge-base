@@ -55,7 +55,7 @@ is_wxt_process() {
 if [[ -f "$wxt_pid_file" ]]; then
   wxt_pid="$(<"$wxt_pid_file")"
 
-  # Older versions stored the development.sh wrapper PID. If it is still
+  # Older versions stored the start-development.sh wrapper PID. If it is still
   # alive, adopt its npm child so status output and future checks use the
   # actual WXT process tree.
   if ! is_wxt_process "$wxt_pid"; then
