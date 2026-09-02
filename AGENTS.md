@@ -35,6 +35,7 @@ On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS a
 ## Safety and design rules
 
 - Never commit `.env`, passwords, tokens, private keys, production configuration, or personal data.
+- The production PostgreSQL volume is a protected external volume. Never remove, reset, prune, or recreate it, and never run production cleanup with `--volumes`; use a verified backup/restore migration if replacement is ever explicitly required.
 - Add schema changes as new Flyway migrations; do not enable Hibernate schema mutation.
 - Scope every read and write by the authenticated user and preserve ownership checks for referenced paths, items, notes, and activities.
 - Keep timer state server-owned. Preserve the one-running-timer invariant and do not calculate historical duration only in a client.

@@ -21,7 +21,8 @@ docker info >/dev/null 2>&1 || fail 'Docker daemon is not available'
 command -v getent >/dev/null 2>&1 || fail 'getent is required to verify DNS resolution'
 getent hosts "$DOMAIN" >/dev/null || fail "DOMAIN does not resolve: $DOMAIN"
 
-docker compose config >/dev/null || fail 'Docker Compose configuration is invalid'
+docker volume inspect try-know-be_know-db >/dev/null 2>&1 || fail 'Production database volume try-know-be_know-db does not exist'
+docker compose -f docker-compose.yml -f docker-compose.production.yml config >/dev/null || fail 'Docker Compose production configuration is invalid'
 docker run --rm -e "DOMAIN=$DOMAIN" -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile >/dev/null || fail 'Caddy configuration is invalid'
 
 printf 'Deployment preflight passed for %s.\n' "$DOMAIN"

@@ -1,0 +1,6 @@
+# Production-only safety overlay. The legacy Docker volume name is retained
+# so the existing production database remains attached during deployment.
+volumes:
+  know-db:
+    name: try-know-be_know-db
+    external: true
