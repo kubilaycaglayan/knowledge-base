@@ -1,0 +1,18 @@
+[Unit]
+Description=Update Know IPv6 address at deSEC
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/know/desec-ipv6.env
+ExecStart=/usr/local/sbin/know-desec-ipv6-update
+User=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/run
+
+[Install]
+WantedBy=multi-user.target
