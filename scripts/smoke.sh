@@ -45,7 +45,7 @@ content_json=(--header='Content-Type: application/json')
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   services+=(web proxy)
 fi
-buildx_builder="know-smoke-${COMPOSE_PROJECT_NAME:-try-know-be}-${BASHPID}-$(date +%s%N)"
+buildx_builder="knowledge-base-smoke-${COMPOSE_PROJECT_NAME:-knowledge-base}-${BASHPID}-$(date +%s%N)"
 if ! docker buildx create --name "$buildx_builder" --driver docker-container >/dev/null 2>&1; then
   echo "Smoke tests require Docker Buildx so their build cache can be cleaned safely" >&2
   exit 1
@@ -382,7 +382,7 @@ report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?period=MONTH&
 [[ "$report" == *'"paths"'* ]]
 if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   backup_dir="$(mktemp -d)"
-  backup_file="$backup_dir/know.sql"
+  backup_file="$backup_dir/knowledge-base.sql"
   ./deployment/backup.sh "$backup_file" >/dev/null
   restore_db="restore_check_$(date +%s%N)"
   docker compose exec -T db createdb -U "${POSTGRES_USER:-know}" "$restore_db"

@@ -19,6 +19,6 @@ docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --n
 (cd frontend && npm ci && npm test && npm run build)
 node --test chrome-extension/core.test.js
 JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
-SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=know-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
-SMOKE_BACKUP_RESTORE=1 COMPOSE_PROJECT_NAME=know-backup-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
+SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
+SMOKE_BACKUP_RESTORE=1 COMPOSE_PROJECT_NAME=knowledge-base-backup-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/smoke.sh
 ```

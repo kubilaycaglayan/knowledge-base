@@ -1,8 +1,8 @@
-# Know
+# Knowledge Base
 
 [Under construction]
 
-Know is a personal knowledge, learning-history, and activity tracker. The repository contains one canonical Spring Boot API, a Vue web client, a native SwiftUI client, and a focused Manifest V3 timer extension.
+Knowledge Base is a personal knowledge, learning-history, and activity tracker. The repository contains one canonical Spring Boot API, a Vue web client, a native SwiftUI client, and a focused Manifest V3 timer extension.
 
 ## Local development
 
@@ -13,7 +13,7 @@ Know is a personal knowledge, learning-history, and activity tracker. The reposi
 
 Run the shared backend smoke test with `./scripts/smoke.sh` after setting the required environment variables. It starts the API and database, exercises authentication, paths, items, tags, progress, notes, timers, search, timeline filtering, and statistics, then stops the stack.
 
-Google sign-in setup requires a Google OAuth client configured for the published extension. Add the extension redirect URI returned by `chrome.identity.getRedirectURL()` (the `https://<extension-id>.chromiumapp.org/` form) to that client, set the same client ID as `GOOGLE_CLIENT_ID`, and add the exact production extension origin (`chrome-extension://<extension-id>`) to `CORS_ORIGINS`. The extension uses Chrome's native identity flow and stores only the Know JWT returned by the API.
+Google sign-in setup requires a Google OAuth client configured for the published extension. Add the extension redirect URI returned by `chrome.identity.getRedirectURL()` (the `https://<extension-id>.chromiumapp.org/` form) to that client, set the same client ID as `GOOGLE_CLIENT_ID`, and add the exact production extension origin (`chrome-extension://<extension-id>`) to `CORS_ORIGINS`. The extension uses Chrome's native identity flow and stores only the Knowledge Base JWT returned by the API.
 
 The API applies Flyway migrations and validates the JPA schema; Hibernate never mutates production schema. PostgreSQL is private to the compose network. Configure your domain for Caddy's automatic HTTPS. The current usable slice includes account auth, paths, tagged multi-path items, progress history, notes, activity timeline, timers, searchable history, and statistics.
 

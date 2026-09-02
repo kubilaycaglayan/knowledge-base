@@ -11,7 +11,7 @@ fi
 
 cd "$repo_root"
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-know-dev}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base-dev}"
 export DB_DEV_PORT="${DB_DEV_PORT:-15432}"
 export API_DEV_PORT="${API_DEV_PORT:-18081}"
 export PROXY_DEV_PORT="${PROXY_DEV_PORT:-3000}"
@@ -29,7 +29,7 @@ echo "  docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --ta
 
 cat <<'EOF'
 
-Know development stack is available at:
+Knowledge Base development stack is available at:
   Web: http://localhost:3000 (Vite hot reload)
   API via proxy: http://localhost:3000/api/v1
   API health: http://localhost:18081/actuator/health
