@@ -2,7 +2,12 @@
 set -euo pipefail
 umask 077
 
-output="${1:-know-backup-$(date -u +%Y-%m-%dT%H-%M-%SZ).sql}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base}"
+
+backup_dir="${BACKUP_DIR:-backups}"
+output="${1:-${backup_dir}/knowledge-base-$(date -u +%Y-%m-%dT%H-%M-%SZ).sql}"
+output_parent="$(dirname -- "$output")"
+mkdir -p -- "$output_parent"
 if [[ -e "$output" ]]; then
   printf 'Refusing to overwrite existing backup: %s\n' "$output" >&2
   exit 1
