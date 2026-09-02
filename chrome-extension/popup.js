@@ -222,7 +222,34 @@ async function login() {
   catch { $("error").textContent = "Invalid credentials."; }
 }
 
+async function googleLogin() {
+  const button = $("google-login");
+  button.disabled = true;
+  try {
+    const { clientId } = await request("/auth/google/config");
+    if (!clientId) throw Error("Google sign-in is not configured");
+    const state = KnowGoogleAuth.nonce();
+    const requestNonce = KnowGoogleAuth.nonce();
+    const redirectUri = chrome.identity.getRedirectURL();
+    const redirectUrl = await chrome.identity.launchWebAuthFlow({
+      url: KnowGoogleAuth.authorizationUrl(clientId, redirectUri, state, requestNonce),
+      interactive: true,
+    });
+    const idToken = KnowGoogleAuth.parseRedirect(redirectUrl, state, requestNonce);
+    const result = await request("/auth/google", { method: "POST", body: JSON.stringify({ idToken }) });
+    await chrome.storage.local.set({ token: result.token });
+    $("error").textContent = "";
+    await load();
+  } catch (error) {
+    console.warn("[Know extension] Google sign-in failed", error);
+    $("error").textContent = "Google sign-in could not be completed. Try again.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
 $("login").onclick = login;
+$("google-login").onclick = googleLogin;
 $("logout").onclick = async () => { await chrome.storage.local.clear(); location.reload(); };
 $("toggle").onclick = async () => {
   try {
