@@ -6,7 +6,7 @@ cd "$repo_root"
 
 production_env_file="$repo_root/.env.production"
 if [[ ! -f "$production_env_file" ]]; then
-  echo "Missing $production_env_file. Copy .env.example to .env.production and set production values." >&2
+  echo "⚠️ Missing $production_env_file. Copy .env.example to .env.production and set production values." >&2
   exit 1
 fi
 set -a
