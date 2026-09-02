@@ -2,6 +2,7 @@ package com.know.api;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -28,7 +29,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @TestPropertySource(
     properties = {
       "app.jwt-secret=api-test-secret-with-at-least-32-characters",
-      "app.cors-origins=http://localhost"
+      "app.cors-origins=http://localhost",
+      "app.google-client-id=google-client-id"
     })
 class AuthControllerApiTest {
   @Autowired MockMvc mvc;
@@ -41,6 +43,13 @@ class AuthControllerApiTest {
   @BeforeEach
   void allowAuthenticationAttempts() {
     when(limiter.allow(anyString())).thenReturn(true);
+  }
+
+  @Test
+  void googleConfigReturnsThePublicClientId() throws Exception {
+    mvc.perform(get("/api/v1/auth/google/config"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.clientId").value("google-client-id"));
   }
 
   @Test

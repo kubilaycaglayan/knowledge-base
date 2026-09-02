@@ -44,7 +44,14 @@ public class AuthController {
 
   record GoogleRequest(@NotBlank @Size(max = 10000) String idToken) {}
 
+  record GoogleConfig(String clientId) {}
+
   record AuthResponse(String token, UUID userId, String email, String displayName) {}
+
+  @GetMapping("/google/config")
+  public GoogleConfig googleConfig(@Value("${app.google-client-id:}") String clientId) {
+    return new GoogleConfig(clientId == null ? "" : clientId.trim());
+  }
 
   @PostMapping("/register")
   public AuthResponse register(
