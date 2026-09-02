@@ -4,6 +4,16 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+production_env_file="$repo_root/.env.production"
+if [[ ! -f "$production_env_file" ]]; then
+  echo "Missing $production_env_file. Copy .env.example to .env.production and set production values." >&2
+  exit 1
+fi
+set -a
+# shellcheck disable=SC1090
+source "$production_env_file"
+set +a
+
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base}"
 compose_files=(-f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
 

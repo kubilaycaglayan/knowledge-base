@@ -3,6 +3,16 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+development_env_file="$repo_root/.env.development"
+if [[ -f "$development_env_file" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$development_env_file"
+  set +a
+else
+  echo "Warning: $development_env_file not found; using development defaults." >&2
+fi
+
 export JWT_SECRET="${JWT_SECRET:-development-jwt-secret-at-least-32-chars-long}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-dev-postgres-password}"
 if [[ -n "${CHROME_EXTENSION_ID:-}" && -z "${CORS_ORIGINS:-}" ]]; then
