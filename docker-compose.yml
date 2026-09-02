@@ -45,7 +45,7 @@ services:
     volumes: [./deployment/Caddyfile:/etc/caddy/Caddyfile, caddy-data:/data, caddy-config:/config]
     depends_on: [web, api]
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost/ | grep -q 'id=\"app\"'"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ | grep -q 'id=\"app\"'"]
       interval: 30s
       timeout: 10s
       retries: 5
