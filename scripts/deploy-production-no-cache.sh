@@ -16,11 +16,11 @@ set +a
 
 export KNOW_API_BASE="${KNOW_API_BASE:-https://${DOMAIN}/api/v1}"
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base}"
+export COMPOSE_PROJECT_NAME="knowledge-base"
 export DB_PROD_PORT="${DB_PROD_PORT:-15433}"
 export API_PROD_PORT="${API_PROD_PORT:-18082}"
 export PROXY_PROD_PORT="${PROXY_PROD_PORT:-19080}"
-compose_files=(-f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
+compose_args=(--project-name knowledge-base -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
 
 echo 'Running Knowledge Base production preflight...'
 ./deployment/preflight.sh
@@ -33,11 +33,11 @@ docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
 
 echo "Stopping the production-shaped stack (database volume is preserved)..."
 echo "Production host ports: API=${API_PROD_PORT}, PostgreSQL=${DB_PROD_PORT}, proxy=${PROXY_PROD_PORT} (proxy binding removed by Cloudflare overlay)"
-docker compose "${compose_files[@]}" down
+docker compose "${compose_args[@]}" down
 
 echo "Rebuilding all production-shaped images without cache..."
-docker compose "${compose_files[@]}" build --pull --no-cache
+docker compose "${compose_args[@]}" build --pull --no-cache
 
 echo "Starting the rebuilt stack..."
-docker compose "${compose_files[@]}" up -d --force-recreate
-docker compose "${compose_files[@]}" ps
+docker compose "${compose_args[@]}" up -d --force-recreate
+docker compose "${compose_args[@]}" ps
