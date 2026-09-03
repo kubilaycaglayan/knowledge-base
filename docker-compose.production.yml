@@ -1,3 +1,5 @@
+name: knowledge-base
+
 services:
   db:
     ports: !override ["127.0.0.1:${DB_PROD_PORT:-15433}:5432"]

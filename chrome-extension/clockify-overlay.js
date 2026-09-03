@@ -1,3 +1,5 @@
+import "./clockify-validation.js";
+
 (function () {
   if (window.top !== window) return;
   const root = document.documentElement.appendChild(document.createElement("div"));
