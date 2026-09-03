@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-export COMPOSE_PROJECT_NAME="knowledge-base"
+export COMPOSE_PROJECT_NAME="knowledge-base-production"
 
 backup_dir="${BACKUP_DIR:-backups}"
 output="${1:-${backup_dir}/knowledge-base-$(date -u +%Y-%m-%dT%H-%M-%SZ).sql}"
@@ -13,7 +13,7 @@ if [[ -e "$output" ]]; then
   exit 1
 fi
 
-docker compose --project-name knowledge-base exec -T db pg_dump \
+docker compose --project-name knowledge-base-production exec -T db pg_dump \
   -U "${POSTGRES_USER:-know}" \
   "${POSTGRES_DB:-know}" > "$output"
 printf 'Wrote backup to %s\n' "$output"
