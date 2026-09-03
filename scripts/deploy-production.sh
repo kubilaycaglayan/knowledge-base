@@ -15,6 +15,9 @@ source "$production_env_file"
 set +a
 
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base}"
+export DB_PROD_PORT="${DB_PROD_PORT:-15433}"
+export API_PROD_PORT="${API_PROD_PORT:-18082}"
+export PROXY_PROD_PORT="${PROXY_PROD_PORT:-19080}"
 compose_files=(-f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
 
 docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
@@ -23,13 +26,14 @@ docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
 }
 
 echo 'Running Knowledge Base production preflight...'
+echo "Production host ports: API=${API_PROD_PORT}, PostgreSQL=${DB_PROD_PORT}, proxy=${PROXY_PROD_PORT} (proxy binding removed by Cloudflare overlay)"
 ./deployment/preflight.sh
 
 echo 'Building production images...'
 docker compose "${compose_files[@]}" build --pull
 
 echo 'Updating the production stack (persistent volumes are preserved)...'
-docker compose "${compose_files[@]}" up -d
+docker compose "${compose_files[@]}" up -d --force-recreate
 
 for attempt in {1..30}; do
   api_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' knowledge-base-api-1 2>/dev/null || true)"
