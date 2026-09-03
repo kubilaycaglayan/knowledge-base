@@ -14,11 +14,17 @@ set -a
 source "$production_env_file"
 set +a
 
+export KNOW_API_BASE="${KNOW_API_BASE:-https://${DOMAIN}/api/v1}"
+
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base}"
 export DB_PROD_PORT="${DB_PROD_PORT:-15433}"
 export API_PROD_PORT="${API_PROD_PORT:-18082}"
 export PROXY_PROD_PORT="${PROXY_PROD_PORT:-19080}"
 compose_files=(-f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
+
+echo 'Running Knowledge Base production preflight...'
+./deployment/preflight.sh
+./scripts/build-production-extension.sh
 
 docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
   echo 'Refusing production rebuild: protected database volume knowledge-base_know-db does not exist.' >&2

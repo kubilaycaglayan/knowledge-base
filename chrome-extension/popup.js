@@ -1,6 +1,9 @@
 const $ = (id) => document.getElementById(id);
 const defaultApi = "http://localhost:8080/api/v1";
-const debug = (...args) => console.warn("[Know extension]", ...args);
+const debug = (...args) => {
+  if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
+    console.warn("[Know extension]", ...args);
+};
 let currentTimer = null;
 let timerTicker = null;
 let liveSyncTicker = null;
@@ -30,7 +33,7 @@ function timerStateChanged(previous, next) {
 
 async function request(path, options = {}) {
   const { token, apiBase } = await chrome.storage.local.get(["token", "apiBase"]);
-  const base = apiBase || defaultApi;
+  const base = KnowApiConfig.apiBase(apiBase);
   const url = base + path;
   debug("Preparing popup API request", {
     method: options.method || "GET",
@@ -241,7 +244,7 @@ async function googleLogin() {
     $("error").textContent = "";
     await load();
   } catch (error) {
-    console.warn("[Know extension] Google sign-in failed", error);
+    debug("Google sign-in failed", error instanceof Error ? error.message : "unknown error");
     $("error").textContent = "Google sign-in could not be completed. Try again.";
   } finally {
     button.disabled = false;

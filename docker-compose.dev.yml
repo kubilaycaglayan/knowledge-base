@@ -35,5 +35,8 @@ services:
       WEB_UPSTREAM: web:5177
 
 volumes:
+  know-db:
+    name: knowledge-base-dev_know-db
+    external: true
   gradle-cache: {}
   frontend-node-modules: {}

@@ -14,6 +14,8 @@ set -a
 source "$production_env_file"
 set +a
 
+export KNOW_API_BASE="${KNOW_API_BASE:-https://${DOMAIN}/api/v1}"
+
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base}"
 export DB_PROD_PORT="${DB_PROD_PORT:-15433}"
 export API_PROD_PORT="${API_PROD_PORT:-18082}"
@@ -28,6 +30,8 @@ docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
 echo 'Running Knowledge Base production preflight...'
 echo "Production host ports: API=${API_PROD_PORT}, PostgreSQL=${DB_PROD_PORT}, proxy=${PROXY_PROD_PORT} (proxy binding removed by Cloudflare overlay)"
 ./deployment/preflight.sh
+
+./scripts/build-production-extension.sh
 
 echo 'Building production images...'
 docker compose "${compose_files[@]}" build --pull

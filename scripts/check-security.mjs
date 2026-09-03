@@ -10,6 +10,7 @@ const authView = read('frontend/src/views/AuthView.vue')
 const preflight = read('deployment/preflight.sh')
 const viteConfig = read('frontend/vite.config.ts')
 const runKnowSkill = read('.agents/skills/run-know/SKILL.md')
+const startDevelopment = read('scripts/start-development.sh')
 
 const checks = [
   [application.includes('jwt-secret: ${JWT_SECRET:}'), 'JWT secret has no fallback value'],
@@ -24,6 +25,7 @@ const checks = [
   [compose.match(/logging: \{driver: json-file, options: \{max-size: "10m", max-file: "3"\}\}/g)?.length === 4, 'all Compose services use bounded JSON log rotation'],
   [envExample.includes('chrome-extension://replace-with-extension-id'), 'environment template requires an explicit extension origin'],
   [!envExample.includes('chrome-extension://*'), 'environment template does not allow all extension origins'],
+  [startDevelopment.includes('chrome_extension_origin=') && startDevelopment.includes('case ",${CORS_ORIGINS:-},"'), 'development startup preserves existing CORS origins and adds the configured extension origin'],
   [proxy.includes('Content-Security-Policy'), 'proxy emits CSP'],
   [proxy.includes('ws://localhost:* ws://127.0.0.1:*'), 'proxy CSP permits local Vite hot-reload websockets only on loopback hosts'],
   [proxy.includes('Permissions-Policy'), 'proxy emits Permissions-Policy'],
