@@ -13,7 +13,7 @@ Completed criteria with current integration-style evidence:
 - editable-paths: backend integration updates path name, description, and color; PathsView test verifies inline edit payload.
 - feature-item: DashboardView test creates a new item from the session flow, reloads items, and selects the new item.
 - history-clicks: PathsView test expands history inside the selected path card and renders imported session detail there.
-- hot-reloading: security/development contract checks Vite `0.0.0.0:5177`, strict port, API proxy, and run-know SSH forwarding guidance.
+- hot-reloading: security/development contract checks Vite `0.0.0.0:5177`, strict port, API proxy, and documented SSH forwarding guidance.
 - implement-reports-page: backend integration covers week/month/year report responses; ReportsView test renders daily timeline with path/resource categories.
 - integrate-clockify: backend integration and smoke import Clockify JSON, create missing paths, and enforce duplicate external IDs.
 - interactive-timer: backend integration covers running timer path/start/description configuration; DashboardView test keeps active timer controls visible and sends the PUT update.
