@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "wxt -b chrome",
     "build": "wxt build -b chrome",
+    "build:prod": "test -n \"$KNOW_API_BASE\" && KNOW_EXTENSION_ENV=production wxt build -b chrome",
+    "test": "node --test core.test.js google-auth.test.js api-config.test.js clockify-validation.test.js",
     "prepare": "wxt prepare"
   },
   "devDependencies": {

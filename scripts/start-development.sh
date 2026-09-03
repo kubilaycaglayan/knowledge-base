@@ -15,8 +15,12 @@ fi
 
 export JWT_SECRET="${JWT_SECRET:-development-jwt-secret-at-least-32-chars-long}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-dev-postgres-password}"
-if [[ -n "${CHROME_EXTENSION_ID:-}" && -z "${CORS_ORIGINS:-}" ]]; then
-  export CORS_ORIGINS="http://localhost:5177,chrome-extension://${CHROME_EXTENSION_ID}"
+if [[ -n "${CHROME_EXTENSION_ID:-}" ]]; then
+  chrome_extension_origin="chrome-extension://${CHROME_EXTENSION_ID}"
+  case ",${CORS_ORIGINS:-}," in
+    *",${chrome_extension_origin},"*) ;;
+    *) export CORS_ORIGINS="${CORS_ORIGINS:+${CORS_ORIGINS},}${chrome_extension_origin}" ;;
+  esac
 fi
 
 cd "$repo_root"
@@ -25,6 +29,13 @@ export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base-dev}"
 export DB_DEV_PORT="${DB_DEV_PORT:-15432}"
 export API_DEV_PORT="${API_DEV_PORT:-8080}"
 export PROXY_DEV_PORT="${PROXY_DEV_PORT:-3000}"
+
+dev_db_volume="knowledge-base-dev_know-db"
+if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
+  echo "Refusing to start development: protected database volume $dev_db_volume does not exist." >&2
+  echo "Create or restore that volume deliberately before starting development." >&2
+  exit 1
+fi
 
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 docker compose -f docker-compose.yml -f docker-compose.dev.yml ps

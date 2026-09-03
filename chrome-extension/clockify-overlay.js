@@ -26,6 +26,8 @@
   window.addEventListener("message", async (event) => {
     if (event.source !== window || event.origin !== "https://app.clockify.me" || event.data?.source !== "know-clockify" || event.data.type !== "detailed-report" || importing) return;
     const payload = event.data.payload;
+    const validation = KnowClockifyValidation.validate(payload);
+    if (!validation.ok) { $(".message").textContent = validation.error; $(".message").className = "message error"; return; }
     if (!payload.timeentries.length) {
       $(".message").textContent = "No completed entries in this report.";
       return;
