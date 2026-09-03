@@ -9,8 +9,12 @@ const envExample = read('.env.example')
 const authView = read('frontend/src/views/AuthView.vue')
 const preflight = read('deployment/preflight.sh')
 const viteConfig = read('frontend/vite.config.ts')
-const runKnowSkill = read('.agents/skills/run-know/SKILL.md')
+const developmentDocs = read('docs/development.md')
 const startDevelopment = read('scripts/start-development.sh')
+const deployProduction = read('scripts/deploy-production.sh')
+const deployProductionNoCache = read('scripts/deploy-production-no-cache.sh')
+const developmentCompose = read('docker-compose.dev.yml')
+const productionCompose = read('docker-compose.production.yml')
 
 const checks = [
   [application.includes('jwt-secret: ${JWT_SECRET:}'), 'JWT secret has no fallback value'],
@@ -26,6 +30,10 @@ const checks = [
   [envExample.includes('chrome-extension://replace-with-extension-id'), 'environment template requires an explicit extension origin'],
   [!envExample.includes('chrome-extension://*'), 'environment template does not allow all extension origins'],
   [startDevelopment.includes('chrome_extension_origin=') && startDevelopment.includes('case ",${CORS_ORIGINS:-},"'), 'development startup preserves existing CORS origins and adds the configured extension origin'],
+  [startDevelopment.includes('export COMPOSE_PROJECT_NAME="knowledge-base-dev"') && startDevelopment.includes('compose_args=(--project-name knowledge-base-dev'), 'development startup cannot inherit the production Compose project name'],
+  [deployProduction.includes('export COMPOSE_PROJECT_NAME="knowledge-base"') && deployProduction.includes('compose_args=(--project-name knowledge-base'), 'production deployment uses the fixed production Compose project name'],
+  [deployProductionNoCache.includes('export COMPOSE_PROJECT_NAME="knowledge-base"') && deployProductionNoCache.includes('compose_args=(--project-name knowledge-base'), 'no-cache production deployment uses the fixed production Compose project name'],
+  [developmentCompose.startsWith('name: knowledge-base-dev\n') && productionCompose.startsWith('name: knowledge-base\n'), 'Compose overlays default to isolated development and production project names'],
   [proxy.includes('Content-Security-Policy'), 'proxy emits CSP'],
   [proxy.includes('ws://localhost:* ws://127.0.0.1:*'), 'proxy CSP permits local Vite hot-reload websockets only on loopback hosts'],
   [proxy.includes('Permissions-Policy'), 'proxy emits Permissions-Policy'],
@@ -36,9 +44,9 @@ const checks = [
   [authView.includes('/auth/google') && authView.includes('JSON.stringify({ idToken })'), 'web authentication sends Google credentials to the backend verifier'],
   [proxy.includes('https://accounts.google.com/gsi/client'), 'proxy CSP permits the Google Identity Services client'],
   [preflight.includes('DOMAIN must be the real production hostname') && preflight.includes('CORS_ORIGINS must include https://${DOMAIN}'), 'deployment preflight rejects local domains and incomplete production CORS'],
-  [viteConfig.includes("host:'0.0.0.0'") && viteConfig.includes('port:5177') && viteConfig.includes('strictPort:true'), 'Vite hot reload binds to the documented memorable remote-development port'],
-  [viteConfig.includes("proxy:{'/api':{target:'http://localhost:8080'"), 'Vite hot reload proxies API requests to the local backend'],
-  [runKnowSkill.includes('http://localhost:3000') && runKnowSkill.includes('0.0.0.0:5177') && runKnowSkill.includes('ssh -L 3000:localhost:3000'), 'run-know skill documents proxied and standalone hot-reload access']
+  [/host:\s*["']0\.0\.0\.0["']/.test(viteConfig) && /port:\s*5177/.test(viteConfig) && /strictPort:\s*true/.test(viteConfig), 'Vite hot reload binds to the documented memorable remote-development port'],
+  [/proxy:\s*\{\s*["']\/api["']:\s*\{\s*target:\s*["']http:\/\/localhost:8080["']/.test(viteConfig), 'Vite hot reload proxies API requests to the local backend'],
+  [developmentDocs.includes('http://localhost:3000') && developmentDocs.includes('0.0.0.0:5177') && developmentDocs.includes('ssh -L 3000:localhost:3000'), 'development documentation covers proxied and standalone hot-reload access']
 ]
 
 for (const [passed, description] of checks) if (!passed) throw new Error(`Security contract failed: ${description}`)

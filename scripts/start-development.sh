@@ -25,10 +25,11 @@ fi
 
 cd "$repo_root"
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-knowledge-base-dev}"
+export COMPOSE_PROJECT_NAME="knowledge-base-dev"
 export DB_DEV_PORT="${DB_DEV_PORT:-15432}"
 export API_DEV_PORT="${API_DEV_PORT:-8080}"
 export PROXY_DEV_PORT="${PROXY_DEV_PORT:-3000}"
+compose_args=(--project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml)
 
 dev_db_volume="knowledge-base-dev_know-db"
 if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
@@ -37,16 +38,16 @@ if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
   exit 1
 fi
 
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
+docker compose "${compose_args[@]}" up -d
+docker compose "${compose_args[@]}" ps
 echo
 echo "Compose service/image names:"
-docker compose -f docker-compose.yml -f docker-compose.dev.yml images
+docker compose "${compose_args[@]}" images
 echo
 echo "Useful logs:"
-echo "  docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 api"
-echo "  docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 web"
-echo "  docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 proxy"
+echo "  docker compose --project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 api"
+echo "  docker compose --project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 web"
+echo "  docker compose --project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 proxy"
 
 cat <<'EOF'
 
