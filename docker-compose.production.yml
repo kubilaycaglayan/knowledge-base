@@ -1,4 +1,4 @@
-name: knowledge-base
+name: knowledge-base-production
 
 services:
   db:

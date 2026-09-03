@@ -16,11 +16,11 @@ set +a
 
 export KNOW_API_BASE="${KNOW_API_BASE:-https://${DOMAIN}/api/v1}"
 
-export COMPOSE_PROJECT_NAME="knowledge-base"
+export COMPOSE_PROJECT_NAME="knowledge-base-production"
 export DB_PROD_PORT="${DB_PROD_PORT:-15433}"
 export API_PROD_PORT="${API_PROD_PORT:-18082}"
 export PROXY_PROD_PORT="${PROXY_PROD_PORT:-19080}"
-compose_args=(--project-name knowledge-base -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
+compose_args=(--project-name knowledge-base-production -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
 
 docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
   echo 'Refusing production deployment: protected database volume knowledge-base_know-db does not exist.' >&2
@@ -39,10 +39,13 @@ docker compose "${compose_args[@]}" build --pull
 echo 'Updating the production stack (persistent volumes are preserved)...'
 docker compose "${compose_args[@]}" up -d --force-recreate
 
+api_container="$(docker compose "${compose_args[@]}" ps -q api)"
+proxy_container="$(docker compose "${compose_args[@]}" ps -q proxy)"
+tunnel_container="$(docker compose "${compose_args[@]}" ps -q cloudflared)"
 for attempt in {1..30}; do
-  api_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' knowledge-base-api-1 2>/dev/null || true)"
-  proxy_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' knowledge-base-proxy-1 2>/dev/null || true)"
-  tunnel_status="$(docker inspect -f '{{.State.Status}}' knowledge-base-cloudflared-1 2>/dev/null || true)"
+  api_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' "$api_container" 2>/dev/null || true)"
+  proxy_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' "$proxy_container" 2>/dev/null || true)"
+  tunnel_status="$(docker inspect -f '{{.State.Status}}' "$tunnel_container" 2>/dev/null || true)"
   if [[ "$api_health" == healthy && "$proxy_health" == healthy && "$tunnel_status" == running ]]; then
     break
   fi

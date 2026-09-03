@@ -3,7 +3,7 @@ set -euo pipefail
 
 fail() { printf 'Deployment preflight failed: %s\n' "$1" >&2; exit 1; }
 
-[[ "${COMPOSE_PROJECT_NAME:-}" == 'knowledge-base' ]] || fail 'COMPOSE_PROJECT_NAME must be knowledge-base'
+[[ "${COMPOSE_PROJECT_NAME:-}" == 'knowledge-base-production' ]] || fail 'COMPOSE_PROJECT_NAME must be knowledge-base-production'
 
 missing_env=0
 for env_name in DOMAIN JWT_SECRET POSTGRES_PASSWORD CLOUDFLARE_TUNNEL_TOKEN KNOW_API_BASE; do
@@ -32,7 +32,7 @@ command -v getent >/dev/null 2>&1 || fail 'getent is required to verify DNS reso
 getent hosts "$DOMAIN" >/dev/null || fail "DOMAIN does not resolve: $DOMAIN"
 
 docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || fail 'Production database volume knowledge-base_know-db does not exist'
-docker compose --project-name knowledge-base -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml config >/dev/null || fail 'Docker Compose production configuration is invalid'
+docker compose --project-name knowledge-base-production -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml config >/dev/null || fail 'Docker Compose production configuration is invalid'
 docker run --rm -v "$PWD/deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile >/dev/null || fail 'Caddy configuration is invalid'
 
 printf 'Deployment preflight passed for %s.\n' "$DOMAIN"
