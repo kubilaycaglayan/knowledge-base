@@ -93,4 +93,32 @@ describe("AuthView", () => {
     expect(localStorage.getItem("know_token")).toBe("google-token");
     expect(wrapper.emitted("authenticated")).toHaveLength(1);
   });
+
+  it("renders Google sign-in when the GIS script loads after the view", async () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "google-client-id");
+    const renderButton = vi.fn();
+    testWindow.google = undefined;
+    const script = document.createElement("script");
+    script.id = "google-gsi-client";
+    document.body.appendChild(script);
+
+    const wrapper = mount(AuthView);
+    testWindow.google = {
+      accounts: {
+        id: {
+          initialize: vi.fn(),
+          renderButton,
+        },
+      },
+    };
+    script.dispatchEvent(new Event("load"));
+    await wrapper.vm.$nextTick();
+
+    expect(renderButton).toHaveBeenCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ width: 320 }),
+    );
+    wrapper.unmount();
+    script.remove();
+  });
 });

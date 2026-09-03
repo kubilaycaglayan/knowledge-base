@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { api } from "../lib/api";
 
 type GoogleApi = {
@@ -72,7 +72,7 @@ async function googleLogin(idToken: string) {
   }
 }
 
-onMounted(() => {
+function renderGoogleButton() {
   if (!googleConfigured || !googleButton.value || !window.google) return;
   window.google.accounts.id.initialize({
     client_id: googleClientId,
@@ -83,6 +83,24 @@ onMounted(() => {
     size: "large",
     width: 320,
   });
+}
+
+let googleScript: HTMLScriptElement | null = null;
+
+onMounted(() => {
+  if (!googleConfigured) return;
+
+  if (window.google) {
+    renderGoogleButton();
+    return;
+  }
+
+  googleScript = document.querySelector<HTMLScriptElement>("#google-gsi-client");
+  googleScript?.addEventListener("load", renderGoogleButton);
+});
+
+onUnmounted(() => {
+  googleScript?.removeEventListener("load", renderGoogleButton);
 });
 </script>
 
