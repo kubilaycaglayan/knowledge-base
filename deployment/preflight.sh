@@ -4,7 +4,7 @@ set -euo pipefail
 fail() { printf 'Deployment preflight failed: %s\n' "$1" >&2; exit 1; }
 
 missing_env=0
-for env_name in DOMAIN JWT_SECRET POSTGRES_PASSWORD CLOUDFLARE_TUNNEL_TOKEN; do
+for env_name in DOMAIN JWT_SECRET POSTGRES_PASSWORD CLOUDFLARE_TUNNEL_TOKEN KNOW_API_BASE; do
   if [[ -z "${!env_name:-}" ]]; then
     printf '⚠️ Missing required production environment value: %s\n' "$env_name" >&2
     missing_env=1
@@ -14,6 +14,7 @@ done
 
 [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || fail 'DOMAIN must be a hostname without a scheme, path, or port'
 [[ "$DOMAIN" != 'localhost' && "$DOMAIN" != 'example.com' ]] || fail 'DOMAIN must be the real production hostname'
+[[ "$KNOW_API_BASE" == "https://${DOMAIN}/api/v1" ]] || fail 'KNOW_API_BASE must exactly match https://${DOMAIN}/api/v1'
 (( ${#JWT_SECRET} >= 32 )) || fail 'JWT_SECRET must be at least 32 characters'
 [[ "$POSTGRES_PASSWORD" != replace-with-* && -n "$POSTGRES_PASSWORD" ]] || fail 'POSTGRES_PASSWORD must be replaced with a real value'
 [[ "$CLOUDFLARE_TUNNEL_TOKEN" != replace-with-* && -n "$CLOUDFLARE_TUNNEL_TOKEN" ]] || fail 'CLOUDFLARE_TUNNEL_TOKEN must be replaced with the real tunnel token'
@@ -23,6 +24,7 @@ case ",${CORS_ORIGINS:-}," in
 esac
 
 command -v docker >/dev/null 2>&1 || fail 'Docker is not installed or not on PATH'
+command -v npm >/dev/null 2>&1 || fail 'npm is required to build the production extension'
 docker info >/dev/null 2>&1 || fail 'Docker daemon is not available'
 command -v getent >/dev/null 2>&1 || fail 'getent is required to verify DNS resolution'
 getent hosts "$DOMAIN" >/dev/null || fail "DOMAIN does not resolve: $DOMAIN"
