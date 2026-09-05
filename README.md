@@ -23,7 +23,7 @@ Run the shared backend smoke test with `./scripts/run-smoke-tests.sh` after sett
 
 Google sign-in setup requires a Google OAuth client configured for the published extension. Add the extension redirect URI returned by `chrome.identity.getRedirectURL()` (the `https://<extension-id>.chromiumapp.org/` form) to that client, set the same client ID as `GOOGLE_CLIENT_ID`, and add the exact production extension origin (`chrome-extension://<extension-id>`) to `CORS_ORIGINS`. The extension uses Chrome's native identity flow and stores only the Knowledge Base JWT returned by the API.
 
-The API applies Flyway migrations and validates the JPA schema; Hibernate never mutates production schema. PostgreSQL is private to the Compose network. Production uses Cloudflare Tunnel for public HTTPS and routes the tunnel to the private Caddy origin. The current usable slice includes account auth, paths, tagged multi-path items, progress history, notes, activity timeline, timers, searchable history, and statistics.
+The API applies Flyway migrations and validates the JPA schema; Hibernate never mutates production schema. PostgreSQL is private to the Compose network. Production uses Cloudflare Tunnel for public HTTPS and routes the tunnel to the private Caddy origin. The current usable slice includes account auth, paths, tagged multi-path items, progress history, notes, optional calendar day records and labels, activity timeline, timers, searchable history, and statistics.
 
 ## Environment variables
 
