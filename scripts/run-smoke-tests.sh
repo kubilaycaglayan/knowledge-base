@@ -339,6 +339,17 @@ if [[ -n "$(api "${header[@]}" http://localhost:8080/api/v1/timers/current)" ]];
   exit 1
 fi
 smoke_date="$(date -u +%Y-%m-%d)"
+calendar_label="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke leave","color":"#2878D5"}' http://localhost:8080/api/v1/calendar/labels)"
+calendar_label_id="$(printf '%s' "$calendar_label" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+calendar_day="$(api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"note\":\"Calendar smoke record\",\"labels\":[{\"labelId\":\"$calendar_label_id\",\"portion\":1.0}]}" \
+  "http://localhost:8080/api/v1/calendar/days/$smoke_date")"
+[[ "$calendar_day" == *'Calendar smoke record'* ]]
+api "${header[@]}" "http://localhost:8080/api/v1/calendar/days?startDate=$smoke_date&endDate=$smoke_date" | grep -q 'Smoke leave'
+calendar_range_end="$(date -u -d "$smoke_date + 1 day" +%Y-%m-%d)"
+api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"startDate\":\"$smoke_date\",\"endDate\":\"$calendar_range_end\",\"labels\":[{\"labelId\":\"$calendar_label_id\",\"portion\":1.0}]}" \
+  http://localhost:8080/api/v1/calendar/days/range | grep -q "$calendar_range_end"
 manual_start="$(date -u -d '2 hours ago' +%Y-%m-%dT%H:00:00Z)"
 manual_end="$(date -u -d '75 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 manual="$(
@@ -380,6 +391,8 @@ report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?period=MONTH&
 [[ "$report" == *'"period":"MONTH"'* ]]
 [[ "$report" == *'"days"'* ]]
 [[ "$report" == *'"paths"'* ]]
+[[ "$report" == *'"calendarLabels"'* ]]
+[[ "$report" == *'Smoke leave'* ]]
 if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   backup_dir="$(mktemp -d)"
   backup_file="$backup_dir/knowledge-base.sql"

@@ -12,7 +12,7 @@ Smoke verification exercises both configured/unconfigured API CORS preflights on
 
 Smoke runs require Docker Buildx and clean up their Compose project containers, named volumes, local service images, and uniquely named temporary Buildx builders on exit. Use a distinct `COMPOSE_PROJECT_NAME` when running concurrent checks.
 
-The API smoke flow also exercises the authenticated monthly reports endpoint after creating current-month time entries, including its daily timeline and path breakdown fields.
+The API smoke flow also exercises optional calendar-label creation, a dated record, and a multi-day calendar range before loading the authenticated monthly reports endpoint; calendar labels are asserted separately from current-month tracked-time entries, including the report’s daily timeline and path breakdown fields.
 
 ```bash
 docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
