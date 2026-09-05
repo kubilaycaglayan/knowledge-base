@@ -439,6 +439,23 @@
 .donut-total strong { font-size: 18px; color: #26353d; }
 .donut-total span { color: #87939a; font-size: 12px; margin-top: 3px; }
 .report-loading { min-height: 240px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #697781; }
+.calendar-page { max-width: 1200px; margin: 0 auto; color: #35414a; }
+.calendar-header { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 28px; }
+.calendar-header h1 { margin: 10px 0 6px; font-size: 42px; letter-spacing: -2px; }
+.calendar-navigation { display: flex; gap: 12px; align-items: center; }
+.calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid #dbe3e8; background: #fff; }
+.calendar-weekday { padding: 10px; color: #6a767e; font-size: 11px; font-weight: 700; letter-spacing: .7px; border-bottom: 1px solid #dbe3e8; }
+.calendar-day { min-height: 106px; padding: 10px; text-align: left; background: #fff; border: 0; border-right: 1px solid #edf1f3; border-bottom: 1px solid #edf1f3; cursor: pointer; color: inherit; }
+.calendar-day:hover, .calendar-day.selected { background: #eaf3fb; outline: 2px solid #2878d5; outline-offset: -2px; }
+.calendar-day.in-range { background: #d9ecfb; }
+.calendar-day.muted { color: #a2afb7; background: #fafcfd; }
+.calendar-day time { display: block; font-weight: 700; }
+.calendar-day small { display: block; margin-top: 7px; color: #6a767e; font-size: 10px; }
+.calendar-labels { display: grid; gap: 3px; margin-top: 7px; min-width: 0; }.calendar-label { min-width: 0; display: flex; align-items: center; gap: 4px; color: #52636d; font-size: 10px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.calendar-label i, .day-label i, .calendar-report-labels i { width: 8px; height: 8px; background: var(--calendar-label-color, #2878d5); border-radius: 50%; display: inline-block; flex: 0 0 auto; }.calendar-labels small { color: #6a767e; font-size: 10px; }
+.day-editor { background: #fff; border: 1px solid #dbe3e8; padding: 20px; display: grid; gap: 16px; }.day-editor-heading { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.day-editor h2 { font-size: 18px; margin: 0; }.day-editor label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }.day-editor textarea, .new-calendar-label input, .day-label select { box-sizing: border-box; font: inherit; border: 1px solid #cbd7df; border-radius: 4px; padding: 8px; max-width: 100%; }.day-editor textarea { width: 100%; min-width: 0; resize: vertical; }.day-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 8px; }.day-editor legend { font-size: 13px; font-weight: 700; margin-bottom: 6px; }.day-label { grid-template-columns: auto auto minmax(0, 1fr) auto; min-width: 0; align-items: center; }.day-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.day-label select { min-width: 0; width: 112px; }.label-color-button, .new-label-color, .label-color-choice { width: 18px; height: 18px; padding: 0; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #aab7bf; cursor: pointer; }.label-color-palette { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 7px; padding: 8px 0 2px; }.label-color-choice.active { box-shadow: 0 0 0 2px #26353d; }.new-calendar-label { min-width: 0; display: flex; align-items: center; gap: 8px; }.new-calendar-label input { min-width: 0; flex: 1; }.calendar-report-card { margin-top: 20px; padding: 18px 22px; }.calendar-report-labels { display: grid; gap: 10px; padding-top: 14px; }.calendar-report-labels div { display: flex; align-items: center; gap: 9px; }.calendar-report-labels strong { margin-left: auto; }
+@media (max-width: 800px) { .calendar-header { align-items: start; flex-direction: column; }.calendar-layout { grid-template-columns: 1fr; }.calendar-day { min-height: 76px; }.calendar-weekday { padding: 8px 4px; text-align: center; }.calendar-day { padding: 7px; } }
 .tooltip-row { display: flex; justify-content: space-between; gap: 28px; margin-top: 5px; }
 .tooltip-row i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
 .tooltip-row small { color: #aab4ba; font-weight: 400; }
