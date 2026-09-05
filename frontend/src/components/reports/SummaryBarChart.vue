@@ -48,7 +48,8 @@ const option = computed<EChartsOption>(() => ({
     trigger: "axis", axisPointer: { type: "shadow" }, confine: true, extraCssText: "max-width: 320px; white-space: normal; overflow-wrap: anywhere;",
     formatter: (params: unknown) => {
     const entries = Array.isArray(params) ? params as Array<{ axisValue: string; seriesName: string; value: number; color: string; dataIndex: number }> : [];
-      const day = props.days[entries.length ? entries[0].dataIndex : 0];
+      const dayIndex = entries.length ? props.days.findIndex((day) => format(parseISO(day.date), "EEE, MMM d") === entries[0].axisValue) : 0;
+      const day = props.days[dayIndex >= 0 ? dayIndex : entries[0]?.dataIndex || 0];
       if (!day) return "No tracked time";
       const rows = day.paths.map((item) => `<div class="tooltip-row"><span><i style="background:${colorFor(item)}"></i>${escapeHtml(item.label)}</span><b>${formatDuration(item.seconds)} <small>${percentageOf(item.seconds, day.totalSeconds).toFixed(2)}%</small></b></div>`).join("");
       return `<strong>${format(parseISO(day.date), "EEE, MMM d")}</strong><div>Total: ${formatDuration(day.totalSeconds)}</div>${rows}${props.showCalendar ? calendarRows(day) : ""}`;
