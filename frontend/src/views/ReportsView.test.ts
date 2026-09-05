@@ -17,7 +17,7 @@ describe("ReportsView", () => {
   } };
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], items: [] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], items: [], calendarLabels: [] });
+    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], items: [], calendarNote: "Planning session", calendarLabels: [{ id: "label-1", label: "Milestone", color: "#2878D5", portion: null }] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], items: [], calendarLabels: [] });
   });
 
   it("shows the report dashboard with project breakdown and charts", async () => {
@@ -32,6 +32,9 @@ describe("ReportsView", () => {
     expect(wrapper.text()).not.toContain("Export");
     expect(wrapper.text()).not.toContain("Apply filter");
     expect(wrapper.text()).toContain("01:00:00");
+    expect(wrapper.text()).toContain("Calendar log");
+    expect(wrapper.text()).toContain("Planning session");
+    expect(wrapper.text()).toContain("Milestone");
     expect(wrapper.find(".report-echart").exists()).toBe(true);
     expect(wrapper.find(".donut-echart").exists()).toBe(true);
     expect(wrapper.find("button").exists()).toBe(true);
