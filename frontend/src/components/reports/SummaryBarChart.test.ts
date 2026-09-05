@@ -11,7 +11,8 @@ describe("SummaryBarChart", () => {
     const wrapper = mount(SummaryBarChart, { props: { days, categories, showCalendar: true } });
     const series = (wrapper.getComponent({ name: "VChart" }).props("option") as { series: Array<{ name: string; markArea?: { data: unknown[] } }> }).series;
     expect(series).toHaveLength(1);
-    expect(series[0]).toMatchObject({ name: "Wander", markArea: { data: [[{ xAxis: 0, itemStyle: { color: "#009688", opacity: 0.14 } }, { xAxis: 0 }]] } });
+    expect(series[0]).toMatchObject({ name: "Wander", markArea: { data: [[{ xAxis: -0.5, itemStyle: { color: "#009688", opacity: 0.14 } }, { xAxis: 0.5 }]] } });
+    expect((wrapper.getComponent({ name: "VChart" }).props("option") as { tooltip: { confine: boolean; extraCssText: string } }).tooltip).toMatchObject({ confine: true, extraCssText: expect.stringContaining("max-width: 320px") });
   });
 
   it("omits calendar inputs when disabled", () => {

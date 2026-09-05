@@ -27,14 +27,14 @@ function calendarRows(day: Day): string {
 }
 const calendarAreas = computed(() => props.days.flatMap((day, index) => {
   const label = day.calendarLabels?.[0];
-  return (day.calendarNote || label) ? [[{ xAxis: index, itemStyle: { color: label?.color || "#697781", opacity: 0.14 } }, { xAxis: index }]] : [];
+  return (day.calendarNote || label) ? [[{ xAxis: index - 0.5, itemStyle: { color: label?.color || "#697781", opacity: 0.14 } }, { xAxis: index + 0.5 }]] : [];
 }));
 const option = computed<EChartsOption>(() => ({
   color: colors,
   grid: { left: 48, right: 18, top: 30, bottom: props.days.length > 31 ? 74 : 44 },
   dataZoom: props.days.length > 31 ? [{ type: "inside", start: 0, end: Math.min(100, (31 / props.days.length) * 100) }, { type: "slider", start: 0, end: Math.min(100, (31 / props.days.length) * 100), height: 18, bottom: 12 }] : [],
   tooltip: {
-    trigger: "axis", axisPointer: { type: "shadow" },
+    trigger: "axis", axisPointer: { type: "shadow" }, confine: true, extraCssText: "max-width: 320px; white-space: normal; overflow-wrap: anywhere;",
     formatter: (params: unknown) => {
     const entries = Array.isArray(params) ? params as Array<{ axisValue: string; seriesName: string; value: number; color: string; dataIndex: number }> : [];
       const day = props.days[entries.length ? entries[0].dataIndex : 0];
