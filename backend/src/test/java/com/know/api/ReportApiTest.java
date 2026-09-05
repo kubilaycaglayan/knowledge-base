@@ -50,6 +50,7 @@ class ReportApiTest {
                 0,
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of()));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
@@ -69,7 +70,7 @@ class ReportApiTest {
     var from = java.time.LocalDate.of(2026, 8, 24);
     var to = java.time.LocalDate.of(2026, 8, 30);
     when(service.report(user, from, to))
-        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of()));
+        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of()));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
     mvc.perform(get("/api/v1/reports").param("startDate", from.toString()).param("endDate", to.toString()).with(authentication(auth)))
