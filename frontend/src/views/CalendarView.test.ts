@@ -59,13 +59,13 @@ describe("CalendarView", () => {
     }));
   });
 
-  it("selects two calendar days and applies a label across the inclusive range", async () => {
+  it("drag-selects two calendar days and applies a label across the inclusive range", async () => {
     const wrapper = mount(CalendarView);
     await flushPromises();
-    await wrapper.findAll("button").find(button => button.text() === "Select range")!.trigger("click");
     const days = wrapper.findAll("button.calendar-day");
-    await days[8].trigger("click");
-    await days[10].trigger("click");
+    await days[8].trigger("mousedown", { button: 0 });
+    await days[10].trigger("mouseenter");
+    await days[10].trigger("mouseup", { button: 0 });
     await wrapper.get('input[type="checkbox"]').setValue(true);
     await wrapper.get("select").setValue("1");
     await wrapper.get("button.primary").trigger("click");
