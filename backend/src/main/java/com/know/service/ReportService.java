@@ -40,7 +40,7 @@ public class ReportService {
   public record CalendarLabel(UUID id, String label, String color, BigDecimal portion) {}
   public record CalendarLabelTotal(UUID id, String label, String color, BigDecimal days, long markers) {}
   public record Day(
-      LocalDate date, long totalSeconds, List<Category> paths, List<Category> items, List<CalendarLabel> calendarLabels) {}
+      LocalDate date, long totalSeconds, List<Category> paths, List<Category> items, String calendarNote, List<CalendarLabel> calendarLabels) {}
 
   public record Report(
       String period,
@@ -72,11 +72,13 @@ public class ReportService {
     List<TimeEntry> window =
         to.isAfter(from) ? entries.findOverlappingByUserId(userId, from, to) : List.of();
     Map<LocalDate, List<CalendarLabel>> calendarByDate = new HashMap<>();
+    Map<LocalDate, String> calendarNotesByDate = new HashMap<>();
     Map<UUID, CalendarLabelTotalAccumulator> calendarTotals = new HashMap<>();
     if (calendar != null) {
       calendar.days(userId, fromDate, toDateExclusive.minusDays(1)).forEach(day -> {
         List<CalendarLabel> labels = day.labels().stream().map(label -> new CalendarLabel(label.labelId(), label.name(), label.color(), label.portion())).toList();
         calendarByDate.put(day.date(), labels);
+        if (day.note() != null) calendarNotesByDate.put(day.date(), day.note());
         labels.forEach(label -> calendarTotals.computeIfAbsent(label.id(), ignored -> new CalendarLabelTotalAccumulator(label)).add(label.portion()));
       });
     }
@@ -125,6 +127,7 @@ public class ReportService {
               reportSeconds,
               categories(dayPaths, pathNames, "Unassigned path"),
               categories(dayItems, itemNames, "Unassigned item"),
+              calendarNotesByDate.get(date),
               calendarByDate.getOrDefault(date, List.of())));
     }
     long total = days.stream().mapToLong(Day::totalSeconds).sum();
