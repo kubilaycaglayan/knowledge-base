@@ -36,7 +36,10 @@ const calendarBars = computed(() => props.days.flatMap((day, dayIndex) => {
   });
 }));
 const calendarMaximum = computed(() => Math.max(1, ...props.days.map((day) => (day.calendarLabels || []).reduce((total, label) => total + (label.portion || 0.18), day.calendarNote && !day.calendarLabels?.length ? 0.18 : 0))));
-function calendarGradient(color: string) { return { type: "linear", x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: `${color}B8` }, { offset: 1, color: `${color}24` }] }; }
+function calendarPattern(x: number, y: number, width: number, height: number, color: string) {
+  const shape = { x, y, width, height };
+  return { type: "group", clipPath: { type: "rect", shape }, children: [{ type: "rect", shape, style: { fill: color, opacity: 0.42 } }, ...Array.from({ length: Math.ceil(height / 8) }, (_, index) => ({ type: "rect", shape: { x, y: y + index * 8, width, height: 3 }, style: { fill: "#ffffff", opacity: 0.38 } }))] };
+}
 const option = computed<EChartsOption>(() => ({
   color: colors,
   grid: { left: 48, right: 18, top: 30, bottom: props.days.length > 31 ? 74 : 44 },
@@ -58,7 +61,7 @@ const option = computed<EChartsOption>(() => ({
       const x = api.coord([Number(api.value(0)), 0])[0];
       const start = api.coord([0, Number(api.value(1))])[1];
       const end = api.coord([0, Number(api.value(2))])[1];
-      return { type: "rect", shape: { x: x - 29, y: end, width: 74, height: start - end }, style: { fill: calendarGradient(String(api.value(3))) } };
+      return calendarPattern(x - 29, end, 74, start - end, String(api.value(3)));
     } }] : []),
     ...props.categories.map((category) => ({ name: category.label, type: "bar" as const, stack: "total", barMaxWidth: 74, data: props.days.map((day) => day.paths.find((item) => item.id === category.id || item.label === category.label)?.seconds || 0) })),
   ],
