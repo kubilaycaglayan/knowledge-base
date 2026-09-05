@@ -17,7 +17,7 @@ describe("ReportsView", () => {
   } };
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], items: [] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], items: [] });
+    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], items: [] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], items: [], calendarLabels: [] });
   });
 
   it("shows the report dashboard with project breakdown and charts", async () => {
