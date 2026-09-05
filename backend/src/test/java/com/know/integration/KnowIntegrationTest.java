@@ -1314,7 +1314,7 @@ class KnowIntegrationTest {
         put(
                 "/api/v1/calendar/days/2026-09-05",
                 owner,
-                "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.5}]}")
+                "{\"note\":\"Annual leave\",\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.5}]}")
             .getStatusCode());
     assertEquals(HttpStatus.CONFLICT, delete("/api/v1/calendar/labels/" + labelId, owner).getStatusCode());
 
@@ -1325,6 +1325,9 @@ class KnowIntegrationTest {
     assertEquals("Vacation", summary.get(0).get("label").asText());
     assertEquals(0.5, summary.get(0).get("days").asDouble());
     assertEquals(0, summary.get(0).get("markers").asInt());
+    JsonNode loggedDay = report.get("days").get(4);
+    assertEquals("Annual leave", loggedDay.get("calendarNote").asText());
+    assertEquals("Vacation", loggedDay.get("calendarLabels").get(0).get("label").asText());
   }
 
   @Test
