@@ -25,9 +25,9 @@ function calendarRows(day: Day): string {
   const labels = (day.calendarLabels || []).map((label) => `<div class="tooltip-row"><span><i style="background:${label.color || "#697781"}"></i>${escapeHtml(label.label)}</span><b>${label.portion ? `${label.portion} day` : "Marked"}</b></div>`).join("");
   return note || labels ? `<hr><strong>Calendar</strong>${note}${labels}` : "";
 }
-const calendarData = computed(() => props.days.map((day) => {
+const calendarAreas = computed(() => props.days.flatMap((day, index) => {
   const label = day.calendarLabels?.[0];
-  return (day.calendarNote || label) ? { value: 1, itemStyle: { color: label?.color || "#697781" } } : 0;
+  return (day.calendarNote || label) ? [[{ xAxis: index, itemStyle: { color: label?.color || "#697781", opacity: 0.14 } }, { xAxis: index }]] : [];
 }));
 const option = computed<EChartsOption>(() => ({
   color: colors,
@@ -44,10 +44,9 @@ const option = computed<EChartsOption>(() => ({
     },
   },
   xAxis: { type: "category", data: props.days.map((day) => format(parseISO(day.date), "EEE, MMM d")), axisTick: { show: false }, axisLabel: { color: "#697781", interval: 0, hideOverlap: true } },
-  yAxis: [{ type: "value", name: "Hours", nameTextStyle: { color: "#697781" }, axisLabel: { color: "#697781", formatter: (value: number) => `${(value / 3600).toFixed(0)}h` }, splitLine: { lineStyle: { color: "#d9e0e5", type: "dashed" } } }, { type: "value", min: 0, max: 1, show: false }],
+  yAxis: { type: "value", name: "Hours", nameTextStyle: { color: "#697781" }, axisLabel: { color: "#697781", formatter: (value: number) => `${(value / 3600).toFixed(0)}h` }, splitLine: { lineStyle: { color: "#d9e0e5", type: "dashed" } } },
   series: [
-    ...(props.showCalendar && calendarData.value.some((entry) => entry !== 0) ? [{ name: "Calendar input", type: "bar" as const, yAxisIndex: 1, barWidth: 74, barGap: "-100%", silent: true, z: -1, itemStyle: { opacity: 0.14 }, data: calendarData.value }] : []),
-    ...props.categories.map((category) => ({ name: category.label, type: "bar" as const, stack: "total", barMaxWidth: 74, data: props.days.map((day) => day.paths.find((item) => item.id === category.id || item.label === category.label)?.seconds || 0) })),
+    ...props.categories.map((category, index) => ({ name: category.label, type: "bar" as const, stack: "total", barMaxWidth: 74, data: props.days.map((day) => day.paths.find((item) => item.id === category.id || item.label === category.label)?.seconds || 0), ...(index === 0 && props.showCalendar && calendarAreas.value.length ? { markArea: { silent: true, data: calendarAreas.value } } : {}) })),
   ],
 }));
 </script>
