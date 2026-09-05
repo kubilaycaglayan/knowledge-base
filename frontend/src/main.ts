@@ -15,6 +15,7 @@ const router = createRouter({
     { path: "/timeline", component: () => import("./views/TimelineView.vue") },
     { path: "/sessions", component: () => import("./views/SessionsView.vue") },
     { path: "/reports", component: () => import("./views/ReportsView.vue") },
+    { path: "/calendar", component: () => import("./views/CalendarView.vue") },
     { path: "/imports", component: () => import("./views/ImportsView.vue") },
   ],
 });
