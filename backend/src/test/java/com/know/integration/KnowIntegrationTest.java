@@ -1249,4 +1249,140 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.CREATED, withDesc.getStatusCode());
     assertEquals("A real description", withDesc.getBody().get("description").asText());
   }
+
+  @Test
+  void calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> sickLeave =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Sick leave\",\"color\":\"#2878D5\"}");
+    ResponseEntity<JsonNode> milestone =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Milestone\"}");
+    assertEquals(HttpStatus.CREATED, sickLeave.getStatusCode());
+    String sickLeaveId = sickLeave.getBody().get("id").asText();
+    String milestoneId = milestone.getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> saved =
+        put(
+            "/api/v1/calendar/days/2026-09-04",
+            token,
+            "{\"note\":\"Doctor advised rest\",\"labels\":[{\"labelId\":\""
+                + sickLeaveId
+                + "\",\"portion\":1.0},{\"labelId\":\""
+                + milestoneId
+                + "\"}]}");
+    assertEquals(HttpStatus.OK, saved.getStatusCode());
+    assertEquals("Doctor advised rest", saved.getBody().get("note").asText());
+    assertEquals(2, saved.getBody().get("labels").size());
+
+    JsonNode listed = get("/api/v1/calendar/days?startDate=2026-09-01&endDate=2026-09-30", token).getBody();
+    assertEquals(1, listed.size());
+    assertEquals("2026-09-04", listed.get(0).get("date").asText());
+
+    ResponseEntity<JsonNode> replacement =
+        put(
+            "/api/v1/calendar/days/2026-09-04",
+            token,
+            "{\"note\":\"Recovery milestone\",\"labels\":[{\"labelId\":\""
+                + milestoneId
+                + "\"}]}");
+    assertEquals(HttpStatus.OK, replacement.getStatusCode());
+    assertEquals(1, replacement.getBody().get("labels").size());
+    assertEquals("Milestone", replacement.getBody().get("labels").get(0).get("name").asText());
+    assertTrue(replacement.getBody().get("labels").get(0).get("portion").isNull());
+
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/calendar/days/2026-09-04", token).getStatusCode());
+    assertEquals(0, get("/api/v1/calendar/days?startDate=2026-09-04&endDate=2026-09-04", token).getBody().size());
+  }
+
+  @Test
+  void calendarLabelsAreOwnerScopedAndAppearSeparatelyInReports() {
+    String owner = freshToken();
+    String other = freshToken();
+    ResponseEntity<JsonNode> vacation =
+        post("/api/v1/calendar/labels", owner, "{\"name\":\"Vacation\",\"color\":\"#009688\"}");
+    String labelId = vacation.getBody().get("id").asText();
+
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        put(
+                "/api/v1/calendar/days/2026-09-05",
+                other,
+                "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.5}]}")
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/calendar/days/2026-09-05",
+                owner,
+                "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.5}]}")
+            .getStatusCode());
+    assertEquals(HttpStatus.CONFLICT, delete("/api/v1/calendar/labels/" + labelId, owner).getStatusCode());
+
+    JsonNode report = get("/api/v1/reports?period=MONTH&anchor=2026-09-05", owner).getBody();
+    assertEquals(0, report.get("totalSeconds").asLong());
+    JsonNode summary = report.get("calendarLabels");
+    assertEquals(1, summary.size());
+    assertEquals("Vacation", summary.get(0).get("label").asText());
+    assertEquals(0.5, summary.get(0).get("days").asDouble());
+    assertEquals(0, summary.get(0).get("markers").asInt());
+  }
+
+  @Test
+  void calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels() {
+    String token = freshToken();
+    String sickLeaveId = post("/api/v1/calendar/labels", token, "{\"name\":\"Sick leave\"}").getBody().get("id").asText();
+    String milestoneId = post("/api/v1/calendar/labels", token, "{\"name\":\"Milestone\"}").getBody().get("id").asText();
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/calendar/days/2026-09-10",
+                token,
+                "{\"note\":\"Existing record\",\"labels\":[{\"labelId\":\"" + milestoneId + "\"}]}")
+            .getStatusCode());
+
+    ResponseEntity<JsonNode> applied =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-09-09\",\"endDate\":\"2026-09-11\",\"labels\":[{\"labelId\":\""
+                + sickLeaveId
+                + "\",\"portion\":1.0}]}");
+    assertEquals(HttpStatus.OK, applied.getStatusCode());
+    assertEquals(3, applied.getBody().size());
+    for (JsonNode day : applied.getBody()) {
+      assertTrue(day.get("labels").toString().contains("Sick leave"));
+      assertEquals(1.0, day.get("labels").get(day.get("labels").size() - 1).get("portion").asDouble(), 0.001);
+    }
+    JsonNode middle = applied.getBody().get(1);
+    assertEquals("Existing record", middle.get("note").asText());
+    assertTrue(middle.get("labels").toString().contains("Milestone"));
+    JsonNode report = get("/api/v1/reports?period=MONTH&anchor=2026-09-10", token).getBody();
+    JsonNode sickSummary = null;
+    for (JsonNode label : report.get("calendarLabels")) if (label.get("label").asText().equals("Sick leave")) sickSummary = label;
+    assertNotNull(sickSummary);
+    assertEquals(3.0, sickSummary.get("days").asDouble(), 0.001);
+  }
+
+  @Test
+  void calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords() {
+    String owner = freshToken();
+    String other = freshToken();
+    ResponseEntity<JsonNode> created =
+        post("/api/v1/calendar/labels", owner, "{\"name\":\"Vacation\",\"color\":\"#2878D5\"}");
+    String labelId = created.getBody().get("id").asText();
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        put("/api/v1/calendar/labels/" + labelId, other, "{\"name\":\"Vacation\",\"color\":\"#E05D44\"}").getStatusCode());
+
+    ResponseEntity<JsonNode> changed =
+        put("/api/v1/calendar/labels/" + labelId, owner, "{\"name\":\"Vacation\",\"color\":\"#E05D44\"}");
+    assertEquals(HttpStatus.OK, changed.getStatusCode());
+    assertEquals("#E05D44", changed.getBody().get("color").asText());
+    put("/api/v1/calendar/days/2026-09-12", owner, "{\"labels\":[{\"labelId\":\"" + labelId + "\"}]}");
+    JsonNode day = get("/api/v1/calendar/days?startDate=2026-09-12&endDate=2026-09-12", owner).getBody().get(0);
+    assertEquals("#E05D44", day.get("labels").get(0).get("color").asText());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        put("/api/v1/calendar/labels/" + labelId, owner, "{\"name\":\"Vacation\",\"color\":\"#123456\"}").getStatusCode());
+  }
 }
