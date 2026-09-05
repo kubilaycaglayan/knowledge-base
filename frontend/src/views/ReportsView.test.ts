@@ -35,6 +35,7 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Calendar log");
     expect(wrapper.text()).toContain("Planning session");
     expect(wrapper.text()).toContain("Milestone");
+    expect(wrapper.text()).toContain("Hide calendar inputs");
     expect(wrapper.find(".report-echart").exists()).toBe(true);
     expect(wrapper.find(".donut-echart").exists()).toBe(true);
     expect(wrapper.find("button").exists()).toBe(true);
@@ -50,5 +51,13 @@ describe("ReportsView", () => {
     await wrapper.find(".test-range").trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenLastCalledWith("/reports?startDate=2026-08-10&endDate=2026-08-20");
+  });
+
+  it("toggles calendar inputs across the report", async () => {
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    await wrapper.get(".calendar-input-toggle").trigger("click");
+    expect(wrapper.text()).toContain("Show calendar inputs");
+    expect(wrapper.text()).not.toContain("Planning session");
   });
 });
