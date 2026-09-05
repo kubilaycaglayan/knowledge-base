@@ -1367,6 +1367,37 @@ class KnowIntegrationTest {
   }
 
   @Test
+  void customReportReturnsEachCalendarRangeDayForChartAndLogConsumers() {
+    String token = freshToken();
+    String labelId =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Release\",\"color\":\"#805AD5\"}")
+            .getBody()
+            .get("id")
+            .asText();
+
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/calendar/days/range",
+                token,
+                "{\"startDate\":\"2026-09-01\",\"endDate\":\"2026-09-03\",\"note\":\"Release week\",\"labels\":[{\"labelId\":\""
+                    + labelId
+                    + "\",\"portion\":1.0}]}")
+            .getStatusCode());
+
+    JsonNode report =
+        get("/api/v1/reports?startDate=2026-09-01&endDate=2026-09-03", token).getBody();
+    assertEquals(3, report.get("days").size());
+    for (int index = 0; index < 3; index++) {
+      JsonNode day = report.get("days").get(index);
+      assertEquals("Release week", day.get("calendarNote").asText());
+      assertEquals("Release", day.get("calendarLabels").get(0).get("label").asText());
+      assertEquals("#805AD5", day.get("calendarLabels").get(0).get("color").asText());
+      assertEquals(1.0, day.get("calendarLabels").get(0).get("portion").asDouble(), 0.001);
+    }
+  }
+
+  @Test
   void calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords() {
     String owner = freshToken();
     String other = freshToken();
