@@ -310,4 +310,135 @@ describe("PathsView", () => {
       method: "POST",
     });
   });
+
+  it("saves a note from expanded path history", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+    await flushPromises();
+    await wrapper.get('input[aria-label="Path note title"]').setValue("Graph insight");
+    await wrapper.get('textarea[aria-label="Path note content"]').setValue("Use invariants to simplify proofs.");
+    await wrapper.findAll("button.primary").find((button) => button.text() === "Save path note")!.trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/notes", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ pathId: "path-1", title: "Graph insight", content: "Use invariants to simplify proofs." }),
+    }));
+  });
+
+  it("reports a path-note save failure", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/paths/path-1/summary") return { path: { id: "path-1", name: "Algorithms", status: "ACTIVE" }, itemIds: [], itemProgress: {}, trackedSeconds: 0, recentActivity: [] };
+      if (path === "/notes" && options?.method === "POST") throw new Error("save failed");
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+    await flushPromises();
+    await wrapper.get('input[aria-label="Path note title"]').setValue("Insight");
+    await wrapper.get('textarea[aria-label="Path note content"]').setValue("Content");
+    await wrapper.findAll("button.primary").find((button) => button.text() === "Save path note")!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not save path note.");
+  });
+
+  it("reports an undo failure after removing a path", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/paths/path-1" && options?.method === "DELETE") return undefined;
+      if (path === "/paths/path-1/restore" && options?.method === "POST") throw new Error("restore failed");
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "Remove")!.trigger("click");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await wrapper.get(".undo-snackbar button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not undo path removal.");
+  });
+
+  it("reports initial load, path creation, and history failures", async () => {
+    vi.mocked(api).mockRejectedValue(new Error("load failed"));
+    const failedLoad = mount(PathsView);
+    await flushPromises();
+    expect(failedLoad.get('[role="alert"]').text()).toBe("Unable to load paths.");
+
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths" && !options) return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/paths" && options?.method === "POST") throw new Error("create failed");
+      if (path === "/paths/path-1/summary") throw new Error("summary failed");
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('input[aria-label="New path name"]').setValue("New path");
+    await wrapper.get("form.path-form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create path.");
+
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "History")!.trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not load path history.");
+  });
+
+  it("does not remove a path when the confirmation is cancelled", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "Remove")!.trigger("click");
+    await wrapper.get(".prompt-dialog .text-button").trigger("click");
+
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/paths/path-1" && options?.method === "DELETE")).toBe(false);
+    expect(wrapper.find(".undo-snackbar").exists()).toBe(false);
+  });
+
+  it("cancels inline path editing without saving", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "Edit")!.trigger("click");
+    await wrapper.get('input[aria-label="Edit path name"]').setValue("Unsaved name");
+    await wrapper.get("form.path-edit button.text-button").trigger("click");
+
+    expect(wrapper.find("form.path-edit").exists()).toBe(false);
+    expect(wrapper.text()).toContain("Algorithms");
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/paths/path-1" && options?.method === "PUT")).toBe(false);
+  });
+
+  it("does not offer removal for inactive paths", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [{ id: "archived", name: "Archived", status: "ARCHIVED" }];
+      if (path === "/items") return [];
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("archived");
+    expect(wrapper.find("button.danger").exists()).toBe(false);
+  });
+
+  it("reports a path removal failure without showing an undo snackbar", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/paths/path-1" && options?.method === "DELETE") throw new Error("remove failed");
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "Remove")!.trigger("click");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not remove path.");
+    expect(wrapper.find(".undo-snackbar").exists()).toBe(false);
+  });
 });

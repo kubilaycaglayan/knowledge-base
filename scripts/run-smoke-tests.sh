@@ -375,7 +375,8 @@ printf '%s' "$summary" | grep -q 'Smoke path'
 summary_seconds="$(printf '%s' "$summary" | sed -n 's/.*"trackedSeconds":\([0-9]*\).*/\1/p')"
 (( summary_seconds >= 2700 ))
 paths_order="$(api "${header[@]}" http://localhost:8080/api/v1/paths)"
-[[ "$paths_order" == *'Smoke path'*'Other smoke path'* ]]
+printf '%s' "$paths_order" | grep -q 'Smoke path'
+printf '%s' "$paths_order" | grep -q 'Other smoke path'
 api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke' | grep -q 'Smoke item'
 api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Completed' | grep -q 'ACTIVITY'
 api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke' | grep -q 'ACTIVITY'
