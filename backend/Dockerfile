@@ -3,16 +3,14 @@
 FROM gradle:8.13-jdk21 AS build
 WORKDIR /app
 
-# Keep dependency/plugin resolution in a reusable layer. Source changes should
-# not force Docker to recreate this layer.
+# Keep dependency/plugin resolution in a reusable filesystem layer. External
+# BuildKit caches retain this layer across the smoke test's temporary builders.
 COPY gradlew build.gradle ./
 COPY gradle ./gradle
-RUN --mount=type=cache,id=know-gradle,target=/home/gradle/.gradle \
-    ./gradlew dependencies --no-daemon
+RUN ./gradlew dependencies --no-daemon
 
 COPY src ./src
-RUN --mount=type=cache,id=know-gradle,target=/home/gradle/.gradle \
-    ./gradlew bootJar --no-daemon
+RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
