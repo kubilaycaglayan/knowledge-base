@@ -1,0 +1,9 @@
+services:
+  api:
+    build:
+      cache_to:
+        - type=local,dest=${SMOKE_BUILD_CACHE_DIR:?Set SMOKE_BUILD_CACHE_DIR}/api,mode=max
+  web:
+    build:
+      cache_to:
+        - type=local,dest=${SMOKE_BUILD_CACHE_DIR:?Set SMOKE_BUILD_CACHE_DIR}/web,mode=max
