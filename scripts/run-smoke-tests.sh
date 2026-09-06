@@ -7,6 +7,12 @@ if (( ${#JWT_SECRET} < 32 )); then
   echo "JWT_SECRET must be at least 32 characters" >&2
   exit 1
 fi
+if [[ -z "${COMPOSE_PROJECT_NAME:-}" ]]; then
+  export COMPOSE_PROJECT_NAME="knowledge-base-smoke-${BASHPID}-$(date +%s%N)"
+elif [[ "$COMPOSE_PROJECT_NAME" != *smoke* ]]; then
+  echo "COMPOSE_PROJECT_NAME must contain 'smoke' so cleanup cannot target a persistent stack" >&2
+  exit 1
+fi
 : "${DB_DEV_PORT:=15432}"
 : "${API_DEV_PORT:=18081}"
 export DB_DEV_PORT API_DEV_PORT
@@ -28,9 +34,9 @@ cleanup() {
   if [[ -n "$migration_db" ]]; then
     docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$migration_db" >/dev/null 2>&1 || true
   fi
-  # Preserve the database volume. Smoke runs should use an isolated
-  # COMPOSE_PROJECT_NAME when disposable database state is desired.
-  docker compose down --remove-orphans --rmi local >/dev/null 2>&1 || true
+  # The project name is generated or explicitly smoke-scoped above. Remove
+  # only its Compose-managed volumes; external volumes are never removed.
+  docker compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
   if [[ -n "$buildx_builder" ]]; then
     docker buildx rm --force "$buildx_builder" >/dev/null 2>&1 || true
   fi
