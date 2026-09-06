@@ -67,6 +67,27 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.text()).toContain("Start a session");
   });
 
+  it("sends the selected path and description when starting a timer", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/time-entries") return [];
+      if (path === "/timers" && options.method === "POST") return { id: "timer-1", startedAt: new Date().toISOString(), pathId: "path-a", description: "Read graphs", running: true };
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.get('select[aria-label="Timer path"]').setValue("path-a");
+    await wrapper.get('textarea[aria-label="Timer description"]').setValue("Read graphs");
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+
+    const start = vi.mocked(api).mock.calls.find(([path, options]) => path === "/timers" && options?.method === "POST");
+    expect(JSON.parse(start?.[1]?.body as string)).toMatchObject({ pathId: "path-a", itemId: null, itemIds: [], description: "Read graphs" });
+  });
+
   it("keeps session start controls at the top of the dashboard", async () => {
     const wrapper = mountDashboard();
     await flushPromises();
@@ -356,6 +377,37 @@ describe("DashboardView timer flow", () => {
     expect((pathSelect.element as HTMLSelectElement).value).toBe("path-new");
   });
 
+  it("cancels adding a path without creating or configuring anything", async () => {
+    const wrapper = mountDashboard();
+    await flushPromises();
+    const pathSelect = wrapper.get('select[aria-label="Timer path"]');
+    await pathSelect.setValue("__add_new_path__");
+    await wrapper.get(".prompt-dialog .text-button").trigger("click");
+    await flushPromises();
+
+    expect((pathSelect.element as HTMLSelectElement).value).toBe("");
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/paths" && options?.method === "POST")).toBe(false);
+  });
+
+  it("reports a failure when creating a path from the timer flow", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths" && options.method === "POST") throw new Error("create path failed");
+      if (path === "/paths" || path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/time-entries") return [];
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.get('select[aria-label="Timer path"]').setValue("__add_new_path__");
+    await wrapper.get('input[aria-label="New path name"]').setValue("Unavailable path");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create path.");
+  });
+
   it("keeps active timer configuration controls visible and editable", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
@@ -401,6 +453,12 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.find('input[aria-label="Timer start"]').exists()).toBe(true);
     expect(wrapper.find('input[aria-label="Timer end"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain("Save timer settings");
+    wrapper.findComponent({ name: "VSelect" }).vm.$emit("update:modelValue", ["item-a"]);
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/timer-a", expect.objectContaining({
+      method: "PUT",
+      body: expect.stringContaining('"itemIds":["item-a"]'),
+    }));
     await wrapper
       .find('input[aria-label="Timer start"]')
       .setValue("2026-08-25T09:30");
@@ -425,6 +483,24 @@ describe("DashboardView timer flow", () => {
           "Updated description",
       ),
     ).toBe(true);
+  });
+
+  it("reports active-timer configuration failures", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/timers/current") return { id: "timer-a", pathId: "path-a", startedAt: "2026-08-25T10:00:00Z", running: true };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/time-entries") return [];
+      if (path === "/timers/timer-a" && options.method === "PUT") throw new Error("configuration failed");
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.get('textarea[aria-label="Timer description"]').setValue("Updated description");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not save the active timer settings.");
   });
 
   it("updates the running clock when its start time is moved earlier", async () => {
@@ -625,6 +701,137 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.text()).toContain("…");
   });
 
+  it("edits a recent time entry after collecting new start and end times", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
+      if (path === "/time-entries") return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", durationSeconds: 1800, description: "Focus" }];
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.find(".history-box button.text-button").trigger("click");
+    await wrapper.get('input[aria-label="Start (ISO time)"]').setValue("2026-08-25T11:00:00Z");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await wrapper.get('input[aria-label="End (ISO time)"]').setValue("2026-08-25T11:45:00Z");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+
+    const update = vi.mocked(api).mock.calls.find(([path, options]) => path === "/time-entries/entry-a" && options?.method === "PUT");
+    expect(update).toBeDefined();
+    expect(update?.[1]?.body).toContain('"startedAt":"2026-08-25T11:00:00.000Z"');
+    expect(update?.[1]?.body).toContain('"endedAt":"2026-08-25T11:45:00.000Z"');
+  });
+
+  it("stops time-entry editing immediately when the start prompt is cancelled", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/time-entries") return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", description: "Focus" }];
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.find(".history-box button.text-button").trigger("click");
+    await wrapper.get(".prompt-dialog .text-button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/time-entries/entry-a" && options?.method === "PUT")).toBe(false);
+  });
+
+  it("reports failures while editing a time entry or creating a session item", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [];
+      if (path === "/items" && options.method === "POST") throw new Error("item failed");
+      if (path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/time-entries" && !options.method) return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", description: "Focus" }];
+      if (path === "/time-entries/entry-a" && options.method === "PUT") throw new Error("entry failed");
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.find(".history-box button.text-button").trigger("click");
+    await wrapper.get('input[aria-label="Start (ISO time)"]').setValue("2026-08-25T11:00:00Z");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await wrapper.get('input[aria-label="End (ISO time)"]').setValue("2026-08-25T11:30:00Z");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not edit time entry.");
+
+    await wrapper.get('input[aria-label="New session item title"]').setValue("New item");
+    await wrapper.findAll("button").find((button) => button.text() === "Create item")!.trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create the session item.");
+  });
+
+  it("searches knowledge and renders returned results", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
+      if (path === "/time-entries") return [];
+      if (path === "/search?q=graph%20theory") return [{ id: "item-1", kind: "ITEM", title: "Graph theory", detail: "Algorithms" }];
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.get('input[aria-label="Search knowledge"]').setValue("graph theory");
+    await wrapper.get(".search-box form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.text()).toContain("Graph theory");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/search?q=graph%20theory");
+    await wrapper.get('input[aria-label="Search knowledge"]').setValue(" ");
+    await wrapper.get(".search-box form").trigger("submit");
+    expect(wrapper.text()).not.toContain("Graph theory");
+  });
+
+  it("shows actionable errors when starting a timer or searching fails", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths" || path === "/items") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/time-entries") return [];
+      if (path === "/timers" && options.method === "POST") throw new Error("already running");
+      if (path === "/search?q=missing") throw new Error("search failed");
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain("Only one timer can run at a time.");
+
+    await wrapper.get('input[aria-label="Search knowledge"]').setValue("missing");
+    await wrapper.get(".search-box form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Search failed.");
+  });
+
+  it("reports a cancellation failure without clearing the active timer", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/items") return [];
+      if (path === "/timers/current") return { id: "timer-a", pathId: "path-a", startedAt: "2026-08-25T10:00:00Z", running: true };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/time-entries") return [];
+      if (path === "/timers/cancel" && options.method === "POST") throw new Error("cancel failed");
+      return undefined;
+    });
+    const wrapper = mountDashboard();
+    await flushPromises();
+    await wrapper.get("button.danger").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not cancel the timer.");
+    expect(wrapper.text()).toContain("Stop session");
+  });
+
   it("refreshes recent sessions after stopping the active timer", async () => {
     let stopped = false;
     vi.mocked(api).mockImplementation(
@@ -722,7 +929,7 @@ describe("DashboardView timer flow", () => {
           weekByItem: { "item-a": 1800 },
           completedItems: 0,
           activeItems: 1,
-          recentProgressChanges: [],
+          recentProgressChanges: [{ itemId: "item-a", previousProgress: 10, newProgress: 25, changedAt: "2026-08-27T12:00:00Z" }],
         };
       if (path === "/time-entries") return [];
       return undefined;
@@ -733,5 +940,14 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.text()).toContain("Algorithms");
     expect(wrapper.text()).toContain("TIME BY ITEM THIS WEEK");
     expect(wrapper.text()).toContain("Graphs");
+    expect(wrapper.text()).toContain("10% → 25%");
+  });
+
+  it("shows a workspace error when the initial dashboard load fails", async () => {
+    vi.mocked(api).mockRejectedValue(new Error("network"));
+    const wrapper = mountDashboard();
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Unable to load your workspace.");
   });
 });

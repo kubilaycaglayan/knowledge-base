@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.web.server.ResponseStatusException;
 
 class ClockifyImportServiceTest {
   @Test
@@ -78,5 +79,101 @@ class ClockifyImportServiceTest {
     assertEquals(0, second.deletedEntries());
     verify(activities, times(1)).deleteByUserIdAndImportBatchId(user, batch.getId());
     verify(entries, times(1)).deleteByUserIdAndImportBatchId(user, batch.getId());
+  }
+
+  @Test
+  void rejectsNullOversizedAndMalformedImportRequestsBeforeCreatingABatch() {
+    PathRepository paths = mock(PathRepository.class);
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    ActivityRepository activities = mock(ActivityRepository.class);
+    ImportBatchRepository batches = mock(ImportBatchRepository.class);
+    UserRepository users = mock(UserRepository.class);
+    UUID user = UUID.randomUUID();
+    var service = new ClockifyImportService(paths, entries, activities, batches, users);
+
+    assertThrows(ResponseStatusException.class, () -> service.importEntries(user, null));
+    assertThrows(
+        ResponseStatusException.class,
+        () -> service.importEntries(user, new ClockifyImportService.ClockifyImportRequest(null)));
+    assertThrows(
+        ResponseStatusException.class,
+        () ->
+            service.importEntries(
+                user,
+                new ClockifyImportService.ClockifyImportRequest(
+                    Collections.nCopies(2001, null))));
+    assertThrows(
+        ResponseStatusException.class,
+        () ->
+            service.importEntries(
+                user,
+                new ClockifyImportService.ClockifyImportRequest(
+                    Arrays.asList((ClockifyImportService.ClockifyEntry) null))));
+    verifyNoInteractions(paths, entries, activities);
+    verify(batches).save(any(ImportBatch.class));
+    verify(users, times(4)).findForUpdateById(user);
+  }
+
+  @Test
+  void derivesDurationEndTrimsAndTruncatesDescriptionsAndCachesBlankProjectNames() {
+    PathRepository paths = mock(PathRepository.class);
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    ActivityRepository activities = mock(ActivityRepository.class);
+    ImportBatchRepository batches = mock(ImportBatchRepository.class);
+    UserRepository users = mock(UserRepository.class);
+    UUID user = UUID.randomUUID();
+    String externalId = "  " + UUID.randomUUID() + "  ";
+    when(batches.save(any(ImportBatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(entries.existsImportIdentityIncludingDeleted(eq(user), eq("IMPORT"), anyString()))
+        .thenReturn(false);
+    var source =
+        new ClockifyImportService.ClockifyEntry(
+            externalId,
+            "  " + "x".repeat(600) + "  ",
+            new ClockifyImportService.ClockifyInterval(
+                Instant.parse("2026-08-25T10:00:00Z"), null, 90L),
+            "   ");
+
+    var result =
+        new ClockifyImportService(paths, entries, activities, batches, users)
+            .importEntries(user, new ClockifyImportService.ClockifyImportRequest(List.of(source)));
+
+    assertEquals(1, result.imported());
+    ArgumentCaptor<TimeEntry> captured = ArgumentCaptor.forClass(TimeEntry.class);
+    verify(entries).save(captured.capture());
+    assertEquals(externalId.trim(), captured.getValue().getExternalId());
+    assertEquals(500, captured.getValue().getDescription().length());
+    assertEquals(90, captured.getValue().getDurationSeconds());
+    assertNull(captured.getValue().getPathId());
+    verifyNoInteractions(paths);
+  }
+
+  @Test
+  void rejectsAProjectNameBeyondTheDatabaseLimitWithoutSavingAnEntry() {
+    PathRepository paths = mock(PathRepository.class);
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    ActivityRepository activities = mock(ActivityRepository.class);
+    ImportBatchRepository batches = mock(ImportBatchRepository.class);
+    UserRepository users = mock(UserRepository.class);
+    UUID user = UUID.randomUUID();
+    when(batches.save(any(ImportBatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(paths.findByUserIdAndNameIgnoreCase(user, "x".repeat(161))).thenReturn(List.of());
+    var source =
+        new ClockifyImportService.ClockifyEntry(
+            "id",
+            null,
+            new ClockifyImportService.ClockifyInterval(
+                Instant.parse("2026-08-25T10:00:00Z"),
+                Instant.parse("2026-08-25T10:01:00Z"),
+                null),
+            "x".repeat(161));
+
+    assertThrows(
+        ResponseStatusException.class,
+        () ->
+            new ClockifyImportService(paths, entries, activities, batches, users)
+                .importEntries(user, new ClockifyImportService.ClockifyImportRequest(List.of(source))));
+    verify(entries, never()).save(any());
   }
 }

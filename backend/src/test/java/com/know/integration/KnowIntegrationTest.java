@@ -1398,6 +1398,53 @@ class KnowIntegrationTest {
   }
 
   @Test
+  void calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd() {
+    String token = freshToken();
+    String labelId =
+        post(
+                "/api/v1/calendar/labels",
+                token,
+                "{\"name\":\"Boundary label\",\"color\":\"#2878D5\"}")
+            .getBody()
+            .get("id")
+            .asText();
+
+    ResponseEntity<JsonNode> nullLabels =
+        put(
+            "/api/v1/calendar/days/2026-09-15",
+            token,
+            "{\"note\":\"missing labels\",\"labels\":null}");
+    assertEquals(HttpStatus.BAD_REQUEST, nullLabels.getStatusCode());
+
+    ResponseEntity<JsonNode> duplicateLabels =
+        put(
+            "/api/v1/calendar/days/2026-09-15",
+            token,
+            "{\"labels\":[{\"labelId\":\""
+                + labelId
+                + "\"},{\"labelId\":\""
+                + labelId
+                + "\"}]}");
+    assertEquals(HttpStatus.BAD_REQUEST, duplicateLabels.getStatusCode());
+
+    ResponseEntity<JsonNode> invalidPortion =
+        put(
+            "/api/v1/calendar/days/2026-09-15",
+            token,
+            "{\"labels\":[{\"labelId\":\""
+                + labelId
+                + "\",\"portion\":0.30}]}");
+    assertEquals(HttpStatus.BAD_REQUEST, invalidPortion.getStatusCode());
+
+    ResponseEntity<JsonNode> oversizedRange =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-01-01\",\"endDate\":\"2027-01-02\",\"labels\":[]}");
+    assertEquals(HttpStatus.BAD_REQUEST, oversizedRange.getStatusCode());
+  }
+
+  @Test
   void calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords() {
     String owner = freshToken();
     String other = freshToken();
