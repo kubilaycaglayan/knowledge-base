@@ -10,7 +10,7 @@ Local verification:
 
 Smoke verification exercises both configured/unconfigured API CORS preflights on the development web origin `http://localhost:5177`; full-stack mode also waits for the Caddy HTTPS health check before exercising the public proxy. Smoke uses isolated host ports by default (`15432` for PostgreSQL and `18081` for the API; full-stack mode adds `18080`/`18443` for the public proxy and `18000` for the HTTP convenience mapping); override `DB_DEV_PORT`, `API_DEV_PORT`, `PROXY_DEV_PORT`, `PROXY_HTTP_PORT`, or `PROXY_HTTPS_PORT` when needed. Its exit trap removes only the smoke project’s containers, volumes, local images, exact temporary Buildx builder/cache, and `mktemp` backup directory; it does not run a host-wide Docker prune.
 
-Smoke runs require Docker Buildx and clean up their Compose project containers, named volumes, local service images, and uniquely named temporary Buildx builders on exit. Use a distinct `COMPOSE_PROJECT_NAME` when running concurrent checks.
+Smoke runs require Docker Buildx and clean up their Compose project containers, Compose-managed named volumes, local service images, and uniquely named temporary Buildx builders on exit. The script creates a unique `knowledge-base-smoke-*` project name when one is not supplied; a supplied `COMPOSE_PROJECT_NAME` must contain `smoke`. Use distinct smoke project names when running concurrent checks.
 
 The API smoke flow also exercises optional calendar-label creation, a dated record, and a multi-day calendar range before loading the authenticated monthly reports endpoint; calendar labels are asserted separately from current-month tracked-time entries, including the report’s daily timeline and path breakdown fields.
 
