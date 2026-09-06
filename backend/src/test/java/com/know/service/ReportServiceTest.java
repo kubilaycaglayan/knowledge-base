@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.know.domain.*;
+import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -83,5 +84,83 @@ class ReportServiceTest {
     assertEquals(7, report.days().size());
     assertEquals(LocalDate.of(2026, 8, 24), report.from());
     assertEquals(LocalDate.of(2026, 8, 30), report.to());
+  }
+
+  @Test
+  void runningUnassignedTimeIsClippedAtNowAndReportedUnderFallbackCategories() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    UUID user = UUID.randomUUID();
+    TimeEntry running =
+        new TimeEntry(
+            user,
+            null,
+            null,
+            Instant.now().minusSeconds(5),
+            "unassigned",
+            TimeSource.WEB);
+    when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(running));
+
+    ReportService.Report report =
+        new ReportService(entries, mock(PathRepository.class), mock(ItemRepository.class))
+            .report(user, ReportService.Period.WEEK, LocalDate.now(ZoneOffset.UTC));
+
+    assertTrue(report.totalSeconds() >= 3);
+    assertEquals("Unassigned path", report.paths().getFirst().label());
+    assertEquals(report.totalSeconds(), report.paths().getFirst().seconds());
+    assertTrue(report.items().isEmpty());
+  }
+
+  @Test
+  void calendarLabelsAreIncludedInDayDetailsAndTotalsWithMarkerCounts() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    CalendarService calendar = mock(CalendarService.class);
+    UUID user = UUID.randomUUID();
+    UUID labelId = UUID.randomUUID();
+    LocalDate date = LocalDate.of(2026, 8, 25);
+    when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of());
+    when(calendar.days(user, date, date))
+        .thenReturn(
+            List.of(
+                new CalendarService.DayView(
+                    date,
+                    "Annual leave",
+                    List.of(
+                        new CalendarService.LabelAssignmentView(
+                            labelId, "Vacation", "#009688", null),
+                        new CalendarService.LabelAssignmentView(
+                            UUID.randomUUID(), "Half day", "#2878D5", new BigDecimal("0.50"))))));
+
+    ReportService.Report report =
+        new ReportService(
+                entries,
+                mock(PathRepository.class),
+                mock(ItemRepository.class),
+                mock(TimeEntryItemRepository.class),
+                calendar)
+            .report(user, date, date);
+
+    assertEquals("Annual leave", report.days().getFirst().calendarNote());
+    assertEquals(2, report.days().getFirst().calendarLabels().size());
+    assertEquals(2, report.calendarLabels().size());
+    var vacation = report.calendarLabels().stream().filter(label -> label.label().equals("Vacation")).findFirst().orElseThrow();
+    var halfDay = report.calendarLabels().stream().filter(label -> label.label().equals("Half day")).findFirst().orElseThrow();
+    assertEquals(BigDecimal.ZERO, vacation.days());
+    assertEquals(1, vacation.markers());
+    assertEquals(new BigDecimal("0.50"), halfDay.days());
+    assertEquals(0, halfDay.markers());
+  }
+
+  @Test
+  void sameDayCustomReportsStillContainOneDayWhenThereIsNoTrackedTime() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
+
+    ReportService.Report report =
+        new ReportService(entries, mock(PathRepository.class), mock(ItemRepository.class))
+            .report(UUID.randomUUID(), LocalDate.of(2026, 8, 25), LocalDate.of(2026, 8, 25));
+
+    assertEquals(1, report.days().size());
+    assertEquals(0, report.totalSeconds());
+    assertEquals(LocalDate.of(2026, 8, 25), report.days().getFirst().date());
   }
 }

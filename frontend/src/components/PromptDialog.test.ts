@@ -44,4 +44,37 @@ describe("PromptDialog", () => {
     await wrapper.get("button.primary").trigger("click");
     expect(await prompt).toBe("");
   });
+
+  it("resolves keyboard shortcuts and escape cancellation", async () => {
+    const wrapper = mount(PromptDialog);
+    const submitted = wrapper.vm.open("Quick value", "draft");
+    await nextTick();
+    await wrapper.get('input[aria-label="Quick value"]').trigger("keydown", { key: "Enter" });
+    expect(await submitted).toBe("draft");
+
+    const multiline = wrapper.vm.open("Long value", "draft", { multiline: true });
+    await nextTick();
+    await wrapper.get('textarea[aria-label="Long value"]').trigger("keydown", { key: "Enter", ctrlKey: true });
+    expect(await multiline).toBe("draft");
+
+    const cancelled = wrapper.vm.open("Cancel me");
+    await nextTick();
+    await wrapper.get(".prompt-dialog").trigger("keydown", { key: "Escape" });
+    expect(await cancelled).toBeNull();
+  });
+
+  it("cancels a pending prompt when a newer prompt opens or the component unmounts", async () => {
+    const wrapper = mount(PromptDialog);
+    const first = wrapper.vm.open("First");
+    await nextTick();
+    const second = wrapper.vm.open("Second");
+    expect(await first).toBeNull();
+    await nextTick();
+    await wrapper.get(".prompt-dialog .text-button").trigger("click");
+    expect(await second).toBeNull();
+
+    const pending = wrapper.vm.open("Unmounted");
+    wrapper.unmount();
+    expect(await pending).toBeNull();
+  });
 });

@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import AuthView from "./AuthView.vue";
 import { api } from "../lib/api";
 
@@ -60,6 +60,17 @@ describe("AuthView", () => {
     expect(wrapper.emitted("authenticated")).toBeUndefined();
   });
 
+  it("toggles cleanly between sign-in and registration modes", async () => {
+    const wrapper = mount(AuthView);
+    expect(wrapper.get("h1").text()).toBe("Welcome back");
+    await wrapper.get("button.text-button").trigger("click");
+    expect(wrapper.get("h1").text()).toBe("Create account");
+    expect(wrapper.get("button.primary").text()).toContain("Create account");
+    await wrapper.get("button.text-button").trigger("click");
+    expect(wrapper.get("h1").text()).toBe("Welcome back");
+    expect(wrapper.get("button.primary").text()).toContain("Sign in");
+  });
+
   it("posts Google credentials to the backend verifier", async () => {
     vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "google-client-id");
     vi.mocked(api).mockResolvedValue({ token: "google-token" });
@@ -77,7 +88,7 @@ describe("AuthView", () => {
 
     const wrapper = mount(AuthView);
     callback?.({ credential: "signed-google-id-token" });
-    await Promise.resolve();
+    await flushPromises();
 
     expect(testWindow.google?.accounts.id.initialize).toHaveBeenCalledWith(
       expect.objectContaining({ client_id: "google-client-id" }),
@@ -120,5 +131,25 @@ describe("AuthView", () => {
     );
     wrapper.unmount();
     script.remove();
+  });
+
+  it("shows a recoverable error when Google verification fails", async () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "google-client-id");
+    vi.mocked(api).mockRejectedValue(new Error("verification failed"));
+    let callback: ((response: { credential: string }) => void) | undefined;
+    testWindow.google = {
+      accounts: {
+        id: {
+          initialize: vi.fn((options) => { callback = options.callback; }),
+          renderButton: vi.fn(),
+        },
+      },
+    };
+    const wrapper = mount(AuthView);
+    callback?.({ credential: "bad-google-id-token" });
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Google sign-in could not be completed. Try again.");
+    expect(wrapper.emitted("authenticated")).toBeUndefined();
   });
 });

@@ -256,11 +256,12 @@ async function editEntry(entry: Entry) {
     "Start (ISO time)",
     entry.startedAt,
   );
+  if (!start) return;
   const end = await promptDialog.value!.open(
     "End (ISO time)",
     entry.endedAt || "",
   );
-  if (!start || !end) return;
+  if (!end) return;
   try {
     await api(`/time-entries/${entry.id}`, {
       method: "PUT",

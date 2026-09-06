@@ -524,13 +524,13 @@ class OwnershipBehaviorTest {
     var from = org.mockito.ArgumentCaptor.forClass(java.time.Instant.class);
     verify(entries).findOverlappingByUserId(eq(user), from.capture(), any());
     var today = java.time.LocalDate.now(java.time.ZoneOffset.UTC);
-    var weekStart = today.minusDays(6).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
     var monthStart = today.withDayOfMonth(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+    var weekStart = today.minusDays(6).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
     assertEquals(monthStart.isBefore(weekStart) ? monthStart : weekStart, from.getValue());
   }
 
   @Test
-  void statisticsKeepWeekTotalsNarrowerThanMonthTotals() {
+  void statisticsRespectWeekAndMonthBoundariesAtMonthStart() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
     ItemRepository items = mock(ItemRepository.class);
@@ -553,8 +553,8 @@ class OwnershipBehaviorTest {
         new TimerService(
                 entries, paths, items, mock(PathItemRepository.class), progress, activities)
             .statistics(user);
-    assertEquals(120, result.weekSeconds());
-    assertEquals(180, result.monthSeconds());
+    assertEquals(weekStart.isBefore(monthStart) ? 180 : 120, result.weekSeconds());
+    assertEquals(weekStart.isBefore(monthStart) ? 60 : 180, result.monthSeconds());
   }
 
   @Test
