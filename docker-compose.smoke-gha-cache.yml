@@ -1,0 +1,13 @@
+services:
+  api:
+    build:
+      cache_from:
+        - type=gha,scope=knowledge-base-smoke-api
+      cache_to:
+        - type=gha,scope=knowledge-base-smoke-api,mode=max
+  web:
+    build:
+      cache_from:
+        - type=gha,scope=knowledge-base-smoke-web
+      cache_to:
+        - type=gha,scope=knowledge-base-smoke-web,mode=max

@@ -23,20 +23,32 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   export PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
 fi
 
+compose_files=(-f docker-compose.yml)
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  compose_files+=(-f docker-compose.smoke-gha-cache.yml)
+elif [[ -n "${SMOKE_BUILD_CACHE_DIR:-}" ]]; then
+  SMOKE_BUILD_CACHE_DIR="$(realpath -m "$SMOKE_BUILD_CACHE_DIR")"
+  export SMOKE_BUILD_CACHE_DIR
+  compose_files+=(-f docker-compose.smoke-local-cache.yml)
+  [[ -f "$SMOKE_BUILD_CACHE_DIR/api/index.json" ]] && compose_files+=(-f docker-compose.smoke-local-api-cache-from.yml)
+  [[ -f "$SMOKE_BUILD_CACHE_DIR/web/index.json" ]] && compose_files+=(-f docker-compose.smoke-local-web-cache-from.yml)
+fi
+compose() { docker compose "${compose_files[@]}" "$@"; }
+
 backup_dir=""
 restore_db=""
 migration_db=""
 buildx_builder=""
 cleanup() {
   if [[ -n "$restore_db" ]]; then
-    docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$restore_db" >/dev/null 2>&1 || true
+    compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$restore_db" >/dev/null 2>&1 || true
   fi
   if [[ -n "$migration_db" ]]; then
-    docker compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$migration_db" >/dev/null 2>&1 || true
+    compose exec -T db dropdb --if-exists -U "${POSTGRES_USER:-know}" "$migration_db" >/dev/null 2>&1 || true
   fi
   # The project name is generated or explicitly smoke-scoped above. Remove
   # only its Compose-managed volumes; external volumes are never removed.
-  docker compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
+  compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
   if [[ -n "$buildx_builder" ]]; then
     docker buildx rm --force "$buildx_builder" >/dev/null 2>&1 || true
   fi
@@ -57,9 +69,9 @@ if ! docker buildx create --name "$buildx_builder" --driver docker-container >/d
   exit 1
 fi
 export BUILDX_BUILDER="$buildx_builder"
-docker compose up -d "${services[@]}" --build >/dev/null
+compose up -d "${services[@]}" --build >/dev/null
 for attempt in {1..30}; do
-  if docker compose exec -T api wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+  if compose exec -T api wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
     break
   fi
   if [[ "$attempt" == 30 ]]; then
@@ -68,9 +80,9 @@ for attempt in {1..30}; do
   fi
   sleep 2
 done
-docker compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
+compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
 allowed_cors="$(
-  docker compose exec -T api wget -S -O /dev/null \
+  compose exec -T api wget -S -O /dev/null \
     --method=OPTIONS \
     --header='Origin: http://localhost:5177' \
     --header='Access-Control-Request-Method: GET' \
@@ -78,7 +90,7 @@ allowed_cors="$(
 )"
 printf '%s' "$allowed_cors" | grep -qi 'access-control-allow-origin: http://localhost:5177'
 blocked_cors="$(
-  docker compose exec -T api wget -S -O /dev/null \
+  compose exec -T api wget -S -O /dev/null \
     --method=OPTIONS \
     --header='Origin: https://untrusted.example' \
     --header='Access-Control-Request-Method: GET' \
@@ -90,13 +102,10 @@ if printf '%s' "$blocked_cors" | grep -qi 'access-control-allow-origin:'; then
 fi
 
 migration_db="migration_check_$(date +%s%N)"
-docker compose exec -T db createdb -U "${POSTGRES_USER:-know}" "$migration_db"
-for migration in backend/src/main/resources/db/migration/V{1..9}__*.sql; do
-  docker compose exec -T db psql -v ON_ERROR_STOP=1 \
-    -U "${POSTGRES_USER:-know}" \
-    -d "$migration_db" < "$migration" >/dev/null
-done
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-know}" -d "$migration_db" >/dev/null <<'SQL'
+compose exec -T db createdb -U "${POSTGRES_USER:-know}" "$migration_db"
+{
+  for migration in backend/src/main/resources/db/migration/V{1..9}__*.sql; do cat "$migration"; done
+  cat <<'SQL'
 insert into app_user (id, email, password_hash, display_name)
 values ('00000000-0000-4000-8000-000000000001', 'legacy-import@example.com', 'hash', 'Legacy');
 insert into path (id, user_id, name)
@@ -146,52 +155,29 @@ values
     '2026-08-25T11:00:00Z'
   );
 SQL
-docker compose exec -T db psql -v ON_ERROR_STOP=1 \
-  -U "${POSTGRES_USER:-know}" \
-  -d "$migration_db" \
-  < backend/src/main/resources/db/migration/V10__backfill_clockify_import_batches.sql >/dev/null
-for migration in backend/src/main/resources/db/migration/V{11..12}__*.sql; do
-  docker compose exec -T db psql -v ON_ERROR_STOP=1 \
-    -U "${POSTGRES_USER:-know}" \
-    -d "$migration_db" < "$migration" >/dev/null
-done
-for migration in backend/src/main/resources/db/migration/V{13..16}__*.sql; do
-  docker compose exec -T db psql -v ON_ERROR_STOP=1 \
-    -U "${POSTGRES_USER:-know}" \
-    -d "$migration_db" < "$migration" >/dev/null
-done
+  cat backend/src/main/resources/db/migration/V10__backfill_clockify_import_batches.sql
+  for migration in backend/src/main/resources/db/migration/V{11..16}__*.sql; do cat "$migration"; done
+} | compose exec -T db psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-know}" -d "$migration_db" >/dev/null
 legacy_batch_count="$(
-  docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
+  compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
     -c "select count(*) from import_batch where user_id='00000000-0000-4000-8000-000000000001';"
 )"
 [[ "$legacy_batch_count" == "2" ]]
 legacy_entry_count="$(
-  docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
+  compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
     -c "select count(*) from time_entry where source='IMPORT' and import_batch_id is not null;"
 )"
 [[ "$legacy_entry_count" == "2" ]]
 legacy_activity_count="$(
-  docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
+  compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" \
     -c "select count(*) from item_event where title='Imported Clockify session' and import_batch_id is not null;"
 )"
 [[ "$legacy_activity_count" == "2" ]]
-[[ "$(docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" -c "select to_regclass('public.activity');")" == "" ]]
+[[ "$(compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$migration_db" -c "select to_regclass('public.activity');")" == "" ]]
 
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
-  proxy_id="$(docker compose ps -q proxy)"
   for attempt in {1..30}; do
-    proxy_health="$(docker inspect -f '{{.State.Health.Status}}' "$proxy_id" 2>/dev/null || true)"
-    if [[ "$proxy_health" == "healthy" ]]; then
-      break
-    fi
-    if [[ "$proxy_health" == "unhealthy" || "$attempt" == 30 ]]; then
-      echo "web proxy health check failed" >&2
-      exit 1
-    fi
-    sleep 2
-  done
-  for attempt in {1..30}; do
-    if curl -kfsSL "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -q 'id="app"'; then
+    if curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -q 'id="app"'; then
       break
     fi
     if [[ "$attempt" == 30 ]]; then
@@ -200,10 +186,11 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
     fi
     sleep 2
   done
-  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^x-content-type-options: nosniff'
-  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^x-frame-options: DENY'
-  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^content-security-policy:'
-  curl -kfsSI "https://localhost:${PROXY_HTTPS_PORT}"/ | grep -qi '^permissions-policy:'
+  proxy_headers="$(curl -kfsSI --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}"/)"
+  printf '%s' "$proxy_headers" | grep -qi '^x-content-type-options: nosniff'
+  printf '%s' "$proxy_headers" | grep -qi '^x-frame-options: DENY'
+  printf '%s' "$proxy_headers" | grep -qi '^content-security-policy:'
+  printf '%s' "$proxy_headers" | grep -qi '^permissions-policy:'
   curl -kfsSI -X OPTIONS \
     -H 'Origin: http://localhost:5177' \
     -H 'Access-Control-Request-Method: GET' \
@@ -224,7 +211,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
     | grep -q '"token"'
 fi
 
-api() { docker compose exec -T api wget -qO- "$@"; }
+api() { compose exec -T api wget -qO- "$@"; }
 email="smoke-$(date +%s%N)@example.com"
 auth="$(api "${content_json[@]}" --post-data="{\"email\":\"$email\",\"password\":\"correct-horse-battery\"}" http://localhost:8080/api/v1/auth/register)"
 token="$(printf '%s' "$auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
@@ -405,12 +392,12 @@ if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   backup_file="$backup_dir/knowledge-base.sql"
   ./deployment/backup.sh "$backup_file" >/dev/null
   restore_db="restore_check_$(date +%s%N)"
-  docker compose exec -T db createdb -U "${POSTGRES_USER:-know}" "$restore_db"
-  docker compose exec -T db psql -v ON_ERROR_STOP=1 \
+  compose exec -T db createdb -U "${POSTGRES_USER:-know}" "$restore_db"
+  compose exec -T db psql -v ON_ERROR_STOP=1 \
     -U "${POSTGRES_USER:-know}" \
     -d "$restore_db" < "$backup_file" >/dev/null
   restored_count="$(
-    docker compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$restore_db" \
+    compose exec -T db psql -At -U "${POSTGRES_USER:-know}" -d "$restore_db" \
       -c "select count(*) from app_user where email='$email';"
   )"
   [[ "$restored_count" == "1" ]]

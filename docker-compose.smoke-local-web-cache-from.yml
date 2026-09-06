@@ -1,0 +1,5 @@
+services:
+  web:
+    build:
+      cache_from:
+        - type=local,src=${SMOKE_BUILD_CACHE_DIR:?Set SMOKE_BUILD_CACHE_DIR}/web
