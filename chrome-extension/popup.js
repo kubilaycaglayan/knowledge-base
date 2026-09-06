@@ -4,6 +4,14 @@ const debug = (...args) => {
   if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
     console.warn("[Know extension]", ...args);
 };
+const isDevelopment = () => typeof __KNOW_EXTENSION_ENV__ === "string" && __KNOW_EXTENSION_ENV__ !== "production";
+const errorDetails = (error) => error instanceof Error ? error.message : String(error || "Unknown error");
+function logError(operation, error, details = {}) {
+  debug("Operation failed", { operation, ...details, error: errorDetails(error), stack: error?.stack });
+}
+function userError(fallback, error) {
+  return isDevelopment() ? fallback + " " + errorDetails(error) : fallback;
+}
 let currentTimer = null;
 let timerTicker = null;
 let liveSyncTicker = null;
@@ -32,20 +40,41 @@ function timerStateChanged(previous, next) {
 }
 
 async function request(path, options = {}) {
-  const { token, apiBase } = await chrome.storage.local.get(["token", "apiBase"]);
-  const base = KnowApiConfig.apiBase(apiBase);
+  let token;
+  let apiBase;
+  try {
+    ({ token, apiBase } = await chrome.storage.local.get(["token", "apiBase"]));
+  } catch (error) {
+    logError("Read API configuration", error, { path });
+    throw error;
+  }
+  let base;
+  try {
+    base = KnowApiConfig.apiBase(apiBase);
+  } catch (error) {
+    logError("Resolve API configuration", error, { path, storedApiBase: apiBase || null });
+    throw error;
+  }
   const url = base + path;
+  const method = options.method || "GET";
   debug("Preparing popup API request", {
-    method: options.method || "GET",
+    method,
     apiBase: base,
     path,
+    storedApiBase: apiBase || null,
     tokenPresent: Boolean(token),
     tokenLength: typeof token === "string" ? token.length : 0,
   });
-  const r = await fetch(url, {
+  let r;
+  try {
+    r = await fetch(url, {
     ...options,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}`, ...(options.headers || {}) },
-  });
+    });
+  } catch (error) {
+    logError("API request", error, { method, url, kind: "network-or-cors" });
+    throw Error("Could not reach " + url + ". Check the SSH tunnel, API host permission, and CORS_ORIGINS. (" + errorDetails(error) + ")");
+  }
   debug("Popup API response", {
     requestUrl: url,
     responseUrl: r.url,
@@ -53,14 +82,30 @@ async function request(path, options = {}) {
     redirected: r.redirected,
     contentType: r.headers.get("content-type"),
   });
+  const responseText = await r.text();
+  debug("Popup API response body", {
+    requestUrl: url,
+    status: r.status,
+    body: responseText.slice(0, 1000),
+    bodyTruncated: responseText.length > 1000,
+  });
   if (r.status === 401 && token) {
+    logError("API authentication", Error("Session token rejected"), { method, url, status: r.status, responseBody: responseText });
     await chrome.storage.local.remove(["token", "activeTimer"]);
     location.reload();
     throw Error("Session expired");
   }
-  if (!r.ok) throw Error((await r.text()) || "Request failed");
-  const text = await r.text();
-  return text ? JSON.parse(text) : null;
+  if (!r.ok) {
+    const error = Error("HTTP " + r.status + (responseText ? ": " + responseText.slice(0, 500) : ""));
+    logError("API response", error, { method, url, status: r.status, responseBody: responseText });
+    throw error;
+  }
+  try {
+    return responseText ? JSON.parse(responseText) : null;
+  } catch (error) {
+    logError("API response parsing", error, { method, url, status: r.status, responseBody: responseText });
+    throw Error("API returned invalid JSON (" + errorDetails(error) + ")");
+  }
 }
 
 function itemLabel(item) {
@@ -135,7 +180,8 @@ async function syncTimerState() {
       await restoreTimerSelection(timerSelection(timer));
       $("toggle").textContent = "Stop timer";
     }
-  } catch {
+  } catch (error) {
+    logError("Synchronize timer state", error);
     // The popup's normal load/request error handling remains authoritative.
   } finally {
     liveSyncInFlight = false;
@@ -196,7 +242,7 @@ function renderSessionEditor(article, session) {
     try {
       await request(`/time-entries/${session.id}`, { method: "PUT", body: JSON.stringify({ pathId: data.get("pathId") || null, itemIds: selectedItemIds(form.querySelector('[name="itemIds"]')), startedAt: isoDateTime(start), endedAt: isoDateTime(end), description: data.get("description") || null, source: data.get("source") }) });
       await loadSessions();
-    } catch { $("error").textContent = "Could not update this session."; }
+    } catch (error) { logError("Update session", error, { sessionId }); $("error").textContent = userError("Could not update this session.", error); }
   };
   form.querySelector(".cancel-session").onclick = loadSessions;
 }
@@ -209,7 +255,7 @@ async function load() {
     fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
     $("path").onchange = async () => {
       renderTimerItems(selectedItemIds($("item")));
-      try { await configureCurrentTimer(); } catch { $("error").textContent = "Could not update the timer."; }
+      try { await configureCurrentTimer(); } catch (error) { logError("Change timer path", error); $("error").textContent = userError("Could not update the timer.", error); }
     };
     if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
     else {
@@ -218,11 +264,13 @@ async function load() {
       else await restoreTimerSelection(savedSelection || timerSelection(activeTimer));
     }
     $("auth").hidden = true; $("workspace").hidden = false; await loadSessions(); startLiveTimerSync();
-  } catch { $("error").textContent = "Sign in failed or the API is unavailable."; }
+  } catch (error) { logError("Load workspace", error); $("error").textContent = userError("Sign in failed or the API is unavailable.", error); }
 }
 async function login() {
-  try { const result = await request("/auth/login", { method: "POST", body: JSON.stringify({ email: $("email").value, password: $("password").value }) }); await chrome.storage.local.set({ token: result.token }); $("error").textContent = ""; await load(); }
-  catch { $("error").textContent = "Invalid credentials."; }
+  const email = $("email").value;
+  debug("Starting password login", { email, passwordPresent: Boolean($("password").value), passwordLength: $("password").value.length });
+  try { const result = await request("/auth/login", { method: "POST", body: JSON.stringify({ email, password: $("password").value }) }); await chrome.storage.local.set({ token: result.token }); $("error").textContent = ""; await load(); }
+  catch (error) { logError("Password login", error, { email }); $("error").textContent = userError("Invalid credentials or API unavailable.", error); }
 }
 
 async function googleLogin() {
@@ -244,8 +292,8 @@ async function googleLogin() {
     $("error").textContent = "";
     await load();
   } catch (error) {
-    debug("Google sign-in failed", error instanceof Error ? error.message : "unknown error");
-    $("error").textContent = "Google sign-in could not be completed. Try again.";
+    logError("Google sign-in", error);
+    $("error").textContent = userError("Google sign-in could not be completed. Try again.", error);
   } finally {
     button.disabled = false;
   }
@@ -259,23 +307,29 @@ $("toggle").onclick = async () => {
     const current = await request("/timers/current");
     if (KnowCore.timerIsRunning(current)) { await flushDescriptionSave(); await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); $("toggle").textContent = "Start timer"; await loadSessions(); }
     else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedItemIds($("item")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); $("toggle").textContent = "Stop timer"; }
-  } catch { $("error").textContent = "Could not update timer."; }
+  } catch (error) { logError("Toggle timer", error); $("error").textContent = userError("Could not update timer.", error); }
 };
 $("item").onchange = async () => {
-  try { await configureCurrentTimer(); } catch { $("error").textContent = "Could not update the timer."; }
+  try { await configureCurrentTimer(); } catch (error) { logError("Select timer items", error); $("error").textContent = userError("Could not update the timer.", error); }
 };
 $("description").oninput = () => {
   void persistTimerSelection();
   if (descriptionSaveTicker) clearTimeout(descriptionSaveTicker);
   descriptionSaveTicker = setTimeout(async () => {
-    try { await configureCurrentTimer(); } catch { $("error").textContent = "Could not update the timer."; }
+    try { await configureCurrentTimer(); } catch (error) { logError("Save timer description", error); $("error").textContent = userError("Could not update the timer.", error); }
   }, 300);
 };
 $("sessions").onclick = async (event) => {
   const article = event.target.closest("article"); if (!article) return;
   const sessionId = article.dataset.id;
   if (event.target.closest(".edit-session")) { const history = await request("/time-entries?page=0&size=20"); const session = (history.sessions || []).find((entry) => entry.id === sessionId); if (session) renderSessionEditor(article, session); }
-  if (event.target.closest(".remove-session") && confirm("Remove this session? This cannot be undone.")) { try { await request(`/time-entries/${sessionId}`, { method: "DELETE" }); await loadSessions(); } catch { $("error").textContent = "Could not remove this session."; } }
+  if (event.target.closest(".remove-session") && confirm("Remove this session? This cannot be undone.")) { try { await request(`/time-entries/${sessionId}`, { method: "DELETE" }); await loadSessions(); } catch (error) { logError("Remove session", error, { sessionId }); $("error").textContent = userError("Could not remove this session.", error); } }
 };
-chrome.storage.local.get("token").then(({ token }) => { if (token) load(); });
+chrome.storage.local.get("token").then(({ token }) => {
+  debug("Popup initialized", { tokenPresent: Boolean(token) });
+  if (token) load();
+}).catch((error) => {
+  logError("Read extension session", error);
+  $("error").textContent = userError("Could not read extension session.", error);
+});
 $("options").onclick = () => chrome.runtime.openOptionsPage();
