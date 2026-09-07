@@ -31,6 +31,10 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class KnowIntegrationTest {
 
+  private static String quote(String value) {
+    return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+  }
+
   @DynamicPropertySource
   static void configureDataSource(DynamicPropertyRegistry registry) {
     registry.add(
@@ -429,6 +433,34 @@ class KnowIntegrationTest {
             "{\"title\":\"Updated Note\",\"content\":\"Updated content\"}");
     assertEquals(HttpStatus.OK, edited.getStatusCode());
     assertEquals("Updated Note", edited.getBody().get("title").asText());
+  }
+
+  @Test
+  void richNotesSupportLabelsSearchPaginationAndOptimisticUpdates() {
+    String token = freshToken();
+    String content = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Rich body search\"}]}]}";
+    ResponseEntity<JsonNode> created = post("/api/v1/notes", token,
+        "{\"title\":\"Rich note\",\"content\":" + quote(content)
+            + ",\"contentText\":\"Rich body search\",\"tags\":[\"Study\",\"Ideas\"]}");
+    assertEquals(HttpStatus.OK, created.getStatusCode());
+    String noteId = created.getBody().get("id").asText();
+    assertEquals(2, created.getBody().get("tags").size());
+
+    ResponseEntity<JsonNode> page = get("/api/v1/notes?page=0&size=20&q=body", token);
+    assertEquals(HttpStatus.OK, page.getStatusCode());
+    assertEquals(1, page.getBody().get("items").size());
+    assertEquals(noteId, page.getBody().get("items").get(0).get("id").asText());
+
+    long version = created.getBody().get("version").asLong();
+    ResponseEntity<JsonNode> edited = put("/api/v1/notes/" + noteId, token,
+        "{\"title\":\"Rich note updated\",\"content\":" + quote(content)
+            + ",\"contentText\":\"Updated searchable body\",\"tags\":[\"New label\"],\"version\":" + version + "}");
+    assertEquals(HttpStatus.OK, edited.getStatusCode());
+    assertEquals("New label", edited.getBody().get("tags").get(0).asText());
+
+    ResponseEntity<JsonNode> stale = put("/api/v1/notes/" + noteId, token,
+        "{\"title\":\"Stale\",\"content\":" + quote(content) + ",\"version\":" + version + "}");
+    assertEquals(HttpStatus.CONFLICT, stale.getStatusCode());
   }
 
   @Test
