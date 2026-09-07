@@ -38,7 +38,10 @@ if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
   exit 1
 fi
 
-docker compose "${compose_args[@]}" up -d
+# Recreate only the web container so npm ci runs when package.json/package-lock.json
+# changes. The named frontend node_modules volume is disposable; the protected
+# development database volume is never recreated here.
+docker compose "${compose_args[@]}" up -d --force-recreate web
 docker compose "${compose_args[@]}" ps
 echo
 echo "Compose service/image names:"
