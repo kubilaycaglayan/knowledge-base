@@ -354,203 +354,210 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <PromptDialog ref="promptDialog" />
-  <section class="grid session-grid">
-    <article class="card focus">
-      <div class="focus-header">
-        <div class="focus-timer">
-          <p class="eyebrow">FOCUS TODAYs</p>
-          <strong>{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
+  <div class="dashboard-page">
+    <PromptDialog ref="promptDialog" />
+    <div class="page-heading">
+      <div>
+        <p class="section-label">PERSONAL KNOWLEDGE SYSTEM</p>
+        <h1>Overview</h1>
+      </div>
+      <p class="page-summary">Collect what you’re learning. Track the work.</p>
+    </div>
+
+    <section class="session-grid workspace-section" aria-labelledby="focus-heading">
+      <div class="section-heading">
+        <h2 id="focus-heading">FOCUS TODAY</h2>
+        <span class="session-status" :class="{ running: timer }">
+          <span class="status-dot" aria-hidden="true"></span>
+          {{ timer ? "Session running" : "Ready to focus" }}
+        </span>
+      </div>
+      <div class="session-workspace">
+        <div class="focus">
+          <strong class="timer-clock" aria-label="Elapsed session time">{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
+          <p class="timer-summary">{{ timer?.description || "Choose a path or item to begin." }}</p>
+          <div class="session-actions">
+            <button class="primary" @click="toggle">
+              <span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span>
+              {{ timer ? "Stop session" : "Start a session" }}
+            </button>
+            <button v-if="timer" class="text-button danger" @click="cancel">Cancel</button>
+          </div>
         </div>
-        <div class="timer-path-group">
-          <label class="timer-path-field">
-            <span>PATH</span>
-          <select v-model="pathId" aria-label="Timer path" @focus="load(true)" @change="choosePath">
+        <div class="session-fields">
+          <div class="field">
+            <label for="timer-path">Path</label>
+            <select id="timer-path" v-model="pathId" name="timer-path" autocomplete="off" aria-label="Timer path" @focus="load(true)" @change="choosePath">
               <option value="">Choose a path</option>
               <option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option>
               <option :value="addPathOption">＋ Add a new path…</option>
             </select>
-          </label>
-          <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths">
-            <span>RECENT</span>
-            <button
-              v-for="path in recentPaths"
-              :key="path.id"
-              type="button"
-              class="recent-path"
-              :class="{ selected: path.id === pathId }"
-              :aria-label="`Use ${path.name}`"
-              @click="chooseRecentPath(path.id)"
+            <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths">
+              <span>Recent</span>
+              <button
+                v-for="path in recentPaths"
+                :key="path.id"
+                type="button"
+                class="recent-path"
+                :class="{ selected: path.id === pathId }"
+                :aria-pressed="path.id === pathId"
+                :aria-label="`Use ${path.name}`"
+                @click="chooseRecentPath(path.id)"
+              >{{ path.name }}</button>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-heading">
+              <label for="timer-items">Items</label>
+              <span class="subtle">{{ timerItems.length }} available</span>
+            </div>
+            <v-select
+              id="timer-items"
+              v-model="itemIds"
+              :items="timerItems"
+              item-title="title"
+              item-value="id"
+              label="Choose an item"
+              aria-label="Timer item"
+              name="timer-items"
+              autocomplete="off"
+              class="workspace-select"
+              menu-icon=""
+              multiple
+              chips
+              closable-chips
+              variant="outlined"
+              density="compact"
+              hide-details
+              @focus="load(true)"
+              @update:model-value="configureTimer"
             >
-              {{ path.name }}
-            </button>
+              <template #append-inner>
+                <svg class="select-chevron" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" />
+                </svg>
+              </template>
+              <template #chip="{ item, props }">
+                <v-chip v-bind="props" :text="item.title" closable size="small">
+                  <template #close>×</template>
+                </v-chip>
+              </template>
+            </v-select>
+            <div class="inline-field">
+              <input
+                v-model="newTimerItemTitle"
+                name="new-session-item"
+                autocomplete="off"
+                placeholder="New item for this session…"
+                aria-label="New session item title"
+              />
+              <button class="text-button" :disabled="!newTimerItemTitle.trim()" @click="createTimerItem">Create item</button>
+            </div>
+          </div>
+          <div class="field field-wide">
+            <label for="timer-description">Description <span class="subtle">Optional</span></label>
+            <textarea
+              id="timer-description"
+              v-model="description"
+              name="timer-description"
+              autocomplete="off"
+              rows="2"
+              placeholder="What are you working on…"
+              aria-label="Timer description"
+              @change="configureTimer"
+            ></textarea>
+          </div>
+          <div v-if="timer" class="field field-wide">
+            <label for="timer-start">Started at</label>
+            <input id="timer-start" v-model="timerStartedAt" name="timer-start" autocomplete="off" type="datetime-local" aria-label="Timer start" @change="configureTimer" />
           </div>
         </div>
       </div>
-      <p>{{ timer?.description || "Choose a path or item to begin." }}</p>
-      <div class="timer-fields">
-        <div class="timer-item-panel">
-          <div class="timer-item-heading">
-            <span>ITEM</span>
-            <small>{{ timerItems.length }} available</small>
+    </section>
+
+    <section class="metrics-strip" aria-label="Activity summary">
+      <div class="metric">
+        <h2>Today</h2>
+        <strong>{{ formatTrackedDuration(stats?.todaySeconds || 0) }}</strong>
+      </div>
+      <div class="metric">
+        <h2>This week</h2>
+        <strong>{{ formatTrackedDuration(stats?.weekSeconds || 0) }}</strong>
+      </div>
+      <div class="metric">
+        <h2>This month</h2>
+        <strong>{{ formatTrackedDuration(stats?.monthSeconds || 0) }}</strong>
+      </div>
+      <div class="metric">
+        <h2>Completed items</h2>
+        <strong>{{ stats?.completedItems || 0 }} <span class="subtle">{{ stats?.activeItems || 0 }} active</span></strong>
+      </div>
+    </section>
+
+    <div class="section-columns">
+      <section class="workspace-section" aria-labelledby="path-time-heading">
+        <div class="section-heading"><h2 id="path-time-heading">TIME BY PATH THIS WEEK</h2></div>
+        <dl class="data-list">
+          <div v-for="(seconds, id) in stats?.weekByPath" :key="id" class="data-row">
+            <dt>{{ pathName(id) }}</dt><dd>{{ formatTrackedDuration(seconds) }}</dd>
           </div>
-          <v-select
-            v-model="itemIds"
-            :items="timerItems"
-            item-title="title"
-            item-value="id"
-            label="Choose an item"
-            aria-label="Timer item"
-            autocomplete="off"
-            class="timer-item-select"
-            multiple
-            chips
-            closable-chips
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            @focus="load(true)"
-            @update:model-value="configureTimer"
-          >
-            <template #chip="{ item, props }">
-              <v-chip v-bind="props" :text="item.title" closable size="small">
-                <template #close>×</template>
-              </v-chip>
-            </template>
-          </v-select>
-          <div class="timer-item-create">
-            <input
-              v-model="newTimerItemTitle"
-              placeholder="New item for this session"
-              aria-label="New session item title"
-            /><button
-              class="text-button"
-              :disabled="!newTimerItemTitle.trim()"
-              @click="createTimerItem"
-            >
-              Create item
-            </button>
+        </dl>
+        <p v-if="!Object.keys(stats?.weekByPath || {}).length" class="empty-state">No path time yet.</p>
+      </section>
+      <section class="workspace-section" aria-labelledby="item-time-heading">
+        <div class="section-heading"><h2 id="item-time-heading">TIME BY ITEM THIS WEEK</h2></div>
+        <dl class="data-list">
+          <div v-for="(seconds, id) in stats?.weekByItem" :key="id" class="data-row">
+            <dt>{{ itemName(id) }}</dt><dd>{{ formatTrackedDuration(seconds) }}</dd>
           </div>
+        </dl>
+        <p v-if="!Object.keys(stats?.weekByItem || {}).length" class="empty-state">No item time yet.</p>
+      </section>
+    </div>
+
+    <div class="section-columns activity-columns">
+      <section class="workspace-section history-box" aria-labelledby="history-heading">
+        <div class="section-heading"><h2 id="history-heading">Recent time entries</h2></div>
+        <ul class="data-list">
+          <li v-for="entry in history.slice(0, 8)" :key="entry.id" class="data-row entry-row">
+            <div class="entry-details">
+              <strong>{{ entryPathName(entry) }}</strong>
+              <span class="subtle" :title="entry.description">{{ shortDescription(entry) }}</span>
+            </div>
+            <span class="duration">{{ formatTrackedDuration(entry.durationSeconds || 0) }}</span>
+            <button class="text-button" :aria-label="`Edit ${entryPathName(entry)} session`" @click="editEntry(entry)">Edit</button>
+          </li>
+        </ul>
+        <p v-if="!history.length" class="empty-state">No recorded sessions yet.</p>
+      </section>
+      <section class="workspace-section" aria-labelledby="progress-heading">
+        <div class="section-heading"><h2 id="progress-heading">Recent progress changes</h2></div>
+        <dl class="data-list">
+          <div v-for="change in stats?.recentProgressChanges || []" :key="change.itemId + change.changedAt" class="data-row">
+            <dt>{{ itemName(change.itemId) }}</dt>
+            <dd>{{ change.previousProgress }}% <span class="subtle">→</span> {{ change.newProgress }}%</dd>
+          </div>
+        </dl>
+        <p v-if="!stats?.recentProgressChanges?.length" class="empty-state">No progress changes yet.</p>
+      </section>
+    </div>
+
+    <section class="workspace-section search-box" aria-labelledby="search-heading">
+      <div class="section-heading"><h2 id="search-heading">Retrieve knowledge</h2></div>
+      <form class="inline-field search-form" @submit.prevent="search">
+        <input v-model="query" type="search" name="knowledge-search" autocomplete="off" placeholder="Search paths, items, notes, and activity…" aria-label="Search knowledge" />
+        <button class="primary">Search</button>
+      </form>
+      <div class="data-list" aria-live="polite">
+        <div v-for="result in results" :key="result.kind + result.id" class="data-row result-row">
+          <span class="result-kind">{{ result.kind.toLowerCase() }}</span>
+          <strong>{{ result.title }}</strong>
+          <span class="subtle">{{ result.detail }}</span>
         </div>
-        <textarea
-          rows="2"
-          v-model="description"
-          placeholder="What are you working on?"
-          aria-label="Timer description"
-          @change="configureTimer"
-        ></textarea><input
-          v-if="timer"
-          v-model="timerStartedAt"
-          type="datetime-local"
-          aria-label="Timer start"
-          @change="configureTimer"
-        />
       </div>
-      <div class="item-actions">
-        <button class="primary" @click="toggle">
-          {{ timer ? "Stop session" : "Start a session" }}</button
-        ><button v-if="timer" class="text-button danger" @click="cancel">
-          Cancel
-        </button>
-      </div>
-    </article>
-  </section>
-  <section class="hero">
-    <p class="eyebrow">PERSONAL KNOWLEDGE SYSTEM</p>
-    <h1>Make your learning<br /><em>visible.</em></h1>
-    <p class="lede">
-      A calm place to collect what you’re learning, track the work, and remember
-      the journey.
-    </p>
-  </section>
-  <section class="stats">
-    <article class="card">
-      <p class="eyebrow">TODAY</p>
-      <h2>{{ formatTrackedDuration(stats?.todaySeconds || 0) }}</h2>
-    </article>
-    <article class="card">
-      <p class="eyebrow">THIS WEEK</p>
-      <h2>{{ formatTrackedDuration(stats?.weekSeconds || 0) }}</h2>
-    </article>
-    <article class="card">
-      <p class="eyebrow">THIS MONTH</p>
-      <h2>{{ formatTrackedDuration(stats?.monthSeconds || 0) }}</h2>
-    </article>
-    <article class="card">
-      <p class="eyebrow">COMPLETED ITEMS</p>
-      <h2>{{ stats?.completedItems || 0 }}</h2>
-      <p class="muted">{{ stats?.activeItems || 0 }} active</p>
-    </article>
-  </section>
-  <section class="breakdowns">
-    <article class="card">
-      <p class="eyebrow">TIME BY PATH THIS WEEK</p>
-      <p v-for="(seconds, id) in stats?.weekByPath" :key="id">
-        {{ pathName(id) }} <strong>{{ formatTrackedDuration(seconds) }}</strong>
-      </p>
-      <p v-if="!Object.keys(stats?.weekByPath || {}).length" class="muted">
-        No path time yet.
-      </p>
-    </article>
-    <article class="card">
-      <p class="eyebrow">TIME BY ITEM THIS WEEK</p>
-      <p v-for="(seconds, id) in stats?.weekByItem" :key="id">
-        {{ itemName(id) }} <strong>{{ formatTrackedDuration(seconds) }}</strong>
-      </p>
-      <p v-if="!Object.keys(stats?.weekByItem || {}).length" class="muted">
-        No item time yet.
-      </p>
-    </article>
-  </section>
-  <section class="card">
-    <p class="eyebrow">RECENT PROGRESS CHANGES</p>
-    <p
-      v-for="change in stats?.recentProgressChanges || []"
-      :key="change.itemId + change.changedAt"
-      class="history-row"
-    >
-      <span>{{ itemName(change.itemId) }}</span
-      ><span class="muted"
-        >{{ change.previousProgress }}% → {{ change.newProgress }}%</span
-      >
-    </p>
-    <p v-if="!stats?.recentProgressChanges?.length" class="muted">
-      No progress changes yet.
-    </p>
-  </section>
-  <section class="card history-box">
-    <p class="eyebrow">RECENT TIME ENTRIES</p>
-    <div
-      v-for="entry in history.slice(0, 8)"
-      :key="entry.id"
-      class="history-row"
-    >
-      <span
-        ><span class="session-path">{{ entryPathName(entry) }}</span> ·
-        {{ shortDescription(entry) }}</span
-      ><span class="muted">{{ formatTrackedDuration(entry.durationSeconds || 0) }}</span
-      ><button class="text-button" @click="editEntry(entry)">Edit</button>
-    </div>
-    <p v-if="!history.length" class="muted">No recorded sessions yet.</p>
-  </section>
-  <section class="card search-box">
-    <p class="eyebrow">RETRIEVE KNOWLEDGE</p>
-    <form class="add" @submit.prevent="search">
-      <input
-        v-model="query"
-        placeholder="Search paths, items, notes, and activity"
-        aria-label="Search knowledge"
-      /><button class="primary">Search</button>
-    </form>
-    <div
-      v-for="result in results"
-      :key="result.kind + result.id"
-      class="search-result"
-    >
-      <span class="pill">{{ result.kind.toLowerCase() }}</span
-      ><strong>{{ result.title }}</strong
-      ><span class="muted">{{ result.detail }}</span>
-    </div>
-  </section>
-  <p v-if="error" class="notice" role="alert">{{ error }}</p>
+    </section>
+    <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
+  </div>
 </template>
+
+<style scoped src="./dashboard.css"></style>
