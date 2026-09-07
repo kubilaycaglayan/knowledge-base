@@ -7,7 +7,7 @@ vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 const note = {
   id: "note-1", title: "Learning", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Graph theory" }] }] }),
-  contentText: "Graph theory", createdAt: "2026-09-01T10:00:00Z", updatedAt: "2026-09-02T10:00:00Z", version: 0, tags: ["study"],
+  contentText: "Graph theory", createdAt: "2026-09-01T10:00:00Z", updatedAt: "2026-09-02T10:00:00Z", version: 0, tags: ["study"], deletedAt: undefined as string | undefined,
 };
 function router() {
   return createRouter({ history: createMemoryHistory(), routes: [
@@ -67,6 +67,24 @@ describe("NotesView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"title":"Updated"') }));
     expect(wrapper.find('button[aria-label="Save"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Undo"]').exists()).toBe(true);
+  });
+
+  it("suggests matching existing labels while typing and applies a selected label", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && !options) return note;
+      if (path === "/notes/labels") return [{ id: "study", name: "Study" }, { id: "work", name: "Work notes" }, { id: "travel", name: "Travel" }];
+      if (path === "/notes/note-1" && options?.method === "PUT") return { ...note, tags: ["study", "Work notes"] };
+      return undefined;
+    });
+    const r = router(); await r.push("/notes/note-1"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    const input = wrapper.get('input[aria-label="Add label"]');
+    await input.setValue("work");
+    expect(wrapper.findAll(".label-suggestion").map(button => button.text())).toEqual(["Work notes"]);
+    await wrapper.get(".label-suggestion").trigger("click");
+    expect(wrapper.findAll(".note-tag").map(tag => tag.text())).toEqual(["study×", "Work notes×"]);
+    expect((input.element as HTMLInputElement).value).toBe("");
+    await new Promise(resolve => setTimeout(resolve, 700)); await flushPromises();
   });
 
   it("replays a draft when another window saved first", async () => {
