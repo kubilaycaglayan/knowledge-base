@@ -11,7 +11,8 @@ function authenticated() {
 }
 </script>
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'dashboard-shell': token && $route?.path === '/' }">
+    <a v-if="token && $route?.path === '/'" class="dashboard-skip" href="#main-content">Skip to content</a>
     <header>
       <a class="brand" href="/">knowledge<span>.</span>base</a>
       <nav v-if="token">
@@ -27,10 +28,12 @@ function authenticated() {
       </nav>
       <button v-if="token" class="ghost" @click="logout">Sign out</button>
     </header>
-    <main>
+    <main id="main-content" tabindex="-1">
       <AuthView v-if="!token" @authenticated="authenticated" /><RouterView
         v-else
       />
     </main>
   </div>
 </template>
+
+<style scoped src="./dashboard-shell.css"></style>
