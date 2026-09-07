@@ -66,6 +66,6 @@ describe("NotesView", () => {
     await new Promise(resolve => setTimeout(resolve, 700)); await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"title":"Updated"') }));
     expect(wrapper.find('button[aria-label="Save"]').exists()).toBe(false);
-    expect(wrapper.get('button[aria-label="Undo"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Undo"]').exists()).toBe(true);
   });
 });
