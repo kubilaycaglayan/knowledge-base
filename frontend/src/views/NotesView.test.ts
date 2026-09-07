@@ -39,6 +39,14 @@ describe("NotesView", () => {
     expect(vi.mocked(api).mock.calls.some(([path]) => String(path).includes("q=graph"))).toBe(true);
   });
 
+  it("searches notes by label", async () => {
+    const r = router(); await r.push("/notes"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    await wrapper.get('input[aria-label="Search notes"]').setValue("study");
+    await new Promise(resolve => setTimeout(resolve, 280)); await flushPromises();
+    expect(vi.mocked(api).mock.calls.some(([path]) => String(path).includes("q=study"))).toBe(true);
+  });
+
   it("creates a note from the icon action and opens the editor", async () => {
     const created = { ...note, id: "new-note", title: "Untitled note" };
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
@@ -79,10 +87,12 @@ describe("NotesView", () => {
     const r = router(); await r.push("/notes/note-1"); await r.isReady();
     const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
     const input = wrapper.get('input[aria-label="Add label"]');
-    await input.setValue("work");
-    expect(wrapper.findAll(".label-suggestion").map(button => button.text())).toEqual(["Work notes"]);
-    await wrapper.get(".label-suggestion").trigger("click");
-    expect(wrapper.findAll(".note-tag").map(tag => tag.text())).toEqual(["study×", "Work notes×"]);
+    await input.setValue("e");
+    expect(wrapper.findAll(".label-suggestion").map(button => button.text())).toEqual(["Work notes", "Travel"]);
+    await input.trigger("keydown", { key: "ArrowDown" });
+    expect(wrapper.findAll(".label-suggestion")[1].classes()).toContain("active");
+    await input.trigger("keydown", { key: "Enter" });
+    expect(wrapper.findAll(".note-tag").map(tag => tag.text())).toEqual(["study×", "Travel×"]);
     expect((input.element as HTMLInputElement).value).toBe("");
     await new Promise(resolve => setTimeout(resolve, 700)); await flushPromises();
   });
@@ -116,6 +126,14 @@ describe("NotesView", () => {
     const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
     expect(wrapper.get(".note-row").text()).toContain("Graph theory");
     expect(wrapper.get(".note-row").text()).not.toContain('"type":"doc"');
+  });
+
+  it("renders an empty rich-text body as italic Empty note", async () => {
+    const empty = { ...note, contentText: note.content.replace(/\{\"type\":\"text\",\"text\":\"Graph theory\"\}/, "") };
+    vi.mocked(api).mockImplementation(async (path: string) => path.startsWith("/notes?") ? page([empty]) : undefined);
+    const r = router(); await r.push("/notes"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    expect(wrapper.get(".note-row em").text()).toBe("Empty note");
   });
 
   it("archives a note after confirmation", async () => {
