@@ -68,4 +68,35 @@ describe("NotesView", () => {
     expect(wrapper.find('button[aria-label="Save"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Undo"]').exists()).toBe(true);
   });
+
+  it("replays a draft when another window saved first", async () => {
+    let writes = 0;
+    const latest = { ...note, version: 1, title: "Remote title" };
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        writes += 1;
+        if (writes === 1) throw new Error("Note changed in another window");
+        return { ...latest, title: "Updated", version: 2 };
+      }
+      if (path === "/notes/note-1") return writes ? latest : note;
+      return undefined;
+    });
+    const r = router(); await r.push("/notes/note-1"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Updated");
+    await new Promise(resolve => setTimeout(resolve, 700)); await flushPromises();
+
+    expect(writes).toBe(2);
+    expect(vi.mocked(api).mock.calls.at(-1)?.[1]?.body).toContain('"version":1');
+    expect(wrapper.get(".save-state").text()).toBe("Saved");
+  });
+
+  it("turns JSON note content into a readable list excerpt", async () => {
+    const rich = { ...note, contentText: note.content };
+    vi.mocked(api).mockImplementation(async (path: string) => path.startsWith("/notes?") ? page([rich]) : undefined);
+    const r = router(); await r.push("/notes"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    expect(wrapper.get(".note-row").text()).toContain("Graph theory");
+    expect(wrapper.get(".note-row").text()).not.toContain('"type":"doc"');
+  });
 });
