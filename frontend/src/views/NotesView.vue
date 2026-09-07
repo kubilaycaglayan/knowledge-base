@@ -38,6 +38,7 @@ const title = ref("");
 const tagInput = ref("");
 const tags = ref<string[]>([]);
 const existingLabels = ref<NoteLabel[]>([]);
+const highlightedLabelIndex = ref(0);
 const status = ref<"saved" | "saving" | "error">("saved");
 const editorHost = ref<HTMLElement | null>(null);
 let editor: Editor | null = null;
@@ -58,6 +59,7 @@ const matchingLabels = computed(() => {
     .filter(label => !selectedNames.has(label.name.toLocaleLowerCase()) && label.name.toLocaleLowerCase().includes(query))
     .slice(0, 8);
 });
+watch(tagInput, () => { highlightedLabelIndex.value = 0; });
 const parseContent = (value?: string) => {
   if (!value) return defaultDocument;
   try {
@@ -79,10 +81,26 @@ function excerpt(note: Note) {
     };
     const text = collect(document).replace(/\s+/g, " ").trim();
     if (text) return text.slice(0, 150);
+    if (document?.type === "doc") return "Empty note";
   } catch {
     // Older notes may contain plain text in contentText.
   }
   return raw.replace(/\s+/g, " ").trim().slice(0, 150) || "Empty note";
+}
+function isEmptyNote(note: Note) {
+  const raw = note.contentText || note.content || "";
+  try {
+    const document = JSON.parse(raw);
+    if (document?.type !== "doc") return !raw.trim();
+    const collect = (value: unknown): string => {
+      if (!value || typeof value !== "object") return "";
+      const node = value as { text?: unknown; content?: unknown };
+      return `${typeof node.text === "string" ? node.text : ""} ${Array.isArray(node.content) ? node.content.map(collect).join(" ") : ""}`;
+    };
+    return !collect(document).replace(/\s+/g, " ").trim();
+  } catch {
+    return !raw.trim();
+  }
 }
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
@@ -145,6 +163,21 @@ function chooseLabel(label: NoteLabel) {
   if (!tags.value.some(tag => tag.toLowerCase() === label.name.toLowerCase())) tags.value.push(label.name);
   tagInput.value = "";
   scheduleSave();
+}
+function handleLabelKeydown(event: KeyboardEvent) {
+  if (event.key === "ArrowDown" && matchingLabels.value.length) {
+    event.preventDefault();
+    highlightedLabelIndex.value = (highlightedLabelIndex.value + 1) % matchingLabels.value.length;
+  } else if (event.key === "ArrowUp" && matchingLabels.value.length) {
+    event.preventDefault();
+    highlightedLabelIndex.value = (highlightedLabelIndex.value - 1 + matchingLabels.value.length) % matchingLabels.value.length;
+  } else if (event.key === "Enter" && matchingLabels.value.length && highlightedLabelIndex.value >= 0) {
+    event.preventDefault();
+    chooseLabel(matchingLabels.value[highlightedLabelIndex.value]);
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    tagInput.value = "";
+  }
 }
 function removeTag(tag: string) { tags.value = tags.value.filter(value => value !== tag); scheduleSave(); }
 function scheduleSave() {
@@ -245,7 +278,7 @@ onBeforeUnmount(() => {
 
     <template v-if="!isEditor">
       <div class="notes-toolbar">
-        <label class="search-field"><span class="sr-only">Search notes</span><input v-model="query" aria-label="Search notes" placeholder="Search title or body" /></label>
+        <label class="search-field"><span class="sr-only">Search notes</span><input v-model="query" aria-label="Search notes" placeholder="Search title, body, or label" /></label>
         <label class="size-field"><span>Show</span><select v-model="size" aria-label="Notes per page"><option :value="20">20</option><option :value="50">50</option><option :value="100">100</option></select></label>
         <button class="flat-button" @click="toggleArchive">{{ showArchived ? "Active notes" : "Archive" }}</button>
       </div>
@@ -253,7 +286,7 @@ onBeforeUnmount(() => {
       <p v-if="!loading && !notes.length" class="notes-empty">{{ query ? "No notes match your search." : "Your notes will appear here." }}</p>
       <div v-else class="note-list" aria-label="Notes">
         <div v-for="note in notes" :key="note.id" class="note-row" :class="{ archived: showArchived }" @click="!showArchived && openNote(note)">
-          <span class="note-row-main"><strong>{{ note.title }}</strong><span>{{ excerpt(note) }}</span></span>
+          <span class="note-row-main"><strong>{{ note.title }}</strong><span><em v-if="isEmptyNote(note)">Empty note</em><template v-else>{{ excerpt(note) }}</template></span></span>
           <span class="note-row-meta"><span class="note-tags"><i v-for="tag in note.tags" :key="tag">{{ tag }}</i></span><time :datetime="showArchived && note.deletedAt ? note.deletedAt : note.updatedAt">{{ showArchived && note.deletedAt ? `Archived ${formatDate(note.deletedAt)}` : formatDate(note.updatedAt) }}</time><span><button v-if="showArchived" class="flat-button" @click.stop="restoreNote(note)">Restore</button><button v-else class="flat-button danger" @click.stop="archiveNote(note)">Archive</button></span></span>
         </div>
       </div>
@@ -270,7 +303,7 @@ onBeforeUnmount(() => {
         <button class="flat-button" :disabled="!editor?.can().undo()" aria-label="Undo" @click="editor?.commands.undo()">↶</button><button class="flat-button" :disabled="!editor?.can().redo()" aria-label="Redo" @click="editor?.commands.redo()">↷</button>
       </div>
       <input v-model="title" class="note-title-input" aria-label="Note title" maxlength="240" @input="scheduleSave" />
-      <div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" aria-label="Add label" placeholder="Add label and press Enter" autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="matchingLabels.length > 0" aria-controls="note-label-suggestions" @keydown.enter.prevent="addTag" @keydown.escape="tagInput = ''" /><div v-if="matchingLabels.length" id="note-label-suggestions" class="label-suggestions" role="listbox" aria-label="Matching existing labels"><button v-for="label in matchingLabels" :key="label.id" type="button" role="option" class="label-suggestion" @click="chooseLabel(label)">{{ label.name }}</button></div></div>
+      <div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" aria-label="Add label" placeholder="Add label and press Enter" autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="matchingLabels.length > 0" aria-controls="note-label-suggestions" :aria-activedescendant="matchingLabels.length ? `note-label-suggestion-${matchingLabels[highlightedLabelIndex].id}` : undefined" @keydown="handleLabelKeydown" /><div v-if="matchingLabels.length" id="note-label-suggestions" class="label-suggestions" role="listbox" aria-label="Matching existing labels"><button v-for="(label, index) in matchingLabels" :id="`note-label-suggestion-${label.id}`" :key="label.id" type="button" role="option" class="label-suggestion" :class="{ active: index === highlightedLabelIndex }" :aria-selected="index === highlightedLabelIndex" @click="chooseLabel(label)">{{ label.name }}</button></div></div>
       <div ref="editorHost" class="rich-editor"><EditorContent v-if="editor" :editor="editor" /></div>
       <p v-if="selected" class="note-dates">Created {{ formatDate(selected.createdAt) }} · Updated {{ formatDate(selected.updatedAt) }}</p>
     </template>
@@ -286,6 +319,6 @@ onBeforeUnmount(() => {
 .notes-toolbar { margin-bottom: 16px; }
 .search-field { flex: 1; }.search-field input, .size-field select, .tag-editor input { width: 100%; border: 1px solid #dbe2da; background: #fff; padding: 12px 14px; font: inherit; border-radius: 0; }.size-field { display:flex; gap: 8px; align-items:center; color:#75827c; white-space:nowrap; }.size-field select { width:auto; }
 .note-list { border-top: 1px solid #dbe2da; }.note-row { width: 100%; display:flex; justify-content:space-between; gap:20px; text-align:left; border:0; border-bottom:1px solid #dbe2da; padding:18px 0; background:transparent; cursor:pointer; }.note-row:hover { background:#fff; }.note-row-main { min-width:0; display:grid; gap:7px; }.note-row-main strong { font-size:18px; }.note-row-main span { color:#75827c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }.note-row-meta { display:grid; justify-items:end; gap:8px; color:#75827c; font-size:12px; white-space:nowrap; }.note-tags { display:flex; gap:5px; }.note-tags i, .note-tag { font-style:normal; color:#497d6b; background:#e7f0e9; padding:4px 8px; font-size:11px; }.notes-pagination { justify-content:space-between; padding:18px 0; color:#75827c; font-size:13px; }.notes-pagination div { display:flex; align-items:center; gap:10px; }.flat-button { border:0; background:transparent; color:#497d6b; padding:8px; cursor:pointer; }.flat-button:disabled { opacity:.35; cursor:default; }.notes-empty, .notes-error { padding:30px 0; color:#75827c; }.notes-error { color:#a64f32; }
-.editor-toolbar { border-bottom:1px solid #dbe2da; padding:0 0 12px; }.toolbar-spacer { flex:1; }.save-state { color:#75827c; font-size:13px; }.save-state.error { color:#a64f32; }.note-title-input { width:100%; border:0; outline:0; background:transparent; font:inherit; font-size:clamp(26px, 5vw, 40px); font-weight:800; letter-spacing:-1px; padding:22px 0 14px; }.tag-editor { position:relative; display:flex; flex-wrap:wrap; gap:7px; align-items:center; border-bottom:1px solid #dbe2da; padding:0 0 14px; }.tag-editor input { border:0; padding:6px 0; width:180px; flex:1; min-width:150px; }.note-tag button { border:0; background:transparent; color:inherit; cursor:pointer; padding:0 0 0 5px; }.label-suggestions { position:absolute; z-index:2; top:calc(100% - 8px); left:0; min-width:220px; max-width:min(360px, 100%); display:grid; padding:5px; border:1px solid #dbe2da; background:#fff; box-shadow:0 8px 20px rgba(40, 55, 48, .12); }.label-suggestion { border:0; background:transparent; color:#497d6b; cursor:pointer; padding:8px 10px; text-align:left; font:inherit; }.label-suggestion:hover, .label-suggestion:focus-visible { background:#e7f0e9; outline:0; }.rich-editor { min-height:420px; padding:20px 0; }.rich-editor :deep(.ProseMirror) { min-height:380px; outline:0; line-height:1.45; }.rich-editor :deep(h1), .rich-editor :deep(h2), .rich-editor :deep(h3) { letter-spacing:-1px; }.rich-editor :deep(ul[data-type="taskList"]) { list-style:none; padding-left:0; }.rich-editor :deep(ul[data-type="taskList"] li) { display:flex; gap:8px; }.rich-editor :deep(ul[data-type="taskList"] li > label) { margin-top:5px; }.note-dates { color:#75827c; font-size:12px; border-top:1px solid #dbe2da; padding-top:12px; }.sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.editor-toolbar { border-bottom:1px solid #dbe2da; padding:0 0 12px; }.toolbar-spacer { flex:1; }.save-state { color:#75827c; font-size:13px; }.save-state.error { color:#a64f32; }.note-title-input { width:100%; border:0; outline:0; background:transparent; font:inherit; font-size:clamp(26px, 5vw, 40px); font-weight:800; letter-spacing:-1px; padding:22px 0 14px; }.tag-editor { position:relative; display:flex; flex-wrap:wrap; gap:7px; align-items:center; border-bottom:1px solid #dbe2da; padding:0 0 14px; }.tag-editor input { border:0; padding:6px 0; width:180px; flex:1; min-width:150px; }.note-tag button { border:0; background:transparent; color:inherit; cursor:pointer; padding:0 0 0 5px; }.label-suggestions { position:absolute; z-index:2; top:calc(100% - 8px); left:0; min-width:220px; max-width:min(360px, 100%); display:grid; padding:5px; border:1px solid #dbe2da; background:#fff; box-shadow:0 8px 20px rgba(40, 55, 48, .12); }.label-suggestion { border:0; background:transparent; color:#497d6b; cursor:pointer; padding:8px 10px; text-align:left; font:inherit; }.label-suggestion:hover, .label-suggestion:focus-visible, .label-suggestion.active { background:#e7f0e9; outline:0; }.rich-editor { min-height:420px; padding:20px 0; }.rich-editor :deep(.ProseMirror) { min-height:380px; outline:0; line-height:1.45; }.rich-editor :deep(h1), .rich-editor :deep(h2), .rich-editor :deep(h3) { letter-spacing:-1px; }.rich-editor :deep(ul[data-type="taskList"]) { list-style:none; padding-left:0; }.rich-editor :deep(ul[data-type="taskList"] li) { display:flex; gap:8px; }.rich-editor :deep(ul[data-type="taskList"] li > label) { margin-top:5px; }.note-dates { color:#75827c; font-size:12px; border-top:1px solid #dbe2da; padding-top:12px; }.sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 @media(max-width:650px) { .notes-toolbar { align-items:stretch; flex-direction:column; }.note-row { display:grid; }.note-row-meta { display:flex; justify-content:space-between; align-items:center; }.notes-pagination { align-items:flex-start; flex-direction:column; }.notes-pagination div { width:100%; justify-content:space-between; }.notes-heading { margin-bottom:22px; } }
 </style>
