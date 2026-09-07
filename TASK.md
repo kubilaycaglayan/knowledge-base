@@ -473,6 +473,8 @@ Notes should be easy to associate with the correct item or path.
 
 Search should eventually allow knowledge to be retrieved across the application.
 
+Implemented web notes slice: mobile-first flat Notes page, icon-based note creation, Tiptap headings/lists/checklists/bold/italic, debounced autosave with local undo/redo, created/updated timestamps, reusable auto-created tags, title/body search, and adjustable pagination. Server-side revision history remains a future recovery enhancement.
+
 ## Timer
 
 Provide a persistent time tracker.
