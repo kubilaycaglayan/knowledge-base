@@ -15,15 +15,18 @@ type Note = {
   contentText?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
   version: number;
   tags: string[];
 };
+type NoteLabel = { id: string; name: string };
 type NotePage = { items: Note[]; page: number; size: number; totalItems: number; totalPages: number };
 
 const route = useRoute();
 const router = useRouter();
 const notes = ref<Note[]>([]);
 const query = ref("");
+const showArchived = ref(false);
 const page = ref(0);
 const size = ref(20);
 const totalPages = ref(0);
@@ -34,6 +37,7 @@ const selected = ref<Note | null>(null);
 const title = ref("");
 const tagInput = ref("");
 const tags = ref<string[]>([]);
+const existingLabels = ref<NoteLabel[]>([]);
 const status = ref<"saved" | "saving" | "error">("saved");
 const editorHost = ref<HTMLElement | null>(null);
 let editor: Editor | null = null;
@@ -46,6 +50,14 @@ let saveQueued = false;
 
 const isEditor = computed(() => route.name === "note-editor");
 const defaultDocument = { type: "doc", content: [{ type: "paragraph" }] };
+const matchingLabels = computed(() => {
+  const query = tagInput.value.trim().toLocaleLowerCase();
+  if (!query) return [];
+  const selectedNames = new Set(tags.value.map(tag => tag.toLocaleLowerCase()));
+  return existingLabels.value
+    .filter(label => !selectedNames.has(label.name.toLocaleLowerCase()) && label.name.toLocaleLowerCase().includes(query))
+    .slice(0, 8);
+});
 const parseContent = (value?: string) => {
   if (!value) return defaultDocument;
   try {
@@ -79,7 +91,7 @@ async function loadNotes() {
   loading.value = true;
   error.value = "";
   try {
-    const params = new URLSearchParams({ page: String(page.value), size: String(size.value) });
+    const params = new URLSearchParams({ page: String(page.value), size: String(size.value), archived: String(showArchived.value) });
     if (query.value.trim()) params.set("q", query.value.trim());
     const result = await api<NotePage>(`/notes?${params}`);
     notes.value = result.items;
@@ -91,6 +103,20 @@ async function loadNotes() {
     loading.value = false;
   }
 }
+async function archiveNote(note: Note) {
+  if (!window.confirm(`Move “${note.title}” to Archive? Archived notes are permanently deleted after 30 days.`)) return;
+  try {
+    await api(`/notes/${note.id}`, { method: "DELETE" });
+    await loadNotes();
+  } catch { error.value = "Unable to archive note."; }
+}
+async function restoreNote(note: Note) {
+  try {
+    await api(`/notes/${note.id}/restore`, { method: "POST" });
+    await loadNotes();
+  } catch { error.value = "Unable to restore note."; }
+}
+function toggleArchive() { showArchived.value = !showArchived.value; page.value = 0; loadNotes(); }
 function searchLater() {
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { page.value = 0; loadNotes(); }, 250);
@@ -112,6 +138,11 @@ async function openNote(note: Note) { await router.push({ name: "note-editor", p
 function addTag() {
   const value = tagInput.value.trim().replace(/^#/, "");
   if (value && !tags.value.some(tag => tag.toLowerCase() === value.toLowerCase())) tags.value.push(value);
+  tagInput.value = "";
+  scheduleSave();
+}
+function chooseLabel(label: NoteLabel) {
+  if (!tags.value.some(tag => tag.toLowerCase() === label.name.toLowerCase())) tags.value.push(label.name);
   tagInput.value = "";
   scheduleSave();
 }
@@ -162,10 +193,14 @@ async function loadEditor() {
   const id = route.params.id;
   if (!id || typeof id !== "string") return;
   try {
-    const fromList = await api<Note>(`/notes/${id}`);
+    const [fromList, labelsForUser] = await Promise.all([
+      api<Note>(`/notes/${id}`),
+      api<NoteLabel[]>("/notes/labels"),
+    ]);
     selected.value = fromList;
     title.value = fromList.title;
     tags.value = [...(fromList.tags || [])];
+    existingLabels.value = labelsForUser || [];
     editor?.destroy();
     editor = new Editor({
       extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true })],
@@ -203,22 +238,23 @@ onBeforeUnmount(() => {
 <template>
   <section class="notes-page">
     <header class="notes-heading">
-      <div><p class="eyebrow">KNOWLEDGE BASE</p><h1>Notes</h1></div>
-      <button class="icon-button" aria-label="Create new note" title="Create new note" @click="newNote">＋</button>
+      <div><p class="eyebrow">KNOWLEDGE BASE</p><h1>{{ showArchived ? "Archived notes" : "Notes" }}</h1></div>
+      <button v-if="!showArchived" class="icon-button" aria-label="Create new note" title="Create new note" @click="newNote">＋</button>
     </header>
 
     <template v-if="!isEditor">
       <div class="notes-toolbar">
         <label class="search-field"><span class="sr-only">Search notes</span><input v-model="query" aria-label="Search notes" placeholder="Search title or body" /></label>
         <label class="size-field"><span>Show</span><select v-model="size" aria-label="Notes per page"><option :value="20">20</option><option :value="50">50</option><option :value="100">100</option></select></label>
+        <button class="flat-button" @click="toggleArchive">{{ showArchived ? "Active notes" : "Archive" }}</button>
       </div>
       <p v-if="error" class="notes-error" role="alert">{{ error }}</p>
       <p v-if="!loading && !notes.length" class="notes-empty">{{ query ? "No notes match your search." : "Your notes will appear here." }}</p>
       <div v-else class="note-list" aria-label="Notes">
-        <button v-for="note in notes" :key="note.id" class="note-row" @click="openNote(note)">
+        <div v-for="note in notes" :key="note.id" class="note-row" :class="{ archived: showArchived }" @click="!showArchived && openNote(note)">
           <span class="note-row-main"><strong>{{ note.title }}</strong><span>{{ excerpt(note) }}</span></span>
-          <span class="note-row-meta"><span class="note-tags"><i v-for="tag in note.tags" :key="tag">{{ tag }}</i></span><time :datetime="note.updatedAt">{{ formatDate(note.updatedAt) }}</time></span>
-        </button>
+          <span class="note-row-meta"><span class="note-tags"><i v-for="tag in note.tags" :key="tag">{{ tag }}</i></span><time :datetime="showArchived && note.deletedAt ? note.deletedAt : note.updatedAt">{{ showArchived && note.deletedAt ? `Archived ${formatDate(note.deletedAt)}` : formatDate(note.updatedAt) }}</time><span><button v-if="showArchived" class="flat-button" @click.stop="restoreNote(note)">Restore</button><button v-else class="flat-button danger" @click.stop="archiveNote(note)">Archive</button></span></span>
+        </div>
       </div>
       <footer v-if="totalPages > 1 || totalItems" class="notes-pagination">
         <span>{{ totalItems }} note{{ totalItems === 1 ? "" : "s" }}</span><div><button class="flat-button" :disabled="page === 0" @click="previousPage">Previous</button><span>Page {{ page + 1 }} of {{ Math.max(totalPages, 1) }}</span><button class="flat-button" :disabled="page + 1 >= totalPages" @click="nextPage">Next</button></div>
@@ -233,7 +269,7 @@ onBeforeUnmount(() => {
         <button class="flat-button" :disabled="!editor?.can().undo()" aria-label="Undo" @click="editor?.commands.undo()">↶</button><button class="flat-button" :disabled="!editor?.can().redo()" aria-label="Redo" @click="editor?.commands.redo()">↷</button>
       </div>
       <input v-model="title" class="note-title-input" aria-label="Note title" maxlength="240" @input="scheduleSave" />
-      <div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" aria-label="Add label" placeholder="Add label and press Enter" @keydown.enter.prevent="addTag" /></div>
+      <div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" aria-label="Add label" placeholder="Add label and press Enter" autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="matchingLabels.length > 0" aria-controls="note-label-suggestions" @keydown.enter.prevent="addTag" @keydown.escape="tagInput = ''" /><div v-if="matchingLabels.length" id="note-label-suggestions" class="label-suggestions" role="listbox" aria-label="Matching existing labels"><button v-for="label in matchingLabels" :key="label.id" type="button" role="option" class="label-suggestion" @click="chooseLabel(label)">{{ label.name }}</button></div></div>
       <div ref="editorHost" class="rich-editor"><EditorContent v-if="editor" :editor="editor" /></div>
       <p v-if="selected" class="note-dates">Created {{ formatDate(selected.createdAt) }} · Updated {{ formatDate(selected.updatedAt) }}</p>
     </template>

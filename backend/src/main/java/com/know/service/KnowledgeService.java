@@ -138,6 +138,7 @@ public class KnowledgeService {
       String content,
       Instant createdAt,
       Instant updatedAt,
+      Instant deletedAt,
       long version,
       String contentText,
       List<String> tags) {}
@@ -405,19 +406,24 @@ public class KnowledgeService {
   }
 
   public List<NoteView> listNotes(UUID userId) {
-    return notes.findAllByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 100)).stream()
+    return notes.findAllActiveByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 100)).stream()
         .map(this::noteView)
         .toList();
   }
 
   public NotePage pageNotes(UUID userId, int page, int size, String query) {
+    return pageNotes(userId, page, size, query, false);
+  }
+
+  public NotePage pageNotes(UUID userId, int page, int size, String query, boolean archived) {
     int safeSize = Math.min(Math.max(size, 1), 100);
     int safePage = Math.max(page, 0);
     PageRequest request = PageRequest.of(safePage, safeSize);
     Page<Note> result = query == null || query.isBlank()
-        ? notes.findAllByUserIdOrderByUpdatedAtDescIdDesc(userId, request)
-        : notes.findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentTextContainingIgnoreCase(
-            userId, query.trim(), userId, query.trim(), request);
+        ? (archived ? notes.findArchivedByUserId(userId, request)
+            : notes.findAllActiveByUserIdOrderByUpdatedAtDescIdDesc(userId, request))
+        : (archived ? notes.findArchivedByUserIdAndQuery(userId, query.trim(), request)
+            : notes.findActiveByUserIdAndQuery(userId, query.trim(), request));
     return new NotePage(result.getContent().stream().map(this::noteView).toList(), result.getNumber(),
         result.getSize(), result.getTotalElements(), result.getTotalPages());
   }
@@ -430,6 +436,23 @@ public class KnowledgeService {
   public NoteView getNote(UUID userId, UUID id) {
     return noteView(notes.findByIdAndUserId(id, userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found")));
+  }
+
+  @Transactional
+  public void archiveNote(UUID userId, UUID id) {
+    Note note = notes.findActiveByIdAndUserId(id, userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found"));
+    note.delete();
+    notes.save(note);
+  }
+
+  @Transactional
+  public void restoreNote(UUID userId, UUID id) {
+    Note note = notes.findByIdAndUserIdIncludingArchived(id, userId)
+        .filter(value -> value.getDeletedAt() != null)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Archived note not found"));
+    note.restore();
+    notes.save(note);
   }
 
   @Transactional
@@ -465,6 +488,7 @@ public class KnowledgeService {
         n.getContent(),
         n.getCreatedAt(),
         n.getUpdatedAt(),
+        n.getDeletedAt(),
         n.getVersion(),
         n.getContentText(),
         noteTags == null ? List.of() : noteTags.findTags(n.getId()).stream()

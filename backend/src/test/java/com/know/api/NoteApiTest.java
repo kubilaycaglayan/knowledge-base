@@ -2,6 +2,7 @@ package com.know.api;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.know.service.KnowledgeService;
@@ -46,5 +47,20 @@ class NoteApiTest {
                 .contentType("application/json")
                 .content("{\"title\":\" \",\"content\":\"Useful\"}"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void ownerCanArchiveAndRestoreNote() throws Exception {
+    UUID user = UUID.randomUUID();
+    UUID note = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+
+    mvc.perform(delete("/api/v1/notes/{id}", note).with(authentication(auth)))
+        .andExpect(status().isNoContent());
+    mvc.perform(post("/api/v1/notes/{id}/restore", note).with(authentication(auth)))
+        .andExpect(status().isNoContent());
+
+    org.mockito.Mockito.verify(service).archiveNote(user, note);
+    org.mockito.Mockito.verify(service).restoreNote(user, note);
   }
 }
