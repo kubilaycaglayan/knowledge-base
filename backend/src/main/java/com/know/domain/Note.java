@@ -43,6 +43,9 @@ public class Note {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt = Instant.now();
 
+  @Column(name = "deleted_at")
+  private Instant deletedAt;
+
   protected Note() {}
 
   public Note(
@@ -105,6 +108,20 @@ public class Note {
 
   public long getVersion() {
     return version;
+  }
+
+  public Instant getDeletedAt() {
+    return deletedAt;
+  }
+
+  public void delete() {
+    deletedAt = Instant.now();
+    updatedAt = Instant.now();
+  }
+
+  public void restore() {
+    deletedAt = null;
+    updatedAt = Instant.now();
   }
 
   public void update(String title, String content) {

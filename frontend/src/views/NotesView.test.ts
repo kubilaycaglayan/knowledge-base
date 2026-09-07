@@ -99,4 +99,32 @@ describe("NotesView", () => {
     expect(wrapper.get(".note-row").text()).toContain("Graph theory");
     expect(wrapper.get(".note-row").text()).not.toContain('"type":"doc"');
   });
+
+  it("archives a note after confirmation", async () => {
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "DELETE") return undefined;
+      if (path.startsWith("/notes?")) return page();
+      return undefined;
+    });
+    const r = router(); await r.push("/notes"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    await wrapper.get('.note-row button').trigger("click"); await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1", { method: "DELETE" });
+    vi.unstubAllGlobals();
+  });
+
+  it("restores a note from the archive", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1/restore" && options?.method === "POST") return undefined;
+      if (path.includes("archived=true")) return page([{ ...note, deletedAt: "2026-09-03T10:00:00Z" }]);
+      if (path.startsWith("/notes?")) return page();
+      return undefined;
+    });
+    const r = router(); await r.push("/notes"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    await wrapper.get('.notes-toolbar button').trigger("click"); await flushPromises();
+    await wrapper.get('.note-row button').trigger("click"); await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1/restore", { method: "POST" });
+  });
 });

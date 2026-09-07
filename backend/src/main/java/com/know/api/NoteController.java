@@ -4,6 +4,7 @@ import com.know.service.KnowledgeService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,9 +43,10 @@ public class NoteController {
       Authentication a,
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer size,
-      @RequestParam(required = false) String q) {
-    if (page == null && size == null && q == null) return service.listNotes(user(a));
-    return service.pageNotes(user(a), page == null ? 0 : page, size == null ? 20 : size, q);
+      @RequestParam(required = false) String q,
+      @RequestParam(defaultValue = "false") boolean archived) {
+    if (page == null && size == null && q == null && !archived) return service.listNotes(user(a));
+    return service.pageNotes(user(a), page == null ? 0 : page, size == null ? 20 : size, q, archived);
   }
 
   @GetMapping("/labels")
@@ -68,5 +70,17 @@ public class NoteController {
   public KnowledgeService.NoteView update(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody EditNoteRequest r) {
     return service.updateNote(user(a), id, r.title(), r.content(), r.contentText(), r.tags(), r.version());
+  }
+
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void archive(Authentication a, @PathVariable UUID id) {
+    service.archiveNote(user(a), id);
+  }
+
+  @PostMapping("/{id}/restore")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void restore(Authentication a, @PathVariable UUID id) {
+    service.restoreNote(user(a), id);
   }
 }
