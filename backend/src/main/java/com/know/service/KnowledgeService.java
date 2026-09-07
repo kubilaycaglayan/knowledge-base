@@ -12,6 +12,9 @@ import com.know.domain.ItemTagRepository;
 import com.know.domain.ItemType;
 import com.know.domain.Note;
 import com.know.domain.NoteRepository;
+import com.know.domain.NoteTag;
+import com.know.domain.NoteTagId;
+import com.know.domain.NoteTagRepository;
 import com.know.domain.Path;
 import com.know.domain.PathItem;
 import com.know.domain.PathItemId;
@@ -38,6 +41,7 @@ import java.util.Comparator;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,6 +58,7 @@ public class KnowledgeService {
   private final ActivityRepository activityRepository;
   private final ProgressEntryRepository progressRepository;
   private final NoteRepository notes;
+  private final NoteTagRepository noteTags;
   private final TimeEntryRepository timeEntries;
   private final TimeEntryItemRepository entryItems;
 
@@ -66,7 +71,22 @@ public class KnowledgeService {
       ActivityRepository activityRepository,
       ProgressEntryRepository progressRepository,
       NoteRepository notes) {
-    this(items, paths, pathItems, tags, itemTags, activityRepository, progressRepository, notes, null, null);
+    this(items, paths, pathItems, tags, itemTags, activityRepository, progressRepository, notes, null, null, null);
+  }
+
+  public KnowledgeService(
+      ItemRepository items,
+      PathRepository paths,
+      PathItemRepository pathItems,
+      TagRepository tags,
+      ItemTagRepository itemTags,
+      ActivityRepository activityRepository,
+      ProgressEntryRepository progressRepository,
+      NoteRepository notes,
+      TimeEntryRepository timeEntries,
+      TimeEntryItemRepository entryItems) {
+    this(items, paths, pathItems, tags, itemTags, activityRepository, progressRepository, notes,
+        timeEntries, entryItems, null);
   }
 
   @Autowired
@@ -80,7 +100,8 @@ public class KnowledgeService {
       ProgressEntryRepository progressRepository,
       NoteRepository notes,
       TimeEntryRepository timeEntries,
-      TimeEntryItemRepository entryItems) {
+      TimeEntryItemRepository entryItems,
+      NoteTagRepository noteTags) {
     this.items = items;
     this.paths = paths;
     this.pathItems = pathItems;
@@ -89,6 +110,7 @@ public class KnowledgeService {
     this.activityRepository = activityRepository;
     this.progressRepository = progressRepository;
     this.notes = notes;
+    this.noteTags = noteTags;
     this.timeEntries = timeEntries;
     this.entryItems = entryItems;
   }
@@ -115,7 +137,15 @@ public class KnowledgeService {
       String title,
       String content,
       Instant createdAt,
-      Instant updatedAt) {}
+      Instant updatedAt,
+      long version,
+      String contentText,
+      List<String> tags) {}
+
+  public record NotePage(
+      List<NoteView> items, int page, int size, long totalItems, int totalPages) {}
+
+  public record TagView(UUID id, String name) {}
 
   @Transactional
   public ItemView createItem(
@@ -320,13 +350,20 @@ public class KnowledgeService {
   @Transactional
   public NoteView createNote(
       UUID userId, UUID pathId, UUID itemId, UUID activityId, String title, String content) {
-    return createNote(userId, pathId, itemId, activityId, null, title, content);
+    return createNote(userId, pathId, itemId, activityId, null, title, content, null, null);
   }
 
   @Transactional
   public NoteView createNote(
       UUID userId, UUID pathId, UUID itemId, UUID activityId, UUID timeEntryId,
       String title, String content) {
+    return createNote(userId, pathId, itemId, activityId, timeEntryId, title, content, null, null);
+  }
+
+  @Transactional
+  public NoteView createNote(
+      UUID userId, UUID pathId, UUID itemId, UUID activityId, UUID timeEntryId,
+      String title, String content, String contentText, List<String> tagNames) {
     int targets =
         (pathId != null ? 1 : 0)
             + (itemId != null ? 1 : 0)
@@ -356,6 +393,11 @@ public class KnowledgeService {
               () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
     }
     Note n = notes.save(new Note(userId, pathId, itemId, activityId, timeEntryId, title, content));
+    if (contentText != null) {
+      n.update(title, content, contentText);
+      n = notes.save(n);
+    }
+    replaceTags(userId, n, tagNames);
     activityRepository.save(
         new Activity(
             userId, pathId, itemId, ActivityType.NOTE_CREATED, "Added note: " + title, null));
@@ -368,14 +410,48 @@ public class KnowledgeService {
         .toList();
   }
 
+  public NotePage pageNotes(UUID userId, int page, int size, String query) {
+    int safeSize = Math.min(Math.max(size, 1), 100);
+    int safePage = Math.max(page, 0);
+    PageRequest request = PageRequest.of(safePage, safeSize);
+    Page<Note> result = query == null || query.isBlank()
+        ? notes.findAllByUserIdOrderByUpdatedAtDescIdDesc(userId, request)
+        : notes.findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentTextContainingIgnoreCase(
+            userId, query.trim(), userId, query.trim(), request);
+    return new NotePage(result.getContent().stream().map(this::noteView).toList(), result.getNumber(),
+        result.getSize(), result.getTotalElements(), result.getTotalPages());
+  }
+
+  public List<TagView> noteTags(UUID userId) {
+    return tags.findAllByUserIdOrderByName(userId).stream()
+        .map(tag -> new TagView(tag.getId(), tag.getName())).toList();
+  }
+
+  public NoteView getNote(UUID userId, UUID id) {
+    return noteView(notes.findByIdAndUserId(id, userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found")));
+  }
+
   @Transactional
   public NoteView updateNote(UUID userId, UUID id, String title, String content) {
+    return updateNote(userId, id, title, content, null, null, null);
+  }
+
+  @Transactional
+  public NoteView updateNote(
+      UUID userId, UUID id, String title, String content, String contentText,
+      List<String> tagNames, Long expectedVersion) {
     Note note =
         notes
             .findByIdAndUserId(id, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found"));
-    note.update(title, content);
-    return noteView(notes.save(note));
+    if (expectedVersion != null && note.getVersion() != expectedVersion) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "Note changed in another window");
+    }
+    if (contentText == null) note.update(title, content); else note.update(title, content, contentText);
+    Note saved = notes.save(note);
+    if (tagNames != null) replaceTags(userId, saved, tagNames);
+    return noteView(saved);
   }
 
   private NoteView noteView(Note n) {
@@ -388,7 +464,24 @@ public class KnowledgeService {
         n.getTitle(),
         n.getContent(),
         n.getCreatedAt(),
-        n.getUpdatedAt());
+        n.getUpdatedAt(),
+        n.getVersion(),
+        n.getContentText(),
+        noteTags == null ? List.of() : noteTags.findTags(n.getId()).stream()
+            .map(Tag::getName).sorted().toList());
+  }
+
+  private void replaceTags(UUID userId, Note note, List<String> rawNames) {
+    if (noteTags == null || rawNames == null) return;
+    noteTags.deleteAllByIdNoteId(note.getId());
+    Set<String> names = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    rawNames.stream().filter(java.util.Objects::nonNull).map(String::trim)
+        .filter(value -> !value.isBlank()).forEach(names::add);
+    for (String name : names) {
+      Tag tag = tags.findByUserIdAndNameIgnoreCase(userId, name)
+          .orElseGet(() -> tags.save(new Tag(userId, name)));
+      noteTags.save(new NoteTag(new NoteTagId(note.getId(), tag.getId())));
+    }
   }
 
   public List<Activity> activities(UUID userId) {
