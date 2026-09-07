@@ -30,6 +30,13 @@ public class Note {
   @Column(nullable = false, columnDefinition = "text")
   private String content;
 
+  @Column(name = "content_text", columnDefinition = "text")
+  private String contentText;
+
+  @Version
+  @Column(nullable = false)
+  private long version;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt = Instant.now();
 
@@ -46,6 +53,7 @@ public class Note {
     this.activityId = activityId;
     this.title = title;
     this.content = content;
+    this.contentText = content;
   }
 
   public Note(
@@ -83,6 +91,10 @@ public class Note {
     return content;
   }
 
+  public String getContentText() {
+    return contentText == null ? content : contentText;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
@@ -91,9 +103,21 @@ public class Note {
     return updatedAt;
   }
 
+  public long getVersion() {
+    return version;
+  }
+
   public void update(String title, String content) {
     this.title = title;
     this.content = content;
+    this.contentText = content;
+    this.updatedAt = Instant.now();
+  }
+
+  public void update(String title, String content, String contentText) {
+    this.title = title;
+    this.content = content;
+    this.contentText = contentText;
     this.updatedAt = Instant.now();
   }
 }
