@@ -237,6 +237,7 @@ async function addNote(pathId: string) {
     });
     noteTitle.value = "";
     noteContent.value = "";
+    await loadSummary(summary.path);
   } catch {
     error.value = "Could not save path note.";
   }

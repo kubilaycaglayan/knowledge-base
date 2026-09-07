@@ -39,7 +39,10 @@ const editorHost = ref<HTMLElement | null>(null);
 let editor: Editor | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let creating = false;
+let saveInFlight = false;
+let saveQueued = false;
 
 const isEditor = computed(() => route.name === "note-editor");
 const defaultDocument = { type: "doc", content: [{ type: "paragraph" }] };
@@ -54,7 +57,20 @@ const parseContent = (value?: string) => {
 };
 
 function excerpt(note: Note) {
-  return (note.contentText || note.content || "").replace(/\s+/g, " ").trim().slice(0, 150) || "Empty note";
+  const raw = note.contentText || note.content || "";
+  try {
+    const document = JSON.parse(raw);
+    const collect = (value: unknown): string => {
+      if (!value || typeof value !== "object") return "";
+      const node = value as { text?: unknown; content?: unknown };
+      return `${typeof node.text === "string" ? node.text : ""} ${Array.isArray(node.content) ? node.content.map(collect).join(" ") : ""}`;
+    };
+    const text = collect(document).replace(/\s+/g, " ").trim();
+    if (text) return text.slice(0, 150);
+  } catch {
+    // Older notes may contain plain text in contentText.
+  }
+  return raw.replace(/\s+/g, " ").trim().slice(0, 150) || "Empty note";
 }
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
@@ -107,22 +123,39 @@ function scheduleSave() {
 }
 async function save() {
   if (!selected.value || !editor) return;
+  if (saveInFlight) { saveQueued = true; return; }
+  saveInFlight = true;
   status.value = "saving";
+  const snapshot = {
+    title: title.value.trim() || "Untitled note",
+    content: JSON.stringify(editor.getJSON()),
+    contentText: editor.getText({ blockSeparator: "\n" }),
+    tags: [...tags.value],
+  };
   try {
-    const body = {
-      title: title.value.trim() || "Untitled note",
-      content: JSON.stringify(editor.getJSON()),
-      contentText: editor.getText({ blockSeparator: "\n" }),
-      tags: tags.value,
-      version: selected.value.version,
-    };
-    const saved = await api<Note>(`/notes/${selected.value.id}`, { method: "PUT", body: JSON.stringify(body) });
+    let saved: Note;
+    try {
+      saved = await api<Note>(`/notes/${selected.value.id}`, { method: "PUT", body: JSON.stringify({ ...snapshot, version: selected.value.version }) });
+    } catch (cause) {
+      if (!String(cause).includes("Note changed in another window")) throw cause;
+      const latest = await api<Note>(`/notes/${selected.value.id}`);
+      selected.value = latest;
+      saved = await api<Note>(`/notes/${selected.value.id}`, { method: "PUT", body: JSON.stringify({ ...snapshot, version: latest.version }) });
+    }
     selected.value = saved;
-    title.value = saved.title;
-    tags.value = saved.tags || [];
+    const stillOnSnapshot = title.value.trim() === snapshot.title
+      && JSON.stringify(editor.getJSON()) === snapshot.content
+      && JSON.stringify(tags.value) === JSON.stringify(snapshot.tags);
+    if (stillOnSnapshot) {
+      title.value = saved.title;
+      tags.value = saved.tags || [];
+    }
     status.value = "saved";
   } catch {
     status.value = "error";
+  } finally {
+    saveInFlight = false;
+    if (saveQueued) { saveQueued = false; scheduleSave(); }
   }
 }
 async function loadEditor() {
@@ -147,14 +180,30 @@ function nextPage() { if (page.value + 1 < totalPages.value) { page.value++; loa
 watch(query, searchLater);
 watch(size, () => { page.value = 0; loadNotes(); });
 watch(() => route.params.id, async () => { if (isEditor.value) { await nextTick(); await loadEditor(); } else { editor?.destroy(); editor = null; selected.value = null; await loadNotes(); } });
-onMounted(async () => { if (isEditor.value) { await nextTick(); await loadEditor(); } else await loadNotes(); });
-onBeforeUnmount(() => { if (saveTimer) clearTimeout(saveTimer); if (searchTimer) clearTimeout(searchTimer); editor?.destroy(); });
+function refreshVisibleList() {
+  if (!isEditor.value && document.visibilityState === "visible") void loadNotes();
+}
+onMounted(async () => {
+  if (isEditor.value) { await nextTick(); await loadEditor(); }
+  else {
+    await loadNotes();
+    refreshTimer = setInterval(refreshVisibleList, 15000);
+    window.addEventListener("focus", refreshVisibleList);
+  }
+});
+onBeforeUnmount(() => {
+  if (saveTimer) clearTimeout(saveTimer);
+  if (searchTimer) clearTimeout(searchTimer);
+  if (refreshTimer) clearInterval(refreshTimer);
+  window.removeEventListener("focus", refreshVisibleList);
+  editor?.destroy();
+});
 </script>
 
 <template>
   <section class="notes-page">
     <header class="notes-heading">
-      <div><p class="eyebrow">KNOWLEDGE BASE</p><h1>{{ isEditor ? (title || "Untitled note") : "Notes" }}</h1></div>
+      <div><p class="eyebrow">KNOWLEDGE BASE</p><h1>Notes</h1></div>
       <button class="icon-button" aria-label="Create new note" title="Create new note" @click="newNote">＋</button>
     </header>
 
@@ -195,11 +244,11 @@ onBeforeUnmount(() => { if (saveTimer) clearTimeout(saveTimer); if (searchTimer)
 .notes-page { max-width: 900px; margin: 0 auto; color: #1e2926; }
 .notes-heading, .notes-toolbar, .editor-toolbar, .notes-pagination { display: flex; align-items: center; gap: 16px; }
 .notes-heading { justify-content: space-between; margin-bottom: 30px; }
-.notes-heading h1 { margin: 8px 0 0; font-size: clamp(38px, 8vw, 64px); }
+.notes-heading h1 { margin: 8px 0 0; font-size: clamp(32px, 6vw, 48px); }
 .icon-button { width: 46px; height: 46px; border: 0; border-radius: 50%; background: #e8754e; color: white; font-size: 28px; line-height: 1; cursor: pointer; }
 .notes-toolbar { margin-bottom: 16px; }
 .search-field { flex: 1; }.search-field input, .size-field select, .tag-editor input { width: 100%; border: 1px solid #dbe2da; background: #fff; padding: 12px 14px; font: inherit; border-radius: 0; }.size-field { display:flex; gap: 8px; align-items:center; color:#75827c; white-space:nowrap; }.size-field select { width:auto; }
 .note-list { border-top: 1px solid #dbe2da; }.note-row { width: 100%; display:flex; justify-content:space-between; gap:20px; text-align:left; border:0; border-bottom:1px solid #dbe2da; padding:18px 0; background:transparent; cursor:pointer; }.note-row:hover { background:#fff; }.note-row-main { min-width:0; display:grid; gap:7px; }.note-row-main strong { font-size:18px; }.note-row-main span { color:#75827c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }.note-row-meta { display:grid; justify-items:end; gap:8px; color:#75827c; font-size:12px; white-space:nowrap; }.note-tags { display:flex; gap:5px; }.note-tags i, .note-tag { font-style:normal; color:#497d6b; background:#e7f0e9; padding:4px 8px; font-size:11px; }.notes-pagination { justify-content:space-between; padding:18px 0; color:#75827c; font-size:13px; }.notes-pagination div { display:flex; align-items:center; gap:10px; }.flat-button { border:0; background:transparent; color:#497d6b; padding:8px; cursor:pointer; }.flat-button:disabled { opacity:.35; cursor:default; }.notes-empty, .notes-error { padding:30px 0; color:#75827c; }.notes-error { color:#a64f32; }
-.editor-toolbar { border-bottom:1px solid #dbe2da; padding:0 0 12px; }.toolbar-spacer { flex:1; }.save-state { color:#75827c; font-size:13px; }.save-state.error { color:#a64f32; }.note-title-input { width:100%; border:0; outline:0; background:transparent; font:inherit; font-size:clamp(30px, 6vw, 48px); font-weight:800; letter-spacing:-2px; padding:30px 0 18px; }.tag-editor { display:flex; flex-wrap:wrap; gap:7px; align-items:center; border-bottom:1px solid #dbe2da; padding:0 0 14px; }.tag-editor input { border:0; padding:6px 0; width:180px; flex:1; min-width:150px; }.note-tag button { border:0; background:transparent; color:inherit; cursor:pointer; padding:0 0 0 5px; }.rich-editor { min-height:420px; padding:28px 0; }.rich-editor :deep(.ProseMirror) { min-height:380px; outline:0; line-height:1.7; }.rich-editor :deep(h1), .rich-editor :deep(h2), .rich-editor :deep(h3) { letter-spacing:-1px; }.rich-editor :deep(ul[data-type="taskList"]) { list-style:none; padding-left:0; }.rich-editor :deep(ul[data-type="taskList"] li) { display:flex; gap:8px; }.rich-editor :deep(ul[data-type="taskList"] li > label) { margin-top:5px; }.note-dates { color:#75827c; font-size:12px; border-top:1px solid #dbe2da; padding-top:12px; }.sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.editor-toolbar { border-bottom:1px solid #dbe2da; padding:0 0 12px; }.toolbar-spacer { flex:1; }.save-state { color:#75827c; font-size:13px; }.save-state.error { color:#a64f32; }.note-title-input { width:100%; border:0; outline:0; background:transparent; font:inherit; font-size:clamp(26px, 5vw, 40px); font-weight:800; letter-spacing:-1px; padding:22px 0 14px; }.tag-editor { display:flex; flex-wrap:wrap; gap:7px; align-items:center; border-bottom:1px solid #dbe2da; padding:0 0 14px; }.tag-editor input { border:0; padding:6px 0; width:180px; flex:1; min-width:150px; }.note-tag button { border:0; background:transparent; color:inherit; cursor:pointer; padding:0 0 0 5px; }.rich-editor { min-height:420px; padding:20px 0; }.rich-editor :deep(.ProseMirror) { min-height:380px; outline:0; line-height:1.45; }.rich-editor :deep(h1), .rich-editor :deep(h2), .rich-editor :deep(h3) { letter-spacing:-1px; }.rich-editor :deep(ul[data-type="taskList"]) { list-style:none; padding-left:0; }.rich-editor :deep(ul[data-type="taskList"] li) { display:flex; gap:8px; }.rich-editor :deep(ul[data-type="taskList"] li > label) { margin-top:5px; }.note-dates { color:#75827c; font-size:12px; border-top:1px solid #dbe2da; padding-top:12px; }.sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 @media(max-width:650px) { .notes-toolbar { align-items:stretch; flex-direction:column; }.note-row { display:grid; }.note-row-meta { display:flex; justify-content:space-between; align-items:center; }.notes-pagination { align-items:flex-start; flex-direction:column; }.notes-pagination div { width:100%; justify-content:space-between; }.notes-heading { margin-bottom:22px; } }
 </style>
