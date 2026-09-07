@@ -9,5 +9,5 @@ create table note_tag (
     primary key (note_id, tag_id)
 );
 
-create index note_user_updated_idx on note (user_id, updated_at desc, id desc);
+create index note_user_updated_id_idx on note (user_id, updated_at desc, id desc);
 create index note_user_content_text_idx on note (user_id, content_text);
