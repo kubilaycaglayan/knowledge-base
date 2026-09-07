@@ -21,6 +21,7 @@ function authenticated() {
         ><RouterLink to="/items">Items</RouterLink
         ><RouterLink to="/timeline">Timeline</RouterLink
         ><RouterLink to="/calendar">Calendar</RouterLink
+        ><RouterLink to="/notes">Notes</RouterLink
         ><RouterLink to="/reports">Reports</RouterLink
         ><RouterLink to="/imports">Imports</RouterLink>
       </nav>
