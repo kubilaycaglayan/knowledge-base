@@ -96,6 +96,24 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.find("section").text()).toContain("FOCUS TODAY");
   });
 
+  it("restores page metadata when leaving the overview", async () => {
+    document.title = "Knowledge Base";
+    const themeColor = document.createElement("meta");
+    themeColor.name = "theme-color";
+    themeColor.content = "#173d36";
+    document.head.append(themeColor);
+    const wrapper = mountDashboard();
+    await flushPromises();
+
+    expect(document.title).toBe("Overview · Knowledge Base");
+    expect(themeColor.content).toBe("#f7f8fa");
+    expect(wrapper.get('[role="timer"]').attributes("aria-live")).toBe("off");
+    wrapper.unmount();
+    expect(document.title).toBe("Knowledge Base");
+    expect(themeColor.content).toBe("#173d36");
+    themeColor.remove();
+  });
+
   it("offers every owned item for the selected timer path", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")

@@ -28,7 +28,7 @@ function authenticated() {
       </nav>
       <button v-if="token" class="ghost" @click="logout">Sign out</button>
     </header>
-    <main id="main-content" tabindex="-1">
+    <main :id="token && $route?.path === '/' ? 'main-content' : undefined" :tabindex="token && $route?.path === '/' ? -1 : undefined">
       <AuthView v-if="!token" @authenticated="authenticated" /><RouterView
         v-else
       />

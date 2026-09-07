@@ -1,5 +1,13 @@
 # Implementation roadmap
 
+## Main page visual direction
+
+- [x] Redesign only the authenticated overview as a flat, compact workspace using the installed Vercel Web Interface Guidelines.
+- [x] Preserve timer controls, item/path creation, statistics, progress, entry editing, search, and their existing API flows.
+- [x] Limit workspace tokens, navigation styling, skip link, and page metadata to the overview; provide an opt-in flat prompt appearance.
+- [x] Verify frontend regressions, production build, browser layouts at 320–2560px, keyboard interactions, and automated accessibility checks with isolated UI fixtures.
+- Further page redesigns require a separate user request after review of this direction.
+
 ## Completed foundation
 
 - [x] Monorepo layout and local environment template

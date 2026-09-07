@@ -8,6 +8,26 @@ The web has Vitest coverage for authentication success/failure, path-content fil
 
 Local verification:
 
+The overview uses an opt-in workspace shell and flat prompt appearance. Component
+regressions verify that other routes and signed-out authentication retain their
+existing shell, and that the overview restores the document title and theme color
+when unmounted. Timer/API regression coverage remains unchanged.
+
+For overview UI smoke review, use isolated fixture data or a disposable account:
+
+1. Check 320px and 390px mobile, 1024px laptop, 1440px desktop, and 2560px wide
+   layouts with empty data, populated history, an active timer, very long path/item
+   names, and a failed initial request. Confirm no horizontal page overflow.
+2. Tab to Skip to content, activate it, and verify main-content focus. Use the item
+   selector with arrow keys, Enter, and Escape. Check visible focus, selected recent
+   paths, disabled item creation, and readable labels.
+3. Start and stop a timer, search knowledge, and open a time-entry edit prompt.
+   Check the existing prompt keyboard shortcuts and visible form focus.
+4. Visit the other routes and sign out to confirm the workspace styling is absent.
+5. Run an axe WCAG 2 A/AA and 2.1 AA scan on empty, populated, and active-timer
+   overview states and the open prompt. Browser fixtures verify rendering and
+   interaction wiring; they do not replace the PostgreSQL/API smoke tests below.
+
 Smoke verification exercises both configured/unconfigured API CORS preflights on the development web origin `http://localhost:5177`; full-stack mode waits for the Caddy HTTPS endpoint before exercising the public proxy. Smoke uses isolated host ports by default (`15432` for PostgreSQL and `18081` for the API; full-stack mode adds `18080`/`18443` for the public proxy and `18000` for the HTTP convenience mapping); override `DB_DEV_PORT`, `API_DEV_PORT`, `PROXY_DEV_PORT`, `PROXY_HTTP_PORT`, or `PROXY_HTTPS_PORT` when needed. Its exit trap removes only the smoke project’s containers, volumes, local images, exact temporary Buildx builder, and `mktemp` backup directory; it does not run a host-wide Docker prune.
 
 Smoke runs require Docker Buildx and clean up their Compose project containers, Compose-managed named volumes, local service images, and uniquely named temporary Buildx builders on exit. GitHub Actions runs reuse its remote BuildKit cache; locally, set `SMOKE_BUILD_CACHE_DIR` to a caller-owned persistent directory to reuse BuildKit layers between runs. Neither cache is removed by the smoke cleanup. The script creates a unique `knowledge-base-smoke-*` project name when one is not supplied; a supplied `COMPOSE_PROJECT_NAME` must contain `smoke`. Use distinct smoke project names when running concurrent checks.
