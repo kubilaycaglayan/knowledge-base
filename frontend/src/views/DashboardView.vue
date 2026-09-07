@@ -338,7 +338,13 @@ async function syncTimerState() {
   }
 }
 
+let previousTitle = "";
+let previousThemeColor: string | null = null;
 onMounted(() => {
+  previousTitle = document.title;
+  previousThemeColor = document.querySelector('meta[name="theme-color"]')?.getAttribute("content") ?? null;
+  document.title = "Overview · Knowledge Base";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#f7f8fa");
   void load();
   timerTicker = window.setInterval(() => {
     timerNow.value = Date.now();
@@ -348,6 +354,10 @@ onMounted(() => {
   }, 2000);
 });
 onUnmounted(() => {
+  document.title = previousTitle;
+  if (previousThemeColor !== null) {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", previousThemeColor);
+  }
   if (timerTicker) window.clearInterval(timerTicker);
   if (timerSyncTicker) window.clearInterval(timerSyncTicker);
 });
@@ -355,7 +365,7 @@ onUnmounted(() => {
 
 <template>
   <div class="dashboard-page">
-    <PromptDialog ref="promptDialog" />
+    <PromptDialog ref="promptDialog" appearance="flat" />
     <div class="page-heading">
       <div>
         <p class="section-label">PERSONAL KNOWLEDGE SYSTEM</p>
@@ -374,7 +384,7 @@ onUnmounted(() => {
       </div>
       <div class="session-workspace">
         <div class="focus">
-          <strong class="timer-clock" aria-label="Elapsed session time">{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
+          <strong class="timer-clock" role="timer" aria-live="off" aria-label="Elapsed session time">{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
           <p class="timer-summary">{{ timer?.description || "Choose a path or item to begin." }}</p>
           <div class="session-actions">
             <button class="primary" @click="toggle">
@@ -423,6 +433,7 @@ onUnmounted(() => {
               autocomplete="off"
               class="workspace-select"
               menu-icon=""
+              :menu-props="{ contentClass: 'workspace-menu' }"
               multiple
               chips
               closable-chips
@@ -432,6 +443,13 @@ onUnmounted(() => {
               @focus="load(true)"
               @update:model-value="configureTimer"
             >
+              <template #item="{ props }">
+                <v-list-item v-bind="props" class="workspace-option" role="option">
+                  <template #prepend="{ isSelected }">
+                    <span class="option-check" :class="{ checked: isSelected }" aria-hidden="true">{{ isSelected ? "✓" : "" }}</span>
+                  </template>
+                </v-list-item>
+              </template>
               <template #append-inner>
                 <svg class="select-chevron" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
                   <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" />
