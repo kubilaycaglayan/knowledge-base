@@ -459,7 +459,7 @@ class KnowIntegrationTest {
     String pathId = path.getBody().get("id").asText();
 
     ResponseEntity<JsonNode> label =
-        post("/api/v1/calendar/labels", token, "{\"name\":\"Focused work\"}");
+        post("/api/v1/labels", token, "{\"name\":\"Focused work\",\"scopes\":[\"CALENDAR\",\"TIME_ENTRY\"]}");
     String labelId = label.getBody().get("id").asText();
 
     ResponseEntity<JsonNode> timerStart =
