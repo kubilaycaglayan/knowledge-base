@@ -8,25 +8,32 @@ The web has Vitest coverage for authentication success/failure, path-content fil
 
 Local verification:
 
-The overview uses an opt-in workspace shell and flat prompt appearance. Component
-regressions verify that other routes and signed-out authentication retain their
-existing shell, and that the overview restores the document title and theme color
-when unmounted. Timer/API regression coverage remains unchanged.
+All web routes and authentication share the approved overview's flat workspace
+styles. Vitest verifies the shared shell, keyboard behavior, and saved/system theme
+selection, including unavailable browser storage. Page metadata belongs to the
+application shell rather than the overview's mount/unmount lifecycle.
 
-For overview UI smoke review, use isolated fixture data or a disposable account:
+Run the isolated browser smoke review from `frontend`:
 
-1. Check 320px and 390px mobile, 1024px laptop, 1440px desktop, and 2560px wide
-   layouts with empty data, populated history, an active timer, very long path/item
-   names, and a failed initial request. Confirm no horizontal page overflow.
-2. Tab to Skip to content, activate it, and verify main-content focus. Use the item
-   selector with arrow keys, Enter, and Escape. Check visible focus, selected recent
-   paths, disabled item creation, and readable labels.
-3. Start and stop a timer, search knowledge, and open a time-entry edit prompt.
-   Check the existing prompt keyboard shortcuts and visible form focus.
-4. Visit the other routes and sign out to confirm the workspace styling is absent.
-5. Run an axe WCAG 2 A/AA and 2.1 AA scan on empty, populated, and active-timer
-   overview states and the open prompt. Browser fixtures verify rendering and
-   interaction wiring; they do not replace the PostgreSQL/API smoke tests below.
+```bash
+npm ci
+npx playwright install chromium
+npm run test:ui
+```
+
+`test:ui` starts its own local Vite preview on port 5191 and intercepts every API
+request with synthetic fixtures. It checks every route, authentication, and the
+note editor in both themes with populated, empty, long-content, dense-list, and error states.
+It checks overflow at 320, 390, 1024, 1440, and 2560 pixels, runs axe at mobile and
+desktop sizes, and captures screenshots plus `results.json` in a printed temporary
+directory. It also exercises edit dialogs, focus trapping/return, history panels,
+the item dropdown, the date picker, the skip link, and theme persistence. Set
+`BROWSER_PATH` to use an already installed Chromium executable.
+
+Review the screenshots for typography, alignment, focus, and hover/selected/error
+states. Browser fixtures verify presentation and interaction wiring; existing
+timer/component tests and PostgreSQL/API smoke tests verify domain behavior.
+Full-stack smoke also verifies that `/theme.js` is served through the HTTPS proxy.
 
 Smoke verification exercises both configured/unconfigured API CORS preflights on the development web origin `http://localhost:5177`; full-stack mode waits for the Caddy HTTPS endpoint before exercising the public proxy. Smoke uses isolated host ports by default (`15432` for PostgreSQL and `18081` for the API; full-stack mode adds `18080`/`18443` for the public proxy and `18000` for the HTTP convenience mapping); override `DB_DEV_PORT`, `API_DEV_PORT`, `PROXY_DEV_PORT`, `PROXY_HTTP_PORT`, or `PROXY_HTTPS_PORT` when needed. Its exit trap removes only the smoke project’s containers, volumes, local images, exact temporary Buildx builder, and `mktemp` backup directory; it does not run a host-wide Docker prune.
 
