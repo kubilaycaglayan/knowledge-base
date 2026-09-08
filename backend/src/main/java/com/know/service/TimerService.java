@@ -92,7 +92,6 @@ public class TimerService {
               new TimeEntry(
                   userId,
                   pathId,
-                  null,
                   Instant.now(),
                   description,
                   source == null ? TimeSource.WEB : source));
@@ -155,7 +154,7 @@ public class TimerService {
     if (!e.running())
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Only a running timer can be configured");
-    e.reconfigureRunning(pathId, null, startedAt, description);
+    e.reconfigureRunning(pathId, startedAt, description);
     replaceLabels(e.getId(), labelIds);
     if (endedAt != null) {
       e.stop(endedAt);
@@ -205,7 +204,7 @@ public class TimerService {
     if (startedAt == null || endedAt == null || endedAt.isBefore(startedAt))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range");
     validateTargets(userId, pathId, labelIds);
-    TimeEntry e = new TimeEntry(userId, pathId, null, startedAt, description, TimeSource.MANUAL);
+    TimeEntry e = new TimeEntry(userId, pathId, startedAt, description, TimeSource.MANUAL);
     e.stop(endedAt);
     entries.save(e);
     replaceLabels(e.getId(), labelIds);
@@ -233,7 +232,7 @@ public class TimerService {
     if (e.running())
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Running timers must be stopped before editing");
-    e.edit(pathId, null, startedAt, endedAt, description, source);
+    e.edit(pathId, startedAt, endedAt, description, source);
     entries.save(e);
     replaceLabels(e.getId(), labelIds);
     return view(e);

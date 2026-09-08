@@ -186,7 +186,6 @@ public class PathController {
     return Activity.session(
         entry.getUserId(),
         pathId,
-        null,
         entry.getId(),
         "Tracked " + seconds + " seconds",
         entry.getDescription(),

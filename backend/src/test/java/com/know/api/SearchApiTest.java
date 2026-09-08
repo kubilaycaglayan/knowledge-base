@@ -28,7 +28,6 @@ import org.springframework.test.web.servlet.MockMvc;
 class SearchApiTest {
   @Autowired MockMvc mvc;
   @MockBean PathRepository paths;
-  @MockBean ItemRepository items;
   @MockBean NoteRepository notes;
   @MockBean ActivityRepository activities;
 
@@ -50,9 +49,6 @@ class SearchApiTest {
         .andExpect(status().isOk());
     verify(paths)
         .findAllByUserIdAndNameContainingIgnoreCase(
-            any(), eq("java"), argThat(page -> page.getPageSize() == 100));
-    verify(items)
-        .findAllByUserIdAndTitleContainingIgnoreCase(
             any(), eq("java"), argThat(page -> page.getPageSize() == 100));
     verify(notes)
         .findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentContainingIgnoreCase(

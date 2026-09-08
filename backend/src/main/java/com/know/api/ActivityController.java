@@ -22,8 +22,7 @@ public class ActivityController {
       @RequestParam(required = false) Instant from,
       @RequestParam(required = false) Instant to,
       @RequestParam(required = false) UUID pathId,
-      @RequestParam(required = false) UUID itemId,
       @RequestParam(required = false) ActivityType type) {
-    return service.filteredActivities(UUID.fromString(a.getName()), from, to, pathId, itemId, type);
+    return service.filteredActivities(UUID.fromString(a.getName()), from, to, pathId, type);
   }
 }

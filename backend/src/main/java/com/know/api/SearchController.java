@@ -13,17 +13,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class SearchController {
   private static final int RESULT_LIMIT = 100;
   private final PathRepository paths;
-  private final ItemRepository items;
   private final NoteRepository notes;
   private final ActivityRepository activities;
 
   public SearchController(
       PathRepository paths,
-      ItemRepository items,
       NoteRepository notes,
       ActivityRepository activities) {
     this.paths = paths;
-    this.items = items;
     this.notes = notes;
     this.activities = activities;
   }
@@ -42,9 +39,6 @@ public class SearchController {
     paths
         .findAllByUserIdAndNameContainingIgnoreCase(user, query, page)
         .forEach(p -> result.add(new Result("PATH", p.getId(), p.getName(), p.getDescription())));
-    items
-        .findAllByUserIdAndTitleContainingIgnoreCase(user, query, page)
-        .forEach(i -> result.add(new Result("ITEM", i.getId(), i.getTitle(), i.getDescription())));
     notes
         .findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentContainingIgnoreCase(
             user, query, user, query, page)

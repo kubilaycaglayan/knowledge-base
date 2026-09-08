@@ -66,7 +66,7 @@ class TimerServiceEdgeTest {
   void stoppingAnAlreadyStoppedEntryIsIdempotentButForeignEntriesAreHidden() {
     UUID user = UUID.randomUUID();
     UUID id = UUID.randomUUID();
-    TimeEntry stopped = new TimeEntry(user, null, null, Instant.now().minusSeconds(20), "done", TimeSource.MANUAL);
+    TimeEntry stopped = new TimeEntry(user, null, Instant.now().minusSeconds(20), "done", TimeSource.MANUAL);
     stopped.stop(stopped.getStartedAt().plusSeconds(10));
     when(entries.findById(id)).thenReturn(Optional.of(stopped));
     when(entryLabels.findAllByIdTimeEntryId(stopped.getId())).thenReturn(List.of());
@@ -75,7 +75,7 @@ class TimerServiceEdgeTest {
 
     assertFalse(view.running());
     verify(entries, never()).save(any());
-    when(entries.findById(id)).thenReturn(Optional.of(new TimeEntry(UUID.randomUUID(), null, null, Instant.now(), "foreign", TimeSource.WEB)));
+    when(entries.findById(id)).thenReturn(Optional.of(new TimeEntry(UUID.randomUUID(), null, Instant.now(), "foreign", TimeSource.WEB)));
     assertThrows(ResponseStatusException.class, () -> service().stop(user, id));
   }
 
@@ -99,7 +99,7 @@ class TimerServiceEdgeTest {
   void editingOrRemovingRunningEntriesIsRejectedWithoutSaving() {
     UUID user = UUID.randomUUID();
     UUID id = UUID.randomUUID();
-    TimeEntry running = new TimeEntry(user, null, null, Instant.now().minusSeconds(20), "live", TimeSource.WEB);
+    TimeEntry running = new TimeEntry(user, null, Instant.now().minusSeconds(20), "live", TimeSource.WEB);
     when(entries.findByIdAndUserId(id, user)).thenReturn(Optional.of(running));
 
     assertThrows(

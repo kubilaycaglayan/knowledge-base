@@ -15,9 +15,6 @@ public class Note {
   @Column(name = "path_id")
   private UUID pathId;
 
-  @Column(name = "item_id")
-  private UUID itemId;
-
   @Column(name = "item_event_id")
   private UUID activityId;
 
@@ -49,10 +46,9 @@ public class Note {
   protected Note() {}
 
   public Note(
-      UUID userId, UUID pathId, UUID itemId, UUID activityId, String title, String content) {
+      UUID userId, UUID pathId, UUID activityId, String title, String content) {
     this.userId = userId;
     this.pathId = pathId;
-    this.itemId = itemId;
     this.activityId = activityId;
     this.title = title;
     this.content = content;
@@ -60,9 +56,9 @@ public class Note {
   }
 
   public Note(
-      UUID userId, UUID pathId, UUID itemId, UUID activityId, UUID timeEntryId,
+      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
       String title, String content) {
-    this(userId, pathId, itemId, activityId, title, content);
+    this(userId, pathId, activityId, title, content);
     this.timeEntryId = timeEntryId;
   }
 
@@ -72,10 +68,6 @@ public class Note {
 
   public UUID getPathId() {
     return pathId;
-  }
-
-  public UUID getItemId() {
-    return itemId;
   }
 
   public UUID getActivityId() {
