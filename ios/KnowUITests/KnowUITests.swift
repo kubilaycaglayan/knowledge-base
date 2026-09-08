@@ -38,30 +38,9 @@ final class KnowUITests: XCTestCase {
 
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.buttons["tab.items"].waitForExistence(timeout: 5))
-        app.buttons["tab.items"].tap()
-        XCTAssertTrue(app.buttons["items.add"].waitForExistence(timeout: 5))
-        app.buttons["items.add"].tap()
-        XCTAssertTrue(app.textFields["items.title"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["items.type"].exists)
-        XCTAssertTrue(app.buttons["items.save"].exists)
-
-        app.terminate()
-        app.launch()
-        XCTAssertTrue(app.buttons["tab.items"].waitForExistence(timeout: 5))
-        app.buttons["tab.items"].tap()
-        XCTAssertTrue(app.staticTexts["UI Test Item"].waitForExistence(timeout: 5))
-        app.staticTexts["UI Test Item"].tap()
-        XCTAssertTrue(app.buttons["item.note.add"].waitForExistence(timeout: 5))
-        app.buttons["item.note.add"].tap()
-        XCTAssertTrue(app.textFields["item.note.title"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["item.note.save"].exists)
-
-        app.terminate()
-        app.launch()
         XCTAssertTrue(app.buttons["tab.today"].waitForExistence(timeout: 5))
         app.buttons["tab.today"].tap()
         XCTAssertTrue(app.buttons["timer.path"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timer.item"].exists)
+        XCTAssertTrue(app.buttons["timer.label"].exists)
     }
 }

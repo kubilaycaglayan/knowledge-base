@@ -10,22 +10,15 @@ struct Path: Codable, Identifiable {
     let status: String
 }
 
-struct Item: Codable, Identifiable {
+struct DailyLabel: Codable, Identifiable {
     let id: UUID
-    let title: String
-    let type: String
-    let description: String?
-    let source: String?
-    let status: String
-    let progress: Int
-    let pathIds: [UUID]
-    let tags: [String]
+    let name: String
+    let color: String?
 }
 
 struct Note: Codable, Identifiable {
     let id: UUID
     let pathId: UUID?
-    let itemId: UUID?
     let activityId: UUID?
     let timeEntryId: UUID?
     let title: String
@@ -44,8 +37,7 @@ struct Activity: Codable, Identifiable {
 struct TimerState: Codable, Identifiable {
     let id: UUID
     let pathId: UUID?
-    let itemId: UUID?
-    let itemIds: [UUID]
+    let labelIds: [UUID]
     let startedAt: String
     let endedAt: String?
     let description: String?
@@ -54,16 +46,14 @@ struct TimerState: Codable, Identifiable {
 
 struct TimerRequest: Codable {
     let pathId: String?
-    let itemId: String?
-    let itemIds: [String]?
+    let labelIds: [String]
     let description: String
     let source: String
 }
 
 struct TimerUpdateRequest: Codable {
     let pathId: String?
-    let itemId: String?
-    let itemIds: [String]?
+    let labelIds: [String]
     let startedAt: String
     let description: String?
 }
@@ -73,14 +63,9 @@ struct PathRequest: Codable {
     let description: String?
 }
 
-struct ItemRequest: Codable {
-    let title: String
-    let type: String
-    let description: String?
-    let source: String?
-    let status: String?
-    let pathIds: [UUID]
-    let tags: [String]
+struct LabelRequest: Codable {
+    let name: String
+    let color: String?
 }
 
 struct Statistics: Codable {
@@ -88,19 +73,9 @@ struct Statistics: Codable {
     let weekSeconds: Int64
     let monthSeconds: Int64
     let todayByPath: [String: Int64]
-    let todayByItem: [String: Int64]
+    let todayByLabel: [String: Int64]
     let weekByPath: [String: Int64]
-    let weekByItem: [String: Int64]
-    let completedItems: Int64
-    let activeItems: Int64
-    let recentProgressChanges: [ProgressChange]
-}
-
-struct ProgressChange: Codable {
-    let itemId: UUID
-    let previousProgress: Int
-    let newProgress: Int
-    let changedAt: String
+    let weekByLabel: [String: Int64]
 }
 
 struct AuthResponse: Codable {
@@ -108,12 +83,6 @@ struct AuthResponse: Codable {
     let userId: UUID
     let email: String
     let displayName: String
-}
-
-func itemsForTimer(_ path: UUID?, from items: [Item]) -> [Item] {
-    // A timer can combine any owned item with any active path. Organization
-    // memberships remain useful for browsing, but are not a timer constraint.
-    items
 }
 
 func isUITesting(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
@@ -254,7 +223,7 @@ struct APIClient {
 @MainActor final class AppModel: ObservableObject {
     @Published var token = KeychainTokenStore.read()
     @Published var paths: [Path] = []
-    @Published var items: [Item] = []
+    @Published var labels: [DailyLabel] = []
     @Published var notes: [Note] = []
     @Published var activities: [Activity] = []
     @Published var timer: TimerState?
@@ -277,17 +246,11 @@ struct APIClient {
             paths = [
                 Path(id: pathId, name: "UI Test Path", description: "Fixture path", status: "ACTIVE")
             ]
-            items = [
-                Item(
+            labels = [
+                DailyLabel(
                     id: UUID(uuidString: "00000000-0000-4000-8000-000000000002")!,
-                    title: "UI Test Item",
-                    type: "COURSE",
-                    description: nil,
-                    source: nil,
-                    status: "PLANNED",
-                    progress: 0,
-                    pathIds: [pathId],
-                    tags: []
+                    name: "UI Test Label",
+                    color: "#2878D5"
                 )
             ]
         }
@@ -331,12 +294,12 @@ struct APIClient {
         defer { isLoading = false }
         do {
             async let p: [Path] = api.request("/paths", token: token)
-            async let i: [Item] = api.request("/items", token: token)
+            async let l: [DailyLabel] = api.request("/calendar/labels", token: token)
             async let n: [Note] = api.request("/notes", token: token)
             async let a: [Activity] = api.request("/activities", token: token)
             async let s: Statistics = api.request("/statistics", token: token)
             paths = try await p
-            items = try await i
+            labels = try await l
             notes = try await n
             activities = try await a
             stats = try await s
@@ -346,7 +309,7 @@ struct APIClient {
         }
     }
 
-    func toggleTimer(pathId: UUID? = nil, itemId: UUID? = nil) async {
+    func toggleTimer(pathId: UUID? = nil, labelId: UUID? = nil) async {
         guard let token else { return }
         do {
             if timer != nil {
@@ -356,8 +319,7 @@ struct APIClient {
                 let data = try JSONEncoder().encode(
                     TimerRequest(
                         pathId: pathId?.uuidString,
-                        itemId: itemId?.uuidString,
-                        itemIds: itemId.map { [$0.uuidString] },
+                        labelIds: labelId.map { [$0.uuidString] } ?? [],
                         description: "iOS session",
                         source: "IOS"
                     )
@@ -371,7 +333,7 @@ struct APIClient {
 
     func configureTimer(
         pathId: UUID?,
-        itemId: UUID?,
+        labelId: UUID?,
         startedAt: Date,
         description: String?
     ) async {
@@ -381,8 +343,7 @@ struct APIClient {
             let data = try JSONEncoder().encode(
                 TimerUpdateRequest(
                     pathId: pathId?.uuidString,
-                    itemId: itemId?.uuidString,
-                    itemIds: itemId.map { [$0.uuidString] },
+                    labelIds: labelId.map { [$0.uuidString] } ?? [],
                     startedAt: formatter.string(from: startedAt),
                     description: description
                 )
@@ -408,37 +369,6 @@ struct APIClient {
         }
     }
 
-    func updateProgress(itemId: UUID, value: Int) async {
-        guard let token else { return }
-        do {
-            let body = try JSONEncoder().encode(["progress": max(0, min(100, value))])
-            let _: Item = try await api.request(
-                "/items/\(itemId)/progress",
-                method: "POST",
-                body: body,
-                token: token
-            )
-            await refresh()
-        } catch {
-            handle(error, "Could not update progress.")
-        }
-    }
-
-    func createNote(itemId: UUID, title: String, content: String) async {
-        guard let token else { return }
-        do {
-            let body = try JSONEncoder().encode([
-                "itemId": itemId.uuidString,
-                "title": title,
-                "content": content,
-            ])
-            let _: Note = try await api.request("/notes", method: "POST", body: body, token: token)
-            await refresh()
-        } catch {
-            handle(error, "Could not save the note.")
-        }
-    }
-
     func createPath(name: String, description: String) async {
         guard let token else { return }
         do {
@@ -452,30 +382,16 @@ struct APIClient {
         }
     }
 
-    func createItem(
-        title: String,
-        type: String,
-        description: String,
-        source: String,
-        pathIds: [UUID]
-    ) async {
+    func createLabel(name: String) async {
         guard let token else { return }
         do {
             let body = try JSONEncoder().encode(
-                ItemRequest(
-                    title: title,
-                    type: type,
-                    description: description.isEmpty ? nil : description,
-                    source: source.isEmpty ? nil : source,
-                    status: nil,
-                    pathIds: pathIds,
-                    tags: []
-                )
+                LabelRequest(name: name.trimmingCharacters(in: .whitespacesAndNewlines), color: nil)
             )
-            let _: Item = try await api.request("/items", method: "POST", body: body, token: token)
+            let _: DailyLabel = try await api.request("/calendar/labels", method: "POST", body: body, token: token)
             await refresh()
         } catch {
-            handle(error, "Could not create the item.")
+            handle(error, "Could not create the label.")
         }
     }
 
@@ -483,7 +399,7 @@ struct APIClient {
         token = nil
         KeychainTokenStore.delete()
         paths = []
-        items = []
+        labels = []
         notes = []
         activities = []
         timer = nil
@@ -535,7 +451,6 @@ struct MainView: View {
         TabView {
             DashboardView().accessibilityIdentifier("tab.today").tabItem { Label("Today", systemImage: "sparkles") }
             PathsView().accessibilityIdentifier("tab.paths").tabItem { Label("Paths", systemImage: "point.3.connected.trianglepath.dotted") }
-            ItemsView().accessibilityIdentifier("tab.items").tabItem { Label("Items", systemImage: "books.vertical") }
             TimelineView().accessibilityIdentifier("tab.timeline").tabItem { Label("Timeline", systemImage: "clock.arrow.circlepath") }
         }.task { await model.refresh() }
     }
@@ -543,19 +458,16 @@ struct MainView: View {
 struct DashboardView: View {
     @EnvironmentObject var model: AppModel
     @State private var selectedPath = ""
-    @State private var selectedItem = ""
+    @State private var selectedLabel = ""
     @State private var timerStartedAt = Date()
-    private var timerItems: [Item] {
-        itemsForTimer(UUID(uuidString: selectedPath), from: model.items)
-    }
     private func syncTimerSelection() {
         guard let current = model.timer else { return }
         selectedPath = current.pathId?.uuidString ?? ""
-        selectedItem = current.itemId?.uuidString ?? ""
+        selectedLabel = current.labelIds.first?.uuidString ?? ""
         if let date = ISO8601DateFormatter().date(from: current.startedAt) { timerStartedAt = date }
     }
     private func pathName(_ id: String) -> String { model.paths.first(where: { $0.id.uuidString == id })?.name ?? id }
-    private func itemName(_ id: String) -> String { model.items.first(where: { $0.id.uuidString == id })?.title ?? id }
+    private func labelName(_ id: String) -> String { model.labels.first(where: { $0.id.uuidString == id })?.name ?? id }
     var body: some View {
         NavigationStack {
             List {
@@ -565,7 +477,6 @@ struct DashboardView: View {
                         LabeledContent("Today", value: formatSeconds(stats.todaySeconds))
                         LabeledContent("This week", value: formatSeconds(stats.weekSeconds))
                         LabeledContent("This month", value: formatSeconds(stats.monthSeconds))
-                        LabeledContent("Completed items", value: "\(stats.completedItems)")
                     }
                     if !stats.weekByPath.isEmpty {
                         Section("This week by path") {
@@ -574,10 +485,10 @@ struct DashboardView: View {
                             }
                         }
                     }
-                    if !stats.weekByItem.isEmpty {
-                        Section("This week by item") {
-                            ForEach(stats.weekByItem.sorted(by: { $0.key < $1.key }), id: \.key) { entry in
-                                LabeledContent(itemName(entry.key), value: formatSeconds(entry.value))
+                    if !stats.weekByLabel.isEmpty {
+                        Section("This week by label") {
+                            ForEach(stats.weekByLabel.sorted(by: { $0.key < $1.key }), id: \.key) { entry in
+                                LabeledContent(labelName(entry.key), value: formatSeconds(entry.value))
                             }
                         }
                     }
@@ -592,18 +503,13 @@ struct DashboardView: View {
                     }
                     .accessibilityIdentifier("timer.path")
 
-                    Picker("Item", selection: $selectedItem) {
-                        Text("No item").tag("")
-                        ForEach(timerItems) { item in
-                            Text(item.title).tag(item.id.uuidString)
+                    Picker("Label", selection: $selectedLabel) {
+                        Text("No label").tag("")
+                        ForEach(model.labels) { label in
+                            Text(label.name).tag(label.id.uuidString)
                         }
                     }
-                    .accessibilityIdentifier("timer.item")
-                    .onChange(of: selectedPath) { _, _ in
-                        if !timerItems.contains(where: { $0.id.uuidString == selectedItem }) {
-                            selectedItem = ""
-                        }
-                    }
+                    .accessibilityIdentifier("timer.label")
 
                     if model.timer != nil {
                         DatePicker(
@@ -617,7 +523,7 @@ struct DashboardView: View {
                             Task {
                                 await model.configureTimer(
                                     pathId: UUID(uuidString: selectedPath),
-                                    itemId: UUID(uuidString: selectedItem),
+                                    labelId: UUID(uuidString: selectedLabel),
                                     startedAt: timerStartedAt,
                                     description: model.timer?.description
                                 )
@@ -630,7 +536,7 @@ struct DashboardView: View {
                         Task {
                             await model.toggleTimer(
                                 pathId: UUID(uuidString: selectedPath),
-                                itemId: UUID(uuidString: selectedItem)
+                                labelId: UUID(uuidString: selectedLabel)
                             )
                         }
                     }
@@ -655,7 +561,7 @@ struct DashboardView: View {
             .refreshable { await model.refresh() }
             .onAppear { syncTimerSelection() }
             .onChange(of: model.timer?.pathId) { _, _ in syncTimerSelection() }
-            .onChange(of: model.timer?.itemId) { _, _ in syncTimerSelection() }
+            .onChange(of: model.timer?.labelIds) { _, _ in syncTimerSelection() }
             .onChange(of: model.timer?.startedAt) { _, value in
                 if let value, let date = ISO8601DateFormatter().date(from: value) {
                     timerStartedAt = date
@@ -714,181 +620,6 @@ struct PathsView: View {
                 }
             }
         }
-    }
-}
-
-struct ItemsView: View {
-    @EnvironmentObject var model: AppModel
-    @State private var adding = false
-    @State private var title = ""
-    @State private var type = "CUSTOM"
-    @State private var description = ""
-    @State private var source = ""
-    @State private var selectedPaths = Set<UUID>()
-    var body: some View {
-        NavigationStack {
-            List {
-                if model.items.isEmpty && !model.isLoading {
-                    ContentUnavailableView("No items yet", "Add a resource to start tracking progress.")
-                }
-                ForEach(model.items) { item in
-                    NavigationLink { ItemDetailView(item: item) } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(item.title).font(.headline)
-                                Text(item.type).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text("\(item.progress)%").foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Items")
-            .toolbar { Button("Add item") { adding = true }.accessibilityIdentifier("items.add") }
-            .sheet(isPresented: $adding) {
-                NavigationStack {
-                    Form {
-                        TextField("Title", text: $title).accessibilityIdentifier("items.title")
-                        TextField("Source", text: $source).accessibilityIdentifier("items.source")
-                        Picker("Type", selection: $type) {
-                            ForEach(
-                                [
-                                    "CUSTOM",
-                                    "BOOK",
-                                    "COURSE",
-                                    "PROJECT",
-                                    "ARTICLE",
-                                    "MOVIE",
-                                    "EXERCISE",
-                                    "HOBBY",
-                                    "VIDEO",
-                                    "PAPER",
-                                ],
-                                id: \.self
-                            ) { value in
-                                Text(value.capitalized).tag(value)
-                            }
-                        }
-                        .accessibilityIdentifier("items.type")
-                        Section("Active paths") {
-                            ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in
-                                Toggle(
-                                    path.name,
-                                    isOn: Binding(
-                                        get: { selectedPaths.contains(path.id) },
-                                        set: { isSelected in
-                                            if isSelected {
-                                                selectedPaths.insert(path.id)
-                                            } else {
-                                                selectedPaths.remove(path.id)
-                                            }
-                                        }
-                                    )
-                                )
-                            }
-                        }
-                        TextEditor(text: $description).frame(minHeight: 100).accessibilityIdentifier("items.description")
-                    }
-                    .navigationTitle("New item")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { adding = false } }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Save") {
-                                Task {
-                                    await model.createItem(
-                                        title: title,
-                                        type: type,
-                                        description: description,
-                                        source: source,
-                                        pathIds: Array(selectedPaths)
-                                    )
-                                    title = ""
-                                    description = ""
-                                    source = ""
-                                    type = "CUSTOM"
-                                    selectedPaths.removeAll()
-                                    adding = false
-                                }
-                            }
-                            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .accessibilityIdentifier("items.save")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-struct ItemDetailView: View {
-    @EnvironmentObject var model: AppModel
-    let item: Item
-    @State private var noteTitle = ""
-    @State private var noteContent = ""
-    @State private var addingNote = false
-    var current: Item { model.items.first(where: { $0.id == item.id }) ?? item }
-    var otherTimerRunning: Bool { model.timer != nil && model.timer?.itemId != item.id }
-    var body: some View {
-        List {
-            Section("Progress") {
-                HStack {
-                    Text("\(current.progress)%")
-                    Spacer()
-                    Button("−") { Task { await model.updateProgress(itemId: item.id, value: current.progress - 5) } }
-                    Button("+") { Task { await model.updateProgress(itemId: item.id, value: current.progress + 5) } }
-                }.buttonStyle(.bordered)
-                ProgressView(value: Double(current.progress), total: 100)
-                if otherTimerRunning {
-                    Text("Another item is being tracked").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Button(model.timer?.itemId == item.id ? "Stop tracking" : "Track this item") {
-                        Task { await model.toggleTimer(itemId: item.id) }
-                    }
-                    .accessibilityIdentifier("item.timer.toggle")
-                }
-            }
-            Section("Notes") {
-                ForEach(model.notes.filter { $0.itemId == item.id }) { note in
-                    VStack(alignment: .leading) {
-                        Text(note.title).font(.headline)
-                        Text(note.content).font(.subheadline)
-                    }
-                }
-                Button("Add note") { addingNote = true }.accessibilityIdentifier("item.note.add")
-            }
-        }
-        .navigationTitle(item.title)
-        .sheet(isPresented: $addingNote) {
-            NavigationStack {
-                Form {
-                    TextField("Title", text: $noteTitle).accessibilityIdentifier("item.note.title")
-                    TextEditor(text: $noteContent)
-                        .frame(minHeight: 140)
-                        .accessibilityIdentifier("item.note.content")
-                }
-                    .navigationTitle("New note")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { addingNote = false } }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Save") {
-                                Task {
-                                    await model.createNote(
-                                        itemId: item.id,
-                                        title: noteTitle,
-                                        content: noteContent
-                                    )
-                                    noteTitle = ""
-                                    noteContent = ""
-                                    addingNote = false
-                                }
-                            }
-                            .disabled(noteTitle.isEmpty || noteContent.isEmpty)
-                            .accessibilityIdentifier("item.note.save")
-                        }
-                    }
-            }
-        }
-        .task { await model.refresh() }
     }
 }
 
