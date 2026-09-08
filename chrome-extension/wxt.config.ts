@@ -4,6 +4,7 @@ const apiOrigin = process.env.KNOW_API_BASE
   ? new URL(process.env.KNOW_API_BASE).origin
   : "http://localhost:8080";
 const iconVariant = process.env.KNOW_EXTENSION_ENV === "production" ? "production" : "development";
+const extensionKey = process.env.CHROME_EXTENSION_KEY?.trim();
 
 if (process.env.KNOW_EXTENSION_ENV === "production") {
   const configuredApi = new URL(process.env.KNOW_API_BASE || "");
@@ -25,6 +26,7 @@ export default defineConfig({
     },
     permissions: ["storage", "identity"],
     host_permissions: [`${apiOrigin}/*`, "https://app.clockify.me/reports/detailed*"],
+    ...(extensionKey ? { key: extensionKey } : {}),
     options_ui: {
       open_in_tab: true,
     },
