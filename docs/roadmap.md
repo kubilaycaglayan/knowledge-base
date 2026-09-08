@@ -2,7 +2,7 @@
 
 - [x] Establish the approved flat Overview design.
 - [x] Extend its shared shell, typography, controls, and flat sections to Sessions,
-  Paths, Items, Timeline, Calendar, Notes, Reports, Imports, and authentication.
+  Paths, session labels, Timeline, Calendar, Notes, Reports, Imports, and authentication.
 - [x] Add persistent light/dark selection, system default, early theme bootstrap,
   and theme-aware dropdowns, dialogs, date picker, and charts.
 - [x] Add repeatable browser review for all routes and both themes, keyboard

@@ -102,7 +102,7 @@ onMounted(async () => {
       A chronological record of what you chose to spend time on.
     </p>
     <form class="filters card" @submit.prevent="load">
-      <div class="item-actions">
+      <div class="row-actions">
         <button type="button" class="text-button" @click="setRange(7)">
           Last 7 days</button
         ><button type="button" class="text-button" @click="setRange(30)">
@@ -165,7 +165,7 @@ onMounted(async () => {
               rows="3"
               aria-label="Activity note content"
             ></textarea>
-            <div class="item-actions">
+            <div class="row-actions">
               <button class="primary" @click="saveActivityNote">
                 Save note</button
               ><button class="text-button" @click="closeNote">Cancel</button>

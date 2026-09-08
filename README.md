@@ -11,7 +11,7 @@ Knowledge Base is a personal knowledge, learning-history, and activity tracker. 
 3. For a clean production-shaped rebuild, run `./scripts/deploy-production-no-cache.sh`. It preserves the database volume.
 4. For Chrome extension development from a separate user machine, run `source ~/.profile && ./scripts/start-development.sh` on Ubuntu; it starts the API, WXT, and other development services. From the user machine, create an SSH tunnel with `ssh -N -L 8080:127.0.0.1:8080 -L 43127:127.0.0.1:43127 <ubuntu-user>@<ubuntu-server>` and continuously sync `.output/chrome-mv3-dev` to the user machine. Load that synced directory as an unpacked extension in Chrome. WXT provides HMR for extension pages and reloads the extension when background changes. Sign in in the popup; the tunnel makes the existing `http://localhost:8080/api/v1` default reach the Ubuntu API.
 
-Run the shared backend smoke test with `./scripts/run-smoke-tests.sh` after setting the required environment variables. It starts the API and database, exercises authentication, paths, items, tags, progress, notes, timers, search, timeline filtering, and statistics, then stops the stack.
+Run the shared backend smoke test with `./scripts/run-smoke-tests.sh` after setting the required environment variables. It starts the API and database, exercises authentication, paths, labels, notes, timers, search, timeline filtering, and statistics, then stops the stack.
 
 ## Scripts
 
@@ -23,7 +23,7 @@ Run the shared backend smoke test with `./scripts/run-smoke-tests.sh` after sett
 
 Google sign-in setup requires a Google OAuth client configured for the published extension. Add the extension redirect URI returned by `chrome.identity.getRedirectURL()` (the `https://<extension-id>.chromiumapp.org/` form) to that client, set the same client ID as `GOOGLE_CLIENT_ID`, and add the exact production extension origin (`chrome-extension://<extension-id>`) to `CORS_ORIGINS`. The extension uses Chrome's native identity flow and stores only the Knowledge Base JWT returned by the API.
 
-The API applies Flyway migrations and validates the JPA schema; Hibernate never mutates production schema. PostgreSQL is private to the Compose network. Production uses Cloudflare Tunnel for public HTTPS and routes the tunnel to the private Caddy origin. The current usable slice includes account auth, paths, tagged multi-path items, progress history, notes, optional calendar day records and labels, activity timeline, timers, searchable history, and statistics.
+The API applies Flyway migrations and validates the JPA schema; Hibernate never mutates production schema. PostgreSQL is private to the Compose network. Production uses Cloudflare Tunnel for public HTTPS and routes the tunnel to the private Caddy origin. The current usable slice includes account auth, paths, reusable labels on sessions, notes, optional calendar day records and labels, activity timeline, timers, searchable history, and statistics.
 
 ## Environment variables
 
