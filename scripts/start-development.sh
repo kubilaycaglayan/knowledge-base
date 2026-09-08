@@ -29,7 +29,11 @@ export COMPOSE_PROJECT_NAME="knowledge-base-dev"
 export DB_DEV_PORT="${DB_DEV_PORT:-15432}"
 export API_DEV_PORT="${API_DEV_PORT:-8080}"
 export PROXY_DEV_PORT="${PROXY_DEV_PORT:-3000}"
-compose_args=(--project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml)
+compose_args=(--project-name knowledge-base-dev)
+if [[ -f "$development_env_file" ]]; then
+  compose_args+=(--env-file "$development_env_file")
+fi
+compose_args+=(-f docker-compose.yml -f docker-compose.dev.yml)
 
 dev_db_volume="knowledge-base-dev_know-db"
 if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
@@ -38,11 +42,14 @@ if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Recreate only the web container so npm ci runs when package.json/package-lock.json
-# changes. The named frontend node_modules volume is disposable; the protected
+# Recreate the API when its environment changes (especially CORS_ORIGINS), and
+# the web container so npm ci runs when package.json/package-lock.json changes.
+# The named frontend node_modules volume is disposable; the protected
 # development database volume is never recreated here.
-docker compose "${compose_args[@]}" up -d --force-recreate web
+docker compose "${compose_args[@]}" up -d --force-recreate api web
 docker compose "${compose_args[@]}" ps
+echo
+echo "Development API CORS origins: ${CORS_ORIGINS:-http://localhost:5177}"
 echo
 echo "Compose service/image names:"
 docker compose "${compose_args[@]}" images
