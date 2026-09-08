@@ -29,8 +29,6 @@ import org.springframework.test.web.servlet.MockMvc;
 class PathAuthorizationApiTest {
   @Autowired MockMvc mvc;
   @MockBean PathRepository paths;
-  @MockBean PathItemRepository pathItems;
-  @MockBean ItemRepository items;
   @MockBean ActivityRepository activities;
   @MockBean TimeEntryRepository timeEntries;
   @MockBean PasswordEncoder encoder;
@@ -143,7 +141,6 @@ class PathAuthorizationApiTest {
     UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID();
     Path path = new Path(owner, "Learning", null);
     when(paths.findByIdAndUserId(pathId, owner)).thenReturn(Optional.of(path));
-    when(pathItems.findItemIds(pathId)).thenReturn(List.of());
     when(timeEntries.findAllByUserIdAndPathIdOrderByStartedAtDesc(owner, pathId))
         .thenReturn(
             List.of(
@@ -165,13 +162,12 @@ class PathAuthorizationApiTest {
   }
 
   @Test
-  void pathSummaryExcludesTimeExplicitlyTrackedOnAnotherPath() throws Exception {
+  void pathSummaryOnlyIncludesTimeTrackedOnThePath() throws Exception {
     UUID owner = UUID.randomUUID(),
         pathId = UUID.randomUUID(),
         otherPathId = UUID.randomUUID(),
         itemId = UUID.randomUUID();
     Path path = new Path(owner, "Learning", null);
-    Item item = new Item(owner, "Shared item", ItemType.PROJECT, null);
     TimeEntry selected =
         new TimeEntry(
             owner,
@@ -200,28 +196,14 @@ class PathAuthorizationApiTest {
             TimeSource.WEB);
     itemOnly.stop(itemOnly.getStartedAt().plusSeconds(60));
     when(paths.findByIdAndUserId(pathId, owner)).thenReturn(Optional.of(path));
-    when(pathItems.findItemIds(pathId)).thenReturn(List.of(itemId));
-    when(items.findAllByUserIdAndIdIn(owner, List.of(itemId))).thenReturn(List.of(item));
     when(timeEntries.findAllByUserIdAndPathIdOrderByStartedAtDesc(owner, pathId))
         .thenReturn(List.of(selected));
-    when(timeEntries.findRecentForPathAndItems(
-            eq(owner),
-            eq(pathId),
-            eq(List.of(itemId)),
-            any(org.springframework.data.domain.Pageable.class)))
-        .thenReturn(List.of(selected, itemOnly));
     when(activities.findTop50ByUserIdAndPathIdOrderByOccurredAtDesc(owner, pathId))
-        .thenReturn(List.of());
-    when(activities.findRecentForPathAndItems(
-            eq(owner),
-            eq(pathId),
-            eq(List.of(itemId)),
-            any(org.springframework.data.domain.Pageable.class)))
         .thenReturn(List.of());
     var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
 
     mvc.perform(get("/api/v1/paths/" + pathId + "/summary").with(authentication(auth)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.trackedSeconds").value(180));
+        .andExpect(jsonPath("$.trackedSeconds").value(120));
   }
 }

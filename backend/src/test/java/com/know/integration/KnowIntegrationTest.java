@@ -794,21 +794,14 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
   }
 
-  // Criteria: path summary (tracked time, items, activity)
+  // Criteria: path summary (tracked time and activity)
 
   @Test
-  void pathSummaryIncludesTrackedTimeAndItems() {
+  void pathSummaryIncludesTrackedTimeWithoutRemovedItemFields() {
     String token = freshToken();
     ResponseEntity<JsonNode> path =
         post("/api/v1/paths", token, "{\"name\":\"Summary Path\",\"description\":null}");
     String pathId = path.getBody().get("id").asText();
-
-    ResponseEntity<JsonNode> item =
-        post(
-            "/api/v1/items",
-            token,
-            "{\"title\":\"Summary Item\",\"pathIds\":[\"" + pathId + "\"]}");
-    String itemId = item.getBody().get("id").asText();
 
     // Track some time for this path
     String start = Instant.now().minus(30, ChronoUnit.MINUTES).toString();
@@ -829,7 +822,7 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.OK, summary.getStatusCode());
     assertTrue(
         summary.getBody().get("trackedSeconds").asLong() > 0, "tracked seconds should be positive");
-    assertTrue(summary.getBody().get("itemIds").size() > 0, "summary should include item ids");
+    assertFalse(summary.getBody().has("itemIds"), "summary should not expose removed items");
   }
 
   // Criteria: path ordering by most-recent use
