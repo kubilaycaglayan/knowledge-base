@@ -1,0 +1,83 @@
+/* The approved overview palette is the application foundation. */
+:root {
+  color-scheme: light;
+  --workspace-background: #f7f8fa;
+  --workspace-text: #252b36;
+  --workspace-muted: #606b7b;
+  --workspace-border: #dfe3e9;
+  --workspace-control-border: #aab3c0;
+  --workspace-surface: #ffffff;
+  --workspace-accent: #334155;
+  --workspace-on-accent: #ffffff;
+  --workspace-accent-hover: #1b2533;
+  --workspace-accent-active: #101822;
+  --workspace-focus: #2563b5;
+  --workspace-hover: #edf0f4;
+  --workspace-active: #dce2ea;
+  --workspace-selected: #e7ebf0;
+  --workspace-selected-text: #1f3046;
+  --workspace-selected-border: #76869c;
+  --workspace-strong: #111827;
+  --workspace-success: #216448;
+  --workspace-danger: #a12727;
+  --workspace-danger-hover: #861d1d;
+  --workspace-danger-surface: #fff4f4;
+  --workspace-danger-border: #d7a4a4;
+  --workspace-disabled: #f0f2f5;
+  --workspace-overlay: #18212f80;
+  --workspace-radius: 4px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --workspace-background: #151a22;
+  --workspace-text: #e1e6ee;
+  --workspace-muted: #a7b2c2;
+  --workspace-border: #343e4c;
+  --workspace-control-border: #697789;
+  --workspace-surface: #1c2430;
+  --workspace-accent: #c4d1e2;
+  --workspace-on-accent: #18212e;
+  --workspace-accent-hover: #e0e8f3;
+  --workspace-accent-active: #f0f5fc;
+  --workspace-focus: #86b7f3;
+  --workspace-hover: #2a3544;
+  --workspace-active: #38465a;
+  --workspace-selected: #303e52;
+  --workspace-selected-text: #edf3fc;
+  --workspace-selected-border: #8a9db7;
+  --workspace-strong: #ffffff;
+  --workspace-success: #87d5ae;
+  --workspace-danger: #ffaaaa;
+  --workspace-danger-hover: #ffd0d0;
+  --workspace-danger-surface: #3a242b;
+  --workspace-danger-border: #925e68;
+  --workspace-disabled: #222b38;
+  --workspace-overlay: #080d16b3;
+}
+
+/* Menus are teleported outside the shell; theme tokens live on html. */
+:root .dp__theme_light, :root .dp__theme_dark {
+  --dp-background-color: var(--workspace-surface);
+  --dp-text-color: var(--workspace-text);
+  --dp-hover-color: var(--workspace-hover);
+  --dp-hover-text-color: var(--workspace-strong);
+  --dp-primary-color: var(--workspace-accent);
+  --dp-primary-text-color: var(--workspace-on-accent);
+  --dp-secondary-color: var(--workspace-muted);
+  --dp-border-color: var(--workspace-control-border);
+  --dp-menu-border-color: var(--workspace-control-border);
+  --dp-border-color-hover: var(--workspace-muted);
+  --dp-disabled-color: var(--workspace-disabled);
+  --dp-disabled-color-text: var(--workspace-muted);
+  --dp-icon-color: var(--workspace-muted);
+  --dp-highlight-color: var(--workspace-selected);
+  --dp-range-between-dates-background-color: var(--workspace-selected);
+  --dp-range-between-dates-text-color: var(--workspace-selected-text);
+  --dp-range-between-border-color: var(--workspace-selected);
+}
