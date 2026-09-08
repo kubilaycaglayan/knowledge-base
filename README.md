@@ -44,3 +44,4 @@ Registration/login issue JWTs, and authenticated users can create, list, update,
 
 See [docs/architecture.md](docs/architecture.md), [docs/development.md](docs/development.md), and [docs/deployment.md](docs/deployment.md).
 Testing details are in [docs/testing.md](docs/testing.md), and repository-specific contributor guidance is in [AGENTS.md](AGENTS.md).
+Web design foundations and theme behavior are in [docs/design-system.md](docs/design-system.md); UI milestones are in [docs/roadmap.md](docs/roadmap.md).
