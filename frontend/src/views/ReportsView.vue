@@ -11,9 +11,9 @@ import { formatDuration } from "../utils/duration";
 
 type Category = { id?: string; label: string; seconds: number };
 type CalendarAssignment = { id: string; label: string; color?: string; portion?: number | null };
-type Day = { date: string; totalSeconds: number; paths: Category[]; items: Category[]; calendarNote?: string | null; calendarLabels?: CalendarAssignment[] };
+type Day = { date: string; totalSeconds: number; paths: Category[]; sessionLabels: Category[]; calendarNote?: string | null; calendarLabels?: CalendarAssignment[] };
 type CalendarLabel = { id: string; label: string; color?: string; days: number; markers: number };
-type Report = { period: "WEEK" | "MONTH" | "YEAR" | "CUSTOM"; from: string; to: string; totalSeconds: number; days: Day[]; paths: Category[]; items: Category[]; calendarLabels: CalendarLabel[] };
+type Report = { period: "WEEK" | "MONTH" | "YEAR" | "CUSTOM"; from: string; to: string; totalSeconds: number; days: Day[]; paths: Category[]; sessionLabels: Category[]; calendarLabels: CalendarLabel[] };
 type ReportPeriod = Report["period"];
 
 const anchor = ref(new Date().toISOString().slice(0, 10));

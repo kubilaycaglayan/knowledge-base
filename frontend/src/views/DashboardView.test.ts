@@ -23,9 +23,6 @@ describe("DashboardView timer flow", () => {
             monthSeconds: 0,
             todayByPath: {},
             todayByLabel: {},
-            completedItems: 0,
-            activeItems: 0,
-            recentProgressChanges: [],
           };
         if (path === "/time-entries") return [];
         if (path === "/timers" && options.method === "POST")
@@ -72,7 +69,6 @@ describe("DashboardView timer flow", () => {
       if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
       if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers" && options.method === "POST") return { id: "timer-1", startedAt: new Date().toISOString(), pathId: "path-a", description: "Read graphs", running: true };
       return undefined;
@@ -134,9 +130,6 @@ describe("DashboardView timer flow", () => {
           monthSeconds: 0,
           todayByPath: {},
           todayByLabel: {},
-          completedItems: 0,
-          activeItems: 0,
-          recentProgressChanges: [],
         };
       if (path === "/time-entries") return [];
       return undefined;
@@ -171,9 +164,6 @@ describe("DashboardView timer flow", () => {
           monthSeconds: 0,
           todayByPath: {},
           todayByLabel: {},
-          completedItems: 0,
-          activeItems: 0,
-          recentProgressChanges: [],
         };
       if (path === "/time-entries")
         return [
@@ -232,9 +222,6 @@ describe("DashboardView timer flow", () => {
             monthSeconds: 0,
             todayByPath: {},
             todayByLabel: {},
-            completedItems: 0,
-            activeItems: 0,
-            recentProgressChanges: [],
           };
         if (path === "/time-entries") return [];
         return undefined;
@@ -304,9 +291,6 @@ describe("DashboardView timer flow", () => {
             monthSeconds: 0,
             todayByPath: {},
             todayByLabel: {},
-            completedItems: 0,
-            activeItems: 0,
-            recentProgressChanges: [],
           };
         if (path === "/time-entries") return [];
         return undefined;
@@ -353,9 +337,6 @@ describe("DashboardView timer flow", () => {
             monthSeconds: 0,
             todayByPath: {},
             todayByLabel: {},
-            completedItems: 0,
-            activeItems: 0,
-            recentProgressChanges: [],
           };
         if (path === "/time-entries") return [];
         return undefined;
@@ -408,7 +389,6 @@ describe("DashboardView timer flow", () => {
       if (path === "/paths" && options.method === "POST") throw new Error("create path failed");
       if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       return undefined;
     });
@@ -445,9 +425,6 @@ describe("DashboardView timer flow", () => {
             monthSeconds: 0,
             todayByPath: {},
             todayByLabel: {},
-            completedItems: 0,
-            activeItems: 0,
-            recentProgressChanges: [],
           };
         if (path === "/time-entries") return [];
         if (path === "/timers/timer-a" && options.method === "PUT")
@@ -504,7 +481,6 @@ describe("DashboardView timer flow", () => {
       if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
       if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return { id: "timer-a", pathId: "path-a", startedAt: "2026-08-25T10:00:00Z", running: true };
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers/timer-a" && options.method === "PUT") throw new Error("configuration failed");
       return undefined;
@@ -538,9 +514,6 @@ describe("DashboardView timer flow", () => {
             monthSeconds: 0,
             todayByPath: {},
             todayByLabel: {},
-            completedItems: 0,
-            activeItems: 0,
-            recentProgressChanges: [],
           };
         if (path === "/time-entries") return [];
         if (path === "/timers/timer-a" && options.method === "PUT") {
@@ -580,9 +553,6 @@ describe("DashboardView timer flow", () => {
           monthSeconds: 0,
           todayByPath: {},
           todayByLabel: {},
-          completedItems: 0,
-          activeItems: 0,
-          recentProgressChanges: [],
         };
       return undefined;
     });
@@ -637,9 +607,6 @@ describe("DashboardView timer flow", () => {
           monthSeconds: 0,
           todayByPath: {},
           todayByLabel: {},
-          completedItems: 0,
-          activeItems: 0,
-          recentProgressChanges: [],
         };
       if (path === "/time-entries") return [];
       return undefined;
@@ -690,9 +657,6 @@ describe("DashboardView timer flow", () => {
           monthSeconds: 0,
           todayByPath: {},
           todayByLabel: {},
-          completedItems: 0,
-          activeItems: 0,
-          recentProgressChanges: [],
         };
       if (path === "/time-entries")
         return [
@@ -719,7 +683,6 @@ describe("DashboardView timer flow", () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
       if (path === "/time-entries") return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", durationSeconds: 1800, description: "Focus" }];
       return undefined;
     });
@@ -742,7 +705,6 @@ describe("DashboardView timer flow", () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", description: "Focus" }];
       return undefined;
     });
@@ -759,10 +721,9 @@ describe("DashboardView timer flow", () => {
   it("reports failures while editing a time entry or creating a session label", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths") return [];
-      if (path === "/calendar/labels" && options.method === "POST") throw new Error("item failed");
+      if (path === "/calendar/labels" && options.method === "POST") throw new Error("label failed");
       if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries" && !options.method) return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", description: "Focus" }];
       if (path === "/time-entries/entry-a" && options.method === "PUT") throw new Error("entry failed");
       return undefined;
@@ -777,7 +738,7 @@ describe("DashboardView timer flow", () => {
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toBe("Could not edit time entry.");
 
-    await wrapper.get('input[aria-label="New session label name"]').setValue("New item");
+    await wrapper.get('input[aria-label="New session label name"]').setValue("New label");
     await wrapper.findAll("button").find((button) => button.text() === "Create label")!.trigger("click");
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toBe("Could not create the session label.");
@@ -787,9 +748,8 @@ describe("DashboardView timer flow", () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
-      if (path === "/search?q=graph%20theory") return [{ id: "item-1", kind: "ITEM", title: "Graph theory", detail: "Algorithms" }];
+      if (path === "/search?q=graph%20theory") return [{ id: "path-1", kind: "PATH", title: "Graph theory", detail: "Algorithms" }];
       return undefined;
     });
     const wrapper = mountDashboard();
@@ -808,7 +768,6 @@ describe("DashboardView timer flow", () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers" && options.method === "POST") throw new Error("already running");
       if (path === "/search?q=missing") throw new Error("search failed");
@@ -832,7 +791,6 @@ describe("DashboardView timer flow", () => {
       if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
       if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return { id: "timer-a", pathId: "path-a", startedAt: "2026-08-25T10:00:00Z", running: true };
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers/cancel" && options.method === "POST") throw new Error("cancel failed");
       return undefined;
@@ -872,9 +830,6 @@ describe("DashboardView timer flow", () => {
             todayByLabel: {},
             weekByPath: stopped ? { "path-a": 1800 } : {},
             weekByLabel: {},
-            completedItems: 0,
-            activeItems: 0,
-            recentProgressChanges: [],
           };
         if (path === "/time-entries")
           return stopped

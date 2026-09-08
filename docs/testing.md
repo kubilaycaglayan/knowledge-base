@@ -1,51 +1,19 @@
 # Testing
 
-Native authentication, path/item creation, and item-note form fields expose stable accessibility identifiers for Xcode UI tests; UI-test launches provide deterministic signed-out and authenticated fixture modes, and the source-level contract verifies the app identifiers, `KnowUITests` references, and declarative Xcode UI-test target in CI.
+The backend suite covers authentication and ownership boundaries, paths, notes, reusable labels, session timers, time-entry editing, imports, reporting, activity search, and Flyway migrations. The item system is deliberately absent: sessions use owned label IDs.
 
-The backend has domain, service, and MockMvc API tests for progress transitions, timer duration, ownership, invalid/unauthorized authentication, Google ID-token login/linking boundaries, Clockify import mapping, idempotency, batch listing, and undo, malformed-request handling, authentication rate limiting, configured/unconfigured CORS preflights, request-size validation, item validation, note validation, activity filter parsing, independent owned timer path/item targets, active timer reconfiguration and edited end times, bounded search input, bounded path/item/note/activity search results and PostgreSQL trigram search indexes, bulk item relationship loading, scoped item-membership replacement, bounded database activity search and timeline page size, case-insensitive email uniqueness, duplicate timers, cancellation, completion activity generation, single-query overlap-aware UTC-range statistics covering the entire current month while keeping weekly totals narrow, clipping boundary-crossing sessions to each reporting window, current-day and rolling-week path/item breakdowns, note ownership, and scoped live path summaries that exclude explicitly different-path records through bounded repository queries. Web component tests cover session timer flows, including choosing any owned item for the selected path. The smoke path exercises the authenticated API against PostgreSQL and covers migrations, OpenAPI availability, cross-user access denial, paths, multi-path items, independent path/item timer targeting, addable/updateable item types, Clockify import with duplicate protection, automatic path creation, batch listing, and undo, progress, notes, activity search, combined date/item timeline filters, timers including active reconfiguration, manual/editable time entries, summaries with tracked-duration assertions, statistics, and optional backup restoration into a separate database.
-
-The web has Vitest coverage for authentication success/failure, path-content filtering, timeline date presets and activity-note composition, independent timer path/item choices, and server-backed timer start/cancellation in addition to the TypeScript compiler and Vite production build. Extension core state/request helpers have Node test coverage, including canonical server timer-state decisions and text-safe option rendering, alongside script, manifest, accessibility-contract, and Caddy configuration validation. The iOS API transport and app model have deterministic response, authentication-expiry, transient-network retry/offline, refresh-error, and native timer path/item selection tests; critical native controls also have source-level accessibility-identifier contracts. CI runs these checks plus the Docker smoke test on Ubuntu and native Swift syntax, unit, and build checks on macOS. Full SwiftUI UI-test execution requires an Xcode UI-test target and a macOS runner. OpenAPI availability is verified in development/smoke configuration; the production Spring profile disables Swagger UI and the machine-readable API docs.
-
-Local verification:
-
-All web routes and authentication share the approved overview's flat workspace
-styles. Vitest verifies the shared shell, keyboard behavior, and saved/system theme
-selection, including unavailable browser storage. Page metadata belongs to the
-application shell rather than the overview's mount/unmount lifecycle.
-
-Run the isolated browser smoke review from `frontend`:
+Run the required checks from the repository root:
 
 ```bash
-npm ci
-npx playwright install chromium
-npm run test:ui
-```
-
-`test:ui` starts its own local Vite preview on port 5191 and intercepts every API
-request with synthetic fixtures. It checks every route, authentication, and the
-note editor in both themes with populated, empty, long-content, dense-list, and error states.
-It checks overflow at 320, 390, 1024, 1440, and 2560 pixels, runs axe at mobile and
-desktop sizes, and captures screenshots plus `results.json` in a printed temporary
-directory. It also exercises edit dialogs, focus trapping/return, history panels,
-the item dropdown, the date picker, the skip link, and theme persistence. Set
-`BROWSER_PATH` to use an already installed Chromium executable.
-
-Review the screenshots for typography, alignment, focus, and hover/selected/error
-states. Browser fixtures verify presentation and interaction wiring; existing
-timer/component tests and PostgreSQL/API smoke tests verify domain behavior.
-Full-stack smoke also verifies that `/theme.js` is served through the HTTPS proxy.
-
-Smoke verification exercises both configured/unconfigured API CORS preflights on the development web origin `http://localhost:5177`; full-stack mode waits for the Caddy HTTPS endpoint before exercising the public proxy. Smoke uses isolated host ports by default (`15432` for PostgreSQL and `18081` for the API; full-stack mode adds `18080`/`18443` for the public proxy and `18000` for the HTTP convenience mapping); override `DB_DEV_PORT`, `API_DEV_PORT`, `PROXY_DEV_PORT`, `PROXY_HTTP_PORT`, or `PROXY_HTTPS_PORT` when needed. Its exit trap removes only the smoke project’s containers, volumes, local images, exact temporary Buildx builder, and `mktemp` backup directory; it does not run a host-wide Docker prune.
-
-Smoke runs require Docker Buildx and clean up their Compose project containers, Compose-managed named volumes, local service images, and uniquely named temporary Buildx builders on exit. GitHub Actions runs reuse its remote BuildKit cache; locally, set `SMOKE_BUILD_CACHE_DIR` to a caller-owned persistent directory to reuse BuildKit layers between runs. Neither cache is removed by the smoke cleanup. The script creates a unique `knowledge-base-smoke-*` project name when one is not supplied; a supplied `COMPOSE_PROJECT_NAME` must contain `smoke`. Use distinct smoke project names when running concurrent checks.
-
-The API smoke flow also exercises optional calendar-label creation, a dated record, and a multi-day calendar range before loading the authenticated monthly reports endpoint; calendar labels are asserted separately from current-month tracked-time entries, including the report’s daily timeline and path breakdown fields.
-
-```bash
-docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
-(cd frontend && npm ci && npm test && npm run build)
-cd chrome-extension && npm ci && npm test && npm run build && cd ..
+docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
+(cd frontend && npm ci && npm run build)
+node --check chrome-extension/popup.js
+node --check chrome-extension/options.js
+node scripts/check-accessibility.mjs
+node scripts/check-security.mjs
+node scripts/check-smoke-cleanup.mjs
+bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh
 JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
-SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
-SMOKE_BACKUP_RESTORE=1 COMPOSE_PROJECT_NAME=knowledge-base-backup-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
 ```
+
+On macOS, generate the iOS Xcode project from `ios/project.yml` and run the generated scheme for native SwiftUI and UI-test validation.

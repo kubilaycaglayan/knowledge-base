@@ -85,7 +85,7 @@ onMounted(load);
         aria-label="Clockify JSON"
         placeholder="Paste Clockify export JSON here"
       ></textarea>
-      <div class="item-actions">
+      <div class="row-actions">
         <button
           class="primary"
           :disabled="!clockifyJson.trim()"

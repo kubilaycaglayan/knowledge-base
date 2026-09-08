@@ -17,7 +17,7 @@ describe("ReportsView", () => {
   } };
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], items: [], calendarNote: "Planning session", calendarLabels: [{ id: "label-1", label: "Milestone", color: "#2878D5", portion: null }] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], items: [], calendarLabels: [] });
+    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], sessionLabels: [], calendarNote: "Planning session", calendarLabels: [{ id: "label-1", label: "Milestone", color: "#2878D5", portion: null }] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], sessionLabels: [], calendarLabels: [] });
   });
 
   it("shows the report dashboard with project breakdown and charts", async () => {
@@ -106,7 +106,7 @@ describe("ReportsView", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.get('[role="status"]').text()).toBe("Loading report…");
 
-    resolveReport({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 0, days: [], paths: [], items: [], calendarLabels: [] });
+    resolveReport({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] });
     await flushPromises();
     expect(wrapper.find('[role="status"]').exists()).toBe(false);
   });
@@ -119,7 +119,7 @@ describe("ReportsView", () => {
       totalSeconds: 3600,
       days: [{ date: "2026-08-25", totalSeconds: 5400, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }, { id: "other", label: "Other", seconds: 1800 }] }],
       paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
-      items: [],
+      sessionLabels: [],
       calendarLabels: [],
     });
     const filtered = mount(ReportsView, { global });
@@ -141,7 +141,7 @@ describe("ReportsView", () => {
       totalSeconds: 0,
       days: [],
       paths: [],
-      items: [],
+      sessionLabels: [],
       calendarLabels: [
         { id: "leave", label: "Leave", days: 2, markers: 0 },
         { id: "milestone", label: "Milestone", days: 0, markers: 1 },
