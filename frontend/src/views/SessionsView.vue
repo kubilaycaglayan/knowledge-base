@@ -72,7 +72,7 @@ async function load(nextPage = page.value) {
     const [history, loadedPaths, loadedLabels] = await Promise.all([
       api<{ sessions: Session[]; page: number; totalPages: number; totalSessions: number }>(`/time-entries?page=${nextPage - 1}&size=50`),
       api<Path[]>("/paths"),
-      api<Label[]>("/calendar/labels"),
+      api<Label[]>("/labels?scope=TIME_ENTRY").then(value => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
     ]);
     sessions.value = history.sessions;
     page.value = history.page + 1;
