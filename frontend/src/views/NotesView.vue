@@ -170,9 +170,13 @@ function handleLabelKeydown(event: KeyboardEvent) {
   } else if (event.key === "ArrowUp" && matchingLabels.value.length) {
     event.preventDefault();
     highlightedLabelIndex.value = (highlightedLabelIndex.value - 1 + matchingLabels.value.length) % matchingLabels.value.length;
-  } else if (event.key === "Enter" && matchingLabels.value.length && highlightedLabelIndex.value >= 0) {
+  } else if (event.key === "Enter") {
     event.preventDefault();
-    chooseLabel(matchingLabels.value[highlightedLabelIndex.value]);
+    if (matchingLabels.value.length && highlightedLabelIndex.value >= 0) {
+      chooseLabel(matchingLabels.value[highlightedLabelIndex.value]);
+    } else {
+      addTag();
+    }
   } else if (event.key === "Escape") {
     event.preventDefault();
     tagInput.value = "";

@@ -35,7 +35,7 @@ public class ReportService {
     this.calendar = calendar;
   }
 
-  public record Category(UUID id, String label, long seconds) {}
+  public record Category(UUID id, String label, long seconds, String color) {}
 
   public record CalendarLabel(UUID id, String label, String color, BigDecimal portion) {}
   public record CalendarLabelTotal(UUID id, String label, String color, BigDecimal days, long markers) {}
@@ -92,11 +92,11 @@ public class ReportService {
         window.stream()
         .flatMap(entry -> itemIds(entry).stream())
             .collect(Collectors.toSet());
+    List<Path> pathViews = pathIds.isEmpty() ? List.of() : paths.findByUserIdAndIdIn(userId, pathIds);
     Map<UUID, String> pathNames =
-        pathIds.isEmpty()
-            ? Map.of()
-            : paths.findByUserIdAndIdIn(userId, pathIds).stream()
-                .collect(Collectors.toMap(Path::getId, Path::getName));
+        pathViews.stream().collect(Collectors.toMap(Path::getId, Path::getName));
+    Map<UUID, String> pathColors =
+        pathViews.stream().collect(Collectors.toMap(Path::getId, Path::getColor));
     Map<UUID, String> itemNames =
         itemIds.isEmpty()
             ? Map.of()
@@ -125,8 +125,8 @@ public class ReportService {
           new Day(
               date,
               reportSeconds,
-              categories(dayPaths, pathNames, "Unassigned path"),
-              categories(dayItems, itemNames, "Unassigned item"),
+              categories(dayPaths, pathNames, pathColors, "Unassigned path"),
+              categories(dayItems, itemNames, Map.of(), "Unassigned item"),
               calendarNotesByDate.get(date),
               calendarByDate.getOrDefault(date, List.of())));
     }
@@ -137,8 +137,8 @@ public class ReportService {
         toDateExclusive.minusDays(1),
         total,
         List.copyOf(days),
-        categories(allPaths, pathNames, "Unassigned path"),
-        categories(allItems, itemNames, "Unassigned item"),
+        categories(allPaths, pathNames, pathColors, "Unassigned path"),
+        categories(allItems, itemNames, Map.of(), "Unassigned item"),
         calendarTotals.values().stream().map(CalendarLabelTotalAccumulator::view)
             .sorted(Comparator.comparing(CalendarLabelTotal::label)).toList());
   }
@@ -165,7 +165,7 @@ public class ReportService {
   }
 
   private static List<Category> categories(
-      Map<UUID, Long> totals, Map<UUID, String> names, String unassigned) {
+      Map<UUID, Long> totals, Map<UUID, String> names, Map<UUID, String> colors, String unassigned) {
     return totals.entrySet().stream()
         .map(
             entry ->
@@ -174,7 +174,8 @@ public class ReportService {
                     entry.getKey() == null
                         ? unassigned
                         : names.getOrDefault(entry.getKey(), "Removed entity"),
-                    entry.getValue()))
+                    entry.getValue(),
+                    entry.getKey() == null ? null : colors.get(entry.getKey())))
         .sorted(
             Comparator.comparingLong(Category::seconds).reversed().thenComparing(Category::label))
         .toList();

@@ -17,7 +17,7 @@ class ReportServiceTest {
     PathRepository paths = mock(PathRepository.class);
     ItemRepository items = mock(ItemRepository.class);
     UUID user = UUID.randomUUID();
-    Path path = new Path(user, "Wander", null);
+    Path path = new Path(user, "Wander", null, "#123456");
     Item item = new Item(user, "Walking", ItemType.EXERCISE, null);
     Instant monthStart = LocalDate.of(2026, 7, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
     TimeEntry crossing =
@@ -53,6 +53,7 @@ class ReportServiceTest {
     assertEquals(31, report.days().size());
     assertEquals(30, report.days().getFirst().totalSeconds());
     assertEquals("Wander", report.days().getFirst().paths().getFirst().label());
+    assertEquals("#123456", report.days().getFirst().paths().getFirst().color());
     assertEquals(600, report.days().get(11).totalSeconds());
     assertEquals(630, report.paths().getFirst().seconds());
     assertEquals("Walking", report.items().getFirst().label());
