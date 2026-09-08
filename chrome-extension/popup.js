@@ -12,6 +12,10 @@ function logError(operation, error, details = {}) {
 function userError(fallback, error) {
   return isDevelopment() ? fallback + " " + errorDetails(error) : fallback;
 }
+function setButtonBusy(button, busy) {
+  button.disabled = busy;
+  if (button.setAttribute) button.setAttribute("aria-busy", String(busy));
+}
 let currentTimer = null;
 let timerTicker = null;
 let liveSyncTicker = null;
@@ -267,15 +271,18 @@ async function load() {
   } catch (error) { logError("Load workspace", error); $("error").textContent = userError("Sign in failed or the API is unavailable.", error); }
 }
 async function login() {
+  const button = $("login");
   const email = $("email").value;
   debug("Starting password login", { email, passwordPresent: Boolean($("password").value), passwordLength: $("password").value.length });
+  setButtonBusy(button, true);
   try { const result = await request("/auth/login", { method: "POST", body: JSON.stringify({ email, password: $("password").value }) }); await chrome.storage.local.set({ token: result.token }); $("error").textContent = ""; await load(); }
-  catch (error) { logError("Password login", error, { email }); $("error").textContent = userError("Invalid credentials or API unavailable.", error); }
+  catch (error) { logError("Password login", error, { email }); $("error").textContent = userError("Check your credentials and API connection, then try again.", error); }
+  finally { setButtonBusy(button, false); }
 }
 
 async function googleLogin() {
   const button = $("google-login");
-  button.disabled = true;
+  setButtonBusy(button, true);
   try {
     const { clientId } = await request("/auth/google/config");
     if (!clientId) throw Error("Google sign-in is not configured");
@@ -295,7 +302,7 @@ async function googleLogin() {
     logError("Google sign-in", error);
     $("error").textContent = userError("Google sign-in could not be completed. Try again.", error);
   } finally {
-    button.disabled = false;
+    setButtonBusy(button, false);
   }
 }
 
@@ -303,11 +310,14 @@ $("login").onclick = login;
 $("google-login").onclick = googleLogin;
 $("logout").onclick = async () => { await chrome.storage.local.clear(); location.reload(); };
 $("toggle").onclick = async () => {
+  const button = $("toggle");
+  setButtonBusy(button, true);
   try {
     const current = await request("/timers/current");
     if (KnowCore.timerIsRunning(current)) { await flushDescriptionSave(); await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); $("toggle").textContent = "Start timer"; await loadSessions(); }
     else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedItemIds($("item")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); $("toggle").textContent = "Stop timer"; }
-  } catch (error) { logError("Toggle timer", error); $("error").textContent = userError("Could not update timer.", error); }
+  } catch (error) { logError("Toggle timer", error); $("error").textContent = userError("Could not update the timer. Check the API connection and try again.", error); }
+  finally { setButtonBusy(button, false); }
 };
 $("item").onchange = async () => {
   try { await configureCurrentTimer(); } catch (error) { logError("Select timer items", error); $("error").textContent = userError("Could not update the timer.", error); }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Know time tracker",
+  "name": "Knowledge Base",
   "version": "0.1.1",
-  "description": "Explicitly track time against your Know paths and items.",
+  "description": "Explicitly track time against your Knowledge Base paths and items.",
   "permissions": [
     "storage",
     "identity"

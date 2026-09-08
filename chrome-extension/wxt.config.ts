@@ -16,7 +16,7 @@ export default defineConfig({
   manifest: {
     name: "Knowledge Base",
     version: "0.1.1",
-    description: "Explicitly track time against your Know paths and items.",
+    description: "Explicitly track time against your Knowledge Base paths and items.",
     icons: {
       16: `icons/${iconVariant}/icon-16.png`,
       32: `icons/${iconVariant}/icon-32.png`,

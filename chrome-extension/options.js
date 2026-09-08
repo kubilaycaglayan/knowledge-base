@@ -18,6 +18,9 @@ async function load() {
   }
 }
 async function save() {
+  const button = document.getElementById("save");
+  button.disabled = true;
+  if (button.setAttribute) button.setAttribute("aria-busy", "true");
   try {
     const value = normalize(apiInput.value);
     const normalized = KnowApiConfig.normalize(value);
@@ -33,6 +36,9 @@ async function save() {
   } catch (error) {
     debug("Failed to save API settings", { requestedApiBase: apiInput.value, error: error instanceof Error ? error.message : String(error) });
     status.textContent = error.message || "Could not save settings.";
+  } finally {
+    button.disabled = false;
+    if (button.setAttribute) button.setAttribute("aria-busy", "false");
   }
 }
 document.getElementById("save").onclick = save;
