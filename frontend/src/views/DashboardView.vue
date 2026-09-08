@@ -116,7 +116,7 @@ async function load(preserveIdleForm = false) {
   try {
     const data = await Promise.all([
       api<Path[]>("/paths"),
-      api<Label[]>("/calendar/labels"),
+      api<Label[]>("/labels?scope=TIME_ENTRY").then(value => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
       api<Timer | null>("/timers/current"),
       api<Stats>("/statistics"),
       api<Entry[]>("/time-entries"),
@@ -258,12 +258,15 @@ async function editEntry(entry: Entry) {
 async function createTimerLabel() {
   if (!newTimerLabelName.value.trim()) return;
   try {
-    const created = await api<Label>("/calendar/labels", {
+    const created = await api<Label>("/labels", {
       method: "POST",
       body: JSON.stringify({
-        name: newTimerLabelName.value.trim(),
+        name: newTimerLabelName.value.trim(), scopes: ["TIME_ENTRY"],
         color: null,
       }),
+    }) ?? await api<Label>("/calendar/labels", {
+      method: "POST",
+      body: JSON.stringify({ name: newTimerLabelName.value.trim(), color: null }),
     });
     newTimerLabelName.value = "";
     await load();
