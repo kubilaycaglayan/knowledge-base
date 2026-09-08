@@ -12,19 +12,20 @@ import org.junit.jupiter.api.Test;
 
 class ReportServiceTest {
   @Test
-  void monthlyReportShowsDailyPathAndItemBreakdownsWithClippedIntervals() {
+  void monthlyReportShowsDailyPathAndLabelBreakdownsWithClippedIntervals() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
+    DailyLabelRepository labels = mock(DailyLabelRepository.class);
+    TimeEntryLabelRepository entryLabels = mock(TimeEntryLabelRepository.class);
     UUID user = UUID.randomUUID();
     Path path = new Path(user, "Wander", null, "#123456");
-    Item item = new Item(user, "Walking", ItemType.EXERCISE, null);
+    DailyLabel label = new DailyLabel(user, "Walking", "#2878D5");
     Instant monthStart = LocalDate.of(2026, 7, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
     TimeEntry crossing =
         new TimeEntry(
             user,
             path.getId(),
-            item.getId(),
+            null,
             monthStart.minusSeconds(30),
             "crossing",
             TimeSource.IMPORT);
@@ -33,7 +34,7 @@ class ReportServiceTest {
         new TimeEntry(
             user,
             path.getId(),
-            item.getId(),
+            null,
             Instant.parse("2026-07-12T10:00:00Z"),
             "later",
             TimeSource.IMPORT);
@@ -41,10 +42,12 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(eq(user), any(), any()))
         .thenReturn(List.of(later, crossing));
     when(paths.findByUserIdAndIdIn(user, Set.of(path.getId()))).thenReturn(List.of(path));
-    when(items.findAllByUserIdAndIdIn(user, Set.of(item.getId()))).thenReturn(List.of(item));
+    when(entryLabels.findAllByIdTimeEntryId(any()))
+        .thenAnswer(invocation -> List.of(new TimeEntryLabel(invocation.getArgument(0), label.getId())));
+    when(labels.findAllByUserIdAndIdIn(user, Set.of(label.getId()))).thenReturn(List.of(label));
 
     ReportService.Report report =
-        new ReportService(entries, paths, items)
+        new ReportService(entries, paths, labels, entryLabels, null)
             .report(user, ReportService.Period.MONTH, LocalDate.of(2026, 7, 20));
 
     assertEquals(LocalDate.of(2026, 7, 1), report.from());
@@ -56,7 +59,8 @@ class ReportServiceTest {
     assertEquals("#123456", report.days().getFirst().paths().getFirst().color());
     assertEquals(600, report.days().get(11).totalSeconds());
     assertEquals(630, report.paths().getFirst().seconds());
-    assertEquals("Walking", report.items().getFirst().label());
+    assertEquals("Walking", report.sessionLabels().getFirst().label());
+    assertEquals("#2878D5", report.sessionLabels().getFirst().color());
   }
 
   @Test
@@ -64,7 +68,7 @@ class ReportServiceTest {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(ItemRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
             .report(UUID.randomUUID(), ReportService.Period.YEAR, LocalDate.of(2024, 6, 3));
 
     assertEquals(366, report.days().size());
@@ -78,7 +82,7 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
 
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(ItemRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
             .report(UUID.randomUUID(), LocalDate.of(2026, 8, 24), LocalDate.of(2026, 8, 30));
 
     assertEquals("CUSTOM", report.period());
@@ -102,13 +106,13 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(running));
 
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(ItemRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
             .report(user, ReportService.Period.WEEK, LocalDate.now(ZoneOffset.UTC));
 
     assertTrue(report.totalSeconds() >= 3);
     assertEquals("Unassigned path", report.paths().getFirst().label());
     assertEquals(report.totalSeconds(), report.paths().getFirst().seconds());
-    assertTrue(report.items().isEmpty());
+    assertTrue(report.sessionLabels().isEmpty());
   }
 
   @Test
@@ -135,8 +139,8 @@ class ReportServiceTest {
         new ReportService(
                 entries,
                 mock(PathRepository.class),
-                mock(ItemRepository.class),
-                mock(TimeEntryItemRepository.class),
+                mock(DailyLabelRepository.class),
+                mock(TimeEntryLabelRepository.class),
                 calendar)
             .report(user, date, date);
 
@@ -157,7 +161,7 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
 
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(ItemRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
             .report(UUID.randomUUID(), LocalDate.of(2026, 8, 25), LocalDate.of(2026, 8, 25));
 
     assertEquals(1, report.days().size());

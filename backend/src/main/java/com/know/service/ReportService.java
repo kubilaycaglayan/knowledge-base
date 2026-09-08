@@ -13,25 +13,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class ReportService {
   private final TimeEntryRepository entries;
   private final PathRepository paths;
-  private final ItemRepository items;
-  private final TimeEntryItemRepository entryItems;
+  private final DailyLabelRepository sessionLabels;
+  private final TimeEntryLabelRepository entryLabels;
   private final CalendarService calendar;
 
-  public ReportService(TimeEntryRepository entries, PathRepository paths, ItemRepository items) {
-    this(entries, paths, items, null, null);
+  public ReportService(TimeEntryRepository entries, PathRepository paths, DailyLabelRepository sessionLabels) {
+    this(entries, paths, sessionLabels, null, null);
   }
 
   @Autowired
   public ReportService(
       TimeEntryRepository entries,
       PathRepository paths,
-      ItemRepository items,
-      TimeEntryItemRepository entryItems,
+      DailyLabelRepository sessionLabels,
+      TimeEntryLabelRepository entryLabels,
       CalendarService calendar) {
     this.entries = entries;
     this.paths = paths;
-    this.items = items;
-    this.entryItems = entryItems;
+    this.sessionLabels = sessionLabels;
+    this.entryLabels = entryLabels;
     this.calendar = calendar;
   }
 
@@ -40,7 +40,7 @@ public class ReportService {
   public record CalendarLabel(UUID id, String label, String color, BigDecimal portion) {}
   public record CalendarLabelTotal(UUID id, String label, String color, BigDecimal days, long markers) {}
   public record Day(
-      LocalDate date, long totalSeconds, List<Category> paths, List<Category> items, String calendarNote, List<CalendarLabel> calendarLabels) {}
+      LocalDate date, long totalSeconds, List<Category> paths, List<Category> sessionLabels, String calendarNote, List<CalendarLabel> calendarLabels) {}
 
   public record Report(
       String period,
@@ -49,7 +49,7 @@ public class ReportService {
       long totalSeconds,
       List<Day> days,
       List<Category> paths,
-      List<Category> items,
+      List<Category> sessionLabels,
       List<CalendarLabelTotal> calendarLabels) {}
 
   public Report report(UUID userId, Period period, LocalDate anchor) {
@@ -88,45 +88,48 @@ public class ReportService {
             .map(TimeEntry::getPathId)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
-    Set<UUID> itemIds =
+    Set<UUID> labelIds =
         window.stream()
-        .flatMap(entry -> itemIds(entry).stream())
+        .flatMap(entry -> labelIds(entry).stream())
             .collect(Collectors.toSet());
     List<Path> pathViews = pathIds.isEmpty() ? List.of() : paths.findByUserIdAndIdIn(userId, pathIds);
     Map<UUID, String> pathNames =
         pathViews.stream().collect(Collectors.toMap(Path::getId, Path::getName));
     Map<UUID, String> pathColors =
         pathViews.stream().collect(Collectors.toMap(Path::getId, Path::getColor));
-    Map<UUID, String> itemNames =
-        itemIds.isEmpty()
-            ? Map.of()
-            : items.findAllByUserIdAndIdIn(userId, itemIds).stream()
-                .collect(Collectors.toMap(Item::getId, Item::getTitle));
+    List<DailyLabel> labelViews =
+        labelIds.isEmpty() ? List.of() : sessionLabels.findAllByUserIdAndIdIn(userId, labelIds);
+    Map<UUID, String> labelNames =
+        labelViews.stream().collect(Collectors.toMap(DailyLabel::getId, DailyLabel::getName));
+    Map<UUID, String> labelColors =
+        labelViews.stream()
+            .filter(label -> label.getColor() != null)
+            .collect(Collectors.toMap(DailyLabel::getId, DailyLabel::getColor));
 
     Map<UUID, Long> allPaths = new HashMap<>();
-    Map<UUID, Long> allItems = new HashMap<>();
+    Map<UUID, Long> allLabels = new HashMap<>();
     List<Day> days = new ArrayList<>();
     for (LocalDate date = fromDate; date.isBefore(toDateExclusive); date = date.plusDays(1)) {
       Instant dayFrom = date.atStartOfDay(ZoneOffset.UTC).toInstant();
       Instant dayTo = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
       long reportSeconds = 0;
       Map<UUID, Long> dayPaths = new HashMap<>();
-      Map<UUID, Long> dayItems = new HashMap<>();
+      Map<UUID, Long> dayLabels = new HashMap<>();
       for (TimeEntry entry : window) {
         long seconds = secondsIn(entry, dayFrom, dayTo, now);
         if (seconds == 0) continue;
         reportSeconds += seconds;
         merge(dayPaths, entry.getPathId(), seconds);
-        itemIds(entry).forEach(itemId -> merge(dayItems, itemId, seconds));
+        labelIds(entry).forEach(labelId -> merge(dayLabels, labelId, seconds));
         merge(allPaths, entry.getPathId(), seconds);
-        itemIds(entry).forEach(itemId -> merge(allItems, itemId, seconds));
+        labelIds(entry).forEach(labelId -> merge(allLabels, labelId, seconds));
       }
       days.add(
           new Day(
               date,
               reportSeconds,
               categories(dayPaths, pathNames, pathColors, "Unassigned path"),
-              categories(dayItems, itemNames, Map.of(), "Unassigned item"),
+              categories(dayLabels, labelNames, labelColors, "Unassigned label"),
               calendarNotesByDate.get(date),
               calendarByDate.getOrDefault(date, List.of())));
     }
@@ -138,7 +141,7 @@ public class ReportService {
         total,
         List.copyOf(days),
         categories(allPaths, pathNames, pathColors, "Unassigned path"),
-        categories(allItems, itemNames, Map.of(), "Unassigned item"),
+        categories(allLabels, labelNames, labelColors, "Unassigned label"),
         calendarTotals.values().stream().map(CalendarLabelTotalAccumulator::view)
             .sorted(Comparator.comparing(CalendarLabelTotal::label)).toList());
   }
@@ -156,11 +159,10 @@ public class ReportService {
     totals.merge(id, seconds, Long::sum);
   }
 
-  private List<UUID> itemIds(TimeEntry entry) {
-    if (entryItems == null)
-      return entry.getItemId() == null ? List.of() : List.of(entry.getItemId());
-    return entryItems.findAllByIdTimeEntryId(entry.getId()).stream()
-        .map(TimeEntryItem::getItemId)
+  private List<UUID> labelIds(TimeEntry entry) {
+    if (entryLabels == null) return List.of();
+    return entryLabels.findAllByIdTimeEntryId(entry.getId()).stream()
+        .map(TimeEntryLabel::getLabelId)
         .toList();
   }
 
