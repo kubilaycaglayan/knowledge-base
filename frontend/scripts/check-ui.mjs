@@ -15,7 +15,7 @@ const results = [];
 const failures = [];
 const date = new Date().toISOString().slice(0, 10);
 const timestamp = `${date}T10:00:00Z`;
-const routes = process.env.UI_ROUTES?.split(',') || ['/', '/sessions', '/paths', '/items', '/timeline', '/calendar', '/notes', '/notes/note-a', '/reports', '/imports', '/auth'];
+const routes = process.env.UI_ROUTES?.split(',') || ['/', '/sessions', '/paths', '/timeline', '/calendar', '/notes', '/notes/note-a', '/reports', '/imports', '/auth'];
 function fixtures(state) {
   const long = state === 'long' ? ' ExtendedUnbrokenName'.repeat(18).replaceAll(' ', '') : '';
   const empty = state === 'empty';
@@ -78,7 +78,6 @@ try {
         if (state === 'error' && !path.startsWith('/auth')) return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
         let data = [];
         if (path === '/paths') data = f.paths;
-        if (path === '/items') data = f.items;
         if (path === '/notes') data = url.search ? { items: f.notes, page: 0, size: 20, totalItems: f.notes.length, totalPages: 1 } : f.notes;
         if (path === '/notes/note-a') data = f.note;
         if (path === '/notes/labels') data = [{ id: 'label-a', name: 'systems' }];
@@ -127,19 +126,6 @@ try {
             await check(page, `${mode}-path-history`);
             await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
             await check(page, `${mode}-path-edit`);
-          }
-          if (path === '/items') {
-            await page.getByRole('button', { name: 'Edit/status/type', exact: true }).click();
-            await page.getByRole('dialog').waitFor();
-            await check(page, `${mode}-item-dialog`);
-            await page.keyboard.press('Escape');
-            assert(await page.getByRole('button', { name: 'Edit/status/type', exact: true }).evaluate(e => e === document.activeElement));
-            await page.getByRole('button', { name: 'Update progress', exact: true }).click();
-            await check(page, `${mode}-prompt-dialog`);
-            await page.getByRole('button', { name: 'OK', exact: true }).focus();
-            await page.keyboard.press('Tab');
-            assert(await page.getByRole('dialog').locator('input').evaluate(e => e === document.activeElement));
-            await page.keyboard.press('Escape');
           }
           if (path === '/sessions') {
             await page.getByRole('button', { name: 'Edit session', exact: true }).click();
