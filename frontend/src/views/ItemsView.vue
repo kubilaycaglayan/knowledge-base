@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vDialogFocus } from "../lib/dialog-focus";
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
@@ -221,6 +222,7 @@ onMounted(load);
   <PromptDialog ref="promptDialog" />
   <div v-if="editVisible" class="edit-dialog-backdrop">
     <form
+      v-dialog-focus
       class="edit-dialog card"
       role="dialog"
       aria-modal="true"

@@ -156,7 +156,7 @@ onMounted(load);
     <h1>Sessions</h1>
     <p class="lede">Every recorded session, with the newest one first.</p>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
-    <div class="session-list" aria-label="Sessions">
+    <div class="session-list" role="region" aria-label="Sessions">
       <article v-for="session in sessions" :key="session.id" class="card session-card">
         <div v-if="editingId !== session.id" class="session-heading">
           <div>

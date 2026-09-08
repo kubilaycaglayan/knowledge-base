@@ -338,13 +338,7 @@ async function syncTimerState() {
   }
 }
 
-let previousTitle = "";
-let previousThemeColor: string | null = null;
 onMounted(() => {
-  previousTitle = document.title;
-  previousThemeColor = document.querySelector('meta[name="theme-color"]')?.getAttribute("content") ?? null;
-  document.title = "Overview · Knowledge Base";
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#f7f8fa");
   void load();
   timerTicker = window.setInterval(() => {
     timerNow.value = Date.now();
@@ -354,10 +348,6 @@ onMounted(() => {
   }, 2000);
 });
 onUnmounted(() => {
-  document.title = previousTitle;
-  if (previousThemeColor !== null) {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", previousThemeColor);
-  }
   if (timerTicker) window.clearInterval(timerTicker);
   if (timerSyncTicker) window.clearInterval(timerSyncTicker);
 });

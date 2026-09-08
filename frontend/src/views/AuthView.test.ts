@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import AuthView from "./AuthView.vue";
 import { api } from "../lib/api";
+import { applyTheme } from "../lib/theme";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -20,6 +21,7 @@ const testWindow = window as GoogleTestWindow;
 
 describe("AuthView", () => {
   beforeEach(() => {
+    applyTheme("light");
     localStorage.clear();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
@@ -131,6 +133,24 @@ describe("AuthView", () => {
     );
     wrapper.unmount();
     script.remove();
+  });
+
+  it("adapts configured Google sign-in to the theme and available width", async () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "google-client-id");
+    const renderButton = vi.fn();
+    const initialize = vi.fn();
+    testWindow.google = { accounts: { id: { initialize, renderButton } } };
+    const wrapper = mount(AuthView);
+    const host = wrapper.get('[aria-label="Continue with Google"]').element;
+    Object.defineProperty(host, "clientWidth", { configurable: true, value: 254 });
+    applyTheme("dark");
+    await wrapper.vm.$nextTick();
+    expect(renderButton).toHaveBeenLastCalledWith(host, expect.objectContaining({ theme: "filled_black", width: 254 }));
+    applyTheme("light");
+    await wrapper.vm.$nextTick();
+    expect(renderButton).toHaveBeenLastCalledWith(host, expect.objectContaining({ theme: "outline", width: 254 }));
+    expect(initialize).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
   });
 
   it("shows a recoverable error when Google verification fails", async () => {

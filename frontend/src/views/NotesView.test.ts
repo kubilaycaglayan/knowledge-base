@@ -71,6 +71,7 @@ describe("NotesView", () => {
     const r = router(); await r.push("/notes/note-1"); await r.isReady();
     const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
     const title = wrapper.get('input[aria-label="Note title"]'); await title.setValue("Updated");
+    expect(wrapper.get('[aria-label="Note content"]').text()).toBe("Graph theory");
     await new Promise(resolve => setTimeout(resolve, 700)); await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"title":"Updated"') }));
     expect(wrapper.find('button[aria-label="Save"]').exists()).toBe(false);

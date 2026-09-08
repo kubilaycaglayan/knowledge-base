@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { reportColors as colors } from "../../lib/chart-colors";
 import { computed } from "vue";
+import { chartTheme } from "../../lib/theme";
 import VChart from "vue-echarts";
 import type { EChartsOption } from "echarts";
 import { use } from "echarts/core";
@@ -14,7 +16,6 @@ type CalendarInput = { id: string; label: string; color?: string; portion?: numb
 type Day = { date: string; totalSeconds: number; paths: Category[]; calendarNote?: string | null; calendarLabels?: CalendarInput[] };
 const props = withDefaults(defineProps<{ days: Day[]; categories: Category[]; showCalendar?: boolean }>(), { showCalendar: false });
 use([BarChart, CustomChart, DataZoomComponent, GridComponent, TooltipComponent, SVGRenderer]);
-const colors = ["#f04438", "#2878d5", "#e91e63", "#4caf50", "#607d8b", "#ffbd19", "#8e5bd9"];
 function colorFor(item: Category): string {
   const index = props.categories.findIndex((category) => category.id === item.id || category.label === item.label);
   return colors[(index < 0 ? 0 : index) % colors.length];
@@ -27,7 +28,7 @@ function calendarRows(day: Day): string {
 }
 const calendarBars = computed(() => props.days.flatMap((day, dayIndex) => {
   let start = 0;
-  const inputs = day.calendarLabels?.length ? day.calendarLabels : day.calendarNote ? [{ id: `note-${day.date}`, label: "Calendar note", color: "#697781", portion: 0.18 }] : [];
+  const inputs = day.calendarLabels?.length ? day.calendarLabels : day.calendarNote ? [{ id: `note-${day.date}`, label: "Calendar note", color: chartTheme.value.muted, portion: 0.18 }] : [];
   return inputs.map((input) => {
     const end = start + (input.portion || 0.18);
     const bar = { value: [dayIndex, start, end, input.color || "#697781"] };
@@ -41,10 +42,14 @@ function calendarPattern(x: number, y: number, width: number, height: number, co
   return { type: "group", clipPath: { type: "rect", shape }, children: [{ type: "rect", shape, style: { fill: color, opacity: 0.42 } }, ...Array.from({ length: Math.ceil(height / 8) }, (_, index) => ({ type: "rect", shape: { x, y: y + index * 8, width, height: 3 }, style: { fill: "#ffffff", opacity: 0.38 } }))] };
 }
 const option = computed<EChartsOption>(() => ({
+  animation: false,
+  textStyle: { color: chartTheme.value.text },
   color: colors,
   grid: { left: 48, right: 18, top: 30, bottom: props.days.length > 31 ? 74 : 44 },
   dataZoom: props.days.length > 31 ? [{ type: "inside", start: 0, end: Math.min(100, (31 / props.days.length) * 100) }, { type: "slider", start: 0, end: Math.min(100, (31 / props.days.length) * 100), height: 18, bottom: 12 }] : [],
   tooltip: {
+    backgroundColor: chartTheme.value.surface, borderColor: chartTheme.value.border,
+    textStyle: { color: chartTheme.value.text },
     trigger: "axis", axisPointer: { type: "shadow" }, confine: true, extraCssText: "max-width: 320px; white-space: normal; overflow-wrap: anywhere;",
     formatter: (params: unknown) => {
     const entries = Array.isArray(params) ? params as Array<{ axisValue: string; seriesName: string; value: number; color: string; dataIndex: number }> : [];
@@ -55,8 +60,8 @@ const option = computed<EChartsOption>(() => ({
       return `<strong>${format(parseISO(day.date), "EEE, MMM d")}</strong><div>Total: ${formatDuration(day.totalSeconds)}</div>${rows}${props.showCalendar ? calendarRows(day) : ""}`;
     },
   },
-  xAxis: { type: "category", data: props.days.map((day) => format(parseISO(day.date), "EEE, MMM d")), axisTick: { show: false }, axisLabel: { color: "#697781", interval: 0, hideOverlap: true } },
-  yAxis: [{ type: "value", name: "Hours", nameTextStyle: { color: "#697781" }, axisLabel: { color: "#697781", formatter: (value: number) => `${(value / 3600).toFixed(0)}h` }, splitLine: { lineStyle: { color: "#d9e0e5", type: "dashed" } } }, { type: "value", min: 0, max: calendarMaximum.value, show: false }],
+  xAxis: { type: "category", data: props.days.map((day) => format(parseISO(day.date), "EEE, MMM d")), axisTick: { show: false }, axisLabel: { color: chartTheme.value.muted, interval: 0, hideOverlap: true } },
+  yAxis: [{ type: "value", name: "Hours", nameTextStyle: { color: chartTheme.value.muted }, axisLabel: { color: chartTheme.value.muted, formatter: (value: number) => `${(value / 3600).toFixed(0)}h` }, splitLine: { lineStyle: { color: chartTheme.value.border, type: "dashed" } } }, { type: "value", min: 0, max: calendarMaximum.value, show: false }],
   series: [
     ...(props.showCalendar && calendarBars.value.length ? [{ name: "Calendar input", type: "custom" as const, yAxisIndex: 1, silent: true, z: -1, data: calendarBars.value, renderItem: (_params: unknown, api: { value(index: number): number | string; coord(value: number[]): number[] }) => {
       const x = api.coord([Number(api.value(0)), 0])[0];
@@ -64,13 +69,13 @@ const option = computed<EChartsOption>(() => ({
       const end = api.coord([0, Number(api.value(2))])[1];
       return calendarPattern(x - 29, end, 74, start - end, String(api.value(3)));
     } }] : []),
-    ...props.categories.map((category) => ({ name: category.label, type: "bar" as const, stack: "total", barMaxWidth: 74, data: props.days.map((day) => day.paths.find((item) => item.id === category.id || item.label === category.label)?.seconds || 0) })),
+    ...props.categories.map((category) => ({ name: category.label, type: "bar" as const, itemStyle: { color: colorFor(category) }, stack: "total", barMaxWidth: 74, data: props.days.map((day) => day.paths.find((item) => item.id === category.id || item.label === category.label)?.seconds || 0) })),
   ],
 }));
 </script>
 
 <template>
-  <div class="chart-frame" :aria-label="showCalendar ? 'Stacked daily tracked time chart with calendar inputs' : 'Stacked daily tracked time chart'">
+  <div class="chart-frame" role="img" :aria-label="`${showCalendar ? 'Daily tracked time with calendar inputs' : 'Daily tracked time'}: ${days.map(day => `${day.date}: ${formatDuration(day.totalSeconds)}`).join('; ')}`">
     <v-chart class="report-echart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
   </div>
 </template>

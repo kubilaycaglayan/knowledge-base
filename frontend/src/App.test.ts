@@ -54,7 +54,7 @@ describe("App", () => {
     expect(wrapper.find("button.ghost").text()).toBe("Sign out");
   });
 
-  it("limits the workspace appearance and skip link to the authenticated overview", async () => {
+  it("shares the workspace appearance and skip link across every page and authentication", async () => {
     const { reactive } = await import("vue");
     const route = reactive({ path: "/" });
     localStorage.setItem("know_token", "token");
@@ -67,16 +67,16 @@ describe("App", () => {
     for (const path of ["/paths", "/items", "/sessions", "/notes", "/reports", "/timeline", "/calendar", "/imports"]) {
       route.path = path;
       await wrapper.vm.$nextTick();
-      expect(wrapper.classes()).not.toContain("dashboard-shell");
-      expect(wrapper.find(".dashboard-skip").exists()).toBe(false);
-      expect(wrapper.get("main").attributes("tabindex")).toBeUndefined();
+      expect(wrapper.classes()).toContain("dashboard-shell");
+      expect(wrapper.find(".dashboard-skip").exists()).toBe(true);
+      expect(wrapper.get("main").attributes("tabindex")).toBe("-1");
     }
 
     route.path = "/";
     await wrapper.vm.$nextTick();
     await wrapper.get("button.ghost").trigger("click");
-    expect(wrapper.classes()).not.toContain("dashboard-shell");
-    expect(wrapper.find(".dashboard-skip").exists()).toBe(false);
+    expect(wrapper.classes()).toContain("dashboard-shell");
+    expect(wrapper.find(".dashboard-skip").exists()).toBe(true);
     wrapper.unmount();
   });
 });
