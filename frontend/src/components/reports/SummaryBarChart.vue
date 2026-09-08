@@ -42,6 +42,11 @@ function calendarPattern(x: number, y: number, width: number, height: number, co
   const shape = { x, y, width, height };
   return { type: "group", clipPath: { type: "rect", shape }, children: [{ type: "rect", shape, style: { fill: color, opacity: 0.42 } }, ...Array.from({ length: Math.ceil(height / 8) }, (_, index) => ({ type: "rect", shape: { x, y: y + index * 8, width, height: 3 }, style: { fill: "#ffffff", opacity: 0.38 } }))] };
 }
+type CalendarRenderApi = {
+  value(index: number): number | string;
+  coord(value: number[]): number[];
+  size?(value: number[]): number | number[];
+};
 const option = computed<EChartsOption>(() => ({
   animation: false,
   textStyle: { color: chartTheme.value.text },
@@ -64,11 +69,14 @@ const option = computed<EChartsOption>(() => ({
   xAxis: { type: "category", data: props.days.map((day) => format(parseISO(day.date), "EEE, MMM d")), axisTick: { show: false }, axisLabel: { color: chartTheme.value.muted, interval: 0, hideOverlap: true } },
   yAxis: [{ type: "value", name: "Hours", nameTextStyle: { color: chartTheme.value.muted }, axisLabel: { color: chartTheme.value.muted, formatter: (value: number) => `${(value / 3600).toFixed(0)}h` }, splitLine: { lineStyle: { color: chartTheme.value.border, type: "dashed" } } }, { type: "value", min: 0, max: calendarMaximum.value, show: false }],
   series: [
-    ...(props.showCalendar && calendarBars.value.length ? [{ name: "Calendar input", type: "custom" as const, yAxisIndex: 1, silent: true, z: -1, data: calendarBars.value, renderItem: (_params: unknown, api: { value(index: number): number | string; coord(value: number[]): number[] }) => {
+    ...(props.showCalendar && calendarBars.value.length ? [{ name: "Calendar input", type: "custom" as const, yAxisIndex: 1, silent: true, z: -1, data: calendarBars.value, renderItem: (_params: unknown, api: CalendarRenderApi) => {
       const x = api.coord([Number(api.value(0)), 0])[0];
       const start = api.coord([0, Number(api.value(1))])[1];
       const end = api.coord([0, Number(api.value(2))])[1];
-      return calendarPattern(x - 29, end, 74, start - end, String(api.value(3)));
+      const categorySize = api.size?.([1, 0]);
+      const categoryWidth = Array.isArray(categorySize) ? Number(categorySize[0]) : 74;
+      const width = Math.min(74, Math.max(1, categoryWidth * 0.7));
+      return calendarPattern(x - width / 2, end, width, start - end, String(api.value(3)));
     } }] : []),
     ...props.categories.map((category) => ({ name: category.label, type: "bar" as const, itemStyle: { color: colorFor(category) }, stack: "total", barMaxWidth: 74, data: props.days.map((day) => day.paths.find((item) => item.id === category.id || item.label === category.label)?.seconds || 0) })),
   ],
