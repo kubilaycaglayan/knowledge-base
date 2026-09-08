@@ -22,7 +22,7 @@ describe("SessionsView", () => {
             description: "Most recent",
             source: "WEB",
             pathId: "path-1",
-            itemId: "item-1",
+            labelIds: ["label-1"],
           },
           {
             id: "old",
@@ -36,38 +36,38 @@ describe("SessionsView", () => {
         };
       if (path === "/paths")
         return [{ id: "path-1", name: "Learning", description: "A path", status: "ACTIVE" }];
-      if (path === "/items")
-        return [{ id: "item-1", title: "Vue", description: "Nested item", status: "ACTIVE", progress: 40, pathIds: ["path-1"] }];
+      if (path === "/calendar/labels")
+        return [{ id: "label-1", name: "Vue", color: "#2878D5" }];
       return undefined;
     });
   });
 
-  it("lists sessions by latest completion time and shows nested path and item properties", async () => {
+  it("lists sessions by latest completion time with path and label context", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     expect(wrapper.findAll("article.session-card")[0].text()).toContain("Most recent");
     expect(wrapper.text()).toContain("Path: Learning · A path");
-    expect(wrapper.text()).toContain("Item: Vue · ACTIVE · 40%");
+    expect(wrapper.text()).toContain("Labels: Vue");
   });
 
-  it("renders multiple session items and marks deleted references clearly", async () => {
+  it("renders multiple session labels and marks deleted references clearly", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path.startsWith("/time-entries?")) return {
         page: 0,
         totalPages: 1,
         totalSessions: 1,
-        sessions: [{ id: "multi", startedAt: "2026-08-27T11:00:00Z", endedAt: "2026-08-27T12:00:00Z", durationSeconds: 3600, source: "WEB", itemIds: ["item-1", "removed-item"] }],
+        sessions: [{ id: "multi", startedAt: "2026-08-27T11:00:00Z", endedAt: "2026-08-27T12:00:00Z", durationSeconds: 3600, source: "WEB", labelIds: ["label-1", "removed-label"] }],
       };
       if (path === "/paths") return [];
-      if (path === "/items") return [{ id: "item-1", title: "Vue", status: "ACTIVE", progress: 40 }];
+      if (path === "/calendar/labels") return [{ id: "label-1", name: "Vue", color: null }];
       return undefined;
     });
     const wrapper = mount(SessionsView);
     await flushPromises();
 
-    expect(wrapper.get(".session-summary").text()).toContain("Vue · ACTIVE · 40%, Removed item");
+    expect(wrapper.get(".session-summary").text()).toContain("Vue, Removed label");
     await wrapper.get("button.text-button").trigger("click");
-    expect((wrapper.get('select[aria-label="Edit session item"]').element as HTMLSelectElement).selectedOptions[0]?.value).toBe("item-1");
+    expect((wrapper.get('select[aria-label="Edit session labels"]').element as HTMLSelectElement).selectedOptions[0]?.value).toBe("label-1");
   });
 
   it("updates every editable session property", async () => {
@@ -77,7 +77,7 @@ describe("SessionsView", () => {
     await wrapper.get('[aria-label="Edit session description"]').setValue("Updated");
     await wrapper.get('[aria-label="Edit session source"]').setValue("IOS");
     await wrapper.get('[aria-label="Edit session path"]').setValue("path-1");
-    await wrapper.get('[aria-label="Edit session item"]').setValue("item-1");
+    await wrapper.get('[aria-label="Edit session labels"]').setValue("label-1");
     await wrapper.get("form").trigger("submit");
     expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/new", expect.objectContaining({
       method: "PUT",
@@ -103,7 +103,7 @@ describe("SessionsView", () => {
   it("loads the selected pagination page", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path.startsWith("/time-entries?")) return { page: path.includes("page=1") ? 1 : 0, totalPages: 2, totalSessions: 51, sessions: [] };
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       return undefined;
     });
     const wrapper = mount(SessionsView);
@@ -135,7 +135,7 @@ describe("SessionsView", () => {
   it("reports update and removal failures", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path.startsWith("/time-entries?") && !options.method) return { page: 0, totalPages: 1, totalSessions: 1, sessions: [{ id: "session-1", startedAt: "2026-08-27T11:00:00Z", endedAt: "2026-08-27T12:00:00Z", durationSeconds: 3600, description: "Focus", source: "WEB" }] };
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       throw new Error("mutation failed");
     });
     const wrapper = mount(SessionsView);
@@ -155,7 +155,7 @@ describe("SessionsView", () => {
   it("marks a running session as running and prevents editing or removal", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path.startsWith("/time-entries?")) return { page: 0, totalPages: 1, totalSessions: 1, sessions: [{ id: "running", startedAt: "2026-08-27T11:00:00Z", source: "WEB", running: true }] };
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       return undefined;
     });
     const wrapper = mount(SessionsView);
