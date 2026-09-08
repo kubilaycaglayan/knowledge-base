@@ -15,6 +15,7 @@ public class DailyLabel {
   protected DailyLabel() {}
   public DailyLabel(UUID userId, String name, String color) { this.userId = userId; this.name = name; this.color = color; }
   public UUID getId() { return id; }
+  public UUID getUserId() { return userId; }
   public String getName() { return name; }
   public String getColor() { return color; }
   public void update(String name, String color) { this.name = name; this.color = color; }
