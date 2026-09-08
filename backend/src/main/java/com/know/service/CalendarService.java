@@ -18,9 +18,11 @@ public class CalendarService {
   private final LabelRepository labels;
   private final LabelScopeRepository scopes;
   private final DailyRecordLabelRepository assignments;
+  private final TimeEntryLabelRepository timeAssignments;
+  private final NoteTagRepository noteAssignments;
 
-  public CalendarService(DailyRecordRepository records, LabelRepository labels, DailyRecordLabelRepository assignments, LabelScopeRepository scopes) {
-    this.records = records; this.labels = labels; this.assignments = assignments; this.scopes = scopes;
+  public CalendarService(DailyRecordRepository records, LabelRepository labels, DailyRecordLabelRepository assignments, LabelScopeRepository scopes, TimeEntryLabelRepository timeAssignments, NoteTagRepository noteAssignments) {
+    this.records = records; this.labels = labels; this.assignments = assignments; this.scopes = scopes; this.timeAssignments = timeAssignments; this.noteAssignments = noteAssignments;
   }
 
   public record LabelView(UUID id, String name, String color) {}
@@ -57,7 +59,7 @@ public class CalendarService {
   @Transactional
   public void deleteLabel(UUID userId, UUID id) {
     Label label = label(userId, id);
-    if (assignments.existsByIdLabelId(id)) conflict("Labels used by calendar records cannot be deleted");
+    if (assignments.existsByIdLabelId(id) || timeAssignments.existsByIdLabelId(id) || noteAssignments.existsByIdLabelId(id)) conflict("Labels in use cannot be deleted");
     labels.delete(label);
   }
 
