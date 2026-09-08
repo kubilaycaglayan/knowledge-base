@@ -42,35 +42,24 @@ final class KnowTests: XCTestCase {
     }
 
     func testIOSTimerRequestEncodesCanonicalSourceAndTargets() throws {
-        let itemId = UUID()
-        let request = TimerRequest(pathId: nil, itemId: itemId.uuidString, description: "Reading", source: "IOS")
+        let labelId = UUID()
+        let request = TimerRequest(pathId: nil, labelIds: [labelId.uuidString], description: "Reading", source: "IOS")
         let data = try JSONEncoder().encode(request)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
         XCTAssertNil(json["pathId"] as? String)
-        XCTAssertEqual(json["itemId"] as? String, itemId.uuidString)
+        XCTAssertEqual(json["labelIds"] as? [String], [labelId.uuidString])
         XCTAssertEqual(json["description"] as? String, "Reading")
         XCTAssertEqual(json["source"] as? String, "IOS")
     }
 
-    func testItemRequestEncodesSelectedPathMemberships() throws {
-        let pathId = UUID()
-        let request = ItemRequest(title: "Algorithms", type: "COURSE", description: nil, status: nil, pathIds: [pathId], tags: [])
+    func testLabelRequestEncodesSharedLabelFields() throws {
+        let request = LabelRequest(name: "Algorithms", color: "#2878D5")
         let data = try JSONEncoder().encode(request)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let pathIds = try XCTUnwrap(json["pathIds"] as? [String])
 
-        XCTAssertEqual(pathIds, [pathId.uuidString])
-    }
-
-    func testTimerItemsIncludeEveryOwnedItemForSelectedPath() {
-        let path = UUID()
-        let otherPath = UUID()
-        let selected = Item(id: UUID(), title: "Graphs", type: "COURSE", description: nil, source: nil, status: "ACTIVE", progress: 20, pathIds: [path], tags: [])
-        let unrelated = Item(id: UUID(), title: "Essays", type: "BOOK", description: nil, source: nil, status: "PLANNED", progress: 0, pathIds: [otherPath], tags: [])
-
-        XCTAssertEqual(itemsForTimer(path, from: [selected, unrelated]).map(\.id), [selected.id, unrelated.id])
-        XCTAssertEqual(itemsForTimer(nil, from: [selected, unrelated]).count, 2)
+        XCTAssertEqual(json["name"] as? String, "Algorithms")
+        XCTAssertEqual(json["color"] as? String, "#2878D5")
     }
 
     func testUITestingLaunchArgumentIsRecognized() {
@@ -83,51 +72,37 @@ final class KnowTests: XCTestCase {
         let model = AppModel(api: APIClient(base: URL(string: "https://example.test/api/v1")!), arguments: ["Know", "-ui-testing", "-ui-testing-authenticated"])
 
         XCTAssertEqual(model.paths.first?.name, "UI Test Path")
-        XCTAssertEqual(model.items.first?.title, "UI Test Item")
+        XCTAssertEqual(model.labels.first?.name, "UI Test Label")
         await model.refresh()
         XCTAssertNil(model.error)
     }
 
-    func testStatisticsDecodesRecentProgressChanges() throws {
-        let itemId = UUID()
+    func testStatisticsDecodesLabelBreakdowns() throws {
         let payload = try JSONSerialization.data(withJSONObject: [
             "todaySeconds": 120,
             "weekSeconds": 120,
             "monthSeconds": 120,
             "todayByPath": [:],
-            "todayByItem": [:],
+            "todayByLabel": [:],
             "weekByPath": ["path-1": 3_600],
-            "weekByItem": ["item-1": 1_800],
-            "completedItems": 1,
-            "activeItems": 2,
-            "recentProgressChanges": [
-                [
-                    "itemId": itemId.uuidString,
-                    "previousProgress": 25,
-                    "newProgress": 50,
-                    "changedAt": "2026-08-25T12:00:00Z",
-                ]
-            ],
+            "weekByLabel": ["label-1": 1_800],
         ])
         let stats = try JSONDecoder().decode(Statistics.self, from: payload)
 
-        XCTAssertEqual(stats.completedItems, 1)
         XCTAssertEqual(stats.weekByPath["path-1"], 3600)
-        XCTAssertEqual(stats.weekByItem["item-1"], 1800)
-        XCTAssertEqual(stats.recentProgressChanges.first?.itemId, itemId)
-        XCTAssertEqual(stats.recentProgressChanges.first?.newProgress, 50)
+        XCTAssertEqual(stats.weekByLabel["label-1"], 1800)
     }
 
     func testAPIClientDecodesResponsesAndAddsBearerToken() async throws {
-        let itemId = UUID()
-        URLProtocolStub.responseData = "{\"id\":\"\(itemId.uuidString)\",\"name\":\"Algorithms\",\"description\":null,\"status\":\"ACTIVE\"}".data(using: .utf8)!
+        let entityId = UUID()
+        URLProtocolStub.responseData = "{\"id\":\"\(entityId.uuidString)\",\"name\":\"Algorithms\",\"description\":null,\"status\":\"ACTIVE\"}".data(using: .utf8)!
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [URLProtocolStub.self]
         let client = APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration))
 
         let path: Path = try await client.request("/paths", token: "test-token")
 
-        XCTAssertEqual(path.id, itemId)
+        XCTAssertEqual(path.id, entityId)
         XCTAssertEqual(path.name, "Algorithms")
         XCTAssertEqual(URLProtocolStub.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
     }
@@ -168,7 +143,7 @@ final class KnowTests: XCTestCase {
         let client = APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration))
 
         do {
-            let _: Path = try await client.request("/items", method: "POST", body: Data("{}".utf8))
+            let _: Path = try await client.request("/calendar/labels", method: "POST", body: Data("{}".utf8))
             XCTFail("Expected an offline error")
         } catch let error as APIError {
             if case .offline = error { } else { XCTFail("Expected offline, got \(error)") }
