@@ -1,21 +1,44 @@
 import "vuetify/styles";
 import { createVuetify } from "vuetify";
 import * as directives from "vuetify/directives";
+import { watch } from "vue";
+import { theme } from "../lib/theme";
 
-export default createVuetify({
+const vuetify = createVuetify({
   directives,
+  defaults: {
+    VBtn: { elevation: 0, rounded: "sm" },
+    VSelect: { density: "compact", variant: "outlined" },
+  },
   theme: {
-    defaultTheme: "know",
+    defaultTheme: theme.value,
     themes: {
-      know: {
+      light: {
         colors: {
-          primary: "#173d36",
-          secondary: "#497d6b",
-          accent: "#e8754e",
-          background: "#f4f5ef",
+          primary: "#334155",
+          secondary: "#606b7b",
+          accent: "#334155",
+          background: "#f7f8fa",
           surface: "#ffffff",
+          "on-surface": "#252b36",
+          "on-background": "#252b36",
+        },
+      },
+      dark: {
+        dark: true,
+        colors: {
+          primary: "#c4d1e2",
+          secondary: "#a7b2c2",
+          accent: "#c4d1e2",
+          background: "#151a22",
+          surface: "#1c2430",
+          "on-surface": "#e1e6ee",
+          "on-background": "#e1e6ee",
+          "on-primary": "#18212e",
         },
       },
     },
   },
 });
+watch(theme, (value) => { void vuetify.theme.change(value); });
+export default vuetify;

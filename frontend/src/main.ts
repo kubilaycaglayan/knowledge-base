@@ -3,9 +3,11 @@ import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import vuetify from "./plugins/vuetify";
 import "./style.css";
+import "./theme.css";
 import "./extra.css";
-import "./path-colors.css";
 import ProgressBar from "./components/ProgressBar.vue";
+import { applyTheme, theme } from "./lib/theme";
+applyTheme(theme.value);
 const router = createRouter({
   history: createWebHistory(),
   routes: [
