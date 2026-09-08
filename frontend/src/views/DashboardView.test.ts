@@ -96,21 +96,21 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.find("section").text()).toContain("FOCUS TODAY");
   });
 
-  it("restores page metadata when leaving the overview", async () => {
+  it("preserves application-owned metadata when mounting and leaving the overview", async () => {
     document.title = "Knowledge Base";
     const themeColor = document.createElement("meta");
     themeColor.name = "theme-color";
-    themeColor.content = "#173d36";
+    themeColor.content = "#151a22";
     document.head.append(themeColor);
     const wrapper = mountDashboard();
     await flushPromises();
 
-    expect(document.title).toBe("Overview · Knowledge Base");
-    expect(themeColor.content).toBe("#f7f8fa");
+    expect(document.title).toBe("Knowledge Base");
+    expect(themeColor.content).toBe("#151a22");
     expect(wrapper.get('[role="timer"]').attributes("aria-live")).toBe("off");
     wrapper.unmount();
     expect(document.title).toBe("Knowledge Base");
-    expect(themeColor.content).toBe("#173d36");
+    expect(themeColor.content).toBe("#151a22");
     themeColor.remove();
   });
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { theme } from "../../lib/theme";
 import { ref, watch } from "vue";
 import { VueDatePicker, type PresetDate } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -35,7 +36,7 @@ const formats = { input: (value: Date[]) => value?.length === 2 ? `${format(valu
 
 <template>
   <div class="report-date-range">
-    <VueDatePicker :model-value="dates" :multi-calendars="{ count: 2, static: true }" :preset-dates="presets" :formats="formats" :range="{ partialRange: false, maxRange: 366 }" :action-row="{ showCancel: false, showSelect: false, showNow: false, showPreview: false }" :config="{ closeOnAutoApply: true }" :input-attrs="{ clearable: false }" :time-config="{ enableTimePicker: false }" auto-apply week-start="1" aria-label="Report date range" @update:model-value="updateDates" />
+    <VueDatePicker :dark="theme === 'dark'" :model-value="dates" :multi-calendars="{ count: 2, static: true }" :preset-dates="presets" :formats="formats" :range="{ partialRange: false, maxRange: 366 }" :action-row="{ showCancel: false, showSelect: false, showNow: false, showPreview: false }" :config="{ closeOnAutoApply: true }" :input-attrs="{ clearable: false }" :time-config="{ enableTimePicker: false }" auto-apply week-start="1" aria-label="Report date range" @update:model-value="updateDates" />
     <button class="range-arrow" type="button" aria-label="Previous date range" @click="emit('previous')"><span aria-hidden="true">‹</span></button>
     <button class="range-arrow" type="button" aria-label="Next date range" @click="emit('next')"><span aria-hidden="true">›</span></button>
   </div>
