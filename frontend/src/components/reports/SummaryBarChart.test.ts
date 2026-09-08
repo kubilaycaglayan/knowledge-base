@@ -23,6 +23,22 @@ describe("SummaryBarChart", () => {
     expect(tooltip).toContain("Annual leave");
   });
 
+  it("uses each path color for its bars and tooltip marker", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        days: [{ date: "2026-09-04", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600, color: "#123456" }] }],
+        categories: [{ id: "path-1", label: "Wander", seconds: 3600, color: "#123456" }],
+      },
+    });
+    const option = wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ itemStyle?: { color: string } }>;
+      tooltip: { formatter(params: unknown): string };
+    };
+
+    expect(option.series[0].itemStyle).toEqual({ color: "#123456" });
+    expect(option.tooltip.formatter([{ axisValue: "Fri, Sep 4", dataIndex: 0 }])).toContain('background:#123456');
+  });
+
   it("omits calendar inputs when disabled", () => {
     const wrapper = mount(SummaryBarChart, { props: { days, categories, showCalendar: false } });
     const series = (wrapper.getComponent({ name: "VChart" }).props("option") as { series: Array<{ name: string }> }).series;

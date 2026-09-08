@@ -11,12 +11,13 @@ import { SVGRenderer } from "echarts/renderers";
 import { format, parseISO } from "date-fns";
 import { formatDuration, percentageOf } from "../../utils/duration";
 
-type Category = { id?: string; label: string; seconds: number };
+type Category = { id?: string; label: string; seconds: number; color?: string };
 type CalendarInput = { id: string; label: string; color?: string; portion?: number | null };
 type Day = { date: string; totalSeconds: number; paths: Category[]; calendarNote?: string | null; calendarLabels?: CalendarInput[] };
 const props = withDefaults(defineProps<{ days: Day[]; categories: Category[]; showCalendar?: boolean }>(), { showCalendar: false });
 use([BarChart, CustomChart, DataZoomComponent, GridComponent, TooltipComponent, SVGRenderer]);
 function colorFor(item: Category): string {
+  if (item.color) return item.color;
   const index = props.categories.findIndex((category) => category.id === item.id || category.label === item.label);
   return colors[(index < 0 ? 0 : index) % colors.length];
 }
