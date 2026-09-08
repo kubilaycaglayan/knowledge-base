@@ -98,6 +98,24 @@ describe("NotesView", () => {
     await new Promise(resolve => setTimeout(resolve, 700)); await flushPromises();
   });
 
+  it("adds a new label when Enter is pressed on the mobile keyboard", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && !options) return note;
+      if (path === "/notes/labels") return [{ id: "study", name: "Study" }];
+      if (path === "/notes/note-1" && options?.method === "PUT") return { ...note, tags: ["study", "mobile"] };
+      return undefined;
+    });
+    const r = router(); await r.push("/notes/note-1"); await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
+    const input = wrapper.get('input[aria-label="Add label"]');
+    await input.setValue("mobile");
+    await input.trigger("keydown", { key: "Enter" });
+
+    expect(wrapper.findAll(".note-tag").map(tag => tag.text())).toEqual(["study×", "mobile×"]);
+    expect((input.element as HTMLInputElement).value).toBe("");
+    await new Promise(resolve => setTimeout(resolve, 700)); await flushPromises();
+  });
+
   it("replays a draft when another window saved first", async () => {
     let writes = 0;
     const latest = { ...note, version: 1, title: "Remote title" };
