@@ -5,7 +5,6 @@ import vuetify from "./plugins/vuetify";
 import "./style.css";
 import "./theme.css";
 import "./extra.css";
-import ProgressBar from "./components/ProgressBar.vue";
 import { applyTheme, theme } from "./lib/theme";
 applyTheme(theme.value);
 const router = createRouter({
@@ -13,7 +12,6 @@ const router = createRouter({
   routes: [
     { path: "/", component: () => import("./views/DashboardView.vue") },
     { path: "/paths", component: () => import("./views/PathsView.vue") },
-    { path: "/items", component: () => import("./views/ItemsView.vue") },
     { path: "/timeline", component: () => import("./views/TimelineView.vue") },
     { path: "/sessions", component: () => import("./views/SessionsView.vue") },
     { path: "/reports", component: () => import("./views/ReportsView.vue") },
@@ -25,7 +23,6 @@ const router = createRouter({
   ],
 });
 createApp(App)
-  .component("ProgressBar", ProgressBar)
   .use(router)
   .use(vuetify)
   .mount("#app");
