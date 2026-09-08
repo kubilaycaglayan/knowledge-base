@@ -12,19 +12,15 @@ type Path = {
   color?: string;
   status: string;
 };
-type Item = { id: string; title: string };
 type Activity = {
   id: string;
   type?: string;
-  itemId?: string;
   title: string;
   detail?: string;
   occurredAt: string;
 };
 type Summary = {
   path: Path;
-  itemIds: string[];
-  itemProgress: Record<string, number>;
   trackedSeconds: number;
   recentActivity: Activity[];
 };
@@ -44,7 +40,6 @@ const colors = [
   "#64748B",
 ];
 const paths = ref<Path[]>([]),
-  items = ref<Item[]>([]),
   summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
   description = ref(""),
@@ -85,7 +80,6 @@ function activityDescriptionParts(event: Activity): DescriptionPart[] {
   return [
     /^Tracked \d+ seconds$/.test(event.title) ? undefined : event.title,
     event.detail,
-    event.itemId && itemName(event.itemId),
   ]
     .filter((value): value is string => Boolean(value))
     .flatMap((value, index, values) => [
@@ -93,8 +87,6 @@ function activityDescriptionParts(event: Activity): DescriptionPart[] {
       ...linkParts(value),
     ]);
 }
-const itemName = (id: string) =>
-  items.value.find((item) => item.id === id)?.title || id;
 function recentActivity(pathId: string) {
   const activity = summaries.value[pathId]?.recentActivity || [];
   const stoppedTimers = activity.filter(
@@ -104,7 +96,6 @@ function recentActivity(pathId: string) {
     if (event.type !== "TIMER_STARTED") return true;
     return !stoppedTimers.some(
       (stopped) =>
-        stopped.itemId === event.itemId &&
         stopped.detail === event.detail &&
         Date.parse(stopped.occurredAt) >= Date.parse(event.occurredAt),
     );
@@ -112,10 +103,7 @@ function recentActivity(pathId: string) {
 }
 async function load() {
   try {
-    [paths.value, items.value] = await Promise.all([
-      api<Path[]>("/paths"),
-      api<Item[]>("/items"),
-    ]);
+    paths.value = await api<Path[]>("/paths");
   } catch {
     error.value = "Unable to load paths.";
   }
@@ -358,18 +346,7 @@ onBeforeUnmount(() => {
           <div v-if="expanded(path) && summaries[path.id]" class="path-summary">
             <p class="eyebrow">PATH HISTORY</p>
             <p class="muted">
-              {{ formatTrackedDuration(summaries[path.id].trackedSeconds) }} tracked ·
-              {{ summaries[path.id].itemIds.length }} items
-            </p>
-            <p><strong>Associated items and progress</strong></p>
-            <ul>
-              <li v-for="id in summaries[path.id].itemIds" :key="id">
-                {{ itemName(id) }} —
-                {{ summaries[path.id].itemProgress[id] ?? 0 }}%
-              </li>
-            </ul>
-            <p v-if="!summaries[path.id].itemIds.length" class="muted">
-              No items are associated with this path.
+              {{ formatTrackedDuration(summaries[path.id].trackedSeconds) }} tracked
             </p>
             <p><strong>Recent activity</strong></p>
             <div

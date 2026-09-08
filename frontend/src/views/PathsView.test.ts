@@ -18,16 +18,9 @@ describe("PathsView", () => {
             status: "ACTIVE",
           },
         ];
-      if (path === "/items")
-        return [
-          { id: "item-1", title: "Graph theory" },
-          { id: "item-2", title: "Sorting" },
-        ];
       if (path === "/paths/path-1/summary")
         return {
           path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
-          itemIds: ["item-1", "item-2"],
-          itemProgress: { "item-1": 40, "item-2": 80 },
           trackedSeconds: 120,
           recentActivity: [
             {
@@ -42,7 +35,7 @@ describe("PathsView", () => {
     });
   });
 
-  it("shows associated path items with their progress", async () => {
+  it("shows tracked time and recent activity for a path", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
     await wrapper.get("button.text-button").trigger("click");
@@ -54,15 +47,12 @@ describe("PathsView", () => {
     expect(wrapper.find("article.path.expanded").text()).toContain(
       "PATH HISTORY",
     );
-    expect(wrapper.text()).toContain("Graph theory");
-    expect(wrapper.text()).toContain("Sorting");
     expect(wrapper.text()).toContain(
       "2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z",
     );
     expect(wrapper.find(".activity-row time").text()).toContain("31/07/2026");
     expect(wrapper.get(".activity-duration").text()).toBe("");
-    expect(wrapper.text()).toContain("Graph theory — 40%");
-    expect(wrapper.text()).toContain("Sorting — 80%");
+    expect(wrapper.text()).toContain("2 minutes tracked");
   });
 
   it("shows backend-provided activity labels on paths", async () => {
@@ -74,7 +64,6 @@ describe("PathsView", () => {
           { id: "month", name: "Month", status: "ACTIVE", activityLabel: "this month" },
           { id: "passive", name: "Passive", status: "ACTIVE", activityLabel: "passive" },
         ];
-      if (path === "/items") return [];
       return undefined;
     });
 
@@ -123,20 +112,15 @@ describe("PathsView", () => {
             status: "ACTIVE",
           },
         ];
-      if (path === "/items") return [];
       if (path === "/paths/path-1/summary")
         return {
           path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
-          itemIds: [],
-          itemProgress: {},
           trackedSeconds: 120,
           recentActivity: [],
         };
       if (path === "/paths/path-2/summary")
         return {
           path: { id: "path-2", name: "Writing", status: "ACTIVE" },
-          itemIds: [],
-          itemProgress: {},
           trackedSeconds: 240,
           recentActivity: [],
         };
@@ -172,19 +156,14 @@ describe("PathsView", () => {
             status: "ACTIVE",
           },
         ];
-      if (path === "/items")
-        return [{ id: "item-1", title: "Graph theory" }];
       if (path === "/paths/path-1/summary")
         return {
           path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
-          itemIds: ["item-1"],
-          itemProgress: { "item-1": 40 },
           trackedSeconds: 120,
           recentActivity: [
             {
               id: "timer-stop",
               type: "TIMER_STOPPED",
-              itemId: "item-1",
               title: "Tracked 2000 seconds",
               detail: "Read graph algorithms",
               occurredAt: "2026-08-28T10:02:00Z",
@@ -192,7 +171,6 @@ describe("PathsView", () => {
             {
               id: "timer-start",
               type: "TIMER_STARTED",
-              itemId: "item-1",
               title: "Started a timer",
               detail: "Read graph algorithms",
               occurredAt: "2026-08-28T10:00:00Z",
@@ -211,7 +189,6 @@ describe("PathsView", () => {
     expect(activityLine.text()).toContain("33 minutes");
     expect(activityLine.text()).not.toContain("Tracked");
     expect(activityLine.text()).toContain("Read graph algorithms");
-    expect(activityLine.text()).toContain("Graph theory");
     expect(wrapper.text()).not.toContain("Started a timer");
   });
 
@@ -219,11 +196,10 @@ describe("PathsView", () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [{ id: "path-1", name: "Algorithms", description: "Read https://example.com/guide." , status: "ACTIVE" }];
-      if (path === "/items") return [];
       if (path === "/paths/path-1/summary")
         return {
           path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
-          itemIds: [], itemProgress: {}, trackedSeconds: 0,
+          trackedSeconds: 0,
           recentActivity: [{ id: "activity-1", title: "Session", detail: "See https://example.com/session", occurredAt: "2026-08-28T10:00:00Z" }],
         };
       return undefined;
@@ -330,8 +306,7 @@ describe("PathsView", () => {
   it("reports a path-note save failure", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
-      if (path === "/paths/path-1/summary") return { path: { id: "path-1", name: "Algorithms", status: "ACTIVE" }, itemIds: [], itemProgress: {}, trackedSeconds: 0, recentActivity: [] };
+      if (path === "/paths/path-1/summary") return { path: { id: "path-1", name: "Algorithms", status: "ACTIVE" }, trackedSeconds: 0, recentActivity: [] };
       if (path === "/notes" && options?.method === "POST") throw new Error("save failed");
       return undefined;
     });
@@ -350,7 +325,6 @@ describe("PathsView", () => {
   it("reports an undo failure after removing a path", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
       if (path === "/paths/path-1" && options?.method === "DELETE") return undefined;
       if (path === "/paths/path-1/restore" && options?.method === "POST") throw new Error("restore failed");
       return undefined;
@@ -373,7 +347,6 @@ describe("PathsView", () => {
 
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths" && !options) return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
       if (path === "/paths" && options?.method === "POST") throw new Error("create failed");
       if (path === "/paths/path-1/summary") throw new Error("summary failed");
       return undefined;
@@ -415,7 +388,6 @@ describe("PathsView", () => {
   it("does not offer removal for inactive paths", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [{ id: "archived", name: "Archived", status: "ARCHIVED" }];
-      if (path === "/items") return [];
       return undefined;
     });
     const wrapper = mount(PathsView);
@@ -428,7 +400,6 @@ describe("PathsView", () => {
   it("reports a path removal failure without showing an undo snackbar", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
       if (path === "/paths/path-1" && options?.method === "DELETE") throw new Error("remove failed");
       return undefined;
     });
