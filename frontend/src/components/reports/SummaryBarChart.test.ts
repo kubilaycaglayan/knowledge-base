@@ -9,13 +9,14 @@ describe("SummaryBarChart", () => {
 
   it("adds calendar inputs as label-colored shadow bars without changing time tracks", () => {
     const wrapper = mount(SummaryBarChart, { props: { days, categories, showCalendar: true } });
-    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as { series: Array<{ name: string; type: string; yAxisIndex?: number; data?: Array<{ value: unknown[] }>; renderItem?: (params: unknown, api: { value(index: number): number | string; coord(value: number[]): number[] }) => { type: string; children: Array<{ style: { fill: string } }> } }> }).series;
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as { series: Array<{ name: string; type: string; yAxisIndex?: number; data?: Array<{ value: unknown[] }>; renderItem?: (params: unknown, api: { value(index: number): number | string; coord(value: number[]): number[]; size(value: number[]): number[] }) => { type: string; children: Array<{ shape: { x: number; width: number }; style: { fill: string } }> } }> }).series;
     expect(series).toHaveLength(2);
     expect(series[0]).toMatchObject({ name: "Calendar input", type: "custom", yAxisIndex: 1, data: [{ value: [1, 0, 1, "#009688"] }] });
     expect(series[1]).toMatchObject({ name: "Wander" });
     expect((wrapper.getComponent({ name: "VChart" }).props("option") as { tooltip: { confine: boolean; extraCssText: string } }).tooltip).toMatchObject({ confine: true, extraCssText: expect.stringContaining("max-width: 320px") });
-    const pattern = series[0].renderItem?.({}, { value: (index) => [0, 0, 1, "#009688"][index], coord: ([, value]) => [100, 200 - value * 100] });
+    const pattern = series[0].renderItem?.({}, { value: (index) => [0, 0, 1, "#009688"][index], coord: ([, value]) => [100, 200 - value * 100], size: () => [20, 0] });
     expect(pattern?.type).toBe("group");
+    expect(pattern?.children[0].shape).toMatchObject({ x: 93, width: 14 });
     expect(pattern?.children[0]).toMatchObject({ style: { fill: "#009688" } });
     expect(pattern?.children.slice(1).some((child) => child.style.fill === "#ffffff")).toBe(true);
     const tooltip = (wrapper.getComponent({ name: "VChart" }).props("option") as { tooltip: { formatter(params: unknown): string } }).tooltip.formatter([{ axisValue: "Fri, Sep 4", dataIndex: 0 }]);
