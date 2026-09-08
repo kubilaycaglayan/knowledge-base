@@ -1,24 +1,24 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { activePaths, itemsForPath, timerStartPayload, timerIsRunning, timerElapsedSeconds, timerStatus } = require('./core.js')
+const { activePaths, timerLabels, timerStartPayload, timerIsRunning, timerElapsedSeconds, timerStatus } = require('./core.js')
 
 test('only active paths are offered to the timer', () => {
   assert.deepEqual(activePaths([{ id: 'active', status: 'ACTIVE' }, { id: 'archived', status: 'ARCHIVED' }]).map(path => path.id), ['active'])
 })
 
-test('all items are available for any selected path', () => {
-  const items = [{ id: 'one', pathIds: ['path-a'] }, { id: 'two', pathIds: ['path-b'] }]
-  assert.deepEqual(itemsForPath(items, 'path-a').map(item => item.id), ['one', 'two'])
-  assert.equal(itemsForPath(items, '').length, 2)
+test('all labels are available for any selected path', () => {
+  const labels = [{ id: 'one', pathIds: ['path-a'] }, { id: 'two', pathIds: ['path-b'] }]
+  assert.deepEqual(timerLabels(labels, 'path-a').map(label => label.id), ['one', 'two'])
+  assert.equal(timerLabels(labels, '').length, 2)
 })
 
-test('items remain available across independent path selections', () => {
-  const items = [{ id: 'one', pathIds: ['path-a'] }, { id: 'two', pathIds: ['path-b'] }]
-  assert.deepEqual(itemsForPath(items, 'path-a', ['two']).map(item => item.id), ['one', 'two'])
+test('labels remain available across independent path selections', () => {
+  const labels = [{ id: 'one', pathIds: ['path-a'] }, { id: 'two', pathIds: ['path-b'] }]
+  assert.deepEqual(timerLabels(labels, 'path-a', ['two']).map(label => label.id), ['one', 'two'])
 })
 
 test('timer requests carry the extension source and nullable selections', () => {
-  assert.deepEqual(timerStartPayload('', ['item-id'], ''), { pathId: null, itemIds: ['item-id'], description: null, source: 'CHROME_EXTENSION' })
+  assert.deepEqual(timerStartPayload('', ['label-id'], ''), { pathId: null, labelIds: ['label-id'], description: null, source: 'CHROME_EXTENSION' })
 })
 
 test('current timer state preserves the server description', () => {

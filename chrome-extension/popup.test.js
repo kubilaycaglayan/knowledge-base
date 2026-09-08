@@ -12,7 +12,7 @@ class Element {
     this.textContent = "";
     this.hidden = false;
     this.disabled = false;
-    this.multiple = id === "item";
+    this.multiple = id === "label";
     this.options = [];
     this.onclick = null;
     this.onchange = null;
@@ -26,7 +26,7 @@ class Element {
 
 function createPopup({ token = null, currentTimer = null, statusByPath = {} } = {}) {
   const elements = Object.fromEntries([
-    "status", "path", "item", "description", "toggle", "sessions", "error",
+    "status", "path", "label", "description", "toggle", "sessions", "error",
     "auth", "workspace", "email", "password", "login", "google-login", "logout", "options",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [] };
@@ -42,7 +42,7 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {} } = 
   const responses = new Map([
     ["/auth/login", { token: "signed-in-token" }],
     ["/paths", [{ id: "path-1", name: "Learning", status: "ACTIVE" }]],
-    ["/items", [{ id: "item-1", title: "Algorithms", pathIds: ["path-1"], status: "ACTIVE", progress: 25 }]],
+    ["/calendar/labels", [{ id: "label-1", name: "Algorithms", color: "#2878D5" }]],
     ["/timers/current", currentTimer],
     ["/time-entries?page=0&size=20", []],
     ["/timers", { id: "timer-1", pathId: "path-1", startedAt: "2026-09-01T10:00:00Z", running: true }],
@@ -56,10 +56,10 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {} } = 
     KnowApiConfig: { apiBase: (value) => value || "http://localhost:8080/api/v1" },
     KnowCore: {
       activePaths: (paths) => paths.filter((path) => path.status === "ACTIVE"),
-      itemsForPath: (items) => items,
+      timerLabels: (labels) => labels,
       timerStatus: (timer) => timer ? "Running" : "No active timer",
       timerIsRunning: (timer) => Boolean(timer?.running),
-      timerStartPayload: (pathId, itemIds, description) => ({ pathId: pathId || null, itemIds, description: description || null, source: "CHROME_EXTENSION" }),
+      timerStartPayload: (pathId, labelIds, description) => ({ pathId: pathId || null, labelIds, description: description || null, source: "CHROME_EXTENSION" }),
       formatTimer: () => "00:00:00",
     },
     KnowGoogleAuth: {},
@@ -99,19 +99,19 @@ test("signs in, stores the token, and loads the timer workspace", async () => {
   assert.equal(popup.elements.toggle.textContent, "Start timer");
 });
 
-test("starts a server timer with selected path, items, description, and extension source", async () => {
+test("starts a server timer with selected path, labels, description, and extension source", async () => {
   const popup = createPopup({ token: "token" });
   await flush();
   await flush();
   await flush();
   popup.elements.path.value = "path-1";
-  popup.elements.item.options[0].selected = true;
+  popup.elements.label.options[0].selected = true;
   popup.elements.description.value = "Read algorithms";
   await popup.elements.toggle.onclick();
 
   const start = popup.state.calls.find(({ path, options }) => path === "/timers" && options.method === "POST");
   assert.ok(start);
-  assert.deepEqual(JSON.parse(start.options.body), { pathId: "path-1", itemIds: ["item-1"], description: "Read algorithms", source: "CHROME_EXTENSION" });
+  assert.deepEqual(JSON.parse(start.options.body), { pathId: "path-1", labelIds: ["label-1"], description: "Read algorithms", source: "CHROME_EXTENSION" });
   assert.equal(popup.state.activeTimer.id, "timer-1");
   assert.equal(popup.elements.toggle.textContent, "Stop timer");
 });
