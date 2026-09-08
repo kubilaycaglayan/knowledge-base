@@ -4,12 +4,15 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.know.domain.User;
 import com.know.domain.UserRepository;
 import com.know.security.GoogleIdentityVerifier;
 import java.util.Optional;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.cors.CorsConfiguration;
@@ -162,6 +166,42 @@ class AuthControllerApiTest {
     org.junit.jupiter.api.Assertions.assertEquals(
         "New Person", account.getValue().getDisplayName());
     verify(encoder).encode(anyString());
+  }
+
+  @Test
+  void googleOnlyUserCanSetPasswordAfterAuthentication() throws Exception {
+    UUID id = UUID.randomUUID();
+    User user = new User("person@example.com", "random-hash", "Person", false);
+    when(users.findById(id)).thenReturn(Optional.of(user));
+    when(encoder.encode("new-secure-password")).thenReturn("new-hash");
+    when(users.save(user)).thenReturn(user);
+    var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
+
+    mvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPassword\":\"new-secure-password\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.hasPassword").value(true));
+    verify(encoder).encode("new-secure-password");
+  }
+
+  @Test
+  void passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured() throws Exception {
+    UUID id = UUID.randomUUID();
+    User user = new User("person@example.com", "hash", "Person");
+    when(users.findById(id)).thenReturn(Optional.of(user));
+    when(encoder.matches("wrong-current", "hash")).thenReturn(false);
+    var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
+
+    mvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"wrong-current\",\"newPassword\":\"new-secure-password\"}"))
+        .andExpect(status().isBadRequest());
+    verify(users, never()).save(any());
   }
 
   @Test

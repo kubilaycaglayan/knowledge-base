@@ -10,6 +10,8 @@ Interactive OpenAPI documentation is available at `/swagger-ui.html` during deve
 
 Authenticated endpoints currently include:
 
+- `GET /auth/me` returns the signed-in account’s email and available sign-in methods. `PUT /auth/password` sets a first password for a Google-only account, or changes an existing password when the current password is supplied. A Google-authenticated account may set or change its password without the current password; Google sign-in remains linked and usable afterward. Passwords must be at least 9 characters; the password-configuration state is stored explicitly so new Google-only accounts’ random unusable hashes cannot be mistaken for usable passwords.
+
 - `GET/POST /paths`, `GET/PUT/DELETE /paths/{id}`, and `POST /paths/{id}/restore`; path responses include a backend-computed `activityLabel` (`today`, `this week`, `this month`, or `passive`) based on the owner’s most recent recorded session. Delete is a soft delete that records `deleted_at`, removes the path from normal API results, and preserves its historical database references. Restore is owner-scoped and clears the marker so the path and all preserved relationships are available again.
 - Archived paths remain readable for history but cannot receive new item memberships or time entries; editing an item may retain an existing archived-path membership.
 - `GET /paths/{id}/summary` returns associated item IDs, their current progress, accumulated tracked seconds (including a running timer), and recent path activity; the web client supports filtering the associated items and merges completed timer start/stop events into one activity with its duration, description, and item.

@@ -33,6 +33,7 @@ function authenticated() {
         ><RouterLink to="/notes" :class="{ 'section-active': route?.path.startsWith('/notes/') }">Notes</RouterLink
         ><RouterLink to="/reports">Reports</RouterLink
         ><RouterLink to="/imports">Imports</RouterLink>
+        <RouterLink to="/settings">Settings</RouterLink>
       </nav>
       <div class="shell-actions">
         <button class="theme-toggle" type="button" :aria-pressed="theme === 'dark'" aria-label="Dark mode" @click="toggleTheme">

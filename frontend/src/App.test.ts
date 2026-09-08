@@ -35,6 +35,7 @@ describe("App", () => {
       "Notes",
       "Reports",
       "Imports",
+      "Settings",
     ]);
 
     await wrapper.get("button.ghost").trigger("click");

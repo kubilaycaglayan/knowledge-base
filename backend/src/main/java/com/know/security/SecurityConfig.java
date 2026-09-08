@@ -67,7 +67,10 @@ public class SecurityConfig {
             a ->
                 a.requestMatchers(
                         "/actuator/health",
-                        "/api/v1/auth/**",
+                        "/api/v1/auth/google/config",
+                        "/api/v1/auth/register",
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/google",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html")
