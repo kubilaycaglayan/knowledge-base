@@ -7,5 +7,5 @@ public interface DailyRecordLabelRepository extends JpaRepository<DailyRecordLab
   List<DailyRecordLabel> findAllByIdDailyRecordIdIn(Collection<UUID> recordIds);
   List<DailyRecordLabel> findAllByIdDailyRecordId(UUID recordId);
   void deleteAllByIdDailyRecordId(UUID recordId);
-  boolean existsByIdDailyLabelId(UUID dailyLabelId);
+  boolean existsByIdLabelId(UUID labelId);
 }
