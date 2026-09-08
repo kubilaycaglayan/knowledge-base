@@ -18,4 +18,22 @@ CI runs the backend tests, web build, extension checks, macOS native build, and 
 
 For a published extension, use `KNOW_API_BASE=https://your-domain.example/api/v1 npm run build:prod` from `chrome-extension`. The production build requires an explicit HTTPS API, locks requests to that API, disables debug logging, and omits wildcard host permissions. Load `.output/chrome-mv3` for final Chrome acceptance testing, then zip that directory for the Web Store. Keep using the existing WXT development workflow and `npm run build` for local development; development builds retain localhost defaults and are not publishable. Configure the exact published extension origin (`chrome-extension://<extension-id>`) in production `CORS_ORIGINS` and the exact `chrome.identity.getRedirectURL()` value in Google OAuth.
 
+### Google sign-in in local extension development
+
+Google must allow the callback belonging to the unpacked development extension. The callback is based on the extension ID, not the API URL or frontend origin:
+
+```text
+https://<development-extension-id>.chromiumapp.org/
+```
+
+Load `.output/chrome-mv3-dev` in Chrome, open `chrome://extensions`, copy the extension ID, and add that exact callback under the OAuth client used by `GOOGLE_CLIENT_ID` in Google Cloud Console. The trailing slash matters. If the directory is moved or recreated, Chrome may assign a different unpacked ID, requiring the new callback to be registered.
+
+By default, local unpacked builds do not set a manifest key, so Chrome derives the development ID from the unpacked directory. Keep the synced directory at the same path to preserve the existing ID. You may set `CHROME_EXTENSION_KEY` in `.env.development` if you intentionally want a key-derived ID. It must be the base64-encoded DER public key used as the Chrome manifest `key`:
+
+```bash
+CHROME_EXTENSION_KEY="$(openssl genrsa 2048 2>/dev/null | openssl rsa -pubout -outform DER 2>/dev/null | base64 | tr -d '\\n')"
+```
+
+Then rebuild the development bundle, reload it in Chrome, and register the resulting `https://<stable-extension-id>.chromiumapp.org/` callback once. Never commit a private signing key or `.env.development`.
+
 The Chrome extension uses WXT for development. The intended topology is Chrome on macOS, with the extension source, WXT dev server, API, and database on the Ubuntu server. On macOS, create SSH tunnels with `ssh -N -L 8080:127.0.0.1:8080 -L 43127:127.0.0.1:43127 <ubuntu-user>@<ubuntu-server>`; port 8080 forwards the API and port 43127 forwards WXT's HMR server. The development script automatically adds `chrome-extension://${CHROME_EXTENSION_ID}` to CORS when `CHROME_EXTENSION_ID` is exported on Ubuntu, installs extension dependencies when needed, and starts WXT detached in the background on port 43127. Run `source ~/.profile && ./scripts/start-development.sh` on Ubuntu, then continuously sync `.output/chrome-mv3-dev` to macOS and load that synced directory as an unpacked extension in Mac Chrome. WXT logs to `chrome-extension/.wxt-dev.log` and its PID is stored in `chrome-extension/.wxt-dev.pid`; WXT provides HMR for popup/options UI changes and reloads the extension for background changes. For a deployed instance, open its options page and set the HTTPS API base URL ending in `/api/v1`; Chrome requests access only to that configured origin. The extension also grants Clockify access and injects a fixed overlay only on `https://app.clockify.me/reports/detailed*`. A page-world bridge watches fetch/XHR responses matching `/report/workspaces/*/async/reports/detailed/*`, then the isolated overlay sends the returned `timeentries` payload to the extension service worker, which imports it through Know’s authenticated Clockify endpoint. Responses already seen in the current tab are not imported again. The production bundle is `(cd chrome-extension && npm run build)`, output to `.output/chrome-mv3`.
