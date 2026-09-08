@@ -512,42 +512,6 @@ onUnmounted(() => {
         </dl>
         <p v-if="!Object.keys(stats?.weekByPath || {}).length" class="empty-state">No path time yet.</p>
       </section>
-      <section class="workspace-section" aria-labelledby="item-time-heading">
-        <div class="section-heading"><h2 id="item-time-heading">TIME BY ITEM THIS WEEK</h2></div>
-        <dl class="data-list">
-          <div v-for="(seconds, id) in stats?.weekByItem" :key="id" class="data-row">
-            <dt>{{ itemName(id) }}</dt><dd>{{ formatTrackedDuration(seconds) }}</dd>
-          </div>
-        </dl>
-        <p v-if="!Object.keys(stats?.weekByItem || {}).length" class="empty-state">No item time yet.</p>
-      </section>
-    </div>
-
-    <div class="section-columns activity-columns">
-      <section class="workspace-section history-box" aria-labelledby="history-heading">
-        <div class="section-heading"><h2 id="history-heading">Recent time entries</h2></div>
-        <ul class="data-list">
-          <li v-for="entry in history.slice(0, 8)" :key="entry.id" class="data-row entry-row">
-            <div class="entry-details">
-              <strong>{{ entryPathName(entry) }}</strong>
-              <span class="subtle" :title="entry.description">{{ shortDescription(entry) }}</span>
-            </div>
-            <span class="duration">{{ formatTrackedDuration(entry.durationSeconds || 0) }}</span>
-            <button class="text-button" :aria-label="`Edit ${entryPathName(entry)} session`" @click="editEntry(entry)">Edit</button>
-          </li>
-        </ul>
-        <p v-if="!history.length" class="empty-state">No recorded sessions yet.</p>
-      </section>
-      <section class="workspace-section" aria-labelledby="progress-heading">
-        <div class="section-heading"><h2 id="progress-heading">Recent progress changes</h2></div>
-        <dl class="data-list">
-          <div v-for="change in stats?.recentProgressChanges || []" :key="change.itemId + change.changedAt" class="data-row">
-            <dt>{{ itemName(change.itemId) }}</dt>
-            <dd>{{ change.previousProgress }}% <span class="subtle">→</span> {{ change.newProgress }}%</dd>
-          </div>
-        </dl>
-        <p v-if="!stats?.recentProgressChanges?.length" class="empty-state">No progress changes yet.</p>
-      </section>
     </div>
 
     <section class="workspace-section search-box" aria-labelledby="search-heading">
