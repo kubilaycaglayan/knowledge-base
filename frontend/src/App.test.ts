@@ -29,7 +29,6 @@ describe("App", () => {
       "Overview",
       "Sessions",
       "Paths",
-      "Items",
       "Timeline",
       "Calendar",
       "Notes",
@@ -65,7 +64,7 @@ describe("App", () => {
     expect(wrapper.get(".dashboard-skip").attributes("href")).toBe("#main-content");
     expect(wrapper.get("#main-content").attributes("tabindex")).toBe("-1");
 
-    for (const path of ["/paths", "/items", "/sessions", "/notes", "/reports", "/timeline", "/calendar", "/imports"]) {
+    for (const path of ["/paths", "/sessions", "/notes", "/reports", "/timeline", "/calendar", "/imports"]) {
       route.path = path;
       await wrapper.vm.$nextTick();
       expect(wrapper.classes()).toContain("dashboard-shell");
