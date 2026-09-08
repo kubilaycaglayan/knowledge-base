@@ -16,6 +16,10 @@ class CalendarServiceTest {
   private final LabelRepository labels = mock(LabelRepository.class);
   private final LabelScopeRepository scopes = mock(LabelScopeRepository.class);
   private final DailyRecordLabelRepository assignments = mock(DailyRecordLabelRepository.class);
+  private final TimeEntryLabelRepository timeAssignments = mock(TimeEntryLabelRepository.class);
+  private final NoteTagRepository noteAssignments = mock(NoteTagRepository.class);
+
+  private CalendarService service() { return new CalendarService(records, labels, assignments, scopes, timeAssignments, noteAssignments); }
 
   @Test
   void createsTrimmedLabelAndRejectsDuplicateNamesAndInvalidColors() {
@@ -23,7 +27,7 @@ class CalendarServiceTest {
     when(labels.existsByUserIdAndNameIgnoreCase(user, "Focus")).thenReturn(false);
     when(labels.save(any(Label.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(labels.findByUserIdAndNameIgnoreCase(user, "Focus")).thenReturn(Optional.empty());
-    CalendarService service = new CalendarService(records, labels, assignments, scopes);
+    CalendarService service = service();
 
     CalendarService.LabelView created = service.createLabel(user, "  Focus  ", "#2878d5");
 
@@ -46,7 +50,7 @@ class CalendarServiceTest {
     LocalDate date = LocalDate.of(2026, 9, 6);
     DailyRecord existing = new DailyRecord(user, date, "old");
     when(records.findByUserIdAndRecordDate(user, date)).thenReturn(Optional.of(existing));
-    CalendarService service = new CalendarService(records, labels, assignments, scopes);
+    CalendarService service = service();
 
     CalendarService.DayView result = service.replaceDay(user, date, "  \n", null);
 
@@ -61,7 +65,7 @@ class CalendarServiceTest {
   void replaceDayRejectsDuplicateLabelsInvalidPortionsAndForeignLabelsBeforeWriting() {
     UUID user = UUID.randomUUID();
     UUID labelId = UUID.randomUUID();
-    CalendarService service = new CalendarService(records, labels, assignments, scopes);
+    CalendarService service = service();
     CalendarService.LabelInput duplicate =
         new CalendarService.LabelInput(labelId, new BigDecimal("0.25"));
 
@@ -91,7 +95,7 @@ class CalendarServiceTest {
 
   @Test
   void applyRangeRejectsReversedAndOverYearRangesWithoutWriting() {
-    CalendarService service = new CalendarService(records, labels, assignments, scopes);
+    CalendarService service = service();
     UUID user = UUID.randomUUID();
     LocalDate start = LocalDate.of(2026, 1, 1);
 
@@ -124,7 +128,7 @@ class CalendarServiceTest {
     when(records.save(any(DailyRecord.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(records.findAllByUserIdAndRecordDateBetweenOrderByRecordDate(user, date, date))
         .thenReturn(List.of());
-    CalendarService service = new CalendarService(records, labels, assignments, scopes);
+    CalendarService service = service();
 
     service.applyRange(
         user,
