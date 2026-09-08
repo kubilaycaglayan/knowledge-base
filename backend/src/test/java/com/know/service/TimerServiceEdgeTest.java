@@ -14,33 +14,30 @@ import org.springframework.web.server.ResponseStatusException;
 class TimerServiceEdgeTest {
   private final TimeEntryRepository entries = mock(TimeEntryRepository.class);
   private final PathRepository paths = mock(PathRepository.class);
-  private final ItemRepository items = mock(ItemRepository.class);
-  private final PathItemRepository pathItems = mock(PathItemRepository.class);
-  private final ProgressEntryRepository progress = mock(ProgressEntryRepository.class);
-  private final ActivityRepository activities = mock(ActivityRepository.class);
-  private final TimeEntryItemRepository entryItems = mock(TimeEntryItemRepository.class);
+  private final DailyLabelRepository labels = mock(DailyLabelRepository.class);
+  private final TimeEntryLabelRepository entryLabels = mock(TimeEntryLabelRepository.class);
 
   private TimerService service() {
-    return new TimerService(entries, paths, items, pathItems, progress, activities, entryItems);
+    return new TimerService(entries, paths, labels, entryLabels);
   }
 
   @Test
-  void startDefaultsNullSourceAndDeduplicatesNullableItemTargets() {
+  void startDefaultsNullSourceAndDeduplicatesNullableLabelTargets() {
     UUID user = UUID.randomUUID();
-    UUID item = UUID.randomUUID();
+    UUID label = UUID.randomUUID();
     when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.empty());
-    when(items.findByIdAndUserId(item, user)).thenReturn(Optional.of(new Item(user, "Read", ItemType.BOOK, null)));
+    when(labels.findByIdAndUserId(label, user)).thenReturn(Optional.of(new DailyLabel(user, "Read", null)));
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    when(entryItems.findAllByIdTimeEntryId(any())).thenReturn(List.of());
+    when(entryLabels.findAllByIdTimeEntryId(any())).thenReturn(List.of());
 
     TimerService.TimeView view =
-        service().startWithItems(user, null, Arrays.asList(item, item, null), "Reading", null);
+        service().start(user, null, Arrays.asList(label, label, null), "Reading", null);
 
     assertEquals(TimeSource.WEB, view.source());
-    assertEquals(item, view.itemId());
-    verify(entryItems).deleteAllByIdTimeEntryId(view.id());
-    verify(entryItems).save(argThat(saved -> saved.getItemId().equals(item)));
-    verify(entryItems, times(1)).save(any(TimeEntryItem.class));
+    assertEquals(List.of(label), view.labelIds());
+    verify(entryLabels).deleteAllByIdTimeEntryId(view.id());
+    verify(entryLabels).save(argThat(saved -> saved.getLabelId().equals(label)));
+    verify(entryLabels, times(1)).save(any(TimeEntryLabel.class));
   }
 
   @Test
@@ -51,17 +48,17 @@ class TimerServiceEdgeTest {
 
     assertThrows(
         ResponseStatusException.class,
-        () -> service.manual(user, null, null, null, now, "bad"));
+        () -> service.manual(user, null, List.of(), null, now, "bad"));
     assertThrows(
         ResponseStatusException.class,
-        () -> service.manual(user, null, null, now, now.minusSeconds(1), "bad"));
+        () -> service.manual(user, null, List.of(), now, now.minusSeconds(1), "bad"));
     assertThrows(
         ResponseStatusException.class,
-        () -> service.configureRunning(user, UUID.randomUUID(), null, null, now.plusSeconds(1), null, "future"));
+        () -> service.configure(user, UUID.randomUUID(), null, List.of(), now.plusSeconds(1), null, "future"));
     assertThrows(
         ResponseStatusException.class,
-        () -> service.configureRunning(user, UUID.randomUUID(), null, null, now, now.plusSeconds(1), "future end"));
-    verifyNoInteractions(entries, paths, items, entryItems);
+        () -> service.configure(user, UUID.randomUUID(), null, List.of(), now, now.plusSeconds(1), "future end"));
+    verifyNoInteractions(entries, paths, labels, entryLabels);
   }
 
   @Test
@@ -71,7 +68,7 @@ class TimerServiceEdgeTest {
     TimeEntry stopped = new TimeEntry(user, null, null, Instant.now().minusSeconds(20), "done", TimeSource.MANUAL);
     stopped.stop(stopped.getStartedAt().plusSeconds(10));
     when(entries.findById(id)).thenReturn(Optional.of(stopped));
-    when(entryItems.findAllByIdTimeEntryId(stopped.getId())).thenReturn(List.of());
+    when(entryLabels.findAllByIdTimeEntryId(stopped.getId())).thenReturn(List.of());
 
     TimerService.TimeView view = service().stop(user, id);
 
@@ -106,7 +103,7 @@ class TimerServiceEdgeTest {
 
     assertThrows(
         ResponseStatusException.class,
-        () -> service().edit(user, id, null, null, running.getStartedAt(), Instant.now(), "edit"));
+        () -> service().edit(user, id, null, List.of(), running.getStartedAt(), Instant.now(), "edit", null));
     assertThrows(ResponseStatusException.class, () -> service().remove(user, id));
     verify(entries, never()).save(any());
   }
