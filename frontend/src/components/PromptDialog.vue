@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, watch } from "vue";
+import { vDialogFocus } from "../lib/dialog-focus";
 
 defineProps<{ appearance?: "flat" }>();
 
@@ -53,6 +54,7 @@ defineExpose({ open });
 <template>
   <div v-if="visible" class="prompt-dialog-backdrop" :class="{ flat: appearance === 'flat' }">
     <section
+      v-dialog-focus
       class="prompt-dialog card"
       role="dialog"
       aria-modal="true"
@@ -66,14 +68,13 @@ defineExpose({ open });
         v-model="value"
         :aria-label="message"
         rows="4"
-        autofocus
         @keydown.ctrl.enter.prevent="finish(value)"
+        @keydown.meta.enter.prevent="finish(value)"
       ></textarea>
       <input
         v-else-if="!confirmation"
         v-model="value"
         :aria-label="message"
-        autofocus
         @keydown.enter.prevent="finish(value)"
       />
       <div class="prompt-dialog-actions">
@@ -83,48 +84,3 @@ defineExpose({ open });
     </section>
   </div>
 </template>
-
-<style scoped>
-/* Optional workspace appearance; existing consumers keep their current style. */
-.flat { background: #18212f66; overscroll-behavior: contain; }
-.flat .prompt-dialog {
-  max-height: calc(100dvh - 40px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 1px solid var(--workspace-control-border, #aab3c0);
-  border-radius: 6px;
-  padding: 24px;
-  background: var(--workspace-surface, #fff);
-  color: var(--workspace-text, #252b36);
-  box-shadow: none;
-}
-.flat h2 { font-size: 18px; font-weight: 600; letter-spacing: -.2px; overflow-wrap: anywhere; }
-.flat input, .flat textarea {
-  min-width: 0;
-  border-color: var(--workspace-control-border, #aab3c0);
-  border-radius: 4px;
-  padding: 10px 12px;
-  color: inherit;
-  font-size: 16px;
-}
-.flat button {
-  min-height: 40px;
-  min-width: 64px;
-  border: 1px solid var(--workspace-control-border, #aab3c0);
-  border-radius: 4px;
-  padding: 8px 14px;
-  background: var(--workspace-surface, #fff);
-  color: var(--workspace-text, #252b36);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-}
-.flat button:hover { border-color: #606b7b; background: #edf0f4; }
-.flat button:active { background: #dce2ea; }
-.flat .primary { background: var(--workspace-accent, #334155); color: #fff; border-color: var(--workspace-accent, #334155); }
-.flat .primary:hover { background: #1b2533; }
-.flat .primary:active { background: #101822; }
-.flat :focus-visible { outline: 2px solid var(--workspace-focus, #2563b5); outline-offset: 3px; }
-.flat input, .flat textarea, .flat button { touch-action: manipulation; }
-@media (max-width: 700px) { .flat button { min-height: 44px; } }
-</style>
