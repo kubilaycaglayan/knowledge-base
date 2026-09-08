@@ -9,7 +9,6 @@ describe("TimelineView", () => {
     vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
-      if (path === "/items") return [];
       if (path.startsWith("/activities?")) return [];
       return undefined;
     });
@@ -36,7 +35,6 @@ describe("TimelineView", () => {
   it("saves a note attached to an activity", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
-      if (path === "/items") return [];
       if (path.startsWith("/activities?"))
         return [
           {
@@ -99,7 +97,7 @@ describe("TimelineView", () => {
 
   it("attaches a note to the time entry when an activity provides one", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths") return [];
       if (path.startsWith("/activities?")) return [{ id: "activity-1", type: "TIMER_STOPPED", title: "Focus", occurredAt: "2026-08-25T12:00:00Z", timeEntryId: "entry-1" }];
       return undefined;
     });
@@ -117,10 +115,9 @@ describe("TimelineView", () => {
     }));
   });
 
-  it("submits activity, path, item, and date filters together", async () => {
+  it("submits activity, path, and date filters together", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [{ id: "path-1", name: "Learning" }];
-      if (path === "/items") return [{ id: "item-1", title: "Algorithms" }];
       if (path.startsWith("/activities?")) return [];
       return undefined;
     });
@@ -128,13 +125,12 @@ describe("TimelineView", () => {
     await flushPromises();
     await wrapper.get('select[aria-label="Activity type"]').setValue("TIMER_STOPPED");
     await wrapper.get('select[aria-label="Path"]').setValue("path-1");
-    await wrapper.get('select[aria-label="Item"]').setValue("item-1");
     await wrapper.get('input[aria-label="From date"]').setValue("2026-08-01");
     await wrapper.get('input[aria-label="To date"]').setValue("2026-08-31");
     await wrapper.get("form.filters").trigger("submit");
     await flushPromises();
 
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/activities?type=TIMER_STOPPED&pathId=path-1&itemId=item-1&from=2026-08-01T00%3A00%3A00Z&to=2026-08-31T23%3A59%3A59Z");
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/activities?type=TIMER_STOPPED&pathId=path-1&from=2026-08-01T00%3A00%3A00Z&to=2026-08-31T23%3A59%3A59Z");
   });
 
   it("reports initial-load and note-save failures and ignores incomplete notes", async () => {
@@ -144,7 +140,7 @@ describe("TimelineView", () => {
     expect(failedLoad.get('[role="alert"]').text()).toBe("Unable to load activity.");
 
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths") return [];
       if (path.startsWith("/activities?")) return [{ id: "activity-1", type: "NOTE_CREATED", title: "Read chapter", occurredAt: "2026-08-25T12:00:00Z" }];
       if (path === "/notes" && options?.method === "POST") throw new Error("note failed");
       return undefined;
@@ -166,7 +162,7 @@ describe("TimelineView", () => {
 
   it("closes an activity note editor without saving", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths") return [];
       if (path.startsWith("/activities?")) return [{ id: "activity-1", type: "NOTE_CREATED", title: "Read chapter", occurredAt: "2026-08-25T12:00:00Z" }];
       return undefined;
     });
