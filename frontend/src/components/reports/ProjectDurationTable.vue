@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { reportColors as colors } from "../../lib/chart-colors";
 import { formatDuration, decimalHours } from "../../utils/duration";
 defineProps<{ categories: Array<{ id?: string; label: string; seconds: number }>; totalSeconds: number }>();
-const colors = ["#f04438", "#2878d5", "#e91e63", "#4caf50", "#607d8b", "#ffbd19", "#8e5bd9"];
 </script>
 <template>
   <div class="duration-table-wrap">

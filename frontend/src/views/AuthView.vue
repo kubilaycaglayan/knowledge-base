@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { api } from "../lib/api";
+import { theme } from "../lib/theme";
 
 type GoogleApi = {
   accounts: {
@@ -72,23 +73,38 @@ async function googleLogin(idToken: string) {
   }
 }
 
+let googleInitialized = false;
+let renderedGoogleStyle = "";
+let googleResizeObserver: ResizeObserver | undefined;
 function renderGoogleButton() {
   if (!googleConfigured || !googleButton.value || !window.google) return;
-  window.google.accounts.id.initialize({
-    client_id: googleClientId,
-    callback: (response) => void googleLogin(response.credential),
-  });
+  if (!googleInitialized) {
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: (response) => void googleLogin(response.credential),
+    });
+    googleInitialized = true;
+  }
+  const width = Math.min(320, googleButton.value.clientWidth || 320);
+  const signature = `${theme.value}:${width}`;
+  if (signature === renderedGoogleStyle) return;
+  renderedGoogleStyle = signature;
   window.google.accounts.id.renderButton(googleButton.value, {
-    theme: "outline",
+    theme: theme.value === "dark" ? "filled_black" : "outline",
     size: "large",
-    width: 320,
+    width,
   });
 }
+watch(theme, renderGoogleButton);
 
 let googleScript: HTMLScriptElement | null = null;
 
 onMounted(() => {
   if (!googleConfigured) return;
+  if (typeof ResizeObserver !== "undefined" && googleButton.value) {
+    googleResizeObserver = new ResizeObserver(renderGoogleButton);
+    googleResizeObserver.observe(googleButton.value);
+  }
 
   if (window.google) {
     renderGoogleButton();
@@ -100,6 +116,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  googleResizeObserver?.disconnect();
   googleScript?.removeEventListener("load", renderGoogleButton);
 });
 </script>
@@ -116,12 +133,17 @@ onUnmounted(() => {
         >Email<input
           v-model="email"
           type="email"
+          name="email"
+          autocomplete="username"
+          :spellcheck="false"
           required
           aria-label="Email" /></label
       ><label
         >Password<input
           v-model="password"
           type="password"
+          name="password"
+          :autocomplete="register ? 'new-password' : 'current-password'"
           minlength="12"
           required
           aria-label="Password" /></label
