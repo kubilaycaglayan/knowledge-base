@@ -55,7 +55,7 @@ async function submit() {
     );
   } catch {
     error.value =
-      "Could not authenticate. Use a valid email and a password of at least 12 characters.";
+      "Could not authenticate. Use a valid email and a password of at least 9 characters.";
   }
 }
 
@@ -144,7 +144,7 @@ onUnmounted(() => {
           type="password"
           name="password"
           :autocomplete="register ? 'new-password' : 'current-password'"
-          minlength="12"
+          minlength="9"
           required
           aria-label="Password" /></label
       ><button class="primary">

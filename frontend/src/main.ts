@@ -19,6 +19,7 @@ const router = createRouter({
     { path: "/reports", component: () => import("./views/ReportsView.vue") },
     { path: "/calendar", component: () => import("./views/CalendarView.vue") },
     { path: "/imports", component: () => import("./views/ImportsView.vue") },
+    { path: "/settings", component: () => import("./views/SettingsView.vue") },
     { path: "/notes", name: "notes", component: () => import("./views/NotesView.vue") },
     { path: "/notes/:id", name: "note-editor", component: () => import("./views/NotesView.vue") },
   ],
