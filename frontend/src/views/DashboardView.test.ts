@@ -14,7 +14,7 @@ describe("DashboardView timer flow", () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
         if (path === "/paths") return [];
-        if (path === "/items") return [];
+        if (path === "/calendar/labels") return [];
         if (path === "/timers/current") return null;
         if (path === "/statistics")
           return {
@@ -22,7 +22,7 @@ describe("DashboardView timer flow", () => {
             weekSeconds: 0,
             monthSeconds: 0,
             todayByPath: {},
-            todayByItem: {},
+            todayByLabel: {},
             completedItems: 0,
             activeItems: 0,
             recentProgressChanges: [],
@@ -70,9 +70,9 @@ describe("DashboardView timer flow", () => {
   it("sends the selected path and description when starting a timer", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
+      if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers" && options.method === "POST") return { id: "timer-1", startedAt: new Date().toISOString(), pathId: "path-a", description: "Read graphs", running: true };
       return undefined;
@@ -85,7 +85,7 @@ describe("DashboardView timer flow", () => {
     await flushPromises();
 
     const start = vi.mocked(api).mock.calls.find(([path, options]) => path === "/timers" && options?.method === "POST");
-    expect(JSON.parse(start?.[1]?.body as string)).toMatchObject({ pathId: "path-a", itemId: null, itemIds: [], description: "Read graphs" });
+    expect(JSON.parse(start?.[1]?.body as string)).toMatchObject({ pathId: "path-a", labelIds: [], description: "Read graphs" });
   });
 
   it("keeps session start controls at the top of the dashboard", async () => {
@@ -114,17 +114,17 @@ describe("DashboardView timer flow", () => {
     themeColor.remove();
   });
 
-  it("offers every owned item for the selected timer path", async () => {
+  it("offers every owned label for the selected timer path", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [
           { id: "path-a", name: "Algorithms", status: "ACTIVE" },
           { id: "path-b", name: "Writing", status: "ACTIVE" },
         ];
-      if (path === "/items")
+      if (path === "/calendar/labels")
         return [
-          { id: "item-a", title: "Graphs", pathIds: ["path-a"] },
-          { id: "item-b", title: "Essays", pathIds: ["path-b"] },
+          { id: "label-a", name: "Graphs", color: null },
+          { id: "label-b", name: "Essays", color: null },
         ];
       if (path === "/timers/current") return null;
       if (path === "/statistics")
@@ -133,7 +133,7 @@ describe("DashboardView timer flow", () => {
           weekSeconds: 0,
           monthSeconds: 0,
           todayByPath: {},
-          todayByItem: {},
+          todayByLabel: {},
           completedItems: 0,
           activeItems: 0,
           recentProgressChanges: [],
@@ -145,10 +145,10 @@ describe("DashboardView timer flow", () => {
     await flushPromises();
 
     await wrapper.get('select[aria-label="Timer path"]').setValue("path-a");
-    const timerItemSelect = wrapper.findComponent({ name: "VSelect" });
-    const selectItems = timerItemSelect.props("items") as { title: string }[];
-    expect(selectItems.map((item) => item.title)).toContain("Graphs");
-    expect(selectItems.map((item) => item.title)).toContain("Essays");
+    const timerLabelSelect = wrapper.findComponent({ name: "VSelect" });
+    const selectLabels = timerLabelSelect.props("items") as { name: string }[];
+    expect(selectLabels.map((label) => label.name)).toContain("Graphs");
+    expect(selectLabels.map((label) => label.name)).toContain("Essays");
   });
 
   it("shows the five most recently used paths and selects one when clicked", async () => {
@@ -162,7 +162,7 @@ describe("DashboardView timer flow", () => {
           { id: "path-e", name: "Travel", status: "ACTIVE" },
           { id: "path-f", name: "Cooking", status: "ACTIVE" },
         ];
-      if (path === "/items") return [];
+      if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
       if (path === "/statistics")
         return {
@@ -170,7 +170,7 @@ describe("DashboardView timer flow", () => {
           weekSeconds: 0,
           monthSeconds: 0,
           todayByPath: {},
-          todayByItem: {},
+          todayByLabel: {},
           completedItems: 0,
           activeItems: 0,
           recentProgressChanges: [],
@@ -207,23 +207,22 @@ describe("DashboardView timer flow", () => {
     expect((wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value).toBe("path-b");
   });
 
-  it("creates a new item from the session flow and selects it", async () => {
+  it("creates a new label from the session flow and selects it", async () => {
     let created = false;
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
         if (path === "/paths")
           return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-        if (path === "/items" && options.method === "POST") {
+        if (path === "/calendar/labels" && options.method === "POST") {
           created = true;
           return {
-            id: "item-new",
-            title: "Dijkstra notes",
-            pathIds: ["path-a"],
+            id: "label-new",
+            name: "Dijkstra notes",
           };
         }
-        if (path === "/items")
+        if (path === "/calendar/labels")
           return created
-            ? [{ id: "item-new", title: "Dijkstra notes", pathIds: ["path-a"] }]
+            ? [{ id: "label-new", name: "Dijkstra notes", color: null }]
             : [];
         if (path === "/timers/current") return null;
         if (path === "/statistics")
@@ -232,7 +231,7 @@ describe("DashboardView timer flow", () => {
             weekSeconds: 0,
             monthSeconds: 0,
             todayByPath: {},
-            todayByItem: {},
+            todayByLabel: {},
             completedItems: 0,
             activeItems: 0,
             recentProgressChanges: [],
@@ -246,44 +245,42 @@ describe("DashboardView timer flow", () => {
 
     await wrapper.get('select[aria-label="Timer path"]').setValue("path-a");
     await wrapper
-      .get('input[aria-label="New session item title"]')
+      .get('input[aria-label="New session label name"]')
       .setValue("Dijkstra notes");
     await wrapper
       .findAll("button")
-      .find((button) => button.text() === "Create item")!
+      .find((button) => button.text() === "Create label")!
       .trigger("click");
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith(
-      "/items",
+      "/calendar/labels",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          title: "Dijkstra notes",
-          type: "CUSTOM",
-          pathIds: ["path-a"],
-          tags: [],
+          name: "Dijkstra notes",
+          color: null,
         }),
       }),
     );
     expect(
       (wrapper.findComponent({ name: "VSelect" }).props("modelValue") as string[]),
-    ).toEqual(["item-new"]);
+    ).toEqual(["label-new"]);
   });
 
-  it("persists a newly created item on an already running timer", async () => {
+  it("persists a newly created label on an already running timer", async () => {
     let created = false;
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
         if (path === "/paths")
           return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-        if (path === "/items" && options.method === "POST") {
+        if (path === "/calendar/labels" && options.method === "POST") {
           created = true;
-          return { id: "item-new", title: "Dijkstra notes", pathIds: [] };
+          return { id: "label-new", name: "Dijkstra notes", color: null };
         }
-        if (path === "/items")
+        if (path === "/calendar/labels")
           return created
-            ? [{ id: "item-new", title: "Dijkstra notes", pathIds: [] }]
+            ? [{ id: "label-new", name: "Dijkstra notes", color: null }]
             : [];
         if (path === "/timers/current")
           return {
@@ -296,8 +293,7 @@ describe("DashboardView timer flow", () => {
           return {
             id: "timer-1",
             pathId: "path-a",
-            itemId: "item-new",
-            itemIds: ["item-new"],
+            labelIds: ["label-new"],
             startedAt: new Date().toISOString(),
             running: true,
           };
@@ -307,7 +303,7 @@ describe("DashboardView timer flow", () => {
             weekSeconds: 0,
             monthSeconds: 0,
             todayByPath: {},
-            todayByItem: {},
+            todayByLabel: {},
             completedItems: 0,
             activeItems: 0,
             recentProgressChanges: [],
@@ -320,11 +316,11 @@ describe("DashboardView timer flow", () => {
     await flushPromises();
 
     await wrapper
-      .get('input[aria-label="New session item title"]')
+      .get('input[aria-label="New session label name"]')
       .setValue("Dijkstra notes");
     await wrapper
       .findAll("button")
-      .find((button) => button.text() === "Create item")!
+      .find((button) => button.text() === "Create label")!
       .trigger("click");
     await flushPromises();
 
@@ -332,7 +328,7 @@ describe("DashboardView timer flow", () => {
       .mocked(api)
       .mock.calls.find(([path, options]) => path === "/timers/timer-1" && options?.method === "PUT");
     expect(update).toBeDefined();
-    expect(JSON.parse(update![1]?.body as string).itemIds).toEqual(["item-new"]);
+    expect(JSON.parse(update![1]?.body as string).labelIds).toEqual(["label-new"]);
   });
 
   it("creates and selects a path from the path dropdown", async () => {
@@ -348,7 +344,7 @@ describe("DashboardView timer flow", () => {
             ? [{ id: "path-new", name: "Research", status: "ACTIVE" }]
             : [];
         }
-        if (path === "/items") return [];
+        if (path === "/calendar/labels") return [];
         if (path === "/timers/current") return null;
         if (path === "/statistics")
           return {
@@ -356,7 +352,7 @@ describe("DashboardView timer flow", () => {
             weekSeconds: 0,
             monthSeconds: 0,
             todayByPath: {},
-            todayByItem: {},
+            todayByLabel: {},
             completedItems: 0,
             activeItems: 0,
             recentProgressChanges: [],
@@ -410,9 +406,9 @@ describe("DashboardView timer flow", () => {
   it("reports a failure when creating a path from the timer flow", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths" && options.method === "POST") throw new Error("create path failed");
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       return undefined;
     });
@@ -431,13 +427,13 @@ describe("DashboardView timer flow", () => {
       async (path: string, options: RequestInit = {}) => {
         if (path === "/paths")
           return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-        if (path === "/items")
-          return [{ id: "item-a", title: "Graphs", pathIds: ["path-a"] }];
+        if (path === "/calendar/labels")
+          return [{ id: "label-a", name: "Graphs", color: null }];
         if (path === "/timers/current")
           return {
             id: "timer-a",
             pathId: "path-a",
-            itemId: "item-a",
+            labelId: "label-a",
             startedAt: "2026-08-25T10:00:00Z",
             description: "Focus",
             running: true,
@@ -448,7 +444,7 @@ describe("DashboardView timer flow", () => {
             weekSeconds: 0,
             monthSeconds: 0,
             todayByPath: {},
-            todayByItem: {},
+            todayByLabel: {},
             completedItems: 0,
             activeItems: 0,
             recentProgressChanges: [],
@@ -458,7 +454,7 @@ describe("DashboardView timer flow", () => {
           return {
             id: "timer-a",
             pathId: "path-a",
-            itemId: "item-a",
+            labelId: "label-a",
             startedAt: "2026-08-25T09:30:00Z",
             description: "Updated focus",
             running: true,
@@ -471,11 +467,11 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.find('input[aria-label="Timer start"]').exists()).toBe(true);
     expect(wrapper.find('input[aria-label="Timer end"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain("Save timer settings");
-    wrapper.findComponent({ name: "VSelect" }).vm.$emit("update:modelValue", ["item-a"]);
+    wrapper.findComponent({ name: "VSelect" }).vm.$emit("update:modelValue", ["label-a"]);
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/timer-a", expect.objectContaining({
       method: "PUT",
-      body: expect.stringContaining('"itemIds":["item-a"]'),
+      body: expect.stringContaining('"labelIds":["label-a"]'),
     }));
     await wrapper
       .find('input[aria-label="Timer start"]')
@@ -506,9 +502,9 @@ describe("DashboardView timer flow", () => {
   it("reports active-timer configuration failures", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
+      if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return { id: "timer-a", pathId: "path-a", startedAt: "2026-08-25T10:00:00Z", running: true };
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers/timer-a" && options.method === "PUT") throw new Error("configuration failed");
       return undefined;
@@ -527,7 +523,7 @@ describe("DashboardView timer flow", () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
         if (path === "/paths") return [];
-        if (path === "/items") return [];
+        if (path === "/calendar/labels") return [];
         if (path === "/timers/current")
           return {
             id: "timer-a",
@@ -541,7 +537,7 @@ describe("DashboardView timer flow", () => {
             weekSeconds: 0,
             monthSeconds: 0,
             todayByPath: {},
-            todayByItem: {},
+            todayByLabel: {},
             completedItems: 0,
             activeItems: 0,
             recentProgressChanges: [],
@@ -575,7 +571,7 @@ describe("DashboardView timer flow", () => {
       running: boolean;
     } | null = null;
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/paths" || path === "/items" || path === "/time-entries") return [];
+      if (path === "/paths" || path === "/calendar/labels" || path === "/time-entries") return [];
       if (path === "/timers/current") return serverTimer;
       if (path === "/statistics")
         return {
@@ -583,7 +579,7 @@ describe("DashboardView timer flow", () => {
           weekSeconds: 0,
           monthSeconds: 0,
           todayByPath: {},
-          todayByItem: {},
+          todayByLabel: {},
           completedItems: 0,
           activeItems: 0,
           recentProgressChanges: [],
@@ -618,7 +614,7 @@ describe("DashboardView timer flow", () => {
       id: "timer-1",
       startedAt: "2026-08-25T11:00:00Z",
       pathId: "path-a",
-      itemIds: ["item-a", "item-b"],
+      labelIds: ["label-a", "label-b"],
       description: "Original description",
       running: true,
     };
@@ -628,10 +624,10 @@ describe("DashboardView timer flow", () => {
           { id: "path-a", name: "Algorithms", status: "ACTIVE" },
           { id: "path-b", name: "Writing", status: "ACTIVE" },
         ];
-      if (path === "/items")
+      if (path === "/calendar/labels")
         return [
-          { id: "item-a", title: "Graphs", pathIds: ["path-a"] },
-          { id: "item-b", title: "Essays", pathIds: ["path-b"] },
+          { id: "label-a", name: "Graphs", color: null },
+          { id: "label-b", name: "Essays", color: null },
         ];
       if (path === "/timers/current") return serverTimer;
       if (path === "/statistics")
@@ -640,7 +636,7 @@ describe("DashboardView timer flow", () => {
           weekSeconds: 0,
           monthSeconds: 0,
           todayByPath: {},
-          todayByItem: {},
+          todayByLabel: {},
           completedItems: 0,
           activeItems: 0,
           recentProgressChanges: [],
@@ -662,7 +658,7 @@ describe("DashboardView timer flow", () => {
     serverTimer = {
       ...serverTimer,
       pathId: "path-b",
-      itemIds: ["item-b", "item-a"],
+      labelIds: ["label-b", "label-a"],
       description: "Updated from another client",
     };
     await vi.advanceTimersByTimeAsync(2000);
@@ -676,8 +672,8 @@ describe("DashboardView timer flow", () => {
         .value,
     ).toBe("Updated from another client");
     expect(wrapper.findComponent({ name: "VSelect" }).props("modelValue")).toEqual([
-      "item-b",
-      "item-a",
+      "label-b",
+      "label-a",
     ]);
   });
 
@@ -685,7 +681,7 @@ describe("DashboardView timer flow", () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
+      if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
       if (path === "/statistics")
         return {
@@ -693,7 +689,7 @@ describe("DashboardView timer flow", () => {
           weekSeconds: 0,
           monthSeconds: 0,
           todayByPath: {},
-          todayByItem: {},
+          todayByLabel: {},
           completedItems: 0,
           activeItems: 0,
           recentProgressChanges: [],
@@ -721,9 +717,9 @@ describe("DashboardView timer flow", () => {
 
   it("edits a recent time entry after collecting new start and end times", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
       if (path === "/time-entries") return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", durationSeconds: 1800, description: "Focus" }];
       return undefined;
     });
@@ -744,9 +740,9 @@ describe("DashboardView timer flow", () => {
 
   it("stops time-entry editing immediately when the start prompt is cancelled", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", description: "Focus" }];
       return undefined;
     });
@@ -760,13 +756,13 @@ describe("DashboardView timer flow", () => {
     expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/time-entries/entry-a" && options?.method === "PUT")).toBe(false);
   });
 
-  it("reports failures while editing a time entry or creating a session item", async () => {
+  it("reports failures while editing a time entry or creating a session label", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths") return [];
-      if (path === "/items" && options.method === "POST") throw new Error("item failed");
-      if (path === "/items") return [];
+      if (path === "/calendar/labels" && options.method === "POST") throw new Error("item failed");
+      if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries" && !options.method) return [{ id: "entry-a", startedAt: "2026-08-25T10:00:00Z", endedAt: "2026-08-25T10:30:00Z", description: "Focus" }];
       if (path === "/time-entries/entry-a" && options.method === "PUT") throw new Error("entry failed");
       return undefined;
@@ -781,17 +777,17 @@ describe("DashboardView timer flow", () => {
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toBe("Could not edit time entry.");
 
-    await wrapper.get('input[aria-label="New session item title"]').setValue("New item");
-    await wrapper.findAll("button").find((button) => button.text() === "Create item")!.trigger("click");
+    await wrapper.get('input[aria-label="New session label name"]').setValue("New item");
+    await wrapper.findAll("button").find((button) => button.text() === "Create label")!.trigger("click");
     await flushPromises();
-    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create the session item.");
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create the session label.");
   });
 
   it("searches knowledge and renders returned results", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, completedItems: 0, activeItems: 0, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/search?q=graph%20theory") return [{ id: "item-1", kind: "ITEM", title: "Graph theory", detail: "Algorithms" }];
       return undefined;
@@ -810,9 +806,9 @@ describe("DashboardView timer flow", () => {
 
   it("shows actionable errors when starting a timer or searching fails", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
-      if (path === "/paths" || path === "/items") return [];
+      if (path === "/paths" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers" && options.method === "POST") throw new Error("already running");
       if (path === "/search?q=missing") throw new Error("search failed");
@@ -834,9 +830,9 @@ describe("DashboardView timer flow", () => {
   it("reports a cancellation failure without clearing the active timer", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths") return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items") return [];
+      if (path === "/calendar/labels") return [];
       if (path === "/timers/current") return { id: "timer-a", pathId: "path-a", startedAt: "2026-08-25T10:00:00Z", running: true };
-      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByItem: {}, recentProgressChanges: [] };
+      if (path === "/statistics") return { todaySeconds: 0, weekSeconds: 0, monthSeconds: 0, todayByPath: {}, todayByLabel: {}, recentProgressChanges: [] };
       if (path === "/time-entries") return [];
       if (path === "/timers/cancel" && options.method === "POST") throw new Error("cancel failed");
       return undefined;
@@ -856,7 +852,7 @@ describe("DashboardView timer flow", () => {
       async (path: string, options: RequestInit = {}) => {
         if (path === "/paths")
           return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-        if (path === "/items") return [];
+        if (path === "/calendar/labels") return [];
         if (path === "/timers/current")
           return stopped
             ? null
@@ -873,9 +869,9 @@ describe("DashboardView timer flow", () => {
             weekSeconds: stopped ? 1800 : 0,
             monthSeconds: stopped ? 1800 : 0,
             todayByPath: {},
-            todayByItem: {},
+            todayByLabel: {},
             weekByPath: stopped ? { "path-a": 1800 } : {},
-            weekByItem: {},
+            weekByLabel: {},
             completedItems: 0,
             activeItems: 0,
             recentProgressChanges: [],
@@ -925,16 +921,16 @@ describe("DashboardView timer flow", () => {
     expect(wrapper.text()).toContain("30 minutes");
     expect((wrapper.get('select[aria-label="Timer path"]').element as HTMLSelectElement).value).toBe("");
     expect((wrapper.get('textarea[aria-label="Timer description"]').element as HTMLTextAreaElement).value).toBe("");
-    expect((wrapper.get('input[aria-label="New session item title"]').element as HTMLInputElement).value).toBe("");
+    expect((wrapper.get('input[aria-label="New session label name"]').element as HTMLInputElement).value).toBe("");
     expect(wrapper.findComponent({ name: "VSelect" }).props("modelValue")).toEqual([]);
   });
 
-  it("shows weekly time breakdowns by path and item", async () => {
+  it("shows weekly time breakdowns by path and label", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [{ id: "path-a", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/items")
-        return [{ id: "item-a", title: "Graphs", pathIds: ["path-a"] }];
+      if (path === "/calendar/labels")
+        return [{ id: "label-a", name: "Graphs", color: "#2878D5" }];
       if (path === "/timers/current") return null;
       if (path === "/statistics")
         return {
@@ -942,12 +938,9 @@ describe("DashboardView timer flow", () => {
           weekSeconds: 3600,
           monthSeconds: 3600,
           todayByPath: {},
-          todayByItem: {},
+          todayByLabel: {},
           weekByPath: { "path-a": 3600 },
-          weekByItem: { "item-a": 1800 },
-          completedItems: 0,
-          activeItems: 1,
-          recentProgressChanges: [{ itemId: "item-a", previousProgress: 10, newProgress: 25, changedAt: "2026-08-27T12:00:00Z" }],
+          weekByLabel: { "label-a": 1800 },
         };
       if (path === "/time-entries") return [];
       return undefined;
@@ -956,9 +949,8 @@ describe("DashboardView timer flow", () => {
     await flushPromises();
     expect(wrapper.text()).toContain("TIME BY PATH THIS WEEK");
     expect(wrapper.text()).toContain("Algorithms");
-    expect(wrapper.text()).toContain("TIME BY ITEM THIS WEEK");
+    expect(wrapper.text()).toContain("TIME BY LABEL THIS WEEK");
     expect(wrapper.text()).toContain("Graphs");
-    expect(wrapper.text()).toContain("10% → 25%");
   });
 
   it("shows a workspace error when the initial dashboard load fails", async () => {
