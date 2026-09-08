@@ -10,8 +10,12 @@ import com.know.domain.NoteTagId;
 import com.know.domain.NoteTagRepository;
 import com.know.domain.Path;
 import com.know.domain.PathRepository;
-import com.know.domain.Tag;
-import com.know.domain.TagRepository;
+import com.know.domain.Label;
+import com.know.domain.LabelRepository;
+import com.know.domain.LabelScope;
+import com.know.domain.LabelScopeId;
+import com.know.domain.LabelScopeRepository;
+import com.know.domain.LabelScopeType;
 import com.know.domain.TimeEntry;
 import com.know.domain.TimeEntryRepository;
 import java.time.Instant;
@@ -30,7 +34,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class KnowledgeService {
   private final PathRepository paths;
-  private final TagRepository tags;
+  private final LabelRepository tags;
+  private final LabelScopeRepository labelScopes;
   private final ActivityRepository activityRepository;
   private final NoteRepository notes;
   private final NoteTagRepository noteTags;
@@ -38,16 +43,18 @@ public class KnowledgeService {
 
   public KnowledgeService(
       PathRepository paths,
-      TagRepository tags,
+      LabelRepository tags,
       ActivityRepository activityRepository,
       NoteRepository notes,
       TimeEntryRepository timeEntries,
-      NoteTagRepository noteTags) {
+      NoteTagRepository noteTags,
+      LabelScopeRepository labelScopes) {
     this.paths = paths;
     this.tags = tags;
     this.activityRepository = activityRepository;
     this.notes = notes;
     this.noteTags = noteTags;
+    this.labelScopes = labelScopes;
     this.timeEntries = timeEntries;
   }
 
@@ -147,7 +154,7 @@ public class KnowledgeService {
   }
 
   public List<TagView> noteTags(UUID userId) {
-    return tags.findAllByUserIdOrderByName(userId).stream()
+    return tags.findAllByUserIdAndScope(userId, LabelScopeType.NOTE).stream()
         .map(tag -> new TagView(tag.getId(), tag.getName())).toList();
   }
 
@@ -209,7 +216,7 @@ public class KnowledgeService {
         n.getVersion(),
         n.getContentText(),
         noteTags == null ? List.of() : noteTags.findTags(n.getId()).stream()
-            .map(Tag::getName).sorted().toList());
+            .map(Label::getName).sorted().toList());
   }
 
   private void replaceTags(UUID userId, Note note, List<String> rawNames) {
@@ -219,8 +226,10 @@ public class KnowledgeService {
     rawNames.stream().filter(java.util.Objects::nonNull).map(String::trim)
         .filter(value -> !value.isBlank()).forEach(names::add);
     for (String name : names) {
-      Tag tag = tags.findByUserIdAndNameIgnoreCase(userId, name)
-          .orElseGet(() -> tags.save(new Tag(userId, name)));
+      Label tag = tags.findByUserIdAndNameIgnoreCase(userId, name)
+          .orElseGet(() -> tags.save(new Label(userId, name, null)));
+      if (!labelScopes.existsByIdLabelIdAndIdScope(tag.getId(), LabelScopeType.NOTE))
+        labelScopes.save(new LabelScope(new LabelScopeId(tag.getId(), LabelScopeType.NOTE)));
       noteTags.save(new NoteTag(new NoteTagId(note.getId(), tag.getId())));
     }
   }

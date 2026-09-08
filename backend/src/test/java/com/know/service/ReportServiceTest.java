@@ -15,11 +15,11 @@ class ReportServiceTest {
   void monthlyReportShowsDailyPathAndLabelBreakdownsWithClippedIntervals() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    DailyLabelRepository labels = mock(DailyLabelRepository.class);
+    LabelRepository labels = mock(LabelRepository.class);
     TimeEntryLabelRepository entryLabels = mock(TimeEntryLabelRepository.class);
     UUID user = UUID.randomUUID();
     Path path = new Path(user, "Wander", null, "#123456");
-    DailyLabel label = new DailyLabel(user, "Walking", "#2878D5");
+    Label label = new Label(user, "Walking", "#2878D5");
     Instant monthStart = LocalDate.of(2026, 7, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
     TimeEntry crossing =
         new TimeEntry(
@@ -66,7 +66,7 @@ class ReportServiceTest {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(LabelRepository.class))
             .report(UUID.randomUUID(), ReportService.Period.YEAR, LocalDate.of(2024, 6, 3));
 
     assertEquals(366, report.days().size());
@@ -80,7 +80,7 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
 
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(LabelRepository.class))
             .report(UUID.randomUUID(), LocalDate.of(2026, 8, 24), LocalDate.of(2026, 8, 30));
 
     assertEquals("CUSTOM", report.period());
@@ -103,7 +103,7 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(running));
 
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(LabelRepository.class))
             .report(user, ReportService.Period.WEEK, LocalDate.now(ZoneOffset.UTC));
 
     assertTrue(report.totalSeconds() >= 3);
@@ -136,7 +136,7 @@ class ReportServiceTest {
         new ReportService(
                 entries,
                 mock(PathRepository.class),
-                mock(DailyLabelRepository.class),
+                mock(LabelRepository.class),
                 mock(TimeEntryLabelRepository.class),
                 calendar)
             .report(user, date, date);
@@ -158,7 +158,7 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
 
     ReportService.Report report =
-        new ReportService(entries, mock(PathRepository.class), mock(DailyLabelRepository.class))
+        new ReportService(entries, mock(PathRepository.class), mock(LabelRepository.class))
             .report(UUID.randomUUID(), LocalDate.of(2026, 8, 25), LocalDate.of(2026, 8, 25));
 
     assertEquals(1, report.days().size());

@@ -13,11 +13,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class ReportService {
   private final TimeEntryRepository entries;
   private final PathRepository paths;
-  private final DailyLabelRepository sessionLabels;
+  private final LabelRepository sessionLabels;
   private final TimeEntryLabelRepository entryLabels;
   private final CalendarService calendar;
 
-  public ReportService(TimeEntryRepository entries, PathRepository paths, DailyLabelRepository sessionLabels) {
+  public ReportService(TimeEntryRepository entries, PathRepository paths, LabelRepository sessionLabels) {
     this(entries, paths, sessionLabels, null, null);
   }
 
@@ -25,7 +25,7 @@ public class ReportService {
   public ReportService(
       TimeEntryRepository entries,
       PathRepository paths,
-      DailyLabelRepository sessionLabels,
+      LabelRepository sessionLabels,
       TimeEntryLabelRepository entryLabels,
       CalendarService calendar) {
     this.entries = entries;
@@ -97,14 +97,14 @@ public class ReportService {
         pathViews.stream().collect(Collectors.toMap(Path::getId, Path::getName));
     Map<UUID, String> pathColors =
         pathViews.stream().collect(Collectors.toMap(Path::getId, Path::getColor));
-    List<DailyLabel> labelViews =
+    List<Label> labelViews =
         labelIds.isEmpty() ? List.of() : sessionLabels.findAllByUserIdAndIdIn(userId, labelIds);
     Map<UUID, String> labelNames =
-        labelViews.stream().collect(Collectors.toMap(DailyLabel::getId, DailyLabel::getName));
+        labelViews.stream().collect(Collectors.toMap(Label::getId, Label::getName));
     Map<UUID, String> labelColors =
         labelViews.stream()
             .filter(label -> label.getColor() != null)
-            .collect(Collectors.toMap(DailyLabel::getId, DailyLabel::getColor));
+            .collect(Collectors.toMap(Label::getId, Label::getColor));
 
     Map<UUID, Long> allPaths = new HashMap<>();
     Map<UUID, Long> allLabels = new HashMap<>();
