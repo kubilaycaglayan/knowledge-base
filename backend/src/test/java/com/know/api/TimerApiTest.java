@@ -39,14 +39,14 @@ class TimerApiTest {
 
   @Test
   void timerStartPassesExplicitSourceAndTargetsToService() throws Exception {
-    UUID user = UUID.randomUUID(), path = UUID.randomUUID(), item = UUID.randomUUID();
+    UUID user = UUID.randomUUID(), path = UUID.randomUUID(), label = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
-    when(service.start(eq(user), eq(path), eq(item), eq("Chapter 4"), eq(TimeSource.IOS)))
+    when(service.start(eq(user), eq(path), eq(List.of(label)), eq("Chapter 4"), eq(TimeSource.IOS)))
         .thenReturn(
             new TimerService.TimeView(
                 UUID.randomUUID(),
                 path,
-                item,
+                List.of(label),
                 Instant.now(),
                 null,
                 null,
@@ -61,11 +61,11 @@ class TimerApiTest {
                 .content(
                     "{\"pathId\":\""
                         + path
-                        + "\",\"itemId\":\""
-                        + item
-                        + "\",\"description\":\"Chapter 4\",\"source\":\"IOS\"}"))
+                        + "\",\"labelIds\":[\""
+                        + label
+                        + "\"],\"description\":\"Chapter 4\",\"source\":\"IOS\"}"))
         .andExpect(status().isCreated());
-    verify(service).start(user, path, item, "Chapter 4", TimeSource.IOS);
+    verify(service).start(user, path, List.of(label), "Chapter 4", TimeSource.IOS);
   }
 
   @Test
@@ -76,7 +76,7 @@ class TimerApiTest {
             post("/api/v1/timers")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"description\":\"" + "x".repeat(501) + "\"}"))
+                .content("{\"labelIds\":[],\"description\":\"" + "x".repeat(501) + "\"}"))
         .andExpect(status().isBadRequest());
     verifyNoInteractions(service);
   }
@@ -94,11 +94,11 @@ class TimerApiTest {
   void runningTimerConfigurationPassesEditableStartAndTargets() throws Exception {
     UUID user = UUID.randomUUID(), timer = UUID.randomUUID(), path = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
-    when(service.configureRunning(
+    when(service.configure(
             eq(user),
             eq(timer),
             eq(path),
-            isNull(),
+            eq(List.of()),
             any(Instant.class),
             isNull(),
             eq("Chapter 5")))
@@ -106,7 +106,7 @@ class TimerApiTest {
             new TimerService.TimeView(
                 timer,
                 path,
-                null,
+                List.of(),
                 Instant.parse("2026-08-25T10:00:00Z"),
                 null,
                 null,
@@ -120,17 +120,32 @@ class TimerApiTest {
                 .content(
                     "{\"pathId\":\""
                         + path
-                        + "\",\"startedAt\":\"2026-08-25T10:00:00Z\",\"description\":\"Chapter"
+                        + "\",\"labelIds\":[],\"startedAt\":\"2026-08-25T10:00:00Z\",\"description\":\"Chapter"
                         + " 5\"}"))
         .andExpect(status().isOk());
     verify(service)
-        .configureRunning(
+        .configure(
             eq(user),
             eq(timer),
             eq(path),
-            isNull(),
+            eq(List.of()),
             eq(Instant.parse("2026-08-25T10:00:00Z")),
             isNull(),
             eq("Chapter 5"));
+  }
+
+  @Test
+  void timerStartRequiresExplicitLabelCollection() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+
+    mvc.perform(
+            post("/api/v1/timers")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
   }
 }
