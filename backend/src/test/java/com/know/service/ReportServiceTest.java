@@ -25,7 +25,6 @@ class ReportServiceTest {
         new TimeEntry(
             user,
             path.getId(),
-            null,
             monthStart.minusSeconds(30),
             "crossing",
             TimeSource.IMPORT);
@@ -34,7 +33,6 @@ class ReportServiceTest {
         new TimeEntry(
             user,
             path.getId(),
-            null,
             Instant.parse("2026-07-12T10:00:00Z"),
             "later",
             TimeSource.IMPORT);
@@ -98,7 +96,6 @@ class ReportServiceTest {
     TimeEntry running =
         new TimeEntry(
             user,
-            null,
             null,
             Instant.now().minusSeconds(5),
             "unassigned",

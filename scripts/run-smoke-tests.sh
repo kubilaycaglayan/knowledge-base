@@ -271,57 +271,21 @@ if api "${other_header[@]}" "http://localhost:8080/api/v1/paths/$path_id" >/dev/
   echo "cross-user path access was allowed" >&2
   exit 1
 fi
-item_payload="{\"title\":\"Smoke item\",\"type\":\"MOVIE\",\"pathIds\":[\"$path_id\"],\"tags\":[\"smoke\"]}"
-item="$(api "${header[@]}" "${content_json[@]}" --post-data="$item_payload" http://localhost:8080/api/v1/items)"
-item_id="$(printf '%s' "$item" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
-printf '%s' "$item" | grep -q '"smoke"'
-printf '%s' "$item" | grep -q '"type":"MOVIE"'
-api "${header[@]}" http://localhost:8080/api/v1/items | grep -q 'Smoke item'
-api "${header[@]}" "${content_json[@]}" --method=PUT \
-  --body-data="{\"title\":\"Smoke item\",\"type\":\"PAPER\",\"status\":\"ACTIVE\",\"pathIds\":[\"$path_id\"],\"tags\":[\"smoke\"]}" \
-  "http://localhost:8080/api/v1/items/$item_id" \
-  | grep -q '"type":"PAPER"'
-api "${header[@]}" "${content_json[@]}" --method=PUT \
-  --body-data="{\"title\":\"Smoke item\",\"type\":\"PAPER\",\"source\":\"Smoke source\",\"status\":\"ACTIVE\",\"pathIds\":[\"$path_id\"],\"tags\":[\"smoke\"]}" \
-  "http://localhost:8080/api/v1/items/$item_id" \
-  | grep -q '"source":"Smoke source"'
-
-progress="$(api "${header[@]}" "${content_json[@]}" --post-data='{"progress":50}' "http://localhost:8080/api/v1/items/$item_id/progress")"
-printf '%s' "$progress" | grep -q '"progress":50'
-api "${header[@]}" "${content_json[@]}" --post-data='{"progress":100}' \
-  "http://localhost:8080/api/v1/items/$item_id/progress" | grep -q '"status":"COMPLETED"'
-api "${header[@]}" "${content_json[@]}" --post-data='{"progress":50}' \
-  "http://localhost:8080/api/v1/items/$item_id/progress" | grep -q '"status":"ACTIVE"'
-api "${header[@]}" "${content_json[@]}" --post-data='{"progress":100}' \
-  "http://localhost:8080/api/v1/items/$item_id/progress" | grep -q '"status":"COMPLETED"'
-note="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"itemId\":\"$item_id\",\"title\":\"Smoke note\",\"content\":\"Persisted knowledge\"}" http://localhost:8080/api/v1/notes)"
+note="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"pathId\":\"$path_id\",\"title\":\"Smoke note\",\"content\":\"Persisted knowledge\"}" http://localhost:8080/api/v1/notes)"
 note_id="$(printf '%s' "$note" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data='{"title":"Edited smoke note","content":"Updated knowledge"}' \
   "http://localhost:8080/api/v1/notes/$note_id" \
   | grep -q 'Updated knowledge'
-activity_id="$(api "${header[@]}" "http://localhost:8080/api/v1/activities?itemId=$item_id" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -n 1)"
-[[ -n "$activity_id" ]]
-api "${header[@]}" "${content_json[@]}" \
-  --post-data="{\"activityId\":\"$activity_id\",\"title\":\"Activity reflection\",\"content\":\"The smoke workflow persisted this reflection.\"}" \
-  http://localhost:8080/api/v1/notes >/dev/null
-free_item="$(api "${header[@]}" "${content_json[@]}" \
-  --post-data='{"title":"Unattached smoke item"}' \
-  http://localhost:8080/api/v1/items)"
-free_item_id="$(printf '%s' "$free_item" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
-api "${header[@]}" "${content_json[@]}" \
-  --post-data="{\"pathId\":\"$other_path_id\",\"itemId\":\"$free_item_id\",\"description\":\"Independent smoke timer\"}" \
-  http://localhost:8080/api/v1/timers | grep -q 'Independent smoke timer'
-api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/stop >/dev/null
-running_timer="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"Smoke session\"}" http://localhost:8080/api/v1/timers)"
+running_timer="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"description\":\"Smoke session\"}" http://localhost:8080/api/v1/timers)"
 timer_id="$(printf '%s' "$running_timer" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 timer_start="$(date -u -d '30 seconds ago' +%Y-%m-%dT%H:%M:%SZ)"
 api "${header[@]}" "${content_json[@]}" --method=PUT \
-  --body-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$timer_start\",\"description\":\"Reconfigured smoke session\"}" \
+  --body-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"startedAt\":\"$timer_start\",\"description\":\"Reconfigured smoke session\"}" \
   "http://localhost:8080/api/v1/timers/$timer_id" \
   | grep -q 'Reconfigured smoke session'
 if api "${header[@]}" "${content_json[@]}" \
-  --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"description\":\"duplicate smoke timer\"}" \
+  --post-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"description\":\"duplicate smoke timer\"}" \
   http://localhost:8080/api/v1/timers >/dev/null; then
   echo "duplicate timer was allowed" >&2
   exit 1
@@ -350,21 +314,21 @@ manual_start="$(date -u -d '2 hours ago' +%Y-%m-%dT%H:00:00Z)"
 manual_end="$(date -u -d '75 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 manual="$(
   api "${header[@]}" "${content_json[@]}" \
-    --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$manual_start\",\"endedAt\":\"$manual_end\",\"description\":\"Editable session\"}" \
+    --post-data="{\"pathId\":\"$path_id\",\"labelIds\":[\"$calendar_label_id\"],\"startedAt\":\"$manual_start\",\"endedAt\":\"$manual_end\",\"description\":\"Editable session\"}" \
     http://localhost:8080/api/v1/time-entries
 )"
 time_id="$(printf '%s' "$manual" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 edited_start="$(date -u -d '105 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 edited_end="$(date -u -d '60 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 api "${header[@]}" "${content_json[@]}" --method=PUT \
-  --body-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$edited_start\",\"endedAt\":\"$edited_end\",\"description\":\"Edited session\"}" \
+  --body-data="{\"pathId\":\"$path_id\",\"labelIds\":[\"$calendar_label_id\"],\"startedAt\":\"$edited_start\",\"endedAt\":\"$edited_end\",\"description\":\"Edited session\"}" \
   "http://localhost:8080/api/v1/time-entries/$time_id" \
   | grep -q '"durationSeconds":2700'
 api "${header[@]}" "http://localhost:8080/api/v1/time-entries" | grep -q 'Edited session'
 month_start="$(date -u +%Y-%m-01T10:00:00Z)"
 month_end="$(date -u -d "$month_start + 10 minutes" +%Y-%m-%dT%H:%M:%SZ)"
 api "${header[@]}" "${content_json[@]}" \
-  --post-data="{\"pathId\":\"$path_id\",\"itemId\":\"$item_id\",\"startedAt\":\"$month_start\",\"endedAt\":\"$month_end\",\"description\":\"Earlier current-month session\"}" \
+  --post-data="{\"pathId\":\"$path_id\",\"labelIds\":[\"$calendar_label_id\"],\"startedAt\":\"$month_start\",\"endedAt\":\"$month_end\",\"description\":\"Earlier current-month session\"}" \
   http://localhost:8080/api/v1/time-entries >/dev/null
 summary="$(api "${header[@]}" "http://localhost:8080/api/v1/paths/$path_id/summary")"
 printf '%s' "$summary" | grep -q 'Smoke path'
@@ -373,15 +337,9 @@ summary_seconds="$(printf '%s' "$summary" | sed -n 's/.*"trackedSeconds":\([0-9]
 paths_order="$(api "${header[@]}" http://localhost:8080/api/v1/paths)"
 printf '%s' "$paths_order" | grep -q 'Smoke path'
 printf '%s' "$paths_order" | grep -q 'Other smoke path'
-api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke' | grep -q 'Smoke item'
-api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Completed' | grep -q 'ACTIVITY'
-api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke' | grep -q 'ACTIVITY'
-api "${header[@]}" "http://localhost:8080/api/v1/activities?itemId=$item_id" | grep -q 'PROGRESS_CHANGED'
-api "${header[@]}" \
-  "http://localhost:8080/api/v1/activities?itemId=$item_id&from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z" \
-  | grep -q 'PROGRESS_CHANGED'
+api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke' | grep -q 'Smoke path'
+api "${header[@]}" 'http://localhost:8080/api/v1/activities?from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z' | grep -q 'Smoke note'
 statistics="$(api "${header[@]}" http://localhost:8080/api/v1/statistics)"
-printf '%s' "$statistics" | grep -q 'completedItems'
 month_seconds="$(printf '%s' "$statistics" | sed -n 's/.*"monthSeconds":\([0-9]*\).*/\1/p')"
 (( month_seconds >= 3300 ))
 report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?period=MONTH&anchor=$smoke_date")"

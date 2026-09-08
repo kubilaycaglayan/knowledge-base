@@ -19,7 +19,6 @@ public class NoteController {
 
   record NoteRequest(
       UUID pathId,
-      UUID itemId,
       UUID activityId,
       UUID timeEntryId,
       @NotBlank @Size(max = 240) String title,
@@ -62,7 +61,7 @@ public class NoteController {
   @PostMapping
   public KnowledgeService.NoteView create(Authentication a, @Valid @RequestBody NoteRequest r) {
     return service.createNote(
-        user(a), r.pathId(), r.itemId(), r.activityId(), r.timeEntryId(), r.title(), r.content(),
+        user(a), r.pathId(), r.activityId(), r.timeEntryId(), r.title(), r.content(),
         r.contentText(), r.tags());
   }
 
