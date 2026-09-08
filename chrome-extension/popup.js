@@ -22,7 +22,7 @@ let liveSyncTicker = null;
 let liveSyncInFlight = false;
 let descriptionSaveTicker = null;
 let paths = [];
-let items = [];
+let labels = [];
 const timerSelectionKey = "timerSelection";
 
 function showTimer(timer) {
@@ -33,13 +33,13 @@ function showTimer(timer) {
 }
 
 function timerStateChanged(previous, next) {
-  const itemIds = (timer) => [...(timer?.itemIds || (timer?.itemId ? [timer.itemId] : []))].sort();
+  const labelIds = (timer) => [...(timer?.labelIds || [])].sort();
   return previous?.id !== next?.id
     || previous?.startedAt !== next?.startedAt
     || previous?.endedAt !== next?.endedAt
     || previous?.description !== next?.description
     || previous?.pathId !== next?.pathId
-    || JSON.stringify(itemIds(previous)) !== JSON.stringify(itemIds(next))
+    || JSON.stringify(labelIds(previous)) !== JSON.stringify(labelIds(next))
     || previous?.running !== next?.running;
 }
 
@@ -112,8 +112,8 @@ async function request(path, options = {}) {
   }
 }
 
-function itemLabel(item) {
-  return `${item.title}${item.status ? ` · ${item.status}` : ""}${item.progress !== undefined ? ` · ${item.progress}%` : ""}`;
+function labelText(label) {
+  return label.name;
 }
 function fillOptions(select, placeholder, values, selectedIds = []) {
   select.replaceChildren();
@@ -123,18 +123,18 @@ function fillOptions(select, placeholder, values, selectedIds = []) {
   }
   values.forEach((value) => {
     const option = document.createElement("option");
-    option.value = value.id; option.textContent = value.name || itemLabel(value);
+    option.value = value.id; option.textContent = value.name || labelText(value);
     option.selected = selectedIds.includes(value.id); select.append(option);
   });
 }
-function selectedItemIds(select) {
+function selectedLabelIds(select) {
   return Array.from(select.selectedOptions).map((option) => option.value).filter(Boolean);
 }
 function timerSelection(timer) {
-  return { pathId: timer?.pathId || "", itemIds: timer?.itemIds?.length ? timer.itemIds : timer?.itemId ? [timer.itemId] : [], description: timer?.description || "" };
+  return { pathId: timer?.pathId || "", labelIds: timer?.labelIds || [], description: timer?.description || "" };
 }
 async function persistTimerSelection() {
-  await chrome.storage.local.set({ [timerSelectionKey]: { pathId: $("path").value, itemIds: selectedItemIds($("item")), description: $("description").value } });
+  await chrome.storage.local.set({ [timerSelectionKey]: { pathId: $("path").value, labelIds: selectedLabelIds($("label")), description: $("description").value } });
 }
 async function configureCurrentTimer() {
   if (!currentTimer) {
@@ -145,7 +145,7 @@ async function configureCurrentTimer() {
     method: "PUT",
     body: JSON.stringify({
       pathId: $("path").value || null,
-      itemIds: selectedItemIds($("item")),
+      labelIds: selectedLabelIds($("label")),
       startedAt: currentTimer.startedAt,
       description: $("description").value || null,
     }),
@@ -162,7 +162,7 @@ async function flushDescriptionSave() {
 }
 async function resetTimerForm() {
   $("path").value = "";
-  Array.from($("item").options).forEach((option) => { option.selected = false; });
+  Array.from($("label").options).forEach((option) => { option.selected = false; });
   $("description").value = "";
   await persistTimerSelection();
 }
@@ -199,12 +199,12 @@ function startLiveTimerSync() {
   liveSyncTicker = setInterval(syncTimerState, 2000);
 }
 function hasOption(select, value) { return value && Array.from(select.options).some((option) => option.value === value); }
-function renderTimerItems(selectedIds = []) { fillOptions($("item"), "Select items (optional)", KnowCore.itemsForPath(items, $("path").value, selectedIds), selectedIds); }
+function renderTimerLabels(selectedIds = []) { fillOptions($("label"), "Select labels (optional)", KnowCore.timerLabels(labels, $("path").value, selectedIds), selectedIds); }
 async function restoreTimerSelection(selection) {
   const saved = selection || {};
-  const itemIds = saved.itemIds || (saved.itemId ? [saved.itemId] : []);
+  const labelIds = saved.labelIds || [];
   $("path").value = hasOption($("path"), saved.pathId) ? saved.pathId : "";
-  renderTimerItems(itemIds); $("description").value = saved.description || "";
+  renderTimerLabels(labelIds); $("description").value = saved.description || "";
   await persistTimerSelection();
 }
 
@@ -215,10 +215,10 @@ const localDateTime = (iso) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 const isoDateTime = (value) => new Date(value).toISOString();
-const sessionItemIds = (session) => session.itemIds?.length ? session.itemIds : session.itemId ? [session.itemId] : [];
-const itemFor = (id) => items.find((item) => item.id === id);
+const sessionLabelIds = (session) => session.labelIds || [];
+const labelFor = (id) => labels.find((label) => label.id === id);
 const pathFor = (id) => paths.find((path) => path.id === id);
-const sessionItemSummary = (session) => sessionItemIds(session).map((id) => itemFor(id)?.title || "Removed item").join(", ") || "Unassigned items";
+const sessionLabelSummary = (session) => sessionLabelIds(session).map((id) => labelFor(id)?.name || "Removed label").join(", ") || "Unassigned labels";
 const sessionDate = (iso) => new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 const duration = (session) => session.running ? "Running" : KnowCore.formatTimer(session.durationSeconds || 0);
 
@@ -228,23 +228,23 @@ function renderSessions(history) {
   if (!sessions.length) { const empty = document.createElement("p"); empty.className = "empty"; empty.textContent = "No sessions recorded yet."; container.append(empty); return; }
   sessions.forEach((session) => {
     const article = document.createElement("article"); article.className = "session-card"; article.dataset.id = session.id;
-    article.insertAdjacentHTML("beforeend", `<div class="session-heading"><div><small>${escapeHtml(session.source || "SESSION")} · ${escapeHtml(sessionDate(session.startedAt))}</small><h3>${escapeHtml(session.description || "Untitled session")}</h3></div><div class="session-actions"><button class="text-button edit-session" ${session.running ? "disabled" : ""}>${session.running ? "Stop to edit" : "Edit"}</button>${session.running ? "" : '<button class="text-button danger remove-session">Remove</button>'}</div></div><div class="session-summary"><span>${escapeHtml(duration(session))}</span><span>${escapeHtml(pathFor(session.pathId)?.name || "Unassigned path")}</span><span>${escapeHtml(sessionItemSummary(session))}</span></div>`);
-    if (pathFor(session.pathId) || sessionItemIds(session).length) article.insertAdjacentHTML("beforeend", `<div class="session-context">${pathFor(session.pathId) ? `<span><strong>Path:</strong> ${escapeHtml(pathFor(session.pathId).name)} · ${escapeHtml(pathFor(session.pathId).description || "No description")}</span>` : ""}${sessionItemIds(session).length ? `<span><strong>Items:</strong> ${escapeHtml(sessionItemSummary(session))}</span>` : ""}</div>`);
+    article.insertAdjacentHTML("beforeend", `<div class="session-heading"><div><small>${escapeHtml(session.source || "SESSION")} · ${escapeHtml(sessionDate(session.startedAt))}</small><h3>${escapeHtml(session.description || "Untitled session")}</h3></div><div class="session-actions"><button class="text-button edit-session" ${session.running ? "disabled" : ""}>${session.running ? "Stop to edit" : "Edit"}</button>${session.running ? "" : '<button class="text-button danger remove-session">Remove</button>'}</div></div><div class="session-summary"><span>${escapeHtml(duration(session))}</span><span>${escapeHtml(pathFor(session.pathId)?.name || "Unassigned path")}</span><span>${escapeHtml(sessionLabelSummary(session))}</span></div>`);
+    if (pathFor(session.pathId) || sessionLabelIds(session).length) article.insertAdjacentHTML("beforeend", `<div class="session-context">${pathFor(session.pathId) ? `<span><strong>Path:</strong> ${escapeHtml(pathFor(session.pathId).name)} · ${escapeHtml(pathFor(session.pathId).description || "No description")}</span>` : ""}${sessionLabelIds(session).length ? `<span><strong>Labels:</strong> ${escapeHtml(sessionLabelSummary(session))}</span>` : ""}</div>`);
     container.append(article);
   });
 }
 async function loadSessions() { renderSessions(await request("/time-entries?page=0&size=20")); }
 
 function renderSessionEditor(article, session) {
-  const selectedIds = sessionItemIds(session);
-  article.insertAdjacentHTML("beforeend", `<form class="session-edit"><label>Description<textarea name="description" rows="2">${escapeHtml(session.description || "")}</textarea></label><div class="session-edit-grid"><label>Path<select name="pathId"><option value="">Unassigned</option>${paths.map((path) => `<option value="${escapeHtml(path.id)}" ${path.id === session.pathId ? "selected" : ""}>${escapeHtml(path.name)}</option>`).join("")}</select></label><label>Items<select name="itemIds" multiple size="4">${KnowCore.itemsForPath(items, session.pathId || "", selectedIds).map((item) => `<option value="${escapeHtml(item.id)}" ${selectedIds.includes(item.id) ? "selected" : ""}>${escapeHtml(itemLabel(item))}</option>`).join("")}</select></label><label>Source<select name="source">${["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"].map((source) => `<option ${source === session.source ? "selected" : ""}>${source}</option>`).join("")}</select></label><label>Started<input name="startedAt" type="datetime-local" value="${localDateTime(session.startedAt)}" required></label><label>Ended<input name="endedAt" type="datetime-local" value="${localDateTime(session.endedAt)}" required></label></div><div class="item-actions"><button class="primary" type="submit">Save session</button><button class="text-button cancel-session" type="button">Cancel</button></div></form>`);
+  const selectedIds = sessionLabelIds(session);
+  article.insertAdjacentHTML("beforeend", `<form class="session-edit"><label>Description<textarea name="description" rows="2">${escapeHtml(session.description || "")}</textarea></label><div class="session-edit-grid"><label>Path<select name="pathId"><option value="">Unassigned</option>${paths.map((path) => `<option value="${escapeHtml(path.id)}" ${path.id === session.pathId ? "selected" : ""}>${escapeHtml(path.name)}</option>`).join("")}</select></label><label>Labels<select name="labelIds" multiple size="4">${KnowCore.timerLabels(labels, session.pathId || "", selectedIds).map((label) => `<option value="${escapeHtml(label.id)}" ${selectedIds.includes(label.id) ? "selected" : ""}>${escapeHtml(labelText(label))}</option>`).join("")}</select></label><label>Source<select name="source">${["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"].map((source) => `<option ${source === session.source ? "selected" : ""}>${source}</option>`).join("")}</select></label><label>Started<input name="startedAt" type="datetime-local" value="${localDateTime(session.startedAt)}" required></label><label>Ended<input name="endedAt" type="datetime-local" value="${localDateTime(session.endedAt)}" required></label></div><div class="label-actions"><button class="primary" type="submit">Save session</button><button class="text-button cancel-session" type="button">Cancel</button></div></form>`);
   const form = article.querySelector("form");
-  form.querySelector('[name="pathId"]').onchange = (event) => { const select = form.querySelector('[name="itemIds"]'); const selected = selectedItemIds(select); fillOptions(select, "", KnowCore.itemsForPath(items, event.target.value, selected), selected); };
+  form.querySelector('[name="pathId"]').onchange = (event) => { const select = form.querySelector('[name="labelIds"]'); const selected = selectedLabelIds(select); fillOptions(select, "", KnowCore.timerLabels(labels, event.target.value, selected), selected); };
   form.onsubmit = async (event) => {
     event.preventDefault(); const data = new FormData(form); const start = data.get("startedAt"); const end = data.get("endedAt");
     if (!start || !end || new Date(start) >= new Date(end)) { $("error").textContent = "A session needs a valid start and end time."; return; }
     try {
-      await request(`/time-entries/${session.id}`, { method: "PUT", body: JSON.stringify({ pathId: data.get("pathId") || null, itemIds: selectedItemIds(form.querySelector('[name="itemIds"]')), startedAt: isoDateTime(start), endedAt: isoDateTime(end), description: data.get("description") || null, source: data.get("source") }) });
+      await request(`/time-entries/${session.id}`, { method: "PUT", body: JSON.stringify({ pathId: data.get("pathId") || null, labelIds: selectedLabelIds(form.querySelector('[name="labelIds"]')), startedAt: isoDateTime(start), endedAt: isoDateTime(end), description: data.get("description") || null, source: data.get("source") }) });
       await loadSessions();
     } catch (error) { logError("Update session", error, { sessionId }); $("error").textContent = userError("Could not update this session.", error); }
   };
@@ -254,11 +254,11 @@ function renderSessionEditor(article, session) {
 async function load() {
   try {
     const { activeTimer, timerSelection: savedSelection } = await chrome.storage.local.get(["activeTimer", timerSelectionKey]);
-    [paths, items] = await Promise.all([request("/paths"), request("/items")]);
+    [paths, labels] = await Promise.all([request("/paths"), request("/calendar/labels")]);
     const timer = await request("/timers/current");
     fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
     $("path").onchange = async () => {
-      renderTimerItems(selectedItemIds($("item")));
+      renderTimerLabels(selectedLabelIds($("label")));
       try { await configureCurrentTimer(); } catch (error) { logError("Change timer path", error); $("error").textContent = userError("Could not update the timer.", error); }
     };
     if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
@@ -315,12 +315,12 @@ $("toggle").onclick = async () => {
   try {
     const current = await request("/timers/current");
     if (KnowCore.timerIsRunning(current)) { await flushDescriptionSave(); await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); $("toggle").textContent = "Start timer"; await loadSessions(); }
-    else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedItemIds($("item")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); $("toggle").textContent = "Stop timer"; }
+    else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedLabelIds($("label")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); $("toggle").textContent = "Stop timer"; }
   } catch (error) { logError("Toggle timer", error); $("error").textContent = userError("Could not update the timer. Check the API connection and try again.", error); }
   finally { setButtonBusy(button, false); }
 };
-$("item").onchange = async () => {
-  try { await configureCurrentTimer(); } catch (error) { logError("Select timer items", error); $("error").textContent = userError("Could not update the timer.", error); }
+$("label").onchange = async () => {
+  try { await configureCurrentTimer(); } catch (error) { logError("Select timer labels", error); $("error").textContent = userError("Could not update the timer.", error); }
 };
 $("description").oninput = () => {
   void persistTimerSelection();
