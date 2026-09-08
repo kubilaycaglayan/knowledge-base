@@ -28,7 +28,8 @@ class TimerServiceEdgeTest {
     when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.empty());
     when(labels.findByIdAndUserId(label, user)).thenReturn(Optional.of(new DailyLabel(user, "Read", null)));
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    when(entryLabels.findAllByIdTimeEntryId(any())).thenReturn(List.of());
+    when(entryLabels.findAllByIdTimeEntryId(any()))
+        .thenAnswer(invocation -> List.of(new TimeEntryLabel(invocation.getArgument(0), label)));
 
     TimerService.TimeView view =
         service().start(user, null, Arrays.asList(label, label, null), "Reading", null);
