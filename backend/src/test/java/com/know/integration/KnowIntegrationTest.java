@@ -492,14 +492,14 @@ class KnowIntegrationTest {
 
     // Start a timer
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"description\":\"Study session\",\"source\":\"WEB\"}");
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Study session\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     String timerId = started.getBody().get("id").asText();
     assertTrue(started.getBody().get("running").asBoolean());
 
     // Second start is rejected (one-running-timer invariant)
     ResponseEntity<JsonNode> dup =
-        post("/api/v1/timers", token, "{\"description\":\"Another session\",\"source\":\"WEB\"}");
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Another session\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CONFLICT, dup.getStatusCode());
 
     // Current timer is visible
@@ -518,7 +518,7 @@ class KnowIntegrationTest {
   void timerCanBeCancelled() {
     String token = freshToken();
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"description\":\"To be cancelled\",\"source\":\"WEB\"}");
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"To be cancelled\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     String timerId = started.getBody().get("id").asText();
 
@@ -535,7 +535,7 @@ class KnowIntegrationTest {
   void timerPreservesIosSource() {
     String token = freshToken();
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"description\":\"iOS session\",\"source\":\"IOS\"}");
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"iOS session\",\"source\":\"IOS\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     assertEquals("IOS", started.getBody().get("source").asText());
 
@@ -552,7 +552,7 @@ class KnowIntegrationTest {
     String pathId = path.getBody().get("id").asText();
 
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"description\":\"Config test\",\"source\":\"WEB\"}");
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Config test\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     String timerId = started.getBody().get("id").asText();
 
@@ -563,7 +563,7 @@ class KnowIntegrationTest {
             token,
             "{\"pathId\":\""
                 + pathId
-                + "\",\"startedAt\":\""
+                + "\",\"labelIds\":[],\"startedAt\":\""
                 + pastTime
                 + "\",\"description\":\"Updated\"}");
     assertEquals(HttpStatus.OK, configured.getStatusCode());
@@ -603,7 +603,7 @@ class KnowIntegrationTest {
         token,
         "{\"pathId\":\""
             + firstPath
-            + "\",\"startedAt\":\""
+            + "\",\"labelIds\":[],\"startedAt\":\""
             + newer
             + "\",\"endedAt\":\""
             + Instant.now().minus(10, ChronoUnit.MINUTES)
@@ -613,7 +613,7 @@ class KnowIntegrationTest {
         token,
         "{\"pathId\":\""
             + secondPath
-            + "\",\"startedAt\":\""
+            + "\",\"labelIds\":[],\"startedAt\":\""
             + older
             + "\",\"endedAt\":\""
             + Instant.now().minus(25, ChronoUnit.MINUTES)
@@ -627,27 +627,27 @@ class KnowIntegrationTest {
   }
 
   @Test
-  void timerAcceptsOwnedItemNotAttachedToPath() {
+  void timerAcceptsOwnedLabelWithPath() {
     String token = freshToken();
     ResponseEntity<JsonNode> path =
         post("/api/v1/paths", token, "{\"name\":\"Path A\",\"description\":null}");
     String pathId = path.getBody().get("id").asText();
 
-    ResponseEntity<JsonNode> item = post("/api/v1/items", token, "{\"title\":\"Unattached Item\"}");
-    String itemId = item.getBody().get("id").asText();
+    ResponseEntity<JsonNode> label =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Focused work\"}");
+    String labelId = label.getBody().get("id").asText();
 
-    // Item organization and timer targeting are independent.
     ResponseEntity<JsonNode> timerStart =
         post(
             "/api/v1/timers",
             token,
             "{\"pathId\":\""
                 + pathId
-                + "\",\"itemId\":\""
-                + itemId
-                + "\","
-                + "\"description\":\"invalid combo\",\"source\":\"WEB\"}");
+                + "\",\"labelIds\":[\""
+                + labelId
+                + "\"],\"description\":\"focused\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CREATED, timerStart.getStatusCode());
+    assertEquals(labelId, timerStart.getBody().get("labelIds").get(0).asText());
     String timerId = timerStart.getBody().get("id").asText();
     post("/api/v1/timers/" + timerId + "/stop", token, "{}");
   }
@@ -665,7 +665,7 @@ class KnowIntegrationTest {
             token,
             "{\"startedAt\":\""
                 + start
-                + "\",\"endedAt\":\""
+                + "\",\"labelIds\":[],\"endedAt\":\""
                 + end
                 + "\","
                 + "\"description\":\"Manual entry\"}");
@@ -674,44 +674,32 @@ class KnowIntegrationTest {
     assertEquals(3600L, entry.getBody().get("durationSeconds").asLong(), 5L);
   }
 
-  // Criteria: statistics (today / week / month, path/item breakdowns)
+  // Criteria: statistics (today / week / month, path/label breakdowns)
 
   @Test
-  void statisticsIncludeCompletionCountsAndRecentProgress() {
+  void statisticsIncludePathAndLabelBreakdowns() {
     String token = freshToken();
-
-    // Complete an item so completedItems > 0
-    ResponseEntity<JsonNode> item =
-        post("/api/v1/items", token, "{\"title\":\"Stat Item\",\"type\":\"COURSE\"}");
-    String itemId = item.getBody().get("id").asText();
-    post("/api/v1/items/" + itemId + "/progress", token, "{\"progress\":100}");
 
     ResponseEntity<JsonNode> stats = get("/api/v1/statistics", token);
     assertEquals(HttpStatus.OK, stats.getStatusCode());
-    assertTrue(stats.getBody().has("completedItems"));
-    assertTrue(stats.getBody().has("activeItems"));
     assertTrue(stats.getBody().has("todaySeconds"));
     assertTrue(stats.getBody().has("weekSeconds"));
     assertTrue(stats.getBody().has("monthSeconds"));
     assertTrue(stats.getBody().has("todayByPath"));
     assertTrue(stats.getBody().has("weekByPath"));
-    assertTrue(stats.getBody().has("recentProgressChanges"));
+    assertTrue(stats.getBody().has("todayByLabel"));
+    assertTrue(stats.getBody().has("weekByLabel"));
   }
 
   // Criteria: activity stream
 
   @Test
-  void activityStreamRecordsItemAndTimerEvents() {
+  void timerTransitionsAreNotPersistedAsActivityEvents() {
     String token = freshToken();
-
-    // Create item, then expect ITEM_CREATED activity
-    ResponseEntity<JsonNode> item =
-        post("/api/v1/items", token, "{\"title\":\"Activity Check\",\"type\":\"COURSE\"}");
-    String itemId = item.getBody().get("id").asText();
 
     // Start timer; sessions are now read from time_entry rather than persisted as activity rows.
     ResponseEntity<JsonNode> timerRes =
-        post("/api/v1/timers", token, "{\"description\":\"Activity timer\",\"source\":\"WEB\"}");
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Activity timer\",\"source\":\"WEB\"}");
     String timerId = timerRes.getBody().get("id").asText();
     post("/api/v1/timers/" + timerId + "/stop", token, "{}");
 
@@ -719,13 +707,11 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.OK, activities.getStatusCode());
     assertTrue(activities.getBody().isArray());
 
-    boolean hasItemCreated = false, hasTimerStarted = false;
+    boolean hasTimerStarted = false;
     for (JsonNode n : activities.getBody()) {
       String type = n.get("type").asText();
-      if ("ITEM_CREATED".equals(type)) hasItemCreated = true;
       if ("TIMER_STARTED".equals(type)) hasTimerStarted = true;
     }
-    assertTrue(hasItemCreated, "ITEM_CREATED activity expected");
     assertFalse(hasTimerStarted, "timer transition activity should not be persisted");
   }
 
@@ -832,10 +818,7 @@ class KnowIntegrationTest {
         token,
         "{\"pathId\":\""
             + pathId
-            + "\",\"itemId\":\""
-            + itemId
-            + "\","
-            + "\"startedAt\":\""
+            + "\",\"labelIds\":[],\"startedAt\":\""
             + start
             + "\",\"endedAt\":\""
             + end
@@ -888,7 +871,7 @@ class KnowIntegrationTest {
         token,
         "{\"startedAt\":\""
             + start
-            + "\",\"endedAt\":\""
+            + "\",\"labelIds\":[],\"endedAt\":\""
             + end
             + "\","
             + "\"description\":\"Report test\"}");

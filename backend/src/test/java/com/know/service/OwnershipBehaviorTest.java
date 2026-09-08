@@ -154,23 +154,16 @@ class OwnershipBehaviorTest {
   void timerRejectsSecondRunningTimerForSameUser() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
+    DailyLabelRepository labels = mock(DailyLabelRepository.class);
     UUID user = UUID.randomUUID();
     TimeEntry running =
         new TimeEntry(user, null, null, java.time.Instant.now(), null, TimeSource.WEB);
     when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.of(running));
     TimerService service =
-        new TimerService(
-            entries,
-            paths,
-            items,
-            mock(PathItemRepository.class),
-            mock(ProgressEntryRepository.class),
-            activities);
+        new TimerService(entries, paths, labels, mock(TimeEntryLabelRepository.class));
     assertThrows(
         ResponseStatusException.class,
-        () -> service.start(user, null, null, "duplicate", TimeSource.WEB));
+        () -> service.start(user, null, List.of(), "duplicate", TimeSource.WEB));
     verify(entries, never()).save(any());
   }
 
@@ -178,20 +171,13 @@ class OwnershipBehaviorTest {
   void timerPreservesClientSource() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
+    DailyLabelRepository labels = mock(DailyLabelRepository.class);
     UUID user = UUID.randomUUID();
     when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.empty());
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
     TimerService.TimeView result =
-        new TimerService(
-                entries,
-                paths,
-                items,
-                mock(PathItemRepository.class),
-                mock(ProgressEntryRepository.class),
-                activities)
-            .start(user, null, null, "iOS", TimeSource.IOS);
+        new TimerService(entries, paths, labels, mock(TimeEntryLabelRepository.class))
+            .start(user, null, List.of(), "iOS", TimeSource.IOS);
     assertEquals(TimeSource.IOS, result.source());
     verify(entries).save(argThat(entry -> entry.getSource() == TimeSource.IOS));
   }
@@ -200,8 +186,6 @@ class OwnershipBehaviorTest {
   void editingSessionUpdatesItsCanonicalSessionRecord() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
     UUID user = UUID.randomUUID();
     TimeEntry entry =
         new TimeEntry(user, null, null, Instant.parse("2026-08-28T10:00:00Z"), "Old", TimeSource.MANUAL);
@@ -209,64 +193,48 @@ class OwnershipBehaviorTest {
     when(entries.findByIdAndUserId(entry.getId(), user)).thenReturn(Optional.of(entry));
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    new TimerService(
-            entries,
-            paths,
-            items,
-            mock(PathItemRepository.class),
-            mock(ProgressEntryRepository.class),
-            activities)
+    new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class))
         .edit(
             user,
             entry.getId(),
             null,
-            null,
+            List.of(),
             Instant.parse("2026-08-28T12:00:00Z"),
             Instant.parse("2026-08-28T12:30:00Z"),
-            "Updated");
+            "Updated",
+            null);
 
     assertEquals("Updated", entry.getDescription());
     assertEquals(1800, entry.getDurationSeconds());
-    verify(activities, never()).save(any());
   }
 
   @Test
   void timerHistoryUsesABoundedPage() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
     UUID user = UUID.randomUUID();
     when(entries.findAllByUserIdOrderByCompletionTimeDesc(eq(user), any())).thenReturn(List.of());
-    new TimerService(
-            entries,
-            paths,
-            items,
-            mock(PathItemRepository.class),
-            mock(ProgressEntryRepository.class),
-            mock(ActivityRepository.class))
+    new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class))
         .history(user);
     verify(entries)
         .findAllByUserIdOrderByCompletionTimeDesc(eq(user), argThat(page -> page.getPageSize() == 100));
   }
 
   @Test
-  void timerAcceptsAnOwnedItemThatIsNotAttachedToTheSelectedPath() {
+  void timerAcceptsAnOwnedLabelWithTheSelectedPath() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    PathItemRepository pathItems = mock(PathItemRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
-    UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), itemId = UUID.randomUUID();
+    DailyLabelRepository labels = mock(DailyLabelRepository.class);
+    UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), labelId = UUID.randomUUID();
     when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.empty());
     when(paths.findByIdAndUserId(pathId, user))
         .thenReturn(Optional.of(new Path(user, "Algorithms", null)));
-    when(items.findByIdAndUserId(itemId, user))
-        .thenReturn(Optional.of(new Item(user, "Writing", ItemType.CUSTOM, null)));
+    when(labels.findByIdAndUserId(labelId, user))
+        .thenReturn(Optional.of(new DailyLabel(user, "Writing", null)));
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
     TimerService service =
-        new TimerService(
-            entries, paths, items, pathItems, mock(ProgressEntryRepository.class), activities);
-    assertDoesNotThrow(() -> service.start(user, pathId, itemId, "cross-path focus", TimeSource.WEB));
+        new TimerService(entries, paths, labels, mock(TimeEntryLabelRepository.class));
+    assertDoesNotThrow(() -> service.start(user, pathId, List.of(labelId), "focus", TimeSource.WEB));
     verify(entries).save(any(TimeEntry.class));
   }
 
@@ -274,9 +242,6 @@ class OwnershipBehaviorTest {
   void runningTimerCanBeReconfiguredWithoutHidingOwnershipChecks() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    PathItemRepository pathItems = mock(PathItemRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
     UUID user = UUID.randomUUID(), timerId = UUID.randomUUID(), pathId = UUID.randomUUID();
     TimeEntry running =
         new TimeEntry(
@@ -286,13 +251,12 @@ class OwnershipBehaviorTest {
     when(paths.findByIdAndUserId(pathId, user))
         .thenReturn(Optional.of(new Path(user, "Algorithms", null)));
     TimerService.TimeView result =
-        new TimerService(
-                entries, paths, items, pathItems, mock(ProgressEntryRepository.class), activities)
-            .configureRunning(
+        new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class))
+            .configure(
                 user,
                 timerId,
                 pathId,
-                null,
+                List.of(),
                 java.time.Instant.now().minusSeconds(60),
                 null,
                 "new");
@@ -306,8 +270,6 @@ class OwnershipBehaviorTest {
   void runningTimerCanBeEndedAtAnEditedTime() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
     UUID user = UUID.randomUUID(), timerId = UUID.randomUUID();
     Instant start = Instant.now().minusSeconds(120);
     Instant end = Instant.now().minusSeconds(60);
@@ -316,42 +278,26 @@ class OwnershipBehaviorTest {
     when(entries.save(running)).thenReturn(running);
 
     TimerService.TimeView result =
-        new TimerService(
-                entries,
-                paths,
-                items,
-                mock(PathItemRepository.class),
-                mock(ProgressEntryRepository.class),
-                activities)
-            .configureRunning(user, timerId, null, null, start, end, "focus");
+        new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class))
+            .configure(user, timerId, null, List.of(), start, end, "focus");
 
     assertFalse(result.running());
     assertEquals(end, result.endedAt());
     assertEquals(60, result.durationSeconds());
-    verify(activities, never()).save(any());
   }
 
   @Test
   void timerCancellationDeletesOnlyTheUsersRunningTimer() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
     UUID user = UUID.randomUUID(), timerId = UUID.randomUUID();
     TimeEntry running =
         new TimeEntry(user, null, null, java.time.Instant.now(), "cancel", TimeSource.WEB);
     when(entries.findById(timerId)).thenReturn(Optional.of(running));
     TimerService service =
-        new TimerService(
-            entries,
-            paths,
-            items,
-            mock(PathItemRepository.class),
-            mock(ProgressEntryRepository.class),
-            activities);
+        new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class));
     service.cancel(user, timerId);
     verify(entries).delete(running);
-    verifyNoInteractions(activities);
   }
 
   @Test
@@ -431,59 +377,30 @@ class OwnershipBehaviorTest {
   }
 
   @Test
-  void statisticsIncludesCompletionCountsAndRecentProgress() {
-    TimeEntryRepository entries = mock(TimeEntryRepository.class);
-    PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ProgressEntryRepository progress = mock(ProgressEntryRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
-    UUID user = UUID.randomUUID(), itemId = UUID.randomUUID();
-    when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of());
-    when(items.countByUserIdAndStatus(user, ItemStatus.COMPLETED)).thenReturn(3L);
-    when(items.countByUserIdAndStatus(user, ItemStatus.ACTIVE)).thenReturn(2L);
-    when(progress.findTop10ByUserIdOrderByChangedAtDesc(user))
-        .thenReturn(List.of(new ProgressEntry(user, itemId, (short) 20, (short) 40)));
-    TimerService.Statistics result =
-        new TimerService(
-                entries, paths, items, mock(PathItemRepository.class), progress, activities)
-            .statistics(user);
-    assertEquals(3, result.completedItems());
-    assertEquals(2, result.activeItems());
-    assertEquals(itemId, result.recentProgressChanges().getFirst().itemId());
-    verify(entries, times(1)).findOverlappingByUserId(eq(user), any(), any());
-  }
-
-  @Test
   void statisticsBreakdownsIncludeElapsedRunningTime() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ProgressEntryRepository progress = mock(ProgressEntryRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
-    UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), itemId = UUID.randomUUID();
+    TimeEntryLabelRepository entryLabels = mock(TimeEntryLabelRepository.class);
+    UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), labelId = UUID.randomUUID();
     TimeEntry running =
         new TimeEntry(
-            user, pathId, itemId, java.time.Instant.now().minusSeconds(5), "live", TimeSource.WEB);
+            user, pathId, null, java.time.Instant.now().minusSeconds(5), "live", TimeSource.WEB);
     when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(running));
-    when(items.countByUserIdAndStatus(any(), any())).thenReturn(0L);
-    when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
+    when(entryLabels.findAllByIdTimeEntryId(running.getId()))
+        .thenReturn(List.of(new TimeEntryLabel(running.getId(), labelId)));
     TimerService.Statistics result =
-        new TimerService(
-                entries, paths, items, mock(PathItemRepository.class), progress, activities)
+        new TimerService(entries, paths, mock(DailyLabelRepository.class), entryLabels)
             .statistics(user);
     assertTrue(result.todayByPath().get(pathId) >= 4);
-    assertTrue(result.todayByItem().get(itemId) >= 4);
+    assertTrue(result.todayByLabel().get(labelId) >= 4);
     assertTrue(result.weekByPath().get(pathId) >= 4);
-    assertTrue(result.weekByItem().get(itemId) >= 4);
+    assertTrue(result.weekByLabel().get(labelId) >= 4);
   }
 
   @Test
   void statisticsClipEntriesThatCrossTheUtcDayBoundary() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ProgressEntryRepository progress = mock(ProgressEntryRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
     UUID user = UUID.randomUUID();
     var dayStart =
         java.time.LocalDate.now(java.time.ZoneOffset.UTC)
@@ -493,12 +410,8 @@ class OwnershipBehaviorTest {
         new TimeEntry(user, null, null, dayStart.minusSeconds(60), "crossing", TimeSource.MANUAL);
     crossing.stop(dayStart.plusSeconds(60));
     when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(crossing));
-    when(items.countByUserIdAndStatus(any(), any())).thenReturn(0L);
-    when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
-
     TimerService.Statistics result =
-        new TimerService(
-                entries, paths, items, mock(PathItemRepository.class), progress, activities)
+        new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class))
             .statistics(user);
 
     assertEquals(60, result.todaySeconds());
@@ -510,15 +423,10 @@ class OwnershipBehaviorTest {
   void statisticsQueryCoversTheEntireCurrentMonthWhenItExceedsTheWeekWindow() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ProgressEntryRepository progress = mock(ProgressEntryRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
     UUID user = UUID.randomUUID();
     when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of());
-    when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
     TimerService service =
-        new TimerService(
-            entries, paths, items, mock(PathItemRepository.class), progress, activities);
+        new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class));
     service.statistics(user);
 
     var from = org.mockito.ArgumentCaptor.forClass(java.time.Instant.class);
@@ -533,9 +441,6 @@ class OwnershipBehaviorTest {
   void statisticsRespectWeekAndMonthBoundariesAtMonthStart() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
-    ItemRepository items = mock(ItemRepository.class);
-    ProgressEntryRepository progress = mock(ProgressEntryRepository.class);
-    ActivityRepository activities = mock(ActivityRepository.class);
     UUID user = UUID.randomUUID();
     var today = java.time.LocalDate.now(java.time.ZoneOffset.UTC);
     var monthStart = today.withDayOfMonth(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
@@ -548,10 +453,8 @@ class OwnershipBehaviorTest {
     recent.stop(recent.getStartedAt().plusSeconds(120));
     when(entries.findOverlappingByUserId(eq(user), any(), any()))
         .thenReturn(List.of(recent, older));
-    when(progress.findTop10ByUserIdOrderByChangedAtDesc(user)).thenReturn(List.of());
     TimerService.Statistics result =
-        new TimerService(
-                entries, paths, items, mock(PathItemRepository.class), progress, activities)
+        new TimerService(entries, paths, mock(DailyLabelRepository.class), mock(TimeEntryLabelRepository.class))
             .statistics(user);
     assertEquals(weekStart.isBefore(monthStart) ? 180 : 120, result.weekSeconds());
     assertEquals(weekStart.isBefore(monthStart) ? 60 : 180, result.monthSeconds());
