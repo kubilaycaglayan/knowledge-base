@@ -21,20 +21,18 @@ public class TimerController {
   }
 
   record StartRequest(
-      UUID pathId, List<UUID> itemIds, UUID itemId, @Size(max = 500) String description, TimeSource source) {}
+      UUID pathId, @NotNull List<UUID> labelIds, @Size(max = 500) String description, TimeSource source) {}
 
   record RunningUpdateRequest(
       UUID pathId,
-      List<UUID> itemIds,
-      UUID itemId,
+      @NotNull List<UUID> labelIds,
       @NotNull Instant startedAt,
       Instant endedAt,
       @Size(max = 500) String description) {}
 
   record ManualRequest(
       UUID pathId,
-      List<UUID> itemIds,
-      UUID itemId,
+      @NotNull List<UUID> labelIds,
       @NotNull Instant startedAt,
       @NotNull Instant endedAt,
       @Size(max = 500) String description,
@@ -53,20 +51,15 @@ public class TimerController {
   public ResponseEntity<TimerService.TimeView> start(
       Authentication a, @Valid @RequestBody StartRequest r) {
     TimerService.TimeView result =
-        r.itemIds() == null
-            ? service.start(user(a), r.pathId(), r.itemId(), r.description(), r.source())
-            : service.startWithItems(user(a), r.pathId(), r.itemIds(), r.description(), r.source());
+        service.start(user(a), r.pathId(), r.labelIds(), r.description(), r.source());
     return ResponseEntity.status(HttpStatus.CREATED).body(result);
   }
 
   @PutMapping("/timers/{id}")
   public TimerService.TimeView configure(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody RunningUpdateRequest r) {
-    return r.itemIds() == null
-        ? service.configureRunning(
-            user(a), id, r.pathId(), r.itemId(), r.startedAt(), r.endedAt(), r.description())
-        : service.configureWithItems(
-            user(a), id, r.pathId(), r.itemIds(), r.startedAt(), r.endedAt(), r.description());
+    return service.configure(
+        user(a), id, r.pathId(), r.labelIds(), r.startedAt(), r.endedAt(), r.description());
   }
 
   @PostMapping({"/timers/stop", "/timers/{id}/stop"})
@@ -88,11 +81,8 @@ public class TimerController {
 
   @PostMapping("/time-entries")
   public TimerService.TimeView manual(Authentication a, @Valid @RequestBody ManualRequest r) {
-    return r.itemIds() == null
-        ? service.manual(
-            user(a), r.pathId(), r.itemId(), r.startedAt(), r.endedAt(), r.description())
-        : service.manualWithItems(
-            user(a), r.pathId(), r.itemIds(), r.startedAt(), r.endedAt(), r.description());
+    return service.manual(
+        user(a), r.pathId(), r.labelIds(), r.startedAt(), r.endedAt(), r.description());
   }
 
   @GetMapping("/time-entries")
@@ -107,11 +97,8 @@ public class TimerController {
   @PutMapping("/time-entries/{id}")
   public TimerService.TimeView edit(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody ManualRequest r) {
-    return r.itemIds() == null
-        ? service.edit(
-            user(a), id, r.pathId(), r.itemId(), r.startedAt(), r.endedAt(), r.description(), r.source())
-        : service.editWithItems(
-            user(a), id, r.pathId(), r.itemIds(), r.startedAt(), r.endedAt(), r.description(), r.source());
+    return service.edit(
+        user(a), id, r.pathId(), r.labelIds(), r.startedAt(), r.endedAt(), r.description(), r.source());
   }
 
   @DeleteMapping("/time-entries/{id}")
@@ -125,8 +112,4 @@ public class TimerController {
     return service.statistics(user(a));
   }
 
-  private List<UUID> ids(List<UUID> itemIds, UUID itemId) {
-    if (itemIds != null) return itemIds;
-    return itemId == null ? List.of() : List.of(itemId);
-  }
 }
