@@ -14,11 +14,12 @@ import org.springframework.web.server.ResponseStatusException;
 class TimerServiceEdgeTest {
   private final TimeEntryRepository entries = mock(TimeEntryRepository.class);
   private final PathRepository paths = mock(PathRepository.class);
-  private final DailyLabelRepository labels = mock(DailyLabelRepository.class);
+  private final LabelRepository labels = mock(LabelRepository.class);
+  private final LabelScopeRepository scopes = mock(LabelScopeRepository.class);
   private final TimeEntryLabelRepository entryLabels = mock(TimeEntryLabelRepository.class);
 
   private TimerService service() {
-    return new TimerService(entries, paths, labels, entryLabels);
+    return new TimerService(entries, paths, labels, entryLabels, scopes);
   }
 
   @Test
@@ -26,7 +27,8 @@ class TimerServiceEdgeTest {
     UUID user = UUID.randomUUID();
     UUID label = UUID.randomUUID();
     when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.empty());
-    when(labels.findByIdAndUserId(label, user)).thenReturn(Optional.of(new DailyLabel(user, "Read", null)));
+    when(labels.findByIdAndUserId(label, user)).thenReturn(Optional.of(new Label(user, "Read", null)));
+    when(scopes.existsByIdLabelIdAndIdScope(label, LabelScopeType.TIME_ENTRY)).thenReturn(true);
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(entryLabels.findAllByIdTimeEntryId(any()))
         .thenAnswer(invocation -> List.of(new TimeEntryLabel(invocation.getArgument(0), label)));

@@ -14,18 +14,21 @@ import org.springframework.web.server.ResponseStatusException;
 public class TimerService {
   private final TimeEntryRepository entries;
   private final PathRepository paths;
-  private final DailyLabelRepository labels;
+  private final LabelRepository labels;
+  private final LabelScopeRepository scopes;
   private final TimeEntryLabelRepository entryLabels;
 
   public TimerService(
       TimeEntryRepository entries,
       PathRepository paths,
-      DailyLabelRepository labels,
-      TimeEntryLabelRepository entryLabels) {
+      LabelRepository labels,
+      TimeEntryLabelRepository entryLabels,
+      LabelScopeRepository scopes) {
     this.entries = entries;
     this.paths = paths;
     this.labels = labels;
     this.entryLabels = entryLabels;
+    this.scopes = scopes;
   }
 
   public record TimeView(
@@ -340,6 +343,7 @@ public class TimerService {
       if (labelId == null) continue;
       labels
           .findByIdAndUserId(labelId, userId)
+          .filter(label -> scopes.existsByIdLabelIdAndIdScope(labelId, LabelScopeType.TIME_ENTRY))
           .orElseThrow(
               () ->
                   new ResponseStatusException(

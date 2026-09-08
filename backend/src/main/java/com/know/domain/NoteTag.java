@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "note_tag")
+@Table(name = "note_label")
 public class NoteTag {
   @EmbeddedId private NoteTagId id;
 

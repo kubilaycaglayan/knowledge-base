@@ -17,5 +17,5 @@ public class TimeEntryLabel {
   }
 
   public UUID getTimeEntryId() { return id.getTimeEntryId(); }
-  public UUID getLabelId() { return id.getDailyLabelId(); }
+  public UUID getLabelId() { return id.getLabelId(); }
 }

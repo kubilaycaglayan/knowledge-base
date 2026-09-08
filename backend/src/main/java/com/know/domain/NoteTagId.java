@@ -9,23 +9,23 @@ import java.util.UUID;
 @Embeddable
 public class NoteTagId implements Serializable {
   @Column(name = "note_id") private UUID noteId;
-  @Column(name = "tag_id") private UUID tagId;
+  @Column(name = "label_id") private UUID labelId;
 
   protected NoteTagId() {}
 
-  public NoteTagId(UUID noteId, UUID tagId) {
+  public NoteTagId(UUID noteId, UUID labelId) {
     this.noteId = noteId;
-    this.tagId = tagId;
+    this.labelId = labelId;
   }
 
   public UUID getNoteId() { return noteId; }
-  public UUID getTagId() { return tagId; }
+  public UUID getLabelId() { return labelId; }
 
   @Override public boolean equals(Object other) {
     return other instanceof NoteTagId value
         && Objects.equals(noteId, value.noteId)
-        && Objects.equals(tagId, value.tagId);
+        && Objects.equals(labelId, value.labelId);
   }
 
-  @Override public int hashCode() { return Objects.hash(noteId, tagId); }
+  @Override public int hashCode() { return Objects.hash(noteId, labelId); }
 }
