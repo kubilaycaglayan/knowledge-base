@@ -147,7 +147,6 @@ class PathAuthorizationApiTest {
                 new TimeEntry(
                     owner,
                     pathId,
-                    null,
                     java.time.Instant.now().minusSeconds(5),
                     "live",
                     TimeSource.WEB)));
@@ -165,14 +164,12 @@ class PathAuthorizationApiTest {
   void pathSummaryOnlyIncludesTimeTrackedOnThePath() throws Exception {
     UUID owner = UUID.randomUUID(),
         pathId = UUID.randomUUID(),
-        otherPathId = UUID.randomUUID(),
-        itemId = UUID.randomUUID();
+        otherPathId = UUID.randomUUID();
     Path path = new Path(owner, "Learning", null);
     TimeEntry selected =
         new TimeEntry(
             owner,
             pathId,
-            itemId,
             java.time.Instant.now().minusSeconds(300),
             "selected",
             TimeSource.WEB);
@@ -181,20 +178,10 @@ class PathAuthorizationApiTest {
         new TimeEntry(
             owner,
             otherPathId,
-            itemId,
             java.time.Instant.now().minusSeconds(300),
             "other",
             TimeSource.WEB);
     other.stop(other.getStartedAt().plusSeconds(900));
-    TimeEntry itemOnly =
-        new TimeEntry(
-            owner,
-            null,
-            itemId,
-            java.time.Instant.now().minusSeconds(300),
-            "item only",
-            TimeSource.WEB);
-    itemOnly.stop(itemOnly.getStartedAt().plusSeconds(60));
     when(paths.findByIdAndUserId(pathId, owner)).thenReturn(Optional.of(path));
     when(timeEntries.findAllByUserIdAndPathIdOrderByStartedAtDesc(owner, pathId))
         .thenReturn(List.of(selected));

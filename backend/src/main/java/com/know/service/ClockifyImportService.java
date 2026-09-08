@@ -136,7 +136,6 @@ public class ClockifyImportService {
           new TimeEntry(
               userId,
               path == null ? null : path.getId(),
-              null,
               start,
               description,
               TimeSource.IMPORT,

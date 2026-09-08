@@ -17,8 +17,6 @@ public class TimeEntry {
   @Column(name = "path_id")
   private UUID pathId;
 
-  @Transient private UUID legacyItemId;
-
   @Column(name = "started_at", nullable = false)
   private Instant startedAt;
 
@@ -51,24 +49,21 @@ public class TimeEntry {
   public TimeEntry(
       UUID userId,
       UUID pathId,
-      UUID itemId,
       Instant startedAt,
       String description,
       TimeSource source) {
-    this(userId, pathId, itemId, startedAt, description, source, null);
+    this(userId, pathId, startedAt, description, source, null);
   }
 
   public TimeEntry(
       UUID userId,
       UUID pathId,
-      UUID itemId,
       Instant startedAt,
       String description,
       TimeSource source,
       String externalId) {
     this.userId = userId;
     this.pathId = pathId;
-    this.legacyItemId = itemId;
     this.startedAt = startedAt;
     this.description = description;
     this.source = source;
@@ -85,10 +80,6 @@ public class TimeEntry {
 
   public UUID getPathId() {
     return pathId;
-  }
-
-  public UUID getItemId() {
-    return legacyItemId;
   }
 
   public Instant getStartedAt() {
@@ -136,24 +127,21 @@ public class TimeEntry {
     durationSeconds = Math.max(0, Duration.between(startedAt, end).toSeconds());
   }
 
-  public void reconfigureRunning(UUID pathId, UUID itemId, Instant start, String description) {
+  public void reconfigureRunning(UUID pathId, Instant start, String description) {
     if (!running()) throw new IllegalStateException("Only running entries can be reconfigured");
     this.pathId = pathId;
-    this.legacyItemId = itemId;
     this.startedAt = start;
     this.description = description;
   }
 
   public void edit(
       UUID pathId,
-      UUID itemId,
       Instant start,
       Instant end,
       String description,
       TimeSource source) {
     if (running()) throw new IllegalStateException("Running entries cannot be edited");
     this.pathId = pathId;
-    this.legacyItemId = itemId;
     this.startedAt = start;
     this.endedAt = end;
     this.durationSeconds = Math.max(0, Duration.between(start, end).toSeconds());

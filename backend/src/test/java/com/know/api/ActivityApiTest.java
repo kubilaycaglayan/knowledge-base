@@ -33,28 +33,26 @@ class ActivityApiTest {
   @MockBean KnowledgeService service;
 
   @Test
-  void malformedActivityFilterIdsAreRejected() throws Exception {
+  void removedItemFilterIsIgnored() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
     mvc.perform(get("/api/v1/activities").param("itemId", "not-a-uuid").with(authentication(auth)))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isOk());
   }
 
   @Test
   void authenticatedActivityFiltersReachTheOwnedServiceQuery() throws Exception {
     UUID userId = UUID.randomUUID();
-    UUID itemId = UUID.randomUUID();
-    when(service.filteredActivities(eq(userId), any(), any(), eq(null), eq(itemId), eq(null)))
+    when(service.filteredActivities(eq(userId), any(), any(), eq(null), eq(null)))
         .thenReturn(List.<Activity>of());
 
     var auth = new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of());
     mvc.perform(
             get("/api/v1/activities")
-                .param("itemId", itemId.toString())
                 .param("from", "2026-01-01T00:00:00Z")
                 .with(authentication(auth)))
         .andExpect(status().isOk());
 
-    verify(service).filteredActivities(eq(userId), any(), any(), eq(null), eq(itemId), eq(null));
+    verify(service).filteredActivities(eq(userId), any(), any(), eq(null), eq(null));
   }
 }

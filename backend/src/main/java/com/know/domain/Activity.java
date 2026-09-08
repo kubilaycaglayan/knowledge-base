@@ -15,9 +15,6 @@ public class Activity {
   @Column(name = "path_id")
   private UUID pathId;
 
-  @Column(name = "item_id")
-  private UUID itemId;
-
   @Column(name = "time_entry_id")
   private UUID timeEntryId;
 
@@ -40,28 +37,26 @@ public class Activity {
   protected Activity() {}
 
   public Activity(
-      UUID userId, UUID pathId, UUID itemId, ActivityType type, String title, String detail) {
-    this(userId, pathId, itemId, type, title, detail, Instant.now());
+      UUID userId, UUID pathId, ActivityType type, String title, String detail) {
+    this(userId, pathId, type, title, detail, Instant.now());
   }
 
   public Activity(
-      UUID userId, UUID pathId, UUID itemId, UUID timeEntryId, ActivityType type,
+      UUID userId, UUID pathId, UUID timeEntryId, ActivityType type,
       String title, String detail) {
-    this(userId, pathId, itemId, type, title, detail, Instant.now());
+    this(userId, pathId, type, title, detail, Instant.now());
     this.timeEntryId = timeEntryId;
   }
 
   public Activity(
       UUID userId,
       UUID pathId,
-      UUID itemId,
       ActivityType type,
       String title,
       String detail,
       Instant occurredAt) {
     this.userId = userId;
     this.pathId = pathId;
-    this.itemId = itemId;
     this.type = type;
     this.title = title;
     this.detail = detail;
@@ -69,17 +64,17 @@ public class Activity {
   }
 
   public Activity(
-      UUID userId, UUID pathId, UUID itemId, UUID timeEntryId, ActivityType type,
+      UUID userId, UUID pathId, UUID timeEntryId, ActivityType type,
       String title, String detail, Instant occurredAt) {
-    this(userId, pathId, itemId, type, title, detail, occurredAt);
+    this(userId, pathId, type, title, detail, occurredAt);
     this.timeEntryId = timeEntryId;
   }
 
   public static Activity session(
-      UUID userId, UUID pathId, UUID itemId, UUID timeEntryId, String title, String detail,
+      UUID userId, UUID pathId, UUID timeEntryId, String title, String detail,
       Instant occurredAt) {
     return new Activity(
-        userId, pathId, itemId, timeEntryId, ActivityType.TIME_TRACKED, title, detail, occurredAt);
+        userId, pathId, timeEntryId, ActivityType.TIME_TRACKED, title, detail, occurredAt);
   }
 
   public UUID getId() {
@@ -88,10 +83,6 @@ public class Activity {
 
   public UUID getPathId() {
     return pathId;
-  }
-
-  public UUID getItemId() {
-    return itemId;
   }
 
   public UUID getTimeEntryId() {
@@ -123,9 +114,8 @@ public class Activity {
   }
 
   public void updateForTimeEntry(
-      UUID pathId, UUID itemId, String title, String detail, Instant occurredAt) {
+      UUID pathId, String title, String detail, Instant occurredAt) {
     this.pathId = pathId;
-    this.itemId = itemId;
     this.title = title;
     this.detail = detail;
     this.occurredAt = occurredAt;

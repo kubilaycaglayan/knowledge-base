@@ -3,46 +3,25 @@ package com.know.service;
 import com.know.domain.Activity;
 import com.know.domain.ActivityRepository;
 import com.know.domain.ActivityType;
-import com.know.domain.Item;
-import com.know.domain.ItemRepository;
-import com.know.domain.ItemStatus;
-import com.know.domain.ItemTag;
-import com.know.domain.ItemTagId;
-import com.know.domain.ItemTagRepository;
-import com.know.domain.ItemType;
 import com.know.domain.Note;
 import com.know.domain.NoteRepository;
 import com.know.domain.NoteTag;
 import com.know.domain.NoteTagId;
 import com.know.domain.NoteTagRepository;
 import com.know.domain.Path;
-import com.know.domain.PathItem;
-import com.know.domain.PathItemId;
-import com.know.domain.PathItemRepository;
 import com.know.domain.PathRepository;
-import com.know.domain.PathStatus;
-import com.know.domain.ProgressEntry;
-import com.know.domain.ProgressEntryRepository;
 import com.know.domain.Tag;
 import com.know.domain.TagRepository;
 import com.know.domain.TimeEntry;
-import com.know.domain.TimeEntryItem;
-import com.know.domain.TimeEntryItemRepository;
 import com.know.domain.TimeEntryRepository;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.Comparator;
 import java.util.UUID;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,88 +29,31 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class KnowledgeService {
-  private final ItemRepository items;
   private final PathRepository paths;
-  private final PathItemRepository pathItems;
   private final TagRepository tags;
-  private final ItemTagRepository itemTags;
   private final ActivityRepository activityRepository;
-  private final ProgressEntryRepository progressRepository;
   private final NoteRepository notes;
   private final NoteTagRepository noteTags;
   private final TimeEntryRepository timeEntries;
-  private final TimeEntryItemRepository entryItems;
 
   public KnowledgeService(
-      ItemRepository items,
       PathRepository paths,
-      PathItemRepository pathItems,
       TagRepository tags,
-      ItemTagRepository itemTags,
       ActivityRepository activityRepository,
-      ProgressEntryRepository progressRepository,
-      NoteRepository notes) {
-    this(items, paths, pathItems, tags, itemTags, activityRepository, progressRepository, notes, null, null, null);
-  }
-
-  public KnowledgeService(
-      ItemRepository items,
-      PathRepository paths,
-      PathItemRepository pathItems,
-      TagRepository tags,
-      ItemTagRepository itemTags,
-      ActivityRepository activityRepository,
-      ProgressEntryRepository progressRepository,
       NoteRepository notes,
       TimeEntryRepository timeEntries,
-      TimeEntryItemRepository entryItems) {
-    this(items, paths, pathItems, tags, itemTags, activityRepository, progressRepository, notes,
-        timeEntries, entryItems, null);
-  }
-
-  @Autowired
-  public KnowledgeService(
-      ItemRepository items,
-      PathRepository paths,
-      PathItemRepository pathItems,
-      TagRepository tags,
-      ItemTagRepository itemTags,
-      ActivityRepository activityRepository,
-      ProgressEntryRepository progressRepository,
-      NoteRepository notes,
-      TimeEntryRepository timeEntries,
-      TimeEntryItemRepository entryItems,
       NoteTagRepository noteTags) {
-    this.items = items;
     this.paths = paths;
-    this.pathItems = pathItems;
     this.tags = tags;
-    this.itemTags = itemTags;
     this.activityRepository = activityRepository;
-    this.progressRepository = progressRepository;
     this.notes = notes;
     this.noteTags = noteTags;
     this.timeEntries = timeEntries;
-    this.entryItems = entryItems;
   }
-
-  public record ItemView(
-      UUID id,
-      String title,
-      ItemType type,
-      String description,
-      String source,
-      ItemStatus status,
-      short progress,
-      List<UUID> pathIds,
-      List<String> tags,
-      Instant createdAt,
-      Instant updatedAt) {}
 
   public record NoteView(
       UUID id,
       UUID pathId,
-      UUID itemId,
       UUID activityId,
       UUID timeEntryId,
       String title,
@@ -148,226 +70,26 @@ public class KnowledgeService {
 
   public record TagView(UUID id, String name) {}
 
-  @Transactional
-  public ItemView createItem(
-      UUID userId,
-      String title,
-      ItemType type,
-      String description,
-      String source,
-      List<UUID> pathIds,
-      List<String> tagNames) {
-    Item item = items.save(new Item(userId, title, type, description, source));
-    attach(userId, item, pathIds, tagNames, Set.of());
-    activityRepository.save(
-        new Activity(
-            userId, null, item.getId(), ActivityType.ITEM_CREATED, "Created item: " + title, null));
-    return view(item);
-  }
 
   @Transactional
-  public ItemView updateItem(
-      UUID userId,
-      UUID id,
-      String title,
-      ItemType type,
-      String description,
-      String source,
-      ItemStatus status,
-      List<UUID> pathIds,
-      List<String> tagNames) {
-    Item item = findItem(userId, id);
-    ItemStatus previousStatus = item.getStatus();
-    short previousProgress = item.getProgress();
-    item.update(title, type, description, source, status);
-    Set<UUID> existingPathIds = new HashSet<>(pathItems.findPathIds(id));
-    if (pathIds != null) {
-      pathItems.deleteAllByIdItemId(id);
-    }
-    if (tagNames != null) {
-      itemTags.deleteAll(itemTags.findAllByIdItemId(id));
-    }
-    attach(userId, item, pathIds, tagNames, existingPathIds);
-    Item saved = items.save(item);
-    if (previousProgress != saved.getProgress()) {
-      progressRepository.save(new ProgressEntry(userId, id, previousProgress, saved.getProgress()));
-      activityRepository.save(
-          new Activity(
-              userId,
-              null,
-              id,
-              ActivityType.PROGRESS_CHANGED,
-              "Changed progress for " + saved.getTitle(),
-              previousProgress + "% → " + saved.getProgress() + "%"));
-    }
-    if (previousStatus != ItemStatus.COMPLETED && saved.getStatus() == ItemStatus.COMPLETED) {
-      activityRepository.save(
-          new Activity(
-              userId,
-              null,
-              id,
-              ActivityType.ITEM_COMPLETED,
-              "Completed item: " + saved.getTitle(),
-              null));
-    }
-    return view(saved);
-  }
-
-  public Item findItem(UUID userId, UUID id) {
-    return items
-        .findByIdAndUserId(id, userId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found"));
-  }
-
-  public List<ItemView> listItems(UUID userId) {
-    List<Item> all = items.findAllByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 100));
-    if (all.isEmpty()) {
-      return List.of();
-    }
-    List<UUID> ids = all.stream().map(Item::getId).toList();
-    Map<UUID, List<UUID>> pathsByItem = new HashMap<>();
-    pathItems
-        .findRelationships(ids)
-        .forEach(
-            row ->
-                pathsByItem
-                    .computeIfAbsent(row.getItemId(), ignored -> new ArrayList<>())
-                    .add(row.getPathId()));
-    Map<UUID, List<String>> tagsByItem = new HashMap<>();
-    itemTags
-        .findRelationships(ids)
-        .forEach(
-            row ->
-                tagsByItem
-                    .computeIfAbsent(row.getItemId(), ignored -> new ArrayList<>())
-                    .add(row.getName()));
-    return all.stream()
-        .map(
-            item ->
-                view(
-                    item,
-                    pathsByItem.getOrDefault(item.getId(), List.of()),
-                    tagsByItem.getOrDefault(item.getId(), List.of())))
-        .toList();
-  }
-
-  public ItemView view(Item i) {
-    return view(
-        i,
-        pathItems.findPathIds(i.getId()),
-        itemTags.findTags(i.getId()).stream().map(Tag::getName).toList());
-  }
-
-  private ItemView view(Item i, List<UUID> pathIds, List<String> tagNames) {
-    return new ItemView(
-        i.getId(),
-        i.getTitle(),
-        i.getType(),
-        i.getDescription(),
-        i.getSource(),
-        i.getStatus(),
-        i.getProgress(),
-        pathIds,
-        tagNames.stream().sorted().toList(),
-        i.getCreatedAt(),
-        i.getUpdatedAt());
-  }
-
-  private void attach(
-      UUID userId,
-      Item item,
-      List<UUID> pathIds,
-      List<String> tagNames,
-      Set<UUID> existingPathIds) {
-    if (pathIds != null) {
-      for (int n = 0; n < pathIds.size(); n++) {
-        UUID pathId = pathIds.get(n);
-        Path path =
-            paths
-                .findByIdAndUserId(pathId, userId)
-                .orElseThrow(
-                    () ->
-                        new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST, "Path does not belong to user"));
-        if (path.getStatus() != PathStatus.ACTIVE && !existingPathIds.contains(pathId)) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "Archived paths cannot receive new items");
-        }
-        pathItems.save(new PathItem(new PathItemId(pathId, item.getId()), n));
-      }
-    }
-    if (tagNames != null) {
-      for (String raw : tagNames) {
-        String name = raw.trim().toLowerCase(Locale.ROOT);
-        if (name.isBlank() || name.length() > 80) {
-          continue;
-        }
-        Tag tag;
-        try {
-          tag =
-              tags.findByUserIdAndNameIgnoreCase(userId, name)
-                  .orElseGet(() -> tags.save(new Tag(userId, name)));
-        } catch (DataIntegrityViolationException e) {
-          tag = tags.findByUserIdAndNameIgnoreCase(userId, name).orElseThrow();
-        }
-        itemTags.save(new ItemTag(new ItemTagId(item.getId(), tag.getId())));
-      }
-    }
-  }
-
-  @Transactional
-  public ItemView updateProgress(UUID userId, UUID id, short value) {
-    if (value < 0 || value > 100) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Progress must be between 0 and 100");
-    }
-    Item item = findItem(userId, id);
-    short previous = item.setProgress(value);
-    items.save(item);
-    if (previous != value) {
-      progressRepository.save(new ProgressEntry(userId, id, previous, value));
-      activityRepository.save(
-          new Activity(
-              userId,
-              null,
-              id,
-              ActivityType.PROGRESS_CHANGED,
-              "Changed progress for " + item.getTitle(),
-              previous + "% → " + value + "%"));
-      if (previous < 100 && item.getStatus() == ItemStatus.COMPLETED) {
-        activityRepository.save(
-            new Activity(
-                userId,
-                null,
-                id,
-                ActivityType.ITEM_COMPLETED,
-                "Completed item: " + item.getTitle(),
-                null));
-      }
-    }
-    return view(item);
+  public NoteView createNote(
+      UUID userId, UUID pathId, UUID activityId, String title, String content) {
+    return createNote(userId, pathId, activityId, null, title, content, null, null);
   }
 
   @Transactional
   public NoteView createNote(
-      UUID userId, UUID pathId, UUID itemId, UUID activityId, String title, String content) {
-    return createNote(userId, pathId, itemId, activityId, null, title, content, null, null);
-  }
-
-  @Transactional
-  public NoteView createNote(
-      UUID userId, UUID pathId, UUID itemId, UUID activityId, UUID timeEntryId,
+      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
       String title, String content) {
-    return createNote(userId, pathId, itemId, activityId, timeEntryId, title, content, null, null);
+    return createNote(userId, pathId, activityId, timeEntryId, title, content, null, null);
   }
 
   @Transactional
   public NoteView createNote(
-      UUID userId, UUID pathId, UUID itemId, UUID activityId, UUID timeEntryId,
+      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
       String title, String content, String contentText, List<String> tagNames) {
     int targets =
         (pathId != null ? 1 : 0)
-            + (itemId != null ? 1 : 0)
             + (activityId != null ? 1 : 0)
             + (timeEntryId != null ? 1 : 0);
     if (targets > 1) {
@@ -377,9 +99,6 @@ public class KnowledgeService {
       paths
           .findByIdAndUserId(pathId, userId)
           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Path not found"));
-    }
-    if (itemId != null) {
-      findItem(userId, itemId);
     }
     if (activityId != null) {
       activityRepository
@@ -393,15 +112,14 @@ public class KnowledgeService {
           .orElseThrow(
               () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
     }
-    Note n = notes.save(new Note(userId, pathId, itemId, activityId, timeEntryId, title, content));
+    Note n = notes.save(new Note(userId, pathId, activityId, timeEntryId, title, content));
     if (contentText != null) {
       n.update(title, content, contentText);
       n = notes.save(n);
     }
     replaceTags(userId, n, tagNames);
     activityRepository.save(
-        new Activity(
-            userId, pathId, itemId, ActivityType.NOTE_CREATED, "Added note: " + title, null));
+        new Activity(userId, pathId, ActivityType.NOTE_CREATED, "Added note: " + title, null));
     return noteView(n);
   }
 
@@ -481,7 +199,6 @@ public class KnowledgeService {
     return new NoteView(
         n.getId(),
         n.getPathId(),
-        n.getItemId(),
         n.getActivityId(),
         n.getTimeEntryId(),
         n.getTitle(),
@@ -509,16 +226,16 @@ public class KnowledgeService {
   }
 
   public List<Activity> activities(UUID userId) {
-    return timeline(userId, null, null, null, null, null);
+    return timeline(userId, null, null, null, null);
   }
 
   public List<Activity> filteredActivities(
-      UUID userId, Instant from, Instant to, UUID pathId, UUID itemId, ActivityType type) {
-    return timeline(userId, from, to, pathId, itemId, type);
+      UUID userId, Instant from, Instant to, UUID pathId, ActivityType type) {
+    return timeline(userId, from, to, pathId, type);
   }
 
   private List<Activity> timeline(
-      UUID userId, Instant from, Instant to, UUID pathId, UUID itemId, ActivityType type) {
+      UUID userId, Instant from, Instant to, UUID pathId, ActivityType type) {
     List<Activity> result = new ArrayList<>(
         activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId));
     result.removeIf(
@@ -530,7 +247,6 @@ public class KnowledgeService {
       timeEntries
           .findAllByUserIdOrderByStartedAtDesc(userId, PageRequest.of(0, 100))
           .stream()
-          .filter(entry -> itemId == null || itemIds(entry).contains(itemId))
           .map(this::sessionActivity)
           .forEach(result::add);
     }
@@ -538,25 +254,9 @@ public class KnowledgeService {
         .filter(activity -> from == null || !activity.getOccurredAt().isBefore(from))
         .filter(activity -> to == null || !activity.getOccurredAt().isAfter(to))
         .filter(activity -> pathId == null || pathId.equals(activity.getPathId()))
-        // Session rows are synthesized from the time-entry/item relationship. The
-        // item filter was already applied to the source entry above; do not apply
-        // the legacy single-item Activity filter to those synthesized rows.
-        .filter(
-            activity ->
-                itemId == null
-                    || itemId.equals(activity.getItemId())
-                    || activity.getTimeEntryId() != null)
         .filter(activity -> type == null || type == activity.getType())
         .sorted(Comparator.comparing(Activity::getOccurredAt).reversed())
         .limit(100)
-        .toList();
-  }
-
-  private List<UUID> itemIds(TimeEntry entry) {
-    if (entryItems == null)
-      return entry.getItemId() == null ? List.of() : List.of(entry.getItemId());
-    return entryItems.findAllByIdTimeEntryId(entry.getId()).stream()
-        .map(TimeEntryItem::getItemId)
         .toList();
   }
 
@@ -565,13 +265,9 @@ public class KnowledgeService {
         ? Math.max(0, java.time.Duration.between(entry.getStartedAt(), Instant.now()).toSeconds())
         : entry.getDurationSeconds();
     return Activity.session(
-        entry.getUserId(), entry.getPathId(), itemIds(entry).stream().findFirst().orElse(entry.getItemId()), entry.getId(),
+        entry.getUserId(), entry.getPathId(), entry.getId(),
         "Tracked " + seconds + " seconds", entry.getDescription(),
         entry.getEndedAt() == null ? entry.getStartedAt() : entry.getEndedAt());
   }
 
-  public List<ProgressEntry> progress(UUID userId, UUID itemId) {
-    findItem(userId, itemId);
-    return progressRepository.findAllByItemIdOrderByChangedAtDesc(itemId);
-  }
 }
