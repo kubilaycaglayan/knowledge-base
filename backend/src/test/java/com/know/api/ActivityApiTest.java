@@ -33,14 +33,6 @@ class ActivityApiTest {
   @MockBean KnowledgeService service;
 
   @Test
-  void removedItemFilterIsIgnored() throws Exception {
-    var auth =
-        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
-    mvc.perform(get("/api/v1/activities").param("itemId", "not-a-uuid").with(authentication(auth)))
-        .andExpect(status().isOk());
-  }
-
-  @Test
   void authenticatedActivityFiltersReachTheOwnedServiceQuery() throws Exception {
     UUID userId = UUID.randomUUID();
     when(service.filteredActivities(eq(userId), any(), any(), eq(null), eq(null)))

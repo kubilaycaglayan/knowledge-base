@@ -159,7 +159,7 @@ class KnowIntegrationTest {
   @Test
   void unauthenticatedRequestsAreRejected() {
     assertEquals(HttpStatus.UNAUTHORIZED, get("/api/v1/paths", null).getStatusCode());
-    assertEquals(HttpStatus.UNAUTHORIZED, get("/api/v1/items", null).getStatusCode());
+    assertEquals(HttpStatus.UNAUTHORIZED, get("/api/v1/notes", null).getStatusCode());
     assertEquals(HttpStatus.UNAUTHORIZED, get("/api/v1/timers/current", null).getStatusCode());
   }
 
@@ -258,7 +258,7 @@ class KnowIntegrationTest {
     assertEquals("#2563EB", colored.getBody().get("color").asText());
   }
 
-  // Criteria: items, tags, and path membership
+  // Criteria: notes, tags, and path membership
 
     @Test
   void richNotesSupportLabelsSearchPaginationAndOptimisticUpdates() {
