@@ -9,28 +9,22 @@ type Activity = {
   detail?: string;
   occurredAt: string;
   pathId?: string;
-  itemId?: string;
   timeEntryId?: string;
 };
 type Path = { id: string; name: string };
-type Item = { id: string; title: string };
 const activities = ref<Activity[]>([]),
   paths = ref<Path[]>([]),
-  items = ref<Item[]>([]),
   type = ref(""),
   pathId = ref(""),
-  itemId = ref(""),
   from = ref(""),
   to = ref(""),
   error = ref("");
 const noteActivityId = ref(""),
   noteTitle = ref(""),
   noteContent = ref("");
-const label = (id?: string, kind = "path") => {
+const pathName = (id?: string) => {
   if (!id) return "";
-  return kind === "path"
-    ? paths.value.find((x) => x.id === id)?.name || ""
-    : items.value.find((x) => x.id === id)?.title || "";
+  return paths.value.find((path) => path.id === id)?.name || "";
 };
 const dateValue = (date: Date) => date.toISOString().slice(0, 10);
 async function load() {
@@ -38,7 +32,6 @@ async function load() {
     const params = new URLSearchParams();
     if (type.value) params.set("type", type.value);
     if (pathId.value) params.set("pathId", pathId.value);
-    if (itemId.value) params.set("itemId", itemId.value);
     if (from.value) params.set("from", `${from.value}T00:00:00Z`);
     if (to.value) params.set("to", `${to.value}T23:59:59Z`);
     activities.value = await api<Activity[]>(`/activities?${params}`);
@@ -93,10 +86,7 @@ async function saveActivityNote() {
 }
 onMounted(async () => {
   try {
-    [paths.value, items.value] = await Promise.all([
-      api<Path[]>("/paths"),
-      api<Item[]>("/items"),
-    ]);
+    paths.value = await api<Path[]>("/paths");
     await load();
   } catch {
     error.value = "Unable to load activity.";
@@ -123,9 +113,6 @@ onMounted(async () => {
       </div>
       <select v-model="type" aria-label="Activity type">
         <option value="">All activity</option>
-        <option>ITEM_CREATED</option>
-        <option>ITEM_COMPLETED</option>
-        <option>PROGRESS_CHANGED</option>
         <option>NOTE_CREATED</option>
         <option>TIMER_STARTED</option>
         <option>TIMER_STOPPED</option>
@@ -134,11 +121,6 @@ onMounted(async () => {
         <option value="">All paths</option>
         <option v-for="path in paths" :key="path.id" :value="path.id">
           {{ path.name }}
-        </option></select
-      ><select v-model="itemId" aria-label="Item">
-        <option value="">All items</option>
-        <option v-for="item in items" :key="item.id" :value="item.id">
-          {{ item.title }}
         </option></select
       ><input v-model="from" type="date" aria-label="From date" /><input
         v-model="to"
@@ -162,8 +144,7 @@ onMounted(async () => {
           <h2>{{ activity.title }}</h2>
           <p v-if="activity.detail">{{ activity.detail }}</p>
           <p class="muted">
-            {{ label(activity.pathId, "path") }}
-            {{ label(activity.itemId, "item") }}
+            {{ pathName(activity.pathId) }}
           </p>
           <button
             class="text-button"
