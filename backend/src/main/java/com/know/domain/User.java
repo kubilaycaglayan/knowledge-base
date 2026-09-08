@@ -15,6 +15,9 @@ public class User {
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
 
+  @Column(name = "password_configured", nullable = false)
+  private boolean passwordConfigured = true;
+
   @Column(name = "google_subject", length = 255)
   private String googleSubject;
 
@@ -32,6 +35,11 @@ public class User {
     this.displayName = displayName;
   }
 
+  public User(String email, String passwordHash, String displayName, boolean passwordConfigured) {
+    this(email, passwordHash, displayName);
+    this.passwordConfigured = passwordConfigured;
+  }
+
   public UUID getId() {
     return id;
   }
@@ -42,6 +50,15 @@ public class User {
 
   public String getPasswordHash() {
     return passwordHash;
+  }
+
+  public boolean hasPassword() {
+    return passwordConfigured;
+  }
+
+  public void setPassword(String passwordHash) {
+    this.passwordHash = passwordHash;
+    this.passwordConfigured = true;
   }
 
   public String getDisplayName() {

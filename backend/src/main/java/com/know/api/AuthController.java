@@ -13,6 +13,7 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -40,11 +41,18 @@ public class AuthController {
   }
 
   record Credentials(
-      @Email @NotBlank String email, @NotBlank @Size(min = 12, max = 200) String password) {}
+      @Email @NotBlank String email, @NotBlank @Size(min = 9, max = 200) String password) {}
 
   record GoogleRequest(@NotBlank @Size(max = 10000) String idToken) {}
 
   record GoogleConfig(String clientId) {}
+
+  record AccountView(UUID userId, String email, String displayName, boolean hasPassword,
+      boolean hasGoogle) {}
+
+  record SetPasswordRequest(
+      @Size(max = 200) String currentPassword,
+      @NotBlank @Size(min = 9, max = 200) String newPassword) {}
 
   record AuthResponse(String token, UUID userId, String email, String displayName) {}
 
@@ -103,7 +111,8 @@ public class AuthController {
           new User(
               identity.email(),
               encoder.encode(Base64.getUrlEncoder().withoutPadding().encodeToString(random)),
-              identity.displayName());
+              identity.displayName(),
+              false);
     } else if (user.getGoogleSubject() != null
         && !user.getGoogleSubject().equals(identity.subject())) {
       throw new ResponseStatusException(
@@ -111,6 +120,35 @@ public class AuthController {
     }
     user.linkGoogleSubject(identity.subject());
     return response(users.save(user));
+  }
+
+  @GetMapping("/me")
+  public AccountView account(Authentication authentication) {
+    return accountView(currentUser(authentication));
+  }
+
+  @PutMapping("/password")
+  public AccountView setPassword(
+      Authentication authentication, @Valid @RequestBody SetPasswordRequest request) {
+    User user = currentUser(authentication);
+    if (user.hasPassword() && user.getGoogleSubject() == null
+        && (request.currentPassword() == null
+            || !encoder.matches(request.currentPassword(), user.getPasswordHash()))) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+    }
+    user.setPassword(encoder.encode(request.newPassword()));
+    return accountView(users.save(user));
+  }
+
+  private User currentUser(Authentication authentication) {
+    return users
+        .findById(UUID.fromString(authentication.getName()))
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found"));
+  }
+
+  private AccountView accountView(User user) {
+    return new AccountView(user.getId(), user.getEmail(), user.getDisplayName(),
+        user.hasPassword(), user.getGoogleSubject() != null);
   }
 
   private void checkRate(jakarta.servlet.http.HttpServletRequest request, String email) {

@@ -7,6 +7,8 @@
   and theme-aware dropdowns, dialogs, date picker, and charts.
 - [x] Add repeatable browser review for all routes and both themes, keyboard
   interaction, responsive layouts, and sparse/error/long-content states.
+- [x] Allow Google-only accounts to add password sign-in from Settings while
+  retaining Google OAuth sign-in.
 
 Continue applying these foundations to future web features. Native iOS and
 extension design work remains outside this web redesign; their API contracts,
