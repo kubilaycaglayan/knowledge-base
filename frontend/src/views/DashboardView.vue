@@ -5,12 +5,11 @@ import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 
 type Path = { id: string; name: string; status: string };
-type Item = { id: string; title: string; pathIds: string[] };
+type Label = { id: string; name: string; color?: string | null };
 type Timer = {
   id: string;
   pathId?: string;
-  itemId?: string;
-  itemIds?: string[];
+  labelIds?: string[];
   startedAt: string;
   endedAt?: string;
   description?: string;
@@ -19,47 +18,36 @@ type Timer = {
 type Entry = {
   id: string;
   pathId?: string;
-  itemId?: string;
-  itemIds?: string[];
+  labelIds?: string[];
   startedAt: string;
   endedAt?: string;
   durationSeconds?: number;
   description?: string;
-};
-type ProgressChange = {
-  itemId: string;
-  previousProgress: number;
-  newProgress: number;
-  changedAt: string;
 };
 type Stats = {
   todaySeconds: number;
   weekSeconds: number;
   monthSeconds: number;
   todayByPath: Record<string, number>;
-  todayByItem: Record<string, number>;
+  todayByLabel: Record<string, number>;
   weekByPath: Record<string, number>;
-  weekByItem: Record<string, number>;
-  completedItems: number;
-  activeItems: number;
-  recentProgressChanges: ProgressChange[];
+  weekByLabel: Record<string, number>;
 };
 type Result = { kind: string; id: string; title: string; detail?: string };
 
 const paths = ref<Path[]>([]),
-  items = ref<Item[]>([]),
+  labels = ref<Label[]>([]),
   timer = ref<Timer | null>(null),
   stats = ref<Stats | null>(null),
   history = ref<Entry[]>([]),
   results = ref<Result[]>([]);
 const pathId = ref(""),
-  itemId = ref(""),
-  itemIds = ref<string[]>([]),
+  labelIds = ref<string[]>([]),
   description = ref(""),
   timerStartedAt = ref(""),
   query = ref(""),
   error = ref(""),
-  newTimerItemTitle = ref("");
+  newTimerLabelName = ref("");
 const timerNow = ref(Date.now());
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const elapsed = () =>
@@ -73,8 +61,8 @@ const clock = (seconds: number) =>
   `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const pathName = (id: string) =>
   paths.value.find((path) => path.id === id)?.name || id;
-const itemName = (id: string) =>
-  items.value.find((item) => item.id === id)?.title || id;
+const labelName = (id: string) =>
+  labels.value.find((label) => label.id === id)?.name || id;
 const entryPathName = (entry: Entry) =>
   entry.pathId ? pathName(entry.pathId) : "Unassigned";
 const shortDescription = (entry: Entry) => {
@@ -100,36 +88,27 @@ const recentPaths = computed(() => {
     .slice(0, 5);
 });
 const addPathOption = "__add_new_path__";
-const timerItems = computed(() => items.value);
+const timerLabels = computed(() => labels.value);
 const localDateTime = (iso: string) => {
   const date = new Date(iso);
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 const isoDateTime = (value: string) => new Date(value).toISOString();
-watch(itemIds, (value) => {
-  itemId.value = value[0] || "";
-});
 function applyTimer(value: Timer | null, resetIdleForm = true) {
   timer.value = value;
   timerNow.value = Date.now();
   if (value) {
     pathId.value = value.pathId || "";
-    itemIds.value = value.itemIds?.length
-      ? value.itemIds
-      : value.itemId
-        ? [value.itemId]
-        : [];
-    itemId.value = itemIds.value[0] || value.itemId || "";
+    labelIds.value = value.labelIds || [];
     description.value = value.description || "";
     timerStartedAt.value = localDateTime(value.startedAt);
   } else if (resetIdleForm) {
     pathId.value = "";
-    itemIds.value = [];
-    itemId.value = "";
+    labelIds.value = [];
     description.value = "";
     timerStartedAt.value = "";
-    newTimerItemTitle.value = "";
+    newTimerLabelName.value = "";
   }
 }
 async function load(preserveIdleForm = false) {
@@ -137,14 +116,14 @@ async function load(preserveIdleForm = false) {
   try {
     const data = await Promise.all([
       api<Path[]>("/paths"),
-      api<Item[]>("/items"),
+      api<Label[]>("/calendar/labels"),
       api<Timer | null>("/timers/current"),
       api<Stats>("/statistics"),
       api<Entry[]>("/time-entries"),
     ]);
     if (loadId !== latestLoad) return;
     paths.value = data[0];
-    items.value = data[1];
+    labels.value = data[1];
     const hadActiveTimer = Boolean(timer.value);
     applyTimer(data[2], !preserveIdleForm || hadActiveTimer);
     stats.value = data[3];
@@ -168,8 +147,7 @@ async function toggle() {
           method: "POST",
           body: JSON.stringify({
             pathId: pathId.value || null,
-            itemId: itemId.value || null,
-            itemIds: itemIds.value,
+            labelIds: labelIds.value,
             description: description.value || null,
           }),
         }),
@@ -187,8 +165,7 @@ async function configureTimer() {
         method: "PUT",
         body: JSON.stringify({
           pathId: pathId.value || null,
-          itemId: itemId.value || null,
-          itemIds: itemIds.value,
+          labelIds: labelIds.value,
           startedAt: isoDateTime(timerStartedAt.value),
           description: description.value || null,
         }),
@@ -267,12 +244,7 @@ async function editEntry(entry: Entry) {
       method: "PUT",
       body: JSON.stringify({
         pathId: entry.pathId || null,
-        itemId: entry.itemId || null,
-        itemIds: entry.itemIds?.length
-          ? entry.itemIds
-          : entry.itemId
-            ? [entry.itemId]
-            : [],
+        labelIds: entry.labelIds || [],
         startedAt: new Date(start).toISOString(),
         endedAt: new Date(end).toISOString(),
         description: entry.description || null,
@@ -283,25 +255,22 @@ async function editEntry(entry: Entry) {
     error.value = "Could not edit time entry.";
   }
 }
-async function createTimerItem() {
-  if (!newTimerItemTitle.value.trim()) return;
+async function createTimerLabel() {
+  if (!newTimerLabelName.value.trim()) return;
   try {
-    const created = await api<Item>("/items", {
+    const created = await api<Label>("/calendar/labels", {
       method: "POST",
       body: JSON.stringify({
-        title: newTimerItemTitle.value,
-        type: "CUSTOM",
-        pathIds: pathId.value ? [pathId.value] : [],
-        tags: [],
+        name: newTimerLabelName.value.trim(),
+        color: null,
       }),
     });
-    newTimerItemTitle.value = "";
+    newTimerLabelName.value = "";
     await load();
-    itemId.value = created.id;
-    itemIds.value = [created.id];
+    labelIds.value = [created.id];
     await configureTimer();
   } catch {
-    error.value = "Could not create the session item.";
+    error.value = "Could not create the session label.";
   }
 }
 let timerTicker: number | undefined;
@@ -315,9 +284,8 @@ const sameTimer = (left: Timer | null, right: Timer | null) =>
   left?.endedAt === right?.endedAt &&
   left?.description === right?.description &&
   left?.pathId === right?.pathId &&
-  left?.itemId === right?.itemId &&
-  JSON.stringify([...(left?.itemIds || [])].sort()) ===
-    JSON.stringify([...(right?.itemIds || [])].sort()) &&
+  JSON.stringify([...(left?.labelIds || [])].sort()) ===
+    JSON.stringify([...(right?.labelIds || [])].sort()) &&
   left?.running === right?.running;
 
 async function syncTimerState() {
@@ -375,7 +343,7 @@ onUnmounted(() => {
       <div class="session-workspace">
         <div class="focus">
           <strong class="timer-clock" role="timer" aria-live="off" aria-label="Elapsed session time">{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
-          <p class="timer-summary">{{ timer?.description || "Choose a path or item to begin." }}</p>
+          <p class="timer-summary">{{ timer?.description || "Choose a path or label to begin." }}</p>
           <div class="session-actions">
             <button class="primary" @click="toggle">
               <span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span>
@@ -408,18 +376,18 @@ onUnmounted(() => {
           </div>
           <div class="field">
             <div class="field-heading">
-              <label for="timer-items">Items</label>
-              <span class="subtle">{{ timerItems.length }} available</span>
+              <label for="timer-labels">Labels</label>
+              <span class="subtle">{{ timerLabels.length }} available</span>
             </div>
             <v-select
-              id="timer-items"
-              v-model="itemIds"
-              :items="timerItems"
-              item-title="title"
+              id="timer-labels"
+              v-model="labelIds"
+              :items="timerLabels"
+              item-title="name"
               item-value="id"
-              label="Choose an item"
-              aria-label="Timer item"
-              name="timer-items"
+              label="Choose labels"
+              aria-label="Timer labels"
+              name="timer-labels"
               autocomplete="off"
               class="workspace-select"
               menu-icon=""
@@ -453,13 +421,13 @@ onUnmounted(() => {
             </v-select>
             <div class="inline-field">
               <input
-                v-model="newTimerItemTitle"
-                name="new-session-item"
+                v-model="newTimerLabelName"
+                name="new-session-label"
                 autocomplete="off"
-                placeholder="New item for this session…"
-                aria-label="New session item title"
+                placeholder="New label for this session…"
+                aria-label="New session label name"
               />
-              <button class="text-button" :disabled="!newTimerItemTitle.trim()" @click="createTimerItem">Create item</button>
+              <button class="text-button" :disabled="!newTimerLabelName.trim()" @click="createTimerLabel">Create label</button>
             </div>
           </div>
           <div class="field field-wide">
@@ -496,10 +464,6 @@ onUnmounted(() => {
         <h2>This month</h2>
         <strong>{{ formatTrackedDuration(stats?.monthSeconds || 0) }}</strong>
       </div>
-      <div class="metric">
-        <h2>Completed items</h2>
-        <strong>{{ stats?.completedItems || 0 }} <span class="subtle">{{ stats?.activeItems || 0 }} active</span></strong>
-      </div>
     </section>
 
     <div class="section-columns">
@@ -512,12 +476,35 @@ onUnmounted(() => {
         </dl>
         <p v-if="!Object.keys(stats?.weekByPath || {}).length" class="empty-state">No path time yet.</p>
       </section>
+      <section class="workspace-section" aria-labelledby="label-time-heading">
+        <div class="section-heading"><h2 id="label-time-heading">TIME BY LABEL THIS WEEK</h2></div>
+        <dl class="data-list">
+          <div v-for="(seconds, id) in stats?.weekByLabel" :key="id" class="data-row">
+            <dt>{{ labelName(id) }}</dt><dd>{{ formatTrackedDuration(seconds) }}</dd>
+          </div>
+        </dl>
+        <p v-if="!Object.keys(stats?.weekByLabel || {}).length" class="empty-state">No label time yet.</p>
+      </section>
     </div>
+
+    <section class="workspace-section history-box" aria-labelledby="recent-sessions-heading">
+      <div class="section-heading"><h2 id="recent-sessions-heading">RECENT SESSIONS</h2></div>
+      <div v-if="history.length" class="data-list">
+        <article v-for="entry in history" :key="entry.id" class="data-row history-row">
+          <div>
+            <strong>{{ shortDescription(entry) }}</strong>
+            <span class="subtle">{{ entryPathName(entry) }} · {{ formatTrackedDuration(entry.durationSeconds || 0) }}</span>
+          </div>
+          <button v-if="entry.endedAt" type="button" class="text-button" @click="editEntry(entry)">Edit…</button>
+        </article>
+      </div>
+      <p v-else class="empty-state">No recorded sessions yet.</p>
+    </section>
 
     <section class="workspace-section search-box" aria-labelledby="search-heading">
       <div class="section-heading"><h2 id="search-heading">Retrieve knowledge</h2></div>
       <form class="inline-field search-form" @submit.prevent="search">
-        <input v-model="query" type="search" name="knowledge-search" autocomplete="off" placeholder="Search paths, items, notes, and activity…" aria-label="Search knowledge" />
+        <input v-model="query" type="search" name="knowledge-search" autocomplete="off" placeholder="Search paths, labels, notes, and activity…" aria-label="Search knowledge" />
         <button class="primary">Search</button>
       </form>
       <div class="data-list" aria-live="polite">
