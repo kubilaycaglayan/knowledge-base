@@ -8,16 +8,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
   @Query(
-      "select distinct t from TimeEntry t join TimeEntryItem ti on ti.id.timeEntryId=t.id"
-          + " where t.userId=:userId and ti.id.itemId in :itemIds and (t.pathId is null"
-          + " or t.pathId=:pathId) order by t.startedAt desc")
-  List<TimeEntry> findRecentForPathAndItems(
-      @Param("userId") UUID userId,
-      @Param("pathId") UUID pathId,
-      @Param("itemIds") Collection<UUID> itemIds,
-      Pageable page);
-
-  @Query(
       "select t from TimeEntry t where t.userId=:userId and t.startedAt < :to and (t.endedAt is"
           + " null or t.endedAt > :from) order by t.startedAt desc")
   List<TimeEntry> findOverlappingByUserId(
