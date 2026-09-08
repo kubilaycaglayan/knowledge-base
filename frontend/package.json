@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
+    "test:ui": "node scripts/check-ui.mjs",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview"
   },
@@ -29,9 +30,11 @@
     "vuetify": "^4.1.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@vitest/coverage-v8": "^4.1.11",
     "@vue/test-utils": "^2.4.11",
     "jsdom": "^30.0.1",
+    "playwright": "^1.63.0",
     "vitest": "^4.1.11"
   }
 }

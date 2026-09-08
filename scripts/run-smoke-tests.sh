@@ -191,6 +191,9 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   printf '%s' "$proxy_headers" | grep -qi '^x-frame-options: DENY'
   printf '%s' "$proxy_headers" | grep -qi '^content-security-policy:'
   printf '%s' "$proxy_headers" | grep -qi '^permissions-policy:'
+  # The theme bootstrap must be served as JavaScript through the deployed proxy.
+  curl -kfsS --connect-timeout 2 --max-time 5 "https://localhost:${PROXY_HTTPS_PORT}/theme.js" \
+    | grep -q 'knowledge-base-theme'
   curl -kfsSI -X OPTIONS \
     -H 'Origin: http://localhost:5177' \
     -H 'Access-Control-Request-Method: GET' \
