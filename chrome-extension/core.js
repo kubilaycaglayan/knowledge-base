@@ -4,12 +4,12 @@
   else root.KnowCore = api
 })(typeof globalThis === 'undefined' ? this : globalThis, function () {
   function activePaths(paths) { return paths.filter(path => path.status === 'ACTIVE') }
-  // Items are independent of paths. A path is context for a timer, not a
-  // restriction on which item can be selected (matching the web client).
-  function itemsForPath(items) { return items }
-  function timerStartPayload(pathId, itemIds, description) {
-    const ids = Array.isArray(itemIds) ? itemIds : itemIds ? [itemIds] : []
-    return { pathId: pathId || null, itemIds: ids, description: description || null, source: 'CHROME_EXTENSION' }
+  // Labels are independent of paths. A path is context for a timer, not a
+  // restriction on which label can be selected (matching the web client).
+  function timerLabels(labels) { return labels }
+  function timerStartPayload(pathId, labelIds, description) {
+    const ids = Array.isArray(labelIds) ? labelIds : labelIds ? [labelIds] : []
+    return { pathId: pathId || null, labelIds: ids, description: description || null, source: 'CHROME_EXTENSION' }
   }
   function timerIsRunning(timer) { return Boolean(timer && (timer.running || timer.active)) }
   function timerElapsedSeconds(timer, now = Date.now()) {
@@ -26,5 +26,5 @@
     const clock = formatTimer(timerElapsedSeconds(timer, now))
     return timer.description ? clock + ' · ' + timer.description : clock
   }
-  return { activePaths, itemsForPath, timerStartPayload, timerIsRunning, timerElapsedSeconds, formatTimer, timerStatus }
+  return { activePaths, timerLabels, timerStartPayload, timerIsRunning, timerElapsedSeconds, formatTimer, timerStatus }
 })
