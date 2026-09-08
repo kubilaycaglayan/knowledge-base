@@ -305,7 +305,7 @@ onBeforeUnmount(() => {
               @click="editColor = color"
             ></button>
           </fieldset>
-          <div class="item-actions">
+          <div class="row-actions">
             <button class="primary">Save path</button
             ><button type="button" class="text-button" @click="cancelEdit">
               Cancel
@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
             </template>
           </p>
           <p v-else>No description yet</p>
-          <div class="item-actions">
+          <div class="row-actions">
             <span class="pill">{{ path.status.toLowerCase() }}</span
             ><button
               class="text-button"

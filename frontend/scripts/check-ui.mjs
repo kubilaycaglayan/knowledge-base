@@ -20,23 +20,21 @@ function fixtures(state) {
   const long = state === 'long' ? ' ExtendedUnbrokenName'.repeat(18).replaceAll(' ', '') : '';
   const empty = state === 'empty';
   const paths = empty ? [] : [{ id: 'path-a', name: 'Distributed systems' + long, description: 'Replication, consistency, and resilient services.' + long, status: 'ACTIVE', color: '#2188FF' }, { id: 'path-b', name: 'Reading', description: 'Books and chapter notes.', status: 'ACTIVE', color: '#2E9D68' }];
-  const items = empty ? [] : [{ id: 'item-a', title: 'Designing Data-Intensive Applications' + long, type: 'BOOK', status: 'ACTIVE', description: 'Read and annotate the replication chapter.' + long, source: 'Personal library', pathIds: ['path-a'], tags: ['distributed-systems'], progress: 40 }];
   const note = { id: 'note-a', title: 'Replication notes' + long, content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Compare leader-based replication with leaderless designs.' + long }] }] }), contentText: 'Compare leader-based replication with leaderless designs.' + long, tags: ['systems' + long], createdAt: timestamp, updatedAt: timestamp, version: 1 };
   const notes = empty ? [] : [note];
-  const sessions = empty ? [] : [{ id: 'entry-a', pathId: 'path-a', itemId: 'item-a', itemIds: ['item-a'], description: 'Replication and consistency models' + long, source: 'WEB', startedAt: timestamp, endedAt: `${date}T11:00:00Z`, durationSeconds: 3600, running: false }];
   const labels = empty ? [] : [{ id: 'label-a', name: 'Study day' + long, color: '#2878D5' }];
+  const sessions = empty ? [] : [{ id: 'entry-a', pathId: 'path-a', labelIds: ['label-a'], labels, description: 'Replication and consistency models' + long, source: 'WEB', startedAt: timestamp, endedAt: `${date}T11:00:00Z`, durationSeconds: 3600, running: false }];
   const assignments = labels.map(label => ({ ...label, labelId: label.id, portion: 1 }));
   const categories = paths.map((path, index) => ({ id: path.id, label: path.name, seconds: 3600 - index * 1800 }));
-  const days = [{ date, totalSeconds: empty ? 0 : 5400, paths: categories, items: [], calendarNote: empty ? '' : 'Finished the chapter.' + long, calendarLabels: labels.map(label => ({ ...label, label: label.name, portion: 1 })) }];
+  const days = [{ date, totalSeconds: empty ? 0 : 5400, paths: categories, sessionLabels: [], calendarNote: empty ? '' : 'Finished the chapter.' + long, calendarLabels: labels.map(label => ({ ...label, label: label.name, portion: 1 })) }];
   if (state === 'dense') {
     for (let index = 1; index < 60; index++) {
       paths.push({ ...paths[0], id: `path-${index}`, name: `Learning path ${index}` });
-      items.push({ ...items[0], id: `item-${index}`, title: `Reference ${index}` });
       notes.push({ ...note, id: `note-${index}`, title: `Research notes ${index}` });
       sessions.push({ ...sessions[0], id: `entry-${index}`, description: `Reading session ${index}` });
     }
   }
-  return { paths, items, note, notes, sessions, labels, assignments, categories, days };
+  return { paths, note, notes, sessions, labels, assignments, categories, days };
 }
 async function check(page, label, screenshot = true) {
   // Visit virtualized rows so their remembered sizes settle before axe compares
@@ -83,13 +81,13 @@ try {
         if (path === '/notes/labels') data = [{ id: 'label-a', name: 'systems' }];
         if (path === '/time-entries') data = url.search ? { sessions: f.sessions, page: 0, totalPages: 2, totalSessions: f.sessions.length } : f.sessions;
         if (path === '/timers/current') data = null;
-        if (path === '/statistics') data = { todaySeconds: state === 'empty' ? 0 : 5400, weekSeconds: state === 'empty' ? 0 : 29700, monthSeconds: state === 'empty' ? 0 : 116100, weekByPath: state === 'empty' ? {} : { 'path-a': 18900 }, weekByItem: state === 'empty' ? {} : { 'item-a': 18900 }, completedItems: 12, activeItems: 7, recentProgressChanges: [] };
-        if (path === '/activities') data = state === 'empty' ? [] : [{ id: 'activity-a', type: 'TIME_TRACKED', pathId: 'path-a', itemId: 'item-a', title: 'Replication and consistency models', detail: f.items[0].description, occurredAt: timestamp }];
+        if (path === '/statistics') data = { todaySeconds: state === 'empty' ? 0 : 5400, weekSeconds: state === 'empty' ? 0 : 29700, monthSeconds: state === 'empty' ? 0 : 116100, weekByPath: state === 'empty' ? {} : { 'path-a': 18900 }, recentProgressChanges: [] };
+        if (path === '/activities') data = state === 'empty' ? [] : [{ id: 'activity-a', type: 'TIME_TRACKED', pathId: 'path-a', title: 'Replication and consistency models', detail: 'Read and annotate the replication chapter.', occurredAt: timestamp }];
         if (path === '/calendar/labels') data = f.labels;
         if (path === '/calendar/days') data = [{ date, note: state === 'empty' ? '' : 'Finished the chapter.', labels: f.assignments }];
-        if (path === '/reports') data = { period: 'WEEK', from: date, to: date, totalSeconds: 5400, days: f.days, paths: f.categories, items: [], calendarLabels: f.labels.map(label => ({ ...label, label: label.name, days: 1, markers: 0 })) };
+        if (path === '/reports') data = { period: 'WEEK', from: date, to: date, totalSeconds: 5400, days: f.days, paths: f.categories, sessionLabels: [], calendarLabels: f.labels.map(label => ({ ...label, label: label.name, days: 1, markers: 0 })) };
         if (path === '/imports/clockify/batches') data = state === 'empty' ? [] : [{ id: 'batch-a', imported: 8, skipped: 1, createdPaths: 2, source: 'CLOCKIFY', createdAt: timestamp }];
-        if (path === '/paths/path-a/summary') data = { path: f.paths[0], itemIds: ['item-a'], itemProgress: { 'item-a': 40 }, trackedSeconds: 5400, recentActivity: [] };
+        if (path === '/paths/path-a/summary') data = { path: f.paths[0], trackedSeconds: 5400, recentActivity: [] };
         if (path === '/auth/config') data = { googleClientId: null };
         await route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) });
       });
@@ -145,10 +143,10 @@ try {
             await page.getByRole('button', { name: 'Dark mode', exact: true }).click();
           }
           if (path === '/') {
-            await page.locator('#timer-items').focus();
+            await page.locator('#timer-labels').focus();
             await page.keyboard.press('ArrowDown');
             await page.getByRole('listbox').waitFor();
-            await check(page, `${mode}-item-menu`);
+            await check(page, `${mode}-label-menu`);
             await page.keyboard.press('Escape');
           }
           if (path === '/auth') {

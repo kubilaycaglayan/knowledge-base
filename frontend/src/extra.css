@@ -4,17 +4,13 @@
 .auth form { margin: 24px 0; }
 .auth label, .edit-dialog label, .session-edit label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; }
 .auth input { width: 100%; }
-.item h2, .timeline-entry h2 { margin: 5px 0; font-size: 16px; }
-.item { display: flex; align-items: center; }
-.item-main, .path-content, .path-edit { width: 100%; min-width: 0; }
+.timeline-entry h2 { margin: 5px 0; font-size: 16px; }
+.path-content, .path-edit { width: 100%; min-width: 0; }
 .tag { color: var(--workspace-muted); margin-right: 8px; font-size: 12px; }
-.item-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .activity-pill { margin-left: 10px; }
 .path-pill { margin-right: 4px; }
-.item-form, .path-form { flex-wrap: wrap; }
-.item-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 150px; }
-.item-form > .path-picker { grid-column: 1 / -1; }
-.item-form > input:last-of-type { grid-column: 1 / 3; }
+.path-form { flex-wrap: wrap; }
 .path-form input { min-width: min(180px, 100%); }
 .path.expanded { display: block; }
 .path-summary, .note-editor, .progress-history { border-top: 1px solid var(--workspace-border); margin-top: 16px; padding-top: 16px; }
@@ -37,7 +33,7 @@
 .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0; }
 .filters.card { background: transparent; border-inline: 0; border-radius: 0; padding: 16px 0; }
 .filters select, .filters input { flex: 1 1 130px; width: 130px; }
-.filters .item-actions { flex-basis: 100%; }
+.filters .row-actions { flex-basis: 100%; }
 .activity-row { display: grid; grid-template-columns: 90px 72px minmax(0, 1fr); gap: 12px; align-items: baseline; margin: 0; padding: 10px 0; border-bottom: 1px solid var(--workspace-border); }
 .activity-row time, .activity-duration { color: var(--workspace-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .activity-description { min-width: 0; overflow-wrap: anywhere; }
@@ -190,8 +186,6 @@
   .session-heading { flex-wrap: wrap; }
   .session-heading > div { flex-basis: 100%; }
   .session-edit-grid, .edit-dialog-grid { grid-template-columns: minmax(0, 1fr); }
-  .item-form { grid-template-columns: minmax(0, 1fr); }
-  .item-form > input:last-of-type { grid-column: auto; }
   .path-picker label { min-height: 44px; }
   .day-label > label { min-height: 44px; }
   .color-picker button, .label-color-button, .new-label-color, .label-color-choice { width: 44px; height: 44px; border-width: 10px; }
