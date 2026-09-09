@@ -54,6 +54,15 @@ public class Path {
     if (color != null && !color.isBlank()) this.color = color;
   }
 
+  public static Path imported(UUID id, UUID userId, String name, String description, String color,
+      PathStatus status, Instant createdAt, Instant updatedAt) {
+    Path path = new Path(userId, name, description, color);
+    path.id = id; path.status = status == null ? PathStatus.ACTIVE : status;
+    path.createdAt = createdAt == null ? Instant.now() : createdAt;
+    path.updatedAt = updatedAt == null ? path.createdAt : updatedAt;
+    return path;
+  }
+
   public UUID getId() {
     return id;
   }

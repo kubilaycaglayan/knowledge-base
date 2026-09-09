@@ -55,6 +55,14 @@ public class TimeEntry {
     this(userId, pathId, startedAt, description, source, null);
   }
 
+  public static TimeEntry imported(UUID id, UUID userId, UUID pathId, Instant start,
+      Instant end, Long duration, String description, TimeSource source) {
+    TimeEntry entry = new TimeEntry(userId, pathId, start, description,
+        source == null ? TimeSource.IMPORT : source);
+    entry.id = id; entry.endedAt = end; entry.durationSeconds = duration;
+    return entry;
+  }
+
   public TimeEntry(
       UUID userId,
       UUID pathId,

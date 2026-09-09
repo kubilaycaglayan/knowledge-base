@@ -12,6 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PathRepository extends JpaRepository<Path, UUID> {
+  List<Path> findAllByUserId(UUID userId);
+  long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
   interface LatestSessionProjection {
     UUID getPathId();
 
