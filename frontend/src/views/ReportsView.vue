@@ -25,7 +25,9 @@ import ReportTabs from "../components/reports/ReportTabs.vue";
 import ReportDateRange, {
   type DateRange,
 } from "../components/reports/ReportDateRange.vue";
-import SummaryBarChart from "../components/reports/SummaryBarChart.vue";
+import SummaryBarChart, {
+  type TrendlineMode,
+} from "../components/reports/SummaryBarChart.vue";
 import ProjectDonutChart from "../components/reports/ProjectDonutChart.vue";
 import ProjectDurationTable from "../components/reports/ProjectDurationTable.vue";
 import { formatDuration } from "../utils/duration";
@@ -107,6 +109,7 @@ const aggregationValues: Aggregation[] = [
   "QUARTER",
   "YEAR",
 ];
+const trendlineModes: TrendlineMode[] = ["OFF", "LINEAR", "PARABOLIC"];
 const requestedAggregation = new URLSearchParams(window.location.search)
   .get("aggregation")
   ?.toUpperCase();
@@ -155,6 +158,12 @@ const aggregatedDays = computed(() => {
       totalSeconds: 0,
       paths: [],
       sessionLabels: [],
+      ...(aggregation.value === "DAY"
+        ? {
+            calendarNote: day.calendarNote,
+            calendarLabels: day.calendarLabels,
+          }
+        : {}),
     };
     bucket.totalSeconds += day.totalSeconds;
     for (const path of day.paths) {
@@ -184,6 +193,12 @@ const calendarLogs = computed(() =>
   ),
 );
 const showCalendarInputs = ref(true);
+const requestedTrendline = new URLSearchParams(window.location.search)
+  .get("trendline")
+  ?.toUpperCase() as TrendlineMode;
+const trendlineMode = ref<TrendlineMode>(
+  trendlineModes.includes(requestedTrendline) ? requestedTrendline : "OFF",
+);
 const showSankey = ref(
   new URLSearchParams(window.location.search).get("sankey") === "1",
 );
@@ -192,8 +207,15 @@ function syncSankeyFromUrl() {
   showSankey.value =
     new URLSearchParams(window.location.search).get("sankey") === "1";
 }
+function syncTrendlineFromUrl() {
+  const requested = new URLSearchParams(window.location.search)
+    .get("trendline")
+    ?.toUpperCase() as TrendlineMode;
+  trendlineMode.value = trendlineModes.includes(requested) ? requested : "OFF";
+}
 function syncReportStateFromUrl() {
   syncSankeyFromUrl();
+  syncTrendlineFromUrl();
   const params = new URLSearchParams(window.location.search);
   const nextAggregation = params
     .get("aggregation")
@@ -225,6 +247,16 @@ function storeReportState() {
   url.searchParams.set("startDate", selectedRange.value.startDate);
   url.searchParams.set("endDate", selectedRange.value.endDate);
   window.history.pushState({}, "", url);
+}
+function toggleTrendline() {
+  const next = trendlineModes[
+    (trendlineModes.indexOf(trendlineMode.value) + 1) % trendlineModes.length
+  ];
+  const url = new URL(window.location.href);
+  if (next === "OFF") url.searchParams.delete("trendline");
+  else url.searchParams.set("trendline", next.toLowerCase());
+  window.history.pushState({}, "", url);
+  syncTrendlineFromUrl();
 }
 function toggleSankey() {
   const url = new URL(window.location.href);
@@ -365,7 +397,7 @@ onBeforeUnmount(() =>
           aria-controls="sankey-flow"
           @click="toggleSankey"
         >
-          {{ showSankey ? "Hide Sankey" : "Show Sankey" }}</button
+          {{ showSankey ? "Show bar chart" : "Show Sankey" }}</button
         ><button
           v-if="calendarLogs.length"
           class="ghost calendar-input-toggle"
@@ -376,6 +408,14 @@ onBeforeUnmount(() =>
           {{
             showCalendarInputs ? "Hide calendar inputs" : "Show calendar inputs"
           }}
+        </button><button
+          class="ghost trendline-toggle"
+          type="button"
+          :aria-pressed="trendlineMode !== 'OFF'"
+          :aria-label="`Trendline mode: ${trendlineMode.toLowerCase()}. Activate to show the next mode.`"
+          @click="toggleTrendline"
+        >
+          Trendline: {{ trendlineMode === "OFF" ? "Off" : trendlineMode === "LINEAR" ? "Linear" : "Parabolic" }}
         </button>
       </div>
     </div>
@@ -405,6 +445,7 @@ onBeforeUnmount(() =>
           :categories="categories"
           :aggregation="aggregation"
           :show-calendar="aggregation === 'DAY' && showCalendarInputs"
+          :trendline-mode="trendlineMode"
         />
         <div
           v-if="aggregation === 'DAY' && days.length <= 31"
