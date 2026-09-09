@@ -42,6 +42,7 @@ public class Note {
 
   @Column(name = "deleted_at")
   private Instant deletedAt;
+  @Column(name = "import_batch_id") private UUID importBatchId;
 
   protected Note() {}
 
@@ -114,6 +115,8 @@ public class Note {
   public Instant getDeletedAt() {
     return deletedAt;
   }
+  public UUID getImportBatchId() { return importBatchId; }
+  public void assignImportBatch(UUID id) { importBatchId = id; }
 
   public void delete() {
     deletedAt = Instant.now();

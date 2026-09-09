@@ -13,6 +13,7 @@ public class DailyRecord {
   @Column(columnDefinition = "text") private String note;
   @Column(name = "created_at", nullable = false) private Instant createdAt = Instant.now();
   @Column(name = "updated_at", nullable = false) private Instant updatedAt = Instant.now();
+  @Column(name = "import_batch_id") private UUID importBatchId;
 
   protected DailyRecord() {}
   public DailyRecord(UUID userId, LocalDate recordDate, String note) {
@@ -33,5 +34,6 @@ public class DailyRecord {
   public String getNote() { return note; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+  public void assignImportBatch(UUID id) { importBatchId = id; }
   public void update(String note) { this.note = note; this.updatedAt = Instant.now(); }
 }

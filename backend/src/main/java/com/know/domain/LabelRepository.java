@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface LabelRepository extends JpaRepository<Label, UUID> {
+  long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
   List<Label> findAllByUserIdOrderByName(UUID userId);
   Optional<Label> findByIdAndUserId(UUID id, UUID userId);
   List<Label> findAllByUserIdAndIdIn(UUID userId, Collection<UUID> ids);

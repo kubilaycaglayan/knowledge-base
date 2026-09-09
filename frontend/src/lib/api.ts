@@ -35,3 +35,17 @@ export async function api<T>(
   const body = await res.text();
   return (body ? JSON.parse(body) : undefined) as T;
 }
+
+export async function download(path: string, filename: string): Promise<void> {
+  const token = localStorage.getItem("know_token");
+  const res = await fetch(base + path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error((await res.text()) || res.statusText);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
