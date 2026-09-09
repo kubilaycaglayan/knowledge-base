@@ -33,9 +33,9 @@ public class ReportController {
       if (endDate.isBefore(startDate))
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "endDate must be on or after startDate");
-      if (startDate.plusYears(1).isBefore(endDate))
+      if (startDate.plusYears(2).isBefore(endDate))
         throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST, "Report range cannot exceed one year");
+            HttpStatus.BAD_REQUEST, "Report range cannot exceed two years");
       ReportService.Aggregation selectedAggregation = parseAggregation(aggregation);
       return service.report(userId, startDate, endDate, selectedAggregation);
     }
