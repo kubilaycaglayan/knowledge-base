@@ -26,7 +26,7 @@ import org.springframework.test.context.DynamicPropertySource;
  * Full integration test suite.
  *
  * <p>Each test registers a fresh user so tests are independent and can run in any order. Covers
- * every criterion that was moved to .agents/criterias/completed/.
+ * the product behaviors covered by this integration suite.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class KnowIntegrationTest {
