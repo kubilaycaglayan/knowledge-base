@@ -33,7 +33,6 @@ describe("App", () => {
       "Calendar",
       "Notes",
       "Reports",
-      "Imports",
       "Labels",
       "Settings",
     ]);
