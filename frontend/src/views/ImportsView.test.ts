@@ -79,6 +79,31 @@ describe("ImportsView", () => {
     expect(wrapper.find("button.text-button.danger").exists()).toBe(false);
   });
 
+  it("paginates import history with five batches per page", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/imports/clockify/batches") {
+        return Array.from({ length: 6 }, (_, index) => ({
+          id: `batch-${index}`,
+          source: "IMPORT",
+          imported: index + 1,
+          skipped: 0,
+          createdPaths: 0,
+          createdAt: `2026-08-${String(26 - index).padStart(2, "0")}T10:00:00Z`,
+          undoneAt: null,
+        }));
+      }
+      return undefined;
+    });
+    const wrapper = mount(ImportsView);
+    await flushPromises();
+
+    expect(wrapper.findAll(".history-row")).toHaveLength(5);
+    expect(wrapper.text()).toContain("Page 1 of 2");
+    await wrapper.get('[aria-label="Import history pagination"] button:last-child').trigger("click");
+    expect(wrapper.findAll(".history-row")).toHaveLength(1);
+    expect(wrapper.text()).toContain("Page 2 of 2");
+  });
+
   it("reports malformed and structurally invalid Clockify input", async () => {
     const wrapper = mount(ImportsView);
     await flushPromises();
