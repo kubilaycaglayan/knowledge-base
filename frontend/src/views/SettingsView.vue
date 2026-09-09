@@ -106,7 +106,7 @@ onMounted(load);
         <h2 id="data-title">Your data</h2>
         <p>Import Knowledge Base CSV files or Clockify sessions.</p>
       </section>
-      <ImportsView />
+      <ImportsView knowledge-base-only />
     </section>
     <section v-else class="settings-data" aria-labelledby="export-title">
       <section class="card settings-card">

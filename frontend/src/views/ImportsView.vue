@@ -3,6 +3,8 @@ import { onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 
+const props = defineProps<{ knowledgeBaseOnly?: boolean }>();
+
 type ImportBatch = {
   id: string;
   source: string;
@@ -21,7 +23,7 @@ type ImportSummary = {
 
 const clockifyJson = ref(""),
   knowledgeBaseCsv = ref(""),
-  activeTab = ref<"clockify" | "knowledge-base">("clockify"),
+  activeTab = ref<"clockify" | "knowledge-base">(props.knowledgeBaseOnly ? "knowledge-base" : "clockify"),
   importingKnowledgeBase = ref(false),
   importSummary = ref(""),
   error = ref(""),
@@ -30,6 +32,10 @@ const formatDate = (iso: string) => formatDateTime(iso);
 
 async function load() {
   try {
+    if (props.knowledgeBaseOnly) {
+      batches.value = await api<ImportBatch[]>("/imports/knowledge-base/batches");
+      return;
+    }
     const clockify = await api<ImportBatch[]>("/imports/clockify/batches");
     batches.value = clockify;
   } catch {
@@ -106,11 +112,11 @@ onMounted(load);
       Import completed Clockify sessions and undo a whole imported batch when
       needed.
     </p>
-    <div class="import-tabs" role="tablist" aria-label="Import source">
+    <div v-if="!props.knowledgeBaseOnly" class="import-tabs" role="tablist" aria-label="Import source">
       <button type="button" role="tab" :aria-selected="activeTab === 'clockify'" :class="{ selected: activeTab === 'clockify' }" @click="selectTab('clockify')">Clockify</button>
       <button type="button" role="tab" :aria-selected="activeTab === 'knowledge-base'" :class="{ selected: activeTab === 'knowledge-base' }" @click="selectTab('knowledge-base')">Knowledge Base</button>
     </div>
-    <section v-if="activeTab === 'clockify'" class="card import-panel" role="tabpanel">
+    <section v-if="activeTab === 'clockify' && !props.knowledgeBaseOnly" class="card import-panel" role="tabpanel">
       <textarea
         v-model="clockifyJson"
         rows="10"
@@ -154,7 +160,7 @@ onMounted(load);
           Undo
         </button>
       </div>
-      <p v-if="!batches.length" class="muted">No Clockify imports yet.</p>
+      <p v-if="!batches.length" class="muted">No {{ props.knowledgeBaseOnly ? "Knowledge Base" : "import" }} imports yet.</p>
     </section>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
   </section>
