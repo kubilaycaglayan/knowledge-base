@@ -12,6 +12,8 @@
   weeks, or months, with flows between adjacent periods.
 - [x] Keep the report date interval independent from daily, weekly, monthly,
   quarterly, and yearly chart aggregation.
+- [x] Provide quarter date presets and useful rolling report windows: 30 days
+  for weekly, 1 year for monthly, and 2 years for quarterly aggregation.
 - [x] Add repeatable browser review for all routes and both themes, keyboard
   interaction, responsive layouts, and sparse/error/long-content states.
 - [x] Allow Google-only accounts to add password sign-in from Settings while

@@ -1,7 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import ReportsView from "./ReportsView.vue";
 import { api } from "../lib/api";
-import { endOfWeek, format, startOfWeek } from "date-fns";
+import { endOfWeek, format, startOfWeek, subDays, subYears } from "date-fns";
 
 vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
 
@@ -133,6 +133,27 @@ describe("ReportsView", () => {
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
       "/reports?startDate=2026-08-17&endDate=2026-08-23&aggregation=MONTH",
     );
+  });
+
+  it("selects rolling ranges suited to weekly, monthly, and quarterly aggregation", async () => {
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    const expectedEnd = format(new Date(), "yyyy-MM-dd");
+
+    for (const [label, aggregation, expectedStart] of [
+      ["Weekly", "WEEK", format(subDays(new Date(), 29), "yyyy-MM-dd")],
+      ["Monthly", "MONTH", format(subYears(new Date(), 1), "yyyy-MM-dd")],
+      ["Quarterly", "QUARTER", format(subYears(new Date(), 2), "yyyy-MM-dd")],
+    ] as const) {
+      await wrapper
+        .findAll("button")
+        .find((button) => button.text() === label)!
+        .trigger("click");
+      await flushPromises();
+      expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
+        `/reports?startDate=${expectedStart}&endDate=${expectedEnd}&aggregation=${aggregation}`,
+      );
+    }
   });
 
   it("aggregates chart values at the selected semantic interval", async () => {
