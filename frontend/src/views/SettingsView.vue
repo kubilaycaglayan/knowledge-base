@@ -16,7 +16,7 @@ const message = ref("");
 const error = ref("");
 const saving = ref(false);
 const exportMessage = ref("");
-const activeTab = ref<"account" | "data">("account");
+const activeTab = ref<"account" | "data" | "export">("account");
 
 async function load() {
   try {
@@ -73,6 +73,7 @@ onMounted(load);
     <div class="settings-tabs" role="tablist" aria-label="Settings sections">
       <button type="button" role="tab" :aria-selected="activeTab === 'account'" :class="{ selected: activeTab === 'account' }" @click="activeTab = 'account'">Account</button>
       <button type="button" role="tab" :aria-selected="activeTab === 'data'" :class="{ selected: activeTab === 'data' }" @click="activeTab = 'data'">Data</button>
+      <button type="button" role="tab" :aria-selected="activeTab === 'export'" :class="{ selected: activeTab === 'export' }" @click="activeTab = 'export'">Export</button>
     </div>
     <section v-if="activeTab === 'account'" class="card settings-card" aria-labelledby="sign-in-title">
       <h2 id="sign-in-title">Sign-in methods</h2>
@@ -100,17 +101,21 @@ onMounted(load);
       <p v-if="message" class="success" role="status">{{ message }}</p>
       <p v-if="error" class="notice" role="alert">{{ error }}</p>
     </section>
-    <section v-else class="settings-data" aria-labelledby="data-title">
+    <section v-else-if="activeTab === 'data'" class="settings-data" aria-labelledby="data-title">
       <section class="card settings-card">
         <h2 id="data-title">Your data</h2>
-        <p>Download active sessions, paths, timeline, calendar inputs, notes, and labels as a portable CSV.</p>
+        <p>Import Knowledge Base CSV files or Clockify sessions.</p>
       </section>
       <ImportsView />
+    </section>
+    <section v-else class="settings-data" aria-labelledby="export-title">
       <section class="card settings-card">
-      <div class="row-actions">
+        <h2 id="export-title">Export</h2>
+        <p>Download active sessions, paths, timeline, calendar inputs, notes, and labels as a portable CSV.</p>
+        <div class="row-actions">
         <button class="primary" type="button" @click="exportData">Download Knowledge Base CSV</button>
         <span v-if="exportMessage" class="muted" role="status">{{ exportMessage }}</span>
-      </div>
+        </div>
       </section>
     </section>
   </section>
