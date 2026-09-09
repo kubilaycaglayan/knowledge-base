@@ -39,6 +39,36 @@ class ReportApiTest {
   }
 
   @Test
+  void customDateRangeAcceptsAnIndependentAggregation() throws Exception {
+    UUID user = UUID.randomUUID();
+    var from = java.time.LocalDate.of(2026, 1, 1);
+    var to = java.time.LocalDate.of(2026, 12, 31);
+    when(service.report(user, from, to, ReportService.Aggregation.QUARTER))
+        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/reports")
+            .param("startDate", from.toString())
+            .param("endDate", to.toString())
+            .param("aggregation", "quarter")
+            .with(authentication(auth)))
+        .andExpect(status().isOk());
+
+    verify(service).report(user, from, to, ReportService.Aggregation.QUARTER);
+  }
+
+  @Test
+  void invalidCustomAggregationIsRejected() throws Exception {
+    var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    mvc.perform(get("/api/v1/reports")
+            .param("startDate", "2026-01-01")
+            .param("endDate", "2026-12-31")
+            .param("aggregation", "decade")
+            .with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   void reportPeriodAndAnchorReachTheOwnedService() throws Exception {
     UUID user = UUID.randomUUID();
     when(service.report(
@@ -76,14 +106,14 @@ class ReportApiTest {
     UUID user = UUID.randomUUID();
     var from = java.time.LocalDate.of(2026, 8, 24);
     var to = java.time.LocalDate.of(2026, 8, 30);
-    when(service.report(user, from, to))
+    when(service.report(user, from, to, ReportService.Aggregation.DAY))
         .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
     mvc.perform(get("/api/v1/reports").param("startDate", from.toString()).param("endDate", to.toString()).with(authentication(auth)))
         .andExpect(status().isOk());
 
-    verify(service).report(user, from, to);
+    verify(service).report(user, from, to, ReportService.Aggregation.DAY);
   }
 
   @Test
