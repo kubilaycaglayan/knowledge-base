@@ -286,6 +286,7 @@ describe("PathsView", () => {
     await wrapper.get('input[name="merge-target-path"]').setValue("path-2");
     await wrapper.get(".merge-path-dialog button.primary").trigger("click");
     expect(wrapper.get(".prompt-dialog").text()).toContain("Merge Algorithms into Writing?");
+    expect(wrapper.find(".merge-path-dialog").exists()).toBe(false);
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
 
