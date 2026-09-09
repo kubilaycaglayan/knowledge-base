@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface NoteRepository extends JpaRepository<Note, UUID> {
+  long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
   @Query("select n from Note n where n.userId = :userId and n.deletedAt is null")
   List<Note> findAllActiveByUserId(@Param("userId") UUID userId);
   @Query("select n from Note n where n.userId = :userId and n.deletedAt is null order by n.updatedAt desc")

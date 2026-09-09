@@ -89,7 +89,7 @@ public class KnowledgeBaseTransferService {
     for (Path p : paths.findAllByUserId(userId)) pathMap.putIfAbsent(p.getId(), p);
     for (Row r : rows) if (r.entity.equals("label")) {
       if (labels.findByIdAndUserId(r.id, userId).isPresent()) { skipped++; continue; }
-      JsonNode p=r.payload; Label label=labels.save(Label.imported(r.id,userId,text(p,"name"),text(p,"color"),instant(p,"createdAt")));
+      JsonNode p=r.payload; Label label=labels.save(Label.imported(r.id,userId,text(p,"name"),text(p,"color"),instant(p,"createdAt"))); label.assignImportBatch(batch.getId()); labels.save(label);
       for (JsonNode scope : p.path("scopes")) scopes.save(new LabelScope(new LabelScopeId(label.getId(), enumValue(LabelScopeType.class, scope.asText()))));
       labelMap.put(r.id,label); imported++;
     }
@@ -108,12 +108,12 @@ public class KnowledgeBaseTransferService {
     }
     for (Row r : rows) if (r.entity.equals("calendar")) {
       if (days.findByIdAndUserId(r.id, userId).isPresent()) { skipped++; continue; }
-      JsonNode p=r.payload; DailyRecord d=days.save(DailyRecord.imported(r.id,userId,LocalDate.parse(text(p,"recordDate")),text(p,"note"),instant(p,"createdAt"),instant(p,"updatedAt")));
+      JsonNode p=r.payload; DailyRecord d=days.save(DailyRecord.imported(r.id,userId,LocalDate.parse(text(p,"recordDate")),text(p,"note"),instant(p,"createdAt"),instant(p,"updatedAt"))); d.assignImportBatch(batch.getId()); days.save(d);
       for(JsonNode a:p.path("labels")) if(labelMap.containsKey(uuid(a.path("labelId")))) dayLabels.save(new DailyRecordLabel(new DailyRecordLabelId(d.getId(),uuid(a.path("labelId"))), a.hasNonNull("portion")?new BigDecimal(a.get("portion").asText()):null)); imported++;
     }
     for (Row r : rows) if (r.entity.equals("note")) {
       if (notes.findByIdAndUserId(r.id,userId).isPresent()) { skipped++; continue; }
-      JsonNode p=r.payload; Note n=notes.save(Note.imported(r.id,userId,idOf(pathMap,p,"pathId"),idOf(activityMap,p,"activityId"),idOf(entryMap,p,"timeEntryId"),text(p,"title"),text(p,"content"),text(p,"contentText"),instant(p,"createdAt"),instant(p,"updatedAt")));
+      JsonNode p=r.payload; Note n=notes.save(Note.imported(r.id,userId,idOf(pathMap,p,"pathId"),idOf(activityMap,p,"activityId"),idOf(entryMap,p,"timeEntryId"),text(p,"title"),text(p,"content"),text(p,"contentText"),instant(p,"createdAt"),instant(p,"updatedAt"))); n.assignImportBatch(batch.getId()); notes.save(n);
       for(JsonNode id:p.path("tagIds")) if(labelMap.containsKey(uuid(id))) noteTags.save(new NoteTag(new NoteTagId(n.getId(),uuid(id)))); imported++;
     }
     batch.complete(imported, skipped, createdPaths); batches.save(batch); return new ImportSummary(batch.getId(),imported,skipped,createdPaths);
@@ -123,8 +123,10 @@ public class KnowledgeBaseTransferService {
   @Transactional public UndoSummary undo(UUID userId, UUID id) {
     ImportBatch b=batches.findByIdAndUserId(id,userId).filter(x->x.getSource()==TimeSource.KNOWLEDGE_BASE).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Import batch not found"));
     if(b.getUndoneAt()!=null)return new UndoSummary(id,0,0,0);
+    long n=notes.deleteByUserIdAndImportBatchId(userId,id), d=days.deleteByUserIdAndImportBatchId(userId,id);
     long a=activities.deleteByUserIdAndImportBatchId(userId,id), e=entries.deleteByUserIdAndImportBatchId(userId,id);
-    long p=paths.deleteByUserIdAndImportBatchId(userId,id); b.undo(); batches.save(b); return new UndoSummary(id,e,a,p);
+    long p=paths.deleteByUserIdAndImportBatchId(userId,id); labels.deleteByUserIdAndImportBatchId(userId,id);
+    b.undo(); batches.save(b); return new UndoSummary(id,e,a,p);
   }
 
   private void row(StringBuilder out,String entity,UUID id,Object payload)throws Exception { out.append(entity).append(',').append(id).append(',').append(csv(json.writeValueAsString(payload))).append('\n'); }
