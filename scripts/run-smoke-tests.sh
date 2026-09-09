@@ -368,8 +368,9 @@ api "${header[@]}" 'http://localhost:8080/api/v1/activities?from=2020-01-01T00:0
 statistics="$(api "${header[@]}" http://localhost:8080/api/v1/statistics)"
 month_seconds="$(printf '%s' "$statistics" | sed -n 's/.*"monthSeconds":\([0-9]*\).*/\1/p')"
 (( month_seconds >= 3300 ))
-report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?period=MONTH&anchor=$smoke_date")"
-[[ "$report" == *'"period":"MONTH"'* ]]
+report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?startDate=$smoke_date&endDate=$smoke_date&aggregation=QUARTER")"
+[[ "$report" == *'"period":"CUSTOM"'* ]]
+[[ "$report" == *'"granularity":"QUARTER"'* ]]
 [[ "$report" == *'"days"'* ]]
 [[ "$report" == *'"paths"'* ]]
 [[ "$report" == *'"calendarLabels"'* ]]

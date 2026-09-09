@@ -21,6 +21,7 @@ public class ReportController {
   public ReportService.Report report(
       Authentication authentication,
       @RequestParam(defaultValue = "WEEK") String period,
+      @RequestParam(required = false) String aggregation,
       @RequestParam(required = false) LocalDate anchor,
       @RequestParam(required = false) LocalDate startDate,
       @RequestParam(required = false) LocalDate endDate) {
@@ -35,7 +36,8 @@ public class ReportController {
       if (startDate.plusYears(1).isBefore(endDate))
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "Report range cannot exceed one year");
-      return service.report(userId, startDate, endDate);
+      ReportService.Aggregation selectedAggregation = parseAggregation(aggregation);
+      return service.report(userId, startDate, endDate, selectedAggregation);
     }
     ReportService.Period selected;
     try {
@@ -45,5 +47,16 @@ public class ReportController {
           HttpStatus.BAD_REQUEST, "Period must be WEEK, MONTH, or YEAR");
     }
     return service.report(userId, selected, anchor);
+  }
+
+  private static ReportService.Aggregation parseAggregation(String aggregation) {
+    if (aggregation == null) return ReportService.Aggregation.DAY;
+    try {
+      return ReportService.Aggregation.valueOf(aggregation.trim().toUpperCase());
+    } catch (IllegalArgumentException exception) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "Aggregation must be DAY, WEEK, MONTH, QUARTER, or YEAR");
+    }
   }
 }

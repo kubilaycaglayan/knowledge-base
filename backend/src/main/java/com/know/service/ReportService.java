@@ -65,11 +65,30 @@ public class ReportService {
   }
 
   public Report report(UUID userId, LocalDate fromDate, LocalDate toDate) {
-    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1));
+    return report(userId, fromDate, toDate, Aggregation.DAY);
+  }
+
+  public Report report(
+      UUID userId, LocalDate fromDate, LocalDate toDate, Aggregation aggregation) {
+    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1), aggregation);
   }
 
   private Report report(
       UUID userId, String period, LocalDate fromDate, LocalDate toDateExclusive) {
+    return report(
+        userId,
+        period,
+        fromDate,
+        toDateExclusive,
+        SankeyGranularity.forRange(period, fromDate, toDateExclusive));
+  }
+
+  private Report report(
+      UUID userId,
+      String period,
+      LocalDate fromDate,
+      LocalDate toDateExclusive,
+      Aggregation aggregation) {
     Instant from = fromDate.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant reportEnd = toDateExclusive.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant now = Instant.now();
@@ -166,16 +185,15 @@ public class ReportService {
         categories(allLabels, labelNames, labelColors, "Unassigned label"),
         calendarTotals.values().stream().map(CalendarLabelTotalAccumulator::view)
             .sorted(Comparator.comparing(CalendarLabelTotal::label)).toList(),
-        sankey(period, fromDate, toDateExclusive, days));
+        sankey(aggregation, fromDate, toDateExclusive, days));
   }
 
-  private static Sankey sankey(String period, LocalDate from, LocalDate toExclusive, List<Day> days) {
-    SankeyGranularity granularity = SankeyGranularity.forRange(period, from, toExclusive);
+  private static Sankey sankey(Aggregation granularity, LocalDate from, LocalDate toExclusive, List<Day> days) {
     List<SankeyNode> nodes = new ArrayList<>();
     List<SankeyLink> links = new ArrayList<>();
     List<SankeyBucket> buckets = new ArrayList<>();
     int depth = 0;
-    for (LocalDate bucketStart = from; bucketStart.isBefore(toExclusive); bucketStart = granularity.next(bucketStart)) {
+    for (LocalDate bucketStart = granularity.start(from); bucketStart.isBefore(toExclusive); bucketStart = granularity.next(bucketStart)) {
       LocalDate bucketEnd = granularity.end(bucketStart, toExclusive);
       String bucketLabel = granularity.label(bucketStart, bucketEnd);
       Map<String, Category> bucketPaths = new HashMap<>();
@@ -247,33 +265,54 @@ public class ReportService {
   private record SankeyBucket(List<SankeyPath> paths) {}
   private record SankeyPath(String key, String nodeId, String label, String color, long seconds, String pathLabel, String bucketLabel) {}
 
-  private enum SankeyGranularity {
+  public enum Aggregation {
     DAY {
+      LocalDate start(LocalDate date) { return date; }
       LocalDate next(LocalDate date) { return date.plusDays(1); }
       LocalDate end(LocalDate start, LocalDate toExclusive) { return start.plusDays(1); }
       String label(LocalDate start, LocalDate end) { return start.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US)); }
     },
     WEEK {
+      LocalDate start(LocalDate date) { return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)); }
       LocalDate next(LocalDate date) { return date.plusWeeks(1); }
       LocalDate end(LocalDate start, LocalDate toExclusive) { return start.plusWeeks(1).isAfter(toExclusive) ? toExclusive : start.plusWeeks(1); }
       String label(LocalDate start, LocalDate end) { return start.equals(end.minusDays(1)) ? start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)) : start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)) + "–" + end.minusDays(1).format(DateTimeFormatter.ofPattern("MMM d", Locale.US)); }
     },
     MONTH {
+      LocalDate start(LocalDate date) { return date.withDayOfMonth(1); }
       LocalDate next(LocalDate date) { return date.plusMonths(1).withDayOfMonth(1); }
       LocalDate end(LocalDate start, LocalDate toExclusive) { LocalDate end = start.plusMonths(1).withDayOfMonth(1); return end.isAfter(toExclusive) ? toExclusive : end; }
       String label(LocalDate start, LocalDate end) { return start.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.US)); }
+    },
+    QUARTER {
+      LocalDate start(LocalDate date) { return date.withMonth(((date.getMonthValue() - 1) / 3) * 3 + 1).withDayOfMonth(1); }
+      LocalDate next(LocalDate date) { return date.plusMonths(3).withDayOfMonth(1); }
+      LocalDate end(LocalDate start, LocalDate toExclusive) { LocalDate end = start.plusMonths(3).withDayOfMonth(1); return end.isAfter(toExclusive) ? toExclusive : end; }
+      String label(LocalDate start, LocalDate end) { return "Q" + (((start.getMonthValue() - 1) / 3) + 1) + " " + start.getYear(); }
+    },
+    YEAR {
+      LocalDate start(LocalDate date) { return date.withDayOfYear(1); }
+      LocalDate next(LocalDate date) { return date.plusYears(1).withDayOfYear(1); }
+      LocalDate end(LocalDate start, LocalDate toExclusive) { LocalDate end = start.plusYears(1).withDayOfYear(1); return end.isAfter(toExclusive) ? toExclusive : end; }
+      String label(LocalDate start, LocalDate end) { return Integer.toString(start.getYear()); }
     };
 
+    abstract LocalDate start(LocalDate date);
     abstract LocalDate next(LocalDate date);
     abstract LocalDate end(LocalDate start, LocalDate toExclusive);
     abstract String label(LocalDate start, LocalDate end);
 
-    static SankeyGranularity forRange(String period, LocalDate from, LocalDate toExclusive) {
-      if ("WEEK".equals(period)) return DAY;
-      if ("MONTH".equals(period)) return WEEK;
-      if ("YEAR".equals(period)) return MONTH;
+  }
+
+  private static final class SankeyGranularity {
+    private SankeyGranularity() {}
+
+    static Aggregation forRange(String period, LocalDate from, LocalDate toExclusive) {
+      if ("WEEK".equals(period)) return Aggregation.DAY;
+      if ("MONTH".equals(period)) return Aggregation.WEEK;
+      if ("YEAR".equals(period)) return Aggregation.MONTH;
       long days = Duration.between(from.atStartOfDay(), toExclusive.atStartOfDay()).toDays();
-      return days <= 7 ? DAY : days <= 62 ? WEEK : MONTH;
+      return days <= 7 ? Aggregation.DAY : days <= 62 ? Aggregation.WEEK : Aggregation.MONTH;
     }
   }
 
