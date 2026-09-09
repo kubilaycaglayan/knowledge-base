@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import ReportsView from "./ReportsView.vue";
 import { api } from "../lib/api";
+import { endOfWeek, format, startOfWeek } from "date-fns";
 
 vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
 
@@ -76,6 +77,19 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Monthly");
     expect(wrapper.text()).toContain("Quarterly");
     expect(wrapper.text()).toContain("Yearly");
+    expect(
+      wrapper.get('[data-report-tab="DAY"]').attributes("aria-selected"),
+    ).toBe("true");
+    const initialQuery = new URL(
+      vi.mocked(api).mock.calls[0][0] as string,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(initialQuery.get("startDate")).toBe(
+      format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(initialQuery.get("endDate")).toBe(
+      format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
     expect(wrapper.text()).not.toContain("Shared");
     expect(wrapper.text()).not.toContain("Export");
     expect(wrapper.text()).not.toContain("Apply filter");
@@ -96,7 +110,7 @@ describe("ReportsView", () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
-      expect.stringContaining("aggregation=WEEK"),
+      expect.stringContaining("aggregation=DAY"),
     );
     await wrapper
       .findAll("button")
@@ -203,12 +217,12 @@ describe("ReportsView", () => {
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
-      expect.stringContaining("aggregation=WEEK"),
+      expect.stringContaining("aggregation=DAY"),
     );
     await wrapper.get('[aria-label="Next date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
-      expect.stringContaining("aggregation=WEEK"),
+      expect.stringContaining("aggregation=DAY"),
     );
   });
 

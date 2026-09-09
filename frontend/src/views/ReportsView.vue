@@ -111,7 +111,7 @@ const requestedAggregation = new URLSearchParams(window.location.search)
 const aggregation = ref<Aggregation>(
   aggregationValues.includes(requestedAggregation as Aggregation)
     ? (requestedAggregation as Aggregation)
-    : "WEEK",
+    : "DAY",
 );
 const report = ref<Report | null>(null);
 const error = ref("");
