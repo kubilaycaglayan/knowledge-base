@@ -256,7 +256,7 @@ class KnowIntegrationTest {
                 + "\",\"endedAt\":\""
                 + Instant.now().minus(5, ChronoUnit.MINUTES)
                 + "\"}");
-    assertEquals(HttpStatus.CREATED, session.getStatusCode());
+    assertEquals(HttpStatus.OK, session.getStatusCode());
 
     ResponseEntity<JsonNode> merged =
         post("/api/v1/paths/" + sourceId + "/merge", token, "{\"targetPathId\":\"" + targetId + "\"}");
