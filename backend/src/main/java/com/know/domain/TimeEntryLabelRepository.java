@@ -9,5 +9,6 @@ public interface TimeEntryLabelRepository extends JpaRepository<TimeEntryLabel, 
   List<TimeEntryLabel> findAllByIdTimeEntryId(UUID timeEntryId);
   List<TimeEntryLabel> findAllByIdTimeEntryIdIn(Collection<UUID> timeEntryIds);
   void deleteAllByIdTimeEntryId(UUID timeEntryId);
+  void deleteAllByIdLabelId(UUID labelId);
   boolean existsByIdLabelId(UUID labelId);
 }
