@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 
-const props = defineProps<{ knowledgeBaseOnly?: boolean }>();
+const props = defineProps<{ knowledgeBaseOnly?: boolean; embedded?: boolean }>();
 const HISTORY_PAGE_SIZE = 5;
 
 type ImportBatch = {
@@ -103,9 +103,9 @@ onMounted(load);
 
 <template>
   <section>
-    <p class="eyebrow">CLOCKIFY IMPORTS</p>
-    <h1>Imports</h1>
-    <p class="lede">
+    <p v-if="!props.embedded" class="eyebrow">CLOCKIFY IMPORTS</p>
+    <h1 v-if="!props.embedded">Imports</h1>
+    <p v-if="!props.embedded" class="lede">
       Import completed Clockify sessions and undo a whole imported batch when
       needed.
     </p>

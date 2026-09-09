@@ -69,7 +69,9 @@ onMounted(load);
   <section class="settings-view">
     <p class="eyebrow">ACCOUNT</p>
     <h1>Settings</h1>
-    <p class="lede">Manage how you sign in to Knowledge Base.</p>
+    <p class="lede">
+      {{ activeTab === "account" ? "Manage how you sign in to Knowledge Base." : activeTab === "data" ? "Import data into Knowledge Base." : "Download a portable copy of your Knowledge Base." }}
+    </p>
     <div class="settings-tabs" role="tablist" aria-label="Settings sections">
       <button type="button" role="tab" :aria-selected="activeTab === 'account'" :class="{ selected: activeTab === 'account' }" @click="activeTab = 'account'">Account</button>
       <button type="button" role="tab" :aria-selected="activeTab === 'data'" :class="{ selected: activeTab === 'data' }" @click="activeTab = 'data'">Import</button>
@@ -106,7 +108,7 @@ onMounted(load);
         <h2 id="data-title">Your data</h2>
         <p>Import Knowledge Base CSV files or Clockify sessions.</p>
       </section>
-      <ImportsView />
+      <ImportsView embedded />
     </section>
     <section v-else class="settings-data" aria-labelledby="export-title">
       <section class="card settings-card">
