@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(require.resolve("./background.js"), "utf8");
+const source = fs.readFileSync(require.resolve("./background.js"), "utf8").replace(/^import .*\n/, "");
 
 function createBackground({ token = null, apiBase = undefined, response = null, openPopupFailure = false } = {}) {
   let handler;
