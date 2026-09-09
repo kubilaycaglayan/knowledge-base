@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 
@@ -27,30 +27,25 @@ const clockifyJson = ref(""),
   importingKnowledgeBase = ref(false),
   importSummary = ref(""),
   error = ref(""),
-  batches = ref<ImportBatch[]>([]);
+  batches = ref<ImportBatch[]>([]),
+  historyPage = ref(1);
+const visibleBatches = computed(() => batches.value.slice((historyPage.value - 1) * 10, historyPage.value * 10));
+const totalHistoryPages = computed(() => Math.max(1, Math.ceil(batches.value.length / 10)));
 const formatDate = (iso: string) => formatDateTime(iso);
 
 async function load() {
   try {
-    if (props.knowledgeBaseOnly) {
-      batches.value = await api<ImportBatch[]>("/imports/knowledge-base/batches");
-      return;
-    }
-    const clockify = await api<ImportBatch[]>("/imports/clockify/batches");
-    batches.value = clockify;
+    const source = activeTab.value === "knowledge-base" ? "knowledge-base" : "clockify";
+    batches.value = await api<ImportBatch[]>(`/imports/${source}/batches`);
+    historyPage.value = Math.min(historyPage.value, totalHistoryPages.value);
   } catch {
     error.value = "Unable to load import batches.";
   }
 }
 async function selectTab(tab: "clockify" | "knowledge-base") {
   activeTab.value = tab;
-  if (tab === "knowledge-base") {
-    try {
-      const knowledgeBase = await api<ImportBatch[]>("/imports/knowledge-base/batches");
-      batches.value = [...batches.value.filter((batch) => batch.source !== "KNOWLEDGE_BASE"), ...knowledgeBase]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    } catch { error.value = "Unable to load Knowledge Base import batches."; }
-  }
+  historyPage.value = 1;
+  await load();
 }
 async function importClockify() {
   try {
@@ -87,7 +82,8 @@ async function importKnowledgeBase() {
   finally { importingKnowledgeBase.value = false; }
 }
 async function undo(batch: ImportBatch) {
-  if (!confirm(`Undo Clockify import from ${formatDate(batch.createdAt)}?`))
+  const sourceLabel = batch.source === "KNOWLEDGE_BASE" ? "Knowledge Base" : "Clockify";
+  if (!confirm(`Undo ${sourceLabel} import from ${formatDate(batch.createdAt)}?`))
     return;
   try {
     const result = await api<{
@@ -148,7 +144,7 @@ onMounted(load);
     </section>
     <section class="card history-box">
       <p class="eyebrow">IMPORT BATCHES</p>
-      <div v-for="batch in batches" :key="batch.id" class="history-row">
+      <div v-for="batch in visibleBatches" :key="batch.id" class="history-row">
         <span
           ><strong>{{ formatDate(batch.createdAt) }}</strong
           ><span class="muted">
@@ -160,7 +156,12 @@ onMounted(load);
           Undo
         </button>
       </div>
-      <p v-if="!batches.length" class="muted">No {{ props.knowledgeBaseOnly ? "Knowledge Base" : "import" }} imports yet.</p>
+      <div v-if="totalHistoryPages > 1" class="history-pagination" aria-label="Import history pagination">
+        <button type="button" :disabled="historyPage === 1" @click="historyPage--">Previous</button>
+        <span class="muted">Page {{ historyPage }} of {{ totalHistoryPages }}</span>
+        <button type="button" :disabled="historyPage === totalHistoryPages" @click="historyPage++">Next</button>
+      </div>
+      <p v-if="!batches.length" class="muted">No {{ props.knowledgeBaseOnly ? "Knowledge Base" : activeTab === "clockify" ? "Clockify" : "Knowledge Base" }} imports yet.</p>
     </section>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
   </section>
@@ -171,4 +172,6 @@ onMounted(load);
 .import-tabs button { min-height: 44px; padding: 8px 14px; border-bottom: 2px solid transparent; }
 .import-tabs button.selected { border-bottom-color: var(--workspace-accent); font-weight: 700; }
 .file-input { display: grid; gap: 6px; font-weight: 600; margin-bottom: 12px; }
+.history-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.history-pagination button { min-height: 40px; padding: 8px 12px; }
 </style>
