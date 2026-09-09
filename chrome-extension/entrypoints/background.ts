@@ -1,5 +1,6 @@
 import "../clockify-validation.js";
 import "../api-config.js";
+import "../google-auth.js";
 
 const debug = (...args: unknown[]) => {
   if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
@@ -17,6 +18,13 @@ export default defineBackground({
       if (message?.type === "KNOW_OPEN_POPUP") {
         chrome.action.openPopup().catch(() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") }));
         return false;
+      }
+      if (message?.type === "KNOW_GOOGLE_LOGIN") {
+        void googleLogin().then(sendResponse).catch((error) => {
+          logError("Google sign-in", error);
+          sendResponse({ ok: false, error: "Google sign-in could not be completed. Try again." });
+        });
+        return true;
       }
       if (message?.type !== "KNOW_CLOCKIFY_IMPORT") return false;
       if (sender.origin && sender.origin !== "https://app.clockify.me") {
@@ -86,3 +94,30 @@ export default defineBackground({
     });
   },
 });
+
+async function googleLogin() {
+  const { apiBase } = await chrome.storage.local.get("apiBase");
+  const base = KnowApiConfig.apiBase(apiBase);
+  const { clientId } = await fetch(base + "/auth/google/config").then(async (response) => {
+    if (!response.ok) throw Error("Google configuration request failed (HTTP " + response.status + ")");
+    return response.json();
+  });
+  if (!clientId) throw Error("Google sign-in is not configured");
+  const state = KnowGoogleAuth.nonce();
+  const requestNonce = KnowGoogleAuth.nonce();
+  const redirectUri = chrome.identity.getRedirectURL();
+  const redirectUrl = await chrome.identity.launchWebAuthFlow({
+    url: KnowGoogleAuth.authorizationUrl(clientId, redirectUri, state, requestNonce),
+    interactive: true,
+  });
+  const idToken = KnowGoogleAuth.parseRedirect(redirectUrl, state, requestNonce);
+  const response = await fetch(base + "/auth/google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!response.ok) throw Error("Google authentication failed (HTTP " + response.status + ")");
+  const result = await response.json();
+  await chrome.storage.local.set({ token: result.token });
+  return { ok: true, token: result.token };
+}
