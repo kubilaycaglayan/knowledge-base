@@ -12,6 +12,7 @@ public interface NoteTagRepository extends JpaRepository<NoteTag, NoteTagId> {
   List<NoteTag> findAllByIdNoteIdIn(Collection<UUID> noteIds);
 
   void deleteAllByIdNoteId(UUID noteId);
+  void deleteAllByIdLabelId(UUID labelId);
   boolean existsByIdLabelId(UUID labelId);
 
   @Query("select l from Label l join NoteTag nt on nt.id.labelId=l.id where nt.id.noteId=:noteId")

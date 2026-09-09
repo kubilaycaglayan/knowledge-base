@@ -41,4 +41,21 @@ class LabelManagementServiceTest {
     assertThrows(ResponseStatusException.class, () -> service.update(user, label.getId(), "Work", "#2878D5", List.of()));
     verify(scopes, never()).deleteById(any());
   }
+
+  @Test
+  void removesAssignmentsButKeepsAssignedEntitiesWhenConfirmed() {
+    UUID user = UUID.randomUUID();
+    Label label = new Label(user, "Work", "#2878D5");
+    when(labels.findByIdAndUserId(label.getId(), user)).thenReturn(Optional.of(label));
+    when(calendar.existsByIdLabelId(label.getId())).thenReturn(true);
+    LabelManagementService service = new LabelManagementService(labels, scopes, calendar, timeEntries, notes);
+
+    service.delete(user, label.getId(), true);
+
+    verify(calendar).deleteAllByIdLabelId(label.getId());
+    verify(timeEntries).deleteAllByIdLabelId(label.getId());
+    verify(notes).deleteAllByIdLabelId(label.getId());
+    verify(scopes).deleteAllByIdLabelId(label.getId());
+    verify(labels).delete(label);
+  }
 }
