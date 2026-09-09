@@ -8,12 +8,12 @@ describe("CalendarView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
-      if (path === "/calendar/labels" && !options) return [{ id: "leave", name: "Sick leave", color: "#2878D5" }];
-      if (path === "/calendar/labels/leave" && options?.method === "PUT") return { id: "leave", name: "Sick leave", color: "#E05D44" };
+      if (path === "/labels?scope=CALENDAR" && !options) return [{ id: "leave", name: "Sick leave", color: "#2878D5", scopes: ["CALENDAR"] }];
+      if (path === "/labels/leave" && options?.method === "PUT") return { id: "leave", name: "Sick leave", color: "#E05D44", scopes: ["CALENDAR"] };
       if (path.startsWith("/calendar/days?")) return [];
       if (path === "/calendar/days/range" && options?.method === "PUT") return [{ date: "2026-09-01", note: null, labels: [{ labelId: "leave", name: "Sick leave", color: "#2878D5", portion: 1 }] }];
       if (path.startsWith("/calendar/days/") && options?.method === "PUT") return { date: path.split("/").at(-1), note: "Doctor visit", labels: [{ labelId: "leave", name: "Sick leave", color: "#2878D5", portion: 1 }] };
-      if (path === "/calendar/labels" && options?.method === "POST") return { id: "vacation", name: "Vacation", color: null };
+      if (path === "/labels" && options?.method === "POST") return { id: "vacation", name: "Vacation", color: null, scopes: ["CALENDAR"] };
       return undefined;
     });
   });
@@ -21,7 +21,7 @@ describe("CalendarView", () => {
   it("loads labels and a month range, then saves a selected day with a full-day label", async () => {
     const wrapper = mount(CalendarView);
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/calendar/labels");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels?scope=CALENDAR");
     expect(vi.mocked(api)).toHaveBeenCalledWith(expect.stringMatching(/^\/calendar\/days\?startDate=.+&endDate=.+$/));
 
     await wrapper.get('input[type="checkbox"]').setValue(true);
@@ -42,7 +42,7 @@ describe("CalendarView", () => {
     await wrapper.get('input[placeholder^="New label"]').setValue("Vacation");
     await wrapper.findAll("button").find(button => button.text() === "Add")!.trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/calendar/labels", expect.objectContaining({ method: "POST", body: expect.stringContaining('"name":"Vacation"') }));
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST", body: expect.stringContaining('"name":"Vacation"') }));
     expect(wrapper.text()).toContain("Vacation");
   });
 
@@ -54,19 +54,19 @@ describe("CalendarView", () => {
     await input.trigger("keyup", { key: "Enter" });
     await flushPromises();
 
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/calendar/labels", expect.objectContaining({ method: "POST", body: expect.stringContaining('"name":"Keyboard label"') }));
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST", body: expect.stringContaining('"name":"Keyboard label"') }));
   });
 
   it("opens the ten-color palette and persists a selected label color", async () => {
     const wrapper = mount(CalendarView);
     await flushPromises();
     await wrapper.get('[aria-label="Change Sick leave color"]').trigger("click");
-    expect(wrapper.findAll(".label-color-choice")).toHaveLength(10);
-    await wrapper.get('[aria-label="#E05D44"]').trigger("click");
+    expect(wrapper.findAll(".label-color-palette button")).toHaveLength(15);
+    await wrapper.get('[aria-label="Set label color: Orange (#F97316)"]').trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/calendar/labels/leave", expect.objectContaining({
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels/leave", expect.objectContaining({
       method: "PUT",
-      body: JSON.stringify({ name: "Sick leave", color: "#E05D44" }),
+      body: JSON.stringify({ name: "Sick leave", color: "#F97316", scopes: ["CALENDAR"] }),
     }));
   });
 
@@ -145,10 +145,10 @@ describe("CalendarView", () => {
 
   it("shows actionable errors when calendar mutations fail", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
-      if (path === "/calendar/labels" && !options) return [{ id: "leave", name: "Sick leave", color: "#2878D5" }];
+      if (path === "/labels?scope=CALENDAR" && !options) return [{ id: "leave", name: "Sick leave", color: "#2878D5", scopes: ["CALENDAR"] }];
       if (path.startsWith("/calendar/days?")) return [];
-      if (path === "/calendar/labels" && options?.method === "POST") throw new Error("duplicate");
-      if (path === "/calendar/labels/leave" && options?.method === "PUT") throw new Error("color");
+      if (path === "/labels" && options?.method === "POST") throw new Error("duplicate");
+      if (path === "/labels/leave" && options?.method === "PUT") throw new Error("color");
       if (path.startsWith("/calendar/days/") && options?.method === "PUT") throw new Error("save");
       return undefined;
     });
@@ -161,7 +161,7 @@ describe("CalendarView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe("Unable to add that label. Label names must be unique.");
 
     await wrapper.get('[aria-label="Change Sick leave color"]').trigger("click");
-    await wrapper.get('[aria-label="#E05D44"]').trigger("click");
+    await wrapper.get('[aria-label="Set label color: Orange (#F97316)"]').trigger("click");
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toBe("Unable to update that label color.");
 
@@ -171,20 +171,23 @@ describe("CalendarView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe("Unable to save this day.");
   });
 
-  it("cycles the new-label color and ignores an empty label submission", async () => {
+  it("selects the new-label color and ignores an empty label submission", async () => {
     const wrapper = mount(CalendarView);
     await flushPromises();
-    const colorButton = wrapper.get(".new-label-color");
-    expect(colorButton.attributes("aria-label")).toBe("New label color #2878D5");
+    const colorButton = wrapper.get("#new-calendar-label-color");
+    expect(wrapper.find("#new-calendar-label-palette").exists()).toBe(false);
     await colorButton.trigger("click");
-    expect(colorButton.attributes("aria-label")).toBe("New label color #E05D44");
+    expect(colorButton.attributes("aria-expanded")).toBe("true");
+    expect(wrapper.findAll("#new-calendar-label-palette button")).toHaveLength(15);
+    await wrapper.get('[aria-label="Choose new label color: Orange (#F97316)"]').trigger("click");
+    expect(wrapper.get("#new-calendar-label-color").attributes("aria-expanded")).toBe("false");
     await wrapper.findAll("button").find((button) => button.text() === "Add")!.trigger("click");
-    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/calendar/labels" && options?.method === "POST")).toBe(false);
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/labels" && options?.method === "POST")).toBe(false);
   });
 
   it("shows the empty-label guidance when no labels exist", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/calendar/labels") return [];
+      if (path === "/labels?scope=CALENDAR") return [];
       if (path.startsWith("/calendar/days?")) return [];
       return undefined;
     });
@@ -208,13 +211,13 @@ describe("CalendarView", () => {
   it("renders saved notes and only the first two labels with an overflow count", async () => {
     const today = new Date().toISOString().slice(0, 10);
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/calendar/labels") return [
-        { id: "one", name: "One", color: "#2878D5" },
-        { id: "two", name: "Two", color: "#E05D44" },
-        { id: "three", name: "Three", color: "#D69E2E" },
+      if (path === "/labels?scope=CALENDAR") return [
+        { id: "one", name: "One", color: "#2878D5", scopes: ["CALENDAR"] },
+        { id: "two", name: "Two", color: "#E05D44", scopes: ["CALENDAR"] },
+        { id: "three", name: "Three", color: "#D69E2E", scopes: ["CALENDAR"] },
       ];
       if (path.startsWith("/calendar/days?")) return [{ date: today, note: "Important day", labels: [
-        { labelId: "one", name: "One", color: "#2878D5", portion: null },
+        { labelId: "one", name: "One", color: "#E05D44", portion: null },
         { labelId: "two", name: "Two", color: "#E05D44", portion: null },
         { labelId: "three", name: "Three", color: "#D69E2E", portion: null },
       ] }];
@@ -224,6 +227,7 @@ describe("CalendarView", () => {
     await flushPromises();
 
     expect(wrapper.findAll(".calendar-label")).toHaveLength(2);
+    expect(wrapper.find(".calendar-label").attributes("style")).toContain("#2878D5");
     expect(wrapper.text()).toContain("+1");
     expect(wrapper.text()).toContain("Note");
   });

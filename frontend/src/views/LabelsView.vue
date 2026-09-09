@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
+import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
+import ColorPalette from "../components/ColorPalette.vue";
 
 type Scope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
 type Label = { id: string; name: string; color?: string | null; scopes: Scope[] };
@@ -10,9 +12,10 @@ const scopeOptions: { value: Scope; label: string }[] = [
   { value: "CALENDAR", label: "Calendar" },
   { value: "TIME_ENTRY", label: "Sessions" },
 ];
+const colors = labelColors;
 const labels = ref<Label[]>([]);
 const name = ref("");
-const color = ref("#2878D5");
+const color = ref(colors[0]);
 const scopes = ref<Scope[]>(["NOTE"]);
 const editingId = ref("");
 const draft = ref<{ name: string; color: string; scopes: Scope[] } | null>(null);
@@ -44,7 +47,7 @@ async function add() {
 }
 function beginEdit(label: Label) {
   editingId.value = label.id;
-  draft.value = { name: label.name, color: label.color || "#2878D5", scopes: [...label.scopes] };
+  draft.value = { name: label.name, color: label.color || colors[0], scopes: [...label.scopes] };
 }
 function cancelEdit() { editingId.value = ""; draft.value = null; }
 async function save(label: Label) {
@@ -59,8 +62,21 @@ async function save(label: Label) {
 async function remove(label: Label) {
   const result = await promptDialog.value!.open(`Remove “${label.name}”?`, "Labels in use must be unassigned first.", { confirmation: true });
   if (result === null) return;
-  try { await api(`/labels/${label.id}`, { method: "DELETE" }); labels.value = labels.value.filter(value => value.id !== label.id); }
-  catch { error.value = "Could not remove this label. Remove its assignments first."; }
+  try {
+    await api(`/labels/${label.id}`, { method: "DELETE" });
+    labels.value = labels.value.filter(value => value.id !== label.id);
+  } catch {
+    const assigned = await promptDialog.value!.open(
+      `“${label.name}” has assignments. Remove the label and its assignments?`,
+      "This keeps the assigned notes, sessions, and calendar days.",
+      { confirmation: true },
+    );
+    if (assigned === null) return;
+    try {
+      await api(`/labels/${label.id}?removeAssignments=true`, { method: "DELETE" });
+      labels.value = labels.value.filter(value => value.id !== label.id);
+    } catch { error.value = "Could not remove this label."; }
+  }
 }
 onMounted(load);
 </script>
@@ -76,7 +92,7 @@ onMounted(load);
       <h2 id="new-label-title">New label</h2>
       <form @submit.prevent="add">
         <label>Name<input v-model="name" name="label-name" maxlength="80" placeholder="e.g. Deep work…" required /></label>
-        <label>Color<input v-model="color" name="label-color" type="color" aria-label="Label color" /></label>
+        <ColorPalette v-model="color" legend="Label color" option-label="Choose label color" />
         <fieldset><legend>Show in</legend><label v-for="option in scopeOptions" :key="option.value" class="scope-option"><input type="checkbox" :checked="checked(option.value, scopes)" @change="toggleScope(scopes, option.value)" />{{ option.label }}</label></fieldset>
         <button class="primary" type="submit" :disabled="saving">{{ saving ? "Adding…" : "Add label" }}</button>
       </form>
@@ -86,8 +102,8 @@ onMounted(load);
       <p v-if="loading" class="muted">Loading labels…</p>
       <p v-else-if="!sortedLabels.length" class="muted">No labels yet. Add one above to get started.</p>
       <div v-for="label in sortedLabels" v-else :key="label.id" class="label-row">
-        <template v-if="editingId !== label.id"><span class="label-swatch" :style="{ backgroundColor: label.color || '#2878D5' }" aria-hidden="true"></span><strong>{{ label.name }}</strong><span class="scope-list">{{ label.scopes.map(scope => scopeOptions.find(option => option.value === scope)?.label).join(" · ") }}</span><button class="ghost" type="button" @click="beginEdit(label)">Edit</button><button class="ghost danger" type="button" @click="remove(label)">Remove</button></template>
-        <template v-else-if="draft"><input v-model="draft.name" class="edit-name" maxlength="80" :aria-label="`Edit ${label.name} name`" /><input v-model="draft.color" type="color" :aria-label="`Edit ${label.name} color`" /><span class="scope-editor"><label v-for="option in scopeOptions" :key="option.value"><input type="checkbox" :checked="checked(option.value, draft.scopes)" @change="toggleScope(draft.scopes, option.value)" />{{ option.label }}</label></span><button class="primary compact" type="button" :disabled="saving" @click="save(label)">Save</button><button class="ghost" type="button" @click="cancelEdit">Cancel</button></template>
+        <template v-if="editingId !== label.id"><span class="label-swatch" :style="{ backgroundColor: label.color || colors[0] }" aria-hidden="true"></span><strong>{{ label.name }}</strong><span class="scope-list">{{ label.scopes.map(scope => scopeOptions.find(option => option.value === scope)?.label).join(" · ") }}</span><button class="ghost" type="button" @click="beginEdit(label)">Edit</button><button class="ghost danger" type="button" @click="remove(label)">Remove</button></template>
+        <template v-else-if="draft"><input v-model="draft.name" class="edit-name" maxlength="80" :aria-label="`Edit ${label.name} name`" /><ColorPalette v-model="draft.color" class="label-edit-colors" :legend="`Edit ${label.name} color`" option-label="Set edit label color" /><span class="scope-editor"><label v-for="option in scopeOptions" :key="option.value"><input type="checkbox" :checked="checked(option.value, draft.scopes)" @change="toggleScope(draft.scopes, option.value)" />{{ option.label }}</label></span><button class="primary compact" type="button" :disabled="saving" @click="save(label)">Save</button><button class="ghost" type="button" @click="cancelEdit">Cancel</button></template>
       </div>
     </section>
   </section>
@@ -97,6 +113,7 @@ onMounted(load);
 .labels-view { max-width: 920px; display: grid; gap: 18px; }
 .labels-view h1, .labels-view h2, .labels-view p { margin: 0; }
 .label-create, .label-list { display: grid; gap: 16px; }
+.label-create :deep(.color-palette), .label-list :deep(.color-palette) { display: grid; grid-template-columns: repeat(5, 28px); gap: 2px; width: max-content; }
 .label-create form { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(240px, 1fr) auto; gap: 14px; align-items: end; }
 .label-create label, .scope-editor label { display: grid; gap: 6px; font-weight: 600; }
 .label-create fieldset { display: flex; gap: 12px; border: 0; padding: 0; margin: 0; align-items: center; }
@@ -114,4 +131,5 @@ onMounted(load);
 .scope-editor label { display: flex; align-items: center; gap: 5px; font-weight: 400; white-space: nowrap; }
 .compact { padding: 8px 12px; }
 @media (max-width: 760px) { .label-create form { grid-template-columns: 1fr 1fr; } .label-create form > label:first-child, .label-create fieldset, .label-create button { grid-column: 1 / -1; } .label-row { flex-wrap: wrap; } .scope-list { order: 4; flex-basis: 100%; } }
+@media (max-width: 700px) { .label-create :deep(.color-palette), .label-list :deep(.color-palette) { grid-template-columns: repeat(5, 44px); } }
 </style>

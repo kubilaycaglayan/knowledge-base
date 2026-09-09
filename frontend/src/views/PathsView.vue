@@ -4,6 +4,8 @@ import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
+import ColorPalette from "../components/ColorPalette.vue";
+import { paletteColors } from "../lib/color-palette";
 
 type Path = {
   id: string;
@@ -25,20 +27,7 @@ type Summary = {
   recentActivity: Activity[];
 };
 type DescriptionPart = { text: string; url?: string };
-const colors = [
-  "#E8754E",
-  "#D64550",
-  "#C05A9A",
-  "#805AD5",
-  "#4C6FFF",
-  "#2188FF",
-  "#0EA5A4",
-  "#2E9D68",
-  "#7A9E3A",
-  "#C28B2C",
-  "#8B6F47",
-  "#64748B",
-];
+const colors = paletteColors;
 const paths = ref<Path[]>([]),
   summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
@@ -51,6 +40,8 @@ const editingId = ref(""),
   editName = ref(""),
   editDescription = ref(""),
   editColor = ref(colors[0]);
+const selectedColorOpen = ref(false);
+const editColorOpen = ref(false);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const pendingDelete = ref<Path | null>(null);
 let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
@@ -122,6 +113,7 @@ async function add() {
     name.value = "";
     description.value = "";
     selectedColor.value = colors[0];
+    selectedColorOpen.value = false;
     await load();
   } catch {
     error.value = "Could not create path.";
@@ -151,12 +143,22 @@ function startEdit(path: Path) {
   editName.value = path.name;
   editDescription.value = path.description || "";
   editColor.value = path.color || colors[0];
+  editColorOpen.value = false;
 }
 function cancelEdit() {
   editingId.value = "";
   editName.value = "";
   editDescription.value = "";
   editColor.value = colors[0];
+  editColorOpen.value = false;
+}
+function chooseSelectedColor(color: string) {
+  selectedColor.value = color;
+  selectedColorOpen.value = false;
+}
+function chooseEditColor(color: string) {
+  editColor.value = color;
+  editColorOpen.value = false;
 }
 async function saveEdit(path: Path) {
   if (!editName.value.trim()) return;
@@ -252,18 +254,7 @@ onBeforeUnmount(() => {
         placeholder="Description"
         aria-label="Path description"
       />
-      <fieldset class="color-picker">
-        <legend>Path color</legend>
-        <button
-          v-for="color in colors"
-          :key="color"
-          type="button"
-          :aria-label="`Choose path color ${color}`"
-          :aria-pressed="selectedColor === color"
-          :style="{ backgroundColor: color }"
-          @click="selectedColor = color"
-        ></button>
-      </fieldset>
+      <span class="color-popover-anchor path-color-control"><button class="color-swatch-button" type="button" :style="{ backgroundColor: selectedColor }" aria-label="Choose path color" :aria-expanded="selectedColorOpen" aria-controls="new-path-color-palette" @click="selectedColorOpen = !selectedColorOpen; editColorOpen = false"></button><ColorPalette v-if="selectedColorOpen" id="new-path-color-palette" class="path-color-palette" :model-value="selectedColor" legend="Path color" option-label="Choose path color" @update:model-value="chooseSelectedColor" /></span>
       <button class="primary">Add path</button>
     </form>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
@@ -293,18 +284,7 @@ onBeforeUnmount(() => {
             rows="3"
             aria-label="Edit path description"
           ></textarea>
-          <fieldset class="color-picker">
-            <legend>Edit path color</legend>
-            <button
-              v-for="color in colors"
-              :key="color"
-              type="button"
-              :aria-label="`Set edit path color ${color}`"
-              :aria-pressed="editColor === color"
-              :style="{ backgroundColor: color }"
-              @click="editColor = color"
-            ></button>
-          </fieldset>
+          <span class="color-popover-anchor path-color-control"><button class="color-swatch-button" type="button" :style="{ backgroundColor: editColor }" aria-label="Choose edit path color" :aria-expanded="editColorOpen" aria-controls="edit-path-color-palette" @click="editColorOpen = !editColorOpen; selectedColorOpen = false"></button><ColorPalette v-if="editColorOpen" id="edit-path-color-palette" class="path-color-palette" :model-value="editColor" legend="Edit path color" option-label="Set edit path color" @update:model-value="chooseEditColor" /></span>
           <div class="row-actions">
             <button class="primary">Save path</button
             ><button type="button" class="text-button" @click="cancelEdit">

@@ -213,19 +213,20 @@ describe("PathsView", () => {
     expect(wrapper.get('a[href="https://example.com/session"]').attributes("rel")).toBe("noopener noreferrer");
   });
 
-  it("submits a selected path color from the twelve-color picker", async () => {
+  it("submits a selected path color from the shared palette", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
     await wrapper.get('input[aria-label="New path name"]').setValue("Reading");
+    await wrapper.get('button[aria-label="Choose path color"]').trigger("click");
     await wrapper
-      .get('button[aria-label="Choose path color #4C6FFF"]')
+      .get('button[aria-label="Choose path color: Blue (#3B82F6)"]')
       .trigger("click");
     await wrapper.get("form").trigger("submit");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/paths",
       expect.objectContaining({
         method: "POST",
-        body: expect.stringContaining('"color":"#4C6FFF"'),
+        body: expect.stringContaining('"color":"#3B82F6"'),
       }),
     );
   });
@@ -245,7 +246,10 @@ describe("PathsView", () => {
       .get('textarea[aria-label="Edit path description"]')
       .setValue("CS fundamentals");
     await wrapper
-      .get('button[aria-label="Set edit path color #2188FF"]')
+      .get('button[aria-label="Choose edit path color"]')
+      .trigger("click");
+    await wrapper
+      .get('button[aria-label="Set edit path color: Cyan (#06B6D4)"]')
       .trigger("click");
     await wrapper.get("form.path-edit").trigger("submit");
 
@@ -256,7 +260,7 @@ describe("PathsView", () => {
         body: JSON.stringify({
           name: "Algorithms and Data Structures",
           description: "CS fundamentals",
-          color: "#2188FF",
+          color: "#06B6D4",
         }),
       }),
     );
