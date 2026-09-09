@@ -5,5 +5,6 @@ public enum TimeSource {
   IOS,
   CHROME_EXTENSION,
   MANUAL,
-  IMPORT
+  IMPORT,
+  KNOWLEDGE_BASE
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
+  List<TimeEntry> findAllByUserId(UUID userId);
   @Query(
       "select t from TimeEntry t where t.userId=:userId and t.startedAt < :to and (t.endedAt is"
           + " null or t.endedAt > :from) order by t.startedAt desc")
