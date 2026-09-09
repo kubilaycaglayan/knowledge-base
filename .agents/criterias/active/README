@@ -1,3 +1,0 @@
-Files in this directory should be read and implemented.
-Whenever the implementation is done, semantical commit should be applied and the current file should be moved to the /completed directory. The corresponding commit reference should be added to the end of the file as a proof of the work. For being able to add the commit reference, you can create another commit.
-This README file shouldn't be touched.

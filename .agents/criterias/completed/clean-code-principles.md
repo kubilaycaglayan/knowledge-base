@@ -1,4 +1,0 @@
- follow clean coding principles and all the code in the database should be readable by actual humans and indentation is important and syntax is important. Please make the necessary updates. I see some of the files have a lot of code in one single line that is impossible to read by a human. Please fix that.
-
-#### PROOF
-Implemented in commit: 3285209
