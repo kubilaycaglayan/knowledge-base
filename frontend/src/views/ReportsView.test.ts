@@ -98,6 +98,9 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Planning session");
     expect(wrapper.text()).toContain("Milestone");
     expect(wrapper.text()).toContain("Hide calendar inputs");
+    expect(wrapper.getComponent({ name: "SummaryBarChart" }).props("days")).toEqual(
+      [expect.objectContaining({ calendarNote: "Planning session", calendarLabels: expect.any(Array) })],
+    );
     expect(wrapper.text()).toContain("Show Sankey");
     expect(wrapper.find(".chart-frame").exists()).toBe(true);
     expect(wrapper.find("#sankey-flow").exists()).toBe(false);
@@ -133,6 +136,26 @@ describe("ReportsView", () => {
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
       "/reports?startDate=2026-08-17&endDate=2026-08-23&aggregation=MONTH",
     );
+  });
+
+  it("cycles the trendline mode and persists it in the report URL", async () => {
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    const toggle = wrapper.get(".trendline-toggle");
+
+    expect(toggle.text()).toContain("Off");
+    await toggle.trigger("click");
+    expect(toggle.text()).toContain("Linear");
+    expect(new URL(window.location.href).searchParams.get("trendline")).toBe("linear");
+    expect(wrapper.getComponent({ name: "SummaryBarChart" }).props("trendlineMode")).toBe("LINEAR");
+
+    await toggle.trigger("click");
+    expect(toggle.text()).toContain("Parabolic");
+    expect(new URL(window.location.href).searchParams.get("trendline")).toBe("parabolic");
+
+    await toggle.trigger("click");
+    expect(toggle.text()).toContain("Off");
+    expect(new URL(window.location.href).searchParams.has("trendline")).toBe(false);
   });
 
   it("selects ranges suited to daily, weekly, monthly, and quarterly aggregation", async () => {

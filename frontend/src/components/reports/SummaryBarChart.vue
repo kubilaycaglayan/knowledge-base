@@ -6,7 +6,7 @@ import { chartTheme } from "../../lib/theme";
 import VChart from "vue-echarts";
 import type { EChartsOption } from "echarts";
 import { use } from "echarts/core";
-import { BarChart, CustomChart } from "echarts/charts";
+import { BarChart, CustomChart, LineChart } from "echarts/charts";
 import {
   DataZoomComponent,
   GridComponent,
@@ -32,18 +32,21 @@ type Day = {
 };
 const fallbackLabelColor = paletteColors[1];
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
+export type TrendlineMode = "OFF" | "LINEAR" | "PARABOLIC";
 const props = withDefaults(
   defineProps<{
     days: Day[];
     categories: Category[];
     showCalendar?: boolean;
     aggregation?: Aggregation;
+    trendlineMode?: TrendlineMode;
   }>(),
-  { showCalendar: false, aggregation: "DAY" },
+  { showCalendar: false, aggregation: "DAY", trendlineMode: "OFF" },
 );
 use([
   BarChart,
   CustomChart,
+  LineChart,
   DataZoomComponent,
   GridComponent,
   TooltipComponent,
@@ -123,6 +126,95 @@ const calendarBars = computed(() =>
     });
   }),
 );
+type TrendPoint = { x: number; y: number };
+function linearTrend(
+  points: TrendPoint[],
+  firstIndex: number,
+  lastIndex: number,
+): Array<number | null> {
+  if (points.length < 2) return [];
+  const meanX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+  const meanY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+  const denominator = points.reduce(
+    (sum, point) => sum + (point.x - meanX) ** 2,
+    0,
+  );
+  if (!denominator) {
+    return Array.from({ length: lastIndex + 1 }, (_value, index) =>
+      index < firstIndex ? null : Math.round(meanY),
+    );
+  }
+  const slope = points.reduce(
+    (sum, point) => sum + (point.x - meanX) * (point.y - meanY),
+    0,
+  ) / denominator;
+  const intercept = meanY - slope * meanX;
+  return Array.from({ length: lastIndex + 1 }, (_value, index) =>
+    index < firstIndex ? null : Math.max(0, Math.round(intercept + slope * index)),
+  );
+}
+function parabolicTrend(
+  points: TrendPoint[],
+  firstIndex: number,
+  lastIndex: number,
+): Array<number | null> {
+  if (points.length < 3) return [];
+  const sumPowers = (power: number) =>
+    points.reduce((sum, point) => sum + point.x ** power, 0);
+  const weightedSum = (power: number) =>
+    points.reduce((sum, point) => sum + point.y * point.x ** power, 0);
+  const matrix = [
+    [sumPowers(4), sumPowers(3), sumPowers(2)],
+    [sumPowers(3), sumPowers(2), sumPowers(1)],
+    [sumPowers(2), sumPowers(1), points.length],
+  ];
+  const rhs = [weightedSum(2), weightedSum(1), weightedSum(0)];
+  for (let column = 0; column < 3; column += 1) {
+    let pivot = column;
+    for (let row = column + 1; row < 3; row += 1) {
+      if (Math.abs(matrix[row][column]) > Math.abs(matrix[pivot][column])) pivot = row;
+    }
+    if (Math.abs(matrix[pivot][column]) < Number.EPSILON) {
+      return linearTrend(points, firstIndex, lastIndex);
+    }
+    [matrix[column], matrix[pivot]] = [matrix[pivot], matrix[column]];
+    [rhs[column], rhs[pivot]] = [rhs[pivot], rhs[column]];
+    for (let row = column + 1; row < 3; row += 1) {
+      const factor = matrix[row][column] / matrix[column][column];
+      for (let item = column; item < 3; item += 1) matrix[row][item] -= factor * matrix[column][item];
+      rhs[row] -= factor * rhs[column];
+    }
+  }
+  const coefficients = [0, 0, 0];
+  for (let row = 2; row >= 0; row -= 1) {
+    const remainder = coefficients.slice(row + 1).reduce(
+      (sum, coefficient, offset) => sum + coefficient * matrix[row][row + 1 + offset],
+      0,
+    );
+    coefficients[row] = (rhs[row] - remainder) / matrix[row][row];
+  }
+  return Array.from({ length: lastIndex + 1 }, (_value, index) =>
+    index < firstIndex
+      ? null
+      : Math.max(
+          0,
+          Math.round(coefficients[0] * index ** 2 + coefficients[1] * index + coefficients[2]),
+        ),
+  );
+}
+const trendlineValues = computed(() => {
+  const points = props.days
+    .map((day, index) => ({ x: index, y: day.totalSeconds }))
+    .filter((point) => point.y > 0);
+  const firstIndex = points[0]?.x;
+  const lastIndex = points.at(-1)?.x;
+  if (firstIndex === undefined || lastIndex === undefined) return [];
+  return props.trendlineMode === "PARABOLIC"
+    ? parabolicTrend(points, firstIndex, lastIndex)
+    : props.trendlineMode === "LINEAR"
+      ? linearTrend(points, firstIndex, lastIndex)
+      : [];
+});
 function calendarPattern(
   x: number,
   y: number,
@@ -209,7 +301,11 @@ const option = computed<EChartsOption>(() => ({
             `<div class="tooltip-row"><span><i style="background:${colorFor(item)}"></i>${escapeHtml(item.label)}</span><b>${formatDuration(item.seconds)} <small>${percentageOf(item.seconds, day.totalSeconds).toFixed(2)}%</small></b></div>`,
         )
         .join("");
-      return `<strong>${bucketLabel(day.date)}</strong><div>Total: ${formatDuration(day.totalSeconds)}</div>${rows}${props.showCalendar ? calendarRows(day) : ""}`;
+      const trend = trendlineValues.value[dayIndex >= 0 ? dayIndex : entries[0]?.dataIndex || 0];
+      const trendRow = props.trendlineMode !== "OFF" && trend !== undefined
+        ? `<div>${props.trendlineMode === "LINEAR" ? "Linear" : "Parabolic"} trend: ${formatDuration(Math.round(trend))}</div>`
+        : "";
+      return `<strong>${bucketLabel(day.date)}</strong><div>Total: ${formatDuration(day.totalSeconds)}</div>${trendRow}${rows}${props.showCalendar ? calendarRows(day) : ""}`;
     },
   },
   xAxis: {
@@ -238,6 +334,16 @@ const option = computed<EChartsOption>(() => ({
     { type: "value", min: 0, max: calendarMaximum.value, show: false },
   ],
   series: [
+    ...(trendlineValues.value.length
+      ? [{
+          name: props.trendlineMode === "LINEAR" ? "Linear trend" : "Parabolic trend",
+          type: "line" as const,
+          data: trendlineValues.value,
+          symbol: "none",
+          lineStyle: { color: chartTheme.value.text, width: 2, type: "dashed" as const },
+          z: 5,
+        }]
+      : []),
     ...(props.showCalendar && calendarBars.value.length
       ? [
           {
@@ -288,7 +394,7 @@ const option = computed<EChartsOption>(() => ({
   <div
     class="chart-frame"
     role="img"
-    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}: ${days.map((day) => `${bucketLabel(day.date)}: ${formatDuration(day.totalSeconds)}`).join('; ')}`"
+    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${days.map((day) => `${bucketLabel(day.date)}: ${formatDuration(day.totalSeconds)}`).join('; ')}`"
   >
     <v-chart
       class="report-echart"

@@ -46,6 +46,73 @@ describe("SummaryBarChart", () => {
     expect(series).toEqual([expect.objectContaining({ name: "Wander" })]);
   });
 
+  it("renders a linear trendline from the supplied aggregate buckets", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        trendlineMode: "LINEAR",
+        days: [
+          { date: "2026-09-01", totalSeconds: 3600, paths: [] },
+          { date: "2026-09-02", totalSeconds: 7200, paths: [] },
+          { date: "2026-09-03", totalSeconds: 10800, paths: [] },
+        ],
+        categories: [],
+      },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ name: string; type: string; data: number[] }>;
+    }).series;
+
+    expect(series[0]).toMatchObject({
+      name: "Linear trend",
+      type: "line",
+      data: [3600, 7200, 10800],
+    });
+  });
+
+  it("renders a parabolic trendline from the supplied aggregate buckets", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        trendlineMode: "PARABOLIC",
+        days: [
+          { date: "2026-09-01", totalSeconds: 3600, paths: [] },
+          { date: "2026-09-02", totalSeconds: 14400, paths: [] },
+          { date: "2026-09-03", totalSeconds: 32400, paths: [] },
+        ],
+        categories: [],
+      },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ name: string; type: string; data: number[] }>;
+    }).series;
+
+    expect(series[0]).toMatchObject({
+      name: "Parabolic trend",
+      type: "line",
+      data: [3600, 14400, 32400],
+    });
+  });
+
+  it("fits only non-empty buckets and stops at the last bucket with data", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        trendlineMode: "LINEAR",
+        days: [
+          { date: "2026-09-01", totalSeconds: 0, paths: [] },
+          { date: "2026-09-02", totalSeconds: 3600, paths: [] },
+          { date: "2026-09-03", totalSeconds: 7200, paths: [] },
+          { date: "2026-09-04", totalSeconds: 10800, paths: [] },
+          { date: "2026-09-05", totalSeconds: 0, paths: [] },
+        ],
+        categories: [],
+      },
+    });
+    const series = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ data: number[] }>;
+    }).series;
+
+    expect(series[0].data).toEqual([null, 3600, 7200, 10800]);
+  });
+
   it("escapes calendar tooltip content and enables zoom for long ranges", () => {
     const longDays = Array.from({ length: 40 }, (_, index) => ({
       date: new Date(Date.UTC(2026, 7, index + 1)).toISOString().slice(0, 10),
