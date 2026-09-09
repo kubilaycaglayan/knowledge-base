@@ -56,7 +56,7 @@ class ReportApiTest {
                 new ReportService.Sankey(
                     "WEEK",
                     List.of(new ReportService.SankeyNode("bucket:2026-07-01", "Jul 1–7", null)),
-                    List.of(new ReportService.SankeyLink("bucket:2026-07-01", "path:walk", "Jul 1–7", "Walking", 600))));
+                    List.of(new ReportService.SankeyLink("bucket:2026-07-01", "path:walk", "Jul 1–7", "Walking", 600)))));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
     mvc.perform(

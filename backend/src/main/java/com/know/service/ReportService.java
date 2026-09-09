@@ -136,9 +136,10 @@ public class ReportService {
       for (LocalDate date = firstDate; !date.isAfter(lastDate); date = date.plusDays(1)) {
         long seconds = secondsIn(entry, date.atStartOfDay(ZoneOffset.UTC).toInstant(), date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant(), now);
         if (seconds == 0) continue;
+        Map<UUID, Long> dayLabels = labelsByDate.get(date);
         totalsByDate.merge(date, seconds, Long::sum);
         merge(pathsByDate.get(date), entry.getPathId(), seconds);
-        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(labelsByDate.get(date), labelId, seconds));
+        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(dayLabels, labelId, seconds));
         merge(allPaths, entry.getPathId(), seconds);
         labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(allLabels, labelId, seconds));
       }
@@ -176,7 +177,8 @@ public class ReportService {
     for (LocalDate bucketStart = from; bucketStart.isBefore(toExclusive); bucketStart = granularity.next(bucketStart)) {
       LocalDate bucketEnd = granularity.end(bucketStart, toExclusive);
       String bucketId = "bucket:" + bucketStart;
-      nodes.add(new SankeyNode(bucketId, granularity.label(bucketStart, bucketEnd), null));
+      String bucketLabel = granularity.label(bucketStart, bucketEnd);
+      nodes.add(new SankeyNode(bucketId, bucketLabel, null));
       Map<String, Long> bucketPaths = new HashMap<>();
       for (Day day : days) {
         if (day.date().isBefore(bucketStart) || !day.date().isBefore(bucketEnd)) continue;
@@ -187,7 +189,7 @@ public class ReportService {
         });
       }
       bucketPaths.forEach((pathId, seconds) -> links.add(
-          new SankeyLink(bucketId, pathId, granularity.label(bucketStart, bucketEnd), pathNodes.get(pathId).label(), seconds)));
+          new SankeyLink(bucketId, pathId, bucketLabel, pathNodes.get(pathId).label(), seconds)));
     }
     nodes.addAll(pathNodes.values());
     return new Sankey(granularity.name(), List.copyOf(nodes), List.copyOf(links));
