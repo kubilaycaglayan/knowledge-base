@@ -43,7 +43,7 @@ public class ReportService {
   public record Day(
       LocalDate date, long totalSeconds, List<Category> paths, List<Category> sessionLabels, String calendarNote, List<CalendarLabel> calendarLabels) {}
   public record SankeyNode(String id, String label, String color) {}
-  public record SankeyLink(String source, String target, long value) {}
+  public record SankeyLink(String source, String target, String sourceLabel, String targetLabel, long value) {}
   public record Sankey(String granularity, List<SankeyNode> nodes, List<SankeyLink> links) {}
 
   public record Report(
@@ -186,7 +186,8 @@ public class ReportService {
           bucketPaths.merge(pathId, path.seconds(), Long::sum);
         });
       }
-      bucketPaths.forEach((pathId, seconds) -> links.add(new SankeyLink(bucketId, pathId, seconds)));
+      bucketPaths.forEach((pathId, seconds) -> links.add(
+          new SankeyLink(bucketId, pathId, granularity.label(bucketStart, bucketEnd), pathNodes.get(pathId).label(), seconds)));
     }
     nodes.addAll(pathNodes.values());
     return new Sankey(granularity.name(), List.copyOf(nodes), List.copyOf(links));

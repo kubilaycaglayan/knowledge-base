@@ -92,6 +92,7 @@
 .report-date-range .range-arrow:last-child { border-radius: 0 4px 4px 0; }
 .range-arrow:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
 .reports-nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--workspace-border); margin-bottom: 16px; }
+.report-visualization-toggles { display: flex; align-items: center; gap: 8px; }
 .report-tabs { display: flex; }
 .report-tab { min-height: 40px; padding: 8px 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--workspace-muted); font-size: 13px; }
 .report-tab:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
@@ -108,6 +109,15 @@
 .total-display { font-size: 18px; font-variant-numeric: tabular-nums; }
 .chart-frame { min-height: 360px; width: 100%; overflow: hidden; }
 .report-echart { height: 360px; width: 100%; }
+.sankey-card { margin-top: 24px; }
+.sankey-frame { min-height: 360px; width: 100%; overflow: hidden; }
+.sankey-echart { min-width: 560px; }
+.sankey-empty { display: grid; min-height: 360px; place-items: center; margin: 0; color: var(--workspace-muted); }
+.sankey-data { margin-top: 12px; color: var(--workspace-muted); font-size: 13px; }
+.sankey-data summary { width: fit-content; min-height: 28px; cursor: pointer; color: var(--workspace-text); }
+.sankey-data table { width: 100%; margin-top: 10px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.sankey-data th, .sankey-data td { padding: 8px; border-top: 1px solid var(--workspace-border); text-align: left; overflow-wrap: anywhere; }
+.sankey-data th:last-child, .sankey-data td:last-child { text-align: right; white-space: nowrap; }
 .chart-day-totals { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; color: var(--workspace-muted); font-size: 11px; text-align: center; }
 .chart-day-totals b { display: block; color: var(--workspace-text); font-size: 12px; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .breakdown-card { margin-top: 24px; }
@@ -211,6 +221,8 @@
   .reports-nav { align-items: start; flex-direction: column; gap: 8px; }
   .report-type-note { padding-bottom: 8px; }
   .chart-frame, .report-echart { min-height: 280px; height: 280px; }
+  .sankey-frame { min-height: 280px; overflow-x: auto; }
+  .sankey-echart { min-height: 280px; height: 280px; }
   .chart-day-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: left; }
   .activity-row { grid-template-columns: 78px 64px minmax(0, 1fr); gap: 8px; }
   .report-card-heading { flex-wrap: wrap; }
