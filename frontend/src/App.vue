@@ -2,7 +2,7 @@
 import { inject, ref, watchEffect } from "vue";
 import { routeLocationKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
-import { theme, toggleTheme } from "./lib/theme";
+import { theme, themePreference, toggleTheme } from "./lib/theme";
 const token = ref(localStorage.getItem("know_token"));
 const route = inject(routeLocationKey, undefined);
 watchEffect(() => {
@@ -36,9 +36,9 @@ function authenticated() {
         <RouterLink to="/settings">Settings</RouterLink>
       </nav>
       <div class="shell-actions">
-        <button class="theme-toggle" type="button" :aria-pressed="theme === 'dark'" aria-label="Dark mode" @click="toggleTheme">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path v-if="theme === 'light'" d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/><template v-else><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></template></svg>
-          <span>{{ theme === 'dark' ? 'Dark' : 'Light' }}</span>
+        <button class="theme-toggle" type="button" :aria-pressed="themePreference !== 'light'" :aria-label="`Theme: ${themePreference}`" @click="toggleTheme">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path v-if="themePreference === 'light'" d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/><template v-else-if="themePreference === 'dark'"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></template><template v-else><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4a12 12 0 0 1 0 16M12 4a12 12 0 0 0 0 16"/></template></svg>
+          <span>{{ themePreference === 'auto' ? 'Auto' : themePreference === 'dark' ? 'Dark' : 'Light' }}</span>
         </button>
         <button v-if="token" class="ghost" @click="logout">Sign out</button>
       </div>

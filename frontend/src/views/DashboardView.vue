@@ -431,6 +431,7 @@ onUnmounted(() => {
                 autocomplete="off"
                 placeholder="New label for this session…"
                 aria-label="New session label name"
+                @keydown.enter.prevent="createTimerLabel"
               />
               <button class="text-button" :disabled="!newTimerLabelName.trim()" @click="createTimerLabel">Create label</button>
             </div>
