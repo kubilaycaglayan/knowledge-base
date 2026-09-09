@@ -17,7 +17,7 @@ describe("ReportsView", () => {
   } };
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], sessionLabels: [], calendarNote: "Planning session", calendarLabels: [{ id: "label-1", label: "Milestone", color: "#2878D5", portion: null }] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], sessionLabels: [], calendarLabels: [] });
+    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], sessionLabels: [], calendarNote: "Planning session", calendarLabels: [{ id: "label-1", label: "Milestone", color: "#2878D5", portion: null }] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], sessionLabels: [], calendarLabels: [], sankey: { granularity: "DAY", nodes: [{ id: "bucket:2026-08-25", label: "Tue, Aug 25" }, { id: "path:path-1", label: "Wander", color: "#123456" }], links: [{ source: "bucket:2026-08-25", target: "path:path-1", sourceLabel: "Tue, Aug 25", targetLabel: "Wander", value: 3600 }] } });
   });
 
   it("shows the report dashboard with project breakdown and charts", async () => {
@@ -36,6 +36,7 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Planning session");
     expect(wrapper.text()).toContain("Milestone");
     expect(wrapper.text()).toContain("Hide calendar inputs");
+    expect(wrapper.text()).toContain("Show Sankey");
     expect(wrapper.find(".report-echart").exists()).toBe(true);
     expect(wrapper.find(".donut-echart").exists()).toBe(true);
     expect(wrapper.find("button").exists()).toBe(true);
@@ -62,6 +63,18 @@ describe("ReportsView", () => {
     await wrapper.get(".calendar-input-toggle").trigger("click");
     expect(wrapper.text()).toContain("Show calendar inputs");
     expect(wrapper.text()).not.toContain("Planning session");
+  });
+
+  it("shows the server-provided Sankey flow and stores the choice in the URL", async () => {
+    window.history.replaceState({}, "", "/reports");
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    await wrapper.get(".sankey-toggle").trigger("click");
+    await flushPromises();
+    expect(wrapper.get("#sankey-flow").text()).toContain("Path timing by day");
+    expect(wrapper.text()).toContain("Tue, Aug 25");
+    expect(new URLSearchParams(window.location.search).get("sankey")).toBe("1");
   });
 
   it("shifts the selected weekly range in both directions", async () => {
