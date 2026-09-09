@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import com.know.service.ReportService;
 import java.util.List;
@@ -51,7 +52,11 @@ class ReportApiTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of()));
+                List.of(),
+                new ReportService.Sankey(
+                    "WEEK",
+                    List.of(new ReportService.SankeyNode("bucket:2026-07-01", "Jul 1–7", null)),
+                    List.of(new ReportService.SankeyLink("bucket:2026-07-01", "path:walk", "Jul 1–7", "Walking", 600))));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
     mvc.perform(
@@ -59,7 +64,9 @@ class ReportApiTest {
                 .param("period", "month")
                 .param("anchor", "2026-07-20")
                 .with(authentication(auth)))
-        .andExpect(status().isOk());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.sankey.granularity").value("WEEK"))
+        .andExpect(jsonPath("$.sankey.links[0].value").value(600));
 
     verify(service).report(user, ReportService.Period.MONTH, java.time.LocalDate.of(2026, 7, 20));
   }
@@ -70,7 +77,7 @@ class ReportApiTest {
     var from = java.time.LocalDate.of(2026, 8, 24);
     var to = java.time.LocalDate.of(2026, 8, 30);
     when(service.report(user, from, to))
-        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of()));
+        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
     mvc.perform(get("/api/v1/reports").param("startDate", from.toString()).param("endDate", to.toString()).with(authentication(auth)))
