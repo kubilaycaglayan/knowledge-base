@@ -12,6 +12,35 @@ import org.junit.jupiter.api.Test;
 
 class ReportServiceTest {
   @Test
+  void sankeyCarriesRemainingTimeIntoAPathInTheNextBucket() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    PathRepository paths = mock(PathRepository.class);
+    UUID user = UUID.randomUUID();
+    Path sourcePath = new Path(user, "Research", null, "#123456");
+    Path targetPath = new Path(user, "Writing", null, "#654321");
+    TimeEntry source = new TimeEntry(
+        user, sourcePath.getId(), Instant.parse("2025-09-01T10:00:00Z"), "research", TimeSource.IMPORT);
+    source.stop(Instant.parse("2025-09-01T10:01:40Z"));
+    TimeEntry target = new TimeEntry(
+        user, targetPath.getId(), Instant.parse("2025-09-02T10:00:00Z"), "writing", TimeSource.IMPORT);
+    target.stop(Instant.parse("2025-09-02T10:01:00Z"));
+    when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(source, target));
+    when(paths.findByUserIdAndIdIn(user, Set.of(sourcePath.getId(), targetPath.getId())))
+        .thenReturn(List.of(sourcePath, targetPath));
+
+    ReportService.Report report = new ReportService(entries, paths, mock(LabelRepository.class))
+        .report(user, ReportService.Period.WEEK, LocalDate.of(2025, 9, 3));
+
+    assertEquals(2, report.sankey().nodes().size());
+    assertEquals(100, report.sankey().nodes().getFirst().value());
+    assertEquals(60, report.sankey().nodes().getLast().value());
+    assertEquals(1, report.sankey().links().size());
+    assertEquals(60, report.sankey().links().getFirst().value());
+    assertTrue(report.sankey().links().getFirst().sourceLabel().contains("Research"));
+    assertTrue(report.sankey().links().getFirst().targetLabel().contains("Writing"));
+  }
+
+  @Test
   void monthlyReportShowsDailyPathAndLabelBreakdownsWithClippedIntervals() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
@@ -61,10 +90,13 @@ class ReportServiceTest {
     assertEquals("Walking", report.sessionLabels().getFirst().label());
     assertEquals("#2878D5", report.sessionLabels().getFirst().color());
     assertEquals("WEEK", report.sankey().granularity());
-    assertEquals(6, report.sankey().nodes().size());
-    assertEquals(2, report.sankey().links().size());
+    assertEquals(2, report.sankey().nodes().size());
+    assertEquals(1, report.sankey().links().size());
+    assertEquals(0, report.sankey().nodes().getFirst().depth());
+    assertEquals(1, report.sankey().nodes().getLast().depth());
+    assertTrue(report.sankey().nodes().stream().allMatch(node -> node.label().contains("Wander")));
     assertTrue(report.sankey().links().stream().anyMatch(link -> link.value() == 30));
-    assertTrue(report.sankey().links().stream().anyMatch(link -> link.value() == 600));
+    assertTrue(report.sankey().links().stream().allMatch(link -> !link.source().equals(link.target())));
     verify(entryLabels, times(1)).findAllByIdTimeEntryIdIn(any());
     verify(entryLabels, never()).findAllByIdTimeEntryId(any());
   }
@@ -81,7 +113,7 @@ class ReportServiceTest {
     assertEquals(LocalDate.of(2024, 1, 1), report.from());
     assertEquals(LocalDate.of(2024, 12, 31), report.to());
     assertEquals("MONTH", report.sankey().granularity());
-    assertEquals(12, report.sankey().nodes().size());
+    assertTrue(report.sankey().nodes().isEmpty());
     assertTrue(report.sankey().links().isEmpty());
   }
 
@@ -99,7 +131,7 @@ class ReportServiceTest {
     assertEquals(LocalDate.of(2026, 8, 24), report.from());
     assertEquals(LocalDate.of(2026, 8, 30), report.to());
     assertEquals("DAY", report.sankey().granularity());
-    assertEquals(7, report.sankey().nodes().size());
+    assertTrue(report.sankey().nodes().isEmpty());
   }
 
   @Test
