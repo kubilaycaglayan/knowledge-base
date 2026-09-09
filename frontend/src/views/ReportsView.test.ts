@@ -7,17 +7,63 @@ vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("ReportsView", () => {
-  const global = { stubs: {
-    VBtn: { template: "<button><slot /></button>" },
-    VTextField: { template: "<input />" },
-    VSelect: { template: "<select><option>Project</option></select>" },
-    VTable: { template: "<table><slot /></table>" },
-    VChart: { template: "<div />" },
-    ReportDateRange: { template: "<div><button class='test-range' @click=\"$emit('update:modelValue', { startDate: '2026-08-10', endDate: '2026-08-20' })\">Choose range</button><button aria-label='Previous date range' @click=\"$emit('previous')\">Previous</button><button aria-label='Next date range' @click=\"$emit('next')\">Next</button></div>" },
-  } };
+  const global = {
+    stubs: {
+      VBtn: { template: "<button><slot /></button>" },
+      VTextField: { template: "<input />" },
+      VSelect: { template: "<select><option>Project</option></select>" },
+      VTable: { template: "<table><slot /></table>" },
+      VChart: { template: "<div />" },
+      ReportDateRange: {
+        template:
+          "<div><button class='test-range' @click=\"$emit('update:modelValue', { startDate: '2026-08-10', endDate: '2026-08-20' })\">Choose range</button><button aria-label='Previous date range' @click=\"$emit('previous')\">Previous</button><button aria-label='Next date range' @click=\"$emit('next')\">Next</button></div>",
+      },
+    },
+  };
   beforeEach(() => {
+    window.history.replaceState({}, "", "/reports");
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 5400, days: [{ date: "2026-08-25", totalSeconds: 3600, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }], sessionLabels: [], calendarNote: "Planning session", calendarLabels: [{ id: "label-1", label: "Milestone", color: "#2878D5", portion: null }] }], paths: [{ id: "path-1", label: "Wander", seconds: 5400 }], sessionLabels: [], calendarLabels: [], sankey: { granularity: "DAY", nodes: [{ id: "bucket:2026-08-25:path:path-1", label: "Tue, Aug 25 · Wander", pathLabel: "Wander", bucketLabel: "Tue, Aug 25", color: "#123456", depth: 1, value: 3600 }], links: [] } });
+    vi.mocked(api).mockResolvedValue({
+      period: "WEEK",
+      from: "2026-08-24",
+      to: "2026-08-30",
+      totalSeconds: 5400,
+      days: [
+        {
+          date: "2026-08-25",
+          totalSeconds: 3600,
+          paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+          sessionLabels: [],
+          calendarNote: "Planning session",
+          calendarLabels: [
+            {
+              id: "label-1",
+              label: "Milestone",
+              color: "#2878D5",
+              portion: null,
+            },
+          ],
+        },
+      ],
+      paths: [{ id: "path-1", label: "Wander", seconds: 5400 }],
+      sessionLabels: [],
+      calendarLabels: [],
+      sankey: {
+        granularity: "DAY",
+        nodes: [
+          {
+            id: "bucket:2026-08-25:path:path-1",
+            label: "Tue, Aug 25 · Wander",
+            pathLabel: "Wander",
+            bucketLabel: "Tue, Aug 25",
+            color: "#123456",
+            depth: 1,
+            value: 3600,
+          },
+        ],
+        links: [],
+      },
+    });
   });
 
   it("shows the report dashboard with project breakdown and charts", async () => {
@@ -25,8 +71,10 @@ describe("ReportsView", () => {
     await flushPromises();
     expect(wrapper.text()).toContain("Tracked time");
     expect(wrapper.text()).toContain("Wander");
+    expect(wrapper.text()).toContain("Daily");
     expect(wrapper.text()).toContain("Weekly");
     expect(wrapper.text()).toContain("Monthly");
+    expect(wrapper.text()).toContain("Quarterly");
     expect(wrapper.text()).toContain("Yearly");
     expect(wrapper.text()).not.toContain("Shared");
     expect(wrapper.text()).not.toContain("Export");
@@ -44,19 +92,84 @@ describe("ReportsView", () => {
     expect(wrapper.find("button").exists()).toBe(true);
   });
 
-  it("loads quick periods and a custom date interval", async () => {
+  it("keeps the selected aggregation when the date interval changes", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("/reports?period=WEEK"));
-    await wrapper.findAll("button").find((button) => button.text() === "Monthly")!.trigger("click");
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
+      expect.stringContaining("aggregation=WEEK"),
+    );
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text() === "Monthly")!
+      .trigger("click");
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=MONTH"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
+      expect.stringContaining("aggregation=MONTH"),
+    );
     await wrapper.find(".test-range").trigger("click");
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe("/reports?startDate=2026-08-10&endDate=2026-08-20");
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
+      "/reports?startDate=2026-08-10&endDate=2026-08-20&aggregation=MONTH",
+    );
+    expect(
+      wrapper.get('[data-report-tab="MONTH"]').attributes("aria-selected"),
+    ).toBe("true");
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe("/reports?startDate=2026-08-17&endDate=2026-08-23");
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
+      "/reports?startDate=2026-08-17&endDate=2026-08-23&aggregation=MONTH",
+    );
+  });
+
+  it("aggregates chart values at the selected semantic interval", async () => {
+    vi.mocked(api).mockResolvedValue({
+      period: "CUSTOM",
+      from: "2026-01-01",
+      to: "2026-06-30",
+      totalSeconds: 10800,
+      days: [
+        {
+          date: "2026-01-02",
+          totalSeconds: 3600,
+          paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+          sessionLabels: [],
+        },
+        {
+          date: "2026-02-02",
+          totalSeconds: 3600,
+          paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+          sessionLabels: [],
+        },
+        {
+          date: "2026-04-02",
+          totalSeconds: 3600,
+          paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+          sessionLabels: [],
+        },
+      ],
+      paths: [{ id: "path-1", label: "Wander", seconds: 10800 }],
+      sessionLabels: [],
+      calendarLabels: [],
+      sankey: { granularity: "QUARTER", nodes: [], links: [] },
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text() === "Quarterly")!
+      .trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get(".chart-frame").attributes("aria-label")).toContain(
+      "quarter tracked time",
+    );
+    expect(wrapper.get(".chart-frame").attributes("aria-label")).toContain(
+      "Q1 2026: 02:00:00",
+    );
+    expect(wrapper.get(".chart-frame").attributes("aria-label")).toContain(
+      "Q2 2026: 01:00:00",
+    );
   });
 
   it("toggles calendar inputs across the report", async () => {
@@ -84,23 +197,32 @@ describe("ReportsView", () => {
     expect(wrapper.find(".chart-frame").exists()).toBe(true);
   });
 
-  it("shifts the selected weekly range in both directions", async () => {
+  it("shifts the selected interval in both directions without changing aggregation", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=WEEK"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
+      expect.stringContaining("aggregation=WEEK"),
+    );
     await wrapper.get('[aria-label="Next date range"]').trigger("click");
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=WEEK"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
+      expect.stringContaining("aggregation=WEEK"),
+    );
   });
 
-  it("loads yearly periods and shifts a custom range forward", async () => {
+  it("loads yearly aggregations and shifts the interval forward", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    await wrapper.findAll("button").find((button) => button.text() === "Yearly")!.trigger("click");
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text() === "Yearly")!
+      .trigger("click");
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=YEAR"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
+      expect.stringContaining("aggregation=YEAR"),
+    );
 
     await wrapper.find(".test-range").trigger("click");
     await flushPromises();
@@ -108,7 +230,9 @@ describe("ReportsView", () => {
     await wrapper.get('[aria-label="Next date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).not.toBe(before);
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe("/reports?startDate=2026-08-31&endDate=2026-09-06");
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
+      "/reports?startDate=2026-08-31&endDate=2026-09-06&aggregation=YEAR",
+    );
   });
 
   it("shows an error when the report request fails", async () => {
@@ -116,18 +240,33 @@ describe("ReportsView", () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
 
-    expect(wrapper.get('[role="alert"]').text()).toContain("Unable to load the report. Please try again.");
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      "Unable to load the report. Please try again.",
+    );
     expect(wrapper.get('[role="alert"] button').text()).toBe("Try again");
   });
 
   it("shows loading feedback while a report request is pending", async () => {
     let resolveReport!: (value: unknown) => void;
-    vi.mocked(api).mockReturnValueOnce(new Promise((resolve) => { resolveReport = resolve; }));
+    vi.mocked(api).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveReport = resolve;
+      }),
+    );
     const wrapper = mount(ReportsView, { global });
     await wrapper.vm.$nextTick();
     expect(wrapper.get('[role="status"]').text()).toBe("Loading report…");
 
-    resolveReport({ period: "WEEK", from: "2026-08-24", to: "2026-08-30", totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] });
+    resolveReport({
+      period: "WEEK",
+      from: "2026-08-24",
+      to: "2026-08-30",
+      totalSeconds: 0,
+      days: [],
+      paths: [],
+      sessionLabels: [],
+      calendarLabels: [],
+    });
     await flushPromises();
     expect(wrapper.find('[role="status"]').exists()).toBe(false);
   });
@@ -138,7 +277,16 @@ describe("ReportsView", () => {
       from: "2026-08-24",
       to: "2026-08-30",
       totalSeconds: 3600,
-      days: [{ date: "2026-08-25", totalSeconds: 5400, paths: [{ id: "path-1", label: "Wander", seconds: 3600 }, { id: "other", label: "Other", seconds: 1800 }] }],
+      days: [
+        {
+          date: "2026-08-25",
+          totalSeconds: 5400,
+          paths: [
+            { id: "path-1", label: "Wander", seconds: 3600 },
+            { id: "other", label: "Other", seconds: 1800 },
+          ],
+        },
+      ],
       paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
       sessionLabels: [],
       calendarLabels: [],

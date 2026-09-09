@@ -94,7 +94,7 @@
 .range-arrow:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
 .reports-nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--workspace-border); margin-bottom: 16px; }
 .report-visualization-toggles { display: flex; align-items: center; gap: 8px; }
-.report-tabs { display: flex; }
+.report-tabs { display: flex; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
 .report-tab { min-height: 40px; padding: 8px 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--workspace-muted); font-size: 13px; }
 .report-tab:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
 .report-tab.active { background: var(--workspace-selected); border-bottom-color: var(--workspace-accent); color: var(--workspace-text); font-weight: 600; }
