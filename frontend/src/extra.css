@@ -78,6 +78,7 @@
 .search-result .muted { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Reports and calendar retain their data layouts; surfaces follow the workspace. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .reports-page, .calendar-page { margin: 0 auto; color: var(--workspace-text); }
 .reports-header, .calendar-header { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 24px; }
 .reports-header .lede { margin: 0; }
