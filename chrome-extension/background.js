@@ -1,3 +1,5 @@
+import "./google-auth.js";
+
 const defaultApi = "http://localhost:8080/api/v1";
 const debug = (...args) => console.warn("[Know extension]", ...args);
 
@@ -9,11 +11,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
   if (message?.type === "KNOW_GOOGLE_LOGIN") {
-    void googleLogin().then(sendResponse).catch((error) => {
+    // The popup can be destroyed as soon as the external Google page opens.
+    // Do not keep a response port open across the web auth flow; the token is
+    // persisted by the service worker and the popup reads it when reopened.
+    sendResponse({ ok: true, pending: true });
+    void googleLogin().catch(async (error) => {
       debug("Google sign-in failed", error instanceof Error ? error.message : error);
-      sendResponse({ ok: false, error: "Google sign-in could not be completed. Try again." });
+      await chrome.storage.local.set({ googleAuthError: "Google sign-in could not be completed. Try again." });
     });
-    return true;
+    return false;
   }
   if (message?.type !== "KNOW_CLOCKIFY_IMPORT") return false;
   if (sender.origin && sender.origin !== "https://app.clockify.me") {
@@ -38,14 +44,14 @@ async function googleLogin() {
   if (!configResponse.ok) throw Error("Google configuration request failed (HTTP " + configResponse.status + ")");
   const { clientId } = await configResponse.json();
   if (!clientId) throw Error("Google sign-in is not configured");
-  const state = KnowGoogleAuth.nonce();
-  const requestNonce = KnowGoogleAuth.nonce();
+  const state = globalThis.KnowGoogleAuth.nonce();
+  const requestNonce = globalThis.KnowGoogleAuth.nonce();
   const redirectUri = chrome.identity.getRedirectURL();
   const redirectUrl = await chrome.identity.launchWebAuthFlow({
-    url: KnowGoogleAuth.authorizationUrl(clientId, redirectUri, state, requestNonce),
+    url: globalThis.KnowGoogleAuth.authorizationUrl(clientId, redirectUri, state, requestNonce),
     interactive: true,
   });
-  const idToken = KnowGoogleAuth.parseRedirect(redirectUrl, state, requestNonce);
+  const idToken = globalThis.KnowGoogleAuth.parseRedirect(redirectUrl, state, requestNonce);
   const response = await fetch(base + "/auth/google", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,8 +59,7 @@ async function googleLogin() {
   });
   if (!response.ok) throw Error("Google authentication failed (HTTP " + response.status + ")");
   const result = await response.json();
-  await chrome.storage.local.set({ token: result.token });
-  return { ok: true, token: result.token };
+  await chrome.storage.local.set({ token: result.token, googleAuthError: "" });
 }
 
 async function importClockify(payload) {
