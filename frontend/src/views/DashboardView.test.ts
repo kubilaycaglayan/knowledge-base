@@ -234,10 +234,7 @@ describe("DashboardView timer flow", () => {
     await wrapper
       .get('input[aria-label="New session label name"]')
       .setValue("Dijkstra notes");
-    await wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Create label")!
-      .trigger("click");
+    await wrapper.get('input[aria-label="New session label name"]').trigger("keydown.enter");
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith(
