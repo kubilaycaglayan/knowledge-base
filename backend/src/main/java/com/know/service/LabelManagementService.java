@@ -55,9 +55,21 @@ public class LabelManagementService {
 
   @Transactional
   public void delete(UUID userId, UUID id) {
+    delete(userId, id, false);
+  }
+
+  @Transactional
+  public void delete(UUID userId, UUID id, boolean removeAssignments) {
     Label label = owned(userId, id);
-    if (calendarAssignments.existsByIdLabelId(id) || timeAssignments.existsByIdLabelId(id) || noteAssignments.existsByIdLabelId(id))
+    boolean assigned = calendarAssignments.existsByIdLabelId(id) || timeAssignments.existsByIdLabelId(id) || noteAssignments.existsByIdLabelId(id);
+    if (assigned && !removeAssignments)
       throw conflict("Labels in use cannot be deleted; remove their assignments first");
+    if (removeAssignments) {
+      calendarAssignments.deleteAllByIdLabelId(id);
+      timeAssignments.deleteAllByIdLabelId(id);
+      noteAssignments.deleteAllByIdLabelId(id);
+    }
+    scopes.deleteAllByIdLabelId(id);
     labels.delete(label);
   }
 

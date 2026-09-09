@@ -19,5 +19,5 @@ public class LabelController {
   @GetMapping public List<LabelManagementService.View> list(Authentication a, @RequestParam(required = false) LabelScopeType scope) { return scope == null ? service.list(user(a)) : service.list(user(a), scope); }
   @PostMapping @ResponseStatus(HttpStatus.CREATED) public LabelManagementService.View create(Authentication a, @Valid @RequestBody Request r) { return service.create(user(a), r.name(), r.color(), r.scopes()); }
   @PutMapping("/{id}") public LabelManagementService.View update(Authentication a, @PathVariable UUID id, @Valid @RequestBody Request r) { return service.update(user(a), id, r.name(), r.color(), r.scopes()); }
-  @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) public void delete(Authentication a, @PathVariable UUID id) { service.delete(user(a), id); }
+  @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) public void delete(Authentication a, @PathVariable UUID id, @RequestParam(defaultValue = "false") boolean removeAssignments) { service.delete(user(a), id, removeAssignments); }
 }
