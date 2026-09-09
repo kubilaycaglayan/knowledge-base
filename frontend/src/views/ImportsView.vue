@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 
 const props = defineProps<{ knowledgeBaseOnly?: boolean }>();
+const HISTORY_PAGE_SIZE = 5;
 
 type ImportBatch = {
   id: string;
@@ -29,8 +30,8 @@ const clockifyJson = ref(""),
   error = ref(""),
   batches = ref<ImportBatch[]>([]),
   historyPage = ref(1);
-const visibleBatches = computed(() => batches.value.slice((historyPage.value - 1) * 10, historyPage.value * 10));
-const totalHistoryPages = computed(() => Math.max(1, Math.ceil(batches.value.length / 10)));
+const visibleBatches = computed(() => batches.value.slice((historyPage.value - 1) * HISTORY_PAGE_SIZE, historyPage.value * HISTORY_PAGE_SIZE));
+const totalHistoryPages = computed(() => Math.max(1, Math.ceil(batches.value.length / HISTORY_PAGE_SIZE)));
 const formatDate = (iso: string) => formatDateTime(iso);
 
 async function load() {
