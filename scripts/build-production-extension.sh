@@ -18,7 +18,6 @@ version="$(node - <<'NODE'
 const fs = require('fs');
 const paths = [
   'chrome-extension/wxt.config.ts',
-  'chrome-extension/manifest.json',
   'chrome-extension/package.json',
   'chrome-extension/package-lock.json',
 ];

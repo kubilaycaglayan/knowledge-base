@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs'
 
 const required = [
-  ['chrome-extension/popup.html', 'for="email"', 'extension email label'],
-  ['chrome-extension/popup.html', 'role="status"', 'extension timer status'],
-  ['chrome-extension/popup.html', 'role="alert"', 'extension error announcement'],
-  ['chrome-extension/options.html', 'for="api"', 'extension API label'],
-  ['chrome-extension/options.html', 'role="status"', 'extension settings status'],
+  ['chrome-extension/entrypoints/popup/index.html', 'for="email"', 'extension email label'],
+  ['chrome-extension/entrypoints/popup/index.html', 'role="status"', 'extension timer status'],
+  ['chrome-extension/entrypoints/popup/index.html', 'role="alert"', 'extension error announcement'],
+  ['chrome-extension/entrypoints/options/index.html', 'for="api"', 'extension API label'],
+  ['chrome-extension/entrypoints/options/index.html', 'role="status"', 'extension settings status'],
   ['frontend/src/views/AuthView.vue', 'aria-label="Email"', 'web authentication email label'],
   ['frontend/src/views/AuthView.vue', 'aria-label="Password"', 'web authentication password label'],
   ['frontend/src/views/PathsView.vue', 'Choose path color', 'path color picker labels'],
