@@ -284,16 +284,18 @@ async function googleLogin() {
   const button = $("google-login");
   setButtonBusy(button, true);
   try {
-    const result = await new Promise((resolve, reject) => {
+    await chrome.storage.local.remove("googleAuthError");
+    // Google may close this popup while the background service worker owns
+    // the external auth flow. The token is stored by the worker and picked up
+    // by the normal popup load on the next open.
+    await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({ type: "KNOW_GOOGLE_LOGIN" }, (response) => {
         if (chrome.runtime.lastError) reject(Error(chrome.runtime.lastError.message));
         else if (!response?.ok) reject(Error(response?.error || "Google sign-in failed"));
         else resolve(response);
       });
     });
-    await chrome.storage.local.set({ token: result.token });
-    $("error").textContent = "";
-    await load();
+    $("error").textContent = "Complete Google sign-in, then reopen the extension.";
   } catch (error) {
     logError("Google sign-in", error);
     $("error").textContent = userError("Google sign-in could not be completed. Try again.", error);
@@ -331,8 +333,9 @@ $("sessions").onclick = async (event) => {
   if (event.target.closest(".edit-session")) { const history = await request("/time-entries?page=0&size=20"); const session = (history.sessions || []).find((entry) => entry.id === sessionId); if (session) renderSessionEditor(article, session); }
   if (event.target.closest(".remove-session") && confirm("Remove this session? This cannot be undone.")) { try { await request(`/time-entries/${sessionId}`, { method: "DELETE" }); await loadSessions(); } catch (error) { logError("Remove session", error, { sessionId }); $("error").textContent = userError("Could not remove this session.", error); } }
 };
-chrome.storage.local.get("token").then(({ token }) => {
+chrome.storage.local.get(["token", "googleAuthError"]).then(({ token, googleAuthError }) => {
   debug("Popup initialized", { tokenPresent: Boolean(token) });
+  if (googleAuthError) $("error").textContent = googleAuthError;
   if (token) load();
 }).catch((error) => {
   logError("Read extension session", error);
