@@ -20,6 +20,11 @@ function finish(result: string | null) {
   visible.value = false;
   resolve(result);
 }
+function handleSingleLineBeforeInput(event: InputEvent) {
+  if (event.inputType !== "insertLineBreak" && event.inputType !== "insertParagraph") return;
+  event.preventDefault();
+  finish(value.value);
+}
 
 function open(
   nextMessage: string,
@@ -75,6 +80,8 @@ defineExpose({ open });
         v-else-if="!confirmation"
         v-model="value"
         :aria-label="message"
+        enterkeyhint="done"
+        @beforeinput="handleSingleLineBeforeInput"
         @keydown.enter.prevent="finish(value)"
       />
       <div class="prompt-dialog-actions">

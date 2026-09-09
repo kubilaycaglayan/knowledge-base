@@ -164,6 +164,7 @@ function chooseLabel(label: NoteLabel) {
   scheduleSave();
 }
 function handleLabelKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) return;
   if (event.key === "ArrowDown" && matchingLabels.value.length) {
     event.preventDefault();
     highlightedLabelIndex.value = (highlightedLabelIndex.value + 1) % matchingLabels.value.length;
@@ -181,6 +182,11 @@ function handleLabelKeydown(event: KeyboardEvent) {
     event.preventDefault();
     tagInput.value = "";
   }
+}
+function handleLabelBeforeInput(event: InputEvent) {
+  if (event.inputType !== "insertLineBreak" && event.inputType !== "insertParagraph") return;
+  event.preventDefault();
+  addTag();
 }
 function removeTag(tag: string) { tags.value = tags.value.filter(value => value !== tag); scheduleSave(); }
 function scheduleSave() {
@@ -307,7 +313,7 @@ onBeforeUnmount(() => {
         <button class="flat-button" :disabled="!editor?.can().undo()" aria-label="Undo" @click="editor?.commands.undo()">↶</button><button class="flat-button" :disabled="!editor?.can().redo()" aria-label="Redo" @click="editor?.commands.redo()">↷</button>
       </div>
       <input v-model="title" class="note-title-input" aria-label="Note title" maxlength="240" @input="scheduleSave" />
-      <div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" aria-label="Add label" placeholder="Add label and press Enter" autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="matchingLabels.length > 0" aria-controls="note-label-suggestions" :aria-activedescendant="matchingLabels.length ? `note-label-suggestion-${matchingLabels[highlightedLabelIndex].id}` : undefined" @keydown="handleLabelKeydown" /><div v-if="matchingLabels.length" id="note-label-suggestions" class="label-suggestions" role="listbox" aria-label="Matching existing labels"><button v-for="(label, index) in matchingLabels" :id="`note-label-suggestion-${label.id}`" :key="label.id" type="button" role="option" class="label-suggestion" :class="{ active: index === highlightedLabelIndex }" :aria-selected="index === highlightedLabelIndex" @click="chooseLabel(label)">{{ label.name }}</button></div></div>
+      <div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" aria-label="Add label" placeholder="Add label and press Enter" autocomplete="off" enterkeyhint="done" role="combobox" aria-autocomplete="list" :aria-expanded="matchingLabels.length > 0" aria-controls="note-label-suggestions" :aria-activedescendant="matchingLabels.length ? `note-label-suggestion-${matchingLabels[highlightedLabelIndex].id}` : undefined" @beforeinput="handleLabelBeforeInput" @keydown="handleLabelKeydown" /><div v-if="matchingLabels.length" id="note-label-suggestions" class="label-suggestions" role="listbox" aria-label="Matching existing labels"><button v-for="(label, index) in matchingLabels" :id="`note-label-suggestion-${label.id}`" :key="label.id" type="button" role="option" class="label-suggestion" :class="{ active: index === highlightedLabelIndex }" :aria-selected="index === highlightedLabelIndex" @click="chooseLabel(label)">{{ label.name }}</button></div></div>
       <div ref="editorHost" class="rich-editor"><EditorContent v-if="editor" :editor="editor" /></div>
       <p v-if="selected" class="note-dates">Created {{ formatDate(selected.createdAt) }} · Updated {{ formatDate(selected.updatedAt) }}</p>
     </template>
