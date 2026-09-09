@@ -220,6 +220,30 @@ auth="$(api "${content_json[@]}" --post-data="{\"email\":\"$email\",\"password\"
 token="$(printf '%s' "$auth" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
 [[ -n "$token" ]]
 header=(--header="Authorization: Bearer $token")
+
+# A deployment must accept a token issued by the previous API container.
+compose up -d --no-deps --force-recreate api
+for attempt in {1..60}; do
+  if api http://localhost:8080/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
+    break
+  fi
+  if [[ "$attempt" == 60 ]]; then
+    echo 'Recreated API did not become healthy' >&2
+    exit 1
+  fi
+  sleep 2
+done
+api "${header[@]}" http://localhost:8080/api/v1/auth/me | grep -Fq "$email"
+# Servlet error dispatches must not turn a valid session into a 401.
+missing_response="$(compose exec -T api wget -S -O /dev/null "${header[@]}" \
+  http://localhost:8080/api/v1/session-continuity-missing-route 2>&1 || true)"
+printf '%s' "$missing_response" | grep -q 'HTTP/1.1 404'
+api "${header[@]}" http://localhost:8080/api/v1/auth/me | grep -Fq "$email"
+if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
+  curl -kfsS --retry 15 --retry-connrefused --retry-delay 2 \
+    -H "Authorization: Bearer $token" \
+    "https://localhost:${PROXY_HTTPS_PORT}/api/v1/auth/me" | grep -Fq "$email"
+fi
 api http://localhost:8080/api/v1/auth/google/config | grep -q '"clientId"'
 if api "${content_json[@]}" --post-data='{"idToken":"not-a-real-google-token"}' \
   http://localhost:8080/api/v1/auth/google >/dev/null; then

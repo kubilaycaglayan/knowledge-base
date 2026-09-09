@@ -63,9 +63,13 @@ public class SecurityConfig {
                         response.sendError(
                             HttpServletResponse.SC_UNAUTHORIZED, "Authentication required")))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        // JWT authentication runs on the original request, not the servlet's error
+        // redispatch. Preserve that error's status instead of issuing a false 401.
         .authorizeHttpRequests(
             a ->
-                a.requestMatchers(
+                a.dispatcherTypeMatchers(DispatcherType.ERROR)
+                    .permitAll()
+                    .requestMatchers(
                         "/actuator/health",
                         "/api/v1/auth/google/config",
                         "/api/v1/auth/register",

@@ -62,4 +62,31 @@ describe("api", () => {
 
     await expect(api("/broken")).rejects.toThrow("Server failure");
   });
+
+  it.each([404, 500, 502, 503, 504])("preserves sign-in on HTTP %s", async (status) => {
+    localStorage.setItem("know_token", "valid-token");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status, ok: false, text: async () => "Unavailable" }));
+    await expect(api("/paths")).rejects.toThrow("Unavailable");
+    expect(localStorage.getItem("know_token")).toBe("valid-token");
+  });
+
+  it("preserves sign-in when the API connection drops during deployment", async () => {
+    localStorage.setItem("know_token", "valid-token");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    await expect(api("/paths")).rejects.toThrow("Failed to fetch");
+    expect(localStorage.getItem("know_token")).toBe("valid-token");
+  });
+
+  it("does not erase a newer sign-in when an older request returns 401", async () => {
+    localStorage.setItem("know_token", "old-token");
+    const reload = vi.fn();
+    vi.stubGlobal("window", { location: { reload } });
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => {
+      localStorage.setItem("know_token", "new-token");
+      return { status: 401, ok: false, text: async () => "Expired" };
+    }));
+    await expect(api("/paths")).rejects.toThrow("Expired");
+    expect(localStorage.getItem("know_token")).toBe("new-token");
+    expect(reload).not.toHaveBeenCalled();
+  });
 });
