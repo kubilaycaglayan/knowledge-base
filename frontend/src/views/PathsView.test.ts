@@ -266,6 +266,47 @@ describe("PathsView", () => {
     );
   });
 
+  it("searches for a merge target, confirms the destructive merge, and refreshes paths", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return [
+        { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+        { id: "path-2", name: "Writing", description: "Drafting", status: "ACTIVE" },
+      ];
+      if (path === "/paths/path-1/merge" && options?.method === "POST") return undefined;
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "Edit")!.trigger("click");
+    await wrapper.findAll("form.path-edit button").find((button) => button.text().trim() === "Merge")!.trigger("click");
+
+    expect(wrapper.get(".merge-path-dialog").text()).toContain("Merge “Algorithms” into…");
+    await wrapper.get('input[aria-label="Edit path name"]');
+    await wrapper.get('#merge-path-search').setValue("writing");
+    await wrapper.get('input[name="merge-target-path"]').setValue("path-2");
+    await wrapper.get(".merge-path-dialog button.primary").trigger("click");
+    expect(wrapper.get(".prompt-dialog").text()).toContain("Merge Algorithms into Writing?");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1/merge", {
+      method: "POST",
+      body: JSON.stringify({ targetPathId: "path-2" }),
+    });
+    expect(wrapper.find(".merge-path-dialog").exists()).toBe(false);
+  });
+
+  it("closes the merge chooser without changing paths", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "Edit")!.trigger("click");
+    await wrapper.findAll("form.path-edit button").find((button) => button.text().trim() === "Merge")!.trigger("click");
+    await wrapper.get(".merge-path-dialog button.text-button").trigger("click");
+
+    expect(wrapper.find(".merge-path-dialog").exists()).toBe(false);
+    expect(vi.mocked(api).mock.calls.some(([path]) => String(path).includes("/merge"))).toBe(false);
+  });
+
   it("confirms removal and offers a timed undo", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
@@ -382,7 +423,7 @@ describe("PathsView", () => {
     await flushPromises();
     await wrapper.findAll("button.text-button").find((button) => button.text() === "Edit")!.trigger("click");
     await wrapper.get('input[aria-label="Edit path name"]').setValue("Unsaved name");
-    await wrapper.get("form.path-edit button.text-button").trigger("click");
+    await wrapper.findAll("form.path-edit button.text-button").find((button) => button.text().trim() === "Cancel")!.trigger("click");
 
     expect(wrapper.find("form.path-edit").exists()).toBe(false);
     expect(wrapper.text()).toContain("Algorithms");
