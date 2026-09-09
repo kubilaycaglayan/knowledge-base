@@ -1,0 +1,7 @@
+services:
+  # Smoke requests run through `docker compose exec`, so these disposable
+  # services do not need host ports. Avoid colliding with a live dev stack.
+  db:
+    ports: !override []
+  api:
+    ports: !override []

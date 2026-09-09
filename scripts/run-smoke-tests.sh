@@ -23,7 +23,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   export PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
 fi
 
-compose_files=(-f docker-compose.yml)
+compose_files=(-f docker-compose.yml -f docker-compose.smoke.yml)
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   compose_files+=(-f docker-compose.smoke-gha-cache.yml)
 elif [[ -n "${SMOKE_BUILD_CACHE_DIR:-}" ]]; then
@@ -292,14 +292,16 @@ if api "${header[@]}" "${content_json[@]}" \
 fi
 api "${header[@]}" http://localhost:8080/api/v1/timers/current | grep -q '"running":true'
 api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/stop >/dev/null
-api "${header[@]}" --post-data='{"description":"cancelled smoke timer"}' "${content_json[@]}" http://localhost:8080/api/v1/timers >/dev/null
+api "${header[@]}" "${content_json[@]}" \
+  --post-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"description\":\"cancelled smoke timer\"}" \
+  http://localhost:8080/api/v1/timers >/dev/null
 api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/cancel >/dev/null
 if [[ -n "$(api "${header[@]}" http://localhost:8080/api/v1/timers/current)" ]]; then
   echo "timer cancellation failed" >&2
   exit 1
 fi
 smoke_date="$(date -u +%Y-%m-%d)"
-calendar_label="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke leave","color":"#2878D5"}' http://localhost:8080/api/v1/calendar/labels)"
+calendar_label="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke leave","color":"#2878D5","scopes":["CALENDAR","TIME_ENTRY"]}' http://localhost:8080/api/v1/labels)"
 calendar_label_id="$(printf '%s' "$calendar_label" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 calendar_day="$(api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data="{\"note\":\"Calendar smoke record\",\"labels\":[{\"labelId\":\"$calendar_label_id\",\"portion\":1.0}]}" \
