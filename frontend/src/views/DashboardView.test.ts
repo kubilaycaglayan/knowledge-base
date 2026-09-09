@@ -365,7 +365,7 @@ describe("DashboardView timer flow", () => {
         body: JSON.stringify({
           name: "Research",
           description: null,
-          color: "#E8754E",
+          color: "#EF4444",
         }),
       }),
     );

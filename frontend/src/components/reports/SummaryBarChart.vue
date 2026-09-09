@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reportColors as colors } from "../../lib/chart-colors";
+import { paletteColors } from "../../lib/color-palette";
 import { computed } from "vue";
 import { chartTheme } from "../../lib/theme";
 import VChart from "vue-echarts";
@@ -14,6 +15,7 @@ import { formatDuration, percentageOf } from "../../utils/duration";
 type Category = { id?: string; label: string; seconds: number; color?: string };
 type CalendarInput = { id: string; label: string; color?: string; portion?: number | null };
 type Day = { date: string; totalSeconds: number; paths: Category[]; calendarNote?: string | null; calendarLabels?: CalendarInput[] };
+const fallbackLabelColor = paletteColors[1];
 const props = withDefaults(defineProps<{ days: Day[]; categories: Category[]; showCalendar?: boolean }>(), { showCalendar: false });
 use([BarChart, CustomChart, DataZoomComponent, GridComponent, TooltipComponent, SVGRenderer]);
 function colorFor(item: Category): string {
@@ -24,7 +26,7 @@ function colorFor(item: Category): string {
 function escapeHtml(value: string): string { return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] || character); }
 function calendarRows(day: Day): string {
   const note = day.calendarNote ? `<div>${escapeHtml(day.calendarNote)}</div>` : "";
-  const labels = (day.calendarLabels || []).map((label) => `<div class="tooltip-row"><span><i style="background:${label.color || "#697781"}"></i>${escapeHtml(label.label)}</span><b>${label.portion ? `${label.portion} day` : "Marked"}</b></div>`).join("");
+  const labels = (day.calendarLabels || []).map((label) => `<div class="tooltip-row"><span><i style="background:${label.color || fallbackLabelColor}"></i>${escapeHtml(label.label)}</span><b>${label.portion ? `${label.portion} day` : "Marked"}</b></div>`).join("");
   return note || labels ? `<hr><strong>Calendar</strong>${note}${labels}` : "";
 }
 const calendarBars = computed(() => props.days.flatMap((day, dayIndex) => {
@@ -32,7 +34,7 @@ const calendarBars = computed(() => props.days.flatMap((day, dayIndex) => {
   const inputs = day.calendarLabels?.length ? day.calendarLabels : day.calendarNote ? [{ id: `note-${day.date}`, label: "Calendar note", color: chartTheme.value.muted, portion: 0.18 }] : [];
   return inputs.map((input) => {
     const end = start + (input.portion || 0.18);
-    const bar = { value: [dayIndex, start, end, input.color || "#697781"] };
+    const bar = { value: [dayIndex, start, end, input.color || fallbackLabelColor] };
     start = end;
     return bar;
   });
