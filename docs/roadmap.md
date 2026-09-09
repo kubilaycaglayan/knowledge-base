@@ -1,5 +1,8 @@
 # Knowledge Base UI roadmap
 
+- [x] Preserve sign-in across deployment outages and API recreation, keep error
+  dispatches from causing false sign-outs, and verify token continuity in smoke tests.
+
 - [x] Establish the approved flat Overview design.
 - [x] Extend its shared shell, typography, controls, and flat sections to Sessions,
   Paths, session labels, Timeline, Calendar, Notes, Reports, Imports, and authentication.

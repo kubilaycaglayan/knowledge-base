@@ -1,5 +1,11 @@
 # API
 
+Bearer tokens remain valid across API restarts with the same `JWT_SECRET`, until
+their existing 30-day expiry. Error dispatches preserve the original HTTP status
+(such as 404 or 503), rather than returning a misleading 401. Clients should
+retain credentials on network/server errors; a 401 for the current token requires
+sign-in. The web client ignores a delayed 401 for a token that has been replaced.
+
 Web light/dark preference is local presentation state (`knowledge-base-theme` in
 browser storage). It adds no endpoint or account field; existing API requests,
 ownership checks, and timer behavior are unchanged.
