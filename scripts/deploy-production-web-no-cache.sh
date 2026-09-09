@@ -24,8 +24,6 @@ compose_args=(--project-name knowledge-base-production -f docker-compose.yml -f 
 
 echo 'Running Knowledge Base production preflight...'
 ./deployment/preflight.sh
-./scripts/build-production-extension.sh
-
 docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
   echo 'Refusing production rebuild: protected database volume knowledge-base_know-db does not exist.' >&2
   exit 1
