@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
+import MergePathDialog from "../components/MergePathDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import { paletteColors } from "../lib/color-palette";
 
@@ -44,6 +45,8 @@ const selectedColorOpen = ref(false);
 const editColorOpen = ref(false);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const pendingDelete = ref<Path | null>(null);
+const mergeSource = ref<Path | null>(null);
+const merging = ref(false);
 let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
@@ -152,6 +155,37 @@ function cancelEdit() {
   editColor.value = colors[0];
   editColorOpen.value = false;
 }
+function openMerge(path: Path) {
+  mergeSource.value = path;
+}
+function cancelMerge() {
+  mergeSource.value = null;
+}
+async function merge(path: Path) {
+  const source = mergeSource.value;
+  if (!source) return;
+  const confirmation = await promptDialog.value!.open(
+    `Merge ${source.name} into ${path.name}? All sessions will move and ${source.name} will be removed.`,
+    "",
+    { confirmation: true },
+  );
+  if (confirmation === null) return;
+  merging.value = true;
+  try {
+    await api(`/paths/${source.id}/merge`, {
+      method: "POST",
+      body: JSON.stringify({ targetPathId: path.id }),
+    });
+    delete summaries.value[source.id];
+    cancelMerge();
+    cancelEdit();
+    await load();
+  } catch {
+    error.value = "Could not merge paths. Try again.";
+  } finally {
+    merging.value = false;
+  }
+}
 function chooseSelectedColor(color: string) {
   selectedColor.value = color;
   selectedColorOpen.value = false;
@@ -240,6 +274,7 @@ onBeforeUnmount(() => {
 
 <template>
   <PromptDialog ref="promptDialog" />
+  <MergePathDialog :source="mergeSource" :paths="paths" @cancel="cancelMerge" @confirm="merge" />
   <section>
     <p class="eyebrow">ORGANIZE</p>
     <h1>Your paths</h1>
@@ -287,6 +322,9 @@ onBeforeUnmount(() => {
           <span class="color-popover-anchor path-color-control"><button class="color-swatch-button" type="button" :style="{ backgroundColor: editColor }" aria-label="Choose edit path color" :aria-expanded="editColorOpen" aria-controls="edit-path-color-palette" @click="editColorOpen = !editColorOpen; selectedColorOpen = false"></button><ColorPalette v-if="editColorOpen" id="edit-path-color-palette" class="path-color-palette" :model-value="editColor" legend="Edit path color" option-label="Set edit path color" @update:model-value="chooseEditColor" /></span>
           <div class="row-actions">
             <button class="primary">Save path</button
+            ><button type="button" class="text-button" :disabled="merging" @click="openMerge(path)">
+              <span v-if="merging" class="loading-spinner" aria-hidden="true"></span>Merge
+            </button
             ><button type="button" class="text-button" @click="cancelEdit">
               Cancel
             </button>

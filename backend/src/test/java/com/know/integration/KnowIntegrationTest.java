@@ -238,6 +238,37 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.BAD_REQUEST, bad.getStatusCode());
   }
 
+  @Test
+  void mergingPathsMovesTheSourceSessionsToTheOwnedTargetAndSoftDeletesTheSource() {
+    String token = freshToken();
+    String sourceId =
+        post("/api/v1/paths", token, "{\"name\":\"Source\"}").getBody().get("id").asText();
+    String targetId =
+        post("/api/v1/paths", token, "{\"name\":\"Target\"}").getBody().get("id").asText();
+    ResponseEntity<JsonNode> session =
+        post(
+            "/api/v1/time-entries",
+            token,
+            "{\"pathId\":\""
+                + sourceId
+                + "\",\"labelIds\":[],\"startedAt\":\""
+                + Instant.now().minus(10, ChronoUnit.MINUTES)
+                + "\",\"endedAt\":\""
+                + Instant.now().minus(5, ChronoUnit.MINUTES)
+                + "\"}");
+    assertEquals(HttpStatus.CREATED, session.getStatusCode());
+
+    ResponseEntity<JsonNode> merged =
+        post("/api/v1/paths/" + sourceId + "/merge", token, "{\"targetPathId\":\"" + targetId + "\"}");
+    assertEquals(HttpStatus.NO_CONTENT, merged.getStatusCode());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + sourceId, token).getStatusCode());
+
+    ResponseEntity<JsonNode> history = get("/api/v1/time-entries", token);
+    assertEquals(targetId, history.getBody().get(0).get("pathId").asText());
+    ResponseEntity<JsonNode> summary = get("/api/v1/paths/" + targetId + "/summary", token);
+    assertTrue(summary.getBody().get("trackedSeconds").asLong() >= 300);
+  }
+
   // Criteria: paths have colors
 
   @Test
