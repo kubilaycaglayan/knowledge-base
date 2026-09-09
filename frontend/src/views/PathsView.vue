@@ -164,6 +164,8 @@ function cancelMerge() {
 async function merge(path: Path) {
   const source = mergeSource.value;
   if (!source) return;
+  // Only one modal may be active at a time; preserve the source locally for confirmation.
+  cancelMerge();
   const confirmation = await promptDialog.value!.open(
     `Merge ${source.name} into ${path.name}? All sessions will move and ${source.name} will be removed.`,
     "",
