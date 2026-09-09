@@ -6,14 +6,26 @@ export async function api<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = localStorage.getItem("know_token");
-  const res = await fetch(base + path, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  const forwardAbort = () => controller.abort();
+  if (options.signal?.aborted) controller.abort();
+  options.signal?.addEventListener("abort", forwardAbort, { once: true });
+  let res: Response;
+  try {
+    res = await fetch(base + path, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", forwardAbort);
+  }
   if (res.status === 401 && token && localStorage.getItem("know_token") === token) {
     localStorage.removeItem("know_token");
     if (typeof window !== "undefined") window.location.reload();

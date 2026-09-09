@@ -65,6 +65,21 @@ public class TimerService {
     return TimeView.of(e, labelIds(e));
   }
 
+  private Map<UUID, List<UUID>> labelIdsByEntry(List<TimeEntry> entriesToView) {
+    if (entriesToView.isEmpty()) return Map.of();
+    Map<UUID, List<UUID>> result = new HashMap<>();
+    entryLabels.findAllByIdTimeEntryIdIn(entriesToView.stream().map(TimeEntry::getId).toList())
+        .forEach(assignment -> result.computeIfAbsent(assignment.getTimeEntryId(), ignored -> new ArrayList<>())
+            .add(assignment.getLabelId()));
+    return result;
+  }
+
+  private List<TimeView> views(List<TimeEntry> entriesToView) {
+    Map<UUID, List<UUID>> labelsByEntry = labelIdsByEntry(entriesToView);
+    return entriesToView.stream().map(entry -> TimeView.of(entry,
+        labelsByEntry.getOrDefault(entry.getId(), List.of()))).toList();
+  }
+
   static String formatTrackedDuration(Long durationSeconds) {
     long seconds = Math.max(0, durationSeconds == null ? 0 : durationSeconds);
     if (seconds < 60) return seconds + (seconds == 1 ? " second" : " seconds");
@@ -170,12 +185,8 @@ public class TimerService {
   }
 
   public List<TimeView> history(UUID userId) {
-    return entries
-        .findAllByUserIdOrderByCompletionTimeDesc(
-            userId, org.springframework.data.domain.PageRequest.of(0, 100))
-        .stream()
-        .map(this::view)
-        .toList();
+    return views(entries.findAllByUserIdOrderByCompletionTimeDesc(
+        userId, org.springframework.data.domain.PageRequest.of(0, 100)));
   }
 
   public record HistoryPage(
@@ -186,13 +197,9 @@ public class TimerService {
     int safePageSize = Math.min(50, Math.max(1, pageSize));
     long total = entries.countByUserId(userId);
     long totalPages = Math.max(1, (total + safePageSize - 1) / safePageSize);
-    List<TimeView> result =
-        entries
-            .findAllByUserIdOrderByCompletionTimeDesc(
-                userId, org.springframework.data.domain.PageRequest.of(safePage, safePageSize))
-            .stream()
-            .map(this::view)
-            .toList();
+    List<TimeEntry> pageEntries = entries.findAllByUserIdOrderByCompletionTimeDesc(
+        userId, org.springframework.data.domain.PageRequest.of(safePage, safePageSize));
+    List<TimeView> result = views(pageEntries);
     return new HistoryPage(result, safePage, safePageSize, total, totalPages);
   }
 
@@ -272,14 +279,15 @@ public class TimerService {
     Instant monthStart = date.withDayOfMonth(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
     Instant windowStart = monthStart.isBefore(weekStart) ? monthStart : weekStart;
     List<TimeEntry> window = entries.findOverlappingByUserId(userId, windowStart, now);
+    Map<UUID, List<UUID>> labelsByEntry = labelIdsByEntry(window);
     return new Statistics(
         sum(window, dayStart, now),
         sum(window, weekStart, now),
         sum(window, monthStart, now),
         group(window, dayStart, now, TimeEntry::getPathId),
-        groupLabels(window, dayStart, now),
+        groupLabels(window, dayStart, now, labelsByEntry),
         group(window, weekStart, now, TimeEntry::getPathId),
-        groupLabels(window, weekStart, now));
+        groupLabels(window, weekStart, now, labelsByEntry));
   }
 
   private long secondsIn(TimeEntry entry, Instant from, Instant to) {
@@ -307,12 +315,13 @@ public class TimerService {
     return out;
   }
 
-  private Map<UUID, Long> groupLabels(List<TimeEntry> list, Instant from, Instant to) {
+  private Map<UUID, Long> groupLabels(List<TimeEntry> list, Instant from, Instant to,
+      Map<UUID, List<UUID>> labelsByEntry) {
     Map<UUID, Long> out = new LinkedHashMap<>();
     for (TimeEntry entry : list) {
       long seconds = secondsIn(entry, from, to);
       if (seconds == 0) continue;
-      for (UUID labelId : labelIds(entry)) out.merge(labelId, seconds, Long::sum);
+      for (UUID labelId : labelsByEntry.getOrDefault(entry.getId(), List.of())) out.merge(labelId, seconds, Long::sum);
     }
     return out;
   }

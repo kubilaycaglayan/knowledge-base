@@ -71,6 +71,13 @@ public class ReportService {
     Instant to = reportEnd.isBefore(now) ? reportEnd : now;
     List<TimeEntry> window =
         to.isAfter(from) ? entries.findOverlappingByUserId(userId, from, to) : List.of();
+    Map<UUID, List<UUID>> labelsByEntry = new HashMap<>();
+    if (entryLabels != null && !window.isEmpty()) {
+      entryLabels.findAllByIdTimeEntryIdIn(window.stream().map(TimeEntry::getId).toList())
+          .forEach(assignment -> labelsByEntry
+              .computeIfAbsent(assignment.getTimeEntryId(), ignored -> new ArrayList<>())
+              .add(assignment.getLabelId()));
+    }
     Map<LocalDate, List<CalendarLabel>> calendarByDate = new HashMap<>();
     Map<LocalDate, String> calendarNotesByDate = new HashMap<>();
     Map<UUID, CalendarLabelTotalAccumulator> calendarTotals = new HashMap<>();
@@ -90,7 +97,7 @@ public class ReportService {
             .collect(Collectors.toSet());
     Set<UUID> labelIds =
         window.stream()
-        .flatMap(entry -> labelIds(entry).stream())
+        .flatMap(entry -> labelsByEntry.getOrDefault(entry.getId(), List.of()).stream())
             .collect(Collectors.toSet());
     List<Path> pathViews = pathIds.isEmpty() ? List.of() : paths.findByUserIdAndIdIn(userId, pathIds);
     Map<UUID, String> pathNames =
@@ -120,9 +127,9 @@ public class ReportService {
         if (seconds == 0) continue;
         reportSeconds += seconds;
         merge(dayPaths, entry.getPathId(), seconds);
-        labelIds(entry).forEach(labelId -> merge(dayLabels, labelId, seconds));
+        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(dayLabels, labelId, seconds));
         merge(allPaths, entry.getPathId(), seconds);
-        labelIds(entry).forEach(labelId -> merge(allLabels, labelId, seconds));
+        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(allLabels, labelId, seconds));
       }
       days.add(
           new Day(
@@ -157,13 +164,6 @@ public class ReportService {
 
   private static void merge(Map<UUID, Long> totals, UUID id, long seconds) {
     totals.merge(id, seconds, Long::sum);
-  }
-
-  private List<UUID> labelIds(TimeEntry entry) {
-    if (entryLabels == null) return List.of();
-    return entryLabels.findAllByIdTimeEntryId(entry.getId()).stream()
-        .map(TimeEntryLabel::getLabelId)
-        .toList();
   }
 
   private static List<Category> categories(

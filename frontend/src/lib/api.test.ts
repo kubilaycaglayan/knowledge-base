@@ -77,6 +77,20 @@ describe("api", () => {
     expect(localStorage.getItem("know_token")).toBe("valid-token");
   });
 
+  it("aborts requests that remain pending for 15 seconds", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockImplementation((_url: string, { signal }: { signal: AbortSignal }) =>
+      new Promise((_, reject) => signal.addEventListener("abort", () => reject(new DOMException("The operation was aborted.", "AbortError")))));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = api("/slow");
+    const rejection = expect(request).rejects.toMatchObject({ name: "AbortError" });
+    await vi.advanceTimersByTimeAsync(15000);
+
+    await rejection;
+    vi.useRealTimers();
+  });
+
   it("does not erase a newer sign-in when an older request returns 401", async () => {
     localStorage.setItem("know_token", "old-token");
     const reload = vi.fn();
