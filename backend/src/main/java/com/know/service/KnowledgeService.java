@@ -22,6 +22,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Comparator;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -131,9 +134,7 @@ public class KnowledgeService {
   }
 
   public List<NoteView> listNotes(UUID userId) {
-    return notes.findAllActiveByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 100)).stream()
-        .map(this::noteView)
-        .toList();
+    return noteViews(userId, notes.findAllActiveByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 100)));
   }
 
   public NotePage pageNotes(UUID userId, int page, int size, String query) {
@@ -149,7 +150,7 @@ public class KnowledgeService {
             : notes.findAllActiveByUserIdOrderByUpdatedAtDescIdDesc(userId, request))
         : (archived ? notes.findArchivedByUserIdAndQuery(userId, query.trim(), request)
             : notes.findActiveByUserIdAndQuery(userId, query.trim(), request));
-    return new NotePage(result.getContent().stream().map(this::noteView).toList(), result.getNumber(),
+    return new NotePage(noteViews(userId, result.getContent()), result.getNumber(),
         result.getSize(), result.getTotalElements(), result.getTotalPages());
   }
 
@@ -203,6 +204,30 @@ public class KnowledgeService {
   }
 
   private NoteView noteView(Note n) {
+    List<String> names = noteTags == null ? List.of() : noteTags.findTags(n.getId()).stream()
+        .map(Label::getName).sorted().toList();
+    return noteView(n, names);
+  }
+
+  private List<NoteView> noteViews(UUID userId, List<Note> notesToView) {
+    if (notesToView.isEmpty()) return List.of();
+    if (noteTags == null) return notesToView.stream().map(note -> noteView(note, List.of())).toList();
+    List<NoteTag> assignments = noteTags.findAllByIdNoteIdIn(notesToView.stream().map(Note::getId).toList());
+    Set<UUID> tagIds = assignments.stream().map(value -> value.getId().getLabelId()).collect(java.util.stream.Collectors.toSet());
+    Map<UUID, String> names = new HashMap<>();
+    tags.findAllByUserIdAndIdIn(userId, tagIds)
+        .forEach(tag -> names.put(tag.getId(), tag.getName()));
+    Map<UUID, List<String>> namesByNote = new HashMap<>();
+    assignments.forEach(value -> namesByNote.computeIfAbsent(value.getId().getNoteId(), ignored -> new ArrayList<>())
+        .add(names.getOrDefault(value.getId().getLabelId(), "Removed tag")));
+    return notesToView.stream().map(note -> {
+      List<String> noteNames = namesByNote.getOrDefault(note.getId(), List.of());
+      noteNames = noteNames.stream().sorted().toList();
+      return noteView(note, noteNames);
+    }).toList();
+  }
+
+  private NoteView noteView(Note n, List<String> tagNames) {
     return new NoteView(
         n.getId(),
         n.getPathId(),
@@ -215,8 +240,7 @@ public class KnowledgeService {
         n.getDeletedAt(),
         n.getVersion(),
         n.getContentText(),
-        noteTags == null ? List.of() : noteTags.findTags(n.getId()).stream()
-            .map(Label::getName).sorted().toList());
+        tagNames);
   }
 
   private void replaceTags(UUID userId, Note note, List<String> rawNames) {

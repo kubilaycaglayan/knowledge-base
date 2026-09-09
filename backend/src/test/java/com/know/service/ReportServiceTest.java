@@ -40,8 +40,9 @@ class ReportServiceTest {
     when(entries.findOverlappingByUserId(eq(user), any(), any()))
         .thenReturn(List.of(later, crossing));
     when(paths.findByUserIdAndIdIn(user, Set.of(path.getId()))).thenReturn(List.of(path));
-    when(entryLabels.findAllByIdTimeEntryId(any()))
-        .thenAnswer(invocation -> List.of(new TimeEntryLabel(invocation.getArgument(0), label.getId())));
+    when(entryLabels.findAllByIdTimeEntryIdIn(any()))
+        .thenAnswer(invocation -> ((Collection<UUID>) invocation.getArgument(0)).stream()
+            .map(id -> new TimeEntryLabel(id, label.getId())).toList());
     when(labels.findAllByUserIdAndIdIn(user, Set.of(label.getId()))).thenReturn(List.of(label));
 
     ReportService.Report report =
@@ -59,6 +60,8 @@ class ReportServiceTest {
     assertEquals(630, report.paths().getFirst().seconds());
     assertEquals("Walking", report.sessionLabels().getFirst().label());
     assertEquals("#2878D5", report.sessionLabels().getFirst().color());
+    verify(entryLabels, times(1)).findAllByIdTimeEntryIdIn(any());
+    verify(entryLabels, never()).findAllByIdTimeEntryId(any());
   }
 
   @Test
