@@ -135,6 +135,26 @@ class ReportServiceTest {
   }
 
   @Test
+  void customReportUsesTheRequestedQuarterlyAggregation() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    PathRepository paths = mock(PathRepository.class);
+    UUID user = UUID.randomUUID();
+    Path path = new Path(user, "Writing", null, "#123456");
+    TimeEntry january = new TimeEntry(user, path.getId(), Instant.parse("2026-01-02T10:00:00Z"), "January", TimeSource.IMPORT);
+    january.stop(Instant.parse("2026-01-02T11:00:00Z"));
+    TimeEntry april = new TimeEntry(user, path.getId(), Instant.parse("2026-04-02T10:00:00Z"), "April", TimeSource.IMPORT);
+    april.stop(Instant.parse("2026-04-02T11:00:00Z"));
+    when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(january, april));
+    when(paths.findByUserIdAndIdIn(user, Set.of(path.getId()))).thenReturn(List.of(path));
+
+    ReportService.Report report = new ReportService(entries, paths, mock(LabelRepository.class))
+        .report(user, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30), ReportService.Aggregation.QUARTER);
+
+    assertEquals("QUARTER", report.sankey().granularity());
+    assertEquals(List.of("Q1 2026", "Q2 2026"), report.sankey().nodes().stream().map(ReportService.SankeyNode::bucketLabel).toList());
+  }
+
+  @Test
   void runningUnassignedTimeIsClippedAtNowAndReportedUnderFallbackCategories() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     UUID user = UUID.randomUUID();
