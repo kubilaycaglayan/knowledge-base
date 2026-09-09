@@ -1,5 +1,5 @@
 import bootstrap from "../../public/theme.js?raw";
-import { applyTheme, theme, toggleTheme } from "./theme";
+import { applyTheme, theme, themePreference, toggleTheme } from "./theme";
 
 function runBootstrap(context: { document: unknown; localStorage: unknown; window: unknown }) {
   new Function("document", "localStorage", "window", bootstrap)(context.document, context.localStorage, context.window);
@@ -15,6 +15,9 @@ describe("application theme", () => {
     expect(localStorage.getItem("knowledge-base-theme")).toBe("dark");
     toggleTheme();
     expect(localStorage.getItem("knowledge-base-theme")).toBe("light");
+    toggleTheme();
+    expect(themePreference.value).toBe("auto");
+    expect(localStorage.getItem("knowledge-base-theme")).toBe("auto");
   });
   it.each([
     [null, true, "dark"], [null, false, "light"],
