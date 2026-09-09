@@ -42,5 +42,14 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
 
   List<TimeEntry> findAllByUserIdAndPathIdOrderByStartedAtDesc(UUID userId, UUID pathId);
 
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "update TimeEntry t set t.pathId = :targetPathId"
+          + " where t.userId = :userId and t.pathId = :sourcePathId")
+  int moveAllByUserIdAndPathId(
+      @Param("userId") UUID userId,
+      @Param("sourcePathId") UUID sourcePathId,
+      @Param("targetPathId") UUID targetPathId);
+
   long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
 }

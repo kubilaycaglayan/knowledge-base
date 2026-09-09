@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.know.domain.*;
+import com.know.service.PathManagementService;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,7 @@ class PathAuthorizationApiTest {
   @MockBean PathRepository paths;
   @MockBean ActivityRepository activities;
   @MockBean TimeEntryRepository timeEntries;
+  @MockBean PathManagementService pathManagement;
   @MockBean PasswordEncoder encoder;
 
   @Test
@@ -134,6 +136,21 @@ class PathAuthorizationApiTest {
 
     mvc.perform(post("/api/v1/paths/" + pathId + "/restore").with(authentication(auth)))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void mergingDelegatesAnOwnedSourceAndTargetToPathManagement() throws Exception {
+    UUID owner = UUID.randomUUID(), source = UUID.randomUUID(), target = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+
+    mvc.perform(
+            post("/api/v1/paths/" + source + "/merge")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"targetPathId\":\"" + target + "\"}"))
+        .andExpect(status().isNoContent());
+
+    verify(pathManagement).merge(owner, source, target);
   }
 
   @Test

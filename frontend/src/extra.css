@@ -63,6 +63,13 @@
 .prompt-dialog h2, .edit-dialog h2 { margin: 0 0 16px; font-size: 18px; }
 .prompt-dialog input, .prompt-dialog textarea, .edit-dialog input, .edit-dialog textarea, .edit-dialog select { width: 100%; }
 .prompt-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.merge-path-options { display: grid; gap: 6px; max-height: min(320px, 40dvh); margin: 16px 0 0; overflow-y: auto; overscroll-behavior: contain; }
+.merge-path-option { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 8px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); cursor: pointer; }
+.merge-path-option:hover { border-color: var(--workspace-muted); background: var(--workspace-hover); }
+.merge-path-option:has(input:focus-visible) { outline: 2px solid var(--workspace-focus); outline-offset: 2px; }
+.merge-path-option input { width: auto; margin-top: 3px; }
+.merge-path-option span { min-width: 0; display: grid; gap: 2px; }
+.merge-path-option small { overflow-wrap: anywhere; color: var(--workspace-muted); }
 .edit-dialog { display: grid; gap: 14px; width: min(620px, 100%); }
 .edit-path-picker { margin: 0; }
 .edit-path-picker input { width: auto; }

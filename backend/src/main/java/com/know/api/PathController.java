@@ -1,6 +1,7 @@
 package com.know.api;
 
 import com.know.domain.*;
+import com.know.service.PathManagementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.Duration;
@@ -21,14 +22,17 @@ public class PathController {
   private final PathRepository paths;
   private final ActivityRepository activities;
   private final TimeEntryRepository timeEntries;
+  private final PathManagementService pathManagement;
 
   public PathController(
       PathRepository paths,
       ActivityRepository activities,
-      TimeEntryRepository timeEntries) {
+      TimeEntryRepository timeEntries,
+      PathManagementService pathManagement) {
     this.paths = paths;
     this.activities = activities;
     this.timeEntries = timeEntries;
+    this.pathManagement = pathManagement;
   }
 
   record PathRequest(
@@ -63,6 +67,8 @@ public class PathController {
       PathResponse path,
       long trackedSeconds,
       List<Activity> recentActivity) {}
+
+  record MergePathRequest(@NotNull UUID targetPathId) {}
 
   private UUID user(Authentication a) {
     return UUID.fromString(a.getName());
@@ -137,6 +143,13 @@ public class PathController {
     Path p = find(a, id);
     p.delete();
     paths.save(p);
+  }
+
+  @PostMapping("/{id}/merge")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void merge(
+      Authentication a, @PathVariable UUID id, @Valid @RequestBody MergePathRequest request) {
+    pathManagement.merge(user(a), id, request.targetPathId());
   }
 
   @PostMapping("/{id}/restore")
