@@ -4,6 +4,7 @@ import com.know.domain.*;
 import java.time.*;
 import java.math.BigDecimal;
 import java.time.temporal.TemporalAdjusters;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,9 @@ public class ReportService {
   public record CalendarLabelTotal(UUID id, String label, String color, BigDecimal days, long markers) {}
   public record Day(
       LocalDate date, long totalSeconds, List<Category> paths, List<Category> sessionLabels, String calendarNote, List<CalendarLabel> calendarLabels) {}
+  public record SankeyNode(String id, String label, String color) {}
+  public record SankeyLink(String source, String target, long value) {}
+  public record Sankey(String granularity, List<SankeyNode> nodes, List<SankeyLink> links) {}
 
   public record Report(
       String period,
@@ -50,7 +54,8 @@ public class ReportService {
       List<Day> days,
       List<Category> paths,
       List<Category> sessionLabels,
-      List<CalendarLabelTotal> calendarLabels) {}
+      List<CalendarLabelTotal> calendarLabels,
+      Sankey sankey) {}
 
   public Report report(UUID userId, Period period, LocalDate anchor) {
     LocalDate selected = anchor == null ? LocalDate.now(ZoneOffset.UTC) : anchor;
@@ -115,28 +120,37 @@ public class ReportService {
 
     Map<UUID, Long> allPaths = new HashMap<>();
     Map<UUID, Long> allLabels = new HashMap<>();
-    List<Day> days = new ArrayList<>();
+    Map<LocalDate, Long> totalsByDate = new HashMap<>();
+    Map<LocalDate, Map<UUID, Long>> pathsByDate = new HashMap<>();
+    Map<LocalDate, Map<UUID, Long>> labelsByDate = new HashMap<>();
     for (LocalDate date = fromDate; date.isBefore(toDateExclusive); date = date.plusDays(1)) {
-      Instant dayFrom = date.atStartOfDay(ZoneOffset.UTC).toInstant();
-      Instant dayTo = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-      long reportSeconds = 0;
-      Map<UUID, Long> dayPaths = new HashMap<>();
-      Map<UUID, Long> dayLabels = new HashMap<>();
-      for (TimeEntry entry : window) {
-        long seconds = secondsIn(entry, dayFrom, dayTo, now);
+      totalsByDate.put(date, 0L);
+      pathsByDate.put(date, new HashMap<>());
+      labelsByDate.put(date, new HashMap<>());
+    }
+    for (TimeEntry entry : window) {
+      LocalDate firstDate = LocalDate.ofInstant(entry.getStartedAt().isAfter(from) ? entry.getStartedAt() : from, ZoneOffset.UTC);
+      Instant actualEnd = entry.getEndedAt() == null ? now : entry.getEndedAt();
+      Instant end = actualEnd.isBefore(to) ? actualEnd : to;
+      LocalDate lastDate = LocalDate.ofInstant(end.minusNanos(1), ZoneOffset.UTC);
+      for (LocalDate date = firstDate; !date.isAfter(lastDate); date = date.plusDays(1)) {
+        long seconds = secondsIn(entry, date.atStartOfDay(ZoneOffset.UTC).toInstant(), date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant(), now);
         if (seconds == 0) continue;
-        reportSeconds += seconds;
-        merge(dayPaths, entry.getPathId(), seconds);
-        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(dayLabels, labelId, seconds));
+        totalsByDate.merge(date, seconds, Long::sum);
+        merge(pathsByDate.get(date), entry.getPathId(), seconds);
+        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(labelsByDate.get(date), labelId, seconds));
         merge(allPaths, entry.getPathId(), seconds);
         labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(allLabels, labelId, seconds));
       }
+    }
+    List<Day> days = new ArrayList<>();
+    for (LocalDate date = fromDate; date.isBefore(toDateExclusive); date = date.plusDays(1)) {
       days.add(
           new Day(
               date,
-              reportSeconds,
-              categories(dayPaths, pathNames, pathColors, "Unassigned path"),
-              categories(dayLabels, labelNames, labelColors, "Unassigned label"),
+              totalsByDate.get(date),
+              categories(pathsByDate.get(date), pathNames, pathColors, "Unassigned path"),
+              categories(labelsByDate.get(date), labelNames, labelColors, "Unassigned label"),
               calendarNotesByDate.get(date),
               calendarByDate.getOrDefault(date, List.of())));
     }
@@ -150,7 +164,62 @@ public class ReportService {
         categories(allPaths, pathNames, pathColors, "Unassigned path"),
         categories(allLabels, labelNames, labelColors, "Unassigned label"),
         calendarTotals.values().stream().map(CalendarLabelTotalAccumulator::view)
-            .sorted(Comparator.comparing(CalendarLabelTotal::label)).toList());
+            .sorted(Comparator.comparing(CalendarLabelTotal::label)).toList(),
+        sankey(period, fromDate, toDateExclusive, days));
+  }
+
+  private static Sankey sankey(String period, LocalDate from, LocalDate toExclusive, List<Day> days) {
+    SankeyGranularity granularity = SankeyGranularity.forRange(period, from, toExclusive);
+    List<SankeyNode> nodes = new ArrayList<>();
+    List<SankeyLink> links = new ArrayList<>();
+    Map<String, SankeyNode> pathNodes = new LinkedHashMap<>();
+    for (LocalDate bucketStart = from; bucketStart.isBefore(toExclusive); bucketStart = granularity.next(bucketStart)) {
+      LocalDate bucketEnd = granularity.end(bucketStart, toExclusive);
+      String bucketId = "bucket:" + bucketStart;
+      nodes.add(new SankeyNode(bucketId, granularity.label(bucketStart, bucketEnd), null));
+      Map<String, Long> bucketPaths = new HashMap<>();
+      for (Day day : days) {
+        if (day.date().isBefore(bucketStart) || !day.date().isBefore(bucketEnd)) continue;
+        day.paths().forEach(path -> {
+          String pathId = "path:" + (path.id() == null ? "unassigned" : path.id());
+          pathNodes.putIfAbsent(pathId, new SankeyNode(pathId, path.label(), path.color()));
+          bucketPaths.merge(pathId, path.seconds(), Long::sum);
+        });
+      }
+      bucketPaths.forEach((pathId, seconds) -> links.add(new SankeyLink(bucketId, pathId, seconds)));
+    }
+    nodes.addAll(pathNodes.values());
+    return new Sankey(granularity.name(), List.copyOf(nodes), List.copyOf(links));
+  }
+
+  private enum SankeyGranularity {
+    DAY {
+      LocalDate next(LocalDate date) { return date.plusDays(1); }
+      LocalDate end(LocalDate start, LocalDate toExclusive) { return start.plusDays(1); }
+      String label(LocalDate start, LocalDate end) { return start.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US)); }
+    },
+    WEEK {
+      LocalDate next(LocalDate date) { return date.plusWeeks(1); }
+      LocalDate end(LocalDate start, LocalDate toExclusive) { return start.plusWeeks(1).isAfter(toExclusive) ? toExclusive : start.plusWeeks(1); }
+      String label(LocalDate start, LocalDate end) { return start.equals(end.minusDays(1)) ? start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)) : start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)) + "–" + end.minusDays(1).format(DateTimeFormatter.ofPattern("MMM d", Locale.US)); }
+    },
+    MONTH {
+      LocalDate next(LocalDate date) { return date.plusMonths(1).withDayOfMonth(1); }
+      LocalDate end(LocalDate start, LocalDate toExclusive) { LocalDate end = start.plusMonths(1).withDayOfMonth(1); return end.isAfter(toExclusive) ? toExclusive : end; }
+      String label(LocalDate start, LocalDate end) { return start.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.US)); }
+    };
+
+    abstract LocalDate next(LocalDate date);
+    abstract LocalDate end(LocalDate start, LocalDate toExclusive);
+    abstract String label(LocalDate start, LocalDate end);
+
+    static SankeyGranularity forRange(String period, LocalDate from, LocalDate toExclusive) {
+      if ("WEEK".equals(period)) return DAY;
+      if ("MONTH".equals(period)) return WEEK;
+      if ("YEAR".equals(period)) return MONTH;
+      long days = Duration.between(from.atStartOfDay(), toExclusive.atStartOfDay()).toDays();
+      return days <= 7 ? DAY : days <= 62 ? WEEK : MONTH;
+    }
   }
 
   private static class CalendarLabelTotalAccumulator {
