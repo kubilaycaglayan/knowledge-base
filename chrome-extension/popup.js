@@ -1,5 +1,4 @@
 const $ = (id) => document.getElementById(id);
-const defaultApi = "http://localhost:8080/api/v1";
 const debug = (...args) => {
   if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
     console.warn("[Know extension]", ...args);
