@@ -14,7 +14,7 @@ export async function api<T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
-  if (res.status === 401 && token) {
+  if (res.status === 401 && token && localStorage.getItem("know_token") === token) {
     localStorage.removeItem("know_token");
     if (typeof window !== "undefined") window.location.reload();
   }

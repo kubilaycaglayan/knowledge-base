@@ -1,5 +1,14 @@
 # Deployment
 
+Sign-in survives API/container recreation: tokens are signed with the persistent
+`JWT_SECRET` in `.env.production`, not a per-process key. Keep that value and the
+public origin stable across deployments; rotating the key invalidates existing
+tokens, and browser storage is specific to an origin. Back up the environment
+securely alongside database backups. Tokens retain their existing 30-day expiry;
+deployment does not reset it. Ordinary API errors and temporary deployment
+outages preserve the browser session. Both smoke modes recreate the API and
+verify the original token still reads the signed-in account afterward.
+
 Production deployment defaults to API host port `18082`, PostgreSQL host port `15433`, and non-tunneled proxy port `19080`; each deployment reports the selected ports. It also reads `KNOW_API_BASE` from `.env.production` (defaulting to `https://${DOMAIN}/api/v1`), validates that it matches the production domain, builds the locked Chrome extension artifact, and creates a versioned Web Store ZIP under `chrome-extension/.output/releases/`.
 
 For production, use Cloudflare Tunnel so the Ubuntu server makes only outbound connections and the router needs no inbound port rules. Add `blaqc.space` to Cloudflare, use Cloudflare nameservers (full setup), and publish `knowledgebase.blaqc.space` through a named tunnel to `http://proxy:80`. Copy the tunnel token into the untracked `.env.production` as `CLOUDFLARE_TUNNEL_TOKEN`; never commit it. For a normal deployment, run `./scripts/deploy-production.sh`; the script fixes the Compose project name to `knowledge-base-production` instead of accepting an inherited value. This runs preflight, builds with cache, updates the services in place, and waits for API, proxy, and tunnel health. Use `./scripts/deploy-production-no-cache.sh` only when a deliberate no-cache rebuild is wanted. Development uses a separate, fixed `knowledge-base-dev` Compose project and database volume. Production uses `docker-compose.production.yml` and `docker-compose.cloudflare.yml`; the production database volume is external and cannot be removed by Compose. The preflight rejects an incorrect project name, placeholder secrets, local/example domains, missing production CORS origin, missing tunnel token, missing production database volume, unresolved DNS, invalid Compose interpolation, and invalid Caddy configuration. Cloudflare terminates public HTTPS; the local Caddy origin listens only on the private Docker network. The base Compose file binds convenience and test ports to loopback; the Cloudflare overlay removes all host port bindings from the production proxy. The production web build uses the same-origin `/api/v1` proxy by default. PostgreSQL, the API, Caddy, and the tunnel origin remain private.
