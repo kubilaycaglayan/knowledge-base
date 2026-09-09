@@ -51,10 +51,21 @@ describe("CalendarView", () => {
     await flushPromises();
     const input = wrapper.get('input[placeholder^="New label"]');
     await input.setValue("Keyboard label");
-    await input.trigger("keyup", { key: "Enter" });
+    await input.trigger("keydown", { key: "Enter" });
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST", body: expect.stringContaining('"name":"Keyboard label"') }));
+  });
+
+  it("creates a label when a mobile keyboard emits a line-break input", async () => {
+    const wrapper = mount(CalendarView);
+    await flushPromises();
+    const input = wrapper.get('input[placeholder^="New label"]');
+    await input.setValue("Mobile label");
+    await input.trigger("beforeinput", { inputType: "insertLineBreak" });
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST", body: expect.stringContaining('"name":"Mobile label"') }));
   });
 
   it("opens the ten-color palette and persists a selected label color", async () => {
