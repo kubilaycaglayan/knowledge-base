@@ -72,7 +72,7 @@ onMounted(load);
     <p class="lede">Manage how you sign in to Knowledge Base.</p>
     <div class="settings-tabs" role="tablist" aria-label="Settings sections">
       <button type="button" role="tab" :aria-selected="activeTab === 'account'" :class="{ selected: activeTab === 'account' }" @click="activeTab = 'account'">Account</button>
-      <button type="button" role="tab" :aria-selected="activeTab === 'data'" :class="{ selected: activeTab === 'data' }" @click="activeTab = 'data'">Data</button>
+      <button type="button" role="tab" :aria-selected="activeTab === 'data'" :class="{ selected: activeTab === 'data' }" @click="activeTab = 'data'">Import</button>
       <button type="button" role="tab" :aria-selected="activeTab === 'export'" :class="{ selected: activeTab === 'export' }" @click="activeTab = 'export'">Export</button>
     </div>
     <section v-if="activeTab === 'account'" class="card settings-card" aria-labelledby="sign-in-title">
