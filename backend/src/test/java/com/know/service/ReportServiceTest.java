@@ -60,6 +60,11 @@ class ReportServiceTest {
     assertEquals(630, report.paths().getFirst().seconds());
     assertEquals("Walking", report.sessionLabels().getFirst().label());
     assertEquals("#2878D5", report.sessionLabels().getFirst().color());
+    assertEquals("WEEK", report.sankey().granularity());
+    assertEquals(6, report.sankey().nodes().size());
+    assertEquals(2, report.sankey().links().size());
+    assertTrue(report.sankey().links().stream().anyMatch(link -> link.value() == 30));
+    assertTrue(report.sankey().links().stream().anyMatch(link -> link.value() == 600));
     verify(entryLabels, times(1)).findAllByIdTimeEntryIdIn(any());
     verify(entryLabels, never()).findAllByIdTimeEntryId(any());
   }
@@ -75,6 +80,9 @@ class ReportServiceTest {
     assertEquals(366, report.days().size());
     assertEquals(LocalDate.of(2024, 1, 1), report.from());
     assertEquals(LocalDate.of(2024, 12, 31), report.to());
+    assertEquals("MONTH", report.sankey().granularity());
+    assertEquals(12, report.sankey().nodes().size());
+    assertTrue(report.sankey().links().isEmpty());
   }
 
   @Test
@@ -90,6 +98,8 @@ class ReportServiceTest {
     assertEquals(7, report.days().size());
     assertEquals(LocalDate.of(2026, 8, 24), report.from());
     assertEquals(LocalDate.of(2026, 8, 30), report.to());
+    assertEquals("DAY", report.sankey().granularity());
+    assertEquals(7, report.sankey().nodes().size());
   }
 
   @Test
