@@ -77,6 +77,13 @@ public class Activity {
         userId, pathId, timeEntryId, ActivityType.TIME_TRACKED, title, detail, occurredAt);
   }
 
+  public static Activity imported(UUID id, UUID userId, UUID pathId, UUID timeEntryId,
+      ActivityType type, String title, String detail, Instant occurredAt) {
+    Activity activity = new Activity(userId, pathId, timeEntryId, type, title, detail, occurredAt);
+    activity.id = id;
+    return activity;
+  }
+
   public UUID getId() {
     return id;
   }

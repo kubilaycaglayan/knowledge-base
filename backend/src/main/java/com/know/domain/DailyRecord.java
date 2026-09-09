@@ -20,7 +20,15 @@ public class DailyRecord {
     this.recordDate = recordDate;
     this.note = note;
   }
+  public static DailyRecord imported(UUID id, UUID userId, LocalDate date, String note,
+      Instant createdAt, Instant updatedAt) {
+    DailyRecord record = new DailyRecord(userId, date, note);
+    record.id = id; record.createdAt = createdAt == null ? Instant.now() : createdAt;
+    record.updatedAt = updatedAt == null ? record.createdAt : updatedAt;
+    return record;
+  }
   public UUID getId() { return id; }
+  public UUID getUserId() { return userId; }
   public LocalDate getRecordDate() { return recordDate; }
   public String getNote() { return note; }
   public Instant getCreatedAt() { return createdAt; }

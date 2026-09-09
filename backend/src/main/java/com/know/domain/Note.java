@@ -55,6 +55,15 @@ public class Note {
     this.contentText = content;
   }
 
+  public static Note imported(UUID id, UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
+      String title, String content, String contentText, Instant createdAt, Instant updatedAt) {
+    Note note = new Note(userId, pathId, activityId, timeEntryId, title, content);
+    note.id = id; note.contentText = contentText == null ? content : contentText;
+    note.createdAt = createdAt == null ? Instant.now() : createdAt;
+    note.updatedAt = updatedAt == null ? note.createdAt : updatedAt;
+    return note;
+  }
+
   public Note(
       UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
       String title, String content) {

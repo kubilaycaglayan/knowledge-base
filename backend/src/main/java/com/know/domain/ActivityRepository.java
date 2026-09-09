@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface ActivityRepository extends JpaRepository<Activity, UUID> {
+  List<Activity> findAllByUserId(UUID userId);
   List<Activity> findTop100ByUserIdOrderByOccurredAtDesc(UUID userId);
 
   List<Activity> findTop50ByUserIdAndPathIdOrderByOccurredAtDesc(UUID userId, UUID pathId);
