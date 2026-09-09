@@ -4,6 +4,7 @@ const read = file => readFileSync(file, 'utf8')
 const application = read('backend/src/main/resources/application.yml')
 const compose = read('docker-compose.yml')
 const proxy = read('deployment/Caddyfile')
+const productionProxy = read('deployment/Caddyfile.cloudflare')
 const popup = read('chrome-extension/popup.js')
 const envExample = read('.env.example')
 const authView = read('frontend/src/views/AuthView.vue')
@@ -43,6 +44,7 @@ const checks = [
   [application.includes('google-client-id: ${GOOGLE_CLIENT_ID:}'), 'Google client ID has no secret fallback'],
   [authView.includes('/auth/google') && authView.includes('JSON.stringify({ idToken })'), 'web authentication sends Google credentials to the backend verifier'],
   [proxy.includes('https://accounts.google.com/gsi/client'), 'proxy CSP permits the Google Identity Services client'],
+  [productionProxy.includes('https://static.cloudflareinsights.com') && productionProxy.includes('https://cloudflareinsights.com'), 'production proxy CSP permits Cloudflare Web Analytics'],
   [preflight.includes('DOMAIN must be the real production hostname') && preflight.includes('CORS_ORIGINS must include https://${DOMAIN}'), 'deployment preflight rejects local domains and incomplete production CORS'],
   [/host:\s*["']0\.0\.0\.0["']/.test(viteConfig) && /port:\s*5177/.test(viteConfig) && /strictPort:\s*true/.test(viteConfig), 'Vite hot reload binds to the documented memorable remote-development port'],
   [/proxy:\s*\{\s*["']\/api["']:\s*\{\s*target:\s*["']http:\/\/localhost:8080["']/.test(viteConfig), 'Vite hot reload proxies API requests to the local backend'],

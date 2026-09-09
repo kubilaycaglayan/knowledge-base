@@ -1,5 +1,7 @@
 # Deployment
 
+The Cloudflare production proxy CSP permits the Cloudflare Web Analytics beacon and its telemetry endpoint.
+
 Sign-in survives API/container recreation: tokens are signed with the persistent
 `JWT_SECRET` in `.env.production`, not a per-process key. Keep that value and the
 public origin stable across deployments; rotating the key invalidates existing
