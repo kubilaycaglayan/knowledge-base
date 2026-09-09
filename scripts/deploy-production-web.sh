@@ -31,8 +31,6 @@ echo 'Running Knowledge Base production preflight...'
 echo "Production host ports: API=${API_PROD_PORT}, PostgreSQL=${DB_PROD_PORT}, proxy=${PROXY_PROD_PORT} (proxy binding removed by Cloudflare overlay)"
 ./deployment/preflight.sh
 
-./scripts/build-production-extension.sh
-
 echo 'Building production images...'
 docker compose "${compose_args[@]}" build --pull
 
