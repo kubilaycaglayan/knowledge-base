@@ -8,6 +8,8 @@
   Paths, session labels, Timeline, Calendar, Notes, Reports, Imports, and authentication.
 - [x] Add persistent light/dark selection, system default, early theme bootstrap,
   and theme-aware dropdowns, dialogs, date picker, and charts.
+- [x] Show report Sankey data as chronological path-aggregate columns for days,
+  weeks, or months, with flows between adjacent periods.
 - [x] Add repeatable browser review for all routes and both themes, keyboard
   interaction, responsive layouts, and sparse/error/long-content states.
 - [x] Allow Google-only accounts to add password sign-in from Settings while

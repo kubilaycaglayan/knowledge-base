@@ -42,7 +42,7 @@ public class ReportService {
   public record CalendarLabelTotal(UUID id, String label, String color, BigDecimal days, long markers) {}
   public record Day(
       LocalDate date, long totalSeconds, List<Category> paths, List<Category> sessionLabels, String calendarNote, List<CalendarLabel> calendarLabels) {}
-  public record SankeyNode(String id, String label, String color) {}
+  public record SankeyNode(String id, String label, String color, int depth, long value, String pathLabel, String bucketLabel) {}
   public record SankeyLink(String source, String target, String sourceLabel, String targetLabel, long value) {}
   public record Sankey(String granularity, List<SankeyNode> nodes, List<SankeyLink> links) {}
 
@@ -173,27 +173,79 @@ public class ReportService {
     SankeyGranularity granularity = SankeyGranularity.forRange(period, from, toExclusive);
     List<SankeyNode> nodes = new ArrayList<>();
     List<SankeyLink> links = new ArrayList<>();
-    Map<String, SankeyNode> pathNodes = new LinkedHashMap<>();
+    List<SankeyBucket> buckets = new ArrayList<>();
+    int depth = 0;
     for (LocalDate bucketStart = from; bucketStart.isBefore(toExclusive); bucketStart = granularity.next(bucketStart)) {
       LocalDate bucketEnd = granularity.end(bucketStart, toExclusive);
-      String bucketId = "bucket:" + bucketStart;
       String bucketLabel = granularity.label(bucketStart, bucketEnd);
-      nodes.add(new SankeyNode(bucketId, bucketLabel, null));
-      Map<String, Long> bucketPaths = new HashMap<>();
+      Map<String, Category> bucketPaths = new HashMap<>();
       for (Day day : days) {
         if (day.date().isBefore(bucketStart) || !day.date().isBefore(bucketEnd)) continue;
         day.paths().forEach(path -> {
-          String pathId = "path:" + (path.id() == null ? "unassigned" : path.id());
-          pathNodes.putIfAbsent(pathId, new SankeyNode(pathId, path.label(), path.color()));
-          bucketPaths.merge(pathId, path.seconds(), Long::sum);
+          String pathKey = path.id() == null ? "unassigned" : path.id().toString();
+          bucketPaths.merge(pathKey, path, (existing, added) ->
+              new Category(existing.id(), existing.label(), existing.seconds() + added.seconds(), existing.color()));
         });
       }
-      bucketPaths.forEach((pathId, seconds) -> links.add(
-          new SankeyLink(bucketId, pathId, bucketLabel, pathNodes.get(pathId).label(), seconds)));
+      LocalDate bucketDate = bucketStart;
+      List<SankeyPath> bucketNodes = bucketPaths.entrySet().stream()
+          .map(entry -> {
+            Category path = entry.getValue();
+            String nodeId = "bucket:" + bucketDate + ":path:" + entry.getKey();
+            String nodeLabel = bucketLabel + " · " + path.label();
+            return new SankeyPath(entry.getKey(), nodeId, nodeLabel, path.color(), path.seconds(), path.label(), bucketLabel);
+          })
+          .sorted(Comparator.comparingLong(SankeyPath::seconds).reversed().thenComparing(SankeyPath::label))
+          .toList();
+      int bucketDepth = depth++;
+      bucketNodes.forEach(path -> nodes.add(
+          new SankeyNode(path.nodeId(), path.label(), path.color(), bucketDepth, path.seconds(), path.pathLabel(), path.bucketLabel())));
+      buckets.add(new SankeyBucket(bucketNodes));
     }
-    nodes.addAll(pathNodes.values());
+    for (int index = 0; index + 1 < buckets.size(); index++) {
+      connectBuckets(buckets.get(index), buckets.get(index + 1), links);
+    }
     return new Sankey(granularity.name(), List.copyOf(nodes), List.copyOf(links));
   }
+
+  private static void connectBuckets(SankeyBucket source, SankeyBucket target, List<SankeyLink> links) {
+    Map<String, Long> sourceRemaining = source.paths().stream()
+        .collect(Collectors.toMap(SankeyPath::key, SankeyPath::seconds));
+    Map<String, Long> targetRemaining = target.paths().stream()
+        .collect(Collectors.toMap(SankeyPath::key, SankeyPath::seconds));
+    Map<String, SankeyPath> targetsByKey = target.paths().stream()
+        .collect(Collectors.toMap(SankeyPath::key, path -> path));
+
+    for (SankeyPath sourcePath : source.paths()) {
+      SankeyPath targetPath = targetsByKey.get(sourcePath.key());
+      if (targetPath != null) {
+        addFlow(sourcePath, targetPath, sourceRemaining, targetRemaining, links);
+      }
+    }
+    for (SankeyPath sourcePath : source.paths()) {
+      for (SankeyPath targetPath : target.paths()) {
+        addFlow(sourcePath, targetPath, sourceRemaining, targetRemaining, links);
+      }
+    }
+  }
+
+  private static void addFlow(
+      SankeyPath source,
+      SankeyPath target,
+      Map<String, Long> sourceRemaining,
+      Map<String, Long> targetRemaining,
+      List<SankeyLink> links) {
+    long value = Math.min(
+        sourceRemaining.getOrDefault(source.key(), 0L),
+        targetRemaining.getOrDefault(target.key(), 0L));
+    if (value <= 0) return;
+    links.add(new SankeyLink(source.nodeId(), target.nodeId(), source.label(), target.label(), value));
+    sourceRemaining.put(source.key(), sourceRemaining.get(source.key()) - value);
+    targetRemaining.put(target.key(), targetRemaining.get(target.key()) - value);
+  }
+
+  private record SankeyBucket(List<SankeyPath> paths) {}
+  private record SankeyPath(String key, String nodeId, String label, String color, long seconds, String pathLabel, String bucketLabel) {}
 
   private enum SankeyGranularity {
     DAY {
