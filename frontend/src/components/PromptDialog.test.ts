@@ -45,6 +45,15 @@ describe("PromptDialog", () => {
     expect(await prompt).toBe("");
   });
 
+  it("submits a single-line prompt when a mobile keyboard emits a line-break input", async () => {
+    const wrapper = mount(PromptDialog);
+    const prompt = wrapper.vm.open("Path name", "Mobile path");
+    await nextTick();
+
+    await wrapper.get('input[aria-label="Path name"]').trigger("beforeinput", { inputType: "insertLineBreak" });
+    expect(await prompt).toBe("Mobile path");
+  });
+
   it("resolves keyboard shortcuts and escape cancellation", async () => {
     const wrapper = mount(PromptDialog);
     const submitted = wrapper.vm.open("Quick value", "draft");
