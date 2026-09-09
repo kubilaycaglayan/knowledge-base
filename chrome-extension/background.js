@@ -8,6 +8,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.action.openPopup().catch(() => chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") }));
     return false;
   }
+  if (message?.type === "KNOW_GOOGLE_LOGIN") {
+    void googleLogin().then(sendResponse).catch((error) => {
+      debug("Google sign-in failed", error instanceof Error ? error.message : error);
+      sendResponse({ ok: false, error: "Google sign-in could not be completed. Try again." });
+    });
+    return true;
+  }
   if (message?.type !== "KNOW_CLOCKIFY_IMPORT") return false;
   if (sender.origin && sender.origin !== "https://app.clockify.me") {
     debug("Rejected message from unexpected sender origin", sender.origin);
@@ -23,6 +30,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   });
   return true;
 });
+
+async function googleLogin() {
+  const { apiBase } = await chrome.storage.local.get("apiBase");
+  const base = apiBase || defaultApi;
+  const configResponse = await fetch(base + "/auth/google/config");
+  if (!configResponse.ok) throw Error("Google configuration request failed (HTTP " + configResponse.status + ")");
+  const { clientId } = await configResponse.json();
+  if (!clientId) throw Error("Google sign-in is not configured");
+  const state = KnowGoogleAuth.nonce();
+  const requestNonce = KnowGoogleAuth.nonce();
+  const redirectUri = chrome.identity.getRedirectURL();
+  const redirectUrl = await chrome.identity.launchWebAuthFlow({
+    url: KnowGoogleAuth.authorizationUrl(clientId, redirectUri, state, requestNonce),
+    interactive: true,
+  });
+  const idToken = KnowGoogleAuth.parseRedirect(redirectUrl, state, requestNonce);
+  const response = await fetch(base + "/auth/google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!response.ok) throw Error("Google authentication failed (HTTP " + response.status + ")");
+  const result = await response.json();
+  await chrome.storage.local.set({ token: result.token });
+  return { ok: true, token: result.token };
+}
 
 async function importClockify(payload) {
   const { token, apiBase } = await chrome.storage.local.get(["token", "apiBase"]);
