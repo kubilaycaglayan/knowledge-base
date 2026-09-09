@@ -124,4 +124,27 @@ class ReportApiTest {
     mvc.perform(get("/api/v1/reports").param("startDate", "2026-08-30").param("endDate", "2026-08-24").with(authentication(auth)))
         .andExpect(status().isBadRequest());
   }
+
+  @Test
+  void customRangeAllowsTwoYearsButRejectsAnythingLonger() throws Exception {
+    UUID user = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+    var from = java.time.LocalDate.of(2024, 9, 9);
+    var twoYears = java.time.LocalDate.of(2026, 9, 9);
+    when(service.report(user, from, twoYears, ReportService.Aggregation.QUARTER))
+        .thenReturn(new ReportService.Report("CUSTOM", from, twoYears, 0, List.of(), List.of(), List.of(), List.of(), null));
+
+    mvc.perform(get("/api/v1/reports")
+            .param("startDate", from.toString())
+            .param("endDate", twoYears.toString())
+            .param("aggregation", "QUARTER")
+            .with(authentication(auth)))
+        .andExpect(status().isOk());
+    mvc.perform(get("/api/v1/reports")
+            .param("startDate", from.toString())
+            .param("endDate", twoYears.plusDays(1).toString())
+            .param("aggregation", "QUARTER")
+            .with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+  }
 }

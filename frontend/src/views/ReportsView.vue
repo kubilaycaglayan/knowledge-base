@@ -16,6 +16,8 @@ import {
   startOfQuarter,
   startOfWeek,
   startOfYear,
+  subDays,
+  subYears,
 } from "date-fns";
 import { api } from "../lib/api";
 import { paletteColors } from "../lib/color-palette";
@@ -275,6 +277,22 @@ async function load() {
 }
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
+  if (aggregation.value === "WEEK") {
+    selectedRange.value = {
+      startDate: format(subDays(today, 29), "yyyy-MM-dd"),
+      endDate: format(today, "yyyy-MM-dd"),
+    };
+  } else if (aggregation.value === "MONTH") {
+    selectedRange.value = {
+      startDate: format(subYears(today, 1), "yyyy-MM-dd"),
+      endDate: format(today, "yyyy-MM-dd"),
+    };
+  } else if (aggregation.value === "QUARTER") {
+    selectedRange.value = {
+      startDate: format(subYears(today, 2), "yyyy-MM-dd"),
+      endDate: format(today, "yyyy-MM-dd"),
+    };
+  }
   storeReportState();
   void load();
 }
