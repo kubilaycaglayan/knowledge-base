@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { api } from "../lib/api";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
+import { paletteColors } from "../lib/color-palette";
 
 type Path = { id: string; name: string; status: string };
 type Label = { id: string; name: string; color?: string | null };
@@ -192,7 +193,7 @@ async function choosePath() {
       body: JSON.stringify({
         name,
         description: null,
-        color: "#E8754E",
+        color: paletteColors[6],
       }),
     });
     await load();

@@ -61,7 +61,7 @@ describe("SummaryBarChart", () => {
     };
 
     expect(option.dataZoom).toHaveLength(2);
-    expect(option.series[0].data).toEqual([{ value: [0, 0, 0.18, "#697781"] }]);
+    expect(option.series[0].data).toEqual([{ value: [0, 0, 0.18, "#64748B"] }]);
     const tooltip = option.tooltip.formatter([{ axisValue: "Sat, Aug 1", dataIndex: 0 }]);
     expect(tooltip).toContain("&lt;script&gt;alert(&#39;&amp;&#39;)&lt;/script&gt;");
     expect(tooltip).not.toContain("<script>");
@@ -98,14 +98,14 @@ describe("SummaryBarChart", () => {
     };
 
     expect(option.series[0].data).toEqual([
-      { value: [0, 0, 0.18, "#697781"] },
-      { value: [0, 0.18, 0.36, "#697781"] },
+      { value: [0, 0, 0.18, "#64748B"] },
+      { value: [0, 0.18, 0.36, "#64748B"] },
     ]);
     const tooltip = option.tooltip.formatter([{ axisValue: "Sun, Sep 6", dataIndex: 0 }]);
     expect(tooltip).toContain("Marker");
     expect(tooltip).toContain("Marked");
     expect(tooltip).toContain("Zero");
-    expect(tooltip).toContain("background:#697781");
+    expect(tooltip).toContain("background:#64748B");
   });
 
   it("falls back to the first day for malformed tooltip parameters", () => {

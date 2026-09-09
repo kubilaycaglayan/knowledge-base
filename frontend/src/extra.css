@@ -22,10 +22,6 @@
 .path-picker { display: flex; gap: 4px 12px; flex-wrap: wrap; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); padding: 8px; }
 .path-picker legend { color: var(--workspace-muted); font-size: 12px; padding-inline: 4px; }
 .path-picker label { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; font-size: 12px; }
-.color-picker { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 0; padding: 0; }
-.color-picker legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.color-picker button { width: 24px; height: 24px; border: 2px solid var(--workspace-surface); border-radius: 50%; }
-.color-picker button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--workspace-text); }
 .timeline { border-left: 1px solid var(--workspace-border); margin: 24px 0 0 6px; padding-left: 24px; }
 .timeline-entry { position: relative; padding-bottom: 24px; }
 .timeline-dot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--workspace-muted); left: -29px; top: 4px; border: 2px solid var(--workspace-background); }
@@ -148,11 +144,15 @@
 .day-label span { min-width: 0; overflow-wrap: anywhere; }
 .day-label > label { min-height: 28px; display: flex; align-items: center; }
 .day-label select { width: 112px; }
-.label-color-button, .new-label-color, .label-color-choice { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; border: 3px solid var(--workspace-background); border-radius: 50%; box-shadow: 0 0 0 1px var(--workspace-control-border); }
-.label-color-palette { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 2px; }
-.label-color-choice.active { box-shadow: 0 0 0 2px var(--workspace-text); }
+.color-popover-anchor { position: relative; display: inline-flex; flex: 0 0 auto; }
+.label-color-button { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; border: 3px solid var(--workspace-background); border-radius: 50%; box-shadow: 0 0 0 1px var(--workspace-control-border); }
+.label-color-palette, .new-label-color-palette { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; display: flex; flex-wrap: wrap; gap: 8px; width: max-content; max-width: min(280px, calc(100vw - 32px)); padding: 10px; border: 1px solid var(--workspace-control-border); border-radius: var(--workspace-radius); background: var(--workspace-surface); box-shadow: 0 12px 28px rgb(0 0 0 / 18%); }
+.new-label-color-palette { right: 0; left: auto; }
 .new-calendar-label { min-width: 0; display: flex; align-items: center; gap: 8px; }
 .new-calendar-label input { flex: 1; width: 100%; }
+.path-color-control { align-self: center; }
+.color-swatch-button { width: 28px; height: 28px; padding: 0; border: 4px solid var(--workspace-background); border-radius: 50%; box-shadow: 0 0 0 1px var(--workspace-control-border); }
+.path-color-palette { top: calc(100% + 8px); left: 0; }
 .calendar-report-card { margin-top: 24px; padding: 16px 0; }
 .calendar-report-labels { display: grid; gap: 10px; padding-top: 14px; }
 .calendar-report-labels div { display: flex; align-items: center; gap: 9px; }
@@ -188,7 +188,8 @@
   .session-edit-grid, .edit-dialog-grid { grid-template-columns: minmax(0, 1fr); }
   .path-picker label { min-height: 44px; }
   .day-label > label { min-height: 44px; }
-  .color-picker button, .label-color-button, .new-label-color, .label-color-choice { width: 44px; height: 44px; border-width: 10px; }
+  .label-color-button { width: 44px; height: 44px; border-width: 10px; }
+  .color-swatch-button { width: 44px; height: 44px; border-width: 10px; }
   .day-label select { width: 100%; grid-column: 3; }
   .day-label { grid-template-columns: auto auto minmax(0, 1fr); }
   .report-date-range { max-width: 100%; }
