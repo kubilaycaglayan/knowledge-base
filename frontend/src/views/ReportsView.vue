@@ -277,7 +277,12 @@ async function load() {
 }
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
-  if (aggregation.value === "WEEK") {
+  if (aggregation.value === "DAY") {
+    selectedRange.value = {
+      startDate: format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+      endDate: format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    };
+  } else if (aggregation.value === "WEEK") {
     selectedRange.value = {
       startDate: format(subDays(today, 29), "yyyy-MM-dd"),
       endDate: format(today, "yyyy-MM-dd"),

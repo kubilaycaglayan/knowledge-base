@@ -135,12 +135,17 @@ describe("ReportsView", () => {
     );
   });
 
-  it("selects rolling ranges suited to weekly, monthly, and quarterly aggregation", async () => {
+  it("selects ranges suited to daily, weekly, monthly, and quarterly aggregation", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
     const expectedEnd = format(new Date(), "yyyy-MM-dd");
 
     for (const [label, aggregation, expectedStart] of [
+      [
+        "Daily",
+        "DAY",
+        format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+      ],
       ["Weekly", "WEEK", format(subDays(new Date(), 29), "yyyy-MM-dd")],
       ["Monthly", "MONTH", format(subYears(new Date(), 1), "yyyy-MM-dd")],
       ["Quarterly", "QUARTER", format(subYears(new Date(), 2), "yyyy-MM-dd")],
@@ -150,8 +155,12 @@ describe("ReportsView", () => {
         .find((button) => button.text() === label)!
         .trigger("click");
       await flushPromises();
+      const expectedRangeEnd =
+        aggregation === "DAY"
+          ? format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd")
+          : expectedEnd;
       expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
-        `/reports?startDate=${expectedStart}&endDate=${expectedEnd}&aggregation=${aggregation}`,
+        `/reports?startDate=${expectedStart}&endDate=${expectedRangeEnd}&aggregation=${aggregation}`,
       );
     }
   });
