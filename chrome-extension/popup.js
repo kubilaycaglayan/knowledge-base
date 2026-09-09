@@ -69,15 +69,20 @@ async function request(path, options = {}) {
     tokenLength: typeof token === "string" ? token.length : 0,
   });
   let r;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     r = await fetch(url, {
     ...options,
+    signal: controller.signal,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}`, ...(options.headers || {}) },
     });
   } catch (error) {
+    clearTimeout(timeout);
     logError("API request", error, { method, url, kind: "network-or-cors" });
     throw Error("Could not reach " + url + ". Check the SSH tunnel, API host permission, and CORS_ORIGINS. (" + errorDetails(error) + ")");
   }
+  clearTimeout(timeout);
   debug("Popup API response", {
     requestUrl: url,
     responseUrl: r.url,

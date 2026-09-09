@@ -44,16 +44,16 @@ describe("ReportsView", () => {
   it("loads quick periods and a custom date interval", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("/reports?period=WEEK"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("/reports?period=WEEK"));
     await wrapper.findAll("button").find((button) => button.text() === "Monthly")!.trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("period=MONTH"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=MONTH"));
     await wrapper.find(".test-range").trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/reports?startDate=2026-08-10&endDate=2026-08-20");
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe("/reports?startDate=2026-08-10&endDate=2026-08-20");
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/reports?startDate=2026-08-17&endDate=2026-08-23");
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe("/reports?startDate=2026-08-17&endDate=2026-08-23");
   });
 
   it("toggles calendar inputs across the report", async () => {
@@ -69,10 +69,10 @@ describe("ReportsView", () => {
     await flushPromises();
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("period=WEEK"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=WEEK"));
     await wrapper.get('[aria-label="Next date range"]').trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("period=WEEK"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=WEEK"));
   });
 
   it("loads yearly periods and shifts a custom range forward", async () => {
@@ -80,7 +80,7 @@ describe("ReportsView", () => {
     await flushPromises();
     await wrapper.findAll("button").find((button) => button.text() === "Yearly")!.trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith(expect.stringContaining("period=YEAR"));
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(expect.stringContaining("period=YEAR"));
 
     await wrapper.find(".test-range").trigger("click");
     await flushPromises();
@@ -88,7 +88,7 @@ describe("ReportsView", () => {
     await wrapper.get('[aria-label="Next date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).not.toBe(before);
-    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/reports?startDate=2026-08-31&endDate=2026-09-06");
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe("/reports?startDate=2026-08-31&endDate=2026-09-06");
   });
 
   it("shows an error when the report request fails", async () => {
@@ -96,7 +96,8 @@ describe("ReportsView", () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
 
-    expect(wrapper.get('[role="alert"]').text()).toBe("Unable to load the report. Please try again.");
+    expect(wrapper.get('[role="alert"]').text()).toContain("Unable to load the report. Please try again.");
+    expect(wrapper.get('[role="alert"] button').text()).toBe("Try again");
   });
 
   it("shows loading feedback while a report request is pending", async () => {

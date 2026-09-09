@@ -9,6 +9,15 @@ const debug = (...args: unknown[]) => {
 const errorDetails = (error: unknown) => error instanceof Error ? error.message : String(error || "Unknown error");
 const logError = (operation: string, error: unknown, details: Record<string, unknown> = {}) =>
   debug("Operation failed", { operation, ...details, error: errorDetails(error), stack: error instanceof Error ? error.stack : undefined });
+const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 export default defineBackground({
   type: "module",
@@ -51,7 +60,7 @@ export default defineBackground({
         }
         let response: Response;
         try {
-          response = await fetch(url, {
+          response = await fetchWithTimeout(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify(message.payload),
@@ -98,7 +107,7 @@ export default defineBackground({
 async function googleLogin() {
   const { apiBase } = await chrome.storage.local.get("apiBase");
   const base = KnowApiConfig.apiBase(apiBase);
-  const { clientId } = await fetch(base + "/auth/google/config").then(async (response) => {
+  const { clientId } = await fetchWithTimeout(base + "/auth/google/config").then(async (response) => {
     if (!response.ok) throw Error("Google configuration request failed (HTTP " + response.status + ")");
     return response.json();
   });
@@ -111,7 +120,7 @@ async function googleLogin() {
     interactive: true,
   });
   const idToken = KnowGoogleAuth.parseRedirect(redirectUrl, state, requestNonce);
-  const response = await fetch(base + "/auth/google", {
+  const response = await fetchWithTimeout(base + "/auth/google", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idToken }),
