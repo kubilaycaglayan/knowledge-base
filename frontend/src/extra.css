@@ -4,6 +4,11 @@
 .auth form { margin: 24px 0; }
 .auth label, .edit-dialog label, .session-edit label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; }
 .auth input { width: 100%; }
+/* GIS uses a light document color scheme even for its dark button theme.
+   Match the iframe's scheme so browsers keep its canvas transparent, including
+   the bottom padding and rounded corners. Let Google size its own control. */
+.google-login iframe { color-scheme: light; }
+.google-login ~ .text-button { margin-top: 20px; }
 .timeline-entry h2 { margin: 5px 0; font-size: 16px; }
 .path-content, .path-edit { width: 100%; min-width: 0; }
 .tag { color: var(--workspace-muted); margin-right: 8px; font-size: 12px; }
