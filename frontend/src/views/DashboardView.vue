@@ -389,13 +389,14 @@ onUnmounted(() => {
               :items="timerLabels"
               item-title="name"
               item-value="id"
-              label="Choose labels"
+              placeholder="Choose labels…"
               aria-label="Timer labels"
               name="timer-labels"
               autocomplete="off"
               class="workspace-select"
               menu-icon=""
               :menu-props="{ contentClass: 'workspace-menu' }"
+              :list-props="{ 'aria-label': 'Timer labels' }"
               multiple
               chips
               closable-chips
