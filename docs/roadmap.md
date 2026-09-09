@@ -12,6 +12,8 @@
   interaction, responsive layouts, and sparse/error/long-content states.
 - [x] Allow Google-only accounts to add password sign-in from Settings while
   retaining Google OAuth sign-in.
+- [x] Allow a path to be merged into another owned path from its edit controls,
+  with searchable target selection, confirmation, and server-side session transfer.
 
 Continue applying these foundations to future web features. Native iOS and
 extension design work remains outside this web redesign; their API contracts,
