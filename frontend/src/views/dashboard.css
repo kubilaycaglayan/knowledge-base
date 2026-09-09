@@ -87,23 +87,23 @@ button { font: inherit; }
 .inline-field input { flex: 1; }
 .inline-field button { flex: 0 0 auto; }
 .workspace-select { min-width: 0; }
-.workspace-select :deep(.v-field) { --v-field-border-opacity: 1; border-radius: 4px; background: var(--workspace-surface); font-size: 14px; color: var(--workspace-control-border); }
+.workspace-select :deep(.v-field) { --v-field-border-opacity: 1; min-height: 34px; border-radius: 4px; background: var(--workspace-surface); font-size: 13px; color: var(--workspace-control-border); outline: none !important; outline-offset: 0; }
 .workspace-select :deep(.v-field__input), .workspace-select :deep(.v-label), .workspace-select :deep(.v-icon) { color: var(--workspace-text); }
 .workspace-select :deep(.v-label) { opacity: 1; }
 .select-chevron { align-self: center; color: var(--workspace-muted); pointer-events: none; }
 /* The select menu is teleported; the opt-in class keeps its style local to this control. */
 :global(.workspace-menu .v-list) { border: 1px solid var(--workspace-control-border); border-radius: 4px; padding: 4px; background: var(--workspace-surface); color: var(--workspace-text); }
-.workspace-option { min-height: 40px; border-radius: 3px; color: var(--workspace-text); }
+.workspace-option { min-height: 34px; border-radius: 3px; color: var(--workspace-text); }
 .workspace-option :deep(.v-list-item-title) { font-size: 14px; overflow-wrap: anywhere; white-space: normal; }
-.workspace-option:focus-visible { outline: 2px solid var(--workspace-focus); outline-offset: -2px; }
+.workspace-option:focus-visible { outline: none; }
 .option-check { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 12px; border: 1px solid var(--workspace-muted); border-radius: 3px; font-size: 12px; line-height: 1; }
 .option-check.checked { background: var(--workspace-accent); border-color: var(--workspace-accent); color: var(--workspace-on-accent); }
-.workspace-select :deep(.v-field__input) { min-height: 40px; gap: 4px; padding-block: 5px; }
-.workspace-select :deep(.v-field__input > input) { padding: 0; min-height: 0; border: 0; }
-.workspace-select :deep(.v-field:has(:focus-visible)) { outline: 2px solid var(--workspace-focus); outline-offset: 3px; }
-.workspace-select :deep(.v-chip) { max-width: 100%; border-radius: 3px; background: var(--workspace-selected); color: var(--workspace-text); }
+.workspace-select :deep(.v-field__input) { min-height: 32px; gap: 3px; padding-block: 3px; }
+.workspace-select :deep(.v-field__input > input), .workspace-select :deep(.v-field__input > input:focus), .workspace-select :deep(.v-field__input > input:focus-visible) { padding: 0; min-height: 0; border: 0; outline: none !important; box-shadow: none; }
+.workspace-select :deep(.v-field:focus-within), .workspace-select :deep(.v-field:has(:focus-visible)) { outline: none !important; outline-offset: 0; }
+.workspace-select :deep(.v-chip) { min-height: 26px; max-width: 100%; border-radius: 3px; background: var(--workspace-selected); color: var(--workspace-text); }
 .workspace-select :deep(.v-chip__content) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-.workspace-select :deep(.v-chip__close) { min-width: 24px; min-height: 24px; margin: 0; font-size: 18px; opacity: 1; }
+.workspace-select :deep(.v-chip__close) { min-width: 22px; min-height: 22px; margin: 0; font-size: 16px; opacity: 1; }
 .metrics-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 32px; border-block: 1px solid var(--workspace-border); background: var(--workspace-surface); }
 .metric { padding: 18px 20px; min-width: 0; }
 .metric + .metric { border-left: 1px solid var(--workspace-border); }
