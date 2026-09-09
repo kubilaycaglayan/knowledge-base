@@ -61,7 +61,7 @@ describe("SummaryBarChart", () => {
     };
 
     expect(option.dataZoom).toHaveLength(2);
-    expect(option.series[0].data).toEqual([{ value: [0, 0, 0.18, "#64748B"] }]);
+    expect(option.series[0].data).toEqual([{ value: [0, 0.82, 1, "#64748B"] }]);
     const tooltip = option.tooltip.formatter([{ axisValue: "Sat, Aug 1", dataIndex: 0 }]);
     expect(tooltip).toContain("&lt;script&gt;alert(&#39;&amp;&#39;)&lt;/script&gt;");
     expect(tooltip).not.toContain("<script>");
@@ -98,14 +98,41 @@ describe("SummaryBarChart", () => {
     };
 
     expect(option.series[0].data).toEqual([
-      { value: [0, 0, 0.18, "#64748B"] },
-      { value: [0, 0.18, 0.36, "#64748B"] },
+      { value: [0, 0.82, 1, "#64748B"] },
+      { value: [0, 0.64, 0.82, "#64748B"] },
     ]);
     const tooltip = option.tooltip.formatter([{ axisValue: "Sun, Sep 6", dataIndex: 0 }]);
     expect(tooltip).toContain("Marker");
     expect(tooltip).toContain("Marked");
     expect(tooltip).toContain("Zero");
     expect(tooltip).toContain("background:#64748B");
+  });
+
+  it("keeps each calendar label visible with its own proportional segment", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        days: [{
+          date: "2026-09-07",
+          totalSeconds: 3600,
+          paths: [{ label: "Work", seconds: 3600 }],
+          calendarLabels: [
+            { id: "half", label: "Half day", color: "#2878D5", portion: 0.5 },
+            { id: "quarter", label: "Quarter day", color: "#E05D44", portion: 0.25 },
+          ],
+        }],
+        categories: [{ label: "Work", seconds: 3600 }],
+        showCalendar: true,
+      },
+    });
+    const option = wrapper.getComponent({ name: "VChart" }).props("option") as {
+      series: Array<{ z?: number; data?: Array<{ value: unknown[] }> }>;
+    };
+
+    expect(option.series[0].z).toBe(3);
+    expect(option.series[0].data).toEqual([
+      { value: [0, 0.5, 1, "#2878D5"] },
+      { value: [0, 0.25, 0.5, "#E05D44"] },
+    ]);
   });
 
   it("falls back to the first day for malformed tooltip parameters", () => {

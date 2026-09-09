@@ -29,17 +29,18 @@ function calendarRows(day: Day): string {
   const labels = (day.calendarLabels || []).map((label) => `<div class="tooltip-row"><span><i style="background:${label.color || fallbackLabelColor}"></i>${escapeHtml(label.label)}</span><b>${label.portion ? `${label.portion} day` : "Marked"}</b></div>`).join("");
   return note || labels ? `<hr><strong>Calendar</strong>${note}${labels}` : "";
 }
+const calendarMaximum = computed(() => Math.max(1, ...props.days.map((day) => (day.calendarLabels || []).reduce((total, label) => total + (label.portion || 0.18), day.calendarNote && !day.calendarLabels?.length ? 0.18 : 0))));
 const calendarBars = computed(() => props.days.flatMap((day, dayIndex) => {
-  let start = 0;
+  let end = calendarMaximum.value;
   const inputs = day.calendarLabels?.length ? day.calendarLabels : day.calendarNote ? [{ id: `note-${day.date}`, label: "Calendar note", color: chartTheme.value.muted, portion: 0.18 }] : [];
   return inputs.map((input) => {
-    const end = start + (input.portion || 0.18);
+    const portion = input.portion || 0.18;
+    const start = Number((end - portion).toFixed(2));
     const bar = { value: [dayIndex, start, end, input.color || fallbackLabelColor] };
-    start = end;
+    end = start;
     return bar;
   });
 }));
-const calendarMaximum = computed(() => Math.max(1, ...props.days.map((day) => (day.calendarLabels || []).reduce((total, label) => total + (label.portion || 0.18), day.calendarNote && !day.calendarLabels?.length ? 0.18 : 0))));
 function calendarPattern(x: number, y: number, width: number, height: number, color: string) {
   const shape = { x, y, width, height };
   return { type: "group", clipPath: { type: "rect", shape }, children: [{ type: "rect", shape, style: { fill: color, opacity: 0.42 } }, ...Array.from({ length: Math.ceil(height / 8) }, (_, index) => ({ type: "rect", shape: { x, y: y + index * 8, width, height: 3 }, style: { fill: "#ffffff", opacity: 0.38 } }))] };
@@ -71,7 +72,7 @@ const option = computed<EChartsOption>(() => ({
   xAxis: { type: "category", data: props.days.map((day) => format(parseISO(day.date), "EEE, MMM d")), axisTick: { show: false }, axisLabel: { color: chartTheme.value.muted, interval: 0, hideOverlap: true } },
   yAxis: [{ type: "value", name: "Hours", nameTextStyle: { color: chartTheme.value.muted }, axisLabel: { color: chartTheme.value.muted, formatter: (value: number) => `${(value / 3600).toFixed(0)}h` }, splitLine: { lineStyle: { color: chartTheme.value.border, type: "dashed" } } }, { type: "value", min: 0, max: calendarMaximum.value, show: false }],
   series: [
-    ...(props.showCalendar && calendarBars.value.length ? [{ name: "Calendar input", type: "custom" as const, yAxisIndex: 1, silent: true, z: -1, data: calendarBars.value, renderItem: (_params: unknown, api: CalendarRenderApi) => {
+    ...(props.showCalendar && calendarBars.value.length ? [{ name: "Calendar input", type: "custom" as const, yAxisIndex: 1, silent: true, z: 3, data: calendarBars.value, renderItem: (_params: unknown, api: CalendarRenderApi) => {
       const x = api.coord([Number(api.value(0)), 0])[0];
       const start = api.coord([0, Number(api.value(1))])[1];
       const end = api.coord([0, Number(api.value(2))])[1];
