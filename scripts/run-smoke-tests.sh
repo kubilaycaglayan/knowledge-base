@@ -374,6 +374,18 @@ report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?period=MONTH&
 [[ "$report" == *'"paths"'* ]]
 [[ "$report" == *'"calendarLabels"'* ]]
 [[ "$report" == *'Smoke leave'* ]]
+# Merging moves all session history to the target and soft-deletes the source.
+api "${header[@]}" "${content_json[@]}" \
+  --post-data="{\"targetPathId\":\"$other_path_id\"}" \
+  "http://localhost:8080/api/v1/paths/$path_id/merge" >/dev/null
+if api "${header[@]}" "http://localhost:8080/api/v1/paths/$path_id" >/dev/null; then
+  echo "merged source path is still readable" >&2
+  exit 1
+fi
+api "${header[@]}" "http://localhost:8080/api/v1/time-entries" | grep -q "\"pathId\":\"$other_path_id\""
+merged_summary="$(api "${header[@]}" "http://localhost:8080/api/v1/paths/$other_path_id/summary")"
+merged_seconds="$(printf '%s' "$merged_summary" | sed -n 's/.*"trackedSeconds":\([0-9]*\).*/\1/p')"
+(( merged_seconds >= 3300 ))
 if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   backup_dir="$(mktemp -d)"
   backup_file="$backup_dir/knowledge-base.sql"
