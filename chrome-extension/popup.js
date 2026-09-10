@@ -324,7 +324,7 @@ async function load() {
   setLoading(true);
   try {
     const { activeTimer, timerSelection: savedSelection } = await chrome.storage.local.get(["activeTimer", timerSelectionKey]);
-    [paths, labels] = await Promise.all([request("/paths"), request("/calendar/labels")]);
+    [paths, labels] = await Promise.all([request("/paths"), request("/labels?scope=TIME_ENTRY")]);
     const timer = await request("/timers/current");
     fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
     $("path").onchange = async () => {
