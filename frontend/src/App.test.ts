@@ -29,7 +29,6 @@ describe("App", () => {
       "Overview",
       "Sessions",
       "Paths",
-      "Timeline",
       "Calendar",
       "Notes",
       "Reports",
