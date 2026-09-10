@@ -48,7 +48,8 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
   const responses = new Map([
     ["/auth/login", { token: "signed-in-token" }],
     ["/paths", [{ id: "path-1", name: "Learning", status: "ACTIVE" }]],
-    ["/calendar/labels", [{ id: "label-1", name: "Algorithms", color: "#2878D5" }]],
+    ["/labels?scope=TIME_ENTRY", [{ id: "label-1", name: "Algorithms", color: "#2878D5" }]],
+    ["/calendar/labels", [{ id: "calendar-only", name: "Calendar only", color: "#999999" }]],
     ["/timers/current", currentTimer],
     ["/time-entries?page=0&size=20", []],
     ["/timers", { id: "timer-1", pathId: "path-1", startedAt: "2026-09-01T10:00:00Z", running: true }],
@@ -121,6 +122,17 @@ test("shows the timer workspace while slow session history is still loading", as
   assert.equal(popup.elements.workspace.hidden, false);
   assert.equal(popup.elements.auth.hidden, true);
   assert.equal(popup.elements.sessions.textContent, "");
+});
+
+test("loads only labels scoped for time-entry sessions", async () => {
+  const popup = createPopup({ token: "token" });
+  await flush();
+  await flush();
+  await flush();
+
+  assert.ok(popup.state.calls.some(({ path }) => path === "/labels?scope=TIME_ENTRY"));
+  assert.equal(popup.state.calls.some(({ path }) => path === "/calendar/labels"), false);
+  assert.deepEqual(popup.elements.label.options.map((option) => option.value), ["", "label-1"]);
 });
 
 test("starts a server timer with selected path, labels, description, and extension source", async () => {
