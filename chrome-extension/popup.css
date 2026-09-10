@@ -4,3 +4,4 @@
 @media (max-width:420px){body{width:360px}main{padding:16px}input,select,textarea{font-size:16px}button,.session-actions button{min-height:44px}.session-edit-grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .loading-state{min-height:220px;margin:0;display:grid;place-items:center;color:var(--workspace-muted);font-size:13px}
+.loading-state[hidden]{display:none}
