@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(require.resolve("./popup.js"), "utf8");
+const styles = fs.readFileSync(require.resolve("./popup.css"), "utf8");
 
 class Element {
   constructor(id) {
@@ -83,6 +84,10 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
 }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+test("hides the loading state after bootstrap", () => {
+  assert.match(styles, /\.loading-state\[hidden\]\{display:none\}/);
+});
 
 test("signs in, stores the token, and loads the timer workspace", async () => {
   const popup = createPopup();
