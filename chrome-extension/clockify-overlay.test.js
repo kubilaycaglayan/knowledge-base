@@ -16,13 +16,15 @@ function createOverlay({ response = { ok: true, summary: { imported: 1, skipped:
     ".login": { hidden: true, onclick: null },
   };
   let messageHandler;
+  const routeHandlers = {};
   const shadow = {
     innerHTML: "",
     querySelector: (selector) => elements[selector],
   };
   const window = {
     top: null,
-    addEventListener: (type, listener) => { if (type === "message") messageHandler = listener; },
+    location: { href: "https://app.clockify.me/reports/detailed" },
+    addEventListener: (type, listener) => { if (type === "message") messageHandler = listener; else routeHandlers[type] = listener; },
     postMessage: () => {},
   };
   window.top = window;
@@ -45,11 +47,18 @@ function createOverlay({ response = { ok: true, summary: { imported: 1, skipped:
         : { ok: false, error: "Clockify report is invalid or too large." },
     },
     crypto: webcrypto,
+    URL,
     TextEncoder,
     setTimeout,
   };
   vm.runInNewContext(source.replace('import "./clockify-validation.js";', ""), context);
-  return { elements, sent, emit: (data, origin = "https://app.clockify.me", sourceWindow = window) => messageHandler({ source: sourceWindow, origin, data }) };
+  return {
+    elements,
+    sent,
+    window,
+    navigate: (href) => { window.location.href = href; routeHandlers.popstate?.(); },
+    emit: (data, origin = "https://app.clockify.me", sourceWindow = window) => messageHandler({ source: sourceWindow, origin, data }),
+  };
 }
 
 const report = { source: "know-clockify", type: "detailed-report", payload: { timeentries: [{ id: "entry-1" }] } };
@@ -79,6 +88,18 @@ test("shows validation and empty-report messages without sending imports", async
   await overlay.emit({ source: "know-clockify", type: "detailed-report", payload: { timeentries: [] } });
   assert.equal(overlay.sent.length, 0);
   assert.equal(overlay.elements[".message"].textContent, "No completed entries in this report.");
+});
+
+test("shows the overlay after SPA navigation to the detailed report", async () => {
+  const overlay = createOverlay();
+  overlay.navigate("https://app.clockify.me/dashboard");
+  await overlay.emit(report);
+  assert.equal(overlay.sent.length, 0);
+
+  overlay.navigate("https://app.clockify.me/reports/detailed");
+  await overlay.emit(report);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(overlay.sent.length, 1);
 });
 
 test("ignores messages from the wrong window or origin", async () => {
