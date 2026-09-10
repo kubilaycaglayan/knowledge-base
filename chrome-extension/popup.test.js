@@ -24,10 +24,10 @@ class Element {
   querySelector() { return null; }
 }
 
-function createPopup({ token = null, currentTimer = null, statusByPath = {} } = {}) {
+function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false } = {}) {
   const elements = Object.fromEntries([
     "status", "path", "label", "description", "toggle", "sessions", "error",
-    "auth", "workspace", "email", "password", "login", "google-login", "logout", "options",
+    "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [] };
   const storage = {
@@ -66,6 +66,7 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {} } = 
     fetch: async (url, options = {}) => {
       const path = new URL(url).pathname.replace("/api/v1", "") + (new URL(url).search || "");
       state.calls.push({ path, options });
+      if (deferHistory && path === "/time-entries?page=0&size=20") return new Promise(() => {});
       const value = responses.get(path);
       const status = statusByPath[path] || 200;
       return { ok: status >= 200 && status < 300, status, url, redirected: false, headers: { get: () => "application/json" }, text: async () => value == null ? "" : JSON.stringify(value) };
@@ -97,6 +98,19 @@ test("signs in, stores the token, and loads the timer workspace", async () => {
   assert.equal(popup.elements.workspace.hidden, false);
   assert.equal(popup.elements.auth.hidden, true);
   assert.equal(popup.elements.toggle.textContent, "Start timer");
+});
+
+test("shows the timer workspace while slow session history is still loading", async () => {
+  const popup = createPopup({ token: "token", deferHistory: true });
+  await flush();
+  await flush();
+  await flush();
+  await flush();
+
+  assert.equal(popup.elements.loading.hidden, true);
+  assert.equal(popup.elements.workspace.hidden, false);
+  assert.equal(popup.elements.auth.hidden, true);
+  assert.equal(popup.elements.sessions.textContent, "");
 });
 
 test("starts a server timer with selected path, labels, description, and extension source", async () => {

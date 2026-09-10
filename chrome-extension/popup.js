@@ -24,6 +24,27 @@ let paths = [];
 let labels = [];
 const timerSelectionKey = "timerSelection";
 
+function setLoading(loading) {
+  const loadingElement = $("loading");
+  if (loadingElement) loadingElement.hidden = !loading;
+  if (loading) {
+    $("auth").hidden = true;
+    $("workspace").hidden = true;
+  }
+}
+
+function showAuth() {
+  setLoading(false);
+  $("auth").hidden = false;
+  $("workspace").hidden = true;
+}
+
+function showWorkspace() {
+  setLoading(false);
+  $("auth").hidden = true;
+  $("workspace").hidden = false;
+}
+
 function showTimer(timer) {
   currentTimer = timer;
   $("status").textContent = KnowCore.timerStatus(timer);
@@ -69,12 +90,12 @@ async function request(path, options = {}) {
     tokenLength: typeof token === "string" ? token.length : 0,
   });
   let r;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = setTimeout(() => controller?.abort(), 15000);
   try {
     r = await fetch(url, {
     ...options,
-    signal: controller.signal,
+      ...(controller ? { signal: controller.signal } : {}),
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}`, ...(options.headers || {}) },
     });
   } catch (error) {
@@ -237,7 +258,17 @@ function renderSessions(history) {
     container.append(article);
   });
 }
-async function loadSessions() { renderSessions(await request("/time-entries?page=0&size=20")); }
+async function loadSessions() {
+  try {
+    renderSessions(await request("/time-entries?page=0&size=20"));
+  } catch (error) {
+    logError("Load session history", error);
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "Recent sessions are unavailable. Try again later.";
+    $("sessions").replaceChildren(empty);
+  }
+}
 
 function renderSessionEditor(article, session) {
   const selectedIds = sessionLabelIds(session);
@@ -256,6 +287,7 @@ function renderSessionEditor(article, session) {
 }
 
 async function load() {
+  setLoading(true);
   try {
     const { activeTimer, timerSelection: savedSelection } = await chrome.storage.local.get(["activeTimer", timerSelectionKey]);
     [paths, labels] = await Promise.all([request("/paths"), request("/calendar/labels")]);
@@ -271,8 +303,10 @@ async function load() {
       if (activeTimer) await resetTimerForm();
       else await restoreTimerSelection(savedSelection || timerSelection(activeTimer));
     }
-    $("auth").hidden = true; $("workspace").hidden = false; await loadSessions(); startLiveTimerSync();
-  } catch (error) { logError("Load workspace", error); $("error").textContent = userError("Sign in failed or the API is unavailable.", error); }
+    showWorkspace(); startLiveTimerSync(); void loadSessions();
+  } catch (error) {
+    logError("Load workspace", error); showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error);
+  }
 }
 async function login() {
   const button = $("login");
@@ -341,8 +375,9 @@ chrome.storage.local.get(["token", "googleAuthError"]).then(({ token, googleAuth
   debug("Popup initialized", { tokenPresent: Boolean(token) });
   if (googleAuthError) $("error").textContent = googleAuthError;
   if (token) load();
+  else showAuth();
 }).catch((error) => {
   logError("Read extension session", error);
-  $("error").textContent = userError("Could not read extension session.", error);
+  showAuth(); $("error").textContent = userError("Could not read extension session.", error);
 });
 $("options").onclick = () => chrome.runtime.openOptionsPage();
