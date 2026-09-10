@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
+import ErrorNotice from "../components/ErrorNotice.vue";
 
 const props = defineProps<{ knowledgeBaseOnly?: boolean; embedded?: boolean }>();
 const HISTORY_PAGE_SIZE = 5;
@@ -28,11 +29,18 @@ const clockifyJson = ref(""),
   importingKnowledgeBase = ref(false),
   importSummary = ref(""),
   error = ref(""),
+  errorDetails = ref(""),
   batches = ref<ImportBatch[]>([]),
   historyPage = ref(1);
 const visibleBatches = computed(() => batches.value.slice((historyPage.value - 1) * HISTORY_PAGE_SIZE, historyPage.value * HISTORY_PAGE_SIZE));
 const totalHistoryPages = computed(() => Math.max(1, Math.ceil(batches.value.length / HISTORY_PAGE_SIZE)));
 const formatDate = (iso: string) => formatDateTime(iso);
+function showError(message: string, cause?: unknown) {
+  error.value = message;
+  errorDetails.value = cause && typeof cause === "object" && "details" in cause
+    ? String(cause.details || "")
+    : "";
+}
 
 async function load() {
   try {
@@ -40,7 +48,7 @@ async function load() {
     batches.value = await api<ImportBatch[]>(`/imports/${source}/batches`);
     historyPage.value = Math.min(historyPage.value, totalHistoryPages.value);
   } catch {
-    error.value = "Unable to load import batches.";
+    showError("Unable to load import batches.");
   }
 }
 async function selectTab(tab: "clockify" | "knowledge-base") {
@@ -61,12 +69,14 @@ async function importClockify() {
     clockifyJson.value = "";
     await load();
   } catch (cause) {
-    error.value =
+    showError(
       cause instanceof SyntaxError
         ? "Paste valid Clockify JSON."
         : cause instanceof Error
           ? cause.message
-          : "Could not import Clockify data.";
+          : "Could not import Clockify data.",
+      cause,
+    );
   }
 }
 async function importKnowledgeBase() {
@@ -79,7 +89,9 @@ async function importKnowledgeBase() {
     importSummary.value = `Imported ${summary.imported} records, skipped ${summary.skipped} duplicates, and created ${summary.createdPaths} paths.`;
     knowledgeBaseCsv.value = "";
     await load();
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : "Could not import Knowledge Base data."; }
+  } catch (cause) {
+    showError("Could not import Knowledge Base data.", cause);
+  }
   finally { importingKnowledgeBase.value = false; }
 }
 async function undo(batch: ImportBatch) {
@@ -95,7 +107,7 @@ async function undo(batch: ImportBatch) {
     importSummary.value = `Removed ${result.deletedEntries} imported sessions, ${result.deletedActivities} timeline records, and ${result.deletedPaths ?? 0} paths.`;
     await load();
   } catch {
-    error.value = "Could not undo this import batch.";
+    showError("Could not undo this import batch.");
   }
 }
 onMounted(load);
@@ -164,7 +176,7 @@ onMounted(load);
       </div>
       <p v-if="!batches.length" class="muted">No {{ props.knowledgeBaseOnly ? "Knowledge Base" : activeTab === "clockify" ? "Clockify" : "Knowledge Base" }} imports yet.</p>
     </section>
-    <p v-if="error" class="notice" role="alert">{{ error }}</p>
+    <ErrorNotice v-if="error" :message="error" :details="errorDetails" />
   </section>
 </template>
 
