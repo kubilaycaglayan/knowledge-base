@@ -27,7 +27,6 @@ function authenticated() {
         <RouterLink to="/">Overview</RouterLink
           ><RouterLink to="/sessions">Sessions</RouterLink
         ><RouterLink to="/paths">Paths</RouterLink
-        ><RouterLink to="/timeline">Timeline</RouterLink
         ><RouterLink to="/calendar">Calendar</RouterLink
         ><RouterLink to="/notes" :class="{ 'section-active': route?.path.startsWith('/notes/') }">Notes</RouterLink
         ><RouterLink to="/reports">Reports</RouterLink
