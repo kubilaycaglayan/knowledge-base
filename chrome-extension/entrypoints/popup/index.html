@@ -10,7 +10,8 @@
   <body>
     <main>
       <header class="extension-header"><span class="brand" aria-label="Knowledge Base" translate="no">knowledge<span>.</span>base</span><span class="eyebrow">TIMER</span></header>
-      <section id="auth">
+      <p id="loading" class="loading-state" role="status" aria-live="polite">Loading…</p>
+      <section id="auth" hidden>
         <h1>Sign In</h1><p class="lede">Connect the timer to your private workspace.</p>
         <label for="email">Email</label>
         <input id="email" name="email" type="email" inputmode="email" autocomplete="email" spellcheck="false" placeholder="you@example.com…" />
@@ -32,7 +33,7 @@
         <button id="logout" class="secondary">Sign out</button>
         <section class="history" aria-labelledby="history-title">
           <p class="eyebrow">HISTORY</p><h2 id="history-title">Recent Sessions</h2>
-          <div id="sessions"></div>
+          <div id="sessions"><p class="empty">Loading sessions…</p></div>
         </section>
       </section>
       <button id="options" class="secondary">API Settings…</button>
