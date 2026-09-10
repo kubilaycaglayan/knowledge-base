@@ -57,16 +57,36 @@ describe("api", () => {
     expect(reload).toHaveBeenCalled();
   });
 
-  it("uses the response status text when an error body is empty", async () => {
+  it("uses a human-readable message when a server error body is empty", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 500, ok: false, statusText: "Server failure", text: async () => "" }));
 
-    await expect(api("/broken")).rejects.toThrow("Server failure");
+    await expect(api("/broken")).rejects.toThrow("Something went wrong. Please try again.");
   });
 
-  it.each([404, 500, 502, 503, 504])("preserves sign-in on HTTP %s", async (status) => {
+  it("turns server failures into a human-readable error and preserves technical details", async () => {
+    localStorage.setItem("know_token", "valid-token");
+    const body = JSON.stringify({ status: 500, error: "Internal Server Error", trace: "stack trace" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 500, ok: false, text: async () => body }));
+
+    await expect(api("/paths")).rejects.toMatchObject({
+      message: "Something went wrong. Please try again.",
+      status: 500,
+      details: body,
+    });
+    expect(localStorage.getItem("know_token")).toBe("valid-token");
+  });
+
+  it("preserves client error text and sign-in on HTTP 404", async () => {
+    localStorage.setItem("know_token", "valid-token");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 404, ok: false, text: async () => "Unavailable" }));
+    await expect(api("/paths")).rejects.toThrow("Unavailable");
+    expect(localStorage.getItem("know_token")).toBe("valid-token");
+  });
+
+  it.each([502, 503, 504])("preserves sign-in on HTTP %s", async (status) => {
     localStorage.setItem("know_token", "valid-token");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status, ok: false, text: async () => "Unavailable" }));
-    await expect(api("/paths")).rejects.toThrow("Unavailable");
+    await expect(api("/paths")).rejects.toThrow("Something went wrong. Please try again.");
     expect(localStorage.getItem("know_token")).toBe("valid-token");
   });
 

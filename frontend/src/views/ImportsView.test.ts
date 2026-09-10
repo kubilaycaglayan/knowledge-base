@@ -140,4 +140,22 @@ describe("ImportsView", () => {
     await flushPromises();
     expect(undoFailure.get('[role="alert"]').text()).toBe("Could not undo this import batch.");
   });
+
+  it("keeps server diagnostics hidden behind an expandable disclosure", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/imports/knowledge-base/batches") return [];
+      throw Object.assign(new Error("Something went wrong. Please try again."), {
+        details: '{"trace":"database details"}',
+      });
+    });
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    await flushPromises();
+    await wrapper.get('textarea[aria-label="Knowledge Base CSV"]').setValue("entity,id,payload\n");
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain("Could not import Knowledge Base data.");
+    expect(wrapper.get("details").attributes("open")).toBeUndefined();
+    expect(wrapper.get("details").text()).toContain("database details");
+  });
 });
