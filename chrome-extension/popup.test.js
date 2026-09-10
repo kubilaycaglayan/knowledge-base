@@ -13,21 +13,26 @@ class Element {
     this.textContent = "";
     this.hidden = false;
     this.disabled = false;
-    this.multiple = id === "label";
+    this.multiple = false;
     this.options = [];
+    this.children = [];
     this.onclick = null;
     this.onchange = null;
   }
   get selectedOptions() { return this.options.filter((option) => option.selected); }
-  append(option) { this.options.push(option); }
-  replaceChildren() { this.options = []; }
+  append(...items) {
+    if (this.id === "label" || this.id === "path") this.options.push(...items);
+    else this.children.push(...items);
+  }
+  setAttribute(name, value) { this[name] = value; }
+  replaceChildren() { this.options = []; this.children = []; }
   insertAdjacentHTML() {}
   querySelector() { return null; }
 }
 
 function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false } = {}) {
   const elements = Object.fromEntries([
-    "status", "path", "label", "description", "toggle", "sessions", "error",
+    "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
     "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [] };
@@ -124,7 +129,8 @@ test("starts a server timer with selected path, labels, description, and extensi
   await flush();
   await flush();
   popup.elements.path.value = "path-1";
-  popup.elements.label.options[0].selected = true;
+  popup.elements.label.value = "label-1";
+  await popup.elements.label.onchange();
   popup.elements.description.value = "Read algorithms";
   await popup.elements.toggle.onclick();
 
@@ -133,6 +139,22 @@ test("starts a server timer with selected path, labels, description, and extensi
   assert.deepEqual(JSON.parse(start.options.body), { pathId: "path-1", labelIds: ["label-1"], description: "Read algorithms", source: "CHROME_EXTENSION" });
   assert.equal(popup.state.activeTimer.id, "timer-1");
   assert.equal(popup.elements.toggle.textContent, "Stop timer");
+});
+
+test("removes a label from the timer when its chip close button is clicked", async () => {
+  const popup = createPopup({
+    token: "token",
+    currentTimer: { id: "timer-1", pathId: "path-1", labelIds: ["label-1"], startedAt: "2026-09-01T10:00:00Z", running: true },
+  });
+  await flush();
+  await flush();
+  await flush();
+  await popup.elements["selected-labels"].children[0].children[1].onclick();
+
+  const update = popup.state.calls.find(({ path, options }) => path === "/timers/timer-1" && options.method === "PUT");
+  assert.ok(update);
+  assert.deepEqual(JSON.parse(update.options.body).labelIds, []);
+  assert.equal(popup.elements["selected-labels"].children.length, 0);
 });
 
 test("stops the server timer and clears its local active state", async () => {

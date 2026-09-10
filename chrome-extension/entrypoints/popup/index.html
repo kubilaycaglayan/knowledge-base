@@ -25,8 +25,9 @@
         <label for="path">Path</label>
         <select id="path" name="path" autocomplete="off"><option value="">Select a path</option></select>
         <label for="label">Labels</label>
-        <select id="label" name="labels" multiple size="4" autocomplete="off" aria-describedby="label-help"></select>
-        <small id="label-help">Hold Ctrl/⌘ to select multiple labels.</small>
+        <div id="selected-labels" class="label-chips" aria-live="polite"></div>
+        <select id="label" name="labelPicker" autocomplete="off" aria-describedby="label-help"></select>
+        <small id="label-help">Choose a label to add it. Select × on a chip to remove it.</small>
         <label for="description">Description</label>
         <textarea id="description" name="description" rows="2" autocomplete="off" placeholder="For example, review project notes…"></textarea>
         <button id="toggle">Start timer</button>
