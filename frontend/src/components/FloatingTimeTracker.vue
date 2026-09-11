@@ -118,6 +118,17 @@ async function cancel() {
   catch { error.value = "Could not cancel the timer."; }
   finally { busy.value = false; }
 }
+async function editStartedAt() {
+  if (!timer.value) return;
+  const value = await promptDialog.value?.open("Started at", timerStartedAt.value);
+  if (value === null || value === undefined) return;
+  if (Number.isNaN(Date.parse(value))) {
+    error.value = "Enter a valid date and time.";
+    return;
+  }
+  timerStartedAt.value = value;
+  await updateTimer();
+}
 async function sync() {
   if (syncInFlight) return; syncInFlight = true;
   try { applyTimer(await api<Timer | null>("/timers/current")); } catch { /* Best-effort polling. */ }
@@ -137,7 +148,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
       <div class="floating-tracker-bar focus">
         <span class="tracker-status" :class="{ running: timer }" :aria-label="timer ? 'Session running' : 'No session running'" role="status"></span>
         <button class="floating-tracker-action primary" type="button" :disabled="busy" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span>{{ timer ? "Stop session" : "Start a session" }}</span></button>
-        <strong class="floating-tracker-clock" role="timer" aria-live="off">{{ clock(elapsed) }}</strong>
+        <button class="floating-tracker-clock" type="button" :disabled="!timer" aria-label="Edit timer start time; elapsed session time" @click="editStartedAt"><strong role="timer" aria-live="off">{{ clock(elapsed) }}</strong></button>
         <span class="floating-tracker-summary">{{ timerSummary }}</span>
         <span v-if="pathName || selectedLabelNames.length" class="floating-tracker-context"><span v-if="pathName">{{ pathName }}</span><span v-if="pathName && selectedLabelNames.length" aria-hidden="true">·</span><span v-if="selectedLabelNames.length">{{ selectedLabelNames.join(', ') }}</span></span>
         <button v-if="!props.inline" class="floating-tracker-toggle" type="button" :aria-expanded="open" aria-controls="floating-tracker-panel" @click="open = !open"><span class="sr-only">{{ open ? "Collapse tracker" : "Expand tracker" }}</span><span aria-hidden="true" class="chevron" :class="{ up: !open }"></span></button>
@@ -156,7 +167,6 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
           <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create label</button></div>
         </div>
         <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" aria-label="Timer description" rows="2" autocomplete="off" placeholder="What are you working on…" @change="updateTimer"></textarea></div>
-        <div v-if="timer && props.inline" class="tracker-field tracker-field-wide"><label for="tt-start">Started at</label><input id="tt-start" v-model="timerStartedAt" name="tt-start" type="datetime-local" aria-label="Timer start" @change="updateTimer" /></div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">{{ error }}</p>
       </div>
     </section>
@@ -172,7 +182,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .tracker-status { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--workspace-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-danger) 14%, transparent); }.tracker-status.running { background: var(--workspace-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-success) 14%, transparent); }
 .floating-tracker-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; border: 0; border-radius: 6px; padding: 6px 12px; background: var(--workspace-accent); color: var(--workspace-on-accent); font-size: 14px; font-weight: 600; }
 .floating-tracker-action:hover { background: var(--workspace-accent-hover); }.floating-tracker-action:disabled { opacity: .4; cursor: not-allowed; }
-.floating-tracker-clock { color: var(--workspace-text); font: 400 18px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.floating-tracker-clock { border: 0; padding: 0; background: transparent; color: var(--workspace-text); font: 400 18px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }.floating-tracker-clock:disabled { cursor: default; }
 .floating-tracker-summary { min-width: 0; overflow: hidden; flex: 1; color: var(--workspace-muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-context { display: inline-flex; min-width: 0; max-width: 220px; gap: 6px; overflow: hidden; border-radius: 4px; padding: 3px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--workspace-muted); }.floating-tracker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }
