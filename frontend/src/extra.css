@@ -171,6 +171,13 @@
 .breakdown-control:last-of-type .v-input { min-width: 120px; }
 .breakdown-toolbar .v-select { max-width: 120px; }
 .breakdown-control:first-child .v-select { max-width: 420px; }
+.breakdown-control:nth-child(2) .v-select { max-width: 260px; }
+.breakdown-control:first-child .v-select .v-field__input { padding-inline-start: 10px !important; }
+.breakdown-control:first-child .v-select .v-field__input > input { padding-inline-start: 10px !important; }
+.breakdown-control:first-child .v-select .v-chip__close { min-width: 24px; min-height: 24px; margin-inline-start: 3px; opacity: 1; color: var(--workspace-text); }
+.breakdown-control:first-child .v-select .v-chip__close:hover { color: var(--workspace-strong); }
+.breakdown-control .v-field__input > input:focus,
+.breakdown-control .v-field__input > input:focus-visible { outline: none !important; box-shadow: none; }
 .breakdown-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); }
 .breakdown-grid > div { min-width: 0; }
 .duration-table-wrap { min-height: 330px; }
