@@ -25,7 +25,7 @@ function userError(fallback, error, details = {}) {
 }
 
 function checkPopupDomContract() {
-  const required = ["loading", "auth", "workspace", "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error", "settings-menu-toggle", "settings-menu", "options", "logout"];
+  const required = ["loading", "auth", "workspace", "status", "timer-details", "timer-start-editor", "timer-started-at", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error", "settings-menu-toggle", "settings-menu", "options", "logout"];
   const missing = required.filter((id) => !$(id));
   if (missing.length) throw Error(`Popup DOM contract missing: ${missing.join(",")}`);
   debug("Popup DOM contract verified", { requiredCount: required.length });
@@ -79,6 +79,8 @@ function showWorkspace() {
 function showTimer(timer) {
   currentTimer = timer;
   $("status").textContent = KnowCore.timerStatus(timer);
+  $("timer-details").disabled = !timer;
+  if (!timer) closeTimerStartEditor();
   if (timerTicker) clearInterval(timerTicker);
   timerTicker = timer ? setInterval(() => { $("status").textContent = KnowCore.timerStatus(currentTimer); }, 1000) : null;
 }
@@ -308,6 +310,17 @@ const localDateTime = (iso) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 const isoDateTime = (value) => new Date(value).toISOString();
+function closeTimerStartEditor() {
+  $("timer-start-editor").hidden = true;
+  $("timer-details").setAttribute("aria-expanded", "false");
+}
+function openTimerStartEditor() {
+  if (!currentTimer?.startedAt) return;
+  $("timer-started-at").value = localDateTime(currentTimer.startedAt);
+  $("timer-start-editor").hidden = false;
+  $("timer-details").setAttribute("aria-expanded", "true");
+  $("timer-started-at").focus();
+}
 const sessionLabelIds = (session) => session.labelIds || [];
 const labelFor = (id) => labels.find((label) => label.id === id);
 const pathFor = (id) => paths.find((path) => path.id === id);
@@ -461,6 +474,37 @@ async function googleLogin() {
 $("login").onclick = login;
 $("google-login").onclick = googleLogin;
 $("logout").onclick = async () => { await chrome.storage.local.clear(); location.reload(); };
+$("timer-details").onclick = () => {
+  if ($("timer-start-editor").hidden) openTimerStartEditor(); else closeTimerStartEditor();
+};
+$("cancel-timer-start").onclick = closeTimerStartEditor;
+$("timer-start-editor").onsubmit = async (event) => {
+  event.preventDefault();
+  const button = $("save-timer-start");
+  const startedAt = $("timer-started-at").value;
+  if (!currentTimer || !startedAt) return;
+  if (new Date(startedAt) > new Date()) {
+    $("error").textContent = "A timer start cannot be in the future.";
+    $("timer-started-at").focus();
+    return;
+  }
+  setButtonBusy(button, true);
+  try {
+    const updated = await request(`/timers/${currentTimer.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ pathId: $("path").value || null, labelIds: selectedLabelIds($("label")), startedAt: isoDateTime(startedAt), description: $("description").value || null }),
+    });
+    showTimer(updated);
+    await chrome.storage.local.set({ activeTimer: updated });
+    closeTimerStartEditor();
+    $("error").textContent = "";
+  } catch (error) {
+    logError("Update timer start", error, { timerId: currentTimer.id });
+    $("error").textContent = userError("Could not update the timer start.", error);
+  } finally {
+    setButtonBusy(button, false);
+  }
+};
 $("toggle").onclick = async () => {
   const button = $("toggle");
   setButtonBusy(button, true);
