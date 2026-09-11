@@ -178,9 +178,9 @@ onMounted(load);
           </button>
         </div>
         <div v-if="editingId !== session.id" class="session-summary">
+          <span>{{ sessionLabelSummary(session) || "Unassigned labels" }}</span>
           <span>{{ duration(session) }}</span>
           <span>{{ session.source }} · {{ sessionDate(session.startedAt) }}</span>
-          <span>{{ sessionLabelSummary(session) || "Unassigned labels" }}</span>
         </div>
         <form v-else-if="draft" class="session-edit" @submit.prevent="save(session)">
           <label class="session-edit-path">Path<select v-model="draft.pathId" name="session-path" autocomplete="off" aria-label="Edit session path">
