@@ -364,6 +364,9 @@ function selectPaths(value: unknown) {
   storeReportState();
   void load({ left: window.scrollX, top: window.scrollY });
 }
+function removePath(pathId: string) {
+  selectPaths(selectedPathIds.value.filter((selectedId) => selectedId !== pathId));
+}
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
   if (aggregation.value === "DAY") {
@@ -537,7 +540,17 @@ onBeforeUnmount(() =>
               hide-details
               placeholder="Choose paths…"
               @update:model-value="selectPaths"
-            />
+            >
+              <template #chip="{ item }">
+                <v-chip
+                  :text="item.title"
+                  closable
+                  close-icon="mdi-close"
+                  :aria-label="`Selected path: ${item.title}`"
+                  @click:close="removePath(String(item.value))"
+                />
+              </template>
+            </v-select>
           </div>
           <div class="breakdown-control">
             <span>Group by</span>
