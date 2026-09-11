@@ -2,13 +2,23 @@ import "../clockify-validation.js";
 import "../api-config.js";
 import "../google-auth.js";
 
-const debug = (...args: unknown[]) => {
-  if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
-    console.warn("[Know extension]", ...args);
-};
+const diagnosticSessionId = `worker-${crypto.randomUUID()}`;
+const debug = (event: string, details: Record<string, unknown> = {}) =>
+  console.info("[Knowledge Base extension]", event, {
+    sessionId: diagnosticSessionId,
+    version: chrome.runtime.getManifest().version,
+    ...details,
+  });
 const errorDetails = (error: unknown) => error instanceof Error ? error.message : String(error || "Unknown error");
 const logError = (operation: string, error: unknown, details: Record<string, unknown> = {}) =>
-  debug("Operation failed", { operation, ...details, error: errorDetails(error), stack: error instanceof Error ? error.stack : undefined });
+  console.error("[Knowledge Base extension] Operation failed", {
+    sessionId: diagnosticSessionId,
+    version: chrome.runtime.getManifest().version,
+    operation, ...details,
+    errorName: error instanceof Error ? error.name : "UnknownError",
+    error: errorDetails(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
 const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -22,6 +32,7 @@ const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}
 export default defineBackground({
   type: "module",
   main() {
+    debug("Background worker started", { environment: typeof __KNOW_EXTENSION_ENV__ === "string" ? __KNOW_EXTENSION_ENV__ : "unknown" });
     chrome.runtime.onInstalled.addListener(() => chrome.storage.local.get("activeTimer"));
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message?.type === "KNOW_OPEN_POPUP") {
@@ -49,9 +60,11 @@ export default defineBackground({
       chrome.storage.local.get(["token", "apiBase"]).then(async ({ token, apiBase }) => {
         const base = KnowApiConfig.apiBase(apiBase);
         const url = base + "/imports/clockify";
+        const requestId = `extension-${crypto.randomUUID()}`;
+        const startedAt = performance.now();
         debug("Preparing Clockify import request", {
-          method: "POST", url, storedApiBase: apiBase || null,
-          tokenPresent: Boolean(token), tokenLength: typeof token === "string" ? token.length : 0,
+          requestId, method: "POST", url, storedApiBase: apiBase || null,
+          tokenPresent: Boolean(token),
           entryCount: Array.isArray(message.payload?.timeentries) ? message.payload.timeentries.length : "invalid",
         });
         if (!token) {
@@ -62,18 +75,19 @@ export default defineBackground({
         try {
           response = await fetchWithTimeout(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", "X-Request-ID": requestId, Authorization: `Bearer ${token}` },
             body: JSON.stringify(message.payload),
           });
         } catch (error) {
-          logError("Clockify import request", error, { url, kind: "network-or-cors" });
+          logError("Clockify import request", error, { requestId, url, durationMs: Math.round(performance.now() - startedAt), kind: "network-or-cors" });
           return sendResponse({ ok: false, error: "Could not reach the Know API: " + errorDetails(error) });
         }
         const responseBody = await response.text();
         debug("Clockify import response", {
-          url, status: response.status, redirected: response.redirected,
-          responseUrl: response.url, body: responseBody.slice(0, 1000),
-          bodyTruncated: responseBody.length > 1000,
+          requestId, serverRequestId: response.headers.get("X-Request-ID"), url,
+          status: response.status, redirected: response.redirected,
+          responseUrl: response.url, responseBytes: responseBody.length,
+          durationMs: Math.round(performance.now() - startedAt),
         });
         if (response.redirected || new URL(response.url).origin !== new URL(base).origin)
           return sendResponse({ ok: false, error: "Know API returned an unexpected redirect." });
@@ -105,9 +119,18 @@ export default defineBackground({
 });
 
 async function googleLogin() {
+  const flowId = `google-${crypto.randomUUID()}`;
+  let stage = "resolve-api";
+  const startedAt = performance.now();
+  debug("Google sign-in started", { flowId, stage });
   const { apiBase } = await chrome.storage.local.get("apiBase");
   const base = KnowApiConfig.apiBase(apiBase);
-  const { clientId } = await fetchWithTimeout(base + "/auth/google/config").then(async (response) => {
+  stage = "load-google-config";
+  const configRequestId = `extension-${crypto.randomUUID()}`;
+  const { clientId } = await fetchWithTimeout(base + "/auth/google/config", {
+    headers: { "X-Request-ID": configRequestId },
+  }).then(async (response) => {
+    debug("Google configuration response", { flowId, stage, requestId: configRequestId, serverRequestId: response.headers.get("X-Request-ID"), status: response.status });
     if (!response.ok) throw Error("Google configuration request failed (HTTP " + response.status + ")");
     return response.json();
   });
@@ -115,18 +138,34 @@ async function googleLogin() {
   const state = KnowGoogleAuth.nonce();
   const requestNonce = KnowGoogleAuth.nonce();
   const redirectUri = chrome.identity.getRedirectURL();
+  stage = "google-web-auth-flow";
+  debug("Opening Google authorization flow", { flowId, stage, redirectOrigin: new URL(redirectUri).origin });
   const redirectUrl = await chrome.identity.launchWebAuthFlow({
     url: KnowGoogleAuth.authorizationUrl(clientId, redirectUri, state, requestNonce),
     interactive: true,
   });
+  debug("Google authorization redirect received", { flowId, stage, redirectOrigin: new URL(redirectUrl).origin });
+  stage = "validate-google-redirect";
   const idToken = KnowGoogleAuth.parseRedirect(redirectUrl, state, requestNonce);
+  debug("Google identity token parsed", { flowId, stage, tokenPresent: Boolean(idToken), tokenBytes: idToken.length });
+  stage = "exchange-google-token";
+  const authRequestId = `extension-${crypto.randomUUID()}`;
   const response = await fetchWithTimeout(base + "/auth/google", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Request-ID": authRequestId },
     body: JSON.stringify({ idToken }),
   });
-  if (!response.ok) throw Error("Google authentication failed (HTTP " + response.status + ")");
+  debug("Google token exchange response", {
+    flowId, stage, requestId: authRequestId, serverRequestId: response.headers.get("X-Request-ID"),
+    status: response.status, durationMs: Math.round(performance.now() - startedAt),
+  });
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw Error("Google authentication failed (HTTP " + response.status + ", response bytes " + responseText.length + ")");
+  }
   const result = await response.json();
+  stage = "store-session";
   await chrome.storage.local.set({ token: result.token });
+  debug("Google sign-in completed", { flowId, stage, tokenStored: Boolean(result.token), durationMs: Math.round(performance.now() - startedAt) });
   return { ok: true, token: result.token };
 }

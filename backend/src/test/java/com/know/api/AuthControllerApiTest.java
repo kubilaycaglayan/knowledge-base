@@ -226,6 +226,8 @@ class AuthControllerApiTest {
     org.junit.jupiter.api.Assertions.assertEquals(
         "http://localhost", configuration.checkOrigin("http://localhost"));
     org.junit.jupiter.api.Assertions.assertTrue(configuration.getAllowedMethods().contains("GET"));
+    org.junit.jupiter.api.Assertions.assertTrue(configuration.getAllowedHeaders().contains("X-Request-ID"));
+    org.junit.jupiter.api.Assertions.assertTrue(configuration.getExposedHeaders().contains("X-Request-ID"));
   }
 
   @Test
