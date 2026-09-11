@@ -45,14 +45,13 @@
   background: var(--workspace-surface);
   box-shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 5px 12px rgb(0 0 0 / 4%);
 }
-.session-heading, .session-summary, .session-context { display: flex; gap: 10px; align-items: center; }
+.session-heading, .session-summary { display: flex; gap: 10px; align-items: center; }
 .session-heading > div { flex: 1; min-width: 0; }
-.session-heading h2 { margin: 4px 0 0; font-size: 16px; }
+.session-heading h2 { margin: 0; font-size: 16px; }
+.session-description { margin: 3px 0 0; color: var(--workspace-muted); font-size: 13px; overflow-wrap: anywhere; }
 .session-summary { flex-wrap: wrap; color: var(--workspace-muted); margin-top: 8px; gap: 6px; }
 .session-summary span { background: var(--workspace-selected); border-radius: var(--workspace-radius); padding: 2px 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .session-summary span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.session-context { border-top: 1px solid var(--workspace-border); margin-top: 8px; padding-top: 8px; color: var(--workspace-muted); font-size: 12px; flex-wrap: wrap; }
-.session-context span { flex: 1 1 230px; min-width: 0; overflow-wrap: anywhere; }
 .session-edit-grid, .edit-dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .session-edit { margin-top: 2px; }
 .session-edit-path { padding: 10px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); background: var(--workspace-selected); }
