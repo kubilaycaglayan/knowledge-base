@@ -26,7 +26,7 @@ const pathName = computed(() => paths.value.find((path) => path.id === (timer.va
 const selectedLabelNames = computed(() => selectedLabelIds.value
   .map((id) => labels.value.find((label) => label.id === id)?.name)
   .filter((name): name is string => Boolean(name)));
-const timerSummary = computed(() => timer.value ? timer.value.description || pathName.value || "Session running" : pathName.value || (selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin."));
+const timerSummary = computed(() => timer.value ? timer.value.description || "Session running" : selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin.");
 
 function rememberPath(id: string) {
   if (!id) return;
@@ -156,6 +156,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
         <span class="tracker-status" :class="{ running: timer }" :aria-label="timer ? 'Session running' : 'No session running'" role="status"></span>
         <button class="floating-tracker-action primary" type="button" :disabled="busy" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span>{{ timer ? "Stop session" : "Start a session" }}</span></button>
         <button class="floating-tracker-clock" type="button" :disabled="!timer" aria-label="Edit timer start time; elapsed session time" @click="editStartedAt"><strong role="timer" aria-live="off">{{ clock(elapsed) }}</strong></button>
+        <span v-if="pathName" class="floating-tracker-path">{{ pathName }}</span>
         <span class="floating-tracker-summary">{{ timerSummary }}</span>
         <span v-if="selectedLabelNames.length" class="floating-tracker-context">{{ selectedLabelNames.join(', ') }}</span>
         <button v-if="!props.inline" class="floating-tracker-toggle" type="button" :aria-expanded="open" aria-controls="floating-tracker-panel" @click="open = !open"><span class="sr-only">{{ open ? "Collapse tracker" : "Expand tracker" }}</span><span aria-hidden="true" class="chevron" :class="{ up: !open }"></span></button>
@@ -190,6 +191,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .floating-tracker-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; border: 0; border-radius: 6px; padding: 6px 12px; background: var(--workspace-accent); color: var(--workspace-on-accent); font-size: 14px; font-weight: 600; }
 .floating-tracker-action:hover { background: var(--workspace-accent-hover); }.floating-tracker-action:disabled { opacity: .4; cursor: not-allowed; }
 .floating-tracker-clock { border: 0; padding: 0; background: transparent; color: var(--workspace-text); font: 400 18px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }.floating-tracker-clock:disabled { cursor: default; }
+.floating-tracker-path { min-width: 0; max-width: 220px; overflow: hidden; border-radius: 4px; padding: 3px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-summary { min-width: 0; overflow: hidden; flex: 1; color: var(--workspace-muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-context { display: inline-flex; min-width: 0; max-width: 220px; gap: 6px; overflow: hidden; border-radius: 4px; padding: 3px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--workspace-muted); }.floating-tracker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }
@@ -204,6 +206,6 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .tracker-test-select { display: none; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-context { max-width: 110px; }.tracker-status { width: 7px; height: 7px; } }
+@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; }.tracker-status { width: 7px; height: 7px; } }
 @media (prefers-reduced-motion: reduce) { .floating-tracker, .floating-tracker * { transition: none !important; animation: none !important; } }
 </style>

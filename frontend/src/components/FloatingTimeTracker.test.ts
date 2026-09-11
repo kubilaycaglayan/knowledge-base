@@ -58,6 +58,7 @@ describe("FloatingTimeTracker", () => {
 
     expect(wrapper.get(".tracker-status").classes()).toContain("running");
     expect(wrapper.get(".tracker-status").attributes("aria-label")).toBe("Session running");
+    expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
     expect(wrapper.get(".floating-tracker-context").text()).toContain("Focus, Review");
     expect(wrapper.get(".floating-tracker-context").text()).not.toContain("Knowledge Base");
     wrapper.unmount();
