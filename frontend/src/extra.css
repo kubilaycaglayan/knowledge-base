@@ -143,8 +143,8 @@
 .report-tab:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
 .report-tab.active { background: var(--workspace-selected); border-bottom-color: var(--workspace-accent); color: var(--workspace-text); font-weight: 600; }
 .report-type-note { color: var(--workspace-muted); font-size: 12px; }
-.report-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 0 16px; border-bottom: 1px solid var(--workspace-border); margin-bottom: 24px; }
-.report-filters .v-input { flex: 1 1 110px; min-width: 100px; max-width: 160px; }
+.report-filters { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); background: var(--workspace-selected); margin: 16px 0 24px; }
+.report-filters .v-input { flex: 1 1 240px; min-width: 180px; max-width: 420px; }
 .report-filters .v-btn { margin-left: auto; }
 .filter-label, .section-kicker { color: var(--workspace-muted); font-size: 10px; letter-spacing: .1em; font-weight: 650; }
 .report-card { background: transparent; border: 0; border-block: 1px solid var(--workspace-border); }
