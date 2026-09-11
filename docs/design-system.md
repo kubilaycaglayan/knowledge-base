@@ -1,6 +1,6 @@
 # Web workspace design
 
-Knowledge Base uses the approved Overview as the visual reference for all web
+Knowledge Base uses the approved workspace shell as the visual reference for all web
 pages, including authentication. Keep its 1200px content width, 26px page headings,
 12–14px supporting text, compact 36–40px controls, 44px mobile targets, and 4px
 control corners. Group related content with spacing and thin borders. Use filled
@@ -8,8 +8,8 @@ surfaces for controls, data grids, and dialogs; ordinary lists are flat rows.
 
 `frontend/src/theme.css` owns semantic light/dark tokens. `style.css` owns shared
 typography and controls, `dashboard-shell.css` owns navigation, and `extra.css`
-contains page layouts. The overview's scoped stylesheet retains its approved
-layout. Vuetify's theme definitions mirror the semantic palette for teleported
+contains page layouts. Page-specific scoped styles retain the approved layouts.
+Vuetify's theme definitions mirror the semantic palette for teleported
 menus; the date picker and charts consume the shared theme. User-selected path
 and calendar-label colors remain data and are preserved in both themes.
 
