@@ -1,6 +1,9 @@
 (function (root, factory) {
   const api = factory()
-  if (typeof module !== 'undefined' && module.exports) module.exports = api
+  // WXT bundles this file through a CommonJS-style wrapper, but the popup
+  // consumes the browser-global API. Only use module.exports in a real Node
+  // environment; otherwise always publish the API on globalThis.
+  if (typeof module !== 'undefined' && module.exports && typeof require === 'function') module.exports = api
   else root.KnowCore = api
 })(typeof globalThis === 'undefined' ? this : globalThis, function () {
   function activePaths(paths) { return paths.filter(path => path.status === 'ACTIVE') }
