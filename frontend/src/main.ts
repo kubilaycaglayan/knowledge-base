@@ -23,6 +23,19 @@ const router = createRouter({
     { path: "/notes/:id", name: "note-editor", component: () => import("./views/NotesView.vue") },
   ],
 });
+
+// Keep report filters while moving around the SPA, but intentionally do not
+// persist them so a full reload starts with the default report range.
+let lastReportsSearch = "";
+router.beforeEach((to, from) => {
+  if (from.path === "/reports" && window.location.search) {
+    lastReportsSearch = window.location.search;
+  }
+  if (to.path === "/reports" && !Object.keys(to.query).length && lastReportsSearch) {
+    return `/reports${lastReportsSearch}`;
+  }
+  return true;
+});
 createApp(App)
   .use(router)
   .use(vuetify)
