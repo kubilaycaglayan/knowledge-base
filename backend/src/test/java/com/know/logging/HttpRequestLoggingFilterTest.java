@@ -2,6 +2,7 @@ package com.know.logging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -21,11 +22,22 @@ class HttpRequestLoggingFilterTest {
 
   @Test
   void logsRequestMethodPathStatusAndDuration(CapturedOutput output) throws Exception {
-    mvc.perform(get("/api/v1/logging-test?secret=do-not-log")).andExpect(status().isOk());
+    mvc.perform(get("/api/v1/logging-test?secret=do-not-log").header("X-Request-ID", "extension-test-123"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("X-Request-ID", "extension-test-123"));
 
     assertThat(output.getOut())
-        .containsPattern("GET /api/v1/logging-test 200 \\([0-9]+ ms\\)")
+        .containsPattern("requestId=extension-test-123 GET /api/v1/logging-test 200 \\([0-9]+ ms\\)")
         .doesNotContain("do-not-log");
+  }
+
+  @Test
+  void replacesUnsafeRequestIds(CapturedOutput output) throws Exception {
+    mvc.perform(get("/api/v1/logging-test").header("X-Request-ID", "unsafe request id"))
+        .andExpect(status().isOk())
+        .andExpect(header().exists("X-Request-ID"));
+
+    assertThat(output.getOut()).doesNotContain("unsafe request id");
   }
 
   @Controller

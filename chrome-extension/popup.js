@@ -1,12 +1,22 @@
 const $ = (id) => document.getElementById(id);
-const debug = (...args) => {
-  if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
-    console.warn("[Know extension]", ...args);
-};
+const diagnosticSessionId = `popup-${crypto.randomUUID()}`;
+const debug = (event, details = {}) => console.info("[Knowledge Base extension]", event, {
+  sessionId: diagnosticSessionId,
+  version: chrome.runtime.getManifest().version,
+  ...details,
+});
 const isDevelopment = () => typeof __KNOW_EXTENSION_ENV__ === "string" && __KNOW_EXTENSION_ENV__ !== "production";
 const errorDetails = (error) => error instanceof Error ? error.message : String(error || "Unknown error");
 function logError(operation, error, details = {}) {
-  debug("Operation failed", { operation, ...details, error: errorDetails(error), stack: error?.stack });
+  console.error("[Knowledge Base extension] Operation failed", {
+    sessionId: diagnosticSessionId,
+    version: chrome.runtime.getManifest().version,
+    operation,
+    ...details,
+    errorName: error instanceof Error ? error.name : "UnknownError",
+    error: errorDetails(error),
+    stack: error?.stack,
+  });
 }
 function userError(fallback, error) {
   return isDevelopment() ? fallback + " " + errorDetails(error) : fallback;
@@ -82,13 +92,15 @@ async function request(path, options = {}) {
   }
   const url = base + path;
   const method = options.method || "GET";
-  debug("Preparing popup API request", {
+  const requestId = `extension-${crypto.randomUUID()}`;
+  const startedAt = performance.now();
+  debug("API request started", {
+    requestId,
     method,
     apiBase: base,
     path,
     storedApiBase: apiBase || null,
     tokenPresent: Boolean(token),
-    tokenLength: typeof token === "string" ? token.length : 0,
   });
   let r;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -97,43 +109,45 @@ async function request(path, options = {}) {
     r = await fetch(url, {
     ...options,
       ...(controller ? { signal: controller.signal } : {}),
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}`, ...(options.headers || {}) },
+    headers: { "Content-Type": "application/json", "X-Request-ID": requestId, Authorization: `Bearer ${token || ""}`, ...(options.headers || {}) },
     });
   } catch (error) {
     clearTimeout(timeout);
-    logError("API request", error, { method, url, kind: "network-or-cors" });
+    logError("API request", error, { requestId, method, path, durationMs: Math.round(performance.now() - startedAt), kind: "network-or-cors" });
     throw Error("Could not reach " + url + ". Check the SSH tunnel, API host permission, and CORS_ORIGINS. (" + errorDetails(error) + ")");
   }
   clearTimeout(timeout);
-  debug("Popup API response", {
+  debug("API response received", {
+    requestId,
+    serverRequestId: r.headers.get("X-Request-ID"),
     requestUrl: url,
     responseUrl: r.url,
     status: r.status,
     redirected: r.redirected,
     contentType: r.headers.get("content-type"),
+    durationMs: Math.round(performance.now() - startedAt),
   });
   const responseText = await r.text();
-  debug("Popup API response body", {
-    requestUrl: url,
-    status: r.status,
-    body: responseText.slice(0, 1000),
-    bodyTruncated: responseText.length > 1000,
-  });
   if (r.status === 401 && token) {
-    logError("API authentication", Error("Session token rejected"), { method, url, status: r.status, responseBody: responseText });
+    logError("API authentication", Error("Session token rejected"), { requestId, method, path, status: r.status, responseBytes: responseText.length });
     await chrome.storage.local.remove(["token", "activeTimer"]);
     location.reload();
     throw Error("Session expired");
   }
   if (!r.ok) {
     const error = Error("HTTP " + r.status + (responseText ? ": " + responseText.slice(0, 500) : ""));
-    logError("API response", error, { method, url, status: r.status, responseBody: responseText });
+    logError("API response", error, { requestId, method, path, status: r.status, responseBytes: responseText.length });
     throw error;
   }
   try {
-    return responseText ? JSON.parse(responseText) : null;
+    const parsed = responseText ? JSON.parse(responseText) : null;
+    debug("API response parsed", {
+      requestId, method, path, responseBytes: responseText.length,
+      responseShape: Array.isArray(parsed) ? `array(${parsed.length})` : parsed === null ? "null" : typeof parsed,
+    });
+    return parsed;
   } catch (error) {
-    logError("API response parsing", error, { method, url, status: r.status, responseBody: responseText });
+    logError("API response parsing", error, { requestId, method, path, status: r.status, responseBytes: responseText.length });
     throw Error("API returned invalid JSON (" + errorDetails(error) + ")");
   }
 }
@@ -322,24 +336,40 @@ function renderSessionEditor(article, session) {
 
 async function load() {
   setLoading(true);
+  let stage = "read-local-state";
+  debug("Workspace load started", { stage });
   try {
     const { activeTimer, timerSelection: savedSelection } = await chrome.storage.local.get(["activeTimer", timerSelectionKey]);
+    debug("Local state read", {
+      activeTimerPresent: Boolean(activeTimer),
+      timerSelectionPresent: Boolean(savedSelection),
+      timerSelectionLabelCount: Array.isArray(savedSelection?.labelIds) ? savedSelection.labelIds.length : null,
+    });
+    stage = "load-paths-and-labels";
     [paths, labels] = await Promise.all([request("/paths"), request("/labels?scope=TIME_ENTRY")]);
+    debug("Workspace catalogs loaded", { pathCount: paths.length, labelCount: labels.length });
+    stage = "load-current-timer";
     const timer = await request("/timers/current");
+    debug("Current timer loaded", { timerPresent: Boolean(timer), timerRunning: Boolean(timer?.running) });
+    stage = "render-paths";
     fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
     $("path").onchange = async () => {
       renderTimerLabels();
       try { await configureCurrentTimer(); } catch (error) { logError("Change timer path", error); $("error").textContent = userError("Could not update the timer.", error); }
     };
+    stage = "restore-timer-state";
     if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
     else {
       showTimer(null); $("toggle").textContent = "Start timer"; await chrome.storage.local.remove("activeTimer");
       if (activeTimer) await resetTimerForm();
       else await restoreTimerSelection(savedSelection || timerSelection(activeTimer));
     }
+    stage = "show-workspace";
     showWorkspace(); startLiveTimerSync(); void loadSessions();
+    debug("Workspace load completed", { pathCount: paths.length, labelCount: labels.length, timerPresent: Boolean(timer) });
   } catch (error) {
-    logError("Load workspace", error); showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error);
+    logError("Load workspace", error, { stage, pathCount: Array.isArray(paths) ? paths.length : null, labelCount: Array.isArray(labels) ? labels.length : null });
+    showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error);
   }
 }
 async function login() {
@@ -410,7 +440,7 @@ $("sessions").onclick = async (event) => {
   if (event.target.closest(".remove-session") && confirm("Remove this session? This cannot be undone.")) { try { await request(`/time-entries/${sessionId}`, { method: "DELETE" }); await loadSessions(); } catch (error) { logError("Remove session", error, { sessionId }); $("error").textContent = userError("Could not remove this session.", error); } }
 };
 chrome.storage.local.get(["token", "googleAuthError"]).then(({ token, googleAuthError }) => {
-  debug("Popup initialized", { tokenPresent: Boolean(token) });
+  debug("Popup initialized", { tokenPresent: Boolean(token), googleAuthErrorPresent: Boolean(googleAuthError), apiLocked: !KnowApiConfig.isProduction ? null : KnowApiConfig.isProduction });
   if (googleAuthError) $("error").textContent = googleAuthError;
   if (token) load();
   else showAuth();
