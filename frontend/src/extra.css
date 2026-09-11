@@ -54,6 +54,13 @@
 .session-context { border-top: 1px solid var(--workspace-border); margin-top: 8px; padding-top: 8px; color: var(--workspace-muted); font-size: 12px; flex-wrap: wrap; }
 .session-context span { flex: 1 1 230px; min-width: 0; overflow-wrap: anywhere; }
 .session-edit-grid, .edit-dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.session-edit { margin-top: 2px; }
+.session-edit-path { padding: 10px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); background: var(--workspace-selected); }
+.session-edit-path:focus-within { border-color: var(--workspace-focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--workspace-focus) 22%, transparent); }
+.session-edit-path select { background: var(--workspace-surface); }
+.session-edit-description { grid-column: 1 / -1; }
+.session-edit-description > span { color: var(--workspace-muted); font-weight: 400; }
+.session-edit .session-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
 .session-pagination { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0; padding-block: 12px; }
 .page-number { min-width: 36px; }
 .page-number[aria-current="page"] { background: var(--workspace-accent); color: var(--workspace-on-accent); border-color: var(--workspace-accent); }
