@@ -18,9 +18,28 @@ function logError(operation, error, details = {}) {
     stack: error?.stack,
   });
 }
-function userError(fallback, error) {
+function userError(fallback, error, details = {}) {
   const detail = errorDetails(error);
-  return `${fallback} [diagnostic ${diagnosticSessionId}]${detail ? ` ${detail}` : ""}`;
+  const stage = details.stage ? ` stage=${details.stage}` : "";
+  return `${fallback} [diagnostic ${diagnosticSessionId}${stage}]${detail ? ` ${detail}` : ""}`;
+}
+
+function checkPopupDomContract() {
+  const required = ["loading", "auth", "workspace", "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error"];
+  const missing = required.filter((id) => !$(id));
+  if (missing.length) throw Error(`Popup DOM contract missing: ${missing.join(",")}`);
+  debug("Popup DOM contract verified", { requiredCount: required.length });
+}
+
+if (typeof addEventListener === "function") {
+  addEventListener("error", (event) => {
+    logError("Uncaught popup error", event.error || Error(event.message || "Unknown script error"), {
+      filename: event.filename || null, line: event.lineno || null, column: event.colno || null,
+    });
+  });
+  addEventListener("unhandledrejection", (event) => {
+    logError("Unhandled popup promise rejection", event.reason);
+  });
 }
 function setButtonBusy(button, busy) {
   button.disabled = busy;
@@ -340,6 +359,9 @@ async function load() {
   let stage = "read-local-state";
   debug("Workspace load started", { stage });
   try {
+    stage = "verify-popup-dom";
+    checkPopupDomContract();
+    stage = "read-local-state";
     const { activeTimer, timerSelection: savedSelection } = await chrome.storage.local.get(["activeTimer", timerSelectionKey]);
     debug("Local state read", {
       activeTimerPresent: Boolean(activeTimer),
@@ -370,7 +392,7 @@ async function load() {
     debug("Workspace load completed", { pathCount: paths.length, labelCount: labels.length, timerPresent: Boolean(timer) });
   } catch (error) {
     logError("Load workspace", error, { stage, pathCount: Array.isArray(paths) ? paths.length : null, labelCount: Array.isArray(labels) ? labels.length : null });
-    showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error);
+    showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error, { stage });
   }
 }
 async function login() {
