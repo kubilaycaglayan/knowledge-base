@@ -38,15 +38,20 @@
 .activity-row { display: grid; grid-template-columns: 90px 72px minmax(0, 1fr); gap: 12px; align-items: baseline; margin: 0; padding: 10px 0; border-bottom: 1px solid var(--workspace-border); }
 .activity-row time, .activity-duration { color: var(--workspace-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .activity-description { min-width: 0; overflow-wrap: anywhere; }
-.session-list { display: grid; margin-top: 24px; border-top: 1px solid var(--workspace-border); }
-.session-card { padding: 20px 0; border: 0; border-bottom: 1px solid var(--workspace-border); border-radius: 0; background: transparent; }
-.session-heading, .session-summary, .session-context { display: flex; gap: 12px; align-items: center; }
+.session-list { display: grid; gap: 10px; margin-top: 20px; }
+.session-card {
+  padding: 14px 16px;
+  border-color: color-mix(in srgb, var(--workspace-border) 86%, var(--workspace-text));
+  background: var(--workspace-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 5px 12px rgb(0 0 0 / 4%);
+}
+.session-heading, .session-summary, .session-context { display: flex; gap: 10px; align-items: center; }
 .session-heading > div { flex: 1; min-width: 0; }
 .session-heading h2 { margin: 4px 0 0; font-size: 16px; }
-.session-summary { flex-wrap: wrap; color: var(--workspace-muted); margin-top: 12px; }
-.session-summary span { background: var(--workspace-selected); border-radius: var(--workspace-radius); padding: 3px 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.session-summary { flex-wrap: wrap; color: var(--workspace-muted); margin-top: 8px; gap: 6px; }
+.session-summary span { background: var(--workspace-selected); border-radius: var(--workspace-radius); padding: 2px 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .session-summary span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.session-context { border-top: 1px solid var(--workspace-border); margin-top: 12px; padding-top: 12px; color: var(--workspace-muted); font-size: 12px; flex-wrap: wrap; }
+.session-context { border-top: 1px solid var(--workspace-border); margin-top: 8px; padding-top: 8px; color: var(--workspace-muted); font-size: 12px; flex-wrap: wrap; }
 .session-context span { flex: 1 1 230px; min-width: 0; overflow-wrap: anywhere; }
 .session-edit-grid, .edit-dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .session-pagination { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0; padding-block: 12px; }
