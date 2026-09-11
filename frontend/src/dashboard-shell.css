@@ -27,6 +27,8 @@
 .shell-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .settings-link { display: inline-flex; align-items: center; justify-content: center; width: 36px; min-height: 36px; padding: 6px; border-radius: var(--workspace-radius); color: var(--workspace-muted); }
 .settings-link svg { display: block; width: 18px; height: 18px; }
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 36px; padding: 6px !important; }
+.theme-toggle svg { display: block; width: 18px; height: 18px; }
 .settings-link:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
 .settings-link:active { background: var(--workspace-active); }
 @media (max-width: 1100px) {
