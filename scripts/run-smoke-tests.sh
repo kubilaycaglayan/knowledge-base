@@ -308,6 +308,13 @@ api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data='{"title":"Edited smoke note","content":"Updated knowledge"}' \
   "http://localhost:8080/api/v1/notes/$note_id" \
   | grep -q 'Updated knowledge'
+discarded_timer="$(api "${header[@]}" "${content_json[@]}" --post-data='{"labelIds":[],"description":"Discarded quick timer"}' http://localhost:8080/api/v1/timers)"
+discarded_timer_id="$(printf '%s' "$discarded_timer" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+api "${header[@]}" --post-data='' "${content_json[@]}" "http://localhost:8080/api/v1/timers/$discarded_timer_id/stop" >/dev/null
+if api "${header[@]}" "http://localhost:8080/api/v1/time-entries?page=0&size=50" | grep -q 'Discarded quick timer'; then
+  echo "timer under two seconds was recorded" >&2
+  exit 1
+fi
 running_timer="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"description\":\"Smoke session\"}" http://localhost:8080/api/v1/timers)"
 timer_id="$(printf '%s' "$running_timer" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 timer_start="$(date -u -d '30 seconds ago' +%Y-%m-%dT%H:%M:%SZ)"
