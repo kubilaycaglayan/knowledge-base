@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import App from "./App.vue";
+import { routeLocationKey, routerKey } from "vue-router";
 
 const stubs = {
   RouterLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -65,6 +66,54 @@ describe("App", () => {
 
     expect(wrapper.find("nav").exists()).toBe(true);
     expect(wrapper.find("button.ghost").text()).toBe("Sign out");
+  });
+
+  it("redirects sign-in to Sessions by default", async () => {
+    const replace = vi.fn();
+    const wrapper = mount(App, {
+      global: {
+        stubs,
+        provide: { [routerKey as symbol]: { replace } },
+      },
+    });
+
+    await wrapper.get('[data-test="authenticate"]').trigger("click");
+
+    expect(replace).toHaveBeenCalledWith("/sessions");
+  });
+
+  it("honors a safe internal redirect after sign-in", async () => {
+    const replace = vi.fn();
+    const wrapper = mount(App, {
+      global: {
+        stubs,
+        provide: {
+          [routeLocationKey as symbol]: { path: "/auth", query: { redirect: "/settings" } },
+          [routerKey as symbol]: { replace },
+        },
+      },
+    });
+
+    await wrapper.get('[data-test="authenticate"]').trigger("click");
+
+    expect(replace).toHaveBeenCalledWith("/settings");
+  });
+
+  it("ignores external redirect values", async () => {
+    const replace = vi.fn();
+    const wrapper = mount(App, {
+      global: {
+        stubs,
+        provide: {
+          [routeLocationKey as symbol]: { path: "/auth", query: { redirect: "https://evil.example" } },
+          [routerKey as symbol]: { replace },
+        },
+      },
+    });
+
+    await wrapper.get('[data-test="authenticate"]').trigger("click");
+
+    expect(replace).toHaveBeenCalledWith("/sessions");
   });
 
   it("shares the workspace appearance and skip link across every page and authentication", async () => {

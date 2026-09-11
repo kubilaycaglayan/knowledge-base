@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { inject, ref, watchEffect } from "vue";
-import { routeLocationKey } from "vue-router";
+import { routeLocationKey, routerKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
 import { theme, themePreference, toggleTheme } from "./lib/theme";
 const token = ref(localStorage.getItem("know_token"));
 const route = inject(routeLocationKey, undefined);
+const router = inject(routerKey, undefined);
 watchEffect(() => {
   const path = route?.path || "/";
   const page = !token.value ? "Sign in" : path.startsWith("/notes/") ? "Note" : path === "/" ? "Sessions" : path.slice(1);
@@ -16,6 +17,11 @@ function logout() {
 }
 function authenticated() {
   token.value = localStorage.getItem("know_token");
+  const redirect = route?.query?.redirect;
+  const destination = typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")
+    ? redirect
+    : "/sessions";
+  void router?.replace(destination);
 }
 </script>
 <template>
