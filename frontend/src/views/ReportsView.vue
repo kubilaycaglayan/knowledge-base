@@ -86,6 +86,7 @@ type Report = {
   calendarLabels: CalendarLabel[];
   sankey?: Sankey;
 };
+type PathOption = { id: string; name: string; status?: string };
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
 const PathTimingSankey = defineAsyncComponent(
   () => import("../components/reports/PathTimingSankey.vue"),
@@ -118,12 +119,21 @@ const aggregation = ref<Aggregation>(
     ? (requestedAggregation as Aggregation)
     : "DAY",
 );
+const selectedPathIds = ref<string[]>(initialParams.getAll("pathId"));
+const availablePaths = ref<PathOption[]>([]);
 const report = ref<Report | null>(null);
 const error = ref("");
 const loading = ref(false);
 let loadSequence = 0;
 let activeRequest: AbortController | null = null;
 const categories = computed(() => report.value?.paths || []);
+const pathOptions = computed<PathOption[]>(() =>
+  availablePaths.value.length
+    ? availablePaths.value
+    : (report.value?.paths || []).flatMap((path) =>
+        path.id ? [{ id: path.id, name: path.label }] : [],
+      ),
+);
 const breakdownMode = ref<"Path" | "Labels">("Path");
 const breakdownCategories = computed(() =>
   breakdownMode.value === "Path"
@@ -234,6 +244,7 @@ function syncReportStateFromUrl() {
     ?.toUpperCase() as Aggregation;
   const startDate = params.get("startDate");
   const endDate = params.get("endDate");
+  const nextPathIds = params.getAll("pathId");
   let changed = false;
   if (
     aggregationValues.includes(nextAggregation) &&
@@ -251,6 +262,13 @@ function syncReportStateFromUrl() {
     selectedRange.value = { startDate, endDate };
     changed = true;
   }
+  if (
+    nextPathIds.length !== selectedPathIds.value.length ||
+    nextPathIds.some((id, index) => id !== selectedPathIds.value[index])
+  ) {
+    selectedPathIds.value = nextPathIds;
+    changed = true;
+  }
   if (changed) void load();
 }
 function storeReportState() {
@@ -258,6 +276,8 @@ function storeReportState() {
   url.searchParams.set("aggregation", aggregation.value.toLowerCase());
   url.searchParams.set("startDate", selectedRange.value.startDate);
   url.searchParams.set("endDate", selectedRange.value.endDate);
+  url.searchParams.delete("pathId");
+  selectedPathIds.value.forEach((pathId) => url.searchParams.append("pathId", pathId));
   window.history.pushState({}, "", url);
 }
 function toggleTrendline() {
@@ -292,6 +312,7 @@ async function load() {
       endDate: selectedRange.value.endDate,
       aggregation: aggregation.value,
     });
+    selectedPathIds.value.forEach((pathId) => params.append("pathId", pathId));
     const result = await api<Report>(`/reports?${params.toString()}`, {
       signal: controller.signal,
     });
@@ -318,6 +339,21 @@ async function load() {
       activeRequest = null;
     }
   }
+}
+async function loadPaths() {
+  try {
+    const result = await api<PathOption[]>("/paths");
+    if (Array.isArray(result)) availablePaths.value = result;
+  } catch {
+    // The report remains usable with paths returned in its aggregate data.
+  }
+}
+function selectPaths(value: unknown) {
+  selectedPathIds.value = Array.isArray(value)
+    ? value.filter((pathId): pathId is string => typeof pathId === "string")
+    : [];
+  storeReportState();
+  void load();
 }
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
@@ -372,6 +408,7 @@ function shiftAnchor(amount: number) {
 onMounted(() => {
   window.addEventListener("popstate", syncReportStateFromUrl);
   void load();
+  void loadPaths();
 });
 onBeforeUnmount(() =>
   window.removeEventListener("popstate", syncReportStateFromUrl),
@@ -386,6 +423,25 @@ onBeforeUnmount(() =>
         @previous="shiftAnchor(-1)"
         @next="shiftAnchor(1)"
         @update:model-value="selectRange"
+      />
+    </div>
+    <div class="report-filters" aria-label="Report filters">
+      <span class="filter-label">FILTER BY</span>
+      <v-select
+        aria-label="Filter by paths"
+        :items="pathOptions"
+        item-title="name"
+        item-value="id"
+        :model-value="selectedPathIds"
+        multiple
+        chips
+        closable-chips
+        clearable
+        density="compact"
+        variant="outlined"
+        hide-details
+        placeholder="Choose paths…"
+        @update:model-value="selectPaths"
       />
     </div>
     <div class="reports-nav">
