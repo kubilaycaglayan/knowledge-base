@@ -134,6 +134,12 @@
 .report-date-range .dp__input { height: 40px; border-radius: 4px 0 0 4px; font-family: inherit; font-size: 12px; }
 .report-date-range .dp__menu { --dp-multi-calendars-spacing: 22px; font-family: inherit; box-shadow: none; }
 .report-date-range .dp__preset_range { font-size: 12px; }
+.report-date-range .dp--preset-dates:not([data-dp-mobile]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 0 0 190px; box-sizing: border-box; }
+.report-date-range .dp--preset-range:nth-child(5) { grid-column: 1 / -1; }
+.report-date-range .dp--preset-range { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.report-date-range .dp--preset-range:hover, .report-date-range .dp--preset-range:focus-visible { position: relative; z-index: 1; overflow: visible; text-overflow: clip; }
+.report-date-range .dp--preset-dates[data-dp-mobile] { flex-wrap: wrap; gap: 4px; overflow-x: visible; max-width: none; }
+.report-date-range .dp--preset-range[data-dp-mobile] { width: auto; flex: 1 1 auto; margin: 0; }
 .report-date-range .range-arrow { flex: 0 0 36px; height: 40px; border: 1px solid var(--workspace-control-border); border-left: 0; background: var(--workspace-surface); font-size: 22px; line-height: 1; color: var(--workspace-muted); }
 .report-date-range .range-arrow:last-child { border-radius: 0 4px 4px 0; }
 .range-arrow:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
@@ -171,9 +177,10 @@
 .breakdown-control:last-of-type .v-input { min-width: 120px; }
 .breakdown-toolbar .v-select { max-width: 120px; }
 .breakdown-control:first-child .v-select { max-width: 420px; }
-.breakdown-control:nth-child(2) .v-select { max-width: 260px; }
-.breakdown-control:first-child .v-select .v-field__input { padding-inline-start: 10px !important; }
-.breakdown-control:first-child .v-select .v-field__input > input { padding-inline-start: 10px !important; }
+.breakdown-control:nth-child(2) { flex: 1 1 260px; }
+.breakdown-control:nth-child(2) .v-select { width: 100%; max-width: 260px; }
+.breakdown-control:first-child .v-select .v-field__input, .breakdown-control:nth-child(2) .v-select .v-field__input { padding-inline-start: 10px !important; }
+.breakdown-control:first-child .v-select .v-field__input > input, .breakdown-control:nth-child(2) .v-select .v-field__input > input { padding-inline-start: 10px !important; }
 .breakdown-control:first-child .v-select .v-chip__close { min-width: 24px; min-height: 24px; margin-inline-start: 3px; opacity: 1; color: var(--workspace-text); }
 .breakdown-control:first-child .v-select .v-chip__close:hover { color: var(--workspace-strong); }
 .breakdown-control .v-field__input > input:focus,
@@ -230,7 +237,7 @@
 .path-color-control { align-self: center; }
 .color-swatch-button { width: 28px; height: 28px; padding: 0; border: 4px solid var(--workspace-background); border-radius: 50%; box-shadow: 0 0 0 1px var(--workspace-control-border); }
 .path-color-palette { top: calc(100% + 8px); left: 0; }
-.calendar-report-card { margin-top: 24px; padding: 16px 0; }
+.calendar-report-card { margin-top: 40px; padding: 16px 0; }
 .calendar-report-labels { display: grid; gap: 10px; padding-top: 14px; }
 .calendar-report-labels div { display: flex; align-items: center; gap: 9px; }
 .calendar-report-labels span { min-width: 0; overflow-wrap: anywhere; }

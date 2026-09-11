@@ -649,7 +649,7 @@ onBeforeUnmount(() =>
         </div>
       </section>
       <section
-        v-if="showCalendarInputs && calendarLogs.length"
+        v-if="showCalendarInputs && (calendarLogs.length || report.calendarLabels.length)"
         class="report-card calendar-report-card"
       >
         <div class="report-card-heading">
@@ -657,9 +657,8 @@ onBeforeUnmount(() =>
             <span class="section-kicker">DAILY RECORDS</span>
             <h2>Calendar log</h2>
           </div>
-          <span class="muted">Separate from tracked work time</span>
         </div>
-        <ol class="calendar-report-log">
+        <ol v-if="calendarLogs.length" class="calendar-report-log">
           <li v-for="day in calendarLogs" :key="day.date">
             <time :datetime="day.date">{{
               format(parseISO(day.date), "EEE, MMM d")
@@ -681,19 +680,7 @@ onBeforeUnmount(() =>
             </div>
           </li>
         </ol>
-      </section>
-      <section
-        v-if="showCalendarInputs && report.calendarLabels.length"
-        class="report-card calendar-report-card"
-      >
-        <div class="report-card-heading">
-          <div>
-            <span class="section-kicker">DAILY RECORDS</span>
-            <h2>Calendar labels</h2>
-          </div>
-          <span class="muted">Separate from tracked work time</span>
-        </div>
-        <div class="calendar-report-labels">
+        <div v-if="report.calendarLabels.length" class="calendar-report-labels">
           <div v-for="label in report.calendarLabels" :key="label.id">
             <i :style="{ backgroundColor: label.color || paletteColors[1] }"></i
             ><span>{{ label.label }}</span
