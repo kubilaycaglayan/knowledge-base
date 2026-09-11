@@ -13,6 +13,7 @@ type Account = {
 const account = ref<Account | null>(null);
 const currentPassword = ref("");
 const newPassword = ref("");
+const confirmPassword = ref("");
 const message = ref("");
 const error = ref("");
 const saving = ref(false);
@@ -43,6 +44,10 @@ async function storePasswordCredential(email: string, password: string) {
 async function savePassword() {
   message.value = "";
   error.value = "";
+  if (newPassword.value !== confirmPassword.value) {
+    error.value = "Passwords do not match. Re-enter the same new password in both fields.";
+    return;
+  }
   saving.value = true;
   try {
     account.value = await api<Account>("/auth/password", {
@@ -57,6 +62,7 @@ async function savePassword() {
     if (account.value?.email) await storePasswordCredential(account.value.email, newPassword.value);
     currentPassword.value = "";
     newPassword.value = "";
+    confirmPassword.value = "";
     message.value = "Password saved. You can now sign in with your email and password.";
   } catch {
     error.value = account.value?.hasPassword
@@ -128,6 +134,10 @@ onMounted(load);
         <label>
           {{ account?.hasPassword ? "New password" : "Password" }}
           <input id="new-password" v-model="newPassword" type="password" name="newPassword" autocomplete="new-password" minlength="9" required />
+        </label>
+        <label>
+          Confirm new password
+          <input id="confirm-password" v-model="confirmPassword" type="password" name="confirmPassword" autocomplete="new-password" minlength="9" required />
         </label>
         <button class="primary" type="submit" :disabled="saving">
           {{ saving ? "Saving…" : account?.hasPassword ? "Change password" : "Set password" }}
