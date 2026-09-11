@@ -87,6 +87,7 @@ type Report = {
   sankey?: Sankey;
 };
 type PathOption = { id: string; name: string; status?: string };
+type LabelOption = { id: string; name: string; color?: string | null };
 type Aggregation = "DAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR";
 const PathTimingSankey = defineAsyncComponent(
   () => import("../components/reports/PathTimingSankey.vue"),
@@ -120,7 +121,9 @@ const aggregation = ref<Aggregation>(
     : "DAY",
 );
 const selectedPathIds = ref<string[]>(initialParams.getAll("pathId"));
+const selectedLabelIds = ref<string[]>(initialParams.getAll("labelId"));
 const availablePaths = ref<PathOption[]>([]);
+const availableLabels = ref<LabelOption[]>([]);
 const report = ref<Report | null>(null);
 const error = ref("");
 const loading = ref(false);
@@ -132,6 +135,13 @@ const pathOptions = computed<PathOption[]>(() =>
     ? availablePaths.value
     : (report.value?.paths || []).flatMap((path) =>
         path.id ? [{ id: path.id, name: path.label }] : [],
+      ),
+);
+const labelOptions = computed<LabelOption[]>(() =>
+  availableLabels.value.length
+    ? availableLabels.value
+    : (report.value?.sessionLabels || []).flatMap((label) =>
+        label.id ? [{ id: label.id, name: label.label }] : [],
       ),
 );
 const breakdownMode = ref<"Path" | "Labels">("Path");
@@ -245,6 +255,7 @@ function syncReportStateFromUrl() {
   const startDate = params.get("startDate");
   const endDate = params.get("endDate");
   const nextPathIds = params.getAll("pathId");
+  const nextLabelIds = params.getAll("labelId");
   let changed = false;
   if (
     aggregationValues.includes(nextAggregation) &&
@@ -269,6 +280,13 @@ function syncReportStateFromUrl() {
     selectedPathIds.value = nextPathIds;
     changed = true;
   }
+  if (
+    nextLabelIds.length !== selectedLabelIds.value.length ||
+    nextLabelIds.some((id, index) => id !== selectedLabelIds.value[index])
+  ) {
+    selectedLabelIds.value = nextLabelIds;
+    changed = true;
+  }
   if (changed) void load();
 }
 function storeReportState() {
@@ -278,6 +296,8 @@ function storeReportState() {
   url.searchParams.set("endDate", selectedRange.value.endDate);
   url.searchParams.delete("pathId");
   selectedPathIds.value.forEach((pathId) => url.searchParams.append("pathId", pathId));
+  url.searchParams.delete("labelId");
+  selectedLabelIds.value.forEach((labelId) => url.searchParams.append("labelId", labelId));
   window.history.pushState({}, "", url);
 }
 function toggleTrendline() {
@@ -313,6 +333,7 @@ async function load(preserveScroll?: { left: number; top: number }) {
       aggregation: aggregation.value,
     });
     selectedPathIds.value.forEach((pathId) => params.append("pathId", pathId));
+    selectedLabelIds.value.forEach((labelId) => params.append("labelId", labelId));
     const result = await api<Report>(`/reports?${params.toString()}`, {
       signal: controller.signal,
     });
@@ -357,6 +378,14 @@ async function loadPaths() {
     // The report remains usable with paths returned in its aggregate data.
   }
 }
+async function loadLabels() {
+  try {
+    const result = await api<LabelOption[]>("/labels?scope=TIME_ENTRY");
+    if (Array.isArray(result)) availableLabels.value = result;
+  } catch {
+    // The report remains usable with labels returned in its aggregate data.
+  }
+}
 function selectPaths(value: unknown) {
   selectedPathIds.value = Array.isArray(value)
     ? value.filter((pathId): pathId is string => typeof pathId === "string")
@@ -364,8 +393,18 @@ function selectPaths(value: unknown) {
   storeReportState();
   void load({ left: window.scrollX, top: window.scrollY });
 }
+function selectLabels(value: unknown) {
+  selectedLabelIds.value = Array.isArray(value)
+    ? value.filter((labelId): labelId is string => typeof labelId === "string")
+    : [];
+  storeReportState();
+  void load({ left: window.scrollX, top: window.scrollY });
+}
 function removePath(pathId: string) {
   selectPaths(selectedPathIds.value.filter((selectedId) => selectedId !== pathId));
+}
+function removeLabel(labelId: string) {
+  selectLabels(selectedLabelIds.value.filter((selectedId) => selectedId !== labelId));
 }
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
@@ -421,6 +460,7 @@ onMounted(() => {
   window.addEventListener("popstate", syncReportStateFromUrl);
   void load();
   void loadPaths();
+  void loadLabels();
 });
 onBeforeUnmount(() =>
   window.removeEventListener("popstate", syncReportStateFromUrl),
@@ -548,6 +588,34 @@ onBeforeUnmount(() =>
                   close-icon="$close"
                   :aria-label="`Selected path: ${item.title}`"
                   @click:close="removePath(String(item.value))"
+                />
+              </template>
+            </v-select>
+          </div>
+          <div class="breakdown-control">
+            <v-select
+              aria-label="Filter by labels"
+              :items="labelOptions"
+              item-title="name"
+              item-value="id"
+              :model-value="selectedLabelIds"
+              multiple
+              chips
+              closable-chips
+              clearable
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="Choose labels…"
+              @update:model-value="selectLabels"
+            >
+              <template #chip="{ item }">
+                <v-chip
+                  :text="item.title"
+                  closable
+                  close-icon="$close"
+                  :aria-label="`Selected label: ${item.title}`"
+                  @click:close="removeLabel(String(item.value))"
                 />
               </template>
             </v-select>
