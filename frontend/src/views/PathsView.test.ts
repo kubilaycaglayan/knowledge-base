@@ -402,7 +402,7 @@ describe("PathsView", () => {
     const wrapper = mount(PathsView);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("archived");
+    expect(wrapper.text()).toContain("Archived");
     expect(wrapper.find("button.danger").exists()).toBe(false);
   });
 

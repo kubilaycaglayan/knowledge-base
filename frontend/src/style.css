@@ -42,7 +42,7 @@ button:disabled, input:disabled, select:disabled, textarea:disabled { background
 .path h2 { display: inline; font-size: 16px; margin-left: 10px; }
 .path p { margin: 7px 0 10px; color: var(--workspace-muted); }
 .dot { display: inline-block; width: 8px; height: 8px; background: var(--workspace-accent); border-radius: 50%; }
-.pill, .activity-pill { display: inline-block; font-size: 11px; color: var(--workspace-selected-text); background: var(--workspace-selected); border-radius: var(--workspace-radius); padding: 3px 7px; }
+.activity-pill { display: inline-block; font-size: 11px; color: var(--workspace-selected-text); background: var(--workspace-selected); border-radius: var(--workspace-radius); padding: 3px 7px; }
 .notice { margin-block: 16px; background: var(--workspace-danger-surface); color: var(--workspace-danger); padding: 12px; border: 1px solid var(--workspace-danger-border); border-radius: var(--workspace-radius); }
 .empty { color: var(--workspace-muted); padding: 24px 0; }
 .muted { color: var(--workspace-muted); }

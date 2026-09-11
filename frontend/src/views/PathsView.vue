@@ -364,8 +364,7 @@ onBeforeUnmount(() => {
           </p>
           <p v-else>No description yet</p>
           <div class="row-actions">
-            <span class="pill">{{ path.status.toLowerCase() }}</span
-            ><button
+            <button
               class="text-button"
               aria-haspopup="dialog"
               @click="inspect(path)"
