@@ -26,7 +26,7 @@ describe("CalendarView", () => {
 
     await wrapper.get('input[type="checkbox"]').setValue(true);
     await wrapper.get("textarea").setValue("Doctor visit");
-    await wrapper.get("select").setValue("1");
+    await wrapper.get('select[aria-label="Sick leave day portion"]').setValue("1");
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
 
@@ -89,7 +89,7 @@ describe("CalendarView", () => {
     await days[10].trigger("mouseenter");
     await days[10].trigger("mouseup", { button: 0 });
     await wrapper.get('input[type="checkbox"]').setValue(true);
-    await wrapper.get("select").setValue("1");
+    await wrapper.get('select[aria-label="Sick leave day portion"]').setValue("1");
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/calendar/days/range", expect.objectContaining({
