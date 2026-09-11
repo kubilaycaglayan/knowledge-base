@@ -10,6 +10,10 @@ describe("SettingsView", () => {
     vi.mocked(api).mockResolvedValue({ email: "person@example.com", hasPassword: false, hasGoogle: true });
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("shows only the selected settings section", async () => {
     const wrapper = mount(SettingsView);
     await flushPromises();
@@ -51,5 +55,44 @@ describe("SettingsView", () => {
       method: "PUT",
       body: JSON.stringify({ currentPassword: "old-password", newPassword: "new-password" }),
     }));
+  });
+
+  it("marks the change form for browser password managers", async () => {
+    vi.mocked(api).mockResolvedValue({ email: "person@example.com", hasPassword: true, hasGoogle: false });
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+
+    const form = wrapper.get("#password-change-form");
+    expect(form.attributes()).toMatchObject({ action: "/settings", autocomplete: "on", method: "post" });
+    expect(form.get('input[name="username"]').attributes()).toMatchObject({ autocomplete: "username", type: "hidden" });
+    expect((form.get('input[name="username"]').element as HTMLInputElement).value).toBe("person@example.com");
+    expect(form.get("#current-password").attributes("autocomplete")).toBe("current-password");
+    expect(form.get("#new-password").attributes("autocomplete")).toBe("new-password");
+  });
+
+  it("offers the changed password to browser credential storage after success", async () => {
+    const store = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(globalThis.navigator, "credentials", { configurable: true, value: { store } });
+    class PasswordCredentialMock {
+      id: string;
+      password: string;
+
+      constructor(value: { id: string; password: string }) {
+        this.id = value.id;
+        this.password = value.password;
+      }
+    }
+    vi.stubGlobal("PasswordCredential", PasswordCredentialMock);
+    vi.mocked(api).mockResolvedValue({ email: "person@example.com", hasPassword: true, hasGoogle: false });
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get('input[name="currentPassword"]').setValue("old-password");
+    await wrapper.get('input[name="newPassword"]').setValue("new-password");
+
+    await wrapper.get("form").trigger("submit");
+    await flushPromises();
+
+    expect(store).toHaveBeenCalledWith(expect.objectContaining({ id: "person@example.com", password: "new-password" }));
+    expect(store.mock.calls[0][0]).toBeInstanceOf(PasswordCredentialMock);
   });
 });
