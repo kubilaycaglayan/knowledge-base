@@ -79,10 +79,17 @@ function showWorkspace() {
 function showTimer(timer) {
   currentTimer = timer;
   $("status").textContent = KnowCore.timerStatus(timer);
+  setTimerToggle(KnowCore.timerIsRunning(timer));
   $("timer-details").disabled = !timer;
   if (!timer) closeTimerStartEditor();
   if (timerTicker) clearInterval(timerTicker);
   timerTicker = timer ? setInterval(() => { $("status").textContent = KnowCore.timerStatus(currentTimer); }, 1000) : null;
+}
+function setTimerToggle(running) {
+  const button = $("toggle");
+  button.className = `timer-toggle${running ? " is-running" : ""}`;
+  button.textContent = running ? "■" : "▶";
+  button.setAttribute("aria-label", running ? "Stop timer" : "Start timer");
 }
 
 function timerStateChanged(previous, next) {
@@ -240,13 +247,11 @@ async function syncTimerState() {
       await chrome.storage.local.remove("activeTimer");
       await resetTimerForm();
       showTimer(null);
-      $("toggle").textContent = "Start timer";
       await loadSessions();
     } else if (timer && timerStateChanged(currentTimer, timer)) {
       showTimer(timer);
       await chrome.storage.local.set({ activeTimer: timer });
       await restoreTimerSelection(timerSelection(timer));
-      $("toggle").textContent = "Stop timer";
     }
   } catch (error) {
     logError("Synchronize timer state", error);
@@ -423,9 +428,9 @@ async function load() {
       try { await configureCurrentTimer(); } catch (error) { logError("Change timer path", error); $("error").textContent = userError("Could not update the timer.", error); }
     };
     stage = "restore-timer-state";
-    if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
+    if (timer) { showTimer(timer); await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
     else {
-      showTimer(null); $("toggle").textContent = "Start timer"; await chrome.storage.local.remove("activeTimer");
+      showTimer(null); await chrome.storage.local.remove("activeTimer");
       if (activeTimer) await resetTimerForm();
       else await restoreTimerSelection(savedSelection || timerSelection(activeTimer));
     }
@@ -510,8 +515,8 @@ $("toggle").onclick = async () => {
   setButtonBusy(button, true);
   try {
     const current = await request("/timers/current");
-    if (KnowCore.timerIsRunning(current)) { await flushDescriptionSave(); await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); $("toggle").textContent = "Start timer"; await loadSessions(); }
-    else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedLabelIds($("label")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); $("toggle").textContent = "Stop timer"; }
+    if (KnowCore.timerIsRunning(current)) { await flushDescriptionSave(); await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); await loadSessions(); }
+    else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedLabelIds($("label")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); }
   } catch (error) { logError("Toggle timer", error); $("error").textContent = userError("Could not update the timer. Check the API connection and try again.", error); }
   finally { setButtonBusy(button, false); }
 };
