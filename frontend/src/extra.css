@@ -39,7 +39,7 @@
 .activity-description { min-width: 0; overflow-wrap: anywhere; }
 .session-list { display: grid; gap: 20px; }
 .session-group, .session-group-list { display: grid; gap: 10px; }
-.session-group-heading { margin: 0; padding-bottom: 6px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+.session-group-heading { margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-text); font-size: 14px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 .session-group + .session-group .session-group-heading { margin-top: 12px; }
 .session-card {
   padding: 14px 16px;
@@ -104,7 +104,7 @@
 .path-history-list { display: grid; gap: 8px; margin-top: 16px; }
 .path-history-group { display: grid; gap: 8px; }
 .path-history-group + .path-history-group { margin-top: 12px; }
-.path-history-group-heading { margin: 0; padding-bottom: 5px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-muted); font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+.path-history-group-heading { margin: 0; padding-bottom: 7px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-text); font-size: 13px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 .path-history-entry { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 4px 10px; padding: 10px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); background: var(--workspace-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 4%); }
 .path-history-entry time { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .path-history-entry .activity-duration { text-align: right; }
