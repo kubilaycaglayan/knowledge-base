@@ -22,7 +22,7 @@ describe("App", () => {
     expect(wrapper.find("nav").exists()).toBe(false);
     expect(wrapper.find('button.ghost:not(.theme-toggle)').exists()).toBe(false);
     expect(wrapper.find(".settings-link").exists()).toBe(false);
-    expect(wrapper.get(".theme-toggle").text()).toContain("Theme:");
+    expect(wrapper.find(".theme-toggle svg").exists()).toBe(true);
   });
 
   it("lets logged-out users change the theme from the shell", async () => {
@@ -31,7 +31,7 @@ describe("App", () => {
     await wrapper.get(".theme-toggle").trigger("click");
 
     expect(localStorage.getItem("knowledge-base-theme")).not.toBeNull();
-    expect(wrapper.get(".theme-toggle").attributes("aria-label")).toContain("Change theme");
+    expect(wrapper.get(".theme-toggle").attributes("aria-label")).toContain("Switch to");
   });
 
   it("shows the authenticated navigation and signs out", async () => {
