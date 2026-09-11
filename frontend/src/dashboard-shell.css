@@ -8,6 +8,7 @@
   color: var(--workspace-text);
 }
 .dashboard-shell > header, .dashboard-shell > main { max-width: 1200px; margin-inline: auto; }
+.dashboard-shell > main { padding-bottom: 112px; }
 .dashboard-shell > header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 28px; min-height: 76px; margin-bottom: 28px; padding-block: 16px; border-bottom: 1px solid var(--workspace-border); }
 .dashboard-shell .brand { color: var(--workspace-text); font-size: 19px; letter-spacing: -.7px; white-space: nowrap; }
 .dashboard-shell .brand span { color: var(--workspace-muted); }

@@ -4,6 +4,7 @@ import App from "./App.vue";
 const stubs = {
   RouterLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
   RouterView: { template: "<div data-test=router-view />" },
+  FloatingTimeTracker: { template: "<aside data-test= floating-tracker />" },
   AuthView: {
     emits: ["authenticated"],
     template: '<button data-test="authenticate" @click="$emit(\'authenticated\')">Authenticate</button>',
@@ -17,6 +18,7 @@ describe("App", () => {
     const wrapper = mount(App, { global: { stubs } });
 
     expect(wrapper.find('[data-test="authenticate"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
     expect(wrapper.find("nav").exists()).toBe(false);
     expect(wrapper.find('button.ghost').exists()).toBe(false);
   });
@@ -35,6 +37,7 @@ describe("App", () => {
       "Labels",
       "Settings",
     ]);
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(true);
 
     await wrapper.get("button.ghost").trigger("click");
 
