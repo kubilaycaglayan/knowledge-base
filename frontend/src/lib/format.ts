@@ -8,7 +8,7 @@ export const formatTrackedDuration = (seconds: number) => {
 
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  if (hours >= 24) return `${hours}h`;
+  if (hours >= 100) return `${hours}h`;
   if (!remainingMinutes) return `${hours}h`;
   return `${hours}h ${remainingMinutes} ${remainingMinutes === 1 ? "minute" : "minutes"}`;
 };
