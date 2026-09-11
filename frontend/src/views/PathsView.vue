@@ -39,7 +39,8 @@ const paths = ref<Path[]>([]),
   name = ref(""),
   description = ref(""),
   selectedColor = ref(colors[0]),
-  error = ref("");
+  error = ref(""),
+  addDialogOpen = ref(false);
 const editingId = ref(""),
   editName = ref(""),
   editDescription = ref(""),
@@ -151,7 +152,10 @@ async function load() {
   }
 }
 async function add() {
-  if (!name.value.trim()) return;
+  if (!name.value.trim()) {
+    error.value = "Enter a path name.";
+    return;
+  }
   try {
     await api("/paths", {
       method: "POST",
@@ -165,10 +169,21 @@ async function add() {
     description.value = "";
     selectedColor.value = colors[0];
     selectedColorOpen.value = false;
+    addDialogOpen.value = false;
     await load();
   } catch {
     error.value = "Could not create path.";
   }
+}
+function openAddDialog() {
+  error.value = "";
+  selectedColorOpen.value = false;
+  addDialogOpen.value = true;
+}
+function closeAddDialog() {
+  addDialogOpen.value = false;
+  selectedColorOpen.value = false;
+  error.value = "";
 }
 async function loadSummary(path: Path) {
   try {
@@ -305,24 +320,13 @@ onBeforeUnmount(() => {
 <template>
   <PromptDialog ref="promptDialog" />
   <MergePathDialog :source="mergeSource" :paths="paths" @cancel="cancelMerge" @confirm="merge" />
-  <section>
-    <p class="eyebrow">ORGANIZE</p>
-    <h1>Your paths</h1>
+  <section class="paths-page">
+    <header class="paths-heading">
+      <div><p class="eyebrow">ORGANIZE</p><h1>Your paths</h1></div>
+      <button class="icon-button" type="button" aria-label="Add path" title="Add path" aria-haspopup="dialog" @click="openAddDialog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+    </header>
     <p class="lede">Long-lived areas that give your work a place to belong.</p>
-    <form class="add path-form" @submit.prevent="add">
-      <input
-        v-model="name"
-        placeholder="New path name"
-        aria-label="New path name"
-      /><input
-        v-model="description"
-        placeholder="Description"
-        aria-label="Path description"
-      />
-      <span class="color-popover-anchor path-color-control"><button class="color-swatch-button" type="button" :style="{ backgroundColor: selectedColor }" aria-label="Choose path color" :aria-expanded="selectedColorOpen" aria-controls="new-path-color-palette" @click="selectedColorOpen = !selectedColorOpen; editColorOpen = false"></button><ColorPalette v-if="selectedColorOpen" id="new-path-color-palette" class="path-color-palette" :model-value="selectedColor" legend="Path color" option-label="Choose path color" @update:model-value="chooseSelectedColor" /></span>
-      <button class="primary">Add path</button>
-    </form>
-    <p v-if="error" class="notice" role="alert">{{ error }}</p>
+    <p v-if="error && !addDialogOpen" class="notice" role="alert" aria-live="polite">{{ error }}</p>
     <p
       v-if="pendingDelete"
       class="snackbar undo-snackbar"
@@ -395,6 +399,26 @@ onBeforeUnmount(() => {
         Your first path is waiting to be named.
       </p>
     </div>
+    <div v-if="addDialogOpen" class="prompt-dialog-backdrop" @click.self="closeAddDialog">
+      <section v-dialog-focus class="prompt-dialog card path-create-dialog" role="dialog" aria-modal="true" aria-labelledby="path-create-heading" tabindex="-1" @keydown.esc.prevent="closeAddDialog">
+        <div class="path-dialog-heading">
+          <div>
+            <p class="eyebrow">NEW PATH</p>
+            <h2 id="path-create-heading">Add a path</h2>
+          </div>
+        </div>
+        <form class="path-create-form" @submit.prevent="add">
+          <label>Path name<input v-model="name" name="path-name" aria-label="New path name" placeholder="e.g. Reading…" autocomplete="off" required /></label>
+          <label>Description <span class="muted">Optional</span><textarea v-model="description" name="path-description" aria-label="Path description" rows="3" placeholder="What belongs here…" autocomplete="off"></textarea></label>
+          <div class="path-create-color"><ColorPalette :model-value="selectedColor" legend="Path color" option-label="Choose path color" @update:model-value="chooseSelectedColor" /></div>
+          <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
+          <div class="prompt-dialog-actions">
+            <button type="button" class="text-button" @click="closeAddDialog">Cancel</button>
+            <button class="primary" type="submit">Add path</button>
+          </div>
+        </form>
+      </section>
+    </div>
     <div v-if="historyPath && summaries[historyPath.id]" class="prompt-dialog-backdrop" @click.self="closeHistory">
       <section
         v-dialog-focus
@@ -440,3 +464,19 @@ onBeforeUnmount(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.paths-page { max-width: 1200px; margin: 0 auto; }
+.paths-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.paths-heading h1 { margin: 8px 0 0; }
+.icon-button { display: inline-flex; width: 46px; height: 46px; align-items: center; justify-content: center; border: 0; border-radius: var(--workspace-radius); background: var(--workspace-accent); color: var(--workspace-on-accent); cursor: pointer; }
+.icon-button:hover { background: var(--workspace-accent-hover); }
+.path-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.path-dialog-heading h2 { margin: 3px 0 0; font-size: 20px; }
+.path-create-form { display: grid; gap: 14px; margin-top: 4px; }
+.path-create-form label { display: grid; gap: 6px; font-size: 12px; font-weight: 650; }
+.path-create-form input, .path-create-form textarea { width: 100%; }
+.path-create-color { padding-top: 2px; }
+.path-create-color :deep(.color-palette) { display: grid; grid-template-columns: repeat(5, 28px); gap: 2px; width: max-content; }
+@media (max-width: 560px) { .paths-heading { align-items: flex-start; } }
+</style>

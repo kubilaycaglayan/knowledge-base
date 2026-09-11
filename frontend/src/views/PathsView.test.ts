@@ -214,12 +214,12 @@ describe("PathsView", () => {
   it("submits a selected path color from the shared palette", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
     await wrapper.get('input[aria-label="New path name"]').setValue("Reading");
-    await wrapper.get('button[aria-label="Choose path color"]').trigger("click");
     await wrapper
       .get('button[aria-label="Choose path color: Blue (#3B82F6)"]')
       .trigger("click");
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("form.path-create-form").trigger("submit");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/paths",
       expect.objectContaining({
@@ -362,8 +362,9 @@ describe("PathsView", () => {
     });
     const wrapper = mount(PathsView);
     await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
     await wrapper.get('input[aria-label="New path name"]').setValue("New path");
-    await wrapper.get("form.path-form").trigger("submit");
+    await wrapper.get("form.path-create-form").trigger("submit");
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toBe("Could not create path.");
 
