@@ -30,6 +30,7 @@ type Draft = {
   description: string;
   source: string;
 };
+type SessionGroup = { key: string; label: string; sessions: Session[] };
 
 const sessions = ref<Session[]>([]);
 const paths = ref<Path[]>([]);
@@ -65,6 +66,44 @@ const isoDateTime = (value: string) => new Date(value).toISOString();
 const sessionDate = (iso: string) => formatDateTime(iso);
 const duration = (session: Session) =>
   session.running ? "Running" : formatTrackedDuration(session.durationSeconds || 0);
+
+const startOfDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const sameDay = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+const sessionGroupLabel = (startedAt: string) => {
+  const date = startOfDay(new Date(startedAt));
+  const today = startOfDay(new Date());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const thisWeekStart = new Date(today);
+  thisWeekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  if (sameDay(date, today)) return "Today";
+  if (sameDay(date, yesterday)) return "Yesterday";
+  if (date >= thisWeekStart) return "This week";
+  if (date >= lastWeekStart) return "Last week";
+  if (date.getFullYear() === lastMonth.getFullYear() && date.getMonth() === lastMonth.getMonth()) return "Last month";
+  return new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(date);
+};
+const sessionGroups = computed<SessionGroup[]>(() => {
+  const groups: SessionGroup[] = [];
+  for (const session of sessions.value) {
+    const label = sessionGroupLabel(session.startedAt);
+    const group = groups.at(-1);
+    if (group?.label === label) {
+      group.sessions.push(session);
+    } else {
+      groups.push({ key: `${label}-${session.id}`, label, sessions: [session] });
+    }
+  }
+  return groups;
+});
 
 const pageNumbers = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1));
 async function load(nextPage = page.value) {
@@ -159,15 +198,15 @@ onMounted(load);
 <template>
   <PromptDialog ref="promptDialog" />
   <section>
-    <p class="eyebrow">TIME TRACKING</p>
-    <h1>Sessions</h1>
-    <p class="lede">Every recorded session, with the newest one first.</p>
     <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
     <div class="session-list" role="region" aria-label="Sessions">
-      <article v-for="session in sessions" :key="session.id" class="card session-card">
+      <section v-for="group in sessionGroups" :key="group.key" class="session-group" :aria-labelledby="`session-group-${group.key}`">
+        <h2 :id="`session-group-${group.key}`" class="session-group-heading">{{ group.label }}</h2>
+        <div class="session-group-list">
+      <article v-for="session in group.sessions" :key="session.id" class="card session-card">
         <div v-if="editingId !== session.id" class="session-heading">
           <div>
-            <h2>{{ pathFor(session.pathId)?.name || "Unassigned path" }}</h2>
+            <h3>{{ pathFor(session.pathId)?.name || "Unassigned path" }}</h3>
             <p class="session-description">{{ session.description || "No description" }}</p>
           </div>
           <button class="text-button" :disabled="session.running" @click="beginEdit(session)">
@@ -215,6 +254,8 @@ onMounted(load);
           </div>
         </form>
       </article>
+        </div>
+      </section>
       <p v-if="!sessions.length && !error" class="empty">No sessions recorded yet.</p>
     </div>
     <nav v-if="totalSessions" class="session-pagination" aria-label="Session pages">
