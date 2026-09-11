@@ -173,7 +173,7 @@ test("shows a sanitized diagnostic reference for production workspace failures",
   await flush();
 
   assert.match(popup.elements.error.textContent, /Sign in failed or the API is unavailable/);
-  assert.match(popup.elements.error.textContent, /diagnostic popup-/);
+  assert.match(popup.elements.error.textContent, /diagnostic popup-.*stage=load-paths-and-labels/);
   assert.doesNotMatch(popup.elements.error.textContent, /private-token/);
 });
 
