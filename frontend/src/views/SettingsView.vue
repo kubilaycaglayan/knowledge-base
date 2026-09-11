@@ -39,7 +39,7 @@ async function savePassword() {
     account.value = await api<Account>("/auth/password", {
       method: "PUT",
       body: JSON.stringify({
-        ...(account.value?.hasPassword && !account.value?.hasGoogle
+        ...(account.value?.hasPassword
           ? { currentPassword: currentPassword.value }
           : {}),
         newPassword: newPassword.value,
@@ -110,7 +110,7 @@ onMounted(load);
         Set a password to add password sign-in while keeping Google sign-in available.
       </p>
       <form class="settings-form" @submit.prevent="savePassword">
-        <label v-if="account?.hasPassword && !account?.hasGoogle">
+        <label v-if="account?.hasPassword">
           Current password
           <input v-model="currentPassword" type="password" name="currentPassword" autocomplete="current-password" required />
         </label>

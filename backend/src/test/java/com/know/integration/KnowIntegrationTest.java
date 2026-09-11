@@ -174,6 +174,41 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.CONFLICT, dup.getStatusCode());
   }
 
+  @Test
+  void changingPasswordRequiresTheCurrentPasswordAndInvalidatesTheOldOne() {
+    String email = UUID.randomUUID() + "@integration.test";
+    String oldPassword = "OldSecurePassword!";
+    String newPassword = "NewSecurePassword!";
+    String token = registerAndLogin(email, oldPassword);
+
+    ResponseEntity<JsonNode> missingCurrent =
+        put("/api/v1/auth/password", token, json("newPassword", newPassword));
+    assertEquals(HttpStatus.BAD_REQUEST, missingCurrent.getStatusCode());
+
+    ResponseEntity<JsonNode> wrongCurrent =
+        put(
+            "/api/v1/auth/password",
+            token,
+            json("currentPassword", "WrongCurrentPassword!", "newPassword", newPassword));
+    assertEquals(HttpStatus.BAD_REQUEST, wrongCurrent.getStatusCode());
+
+    ResponseEntity<JsonNode> changed =
+        put(
+            "/api/v1/auth/password",
+            token,
+            json("currentPassword", oldPassword, "newPassword", newPassword));
+    assertEquals(HttpStatus.OK, changed.getStatusCode());
+
+    assertEquals(
+        HttpStatus.UNAUTHORIZED,
+        post("/api/v1/auth/login", null, json("email", email, "password", oldPassword))
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        post("/api/v1/auth/login", null, json("email", email, "password", newPassword))
+            .getStatusCode());
+  }
+
   // Criteria: path CRUD (list / create / read / update / soft delete)
 
   @Test
