@@ -5,7 +5,7 @@ import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 
-type Path = { id: string; name: string; description?: string; status: string };
+type Path = { id: string; name: string; description?: string; status: string; color?: string | null };
 type Label = {
   id: string;
   name: string;
@@ -46,7 +46,15 @@ const sources = ["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"];
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 
 const pathFor = (id?: string) => paths.value.find((path) => path.id === id);
+const sessionTitleStyle = (session: Session) => {
+  const color = pathFor(session.pathId)?.color;
+  return color ? { "--session-path-color": color } : undefined;
+};
 const labelFor = (id?: string) => labels.value.find((label) => label.id === id);
+const sessionLabelStyle = (labelId: string) => {
+  const color = labelFor(labelId)?.color;
+  return color ? { "--session-label-color": color } : undefined;
+};
 const sessionLabelIds = (session: Session) => session.labelIds || [];
 const availableLabels = computed(() => labels.value);
 const localDateTime = (iso?: string) => {
@@ -199,12 +207,11 @@ onMounted(load);
       <article v-for="session in group.sessions" :key="session.id" class="card session-card">
         <div v-if="editingId !== session.id" class="session-heading">
           <div>
-            <h3>{{ pathFor(session.pathId)?.name || "Unassigned path" }}</h3>
+            <h3 v-if="pathFor(session.pathId)"><span class="session-title-chip" :style="sessionTitleStyle(session)">{{ pathFor(session.pathId)?.name }}</span></h3>
             <div class="session-card-labels" aria-label="Session labels">
-              <span v-for="labelId in sessionLabelIds(session)" :key="labelId">{{ labelFor(labelId)?.name || "Removed label" }}</span>
-              <span v-if="!sessionLabelIds(session).length">Unassigned labels</span>
+              <span v-for="labelId in sessionLabelIds(session)" :key="labelId" :style="sessionLabelStyle(labelId)">{{ labelFor(labelId)?.name || "Removed label" }}</span>
             </div>
-            <p class="session-description">{{ session.description || "No description" }}</p>
+            <p v-if="session.description" class="session-description">{{ session.description }}</p>
           </div>
           <button class="text-button" :disabled="session.running" @click="beginEdit(session)">
             {{ session.running ? "Stop to edit" : "Edit session" }}
