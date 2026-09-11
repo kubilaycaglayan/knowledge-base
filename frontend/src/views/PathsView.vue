@@ -16,12 +16,14 @@ type Path = {
   color?: string;
   status: string;
 };
+type Label = { id: string; name: string; color?: string | null };
 type Activity = {
   id: string;
   type?: string;
   title: string;
   detail?: string;
   occurredAt: string;
+  labelIds?: string[];
 };
 type Summary = {
   path: Path;
@@ -32,6 +34,7 @@ type DescriptionPart = { text: string; url?: string };
 type ActivityGroup = { key: string; label: string; activities: Activity[] };
 const colors = paletteColors;
 const paths = ref<Path[]>([]),
+  labels = ref<Label[]>([]),
   summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
   description = ref(""),
@@ -53,6 +56,8 @@ const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
   return match ? formatTrackedDuration(Number(match[1])) : "";
 };
+const labelFor = (id?: string) => labels.value.find((label) => label.id === id);
+const activityLabelIds = (activity: Activity) => activity.labelIds || [];
 const linkPattern = /https?:\/\/[^\s<>]+/g;
 function linkParts(text?: string): DescriptionPart[] {
   if (!text) return [];
@@ -135,7 +140,12 @@ function historyActivityGroups(pathId: string): ActivityGroup[] {
 }
 async function load() {
   try {
-    paths.value = await api<Path[]>("/paths");
+    const [loadedPaths, loadedLabels] = await Promise.all([
+      api<Path[]>("/paths"),
+      api<Label[]>("/labels?scope=TIME_ENTRY"),
+    ]);
+    paths.value = loadedPaths;
+    labels.value = loadedLabels || [];
   } catch {
     error.value = "Unable to load paths.";
   }
@@ -407,7 +417,14 @@ onBeforeUnmount(() => {
           <section v-for="group in historyActivityGroups(historyPath.id)" :key="group.key" class="path-history-group" :aria-labelledby="`path-history-group-${group.key}`">
             <h3 :id="`path-history-group-${group.key}`" class="path-history-group-heading">{{ group.label }}</h3>
           <article v-for="event in group.activities" :key="event.id" class="path-history-entry">
-            <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
+            <div class="path-history-meta">
+              <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
+              <div v-if="activityLabelIds(event).length" class="activity-labels" aria-label="Session labels">
+                <span v-for="labelId in activityLabelIds(event)" :key="labelId" class="activity-label-chip">
+                  {{ labelFor(labelId)?.name || "Removed label" }}
+                </span>
+              </div>
+            </div>
             <span v-if="activityDuration(event.title)" class="activity-duration">{{ activityDuration(event.title) }}</span>
             <p class="activity-description">
               <template v-for="(part, index) in activityDescriptionParts(event)" :key="index">

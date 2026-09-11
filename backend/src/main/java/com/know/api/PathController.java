@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
@@ -22,16 +23,19 @@ public class PathController {
   private final PathRepository paths;
   private final ActivityRepository activities;
   private final TimeEntryRepository timeEntries;
+  private final TimeEntryLabelRepository entryLabels;
   private final PathManagementService pathManagement;
 
   public PathController(
       PathRepository paths,
       ActivityRepository activities,
       TimeEntryRepository timeEntries,
+      TimeEntryLabelRepository entryLabels,
       PathManagementService pathManagement) {
     this.paths = paths;
     this.activities = activities;
     this.timeEntries = timeEntries;
+    this.entryLabels = entryLabels;
     this.pathManagement = pathManagement;
   }
 
@@ -118,8 +122,13 @@ public class PathController {
             event.getType() == ActivityType.TIMER_STARTED
                 || event.getType() == ActivityType.TIMER_STOPPED
                 || event.getType() == ActivityType.TIME_TRACKED);
+    Map<UUID, List<UUID>> labelIdsByEntry = entryLabels
+        .findAllByIdTimeEntryIdIn(relevantTimes.keySet()).stream()
+        .collect(Collectors.groupingBy(
+            TimeEntryLabel::getTimeEntryId,
+            Collectors.mapping(TimeEntryLabel::getLabelId, Collectors.toList())));
     relevantTimes.values().stream()
-        .map(entry -> sessionActivity(id, entry))
+        .map(entry -> sessionActivity(id, entry, labelIdsByEntry.getOrDefault(entry.getId(), List.of())))
         .forEach(event -> relevantActivity.put(event.getId(), event));
     List<Activity> recent =
         relevantActivity.values().stream()
@@ -194,15 +203,17 @@ public class PathController {
         : Math.max(0, Duration.between(entry.getStartedAt(), Instant.now()).toSeconds());
   }
 
-  private Activity sessionActivity(UUID pathId, TimeEntry entry) {
+  private Activity sessionActivity(UUID pathId, TimeEntry entry, List<UUID> labelIds) {
     long seconds = liveSeconds(entry);
-    return Activity.session(
+    Activity activity = Activity.session(
         entry.getUserId(),
         pathId,
         entry.getId(),
         "Tracked " + seconds + " seconds",
         entry.getDescription(),
         entry.getEndedAt() == null ? entry.getStartedAt() : entry.getEndedAt());
+    activity.assignLabelIds(labelIds);
+    return activity;
   }
 
 }
