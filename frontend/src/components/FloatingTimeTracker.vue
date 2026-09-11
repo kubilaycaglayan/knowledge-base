@@ -185,7 +185,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .floating-tracker-host { position: fixed; inset-inline: 0; bottom: 0; z-index: 15; display: flex; justify-content: center; pointer-events: none; padding: 0 12px max(12px, env(safe-area-inset-bottom)); }
 .floating-tracker-host.inline { position: static; z-index: auto; padding: 0; margin-bottom: 32px; }
 .floating-tracker-host.inline .floating-tracker { max-width: none; }
-.floating-tracker { width: 100%; max-width: 768px; overflow: hidden; pointer-events: auto; border: 1px solid var(--workspace-border); border-radius: 8px; background: var(--workspace-surface); box-shadow: 0 10px 26px #18212f2e; }
+.floating-tracker { width: 100%; max-width: 768px; overflow: hidden; pointer-events: auto; border: 1px solid var(--workspace-border); border-radius: 8px; background: var(--workspace-surface); box-shadow: 0 2px 5px rgb(24 33 47 / 12%), 0 14px 32px rgb(24 33 47 / 22%); }
 .floating-tracker-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
 .tracker-status { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--workspace-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-danger) 14%, transparent); }.tracker-status.running { background: var(--workspace-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-success) 14%, transparent); }
 .floating-tracker-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; border: 0; border-radius: 6px; padding: 6px 12px; background: var(--workspace-accent); color: var(--workspace-on-accent); font-size: 14px; font-weight: 600; }
