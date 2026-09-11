@@ -48,7 +48,7 @@ describe("SessionsView", () => {
     const latestSession = wrapper.findAll("article.session-card")[0];
     expect(latestSession.get("h2").text()).toBe("Learning");
     expect(latestSession.get(".session-description").text()).toBe("Most recent");
-    expect(latestSession.get(".session-summary").text()).toContain("Vue");
+    expect(latestSession.get(".session-summary").findAll("span")[0].text()).toBe("Vue");
   });
 
   it("renders multiple session labels and marks deleted references clearly", async () => {
