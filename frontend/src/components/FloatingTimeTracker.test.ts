@@ -7,6 +7,7 @@ vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("FloatingTimeTracker", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths" || path === "/labels?scope=TIME_ENTRY" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;
@@ -78,5 +79,41 @@ describe("FloatingTimeTracker", () => {
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/timer-1", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"startedAt":"2026-09-11T09:30:00.000Z"') }));
     wrapper.unmount();
+  });
+
+  it("persists a newly created label and ignores an older polling response", async () => {
+    vi.useFakeTimers();
+    let resolveStalePoll: ((value: unknown) => void) | undefined;
+    let currentRequests = 0;
+    vi.mocked(api).mockImplementation((path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return Promise.resolve([]);
+      if (path === "/labels?scope=TIME_ENTRY") return Promise.resolve([]);
+      if (path === "/labels") {
+        return options.method === "POST"
+          ? Promise.resolve({ id: "label-1", name: "Focus" })
+          : Promise.resolve([]);
+      }
+      if (path === "/timers/current") {
+        currentRequests++;
+        if (currentRequests === 1) return Promise.resolve({ id: "timer-1", labelIds: [], startedAt: "2026-09-11T10:00:00Z", running: true });
+        return new Promise((resolve) => { resolveStalePoll = resolve; });
+      }
+      if (path === "/timers/timer-1" && options.method === "PUT") return Promise.resolve({ id: "timer-1", labelIds: ["label-1"], startedAt: "2026-09-11T10:00:00Z", running: true });
+      return Promise.resolve(undefined);
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(2000);
+
+    await wrapper.get('input[aria-label="New session label name"]').setValue("Focus");
+    await wrapper.get(".create-label").trigger("click");
+    await flushPromises();
+    resolveStalePoll?.({ id: "timer-1", labelIds: [], startedAt: "2026-09-11T10:00:00Z", running: true });
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/timer-1", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"labelIds":["label-1"]') }));
+    expect(wrapper.get(".label-picker button").classes()).toContain("selected");
+    wrapper.unmount();
+    vi.useRealTimers();
   });
 });
