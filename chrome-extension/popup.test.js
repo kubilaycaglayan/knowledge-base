@@ -11,7 +11,7 @@ class Element {
     this.id = id;
     this.value = "";
     this.textContent = "";
-    this.hidden = id === "settings-menu";
+    this.hidden = id === "settings-menu" || id === "timer-start-editor";
     this.disabled = false;
     this.multiple = false;
     this.options = [];
@@ -25,6 +25,7 @@ class Element {
     else this.children.push(...items);
   }
   setAttribute(name, value) { this[name] = value; }
+  focus() { this.focused = true; }
   replaceChildren() { this.options = []; this.children = []; }
   insertAdjacentHTML() {}
   querySelector() { return null; }
@@ -32,7 +33,7 @@ class Element {
 
 function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false } = {}) {
   const elements = Object.fromEntries([
-    "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
+    "status", "timer-details", "timer-start-editor", "timer-started-at", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
     "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options", "settings-menu-toggle", "settings-menu",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [], diagnostics: [], errors: [] };
@@ -207,6 +208,26 @@ test("starts a server timer with selected path, labels, description, and extensi
   assert.deepEqual(JSON.parse(start.options.body), { pathId: "path-1", labelIds: ["label-1"], description: "Read algorithms", source: "CHROME_EXTENSION" });
   assert.equal(popup.state.activeTimer.id, "timer-1");
   assert.equal(popup.elements.toggle.textContent, "Stop timer");
+});
+
+test("updates a running timer start through the native date and time picker", async () => {
+  const popup = createPopup({
+    token: "token",
+    currentTimer: { id: "timer-1", pathId: "path-1", labelIds: ["label-1"], description: "Read algorithms", startedAt: "2026-09-01T10:00:00Z", running: true },
+  });
+  await flush();
+  await flush();
+  await flush();
+  await popup.elements["timer-details"].onclick();
+  popup.elements["timer-started-at"].value = "2026-09-01T09:30";
+  assert.equal(popup.elements["timer-start-editor"].hidden, false);
+  await popup.elements["timer-start-editor"].onsubmit({ preventDefault() {} });
+
+  const update = popup.state.calls.find(({ path, options }) => path === "/timers/timer-1" && options.method === "PUT");
+  assert.ok(update);
+  assert.deepEqual(JSON.parse(update.options.body), {
+    pathId: "path-1", labelIds: ["label-1"], startedAt: "2026-09-01T09:30:00.000Z", description: "Read algorithms",
+  });
 });
 
 test("removes a label from the timer when its chip close button is clicked", async () => {
