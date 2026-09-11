@@ -51,7 +51,35 @@ class KnowledgeBaseTransferServiceTest {
 
     assertThat(csv).startsWith("entity,id,payload\n");
     assertThat(csv).contains("path," + path.getId(), "session," + entry.getId(), "label," + label.getId());
-    assertThat(csv).contains("#123456", label.getId().toString());
+    assertThat(csv).contains("#123456");
+    assertThat(csv).contains("#abcdef");
+    assertThat(csv).contains("TIME_ENTRY");
+    assertThat(csv).contains(label.getId().toString());
+  }
+
+  @Test
+  void importPreservesPathAndLabelColorsAndScopes() {
+    UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), labelId = UUID.randomUUID();
+    when(batches.save(any(ImportBatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(paths.save(any(Path.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(labels.save(any(Label.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    String csv = """
+        entity,id,payload
+        path,%s,"{""name"":""Research"",""description"":null,""color"":""#123456"",""status"":""ACTIVE""}"
+        label,%s,"{""name"":""Focus"",""color"":""#ABCDEF"",""scopes"":[""TIME_ENTRY"",""NOTE""]}"
+        """.formatted(pathId, labelId);
+
+    service.importCsv(user, csv);
+
+    var pathCaptor = org.mockito.ArgumentCaptor.forClass(Path.class);
+    var labelCaptor = org.mockito.ArgumentCaptor.forClass(Label.class);
+    verify(paths, atLeastOnce()).save(pathCaptor.capture());
+    verify(labels, atLeastOnce()).save(labelCaptor.capture());
+    assertThat(pathCaptor.getAllValues().getLast().getColor()).isEqualTo("#123456");
+    assertThat(labelCaptor.getAllValues().getLast().getColor()).isEqualTo("#ABCDEF");
+    verify(scopes).save(argThat(scope -> scope.getId().equals(new LabelScopeId(labelId, LabelScopeType.TIME_ENTRY))));
+    verify(scopes).save(argThat(scope -> scope.getId().equals(new LabelScopeId(labelId, LabelScopeType.NOTE))));
   }
 
   @Test

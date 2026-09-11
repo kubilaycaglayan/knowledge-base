@@ -23,6 +23,7 @@
 - [x] Allow a path to be merged into another owned path from its edit controls,
   with searchable target selection, confirmation, and server-side session transfer.
 - [x] Discard timers stopped before 2 seconds so accidental starts do not create sessions.
+- [x] Preserve path and label colors, scopes, and assignments in Knowledge Base imports and exports.
 
 Continue applying these foundations to future web features. Native iOS and
 extension design work remains outside this web redesign; their API contracts,

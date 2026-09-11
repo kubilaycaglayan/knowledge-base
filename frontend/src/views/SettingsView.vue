@@ -173,7 +173,7 @@ onMounted(load);
       <section class="card settings-card settings-intro-card">
         <p class="section-kicker">KEEP A COPY</p>
         <h2 id="export-title">Export</h2>
-        <p>Download active sessions, paths, timeline, calendar inputs, notes, and labels as a portable CSV.</p>
+        <p>Download active sessions, paths, timeline, calendar inputs, notes, and labels as a portable CSV. Path and label colors, scopes, and assignments are included.</p>
         <div class="settings-action-row">
           <button class="primary" type="button" @click="exportData">Download Knowledge Base CSV</button>
           <span v-if="exportMessage" class="muted" role="status" aria-live="polite">{{ exportMessage }}</span>
