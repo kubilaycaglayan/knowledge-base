@@ -2,6 +2,7 @@ package com.know.domain;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -33,6 +34,8 @@ public class Activity {
 
   @Column(name = "import_batch_id")
   private UUID importBatchId;
+
+  @Transient private List<UUID> labelIds = List.of();
 
   protected Activity() {}
 
@@ -114,6 +117,14 @@ public class Activity {
 
   public UUID getImportBatchId() {
     return importBatchId;
+  }
+
+  public List<UUID> getLabelIds() {
+    return labelIds;
+  }
+
+  public void assignLabelIds(List<UUID> labelIds) {
+    this.labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
   }
 
   public void assignImportBatch(UUID importBatchId) {
