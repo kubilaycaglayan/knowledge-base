@@ -2,6 +2,7 @@
 import { inject, ref, watchEffect } from "vue";
 import { routeLocationKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
+import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
 import { theme, themePreference, toggleTheme } from "./lib/theme";
 const token = ref(localStorage.getItem("know_token"));
 const route = inject(routeLocationKey, undefined);
@@ -47,6 +48,7 @@ function authenticated() {
         v-else
       />
     </main>
+    <FloatingTimeTracker v-if="token" />
   </div>
 </template>
 
