@@ -82,6 +82,37 @@ class TimerServiceEdgeTest {
   }
 
   @Test
+  void stoppingATimerUnderTwoSecondsDiscardsItInsteadOfSavingASession() {
+    UUID user = UUID.randomUUID();
+    UUID id = UUID.randomUUID();
+    TimeEntry running = new TimeEntry(user, null, Instant.now().minusMillis(250), "accidental", TimeSource.WEB);
+    when(entries.findById(id)).thenReturn(Optional.of(running));
+    when(entryLabels.findAllByIdTimeEntryId(running.getId())).thenReturn(List.of());
+
+    TimerService.TimeView view = service().stop(user, id);
+
+    assertFalse(view.running());
+    assertTrue(view.durationSeconds() < 2);
+    verify(entries).delete(running);
+    verify(entries, never()).save(running);
+  }
+
+  @Test
+  void stoppingATimerAtTwoSecondsPersistsTheSession() {
+    UUID user = UUID.randomUUID();
+    UUID id = UUID.randomUUID();
+    TimeEntry running = new TimeEntry(user, null, Instant.now().minusSeconds(2), "kept", TimeSource.WEB);
+    when(entries.findById(id)).thenReturn(Optional.of(running));
+    when(entryLabels.findAllByIdTimeEntryId(running.getId())).thenReturn(List.of());
+
+    TimerService.TimeView view = service().stop(user, id);
+
+    assertTrue(view.durationSeconds() >= 2);
+    verify(entries).save(running);
+    verify(entries, never()).delete(running);
+  }
+
+  @Test
   void historyPageClampsNegativePagesAndOversizedPageSizes() {
     UUID user = UUID.randomUUID();
     when(entries.countByUserId(user)).thenReturn(101L);
