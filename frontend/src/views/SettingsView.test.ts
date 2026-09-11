@@ -15,6 +15,7 @@ describe("SettingsView", () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain("Sign-in methods");
+    expect((wrapper.get(".theme-select").element as HTMLSelectElement).value).toBe("auto");
     expect(wrapper.text()).not.toContain("Download Knowledge Base CSV");
     await wrapper.get('[role="tab"]:nth-child(3)').trigger("click");
     expect(wrapper.text()).toContain("Download Knowledge Base CSV");

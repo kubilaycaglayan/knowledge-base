@@ -35,8 +35,8 @@ describe("App", () => {
       "Notes",
       "Reports",
       "Labels",
-      "Settings",
     ]);
+    expect(wrapper.get('.settings-link').attributes('aria-label')).toBe('Settings');
     expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(true);
 
     await wrapper.get("button.ghost").trigger("click");
