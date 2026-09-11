@@ -9,7 +9,6 @@ const required = [
   ['frontend/src/views/AuthView.vue', 'aria-label="Email"', 'web authentication email label'],
   ['frontend/src/views/AuthView.vue', 'aria-label="Password"', 'web authentication password label'],
   ['frontend/src/views/PathsView.vue', 'Choose path color', 'path color picker labels'],
-  ['frontend/src/views/DashboardView.vue', 'aria-label="Search knowledge"', 'dashboard search label'],
   ['frontend/src/components/FloatingTimeTracker.vue', 'aria-label="Edit timer start time; elapsed session time"', 'active timer start editor label'],
   ['frontend/src/components/FloatingTimeTracker.vue', 'aria-label="New session label name"', 'session label creation name'],
   ['frontend/src/views/ImportsView.vue', 'aria-label="Clockify JSON"', 'Clockify import input label'],

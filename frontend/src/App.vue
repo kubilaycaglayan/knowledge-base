@@ -2,13 +2,12 @@
 import { inject, ref, watchEffect } from "vue";
 import { routeLocationKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
-import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
 import { themePreference, toggleTheme } from "./lib/theme";
 const token = ref(localStorage.getItem("know_token"));
 const route = inject(routeLocationKey, undefined);
 watchEffect(() => {
   const path = route?.path || "/";
-  const page = !token.value ? "Sign in" : path.startsWith("/notes/") ? "Note" : path === "/" ? "Overview" : path.slice(1);
+  const page = !token.value ? "Sign in" : path.startsWith("/notes/") ? "Note" : path === "/" ? "Sessions" : path.slice(1);
   document.title = `${page.charAt(0).toUpperCase()}${page.slice(1)} · Knowledge Base`;
 });
 function logout() {
@@ -25,8 +24,7 @@ function authenticated() {
     <header>
       <a class="brand" href="/" aria-label="Knowledge Base" translate="no">knowledge<span>.</span>base</a>
       <nav v-if="token" aria-label="Main navigation">
-        <RouterLink to="/">Overview</RouterLink
-          ><RouterLink to="/sessions">Sessions</RouterLink
+        <RouterLink to="/sessions">Sessions</RouterLink
         ><RouterLink to="/paths">Paths</RouterLink
         ><RouterLink to="/calendar">Calendar</RouterLink
         ><RouterLink to="/notes" :class="{ 'section-active': route?.path.startsWith('/notes/') }">Notes</RouterLink
@@ -56,7 +54,6 @@ function authenticated() {
         v-else
       />
     </main>
-    <FloatingTimeTracker v-if="token && route?.path !== '/'" />
   </div>
 </template>
 

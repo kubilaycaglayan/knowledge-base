@@ -39,7 +39,6 @@ describe("App", () => {
     const wrapper = mount(App, { global: { stubs } });
 
     expect(wrapper.get("nav").findAll("a").map((link) => link.text())).toEqual([
-      "Overview",
       "Sessions",
       "Paths",
       "Calendar",
@@ -49,7 +48,7 @@ describe("App", () => {
     ]);
     expect(wrapper.get('.settings-link').attributes('aria-label')).toBe('Settings');
     expect(wrapper.find(".theme-toggle").exists()).toBe(false);
-    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
 
     await wrapper.get("button.ghost").trigger("click");
 
