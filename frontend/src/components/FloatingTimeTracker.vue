@@ -16,7 +16,7 @@ const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), n
 const busy = ref(false), error = ref("");
 const timerStartedAt = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
-let ticker: number | undefined, syncTicker: number | undefined, syncInFlight = false;
+let ticker: number | undefined, syncTicker: number | undefined, syncInFlight = false, timerStateVersion = 0;
 
 const activePaths = computed(() => paths.value.filter((path) => path.status === "ACTIVE"));
 const recentPaths = computed(() => recentPathIds.value.map((id) => paths.value.find((path) => path.id === id)).filter((path): path is Path => Boolean(path && path.status === "ACTIVE")).slice(0, 5));
@@ -61,9 +61,11 @@ async function toggleRun() {
   busy.value = true; error.value = "";
   try {
     if (timer.value) {
+      timerStateVersion++;
       await api(`/timers/${timer.value.id}/stop`, { method: "POST", body: "{}" });
       applyTimer(null); description.value = ""; selectedLabelIds.value = [];
     } else {
+      timerStateVersion++;
       applyTimer(await api<Timer>("/timers", { method: "POST", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, description: description.value.trim() || null }) }));
       rememberPath(pathId.value);
     }
@@ -71,16 +73,17 @@ async function toggleRun() {
   } catch { error.value = "Could not update the timer. Only one timer can run at a time."; }
   finally { busy.value = false; }
 }
-async function updateTimer() {
-  if (!timer.value || busy.value) return;
-  busy.value = true; error.value = "";
+async function updateTimer(alreadyBusy = false) {
+  if (!timer.value || (busy.value && !alreadyBusy)) return;
+  if (!alreadyBusy) busy.value = true;
+  timerStateVersion++; error.value = "";
   try {
     const startedAt = timerStartedAt.value ? new Date(timerStartedAt.value).toISOString() : timer.value.startedAt;
     applyTimer(await api<Timer>(`/timers/${timer.value.id}`, { method: "PUT", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, startedAt, description: description.value.trim() || null }) }));
     rememberPath(pathId.value);
     emit("changed");
   } catch { error.value = "Could not save the active timer settings."; }
-  finally { busy.value = false; }
+  finally { if (!alreadyBusy) busy.value = false; }
 }
 async function choosePath(id: string) {
   if (id === "__add_new_path__") {
@@ -107,14 +110,14 @@ async function createLabel() {
     let created = await api<Label | undefined>("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) }).catch(() => undefined);
     if (!created) created = await api<Label>("/calendar/labels", { method: "POST", body: JSON.stringify({ name, color: null }) });
     labels.value = [...labels.value, created]; selectedLabelIds.value = [...new Set([...selectedLabelIds.value, created.id])]; newLabel.value = "";
-    if (timer.value) await updateTimer();
+    if (timer.value) await updateTimer(true);
   } catch { error.value = "Could not create the session label."; }
   finally { busy.value = false; }
 }
 async function cancel() {
   if (!timer.value || busy.value) return;
   busy.value = true; error.value = "";
-  try { await api("/timers/cancel", { method: "POST", body: "{}" }); applyTimer(null); description.value = ""; selectedLabelIds.value = []; emit("changed"); }
+  try { timerStateVersion++; await api("/timers/cancel", { method: "POST", body: "{}" }); applyTimer(null); description.value = ""; selectedLabelIds.value = []; emit("changed"); }
   catch { error.value = "Could not cancel the timer."; }
   finally { busy.value = false; }
 }
@@ -131,7 +134,11 @@ async function editStartedAt() {
 }
 async function sync() {
   if (syncInFlight) return; syncInFlight = true;
-  try { applyTimer(await api<Timer | null>("/timers/current")); } catch { /* Best-effort polling. */ }
+  const versionAtRequest = timerStateVersion;
+  try {
+    const current = await api<Timer | null>("/timers/current");
+    if (versionAtRequest === timerStateVersion) applyTimer(current);
+  } catch { /* Best-effort polling. */ }
   finally { syncInFlight = false; }
 }
 onMounted(() => {
