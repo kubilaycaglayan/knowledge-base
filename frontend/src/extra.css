@@ -18,9 +18,8 @@
 .path-pill { margin-right: 4px; }
 .path-form { flex-wrap: wrap; }
 .path-form input { min-width: min(180px, 100%); }
-.note-editor, .progress-history { border-top: 1px solid var(--workspace-border); margin-top: 16px; padding-top: 16px; }
-.note-editor { display: grid; gap: 8px; }
-.note-editor input, .note-editor textarea, .path-summary input, .path-edit input, .path-edit textarea, .import-panel textarea { width: 100%; }
+.progress-history { border-top: 1px solid var(--workspace-border); margin-top: 16px; padding-top: 16px; }
+.path-edit input, .path-edit textarea, .import-panel textarea { width: 100%; }
 .path-summary ul { color: var(--workspace-muted); }
 .progress-track { height: 6px; background: var(--workspace-border); border-radius: 3px; overflow: hidden; margin: 12px 0; }
 .progress-track span { display: block; height: 100%; background: var(--workspace-accent); border-radius: 3px; }
