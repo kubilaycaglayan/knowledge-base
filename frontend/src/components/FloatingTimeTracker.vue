@@ -22,7 +22,10 @@ const activePaths = computed(() => paths.value.filter((path) => path.status === 
 const recentPaths = computed(() => recentPathIds.value.map((id) => paths.value.find((path) => path.id === id)).filter((path): path is Path => Boolean(path && path.status === "ACTIVE")).slice(0, 5));
 const elapsed = computed(() => timer.value ? Math.max(0, Math.floor((now.value - Date.parse(timer.value.startedAt)) / 1000)) : 0);
 const clock = (seconds: number) => [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60].map((value) => String(value).padStart(2, "0")).join(":");
-const pathName = computed(() => paths.value.find((path) => path.id === timer.value?.pathId)?.name || "");
+const pathName = computed(() => paths.value.find((path) => path.id === (timer.value?.pathId || pathId.value))?.name || "");
+const selectedLabelNames = computed(() => selectedLabelIds.value
+  .map((id) => labels.value.find((label) => label.id === id)?.name)
+  .filter((name): name is string => Boolean(name)));
 const timerSummary = computed(() => timer.value ? timer.value.description || pathName.value || "Session running" : pathName.value || (selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin."));
 
 function rememberPath(id: string) {
@@ -132,10 +135,11 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
   <div class="floating-tracker-host" :class="{ inline: props.inline }">
     <section class="floating-tracker session-grid" aria-label="Focus today">
       <div class="floating-tracker-bar focus">
+        <span class="tracker-status" :class="{ running: timer }" :aria-label="timer ? 'Session running' : 'No session running'" role="status"></span>
         <button class="floating-tracker-action primary" type="button" :disabled="busy" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span>{{ timer ? "Stop session" : "Start a session" }}</span></button>
         <strong class="floating-tracker-clock" role="timer" aria-live="off">{{ clock(elapsed) }}</strong>
         <span class="floating-tracker-summary">{{ timerSummary }}</span>
-        <span v-if="selectedLabelIds.length" class="floating-tracker-label-count">{{ selectedLabelIds.length }} label{{ selectedLabelIds.length > 1 ? "s" : "" }}</span>
+        <span v-if="pathName || selectedLabelNames.length" class="floating-tracker-context"><span v-if="pathName">{{ pathName }}</span><span v-if="pathName && selectedLabelNames.length" aria-hidden="true">·</span><span v-if="selectedLabelNames.length">{{ selectedLabelNames.join(', ') }}</span></span>
         <button class="floating-tracker-toggle" type="button" :aria-expanded="open" aria-controls="floating-tracker-panel" @click="open = !open"><span class="sr-only">{{ open ? "Collapse tracker" : "Expand tracker" }}</span><span aria-hidden="true" class="chevron" :class="{ up: !open }"></span></button>
         <button v-if="timer" type="button" class="cancel-timer text-button danger" :disabled="busy" @click="cancel">Cancel</button>
       </div>
@@ -165,11 +169,12 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .floating-tracker-host.inline .floating-tracker { max-width: none; }
 .floating-tracker { width: 100%; max-width: 768px; overflow: hidden; pointer-events: auto; border: 1px solid var(--workspace-border); border-radius: 8px; background: var(--workspace-surface); box-shadow: 0 10px 26px #18212f2e; }
 .floating-tracker-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
+.tracker-status { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--workspace-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-danger) 14%, transparent); }.tracker-status.running { background: var(--workspace-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-success) 14%, transparent); }
 .floating-tracker-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; border: 0; border-radius: 6px; padding: 6px 12px; background: var(--workspace-accent); color: var(--workspace-on-accent); font-size: 14px; font-weight: 600; }
 .floating-tracker-action:hover { background: var(--workspace-accent-hover); }.floating-tracker-action:disabled { opacity: .4; cursor: not-allowed; }
 .floating-tracker-clock { color: var(--workspace-text); font: 400 18px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .floating-tracker-summary { min-width: 0; overflow: hidden; flex: 1; color: var(--workspace-muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.floating-tracker-label-count { flex: 0 0 auto; border-radius: 4px; padding: 2px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }
+.floating-tracker-context { display: inline-flex; min-width: 0; max-width: 220px; gap: 6px; overflow: hidden; border-radius: 4px; padding: 3px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--workspace-muted); }.floating-tracker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }
 .cancel-timer { border: 0; border-radius: 4px; padding: 5px 8px; background: transparent; color: var(--workspace-danger); font-size: 12px; }
 .chevron { width: 9px; height: 9px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); }.chevron.up { transform: rotate(225deg) translate(-1px, -1px); }
@@ -182,6 +187,6 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .tracker-test-select { display: none; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { font-size: 12px; }.floating-tracker-label-count { display: none; } }
+@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-context { max-width: 110px; }.tracker-status { width: 7px; height: 7px; } }
 @media (prefers-reduced-motion: reduce) { .floating-tracker, .floating-tracker * { transition: none !important; animation: none !important; } }
 </style>

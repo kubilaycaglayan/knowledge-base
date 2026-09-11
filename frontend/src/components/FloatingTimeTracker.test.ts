@@ -35,10 +35,29 @@ describe("FloatingTimeTracker", () => {
     expect(inline.find("#floating-tracker-panel").exists()).toBe(true);
     expect(floating.find("#floating-tracker-panel").exists()).toBe(false);
     expect(floating.get(".floating-tracker-toggle").attributes("aria-expanded")).toBe("false");
+    expect(floating.get(".tracker-status").classes()).not.toContain("running");
+    expect(floating.get(".tracker-status").attributes("aria-label")).toBe("No session running");
 
     await floating.get(".floating-tracker-toggle").trigger("click");
     expect(floating.find("#floating-tracker-panel").exists()).toBe(true);
     inline.unmount();
     floating.unmount();
+  });
+
+  it("shows the running status, path, and label names in the collapsed dock", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus" }, { id: "label-2", name: "Review" }];
+      if (path === "/timers/current") return { id: "timer-1", pathId: "path-1", labelIds: ["label-1", "label-2"], startedAt: new Date().toISOString(), running: true };
+      return [];
+    });
+    const wrapper = mount(FloatingTimeTracker, { global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    expect(wrapper.get(".tracker-status").classes()).toContain("running");
+    expect(wrapper.get(".tracker-status").attributes("aria-label")).toBe("Session running");
+    expect(wrapper.get(".floating-tracker-context").text()).toContain("Knowledge Base");
+    expect(wrapper.get(".floating-tracker-context").text()).toContain("Focus, Review");
+    wrapper.unmount();
   });
 });
