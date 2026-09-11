@@ -25,7 +25,7 @@ function userError(fallback, error, details = {}) {
 }
 
 function checkPopupDomContract() {
-  const required = ["loading", "auth", "workspace", "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error"];
+  const required = ["loading", "auth", "workspace", "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error", "settings-menu-toggle", "settings-menu", "options", "logout"];
   const missing = required.filter((id) => !$(id));
   if (missing.length) throw Error(`Popup DOM contract missing: ${missing.join(",")}`);
   debug("Popup DOM contract verified", { requiredCount: required.length });
