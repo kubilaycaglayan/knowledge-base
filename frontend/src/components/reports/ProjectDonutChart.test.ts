@@ -17,7 +17,7 @@ describe("ProjectDonutChart", () => {
       },
     });
 
-    expect(wrapper.text()).toContain("01:30:00");
+    expect(wrapper.text()).toContain("01:30");
     expect(wrapper.text()).toContain("Total");
     const option = wrapper.getComponent({ name: "VChart" }).props("option") as { series: Array<{ data: Array<{ name: string; value: number }> }> };
     expect(option.series[0].data).toEqual([
@@ -29,7 +29,7 @@ describe("ProjectDonutChart", () => {
   it("renders a zero total without requiring categories", () => {
     const wrapper = mount(ProjectDonutChart, { props: { categories: [], totalSeconds: 0 } });
 
-    expect(wrapper.text()).toContain("00:00:00");
+    expect(wrapper.text()).toContain("00:00");
     const option = wrapper.getComponent({ name: "VChart" }).props("option") as { series: Array<{ data: unknown[] }> };
     expect(option.series[0].data).toEqual([]);
   });
