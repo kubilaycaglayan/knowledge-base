@@ -73,6 +73,7 @@ describe("FloatingTimeTracker", () => {
     const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
     await flushPromises();
     await wrapper.get(".floating-tracker-clock").trigger("click");
+    expect(wrapper.get('input[aria-label="Started at"]').attributes("type")).toBe("datetime-local");
     await wrapper.get('input[aria-label="Started at"]').setValue("2026-09-11T09:30");
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
