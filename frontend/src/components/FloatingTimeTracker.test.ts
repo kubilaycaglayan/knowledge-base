@@ -61,4 +61,22 @@ describe("FloatingTimeTracker", () => {
     expect(wrapper.get(".floating-tracker-context").text()).toContain("Focus, Review");
     wrapper.unmount();
   });
+
+  it("edits the timer start time from the unchanged clock control", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return { id: "timer-1", startedAt: "2026-09-11T10:00:00Z", running: true };
+      if (path === "/timers/timer-1" && options.method === "PUT") return { id: "timer-1", startedAt: "2026-09-11T09:30:00Z", running: true };
+      return [];
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    await wrapper.get(".floating-tracker-clock").trigger("click");
+    await wrapper.get('input[aria-label="Started at"]').setValue("2026-09-11T09:30");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/timer-1", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"startedAt":"2026-09-11T09:30:00.000Z"') }));
+    wrapper.unmount();
+  });
 });
