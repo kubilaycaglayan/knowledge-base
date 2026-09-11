@@ -14,6 +14,16 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
   List<TimeEntry> findOverlappingByUserId(
       @Param("userId") UUID userId, @Param("from") Instant from, @Param("to") Instant to);
 
+  @Query(
+      "select t from TimeEntry t where t.userId=:userId and t.pathId in :pathIds"
+          + " and t.startedAt < :to and (t.endedAt is null or t.endedAt > :from)"
+          + " order by t.startedAt desc")
+  List<TimeEntry> findOverlappingByUserIdAndPathIdIn(
+      @Param("userId") UUID userId,
+      @Param("pathIds") Collection<UUID> pathIds,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
   Optional<TimeEntry> findByUserIdAndEndedAtIsNull(UUID userId);
 
   Optional<TimeEntry> findByIdAndUserId(UUID id, UUID userId);

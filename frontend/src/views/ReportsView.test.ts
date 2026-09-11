@@ -12,7 +12,11 @@ describe("ReportsView", () => {
     stubs: {
       VBtn: { template: "<button><slot /></button>" },
       VTextField: { template: "<input />" },
-      VSelect: { template: "<select><option>Path</option><option>Labels</option></select>" },
+      VSelect: {
+        props: ["items", "modelValue", "multiple"],
+        emits: ["update:modelValue"],
+        template: `<select :multiple="multiple" :value="modelValue" @change="$emit('update:modelValue', multiple ? [...$event.target.selectedOptions].map(option => option.value) : $event.target.value)"><option v-for="item in items" :key="item.id || item" :value="item.id || item">{{ item.name || item }}</option></select>`,
+      },
       VTable: { template: "<table><slot /></table>" },
       VChart: { template: "<div />" },
       ReportDateRange: {
@@ -109,10 +113,26 @@ describe("ReportsView", () => {
     expect(wrapper.find("button").exists()).toBe(true);
   });
 
+  it("sends multiple selected paths as repeated report filters", async () => {
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    await (wrapper.vm as unknown as { selectPaths: (ids: string[]) => Promise<void> })
+      .selectPaths(["path-1", "path-2"]);
+    await flushPromises();
+    const query = new URL(
+      vi.mocked(api).mock.calls.at(-1)?.[0] as string,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(query.getAll("pathId")).toEqual(["path-1", "path-2"]);
+  });
+
   it("keeps the selected aggregation when the date interval changes", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
+    const initialReportCall = [...vi.mocked(api).mock.calls]
+      .reverse()
+      .find((call: [string, RequestInit?]) => call[0].startsWith("/reports?"));
+    expect(initialReportCall?.[0]).toEqual(
       expect.stringContaining("aggregation=DAY"),
     );
     await wrapper
