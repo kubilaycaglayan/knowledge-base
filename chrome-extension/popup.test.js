@@ -99,6 +99,7 @@ const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 test("hides the loading state after bootstrap", () => {
   assert.match(styles, /\.loading-state\[hidden\]\{display:none\}/);
+  assert.match(styles, /\.timer-start-editor\[hidden\]\{display:none\}/);
 });
 
 test("keeps account actions behind the compact settings menu", async () => {
