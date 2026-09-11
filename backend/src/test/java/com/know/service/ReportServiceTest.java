@@ -102,6 +102,38 @@ class ReportServiceTest {
   }
 
   @Test
+  void labelFilterCombinesWithPathFilterAndKeepsOnlyMatchingEntries() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    PathRepository paths = mock(PathRepository.class);
+    LabelRepository labels = mock(LabelRepository.class);
+    TimeEntryLabelRepository entryLabels = mock(TimeEntryLabelRepository.class);
+    UUID user = UUID.randomUUID();
+    UUID selectedPath = UUID.randomUUID();
+    Path path = new Path(user, "Writing", null, "#123456");
+    Label ownedLabel = new Label(user, "Focus", "#2878D5");
+    TimeEntry matching = new TimeEntry(user, selectedPath, Instant.parse("2026-08-25T10:00:00Z"), "matching", TimeSource.WEB);
+    matching.stop(Instant.parse("2026-08-25T11:00:00Z"));
+    TimeEntry wrongLabel = new TimeEntry(user, selectedPath, Instant.parse("2026-08-25T12:00:00Z"), "wrong label", TimeSource.WEB);
+    wrongLabel.stop(Instant.parse("2026-08-25T13:00:00Z"));
+    when(entries.findOverlappingByUserIdAndPathIdIn(eq(user), eq(Set.of(selectedPath)), any(), any()))
+        .thenReturn(List.of(wrongLabel, matching));
+    when(entryLabels.findAllByIdTimeEntryIdIn(any()))
+        .thenReturn(List.of(new TimeEntryLabel(matching.getId(), ownedLabel.getId())));
+    when(labels.findAllByUserIdAndIdIn(user, Set.of(ownedLabel.getId())))
+        .thenReturn(List.of(ownedLabel));
+    when(paths.findByUserIdAndIdIn(user, Set.of(selectedPath))).thenReturn(List.of(path));
+
+    ReportService.Report report = new ReportService(entries, paths, labels, entryLabels, null)
+        .report(user, LocalDate.of(2026, 8, 25), LocalDate.of(2026, 8, 25), ReportService.Aggregation.DAY,
+            Set.of(selectedPath), Set.of(ownedLabel.getId()));
+
+    assertEquals(3600, report.totalSeconds());
+    assertEquals(1, report.paths().size());
+    assertEquals(3600, report.sessionLabels().getFirst().seconds());
+    verify(entries).findOverlappingByUserIdAndPathIdIn(eq(user), eq(Set.of(selectedPath)), any(), any());
+  }
+
+  @Test
   void yearReportContainsEveryUtcDay() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());

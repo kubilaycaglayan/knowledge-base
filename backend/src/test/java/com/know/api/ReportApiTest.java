@@ -58,6 +58,28 @@ class ReportApiTest {
   }
 
   @Test
+  void pathAndLabelFiltersReachTheOwnedServiceTogether() throws Exception {
+    UUID user = UUID.randomUUID();
+    UUID pathId = UUID.randomUUID();
+    UUID labelId = UUID.randomUUID();
+    var from = java.time.LocalDate.of(2026, 8, 1);
+    var to = java.time.LocalDate.of(2026, 8, 31);
+    when(service.report(user, from, to, ReportService.Aggregation.DAY, List.of(pathId), List.of(labelId)))
+        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/reports")
+            .param("startDate", from.toString())
+            .param("endDate", to.toString())
+            .param("pathId", pathId.toString())
+            .param("labelId", labelId.toString())
+            .with(authentication(auth)))
+        .andExpect(status().isOk());
+
+    verify(service).report(user, from, to, ReportService.Aggregation.DAY, List.of(pathId), List.of(labelId));
+  }
+
+  @Test
   void invalidCustomAggregationIsRejected() throws Exception {
     var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
     mvc.perform(get("/api/v1/reports")
