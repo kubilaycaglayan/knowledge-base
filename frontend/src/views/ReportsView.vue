@@ -298,7 +298,7 @@ function toggleSankey() {
   syncSankeyFromUrl();
 }
 
-async function load() {
+async function load(preserveScroll?: { left: number; top: number }) {
   const sequence = ++loadSequence;
   activeRequest?.abort();
   const controller = new AbortController();
@@ -337,6 +337,15 @@ async function load() {
     if (sequence === loadSequence) {
       loading.value = false;
       activeRequest = null;
+      if (preserveScroll) {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({
+            left: preserveScroll.left,
+            top: preserveScroll.top,
+            behavior: "auto",
+          });
+        });
+      }
     }
   }
 }
@@ -353,7 +362,7 @@ function selectPaths(value: unknown) {
     ? value.filter((pathId): pathId is string => typeof pathId === "string")
     : [];
   storeReportState();
-  void load();
+  void load({ left: window.scrollX, top: window.scrollY });
 }
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
@@ -465,7 +474,7 @@ onBeforeUnmount(() =>
       {{ error }}
       <button class="ghost" type="button" @click="load">Try again</button>
     </p>
-    <div v-if="loading" class="report-loading" role="status">
+    <div v-if="loading && !report" class="report-loading" role="status">
       Loading report…
     </div>
     <template v-else-if="report"
@@ -509,36 +518,39 @@ onBeforeUnmount(() =>
         </div>
         <PathTimingSankey :sankey="report.sankey" />
       </section>
-      <div class="report-filters" aria-label="Report filters">
-        <span class="filter-label">FILTER BY</span>
-        <v-select
-          aria-label="Filter by paths"
-          :items="pathOptions"
-          item-title="name"
-          item-value="id"
-          :model-value="selectedPathIds"
-          multiple
-          chips
-          closable-chips
-          clearable
-          density="compact"
-          variant="outlined"
-          hide-details
-          placeholder="Choose paths…"
-          @update:model-value="selectPaths"
-        />
-      </div>
       <section class="report-card breakdown-card">
-        <div class="breakdown-toolbar">
-          <span>Group by</span
-          ><v-select
-            aria-label="Group by"
-            :items="['Path', 'Labels']"
-            v-model="breakdownMode"
-            density="compact"
-            variant="outlined"
-            hide-details
-          /><span class="muted">{{ activeDays }} active days</span>
+        <div class="breakdown-toolbar" aria-label="Report filters and grouping">
+          <div class="breakdown-control">
+            <span class="filter-label">Filter by</span>
+            <v-select
+              aria-label="Filter by paths"
+              :items="pathOptions"
+              item-title="name"
+              item-value="id"
+              :model-value="selectedPathIds"
+              multiple
+              chips
+              closable-chips
+              clearable
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="Choose paths…"
+              @update:model-value="selectPaths"
+            />
+          </div>
+          <div class="breakdown-control">
+            <span>Group by</span>
+            <v-select
+              aria-label="Group by"
+              :items="['Path', 'Labels']"
+              v-model="breakdownMode"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </div>
+          <span class="muted">{{ activeDays }} active days</span>
         </div>
         <div class="breakdown-grid">
           <div>
