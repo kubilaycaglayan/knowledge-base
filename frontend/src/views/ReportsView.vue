@@ -545,10 +545,9 @@ onBeforeUnmount(() =>
                 <v-chip
                   :text="item.title"
                   closable
-                  close-icon="mdi-close"
                   :aria-label="`Selected path: ${item.title}`"
                   @click:close="removePath(String(item.value))"
-                />
+                ><template #close>×</template></v-chip>
               </template>
             </v-select>
           </div>
