@@ -45,6 +45,7 @@ describe("PathsView", () => {
     expect(wrapper.find(".path-history-dialog").text()).toContain(
       "PATH HISTORY",
     );
+    expect(wrapper.find(".path-history-group-heading").exists()).toBe(true);
     expect(wrapper.text()).toContain(
       "2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z",
     );

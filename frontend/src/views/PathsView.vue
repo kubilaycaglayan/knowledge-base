@@ -29,6 +29,7 @@ type Summary = {
   recentActivity: Activity[];
 };
 type DescriptionPart = { text: string; url?: string };
+type ActivityGroup = { key: string; label: string; activities: Activity[] };
 const colors = paletteColors;
 const paths = ref<Path[]>([]),
   summaries = ref<Record<string, Summary>>({}),
@@ -96,6 +97,43 @@ function recentActivity(pathId: string) {
         Date.parse(stopped.occurredAt) >= Date.parse(event.occurredAt),
     );
   });
+}
+const startOfDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const sameDay = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+function activityGroupLabel(occurredAt: string) {
+  const date = startOfDay(new Date(occurredAt));
+  const today = startOfDay(new Date());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const thisWeekStart = new Date(today);
+  thisWeekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  if (sameDay(date, today)) return "Today";
+  if (sameDay(date, yesterday)) return "Yesterday";
+  if (date >= thisWeekStart) return "This week";
+  if (date >= lastWeekStart) return "Last week";
+  if (date.getFullYear() === lastMonth.getFullYear() && date.getMonth() === lastMonth.getMonth()) return "Last month";
+  return new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(date);
+}
+function historyActivityGroups(pathId: string): ActivityGroup[] {
+  const groups: ActivityGroup[] = [];
+  for (const activity of recentActivity(pathId)) {
+    const label = activityGroupLabel(activity.occurredAt);
+    const group = groups.at(-1);
+    if (group?.label === label) {
+      group.activities.push(activity);
+    } else {
+      groups.push({ key: `${label}-${activity.id}`, label, activities: [activity] });
+    }
+  }
+  return groups;
 }
 async function load() {
   try {
@@ -389,7 +427,9 @@ onBeforeUnmount(() => {
           <button type="button" class="text-button" @click="closeHistory">Close</button>
         </div>
         <div class="path-history-list" aria-label="Recent activity">
-          <article v-for="event in recentActivity(historyPath.id)" :key="event.id" class="path-history-entry">
+          <section v-for="group in historyActivityGroups(historyPath.id)" :key="group.key" class="path-history-group" :aria-labelledby="`path-history-group-${group.key}`">
+            <h3 :id="`path-history-group-${group.key}`" class="path-history-group-heading">{{ group.label }}</h3>
+          <article v-for="event in group.activities" :key="event.id" class="path-history-entry">
             <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
             <span v-if="activityDuration(event.title)" class="activity-duration">{{ activityDuration(event.title) }}</span>
             <p class="activity-description">
@@ -399,6 +439,7 @@ onBeforeUnmount(() => {
               </template>
             </p>
           </article>
+          </section>
           <p v-if="!recentActivity(historyPath.id).length" class="muted">No recent activity yet.</p>
         </div>
         <form class="note-editor" @submit.prevent="addNote(historyPath.id)">
