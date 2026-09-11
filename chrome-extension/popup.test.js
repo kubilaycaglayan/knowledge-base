@@ -33,7 +33,7 @@ class Element {
 function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false } = {}) {
   const elements = Object.fromEntries([
     "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
-    "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options",
+    "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options", "settings-menu-toggle", "settings-menu",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [], diagnostics: [], errors: [] };
   const storage = {
