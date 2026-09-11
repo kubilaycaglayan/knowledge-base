@@ -124,6 +124,18 @@ const loading = ref(false);
 let loadSequence = 0;
 let activeRequest: AbortController | null = null;
 const categories = computed(() => report.value?.paths || []);
+const breakdownMode = ref<"Path" | "Labels">("Path");
+const breakdownCategories = computed(() =>
+  breakdownMode.value === "Path"
+    ? report.value?.paths || []
+    : report.value?.sessionLabels || [],
+);
+const breakdownLabel = computed(() =>
+  breakdownMode.value === "Path" ? "Path" : "Label",
+);
+const breakdownTotal = computed(() =>
+  breakdownCategories.value.reduce((total, category) => total + category.seconds, 0),
+);
 const days = computed(() =>
   (report.value?.days || []).map((day) => {
     const paths = day.paths.filter((item) =>
@@ -368,20 +380,13 @@ onBeforeUnmount(() =>
 
 <template>
   <section class="reports-page">
-    <div class="reports-header">
-      <div>
-        <p class="eyebrow">TIME REPORT</p>
-        <h1>Reports</h1>
-        <p class="lede">Understand where your time goes, project by project.</p>
-      </div>
-      <div class="reports-actions">
-        <ReportDateRange
-          :model-value="selectedRange"
-          @previous="shiftAnchor(-1)"
-          @next="shiftAnchor(1)"
-          @update:model-value="selectRange"
-        />
-      </div>
+    <div class="reports-actions reports-header-actions">
+      <ReportDateRange
+        :model-value="selectedRange"
+        @previous="shiftAnchor(-1)"
+        @next="shiftAnchor(1)"
+        @update:model-value="selectRange"
+      />
     </div>
     <div class="reports-nav">
       <ReportTabs
@@ -447,15 +452,6 @@ onBeforeUnmount(() =>
           :show-calendar="aggregation === 'DAY' && showCalendarInputs"
           :trendline-mode="trendlineMode"
         />
-        <div
-          v-if="aggregation === 'DAY' && days.length <= 31"
-          class="chart-day-totals"
-        >
-          <span v-for="day in days" :key="day.date"
-            >{{ format(parseISO(day.date), "EEE, MMM d") }}
-            <b>{{ formatDuration(day.totalSeconds) }}</b></span
-          >
-        </div>
       </section>
       <section
         v-if="showSankey && report.sankey"
@@ -475,39 +471,14 @@ onBeforeUnmount(() =>
           >
         </div>
         <PathTimingSankey :sankey="report.sankey" />
-        <details class="sankey-data">
-          <summary>Read flow values</summary>
-          <table>
-            <caption class="visually-hidden">
-              Path timing flow values
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">From</th>
-                <th scope="col">To</th>
-                <th scope="col">Tracked time</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="link in report.sankey.links"
-                :key="`${link.source}-${link.target}`"
-              >
-                <td>{{ link.sourceLabel }}</td>
-                <td>{{ link.targetLabel }}</td>
-                <td>{{ formatDuration(link.value) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </details>
       </section>
       <section class="report-card breakdown-card">
         <div class="breakdown-toolbar">
           <span>Group by</span
           ><v-select
             aria-label="Group by"
-            :items="['Project']"
-            model-value="Project"
+            :items="['Path', 'Labels']"
+            v-model="breakdownMode"
             density="compact"
             variant="outlined"
             hide-details
@@ -516,14 +487,14 @@ onBeforeUnmount(() =>
         <div class="breakdown-grid">
           <div>
             <ProjectDurationTable
-              :categories="categories"
-              :total-seconds="filteredTotal"
+              :categories="breakdownCategories"
+              :category-label="breakdownLabel"
             />
           </div>
           <div class="donut-panel">
             <ProjectDonutChart
-              :categories="categories"
-              :total-seconds="filteredTotal"
+              :categories="breakdownCategories"
+              :total-seconds="breakdownTotal"
             />
           </div>
         </div>

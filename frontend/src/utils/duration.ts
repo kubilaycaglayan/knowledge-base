@@ -6,6 +6,14 @@ export function formatDuration(seconds: number): string {
   return `${hours}:${minutes}:${remainder}`;
 }
 
+/** Report totals are intentionally minute-precision, without displaying seconds. */
+export function formatDurationHoursMinutes(seconds: number): string {
+  const value = Math.max(0, Math.floor(seconds / 60));
+  const hours = Math.floor(value / 60).toString().padStart(2, "0");
+  const minutes = (value % 60).toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 export function decimalHours(seconds: number): number {
   return Math.max(0, seconds) / 3600;
 }

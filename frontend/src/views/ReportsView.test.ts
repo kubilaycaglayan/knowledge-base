@@ -12,7 +12,7 @@ describe("ReportsView", () => {
     stubs: {
       VBtn: { template: "<button><slot /></button>" },
       VTextField: { template: "<input />" },
-      VSelect: { template: "<select><option>Project</option></select>" },
+      VSelect: { template: "<select><option>Path</option><option>Labels</option></select>" },
       VTable: { template: "<table><slot /></table>" },
       VChart: { template: "<div />" },
       ReportDateRange: {
@@ -232,10 +232,10 @@ describe("ReportsView", () => {
       "quarter tracked time",
     );
     expect(wrapper.get(".chart-frame").attributes("aria-label")).toContain(
-      "Q1 2026: 02:00:00",
+      "Q1 2026: 2h",
     );
     expect(wrapper.get(".chart-frame").attributes("aria-label")).toContain(
-      "Q2 2026: 01:00:00",
+      "Q2 2026: 1h",
     );
   });
 
