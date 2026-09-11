@@ -35,7 +35,7 @@ describe("SessionsView", () => {
           ],
         };
       if (path === "/paths")
-        return [{ id: "path-1", name: "Learning", description: "A path", status: "ACTIVE" }];
+        return [{ id: "path-1", name: "Learning", description: "A path", status: "ACTIVE", color: "#2878D5" }];
       if (path === "/calendar/labels")
         return [{ id: "label-1", name: "Vue", color: "#2878D5" }];
       return undefined;
@@ -50,6 +50,7 @@ describe("SessionsView", () => {
     expect(latestSession.get(".session-card-labels").text()).toBe("Vue");
     expect(latestSession.get(".session-description").text()).toBe("Most recent");
     expect(latestSession.get(".session-summary").findAll("span")[0].text()).toBe("1h");
+    expect(latestSession.get(".session-title-chip").attributes("style")).toContain("--session-path-color: #2878D5");
   });
 
   it("groups sessions by relative dates before falling back to month and year", async () => {
