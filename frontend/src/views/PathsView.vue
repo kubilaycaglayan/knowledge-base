@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
@@ -7,6 +7,7 @@ import PromptDialog from "../components/PromptDialog.vue";
 import MergePathDialog from "../components/MergePathDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import { paletteColors } from "../lib/color-palette";
+import { vDialogFocus } from "../lib/dialog-focus";
 
 type Path = {
   id: string;
@@ -46,6 +47,7 @@ const editColorOpen = ref(false);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const pendingDelete = ref<Path | null>(null);
 const mergeSource = ref<Path | null>(null);
+const historyPath = ref<Path | null>(null);
 const merging = ref(false);
 let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 const activityDuration = (title: string) => {
@@ -132,14 +134,13 @@ async function loadSummary(path: Path) {
   }
 }
 async function inspect(path: Path) {
-  if (summaries.value[path.id]) {
-    delete summaries.value[path.id];
-    return;
-  }
-  await loadSummary(path);
+  if (!summaries.value[path.id]) await loadSummary(path);
+  if (!summaries.value[path.id]) return;
+  historyPath.value = path;
+  void nextTick(() => document.querySelector<HTMLElement>(".path-history-dialog")?.focus());
 }
-function expanded(path: Path) {
-  return Boolean(summaries.value[path.id]);
+function closeHistory() {
+  historyPath.value = null;
 }
 function startEdit(path: Path) {
   editingId.value = path.id;
@@ -224,6 +225,7 @@ async function remove(path: Path) {
   try {
     await api(`/paths/${path.id}`, { method: "DELETE" });
     delete summaries.value[path.id];
+    if (historyPath.value?.id === path.id) closeHistory();
     paths.value = paths.value.filter((candidate) => candidate.id !== path.id);
     if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
     pendingDelete.value = path;
@@ -309,7 +311,6 @@ onBeforeUnmount(() => {
         v-for="path in paths"
         :key="path.id"
         class="path card"
-        :class="{ expanded: expanded(path) }"
       >
         <form
           v-if="editingId === path.id"
@@ -350,7 +351,7 @@ onBeforeUnmount(() => {
             <span class="pill">{{ path.status.toLowerCase() }}</span
             ><button
               class="text-button"
-              :aria-expanded="expanded(path)"
+              aria-haspopup="dialog"
               @click="inspect(path)"
             >
               History</button
@@ -363,46 +364,50 @@ onBeforeUnmount(() => {
               Remove
             </button>
           </div>
-          <div v-if="expanded(path) && summaries[path.id]" class="path-summary">
-            <p class="eyebrow">PATH HISTORY</p>
-            <p class="muted">
-              {{ formatTrackedDuration(summaries[path.id].trackedSeconds) }} tracked
-            </p>
-            <p><strong>Recent activity</strong></p>
-            <div
-              v-for="event in recentActivity(path.id)"
-              :key="event.id"
-              class="activity-row muted"
-            >
-              <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
-              <span class="activity-duration">{{ activityDuration(event.title) }}</span>
-              <span class="activity-description">
-                <template v-for="(part, index) in activityDescriptionParts(event)" :key="index">
-                  <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
-                  <template v-else>{{ part.text }}</template>
-                </template>
-              </span>
-            </div>
-            <div class="note-editor">
-              <strong>Path note</strong
-              ><input
-                v-model="noteTitle"
-                placeholder="Note title"
-                aria-label="Path note title"
-              /><textarea
-                v-model="noteContent"
-                placeholder="What did you learn in this path?"
-                rows="3"
-                aria-label="Path note content"
-              ></textarea
-              ><button class="primary" @click="addNote(path.id)">Save path note</button>
-            </div>
-          </div>
         </div>
       </article>
       <p v-if="!paths.length && !error" class="empty">
         Your first path is waiting to be named.
       </p>
+    </div>
+    <div v-if="historyPath && summaries[historyPath.id]" class="prompt-dialog-backdrop">
+      <section
+        v-dialog-focus
+        class="prompt-dialog card path-history-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="path-history-heading"
+        tabindex="-1"
+        @keydown.esc.prevent="closeHistory"
+      >
+        <div class="path-history-heading">
+          <div>
+            <p class="eyebrow">PATH HISTORY</p>
+            <h2 id="path-history-heading">{{ historyPath.name }}</h2>
+            <p class="muted">{{ formatTrackedDuration(summaries[historyPath.id].trackedSeconds) }} tracked</p>
+          </div>
+          <button type="button" class="text-button" @click="closeHistory">Close</button>
+        </div>
+        <div class="path-history-list" aria-label="Recent activity">
+          <article v-for="event in recentActivity(historyPath.id)" :key="event.id" class="path-history-entry">
+            <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
+            <span v-if="activityDuration(event.title)" class="activity-duration">{{ activityDuration(event.title) }}</span>
+            <p class="activity-description">
+              <template v-for="(part, index) in activityDescriptionParts(event)" :key="index">
+                <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
+                <template v-else>{{ part.text }}</template>
+              </template>
+            </p>
+          </article>
+          <p v-if="!recentActivity(historyPath.id).length" class="muted">No recent activity yet.</p>
+        </div>
+        <form class="note-editor" @submit.prevent="addNote(historyPath.id)">
+          <strong>Path note</strong>
+          <input v-model="noteTitle" name="path-note-title" autocomplete="off" placeholder="Note title…" aria-label="Path note title" />
+          <textarea v-model="noteContent" name="path-note-content" autocomplete="off" placeholder="What did you learn in this path?" rows="3" aria-label="Path note content"></textarea>
+          <button class="primary">Save path note</button>
+        </form>
+      </section>
     </div>
   </section>
 </template>
