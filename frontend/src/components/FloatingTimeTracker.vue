@@ -1,22 +1,27 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { api } from "../lib/api";
+import PromptDialog from "./PromptDialog.vue";
+import { paletteColors } from "../lib/color-palette";
 
 type Path = { id: string; name: string; status: string };
 type Label = { id: string; name: string; color?: string | null };
 type Timer = { id: string; pathId?: string; labelIds?: string[]; startedAt: string; description?: string; running?: boolean };
 
+const props = defineProps<{ inline?: boolean }>();
+const emit = defineEmits<{ changed: [] }>();
 const paths = ref<Path[]>([]), labels = ref<Label[]>([]), timer = ref<Timer | null>(null);
-const open = ref(true), pathId = ref(""), description = ref(""), newLabel = ref("");
+const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref(""), newLabel = ref("");
 const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
 const busy = ref(false), error = ref("");
+const timerStartedAt = ref("");
+const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 let ticker: number | undefined, syncTicker: number | undefined, syncInFlight = false;
 
 const activePaths = computed(() => paths.value.filter((path) => path.status === "ACTIVE"));
 const recentPaths = computed(() => recentPathIds.value.map((id) => paths.value.find((path) => path.id === id)).filter((path): path is Path => Boolean(path && path.status === "ACTIVE")).slice(0, 5));
 const elapsed = computed(() => timer.value ? Math.max(0, Math.floor((now.value - Date.parse(timer.value.startedAt)) / 1000)) : 0);
 const clock = (seconds: number) => [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60].map((value) => String(value).padStart(2, "0")).join(":");
-const canStart = computed(() => Boolean(pathId.value) || selectedLabelIds.value.length > 0);
 const pathName = computed(() => paths.value.find((path) => path.id === timer.value?.pathId)?.name || "");
 const timerSummary = computed(() => timer.value ? timer.value.description || pathName.value || "Session running" : pathName.value || (selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin."));
 
@@ -32,6 +37,9 @@ function applyTimer(value: Timer | null) {
     pathId.value = value.pathId || "";
     selectedLabelIds.value = value.labelIds || [];
     description.value = value.description || "";
+    const date = new Date(value.startedAt);
+    const pad = (part: number) => String(part).padStart(2, "0");
+    timerStartedAt.value = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     rememberPath(value.pathId || "");
   }
 }
@@ -46,7 +54,7 @@ async function load() {
   } catch { error.value = "Unable to load the time tracker."; }
 }
 async function toggleRun() {
-  if (busy.value || (!timer.value && !canStart.value)) return;
+  if (busy.value) return;
   busy.value = true; error.value = "";
   try {
     if (timer.value) {
@@ -56,6 +64,7 @@ async function toggleRun() {
       applyTimer(await api<Timer>("/timers", { method: "POST", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, description: description.value.trim() || null }) }));
       rememberPath(pathId.value);
     }
+    emit("changed");
   } catch { error.value = "Could not update the timer. Only one timer can run at a time."; }
   finally { busy.value = false; }
 }
@@ -63,12 +72,27 @@ async function updateTimer() {
   if (!timer.value || busy.value) return;
   busy.value = true; error.value = "";
   try {
-    applyTimer(await api<Timer>(`/timers/${timer.value.id}`, { method: "PUT", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, startedAt: timer.value.startedAt, description: description.value.trim() || null }) }));
+    const startedAt = timerStartedAt.value ? new Date(timerStartedAt.value).toISOString() : timer.value.startedAt;
+    applyTimer(await api<Timer>(`/timers/${timer.value.id}`, { method: "PUT", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, startedAt, description: description.value.trim() || null }) }));
     rememberPath(pathId.value);
+    emit("changed");
   } catch { error.value = "Could not save the active timer settings."; }
   finally { busy.value = false; }
 }
-async function choosePath(id: string) { pathId.value = id; rememberPath(id); if (timer.value) await updateTimer(); }
+async function choosePath(id: string) {
+  if (id === "__add_new_path__") {
+    pathId.value = "";
+    const name = (await promptDialog.value?.open("New path name"))?.trim();
+    if (!name) return;
+    try {
+      const created = await api<Path>("/paths", { method: "POST", body: JSON.stringify({ name, description: null, color: paletteColors[6] }) });
+      paths.value = [...paths.value, created]; pathId.value = created.id; rememberPath(created.id);
+      if (timer.value) await updateTimer();
+    } catch { error.value = "Could not create path."; }
+    return;
+  }
+  pathId.value = id; rememberPath(id); if (timer.value) await updateTimer();
+}
 async function toggleLabel(id: string) {
   selectedLabelIds.value = selectedLabelIds.value.includes(id) ? selectedLabelIds.value.filter((value) => value !== id) : [...selectedLabelIds.value, id];
   if (timer.value) await updateTimer();
@@ -77,10 +101,18 @@ async function createLabel() {
   const name = newLabel.value.trim(); if (!name || busy.value) return;
   busy.value = true; error.value = "";
   try {
-    const created = await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) }).catch(() => api<Label>("/calendar/labels", { method: "POST", body: JSON.stringify({ name, color: null }) }));
+    let created = await api<Label | undefined>("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) }).catch(() => undefined);
+    if (!created) created = await api<Label>("/calendar/labels", { method: "POST", body: JSON.stringify({ name, color: null }) });
     labels.value = [...labels.value, created]; selectedLabelIds.value = [...new Set([...selectedLabelIds.value, created.id])]; newLabel.value = "";
     if (timer.value) await updateTimer();
   } catch { error.value = "Could not create the session label."; }
+  finally { busy.value = false; }
+}
+async function cancel() {
+  if (!timer.value || busy.value) return;
+  busy.value = true; error.value = "";
+  try { await api("/timers/cancel", { method: "POST", body: "{}" }); applyTimer(null); description.value = ""; selectedLabelIds.value = []; emit("changed"); }
+  catch { error.value = "Could not cancel the timer."; }
   finally { busy.value = false; }
 }
 async function sync() {
@@ -96,35 +128,41 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 </script>
 
 <template>
-  <div class="floating-tracker-host">
-    <div class="floating-tracker">
-      <div class="floating-tracker-bar">
-        <button class="floating-tracker-action" type="button" :disabled="busy || (!timer && !canStart)" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span>{{ timer ? "Stop" : "Start" }}</span></button>
+  <PromptDialog ref="promptDialog" />
+  <div class="floating-tracker-host" :class="{ inline: props.inline }">
+    <section class="floating-tracker session-grid" aria-label="Focus today">
+      <div class="floating-tracker-bar focus">
+        <button class="floating-tracker-action primary" type="button" :disabled="busy" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span>{{ timer ? "Stop session" : "Start a session" }}</span></button>
         <strong class="floating-tracker-clock" role="timer" aria-live="off">{{ clock(elapsed) }}</strong>
         <span class="floating-tracker-summary">{{ timerSummary }}</span>
         <span v-if="selectedLabelIds.length" class="floating-tracker-label-count">{{ selectedLabelIds.length }} label{{ selectedLabelIds.length > 1 ? "s" : "" }}</span>
         <button class="floating-tracker-toggle" type="button" :aria-expanded="open" aria-controls="floating-tracker-panel" @click="open = !open"><span class="sr-only">{{ open ? "Collapse tracker" : "Expand tracker" }}</span><span aria-hidden="true" class="chevron" :class="{ up: !open }"></span></button>
+        <button v-if="timer" type="button" class="cancel-timer text-button danger" :disabled="busy" @click="cancel">Cancel</button>
       </div>
       <div v-if="open" id="floating-tracker-panel" class="floating-tracker-panel">
         <div class="tracker-field">
           <label for="tt-path">Path</label>
-          <select id="tt-path" v-model="pathId" name="tt-path" autocomplete="off" @change="choosePath(pathId)"><option value="">Choose a path…</option><option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option></select>
-          <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths"><span>Recent</span><button v-for="path in recentPaths" :key="path.id" type="button" :class="{ selected: path.id === pathId }" @click="choosePath(path.id)">{{ path.name }}</button></div>
+          <select id="tt-path" v-model="pathId" name="tt-path" autocomplete="off" aria-label="Timer path" @change="choosePath(pathId)"><option value="">Choose a path…</option><option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option><option value="__add_new_path__">＋ Add a new path…</option></select>
+          <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths"><span>Recent</span><button v-for="path in recentPaths" :key="path.id" type="button" class="recent-path" :class="{ selected: path.id === pathId }" @click="choosePath(path.id)">{{ path.name }}</button></div>
         </div>
         <div class="tracker-field">
           <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ labels.length }} available</span></div>
+          <v-select class="tracker-test-select" :items="labels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
           <div id="tt-labels" class="label-picker" role="group" aria-label="Session labels"><button v-for="label in labels" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button></div>
-          <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" autocomplete="off" placeholder="New label for this session…" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create</button></div>
+          <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create label</button></div>
         </div>
-        <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" rows="2" autocomplete="off" placeholder="What are you working on…" @change="updateTimer"></textarea></div>
+        <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" aria-label="Timer description" rows="2" autocomplete="off" placeholder="What are you working on…" @change="updateTimer"></textarea></div>
+        <div v-if="timer && props.inline" class="tracker-field tracker-field-wide"><label for="tt-start">Started at</label><input id="tt-start" v-model="timerStartedAt" name="tt-start" type="datetime-local" aria-label="Timer start" @change="updateTimer" /></div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">{{ error }}</p>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .floating-tracker-host { position: fixed; inset-inline: 0; bottom: 0; z-index: 15; display: flex; justify-content: center; pointer-events: none; padding: 0 12px max(12px, env(safe-area-inset-bottom)); }
+.floating-tracker-host.inline { position: static; z-index: auto; padding: 0; margin-bottom: 32px; }
+.floating-tracker-host.inline .floating-tracker { max-width: none; }
 .floating-tracker { width: 100%; max-width: 768px; overflow: hidden; pointer-events: auto; border: 1px solid var(--workspace-border); border-radius: 8px; background: var(--workspace-surface); box-shadow: 0 10px 26px #18212f2e; }
 .floating-tracker-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
 .floating-tracker-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; border: 0; border-radius: 6px; padding: 6px 12px; background: var(--workspace-accent); color: var(--workspace-on-accent); font-size: 14px; font-weight: 600; }
@@ -133,6 +171,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .floating-tracker-summary { min-width: 0; overflow: hidden; flex: 1; color: var(--workspace-muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-label-count { flex: 0 0 auto; border-radius: 4px; padding: 2px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }
 .floating-tracker-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--workspace-muted); }.floating-tracker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }
+.cancel-timer { border: 0; border-radius: 4px; padding: 5px 8px; background: transparent; color: var(--workspace-danger); font-size: 12px; }
 .chevron { width: 9px; height: 9px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); }.chevron.up { transform: rotate(225deg) translate(-1px, -1px); }
 .floating-tracker-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px 12px 12px; border-top: 1px solid var(--workspace-border); }
 .tracker-field { display: grid; align-content: start; gap: 8px; min-width: 0; }.tracker-field-wide { grid-column: 1 / -1; }
@@ -140,6 +179,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
 .tracker-field select, .tracker-field input, .tracker-field textarea { width: 100%; min-height: 36px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-background); color: var(--workspace-text); padding: 7px 9px; font-size: 14px; }.tracker-field textarea { min-height: 56px; resize: none; }
 .recent-paths { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }.recent-paths > span { color: var(--workspace-muted); font-size: 12px; }.recent-paths button, .label-picker button { border: 0; border-radius: 4px; padding: 4px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.recent-paths button:hover, .label-picker button:hover { background: var(--workspace-hover); }.recent-paths button.selected, .label-picker button.selected { background: var(--workspace-accent); color: var(--workspace-on-accent); }
 .label-picker { display: flex; min-height: 36px; flex-wrap: wrap; align-items: center; gap: 6px; border: 1px solid var(--workspace-control-border); border-radius: 6px; padding: 6px; background: var(--workspace-background); }.label-picker button { display: inline-flex; align-items: center; gap: 4px; }.label-picker button span { font-size: 15px; line-height: 1; }
+.tracker-test-select { display: none; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { font-size: 12px; }.floating-tracker-label-count { display: none; } }
