@@ -41,17 +41,15 @@ describe("PathsView", () => {
     await wrapper.get("button.text-button").trigger("click");
     await flushPromises();
 
-    expect(wrapper.find("article.path.expanded .path-summary").exists()).toBe(
-      true,
-    );
-    expect(wrapper.find("article.path.expanded").text()).toContain(
+    expect(wrapper.find(".path-history-dialog").exists()).toBe(true);
+    expect(wrapper.find(".path-history-dialog").text()).toContain(
       "PATH HISTORY",
     );
     expect(wrapper.text()).toContain(
       "2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z",
     );
-    expect(wrapper.find(".activity-row time").text()).toContain("31/07/2026");
-    expect(wrapper.get(".activity-duration").text()).toBe("");
+    expect(wrapper.find(".path-history-entry time").text()).toContain("31/07/2026");
+    expect(wrapper.find(".path-history-entry .activity-duration").exists()).toBe(false);
     expect(wrapper.text()).toContain("2 minutes tracked");
   });
 
@@ -78,22 +76,21 @@ describe("PathsView", () => {
     ]);
   });
 
-  it("toggles path history closed when History is clicked again", async () => {
+  it("closes path history from its dialog", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
     const historyButton = wrapper.get("button.text-button");
 
     await historyButton.trigger("click");
     await flushPromises();
-    expect(wrapper.find(".path-summary").exists()).toBe(true);
-    expect(historyButton.attributes("aria-expanded")).toBe("true");
+    expect(wrapper.find(".path-history-dialog").exists()).toBe(true);
+    expect(historyButton.attributes("aria-haspopup")).toBe("dialog");
 
-    await historyButton.trigger("click");
-    expect(wrapper.find(".path-summary").exists()).toBe(false);
-    expect(historyButton.attributes("aria-expanded")).toBe("false");
+    await wrapper.get(".path-history-dialog button.text-button").trigger("click");
+    expect(wrapper.find(".path-history-dialog").exists()).toBe(false);
   });
 
-  it("keeps each path history open independently", async () => {
+  it("opens the selected path history in one dialog", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [
@@ -135,13 +132,13 @@ describe("PathsView", () => {
 
     await historyButtons[0].trigger("click");
     await flushPromises();
+    expect(wrapper.get(".path-history-dialog").text()).toContain("Algorithms");
+    await wrapper.get(".path-history-dialog button.text-button").trigger("click");
     await historyButtons[1].trigger("click");
     await flushPromises();
 
-    expect(wrapper.findAll(".path-summary")).toHaveLength(2);
-    expect(
-      wrapper.findAll("button[aria-expanded='true']"),
-    ).toHaveLength(2);
+    expect(wrapper.findAll(".path-history-dialog")).toHaveLength(1);
+    expect(wrapper.get(".path-history-dialog").text()).toContain("Writing");
   });
 
   it("merges a completed timer into one activity with its details", async () => {
@@ -185,7 +182,7 @@ describe("PathsView", () => {
     await wrapper.get("button.text-button").trigger("click");
     await flushPromises();
 
-    const activityLine = wrapper.get(".activity-row");
+    const activityLine = wrapper.get(".path-history-entry");
     expect(activityLine.text()).toContain("33 minutes");
     expect(activityLine.text()).not.toContain("Tracked");
     expect(activityLine.text()).toContain("Read graph algorithms");
@@ -333,14 +330,14 @@ describe("PathsView", () => {
     });
   });
 
-  it("saves a note from expanded path history", async () => {
+  it("saves a note from path history", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
     await wrapper.get("button.text-button").trigger("click");
     await flushPromises();
     await wrapper.get('input[aria-label="Path note title"]').setValue("Graph insight");
     await wrapper.get('textarea[aria-label="Path note content"]').setValue("Use invariants to simplify proofs.");
-    await wrapper.findAll("button.primary").find((button) => button.text() === "Save path note")!.trigger("click");
+    await wrapper.get("form.note-editor").trigger("submit");
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/notes", expect.objectContaining({
@@ -362,7 +359,7 @@ describe("PathsView", () => {
     await flushPromises();
     await wrapper.get('input[aria-label="Path note title"]').setValue("Insight");
     await wrapper.get('textarea[aria-label="Path note content"]').setValue("Content");
-    await wrapper.findAll("button.primary").find((button) => button.text() === "Save path note")!.trigger("click");
+    await wrapper.get("form.note-editor").trigger("submit");
     await flushPromises();
 
     expect(wrapper.get('[role="alert"]').text()).toBe("Could not save path note.");
