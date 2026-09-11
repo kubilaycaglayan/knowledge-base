@@ -3,6 +3,7 @@ export function formatDuration(seconds: number): string {
   const hours = Math.floor(value / 3600).toString().padStart(2, "0");
   const minutes = Math.floor((value % 3600) / 60).toString().padStart(2, "0");
   const remainder = (value % 60).toString().padStart(2, "0");
+  if (Number(hours) >= 100) return `${Number(hours)}h`;
   return `${hours}:${minutes}:${remainder}`;
 }
 
@@ -11,6 +12,7 @@ export function formatDurationHoursMinutes(seconds: number): string {
   const value = Math.max(0, Math.floor(seconds / 60));
   const hours = Math.floor(value / 60).toString().padStart(2, "0");
   const minutes = (value % 60).toString().padStart(2, "0");
+  if (Number(hours) >= 100) return `${Number(hours)}h`;
   return `${hours}:${minutes}`;
 }
 
