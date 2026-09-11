@@ -35,4 +35,21 @@ describe("SettingsView", () => {
     );
     expect(wrapper.text()).toContain("Your Knowledge Base export is ready.");
   });
+
+  it("requires the current password for accounts that also use Google sign-in", async () => {
+    vi.mocked(api).mockResolvedValue({ email: "person@example.com", hasPassword: true, hasGoogle: true });
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+
+    expect(wrapper.get('input[name="currentPassword"]').attributes("autocomplete")).toBe("current-password");
+    await wrapper.get('input[name="currentPassword"]').setValue("old-password");
+    await wrapper.get('input[name="newPassword"]').setValue("new-password");
+    vi.mocked(api).mockResolvedValue({ email: "person@example.com", hasPassword: true, hasGoogle: true });
+    await wrapper.get("form").trigger("submit");
+
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/auth/password", expect.objectContaining({
+      method: "PUT",
+      body: JSON.stringify({ currentPassword: "old-password", newPassword: "new-password" }),
+    }));
+  });
 });

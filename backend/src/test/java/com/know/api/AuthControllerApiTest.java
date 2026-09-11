@@ -172,6 +172,7 @@ class AuthControllerApiTest {
   void googleOnlyUserCanSetPasswordAfterAuthentication() throws Exception {
     UUID id = UUID.randomUUID();
     User user = new User("person@example.com", "random-hash", "Person", false);
+    user.linkGoogleSubject("google-sub");
     when(users.findById(id)).thenReturn(Optional.of(user));
     when(encoder.encode("new-secure-password")).thenReturn("new-hash");
     when(users.save(user)).thenReturn(user);
@@ -202,6 +203,64 @@ class AuthControllerApiTest {
                 .content("{\"currentPassword\":\"wrong-current\",\"newPassword\":\"new-secure-password\"}"))
         .andExpect(status().isBadRequest());
     verify(users, never()).save(any());
+  }
+
+  @Test
+  void passwordChangeRejectsMissingCurrentPasswordWhenAlreadyConfigured() throws Exception {
+    UUID id = UUID.randomUUID();
+    User user = new User("person@example.com", "hash", "Person");
+    when(users.findById(id)).thenReturn(Optional.of(user));
+    var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
+
+    mvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPassword\":\"new-secure-password\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(encoder);
+    verify(users, never()).save(any());
+  }
+
+  @Test
+  void passwordChangeRequiresCurrentPasswordEvenWhenGoogleIsAlsoLinked() throws Exception {
+    UUID id = UUID.randomUUID();
+    User user = new User("person@example.com", "hash", "Person");
+    user.linkGoogleSubject("google-sub");
+    when(users.findById(id)).thenReturn(Optional.of(user));
+    when(encoder.matches("wrong-current", "hash")).thenReturn(false);
+    var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
+
+    mvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"wrong-current\",\"newPassword\":\"new-secure-password\"}"))
+        .andExpect(status().isBadRequest());
+    verify(users, never()).save(any());
+  }
+
+  @Test
+  void passwordChangeWithCorrectCurrentPasswordPersistsTheReplacement() throws Exception {
+    UUID id = UUID.randomUUID();
+    User user = new User("person@example.com", "old-hash", "Person");
+    when(users.findById(id)).thenReturn(Optional.of(user));
+    when(encoder.matches("old-password", "old-hash")).thenReturn(true);
+    when(encoder.encode("new-secure-password")).thenReturn("new-hash");
+    when(users.save(user)).thenReturn(user);
+    var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
+
+    mvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"new-secure-password\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.hasPassword").value(true));
+    verify(encoder).matches("old-password", "old-hash");
+    verify(encoder).encode("new-secure-password");
+    verify(users).save(user);
+    org.junit.jupiter.api.Assertions.assertEquals("new-hash", user.getPasswordHash());
   }
 
   @Test

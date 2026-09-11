@@ -131,7 +131,7 @@ public class AuthController {
   public AccountView setPassword(
       Authentication authentication, @Valid @RequestBody SetPasswordRequest request) {
     User user = currentUser(authentication);
-    if (user.hasPassword() && user.getGoogleSubject() == null
+    if (user.hasPassword()
         && (request.currentPassword() == null
             || !encoder.matches(request.currentPassword(), user.getPasswordHash()))) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
