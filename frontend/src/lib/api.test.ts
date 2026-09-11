@@ -32,8 +32,30 @@ describe("api", () => {
     await expect(api<{ ok: boolean }>("/paths", { method: "POST", body: "{}" })).resolves.toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/paths", expect.objectContaining({
       method: "POST",
-      headers: expect.objectContaining({ "Content-Type": "application/json", Authorization: "Bearer token-1" }),
+      headers: expect.objectContaining({
+        "Content-Type": "application/json",
+        "X-Request-ID": expect.stringMatching(/^web-/),
+        Authorization: "Bearer token-1",
+      }),
     }));
+  });
+
+  it("logs correlated request diagnostics without exposing the bearer token", async () => {
+    localStorage.setItem("know_token", "private-bearer-token");
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      headers: { get: (name: string) => name.toLowerCase() === "x-request-id" ? "server-request-id" : "application/json" },
+      text: async () => "[]",
+    }));
+
+    await api("/paths");
+
+    const diagnostics = JSON.stringify(info.mock.calls);
+    expect(diagnostics).toContain("API request started");
+    expect(diagnostics).toContain("server-request-id");
+    expect(diagnostics).not.toContain("private-bearer-token");
   });
 
   it("returns undefined for an empty successful response and 204 response", async () => {

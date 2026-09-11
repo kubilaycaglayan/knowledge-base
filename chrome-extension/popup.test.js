@@ -35,7 +35,7 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
     "status", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
     "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options",
   ].map((id) => [id, new Element(id)]));
-  const state = { token, activeTimer: null, calls: [] };
+  const state = { token, activeTimer: null, calls: [], diagnostics: [], errors: [] };
   const storage = {
     async get(keys) {
       const names = Array.isArray(keys) ? keys : [keys];
@@ -59,7 +59,9 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
       getElementById: (id) => elements[id],
       createElement: (tag) => tag === "option" ? { value: "", textContent: "", selected: false } : new Element(tag),
     },
-    chrome: { storage: { local: storage } },
+    chrome: { storage: { local: storage }, runtime: { getManifest: () => ({ version: "test-version" }) } },
+    crypto: { randomUUID: () => `uuid-${state.diagnostics.length}-${state.calls.length}` },
+    performance: { now: () => 100 },
     KnowApiConfig: { apiBase: (value) => value || "http://localhost:8080/api/v1" },
     KnowCore: {
       activePaths: (paths) => paths.filter((path) => path.status === "ACTIVE"),
@@ -83,7 +85,10 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
     clearInterval: () => {},
     setTimeout: (callback) => { state.timeout = callback; return 1; },
     clearTimeout: () => {},
-    console: { warn: () => {} },
+    console: {
+      info: (...args) => state.diagnostics.push(args),
+      error: (...args) => state.errors.push(args),
+    },
   };
   vm.runInNewContext(source, context);
   return { elements, state, storage };
@@ -133,6 +138,32 @@ test("loads only labels scoped for time-entry sessions", async () => {
   assert.ok(popup.state.calls.some(({ path }) => path === "/labels?scope=TIME_ENTRY"));
   assert.equal(popup.state.calls.some(({ path }) => path === "/calendar/labels"), false);
   assert.deepEqual(popup.elements.label.options.map((option) => option.value), ["", "label-1"]);
+});
+
+test("emits production-safe diagnostics for workspace loading and API requests", async () => {
+  const popup = createPopup({ token: "private-token" });
+  await flush();
+  await flush();
+  await flush();
+  await flush();
+
+  const serialized = JSON.stringify(popup.state.diagnostics);
+  assert.match(serialized, /Workspace load started/);
+  assert.match(serialized, /API response received/);
+  assert.match(serialized, /Workspace load completed/);
+  assert.doesNotMatch(serialized, /private-token/);
+});
+
+test("logs the failing workspace stage without exposing the token", async () => {
+  const popup = createPopup({ token: "private-token", statusByPath: { "/paths": 500 } });
+  await flush();
+  await flush();
+  await flush();
+
+  const serialized = JSON.stringify(popup.state.errors);
+  assert.match(serialized, /Load workspace/);
+  assert.match(serialized, /load-paths-and-labels/);
+  assert.doesNotMatch(serialized, /private-token/);
 });
 
 test("starts a server timer with selected path, labels, description, and extension source", async () => {

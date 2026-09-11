@@ -16,6 +16,14 @@ Compose does not automatically load `.env.development`; use `./scripts/start-dev
 
 CI runs the backend tests, web build, extension checks, macOS native build, and the Docker smoke test on pushes and pull requests.
 
+Browser and extension diagnostics use structured console messages prefixed with
+`[Knowledge Base web]` and `[Knowledge Base extension]`. API requests carry an
+`X-Request-ID` that is returned by the backend and included in its access log,
+allowing one operation to be correlated across browser and server logs. These
+diagnostics record request paths, status codes, timings, lifecycle stages, and
+response shapes; they intentionally exclude credentials, tokens, request bodies,
+and successful response content.
+
 Production extension builds require an explicit HTTPS API, lock requests to that API, disable debug logging, and omit wildcard host permissions. Development builds retain localhost defaults and are not publishable. Configure the exact published extension origin (`chrome-extension://<extension-id>`) in production `CORS_ORIGINS` and the exact `chrome.identity.getRedirectURL()` value in Google OAuth.
 
 ### Google sign-in in local extension development
