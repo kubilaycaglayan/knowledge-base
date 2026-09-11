@@ -26,18 +26,14 @@ type Stats = {
   weekByPath: Record<string, number>;
   weekByLabel: Record<string, number>;
 };
-type Result = { kind: string; id: string; title: string; detail?: string };
-
 const paths = ref<Path[]>([]),
   labels = ref<Label[]>([]),
   timer = ref<Timer | null>(null),
-  stats = ref<Stats | null>(null),
-  results = ref<Result[]>([]);
+  stats = ref<Stats | null>(null);
 const pathId = ref(""),
   labelIds = ref<string[]>([]),
   description = ref(""),
   timerStartedAt = ref(""),
-  query = ref(""),
   error = ref(""),
   newTimerLabelName = ref("");
 const timerNow = ref(Date.now());
@@ -180,19 +176,6 @@ async function cancel() {
     error.value = "Could not cancel the timer.";
   }
 }
-async function search() {
-  if (!query.value.trim()) {
-    results.value = [];
-    return;
-  }
-  try {
-    results.value = await api<Result[]>(
-      `/search?q=${encodeURIComponent(query.value)}`,
-    );
-  } catch {
-    error.value = "Search failed.";
-  }
-}
 async function createTimerLabel() {
   if (!newTimerLabelName.value.trim()) return;
   try {
@@ -304,20 +287,6 @@ onUnmounted(() => {
       </section>
     </div>
 
-    <section class="workspace-section search-box" aria-labelledby="search-heading">
-      <div class="section-heading"><h2 id="search-heading">Retrieve knowledge</h2></div>
-      <form class="inline-field search-form" @submit.prevent="search">
-        <input v-model="query" type="search" name="knowledge-search" autocomplete="off" placeholder="Search paths, labels, notes, and activity…" aria-label="Search knowledge" />
-        <button class="primary">Search</button>
-      </form>
-      <div class="data-list" aria-live="polite">
-        <div v-for="result in results" :key="result.kind + result.id" class="data-row result-row">
-          <span class="result-kind">{{ result.kind.toLowerCase() }}</span>
-          <strong>{{ result.title }}</strong>
-          <span class="subtle">{{ result.detail }}</span>
-        </div>
-      </div>
-    </section>
     <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
   </div>
 </template>
