@@ -48,7 +48,7 @@ function authenticated() {
         v-else
       />
     </main>
-    <FloatingTimeTracker v-if="token" />
+    <FloatingTimeTracker v-if="token && route?.path !== '/'" />
   </div>
 </template>
 

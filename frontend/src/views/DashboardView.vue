@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 import { paletteColors } from "../lib/color-palette";
+import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
 
 type Path = { id: string; name: string; status: string };
 type Label = { id: string; name: string; color?: string | null };
@@ -328,134 +329,8 @@ onUnmounted(() => {
 <template>
   <div class="dashboard-page">
     <PromptDialog ref="promptDialog" appearance="flat" />
-    <div class="page-heading">
-      <div>
-        <p class="section-label">PERSONAL KNOWLEDGE SYSTEM</p>
-        <h1>Overview</h1>
-      </div>
-      <p class="page-summary">Collect what you’re learning. Track the work.</p>
-    </div>
 
-    <section class="session-grid workspace-section" aria-labelledby="focus-heading">
-      <div class="section-heading">
-        <h2 id="focus-heading">FOCUS TODAY</h2>
-        <span class="session-status" :class="{ running: timer }">
-          <span class="status-dot" aria-hidden="true"></span>
-          {{ timer ? "Session running" : "Ready to focus" }}
-        </span>
-      </div>
-      <div class="session-workspace">
-        <div class="focus">
-          <strong class="timer-clock" role="timer" aria-live="off" aria-label="Elapsed session time">{{ timer ? clock(elapsed()) : "00:00:00" }}</strong>
-          <p class="timer-summary">{{ timer?.description || "Choose a path or label to begin." }}</p>
-          <div class="session-actions">
-            <button class="primary" @click="toggle">
-              <span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span>
-              {{ timer ? "Stop session" : "Start a session" }}
-            </button>
-            <button v-if="timer" class="text-button danger" @click="cancel">Cancel</button>
-          </div>
-        </div>
-        <div class="session-fields">
-          <div class="field">
-            <label for="timer-path">Path</label>
-            <select id="timer-path" v-model="pathId" name="timer-path" autocomplete="off" aria-label="Timer path" @focus="load(true)" @change="choosePath">
-              <option value="">Choose a path</option>
-              <option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option>
-              <option :value="addPathOption">＋ Add a new path…</option>
-            </select>
-            <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths">
-              <span>Recent</span>
-              <button
-                v-for="path in recentPaths"
-                :key="path.id"
-                type="button"
-                class="recent-path"
-                :class="{ selected: path.id === pathId }"
-                :aria-pressed="path.id === pathId"
-                :aria-label="`Use ${path.name}`"
-                @click="chooseRecentPath(path.id)"
-              >{{ path.name }}</button>
-            </div>
-          </div>
-          <div class="field">
-            <div class="field-heading">
-              <label for="timer-labels">Labels</label>
-              <span class="subtle">{{ timerLabels.length }} available</span>
-            </div>
-            <v-select
-              id="timer-labels"
-              v-model="labelIds"
-              :items="timerLabels"
-              item-title="name"
-              item-value="id"
-              placeholder="Choose labels…"
-              aria-label="Timer labels"
-              name="timer-labels"
-              autocomplete="off"
-              class="workspace-select"
-              menu-icon=""
-              :menu-props="{ contentClass: 'workspace-menu' }"
-              :list-props="{ 'aria-label': 'Timer labels' }"
-              multiple
-              chips
-              closable-chips
-              variant="outlined"
-              density="compact"
-              hide-details
-              @focus="load(true)"
-              @update:model-value="configureTimer"
-            >
-              <template #item="{ props }">
-                <v-list-item v-bind="props" class="workspace-option" role="option">
-                  <template #prepend="{ isSelected }">
-                    <span class="option-check" :class="{ checked: isSelected }" aria-hidden="true">{{ isSelected ? "✓" : "" }}</span>
-                  </template>
-                </v-list-item>
-              </template>
-              <template #append-inner>
-                <svg class="select-chevron" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" />
-                </svg>
-              </template>
-              <template #chip="{ item, props }">
-                <v-chip v-bind="props" :text="item.title" closable size="small">
-                  <template #close>×</template>
-                </v-chip>
-              </template>
-            </v-select>
-            <div class="inline-field">
-              <input
-                v-model="newTimerLabelName"
-                name="new-session-label"
-                autocomplete="off"
-                placeholder="New label for this session…"
-                aria-label="New session label name"
-                @keydown.enter.prevent="createTimerLabel"
-              />
-              <button class="text-button" :disabled="!newTimerLabelName.trim()" @click="createTimerLabel">Create label</button>
-            </div>
-          </div>
-          <div class="field field-wide">
-            <label for="timer-description">Description <span class="subtle">Optional</span></label>
-            <textarea
-              id="timer-description"
-              v-model="description"
-              name="timer-description"
-              autocomplete="off"
-              rows="2"
-              placeholder="What are you working on…"
-              aria-label="Timer description"
-              @change="configureTimer"
-            ></textarea>
-          </div>
-          <div v-if="timer" class="field field-wide">
-            <label for="timer-start">Started at</label>
-            <input id="timer-start" v-model="timerStartedAt" name="timer-start" autocomplete="off" type="datetime-local" aria-label="Timer start" @change="configureTimer" />
-          </div>
-        </div>
-      </div>
-    </section>
+    <FloatingTimeTracker inline @changed="load(true)" />
 
     <section class="metrics-strip" aria-label="Activity summary">
       <div class="metric">
