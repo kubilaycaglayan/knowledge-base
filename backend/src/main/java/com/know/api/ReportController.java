@@ -3,6 +3,7 @@ package com.know.api;
 import com.know.service.ReportService;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +25,8 @@ public class ReportController {
       @RequestParam(required = false) String aggregation,
       @RequestParam(required = false) LocalDate anchor,
       @RequestParam(required = false) LocalDate startDate,
-      @RequestParam(required = false) LocalDate endDate) {
+      @RequestParam(required = false) LocalDate endDate,
+      @RequestParam(name = "pathId", required = false) List<UUID> pathIds) {
     UUID userId = UUID.fromString(authentication.getName());
     if (startDate != null || endDate != null) {
       if (startDate == null || endDate == null)
@@ -37,7 +39,9 @@ public class ReportController {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "Report range cannot exceed two years");
       ReportService.Aggregation selectedAggregation = parseAggregation(aggregation);
-      return service.report(userId, startDate, endDate, selectedAggregation);
+      return pathIds == null || pathIds.isEmpty()
+          ? service.report(userId, startDate, endDate, selectedAggregation)
+          : service.report(userId, startDate, endDate, selectedAggregation, pathIds);
     }
     ReportService.Period selected;
     try {
@@ -46,7 +50,9 @@ public class ReportController {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Period must be WEEK, MONTH, or YEAR");
     }
-    return service.report(userId, selected, anchor);
+    return pathIds == null || pathIds.isEmpty()
+        ? service.report(userId, selected, anchor)
+        : service.report(userId, selected, anchor, pathIds);
   }
 
   private static ReportService.Aggregation parseAggregation(String aggregation) {

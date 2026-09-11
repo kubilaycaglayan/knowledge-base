@@ -58,10 +58,15 @@ public class ReportService {
       Sankey sankey) {}
 
   public Report report(UUID userId, Period period, LocalDate anchor) {
+    return report(userId, period, anchor, Set.of());
+  }
+
+  public Report report(
+      UUID userId, Period period, LocalDate anchor, Collection<UUID> selectedPathIds) {
     LocalDate selected = anchor == null ? LocalDate.now(ZoneOffset.UTC) : anchor;
     LocalDate fromDate = period.start(selected);
     LocalDate toDateExclusive = period.next(fromDate);
-    return report(userId, period.name(), fromDate, toDateExclusive);
+    return report(userId, period.name(), fromDate, toDateExclusive, selectedPathIds);
   }
 
   public Report report(UUID userId, LocalDate fromDate, LocalDate toDate) {
@@ -70,7 +75,16 @@ public class ReportService {
 
   public Report report(
       UUID userId, LocalDate fromDate, LocalDate toDate, Aggregation aggregation) {
-    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1), aggregation);
+    return report(userId, fromDate, toDate, aggregation, Set.of());
+  }
+
+  public Report report(
+      UUID userId,
+      LocalDate fromDate,
+      LocalDate toDate,
+      Aggregation aggregation,
+      Collection<UUID> selectedPathIds) {
+    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1), aggregation, selectedPathIds);
   }
 
   private Report report(
@@ -80,7 +94,8 @@ public class ReportService {
         period,
         fromDate,
         toDateExclusive,
-        SankeyGranularity.forRange(period, fromDate, toDateExclusive));
+        SankeyGranularity.forRange(period, fromDate, toDateExclusive),
+        Set.of());
   }
 
   private Report report(
@@ -88,13 +103,36 @@ public class ReportService {
       String period,
       LocalDate fromDate,
       LocalDate toDateExclusive,
-      Aggregation aggregation) {
+      Collection<UUID> selectedPathIds) {
+    return report(
+        userId,
+        period,
+        fromDate,
+        toDateExclusive,
+        SankeyGranularity.forRange(period, fromDate, toDateExclusive),
+        selectedPathIds);
+  }
+
+  private Report report(
+      UUID userId,
+      String period,
+      LocalDate fromDate,
+      LocalDate toDateExclusive,
+      Aggregation aggregation,
+      Collection<UUID> selectedPathIds) {
     Instant from = fromDate.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant reportEnd = toDateExclusive.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant now = Instant.now();
     Instant to = reportEnd.isBefore(now) ? reportEnd : now;
+    Set<UUID> pathFilter = selectedPathIds == null
+        ? Set.of()
+        : selectedPathIds.stream().filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
     List<TimeEntry> window =
-        to.isAfter(from) ? entries.findOverlappingByUserId(userId, from, to) : List.of();
+        to.isAfter(from)
+            ? pathFilter.isEmpty()
+                ? entries.findOverlappingByUserId(userId, from, to)
+                : entries.findOverlappingByUserIdAndPathIdIn(userId, pathFilter, from, to)
+            : List.of();
     Map<UUID, List<UUID>> labelsByEntry = new HashMap<>();
     if (entryLabels != null && !window.isEmpty()) {
       entryLabels.findAllByIdTimeEntryIdIn(window.stream().map(TimeEntry::getId).toList())
