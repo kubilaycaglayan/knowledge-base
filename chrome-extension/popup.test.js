@@ -33,7 +33,7 @@ class Element {
 
 function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false } = {}) {
   const elements = Object.fromEntries([
-    "status", "timer-details", "timer-start-editor", "timer-started-at", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
+    "status", "timer-details", "timer-start-editor", "timer-started-date", "timer-started-time", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
     "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options", "settings-menu-toggle", "settings-menu",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [], diagnostics: [], errors: [] };
@@ -222,8 +222,10 @@ test("updates a running timer start through the native date and time picker", as
   await flush();
   await flush();
   await popup.elements["timer-details"].onclick();
-  popup.elements["timer-started-at"].value = "2026-09-01T09:30";
   assert.equal(popup.elements["timer-start-editor"].hidden, false);
+  assert.equal(popup.elements["timer-started-time"].focused, true);
+  popup.elements["timer-started-date"].value = "2026-09-01";
+  popup.elements["timer-started-time"].value = "09:30";
   await popup.elements["timer-start-editor"].onsubmit({ preventDefault() {} });
 
   const update = popup.state.calls.find(({ path, options }) => path === "/timers/timer-1" && options.method === "PUT");
