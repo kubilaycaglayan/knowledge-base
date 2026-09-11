@@ -128,7 +128,8 @@ test("signs in, stores the token, and loads the timer workspace", async () => {
   assert.ok(popup.state.calls.some(({ path, options }) => path === "/auth/login" && options.method === "POST"));
   assert.equal(popup.elements.workspace.hidden, false);
   assert.equal(popup.elements.auth.hidden, true);
-  assert.equal(popup.elements.toggle.textContent, "Start timer");
+  assert.equal(popup.elements.toggle.textContent, "▶");
+  assert.equal(popup.elements.toggle["aria-label"], "Start timer");
 });
 
 test("shows the timer workspace while slow session history is still loading", async () => {
@@ -207,7 +208,8 @@ test("starts a server timer with selected path, labels, description, and extensi
   assert.ok(start);
   assert.deepEqual(JSON.parse(start.options.body), { pathId: "path-1", labelIds: ["label-1"], description: "Read algorithms", source: "CHROME_EXTENSION" });
   assert.equal(popup.state.activeTimer.id, "timer-1");
-  assert.equal(popup.elements.toggle.textContent, "Stop timer");
+  assert.equal(popup.elements.toggle.textContent, "■");
+  assert.equal(popup.elements.toggle["aria-label"], "Stop timer");
 });
 
 test("updates a running timer start through the native date and time picker", async () => {
@@ -258,7 +260,7 @@ test("stops the server timer and clears its local active state", async () => {
 
   assert.ok(popup.state.calls.some(({ path, options }) => path === "/timers/stop" && options.method === "POST"));
   assert.equal(popup.state.activeTimer, undefined);
-  assert.equal(popup.elements.toggle.textContent, "Start timer");
+  assert.equal(popup.elements.toggle.textContent, "▶");
 });
 
 test("logs out by clearing extension storage and reloading", async () => {

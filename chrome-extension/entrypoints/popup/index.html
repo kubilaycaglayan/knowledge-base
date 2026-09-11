@@ -21,7 +21,7 @@
         <button id="google-login" class="secondary" type="button">Continue with Google</button>
       </section>
       <section id="workspace" hidden>
-        <button id="timer-details" class="timer-details" type="button" aria-expanded="false" aria-controls="timer-start-editor" disabled><span id="status" role="status" aria-live="polite">No active timer</span><span class="timer-edit-hint">Adjust start</span></button>
+        <div class="timer-bar"><button id="timer-details" class="timer-details" type="button" aria-expanded="false" aria-controls="timer-start-editor" disabled><span id="status" role="status" aria-live="polite">No active timer</span><span class="timer-edit-hint">Adjust start</span></button><button id="toggle" class="timer-toggle" type="button" aria-label="Start timer"><span aria-hidden="true">▶</span></button></div>
         <form id="timer-start-editor" class="timer-start-editor" hidden>
           <label for="timer-started-at">Started</label>
           <input id="timer-started-at" name="timerStartedAt" type="datetime-local" autocomplete="off" required />
@@ -35,7 +35,6 @@
         <small id="label-help">Choose a label to add it. Select × on a chip to remove it.</small>
         <label for="description">Description</label>
         <textarea id="description" name="description" rows="2" autocomplete="off" placeholder="For example, review project notes…"></textarea>
-        <button id="toggle">Start timer</button>
         <section class="history" aria-labelledby="history-title">
           <p class="eyebrow">HISTORY</p><h2 id="history-title">Recent Sessions</h2>
           <div id="sessions"><p class="empty">Loading sessions…</p></div>
