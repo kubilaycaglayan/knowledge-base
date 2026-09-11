@@ -35,12 +35,12 @@ button:disabled, input:disabled, select:disabled, textarea:disabled { background
 :focus-visible { outline: 2px solid var(--workspace-focus); outline-offset: 3px; }
 .add { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-6) 0; padding-block: var(--space-4); border-block: 1px solid var(--workspace-border); }
 .add input:not([type="checkbox"]):not([type="radio"]) { flex: 1 1 180px; }
-.path-list { display: grid; gap: 0; border-top: 1px solid var(--workspace-border); }
-.path-list > .card { background: transparent; border: 0; border-bottom: 1px solid var(--workspace-border); border-radius: 0; padding: 20px 0; }
+.path-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); align-items: start; gap: 12px; }
+.path-list > .card { align-self: start; padding: 14px; box-shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 5px 12px rgb(0 0 0 / 4%); }
 .path-list > article, .session-card, .timeline-entry, .note-row { content-visibility: auto; contain-intrinsic-size: auto 140px; }
-.path { display: flex; justify-content: space-between; align-items: center; }
+.path { display: block; }
 .path h2 { display: inline; font-size: 16px; margin-left: 10px; }
-.path p { margin: 8px 0 12px; color: var(--workspace-muted); }
+.path p { margin: 7px 0 10px; color: var(--workspace-muted); }
 .dot { display: inline-block; width: 8px; height: 8px; background: var(--workspace-accent); border-radius: 50%; }
 .pill, .activity-pill { display: inline-block; font-size: 11px; color: var(--workspace-selected-text); background: var(--workspace-selected); border-radius: var(--workspace-radius); padding: 3px 7px; }
 .notice { margin-block: 16px; background: var(--workspace-danger-surface); color: var(--workspace-danger); padding: 12px; border: 1px solid var(--workspace-danger-border); border-radius: var(--workspace-radius); }
