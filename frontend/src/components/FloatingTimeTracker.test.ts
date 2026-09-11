@@ -33,6 +33,7 @@ describe("FloatingTimeTracker", () => {
     expect(inline.get(".floating-tracker-host").classes()).toContain("inline");
     expect(floating.get(".floating-tracker-host").classes()).not.toContain("inline");
     expect(inline.find("#floating-tracker-panel").exists()).toBe(true);
+    expect(inline.find(".floating-tracker-toggle").exists()).toBe(false);
     expect(floating.find("#floating-tracker-panel").exists()).toBe(false);
     expect(floating.get(".floating-tracker-toggle").attributes("aria-expanded")).toBe("false");
     expect(floating.get(".tracker-status").classes()).not.toContain("running");
