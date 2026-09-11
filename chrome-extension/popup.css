@@ -6,7 +6,7 @@
 .loading-state{min-height:220px;margin:0;display:grid;place-items:center;color:var(--workspace-muted);font-size:13px}
 .loading-state[hidden]{display:none}
 .label-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;min-height:0}
-.label-chip{display:inline-flex;max-width:100%;align-items:center;gap:4px;padding:4px 6px 4px 9px;border:1px solid var(--workspace-border);border-radius:999px;background:var(--workspace-selected);color:var(--workspace-selected-text);font-size:12px;line-height:1.3}
+.label-chip{display:inline-flex;max-width:100%;align-items:center;gap:3px;padding:2px 4px 2px 7px;border:1px solid var(--workspace-border);border-radius:999px;background:var(--workspace-selected);color:var(--workspace-selected-text);font-size:12px;line-height:1.3}
 .label-chip>span{min-width:0;overflow-wrap:anywhere}
 .label-chip-remove{display:inline-flex;width:24px;min-height:24px;align-items:center;justify-content:center;margin:0;border:0;padding:0;background:transparent;color:var(--workspace-muted);font-size:17px;font-weight:500;line-height:1;cursor:pointer}
 .label-chip-remove:hover{border-color:transparent;background:var(--workspace-hover);color:var(--workspace-strong)}
