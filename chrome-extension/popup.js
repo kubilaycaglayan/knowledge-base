@@ -25,7 +25,7 @@ function userError(fallback, error, details = {}) {
 }
 
 function checkPopupDomContract() {
-  const required = ["loading", "auth", "workspace", "status", "timer-details", "timer-start-editor", "timer-started-at", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error", "settings-menu-toggle", "settings-menu", "options", "logout"];
+  const required = ["loading", "auth", "workspace", "status", "timer-details", "timer-start-editor", "timer-started-date", "timer-started-time", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error", "settings-menu-toggle", "settings-menu", "options", "logout"];
   const missing = required.filter((id) => !$(id));
   if (missing.length) throw Error(`Popup DOM contract missing: ${missing.join(",")}`);
   debug("Popup DOM contract verified", { requiredCount: required.length });
@@ -321,10 +321,12 @@ function closeTimerStartEditor() {
 }
 function openTimerStartEditor() {
   if (!currentTimer?.startedAt) return;
-  $("timer-started-at").value = localDateTime(currentTimer.startedAt);
+  const [date, time] = localDateTime(currentTimer.startedAt).split("T");
+  $("timer-started-date").value = date;
+  $("timer-started-time").value = time;
   $("timer-start-editor").hidden = false;
   $("timer-details").setAttribute("aria-expanded", "true");
-  $("timer-started-at").focus();
+  $("timer-started-time").focus();
 }
 const sessionLabelIds = (session) => session.labelIds || [];
 const labelFor = (id) => labels.find((label) => label.id === id);
@@ -486,11 +488,13 @@ $("cancel-timer-start").onclick = closeTimerStartEditor;
 $("timer-start-editor").onsubmit = async (event) => {
   event.preventDefault();
   const button = $("save-timer-start");
-  const startedAt = $("timer-started-at").value;
+  const date = $("timer-started-date").value;
+  const time = $("timer-started-time").value;
+  const startedAt = date && time ? `${date}T${time}` : "";
   if (!currentTimer || !startedAt) return;
   if (new Date(startedAt) > new Date()) {
     $("error").textContent = "A timer start cannot be in the future.";
-    $("timer-started-at").focus();
+    $("timer-started-time").focus();
     return;
   }
   setButtonBusy(button, true);
