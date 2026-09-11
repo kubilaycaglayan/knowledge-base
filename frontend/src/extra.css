@@ -51,6 +51,8 @@
 .session-heading, .session-summary { display: flex; gap: 10px; align-items: center; }
 .session-heading > div { flex: 1; min-width: 0; }
 .session-heading h3 { margin: 0; font-size: 16px; }
+.session-card-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.session-card-labels span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; border-radius: var(--workspace-radius); padding: 2px 6px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 11px; }
 .session-description { margin: 3px 0 0; color: var(--workspace-muted); font-size: 13px; overflow-wrap: anywhere; }
 .session-summary { flex-wrap: wrap; color: var(--workspace-muted); margin-top: 8px; gap: 6px; }
 .session-summary span { background: var(--workspace-selected); border-radius: var(--workspace-radius); padding: 2px 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
