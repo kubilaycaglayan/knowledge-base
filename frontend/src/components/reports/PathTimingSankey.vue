@@ -16,6 +16,27 @@ type Sankey = { granularity: "DAY" | "WEEK" | "MONTH"; nodes: SankeyNode[]; link
 const props = defineProps<{ sankey: Sankey }>();
 use([SankeyChart, TooltipComponent, SVGRenderer]);
 
+const aggregateTotals = computed(() => {
+  const totals = new Map<number, { bucketLabel: string; seconds: number }>();
+  for (const node of props.sankey.nodes) {
+    const current = totals.get(node.depth);
+    totals.set(node.depth, {
+      bucketLabel: current?.bucketLabel || node.bucketLabel,
+      seconds: (current?.seconds || 0) + node.value,
+    });
+  }
+  const lastDepth = Math.max(-1, ...props.sankey.nodes.map((node) => node.depth));
+  return Array.from({ length: lastDepth + 1 }, (_, depth) => ({
+    depth,
+    bucketLabel: totals.get(depth)?.bucketLabel || "",
+    seconds: totals.get(depth)?.seconds || 0,
+  }));
+});
+function totalPosition(depth: number): string {
+  const lastDepth = aggregateTotals.value.at(-1)?.depth || 0;
+  return `${lastDepth ? (depth / lastDepth) * 100 : 50}%`;
+}
+
 function formatSankeyDuration(seconds: number): string {
   const minutes = Math.floor(Math.max(0, seconds) / 60);
   const hours = Math.floor(minutes / 60);
@@ -76,5 +97,58 @@ const option = computed<EChartsOption>(() => ({
   <div class="sankey-frame" role="img" :aria-label="ariaLabel">
     <v-chart v-if="sankey.nodes.length" class="report-echart sankey-echart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
     <p v-else class="sankey-empty">No tracked time to show in this flow.</p>
+    <div
+      v-if="aggregateTotals.length"
+      class="sankey-aggregate-totals"
+      aria-label="Aggregated flow totals"
+    >
+      <span
+        v-for="total in aggregateTotals"
+        :key="total.depth"
+        class="sankey-aggregate-total"
+        :style="{ left: totalPosition(total.depth) }"
+        :aria-label="total.seconds > 0 ? `${total.bucketLabel}: ${formatSankeyDuration(total.seconds)}` : undefined"
+        :class="{ 'has-total': total.seconds > 0 }"
+      >
+        <b v-if="total.seconds > 0">{{ formatSankeyDuration(total.seconds) }}</b>
+      </span>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.sankey-aggregate-totals {
+  position: relative;
+  min-width: 416px;
+  height: 30px;
+  margin: -8px 132px 0 12px;
+  color: var(--workspace-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sankey-aggregate-total {
+  position: absolute;
+  top: 0;
+  width: max-content;
+  max-width: 88px;
+  transform: translateX(-50%);
+  overflow-wrap: anywhere;
+  padding: 6px 4px 0;
+  text-align: center;
+}
+
+.sankey-aggregate-total.has-total {
+  border-top: 1px solid var(--workspace-border);
+}
+
+.sankey-aggregate-total b {
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .sankey-aggregate-totals {
+    margin-right: 132px;
+  }
+}
+</style>

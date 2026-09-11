@@ -16,6 +16,8 @@ describe("PathTimingSankey", () => {
     expect(option.tooltip.formatter({ dataType: "node", data: sankey.nodes[0] })).toContain("Jul 1–7");
     expect(option.tooltip.formatter({ dataType: "node", data: sankey.nodes[0] })).toContain("10m");
     expect(option.tooltip.formatter({ dataType: "node", data: sankey.nodes[0] })).not.toContain(":00");
+    expect(wrapper.findAll(".sankey-aggregate-total").map((total) => total.text())).toEqual(["10m", "8m"]);
+    expect(wrapper.find(".sankey-aggregate-total").attributes("aria-label")).toBe("Jul 1–7: 10m");
   });
 
   it("explains an empty flow", () => {
