@@ -122,10 +122,10 @@ onMounted(load);
       needed.
     </p>
     <div v-if="!props.knowledgeBaseOnly" class="import-tabs" role="tablist" aria-label="Import source">
-      <button type="button" role="tab" :aria-selected="activeTab === 'clockify'" :class="{ selected: activeTab === 'clockify' }" @click="selectTab('clockify')">Clockify</button>
-      <button type="button" role="tab" :aria-selected="activeTab === 'knowledge-base'" :class="{ selected: activeTab === 'knowledge-base' }" @click="selectTab('knowledge-base')">Knowledge Base</button>
+      <button id="imports-tab-clockify" type="button" role="tab" aria-controls="imports-panel-clockify" :aria-selected="activeTab === 'clockify'" :class="{ selected: activeTab === 'clockify' }" @click="selectTab('clockify')">Clockify</button>
+      <button id="imports-tab-knowledge-base" type="button" role="tab" aria-controls="imports-panel-knowledge-base" :aria-selected="activeTab === 'knowledge-base'" :class="{ selected: activeTab === 'knowledge-base' }" @click="selectTab('knowledge-base')">Knowledge Base</button>
     </div>
-    <section v-if="activeTab === 'clockify' && !props.knowledgeBaseOnly" class="card import-panel" role="tabpanel">
+    <section v-if="activeTab === 'clockify' && !props.knowledgeBaseOnly" id="imports-panel-clockify" class="card import-panel" role="tabpanel" aria-labelledby="imports-tab-clockify" tabindex="0">
       <textarea
         v-model="clockifyJson"
         rows="10"
@@ -144,7 +144,7 @@ onMounted(load);
         }}</span>
       </div>
     </section>
-    <section v-else class="card import-panel" role="tabpanel">
+    <section v-else id="imports-panel-knowledge-base" class="card import-panel" role="tabpanel" aria-labelledby="imports-tab-knowledge-base" tabindex="0">
       <p class="muted">Import a CSV previously downloaded from Settings. Existing records with the same IDs are skipped.</p>
       <label class="file-input">Choose CSV file
         <input type="file" accept=".csv,text/csv" @change="async (event) => { const file = (event.target as HTMLInputElement).files?.[0]; if (file) knowledgeBaseCsv = await file.text(); }" />
@@ -181,9 +181,10 @@ onMounted(load);
 </template>
 
 <style scoped>
-.import-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--workspace-border); margin-bottom: 8px; }
-.import-tabs button { min-height: 44px; padding: 8px 14px; border-bottom: 2px solid transparent; }
-.import-tabs button.selected { border-bottom-color: var(--workspace-accent); font-weight: 700; }
+.import-tabs { display: inline-flex; gap: 2px; margin-bottom: 16px; padding: 3px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); background: var(--workspace-selected); }
+.import-tabs button { min-height: 36px; padding: 7px 14px; border: 1px solid transparent; border-radius: calc(var(--workspace-radius) - 1px); background: transparent; color: var(--workspace-muted); font-size: 12px; font-weight: 650; }
+.import-tabs button:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
+.import-tabs button.selected { border-color: var(--workspace-border); background: var(--workspace-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); color: var(--workspace-text); }
 .file-input { display: grid; gap: 6px; font-weight: 600; margin-bottom: 12px; }
 .history-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .history-pagination button { min-height: 40px; padding: 8px 12px; }
