@@ -61,7 +61,7 @@ const presets: PresetDate[] = [
     value: [subDays(currentDate, 1), subDays(currentDate, 1)],
   },
   {
-    label: "This week",
+    label: "Week",
     value: [
       startOfWeek(currentDate, { weekStartsOn: 1 }),
       endOfWeek(currentDate, { weekStartsOn: 1 }),
@@ -76,7 +76,7 @@ const presets: PresetDate[] = [
   },
   { label: "Past two weeks", value: [subDays(currentDate, 13), currentDate] },
   {
-    label: "This month",
+    label: "Month",
     value: [startOfMonth(currentDate), endOfMonth(currentDate)],
   },
   {
@@ -87,7 +87,7 @@ const presets: PresetDate[] = [
     ],
   },
   {
-    label: "This quarter",
+    label: "Quarter",
     value: [startOfQuarter(currentDate), endOfQuarter(currentDate)],
   },
   {
@@ -98,7 +98,7 @@ const presets: PresetDate[] = [
     ],
   },
   {
-    label: "This year",
+    label: "Year",
     value: [startOfYear(currentDate), endOfYear(currentDate)],
   },
   {

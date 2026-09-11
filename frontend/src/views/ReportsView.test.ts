@@ -99,6 +99,8 @@ describe("ReportsView", () => {
     expect(wrapper.text()).not.toContain("Apply filter");
     expect(wrapper.text()).toContain("01:00:00");
     expect(wrapper.text()).toContain("Calendar log");
+    expect(wrapper.text()).not.toContain("Calendar labels");
+    expect(wrapper.text()).not.toContain("Separate from tracked work time");
     expect(wrapper.text()).toContain("Planning session");
     expect(wrapper.text()).toContain("Milestone");
     expect(wrapper.text()).toContain("Hide calendar inputs");

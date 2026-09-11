@@ -29,14 +29,14 @@ describe("ReportDateRange", () => {
     ).toEqual([
       "Today",
       "Yesterday",
-      "This week",
+      "Week",
       "Last week",
       "Past two weeks",
-      "This month",
+      "Month",
       "Last month",
-      "This quarter",
+      "Quarter",
       "Last quarter",
-      "This year",
+      "Year",
       "Last year",
     ]);
     expect(provider.props("range")).toEqual({
