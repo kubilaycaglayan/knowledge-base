@@ -17,15 +17,6 @@ type Timer = {
   description?: string;
   running?: boolean;
 };
-type Entry = {
-  id: string;
-  pathId?: string;
-  labelIds?: string[];
-  startedAt: string;
-  endedAt?: string;
-  durationSeconds?: number;
-  description?: string;
-};
 type Stats = {
   todaySeconds: number;
   weekSeconds: number;
@@ -41,7 +32,6 @@ const paths = ref<Path[]>([]),
   labels = ref<Label[]>([]),
   timer = ref<Timer | null>(null),
   stats = ref<Stats | null>(null),
-  history = ref<Entry[]>([]),
   results = ref<Result[]>([]);
 const pathId = ref(""),
   labelIds = ref<string[]>([]),
@@ -65,30 +55,9 @@ const pathName = (id: string) =>
   paths.value.find((path) => path.id === id)?.name || id;
 const labelName = (id: string) =>
   labels.value.find((label) => label.id === id)?.name || id;
-const entryPathName = (entry: Entry) =>
-  entry.pathId ? pathName(entry.pathId) : "Unassigned";
-const shortDescription = (entry: Entry) => {
-  const text = entry.description?.trim() || "Tracked session";
-  return text.length > 72 ? `${text.slice(0, 72)}…` : text;
-};
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
 );
-const recentPaths = computed(() => {
-  const seen = new Set<string>();
-  const recentPathIds = history.value
-    .map((entry) => entry.pathId)
-    .filter((id): id is string => Boolean(id))
-    .filter((id) => {
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  return recentPathIds
-    .map((id) => paths.value.find((path) => path.id === id))
-    .filter((path): path is Path => Boolean(path && path.status === "ACTIVE"))
-    .slice(0, 5);
-});
 const addPathOption = "__add_new_path__";
 const timerLabels = computed(() => labels.value);
 const localDateTime = (iso: string) => {
@@ -121,7 +90,6 @@ async function load(preserveIdleForm = false) {
       api<Label[]>("/labels?scope=TIME_ENTRY").then(value => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
       api<Timer | null>("/timers/current"),
       api<Stats>("/statistics"),
-      api<Entry[]>("/time-entries"),
     ]);
     if (loadId !== latestLoad) return;
     paths.value = data[0];
@@ -129,7 +97,6 @@ async function load(preserveIdleForm = false) {
     const hadActiveTimer = Boolean(timer.value);
     applyTimer(data[2], !preserveIdleForm || hadActiveTimer);
     stats.value = data[3];
-    history.value = data[4];
   } catch {
     error.value = "Unable to load your workspace.";
   }
@@ -204,10 +171,6 @@ async function choosePath() {
     error.value = "Could not create path.";
   }
 }
-async function chooseRecentPath(id: string) {
-  pathId.value = id;
-  await configureTimer();
-}
 async function cancel() {
   try {
     await api("/timers/cancel", { method: "POST", body: "{}" });
@@ -228,33 +191,6 @@ async function search() {
     );
   } catch {
     error.value = "Search failed.";
-  }
-}
-async function editEntry(entry: Entry) {
-  const start = await promptDialog.value!.open(
-    "Start (ISO time)",
-    entry.startedAt,
-  );
-  if (!start) return;
-  const end = await promptDialog.value!.open(
-    "End (ISO time)",
-    entry.endedAt || "",
-  );
-  if (!end) return;
-  try {
-    await api(`/time-entries/${entry.id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        pathId: entry.pathId || null,
-        labelIds: entry.labelIds || [],
-        startedAt: new Date(start).toISOString(),
-        endedAt: new Date(end).toISOString(),
-        description: entry.description || null,
-      }),
-    });
-    await load();
-  } catch {
-    error.value = "Could not edit time entry.";
   }
 }
 async function createTimerLabel() {
@@ -367,20 +303,6 @@ onUnmounted(() => {
         <p v-if="!Object.keys(stats?.weekByLabel || {}).length" class="empty-state">No label time yet.</p>
       </section>
     </div>
-
-    <section class="workspace-section history-box" aria-labelledby="recent-sessions-heading">
-      <div class="section-heading"><h2 id="recent-sessions-heading">RECENT SESSIONS</h2></div>
-      <div v-if="history.length" class="data-list">
-        <article v-for="entry in history" :key="entry.id" class="data-row history-row">
-          <div>
-            <strong>{{ shortDescription(entry) }}</strong>
-            <span class="subtle">{{ entryPathName(entry) }} · {{ formatTrackedDuration(entry.durationSeconds || 0) }}</span>
-          </div>
-          <button v-if="entry.endedAt" type="button" class="text-button" @click="editEntry(entry)">Edit…</button>
-        </article>
-      </div>
-      <p v-else class="empty-state">No recorded sessions yet.</p>
-    </section>
 
     <section class="workspace-section search-box" aria-labelledby="search-heading">
       <div class="section-heading"><h2 id="search-heading">Retrieve knowledge</h2></div>
