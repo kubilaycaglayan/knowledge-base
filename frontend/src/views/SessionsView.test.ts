@@ -47,8 +47,9 @@ describe("SessionsView", () => {
     await flushPromises();
     const latestSession = wrapper.findAll("article.session-card")[0];
     expect(latestSession.get("h3").text()).toBe("Learning");
+    expect(latestSession.get(".session-card-labels").text()).toBe("Vue");
     expect(latestSession.get(".session-description").text()).toBe("Most recent");
-    expect(latestSession.get(".session-summary").findAll("span")[0].text()).toBe("Vue");
+    expect(latestSession.get(".session-summary").findAll("span")[0].text()).toBe("1h");
   });
 
   it("groups sessions by relative dates before falling back to month and year", async () => {
@@ -94,7 +95,8 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
 
-    expect(wrapper.get(".session-summary").text()).toContain("Vue, Removed label");
+    expect(wrapper.get(".session-card-labels").text()).toContain("Vue");
+    expect(wrapper.get(".session-card-labels").text()).toContain("Removed label");
     await wrapper.get("button.text-button").trigger("click");
     expect(wrapper.get(".session-label-chips").text()).toContain("Vue");
     await wrapper.get(".session-label-chips button").trigger("click");
