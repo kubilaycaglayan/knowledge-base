@@ -1,11 +1,17 @@
 import "vuetify/styles";
 import { createVuetify } from "vuetify";
+import { aliases, mdi } from "vuetify/iconsets/mdi-svg";
 import * as directives from "vuetify/directives";
 import { watch } from "vue";
 import { theme } from "../lib/theme";
 
 const vuetify = createVuetify({
   directives,
+  icons: {
+    defaultSet: "mdi",
+    aliases,
+    sets: { mdi },
+  },
   defaults: {
     VBtn: { elevation: 0, rounded: "sm" },
     VSelect: { density: "compact", variant: "outlined" },
