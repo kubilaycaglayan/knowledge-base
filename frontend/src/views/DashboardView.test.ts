@@ -36,6 +36,6 @@ describe("DashboardView", () => {
     await wrapper.get('[data-test="timer"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/statistics");
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels?scope=TIME_ENTRY");
   });
 });
