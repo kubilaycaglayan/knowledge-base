@@ -20,7 +20,18 @@ describe("App", () => {
     expect(wrapper.find('[data-test="authenticate"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
     expect(wrapper.find("nav").exists()).toBe(false);
-    expect(wrapper.find('button.ghost').exists()).toBe(false);
+    expect(wrapper.find('button.ghost:not(.theme-toggle)').exists()).toBe(false);
+    expect(wrapper.find(".settings-link").exists()).toBe(false);
+    expect(wrapper.get(".theme-toggle").text()).toContain("Theme:");
+  });
+
+  it("lets logged-out users change the theme from the shell", async () => {
+    const wrapper = mount(App, { global: { stubs } });
+
+    await wrapper.get(".theme-toggle").trigger("click");
+
+    expect(localStorage.getItem("knowledge-base-theme")).not.toBeNull();
+    expect(wrapper.get(".theme-toggle").attributes("aria-label")).toContain("Change theme");
   });
 
   it("shows the authenticated navigation and signs out", async () => {
@@ -37,6 +48,7 @@ describe("App", () => {
       "Labels",
     ]);
     expect(wrapper.get('.settings-link').attributes('aria-label')).toBe('Settings');
+    expect(wrapper.find(".theme-toggle").exists()).toBe(false);
     expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(true);
 
     await wrapper.get("button.ghost").trigger("click");
