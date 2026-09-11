@@ -126,6 +126,31 @@ describe("ReportsView", () => {
     expect(query.getAll("pathId")).toEqual(["path-1", "path-2"]);
   });
 
+  it("sends selected labels together with selected paths and persists both filters", async () => {
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    const view = wrapper.vm as unknown as {
+      selectPaths: (ids: string[]) => Promise<void>;
+      selectLabels: (ids: string[]) => Promise<void>;
+    };
+
+    await view.selectPaths(["path-1"]);
+    await flushPromises();
+    await view.selectLabels(["label-1", "label-2"]);
+    await flushPromises();
+
+    const query = new URL(
+      vi.mocked(api).mock.calls.at(-1)?.[0] as string,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(query.getAll("pathId")).toEqual(["path-1"]);
+    expect(query.getAll("labelId")).toEqual(["label-1", "label-2"]);
+    expect(new URL(window.location.href).searchParams.getAll("labelId")).toEqual([
+      "label-1",
+      "label-2",
+    ]);
+  });
+
   it("keeps the selected aggregation when the date interval changes", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
