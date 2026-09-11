@@ -11,7 +11,7 @@ class Element {
     this.id = id;
     this.value = "";
     this.textContent = "";
-    this.hidden = false;
+    this.hidden = id === "settings-menu";
     this.disabled = false;
     this.multiple = false;
     this.options = [];
@@ -59,7 +59,7 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
       getElementById: (id) => elements[id],
       createElement: (tag) => tag === "option" ? { value: "", textContent: "", selected: false } : new Element(tag),
     },
-    chrome: { storage: { local: storage }, runtime: { getManifest: () => ({ version: "test-version" }) } },
+    chrome: { storage: { local: storage }, runtime: { getManifest: () => ({ version: "test-version" }), openOptionsPage: () => { state.optionsOpened = true; } } },
     crypto: { randomUUID: () => `uuid-${state.diagnostics.length}-${state.calls.length}` },
     performance: { now: () => 100 },
     KnowApiConfig: { apiBase: (value) => value || "http://localhost:8080/api/v1" },
@@ -98,6 +98,20 @@ const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 test("hides the loading state after bootstrap", () => {
   assert.match(styles, /\.loading-state\[hidden\]\{display:none\}/);
+});
+
+test("keeps account actions behind the compact settings menu", async () => {
+  const popup = createPopup({ token: "token" });
+  await flush();
+  await flush();
+  await flush();
+
+  assert.equal(popup.elements["settings-menu"].hidden, true);
+  await popup.elements["settings-menu-toggle"].onclick();
+  assert.equal(popup.elements["settings-menu"].hidden, false);
+  assert.equal(popup.elements["settings-menu-toggle"]["aria-expanded"], "true");
+  await popup.elements.options.onclick();
+  assert.equal(popup.state.optionsOpened, true);
 });
 
 test("signs in, stores the token, and loads the timer workspace", async () => {
