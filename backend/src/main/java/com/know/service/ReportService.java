@@ -63,10 +63,19 @@ public class ReportService {
 
   public Report report(
       UUID userId, Period period, LocalDate anchor, Collection<UUID> selectedPathIds) {
+    return report(userId, period, anchor, selectedPathIds, Set.of());
+  }
+
+  public Report report(
+      UUID userId,
+      Period period,
+      LocalDate anchor,
+      Collection<UUID> selectedPathIds,
+      Collection<UUID> selectedLabelIds) {
     LocalDate selected = anchor == null ? LocalDate.now(ZoneOffset.UTC) : anchor;
     LocalDate fromDate = period.start(selected);
     LocalDate toDateExclusive = period.next(fromDate);
-    return report(userId, period.name(), fromDate, toDateExclusive, selectedPathIds);
+    return report(userId, period.name(), fromDate, toDateExclusive, selectedPathIds, selectedLabelIds);
   }
 
   public Report report(UUID userId, LocalDate fromDate, LocalDate toDate) {
@@ -84,7 +93,17 @@ public class ReportService {
       LocalDate toDate,
       Aggregation aggregation,
       Collection<UUID> selectedPathIds) {
-    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1), aggregation, selectedPathIds);
+    return report(userId, fromDate, toDate, aggregation, selectedPathIds, Set.of());
+  }
+
+  public Report report(
+      UUID userId,
+      LocalDate fromDate,
+      LocalDate toDate,
+      Aggregation aggregation,
+      Collection<UUID> selectedPathIds,
+      Collection<UUID> selectedLabelIds) {
+    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1), aggregation, selectedPathIds, selectedLabelIds);
   }
 
   private Report report(
@@ -95,7 +114,7 @@ public class ReportService {
         fromDate,
         toDateExclusive,
         SankeyGranularity.forRange(period, fromDate, toDateExclusive),
-        Set.of());
+        Set.of(), Set.of());
   }
 
   private Report report(
@@ -104,13 +123,24 @@ public class ReportService {
       LocalDate fromDate,
       LocalDate toDateExclusive,
       Collection<UUID> selectedPathIds) {
+    return report(userId, period, fromDate, toDateExclusive, selectedPathIds, Set.of());
+  }
+
+  private Report report(
+      UUID userId,
+      String period,
+      LocalDate fromDate,
+      LocalDate toDateExclusive,
+      Collection<UUID> selectedPathIds,
+      Collection<UUID> selectedLabelIds) {
     return report(
         userId,
         period,
         fromDate,
         toDateExclusive,
         SankeyGranularity.forRange(period, fromDate, toDateExclusive),
-        selectedPathIds);
+        selectedPathIds,
+        selectedLabelIds);
   }
 
   private Report report(
@@ -119,7 +149,8 @@ public class ReportService {
       LocalDate fromDate,
       LocalDate toDateExclusive,
       Aggregation aggregation,
-      Collection<UUID> selectedPathIds) {
+      Collection<UUID> selectedPathIds,
+      Collection<UUID> selectedLabelIds) {
     Instant from = fromDate.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant reportEnd = toDateExclusive.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant now = Instant.now();
@@ -127,6 +158,9 @@ public class ReportService {
     Set<UUID> pathFilter = selectedPathIds == null
         ? Set.of()
         : selectedPathIds.stream().filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
+    Set<UUID> labelFilter = selectedLabelIds == null
+        ? Set.of()
+        : selectedLabelIds.stream().filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
     List<TimeEntry> window =
         to.isAfter(from)
             ? pathFilter.isEmpty()
@@ -139,6 +173,15 @@ public class ReportService {
           .forEach(assignment -> labelsByEntry
               .computeIfAbsent(assignment.getTimeEntryId(), ignored -> new ArrayList<>())
               .add(assignment.getLabelId()));
+    }
+    if (!labelFilter.isEmpty()) {
+      Set<UUID> ownedLabelIds = sessionLabels.findAllByUserIdAndIdIn(userId, labelFilter).stream()
+          .map(Label::getId)
+          .collect(Collectors.toSet());
+      window = window.stream()
+          .filter(entry -> labelsByEntry.getOrDefault(entry.getId(), List.of()).stream()
+              .anyMatch(ownedLabelIds::contains))
+          .toList();
     }
     Map<LocalDate, List<CalendarLabel>> calendarByDate = new HashMap<>();
     Map<LocalDate, String> calendarNotesByDate = new HashMap<>();

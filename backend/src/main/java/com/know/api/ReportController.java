@@ -26,7 +26,8 @@ public class ReportController {
       @RequestParam(required = false) LocalDate anchor,
       @RequestParam(required = false) LocalDate startDate,
       @RequestParam(required = false) LocalDate endDate,
-      @RequestParam(name = "pathId", required = false) List<UUID> pathIds) {
+      @RequestParam(name = "pathId", required = false) List<UUID> pathIds,
+      @RequestParam(name = "labelId", required = false) List<UUID> labelIds) {
     UUID userId = UUID.fromString(authentication.getName());
     if (startDate != null || endDate != null) {
       if (startDate == null || endDate == null)
@@ -39,9 +40,10 @@ public class ReportController {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "Report range cannot exceed two years");
       ReportService.Aggregation selectedAggregation = parseAggregation(aggregation);
-      return pathIds == null || pathIds.isEmpty()
+      return (pathIds == null || pathIds.isEmpty()) && (labelIds == null || labelIds.isEmpty())
           ? service.report(userId, startDate, endDate, selectedAggregation)
-          : service.report(userId, startDate, endDate, selectedAggregation, pathIds);
+          : service.report(userId, startDate, endDate, selectedAggregation,
+              pathIds == null ? List.of() : pathIds, labelIds == null ? List.of() : labelIds);
     }
     ReportService.Period selected;
     try {
@@ -50,9 +52,10 @@ public class ReportController {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Period must be WEEK, MONTH, or YEAR");
     }
-    return pathIds == null || pathIds.isEmpty()
+    return (pathIds == null || pathIds.isEmpty()) && (labelIds == null || labelIds.isEmpty())
         ? service.report(userId, selected, anchor)
-        : service.report(userId, selected, anchor, pathIds);
+        : service.report(userId, selected, anchor,
+            pathIds == null ? List.of() : pathIds, labelIds == null ? List.of() : labelIds);
   }
 
   private static ReportService.Aggregation parseAggregation(String aggregation) {
