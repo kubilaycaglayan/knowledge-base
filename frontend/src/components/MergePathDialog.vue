@@ -30,7 +30,7 @@ function confirm() {
 </script>
 
 <template>
-  <div v-if="visible" class="prompt-dialog-backdrop">
+  <div v-if="visible" class="prompt-dialog-backdrop" @click.self="emit('cancel')">
     <section
       v-dialog-focus
       class="prompt-dialog card merge-path-dialog"

@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
         Your first path is waiting to be named.
       </p>
     </div>
-    <div v-if="historyPath && summaries[historyPath.id]" class="prompt-dialog-backdrop">
+    <div v-if="historyPath && summaries[historyPath.id]" class="prompt-dialog-backdrop" @click.self="closeHistory">
       <section
         v-dialog-focus
         class="prompt-dialog card path-history-dialog"

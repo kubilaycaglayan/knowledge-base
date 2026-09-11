@@ -72,6 +72,14 @@ describe("PromptDialog", () => {
     expect(await cancelled).toBeNull();
   });
 
+  it("cancels when the backdrop is clicked", async () => {
+    const wrapper = mount(PromptDialog);
+    const pending = wrapper.vm.open("Click outside");
+    await nextTick();
+    await wrapper.get(".prompt-dialog-backdrop").trigger("click");
+    expect(await pending).toBeNull();
+  });
+
   it("cancels a pending prompt when a newer prompt opens or the component unmounts", async () => {
     const wrapper = mount(PromptDialog);
     const first = wrapper.vm.open("First");

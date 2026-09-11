@@ -59,7 +59,7 @@ defineExpose({ open });
 </script>
 
 <template>
-  <div v-if="visible" class="prompt-dialog-backdrop" :class="{ flat: appearance === 'flat' }">
+  <div v-if="visible" class="prompt-dialog-backdrop" :class="{ flat: appearance === 'flat' }" @click.self="finish(null)">
     <section
       v-dialog-focus
       class="prompt-dialog card"
