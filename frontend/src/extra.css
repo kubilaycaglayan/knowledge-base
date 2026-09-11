@@ -18,8 +18,7 @@
 .path-pill { margin-right: 4px; }
 .path-form { flex-wrap: wrap; }
 .path-form input { min-width: min(180px, 100%); }
-.path.expanded { display: block; }
-.path-summary, .note-editor, .progress-history { border-top: 1px solid var(--workspace-border); margin-top: 16px; padding-top: 16px; }
+.note-editor, .progress-history { border-top: 1px solid var(--workspace-border); margin-top: 16px; padding-top: 16px; }
 .note-editor { display: grid; gap: 8px; }
 .note-editor input, .note-editor textarea, .path-summary input, .path-edit input, .path-edit textarea, .import-panel textarea { width: 100%; }
 .path-summary ul { color: var(--workspace-muted); }
@@ -99,6 +98,15 @@
 .edit-dialog { display: grid; gap: 14px; width: min(620px, 100%); }
 .edit-path-picker { margin: 0; }
 .edit-path-picker input { width: auto; }
+.path-history-dialog { width: min(680px, 100%); }
+.path-history-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.path-history-heading h2 { margin-bottom: 4px; }
+.path-history-heading .muted { margin: 0; }
+.path-history-list { display: grid; gap: 8px; margin-top: 16px; }
+.path-history-entry { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 4px 10px; padding: 10px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); background: var(--workspace-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 4%); }
+.path-history-entry time { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.path-history-entry .activity-duration { text-align: right; }
+.path-history-entry .activity-description { grid-column: 1 / -1; margin: 0; color: var(--workspace-text); }
 .snackbar { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); z-index: 110; display: flex; align-items: center; gap: 18px; width: max-content; max-width: calc(100vw - 36px); margin: 0; padding: 12px 16px; transform: translateX(-50%); border: 1px solid var(--workspace-control-border); border-radius: var(--workspace-radius); background: var(--workspace-surface); color: var(--workspace-text); }
 .search-result { display: flex; gap: 12px; align-items: center; border-top: 1px solid var(--workspace-border); padding: 12px 0; }
 .search-result .muted { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
