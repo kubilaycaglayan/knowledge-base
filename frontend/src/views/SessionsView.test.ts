@@ -45,9 +45,10 @@ describe("SessionsView", () => {
   it("lists sessions by latest completion time with path and label context", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
-    expect(wrapper.findAll("article.session-card")[0].text()).toContain("Most recent");
-    expect(wrapper.text()).toContain("Path: Learning · A path");
-    expect(wrapper.text()).toContain("Labels: Vue");
+    const latestSession = wrapper.findAll("article.session-card")[0];
+    expect(latestSession.get("h2").text()).toBe("Learning");
+    expect(latestSession.get(".session-description").text()).toBe("Most recent");
+    expect(latestSession.get(".session-summary").text()).toContain("Vue");
   });
 
   it("renders multiple session labels and marks deleted references clearly", async () => {

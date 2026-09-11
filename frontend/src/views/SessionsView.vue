@@ -154,8 +154,8 @@ onMounted(load);
       <article v-for="session in sessions" :key="session.id" class="card session-card">
         <div v-if="editingId !== session.id" class="session-heading">
           <div>
-            <p class="eyebrow">{{ session.source }} · {{ sessionDate(session.startedAt) }}</p>
-            <h2>{{ session.description || "Untitled session" }}</h2>
+            <h2>{{ pathFor(session.pathId)?.name || "Unassigned path" }}</h2>
+            <p class="session-description">{{ session.description || "No description" }}</p>
           </div>
           <button class="text-button" :disabled="session.running" @click="beginEdit(session)">
             {{ session.running ? "Stop to edit" : "Edit session" }}
@@ -166,7 +166,7 @@ onMounted(load);
         </div>
         <div v-if="editingId !== session.id" class="session-summary">
           <span>{{ duration(session) }}</span>
-          <span>{{ pathFor(session.pathId)?.name || "Unassigned path" }}</span>
+          <span>{{ session.source }} · {{ sessionDate(session.startedAt) }}</span>
           <span>{{ sessionLabelSummary(session) || "Unassigned labels" }}</span>
         </div>
         <form v-else-if="draft" class="session-edit" @submit.prevent="save(session)">
@@ -190,10 +190,6 @@ onMounted(load);
             <button type="button" class="text-button" @click="cancelEdit">Cancel</button>
           </div>
         </form>
-        <div v-if="editingId !== session.id && (pathFor(session.pathId) || sessionLabelIds(session).length)" class="session-context">
-          <span v-if="pathFor(session.pathId)"><strong>Path:</strong> {{ pathFor(session.pathId)?.name }} · {{ pathFor(session.pathId)?.description || "No description" }}</span>
-          <span v-if="sessionLabelIds(session).length"><strong>Labels:</strong> {{ sessionLabelSummary(session) }}</span>
-        </div>
       </article>
       <p v-if="!sessions.length && !error" class="empty">No sessions recorded yet.</p>
     </div>
