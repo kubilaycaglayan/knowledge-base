@@ -36,8 +36,6 @@ const paths = ref<Path[]>([]),
   name = ref(""),
   description = ref(""),
   selectedColor = ref(colors[0]),
-  noteTitle = ref(""),
-  noteContent = ref(""),
   error = ref("");
 const editingId = ref(""),
   editName = ref(""),
@@ -288,26 +286,6 @@ async function undoRemove() {
     error.value = "Could not undo path removal.";
   }
 }
-async function addNote(pathId: string) {
-  const summary = summaries.value[pathId];
-  if (!summary || !noteTitle.value.trim() || !noteContent.value.trim())
-    return;
-  try {
-    await api("/notes", {
-      method: "POST",
-      body: JSON.stringify({
-        pathId: summary.path.id,
-        title: noteTitle.value,
-        content: noteContent.value,
-      }),
-    });
-    noteTitle.value = "";
-    noteContent.value = "";
-    await loadSummary(summary.path);
-  } catch {
-    error.value = "Could not save path note.";
-  }
-}
 onMounted(load);
 onBeforeUnmount(() => {
   if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
@@ -442,12 +420,6 @@ onBeforeUnmount(() => {
           </section>
           <p v-if="!recentActivity(historyPath.id).length" class="muted">No recent activity yet.</p>
         </div>
-        <form class="note-editor" @submit.prevent="addNote(historyPath.id)">
-          <strong>Path note</strong>
-          <input v-model="noteTitle" name="path-note-title" autocomplete="off" placeholder="Note title…" aria-label="Path note title" />
-          <textarea v-model="noteContent" name="path-note-content" autocomplete="off" placeholder="What did you learn in this path?" rows="3" aria-label="Path note content"></textarea>
-          <button class="primary">Save path note</button>
-        </form>
       </section>
     </div>
   </section>

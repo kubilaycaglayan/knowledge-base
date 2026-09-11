@@ -331,41 +331,6 @@ describe("PathsView", () => {
     });
   });
 
-  it("saves a note from path history", async () => {
-    const wrapper = mount(PathsView);
-    await flushPromises();
-    await wrapper.get("button.text-button").trigger("click");
-    await flushPromises();
-    await wrapper.get('input[aria-label="Path note title"]').setValue("Graph insight");
-    await wrapper.get('textarea[aria-label="Path note content"]').setValue("Use invariants to simplify proofs.");
-    await wrapper.get("form.note-editor").trigger("submit");
-    await flushPromises();
-
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/notes", expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ pathId: "path-1", title: "Graph insight", content: "Use invariants to simplify proofs." }),
-    }));
-  });
-
-  it("reports a path-note save failure", async () => {
-    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
-      if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
-      if (path === "/paths/path-1/summary") return { path: { id: "path-1", name: "Algorithms", status: "ACTIVE" }, trackedSeconds: 0, recentActivity: [] };
-      if (path === "/notes" && options?.method === "POST") throw new Error("save failed");
-      return undefined;
-    });
-    const wrapper = mount(PathsView);
-    await flushPromises();
-    await wrapper.get("button.text-button").trigger("click");
-    await flushPromises();
-    await wrapper.get('input[aria-label="Path note title"]').setValue("Insight");
-    await wrapper.get('textarea[aria-label="Path note content"]').setValue("Content");
-    await wrapper.get("form.note-editor").trigger("submit");
-    await flushPromises();
-
-    expect(wrapper.get('[role="alert"]').text()).toBe("Could not save path note.");
-  });
-
   it("reports an undo failure after removing a path", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
