@@ -19,7 +19,8 @@ function logError(operation, error, details = {}) {
   });
 }
 function userError(fallback, error) {
-  return isDevelopment() ? fallback + " " + errorDetails(error) : fallback;
+  const detail = errorDetails(error);
+  return `${fallback} [diagnostic ${diagnosticSessionId}]${detail ? ` ${detail}` : ""}`;
 }
 function setButtonBusy(button, busy) {
   button.disabled = busy;
