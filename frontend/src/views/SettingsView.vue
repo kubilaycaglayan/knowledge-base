@@ -31,6 +31,15 @@ async function load() {
   }
 }
 
+async function storePasswordCredential(email: string, password: string) {
+  if (typeof PasswordCredential === "undefined" || !navigator.credentials?.store) return;
+  try {
+    await navigator.credentials.store(new PasswordCredential({ id: email, password }));
+  } catch {
+    // Browser credential storage is optional and must not make a successful change look failed.
+  }
+}
+
 async function savePassword() {
   message.value = "";
   error.value = "";
@@ -45,6 +54,7 @@ async function savePassword() {
         newPassword: newPassword.value,
       }),
     });
+    if (account.value?.email) await storePasswordCredential(account.value.email, newPassword.value);
     currentPassword.value = "";
     newPassword.value = "";
     message.value = "Password saved. You can now sign in with your email and password.";
@@ -109,14 +119,15 @@ onMounted(load);
       <p v-else>
         Set a password to add password sign-in while keeping Google sign-in available.
       </p>
-      <form class="settings-form" @submit.prevent="savePassword">
+      <form id="password-change-form" class="settings-form" method="post" action="/settings" autocomplete="on" @submit.prevent="savePassword">
+        <input v-if="account" type="hidden" name="username" autocomplete="username" :value="account.email" />
         <label v-if="account?.hasPassword">
           Current password
-          <input v-model="currentPassword" type="password" name="currentPassword" autocomplete="current-password" required />
+          <input id="current-password" v-model="currentPassword" type="password" name="currentPassword" autocomplete="current-password" required />
         </label>
         <label>
           {{ account?.hasPassword ? "New password" : "Password" }}
-          <input v-model="newPassword" type="password" name="newPassword" autocomplete="new-password" minlength="9" required />
+          <input id="new-password" v-model="newPassword" type="password" name="newPassword" autocomplete="new-password" minlength="9" required />
         </label>
         <button class="primary" type="submit" :disabled="saving">
           {{ saving ? "Saving…" : account?.hasPassword ? "Change password" : "Set password" }}
