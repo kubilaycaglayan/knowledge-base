@@ -127,6 +127,7 @@
 .calendar-picker { display: flex; align-items: center; gap: 4px; }
 .calendar-picker select { min-height: 32px; padding: 4px 8px; font-size: 12px; }
 .reports-actions { min-width: 0; max-width: 100%; }
+.reports-header-actions { justify-content: flex-end; margin-bottom: 24px; }
 .report-date-range { display: flex; align-items: center; min-width: 0; }
 .report-date-range .dp__main { width: 250px; min-width: 0; }
 .report-date-range .dp__input { height: 40px; border-radius: 4px 0 0 4px; font-family: inherit; font-size: 12px; }

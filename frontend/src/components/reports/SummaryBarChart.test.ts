@@ -46,6 +46,30 @@ describe("SummaryBarChart", () => {
     expect(series).toEqual([expect.objectContaining({ name: "Wander" })]);
   });
 
+  it("adds compact totals to each x-axis label without repeating a separate row", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: {
+        aggregation: "MONTH",
+        days: [
+          { date: "2026-08-01", totalSeconds: 3600, paths: [] },
+          { date: "2026-09-01", totalSeconds: 7380, paths: [] },
+          { date: "2026-10-01", totalSeconds: 0, paths: [] },
+        ],
+        categories: [],
+      },
+    });
+    const axisLabel = (wrapper.getComponent({ name: "VChart" }).props("option") as {
+      xAxis: { axisLabel: { formatter: (value: string, index: number) => string; rich: Record<string, unknown> } };
+    }).xAxis.axisLabel;
+
+    expect(axisLabel.formatter("Aug 2026", 0)).toBe("{bucket|Aug 2026}\n{total|1h}");
+    expect(axisLabel.formatter("Sep 2026", 1)).toBe("{bucket|Sep 2026}\n{total|2h 3m}");
+    expect(axisLabel.rich).toMatchObject({ bucket: { fontSize: 11 }, total: { fontSize: 13, fontWeight: 700 } });
+    expect(axisLabel.formatter("Sep 2026", 1)).not.toContain(":00");
+    expect(axisLabel.formatter("Oct 2026", 2)).toBe("{bucket|Oct 2026}");
+    expect(wrapper.findAll(".chart-aggregate-total")).toHaveLength(0);
+  });
+
   it("renders a linear trendline from the supplied aggregate buckets", () => {
     const wrapper = mount(SummaryBarChart, {
       props: {

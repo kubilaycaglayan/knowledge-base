@@ -77,6 +77,13 @@ function bucketLabel(dateValue: string): string {
   if (props.aggregation === "YEAR") return format(date, "yyyy");
   return format(date, "EEE, MMM d");
 }
+function aggregateDuration(seconds: number): string {
+  const minutes = Math.floor(Math.max(0, seconds) / 60);
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder}m`;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
 function calendarRows(day: Day): string {
   const note = day.calendarNote
     ? `<div>${escapeHtml(day.calendarNote)}</div>`
@@ -249,7 +256,7 @@ const option = computed<EChartsOption>(() => ({
     left: 48,
     right: 18,
     top: 30,
-    bottom: props.days.length > 31 ? 74 : 44,
+    bottom: props.days.length > 31 ? 86 : 58,
   },
   dataZoom:
     props.days.length > 31
@@ -316,6 +323,26 @@ const option = computed<EChartsOption>(() => ({
       color: chartTheme.value.muted,
       interval: 0,
       hideOverlap: true,
+      formatter: (_value: string, index: number) => {
+        const day = props.days[index];
+        const label = `{bucket|${bucketLabel(day.date)}}`;
+        return day.totalSeconds > 0
+          ? `${label}\n{total|${aggregateDuration(day.totalSeconds)}}`
+          : label;
+      },
+      rich: {
+        bucket: {
+          color: chartTheme.value.muted,
+          fontSize: 11,
+          lineHeight: 16,
+        },
+        total: {
+          color: chartTheme.value.text,
+          fontSize: 13,
+          fontWeight: 700,
+          lineHeight: 18,
+        },
+      },
     },
   },
   yAxis: [
@@ -394,7 +421,7 @@ const option = computed<EChartsOption>(() => ({
   <div
     class="chart-frame"
     role="img"
-    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${days.map((day) => `${bucketLabel(day.date)}: ${formatDuration(day.totalSeconds)}`).join('; ')}`"
+    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${days.filter((day) => day.totalSeconds > 0).map((day) => `${bucketLabel(day.date)}: ${aggregateDuration(day.totalSeconds)}`).join('; ') || 'No tracked time'}`"
   >
     <v-chart
       class="report-echart"
