@@ -425,25 +425,6 @@ onBeforeUnmount(() =>
         @update:model-value="selectRange"
       />
     </div>
-    <div class="report-filters" aria-label="Report filters">
-      <span class="filter-label">FILTER BY</span>
-      <v-select
-        aria-label="Filter by paths"
-        :items="pathOptions"
-        item-title="name"
-        item-value="id"
-        :model-value="selectedPathIds"
-        multiple
-        chips
-        closable-chips
-        clearable
-        density="compact"
-        variant="outlined"
-        hide-details
-        placeholder="Choose paths…"
-        @update:model-value="selectPaths"
-      />
-    </div>
     <div class="reports-nav">
       <ReportTabs
         :model-value="aggregation"
@@ -528,6 +509,25 @@ onBeforeUnmount(() =>
         </div>
         <PathTimingSankey :sankey="report.sankey" />
       </section>
+      <div class="report-filters" aria-label="Report filters">
+        <span class="filter-label">FILTER BY</span>
+        <v-select
+          aria-label="Filter by paths"
+          :items="pathOptions"
+          item-title="name"
+          item-value="id"
+          :model-value="selectedPathIds"
+          multiple
+          chips
+          closable-chips
+          clearable
+          density="compact"
+          variant="outlined"
+          hide-details
+          placeholder="Choose paths…"
+          @update:model-value="selectPaths"
+        />
+      </div>
       <section class="report-card breakdown-card">
         <div class="breakdown-toolbar">
           <span>Group by</span
