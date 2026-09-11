@@ -59,6 +59,15 @@
 .session-edit-path select { background: var(--workspace-surface); }
 .session-edit-description { grid-column: 1 / -1; }
 .session-edit-description > span { color: var(--workspace-muted); font-weight: 400; }
+.session-edit-labels { display: grid; min-width: 0; margin: 0; padding: 0; border: 0; gap: 6px; }
+.session-edit-labels legend { padding: 0; font-size: 12px; font-weight: 600; }
+.session-label-picker { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 6px; border: 1px solid var(--workspace-control-border); border-radius: var(--workspace-radius); padding: 6px; background: var(--workspace-surface); }
+.session-label-picker:focus-within { border-color: var(--workspace-focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--workspace-focus) 22%, transparent); }
+.session-label-chips { display: flex; min-width: 0; flex-wrap: wrap; gap: 4px; }
+.session-label-chips button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; border: 0; border-radius: 4px; padding: 4px 7px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }
+.session-label-chips button:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
+.session-label-chips button span { font-size: 15px; line-height: 1; }
+.session-label-picker select { min-width: 120px; flex: 1 1 120px; border: 0; padding: 5px 7px; background: transparent; }
 .session-edit .session-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
 .session-pagination { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0; padding-block: 12px; }
 .page-number { min-width: 36px; }

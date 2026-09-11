@@ -100,6 +100,19 @@ function cancelEdit() {
   editingId.value = "";
   draft.value = null;
 }
+function addSessionLabel(event: Event) {
+  const select = event.target as HTMLSelectElement;
+  const labelId = select.value;
+  if (labelId && draft.value && !draft.value.labelIds.includes(labelId)) {
+    draft.value.labelIds = [...draft.value.labelIds, labelId];
+  }
+  select.value = "";
+}
+function removeSessionLabel(labelId: string) {
+  if (draft.value) {
+    draft.value.labelIds = draft.value.labelIds.filter((id) => id !== labelId);
+  }
+}
 async function save(session: Session) {
   if (!draft.value || !draft.value.startedAt || !draft.value.endedAt) {
     error.value = "A session needs both a start and an end time.";
@@ -176,9 +189,20 @@ onMounted(load);
           </select></label>
           <div class="session-edit-grid">
             <label class="session-edit-description">Description <span>(optional)</span><input v-model="draft.description" name="session-description" autocomplete="off" aria-label="Edit session description" placeholder="What did you work on…" /></label>
-            <label>Labels<select v-model="draft.labelIds" name="session-labels" autocomplete="off" aria-label="Edit session labels" multiple>
-              <option v-for="label in availableLabels" :key="label.id" :value="label.id">{{ label.name }}</option>
-            </select></label>
+            <fieldset class="session-edit-labels">
+              <legend>Labels</legend>
+              <div class="session-label-picker">
+                <div v-if="draft.labelIds.length" class="session-label-chips" aria-label="Selected session labels">
+                  <button v-for="labelId in draft.labelIds" :key="labelId" type="button" :aria-label="`Remove ${labelFor(labelId)?.name || 'removed label'}`" @click="removeSessionLabel(labelId)">
+                    {{ labelFor(labelId)?.name || "Removed label" }} <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+                <select name="session-labels" autocomplete="off" aria-label="Add session label" @change="addSessionLabel">
+                  <option value="">Add a label…</option>
+                  <option v-for="label in availableLabels.filter((label) => !draft.labelIds.includes(label.id))" :key="label.id" :value="label.id">{{ label.name }}</option>
+                </select>
+              </div>
+            </fieldset>
             <label>Source<select v-model="draft.source" name="session-source" autocomplete="off" aria-label="Edit session source">
               <option v-for="source in sources" :key="source">{{ source }}</option>
             </select></label>
