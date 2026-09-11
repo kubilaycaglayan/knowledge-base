@@ -46,9 +46,37 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     const latestSession = wrapper.findAll("article.session-card")[0];
-    expect(latestSession.get("h2").text()).toBe("Learning");
+    expect(latestSession.get("h3").text()).toBe("Learning");
     expect(latestSession.get(".session-description").text()).toBe("Most recent");
     expect(latestSession.get(".session-summary").findAll("span")[0].text()).toBe("Vue");
+  });
+
+  it("groups sessions by relative dates before falling back to month and year", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-11T12:00:00Z"));
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path.startsWith("/time-entries?")) return {
+        page: 0,
+        totalPages: 1,
+        totalSessions: 6,
+        sessions: [
+          "2026-09-11T09:00:00Z", "2026-09-10T09:00:00Z", "2026-09-09T09:00:00Z",
+          "2026-09-03T09:00:00Z", "2026-08-30T09:00:00Z", "2026-07-31T09:00:00Z",
+        ].map((startedAt, index) => ({ id: `${index}`, startedAt, endedAt: startedAt, source: "WEB" })),
+      };
+      if (path === "/paths" || path === "/calendar/labels") return [];
+      return undefined;
+    });
+
+    try {
+      const wrapper = mount(SessionsView);
+      await flushPromises();
+      expect(wrapper.findAll(".session-group-heading").map((heading) => heading.text())).toEqual([
+        "Today", "Yesterday", "This week", "Last week", "Last month", "July 2026",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders multiple session labels and marks deleted references clearly", async () => {
