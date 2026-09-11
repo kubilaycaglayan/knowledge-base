@@ -314,16 +314,45 @@ const pathFor = (id) => paths.find((path) => path.id === id);
 const sessionLabelSummary = (session) => sessionLabelIds(session).map((id) => labelFor(id)?.name || "Removed label").join(", ") || "Unassigned labels";
 const sessionDate = (iso) => new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 const duration = (session) => session.running ? "Running" : KnowCore.formatTimer(session.durationSeconds || 0);
+const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const sameDay = (left, right) => left.getTime() === right.getTime();
+const sessionGroupLabel = (startedAt) => {
+  const date = startOfDay(new Date(startedAt));
+  const today = startOfDay(new Date());
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const thisWeekStart = new Date(today); thisWeekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  if (sameDay(date, today)) return "Today";
+  if (sameDay(date, yesterday)) return "Yesterday";
+  if (date >= thisWeekStart) return "This week";
+  if (date >= lastWeekStart) return "Last week";
+  if (date.getFullYear() === lastMonth.getFullYear() && date.getMonth() === lastMonth.getMonth()) return "Last month";
+  return new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(date);
+};
 
 function renderSessions(history) {
   const container = $("sessions"); container.replaceChildren();
   const sessions = history?.sessions || (Array.isArray(history) ? history : []);
   if (!sessions.length) { const empty = document.createElement("p"); empty.className = "empty"; empty.textContent = "No sessions recorded yet."; container.append(empty); return; }
+  const groups = [];
   sessions.forEach((session) => {
-    const article = document.createElement("article"); article.className = "session-card"; article.dataset.id = session.id;
-    article.insertAdjacentHTML("beforeend", `<div class="session-heading"><div><small>${escapeHtml(session.source || "SESSION")} · ${escapeHtml(sessionDate(session.startedAt))}</small><h3>${escapeHtml(session.description || "Untitled session")}</h3></div><div class="session-actions"><button class="text-button edit-session" ${session.running ? "disabled" : ""}>${session.running ? "Stop to edit" : "Edit"}</button>${session.running ? "" : '<button class="text-button danger remove-session">Remove</button>'}</div></div><div class="session-summary"><span>${escapeHtml(duration(session))}</span><span>${escapeHtml(pathFor(session.pathId)?.name || "Unassigned path")}</span><span>${escapeHtml(sessionLabelSummary(session))}</span></div>`);
-    if (pathFor(session.pathId) || sessionLabelIds(session).length) article.insertAdjacentHTML("beforeend", `<div class="session-context">${pathFor(session.pathId) ? `<span><strong>Path:</strong> ${escapeHtml(pathFor(session.pathId).name)} · ${escapeHtml(pathFor(session.pathId).description || "No description")}</span>` : ""}${sessionLabelIds(session).length ? `<span><strong>Labels:</strong> ${escapeHtml(sessionLabelSummary(session))}</span>` : ""}</div>`);
-    container.append(article);
+    const label = sessionGroupLabel(session.startedAt);
+    const group = groups.at(-1);
+    if (group?.label === label) group.sessions.push(session); else groups.push({ label, sessions: [session] });
+  });
+  groups.forEach((group) => {
+    const section = document.createElement("section"); section.className = "session-group";
+    section.insertAdjacentHTML("beforeend", `<h3 class="session-group-heading">${escapeHtml(group.label)}</h3>`);
+    const list = document.createElement("div"); list.className = "session-group-list";
+    group.sessions.forEach((session) => {
+      const article = document.createElement("article"); article.className = "session-card"; article.dataset.id = session.id;
+      const pathName = pathFor(session.pathId)?.name;
+      const labelsMarkup = sessionLabelIds(session).map((id) => `<span>${escapeHtml(labelFor(id)?.name || "Removed label")}</span>`).join("");
+      article.insertAdjacentHTML("beforeend", `<div class="session-heading"><div>${pathName ? `<h4 class="session-title-chip">${escapeHtml(pathName)}</h4>` : ""}<div class="session-card-labels" aria-label="Session labels">${labelsMarkup}</div>${session.description ? `<p class="session-description">${escapeHtml(session.description)}</p>` : ""}</div><div class="session-actions"><button class="text-button edit-session" aria-label="${session.running ? "Stop timer to edit session" : "Edit session"}" ${session.running ? "disabled" : ""}>${session.running ? "Stop to edit" : "Edit"}</button>${session.running ? "" : '<button class="text-button danger remove-session" aria-label="Remove session">Remove</button>'}</div></div><div class="session-summary"><span>${escapeHtml(duration(session))}</span><span>${escapeHtml(session.source || "SESSION")} · ${escapeHtml(sessionDate(session.startedAt))}</span></div>`);
+      list.append(article);
+    });
+    section.append(list); container.append(section);
   });
 }
 async function loadSessions() {
@@ -462,6 +491,12 @@ $("sessions").onclick = async (event) => {
   if (event.target.closest(".edit-session")) { const history = await request("/time-entries?page=0&size=20"); const session = (history.sessions || []).find((entry) => entry.id === sessionId); if (session) renderSessionEditor(article, session); }
   if (event.target.closest(".remove-session") && confirm("Remove this session? This cannot be undone.")) { try { await request(`/time-entries/${sessionId}`, { method: "DELETE" }); await loadSessions(); } catch (error) { logError("Remove session", error, { sessionId }); $("error").textContent = userError("Could not remove this session.", error); } }
 };
+$("settings-menu-toggle").onclick = () => {
+  const menu = $("settings-menu");
+  menu.hidden = !menu.hidden;
+  $("settings-menu-toggle").setAttribute("aria-expanded", String(!menu.hidden));
+};
+$("options").onclick = () => chrome.runtime.openOptionsPage();
 chrome.storage.local.get(["token", "googleAuthError"]).then(({ token, googleAuthError }) => {
   debug("Popup initialized", { tokenPresent: Boolean(token), googleAuthErrorPresent: Boolean(googleAuthError), apiLocked: !KnowApiConfig.isProduction ? null : KnowApiConfig.isProduction });
   if (googleAuthError) $("error").textContent = googleAuthError;
@@ -471,4 +506,3 @@ chrome.storage.local.get(["token", "googleAuthError"]).then(({ token, googleAuth
   logError("Read extension session", error);
   showAuth(); $("error").textContent = userError("Could not read extension session.", error);
 });
-$("options").onclick = () => chrome.runtime.openOptionsPage();
