@@ -86,9 +86,15 @@ allowed_cors="$(
     --method=OPTIONS \
     --header='Origin: http://localhost:5177' \
     --header='Access-Control-Request-Method: GET' \
+    --header='Access-Control-Request-Headers: X-Request-ID' \
     http://localhost:8080/api/v1/paths 2>&1 || true
 )"
 printf '%s' "$allowed_cors" | grep -qi 'access-control-allow-origin: http://localhost:5177'
+printf '%s' "$allowed_cors" | grep -qi 'access-control-allow-headers:.*x-request-id'
+compose exec -T api wget -S -O /dev/null \
+  --header='X-Request-ID: smoke-diagnostics' \
+  http://localhost:8080/actuator/health 2>&1 \
+  | grep -qi 'x-request-id: smoke-diagnostics'
 blocked_cors="$(
   compose exec -T api wget -S -O /dev/null \
     --method=OPTIONS \
@@ -197,6 +203,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   curl -kfsSI -X OPTIONS \
     -H 'Origin: http://localhost:5177' \
     -H 'Access-Control-Request-Method: GET' \
+    -H 'Access-Control-Request-Headers: X-Request-ID' \
     "https://localhost:${PROXY_HTTPS_PORT}"/api/v1/paths \
     | grep -qi '^access-control-allow-origin: http://localhost:5177'
   if curl -kfsSI -X OPTIONS \
@@ -369,7 +376,7 @@ statistics="$(api "${header[@]}" http://localhost:8080/api/v1/statistics)"
 month_seconds="$(printf '%s' "$statistics" | sed -n 's/.*"monthSeconds":\([0-9]*\).*/\1/p')"
 (( month_seconds >= 3300 ))
 report_start="$(date -u -d "$smoke_date - 2 years" +%Y-%m-%d)"
-report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?startDate=$report_start&endDate=$smoke_date&aggregation=QUARTER")"
+report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?startDate=$report_start&endDate=$smoke_date&aggregation=QUARTER&pathId=$path_id&labelId=$calendar_label_id")"
 [[ "$report" == *'"period":"CUSTOM"'* ]]
 [[ "$report" == *'"granularity":"QUARTER"'* ]]
 [[ "$report" == *'"days"'* ]]
