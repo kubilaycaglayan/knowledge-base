@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class TimerService {
+  private static final long MINIMUM_SAVED_TIMER_SECONDS = 2;
   private final TimeEntryRepository entries;
   private final PathRepository paths;
   private final LabelRepository labels;
@@ -130,8 +131,13 @@ public class TimerService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Timer not found"));
     if (!e.running()) return view(e);
     e.stop(Instant.now());
+    TimeView stopped = view(e);
+    if (stopped.durationSeconds() < MINIMUM_SAVED_TIMER_SECONDS) {
+      entries.delete(e);
+      return stopped;
+    }
     entries.save(e);
-    return view(e);
+    return stopped;
   }
 
   @Transactional
