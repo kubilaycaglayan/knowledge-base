@@ -1,11 +1,17 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { config, flushPromises, mount } from "@vue/test-utils";
 import SessionsView from "./SessionsView.vue";
 import { api } from "../lib/api";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
+const timerStub = {
+  props: ["inline"],
+  template: '<div data-test="session-tracker" :data-inline="String(inline)"></div>',
+};
+
 describe("SessionsView", () => {
   beforeEach(() => {
+    config.global.stubs = { FloatingTimeTracker: timerStub };
     vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path.startsWith("/time-entries?"))
@@ -40,6 +46,18 @@ describe("SessionsView", () => {
         return [{ id: "label-1", name: "Vue", color: "#2878D5" }];
       return undefined;
     });
+  });
+
+  afterEach(() => {
+    config.global.stubs = {};
+  });
+
+  it("places the session tracker inline at the top of the sessions page", async () => {
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+
+    expect(wrapper.findComponent(timerStub).exists()).toBe(true);
+    expect(wrapper.element.firstElementChild?.getAttribute("data-test")).toBe("session-tracker");
   });
 
   it("lists sessions by latest completion time with path and label context", async () => {

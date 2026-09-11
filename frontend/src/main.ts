@@ -10,7 +10,7 @@ applyTheme(theme.value);
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/", component: () => import("./views/DashboardView.vue") },
+    { path: "/", redirect: "/sessions" },
     { path: "/paths", component: () => import("./views/PathsView.vue") },
     { path: "/timeline", component: () => import("./views/TimelineView.vue") },
     { path: "/sessions", component: () => import("./views/SessionsView.vue") },

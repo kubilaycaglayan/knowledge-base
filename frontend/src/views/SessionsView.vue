@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
+import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
 
 type Path = { id: string; name: string; description?: string; status: string; color?: string | null };
 type Label = {
@@ -197,6 +198,7 @@ onMounted(load);
 </script>
 
 <template>
+  <FloatingTimeTracker inline />
   <PromptDialog ref="promptDialog" />
   <section>
     <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>

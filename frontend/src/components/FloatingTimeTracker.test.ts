@@ -16,7 +16,7 @@ describe("FloatingTimeTracker", () => {
     });
   });
 
-  it("preserves Overview's ability to start without a path or label", async () => {
+  it("preserves Sessions' ability to start without a path or label", async () => {
     const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
     await flushPromises();
 
@@ -27,7 +27,7 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("expands inline on Overview and starts collapsed as a dock elsewhere", async () => {
+  it("expands inline on Sessions and starts collapsed as a dock elsewhere", async () => {
     const inline = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
     const floating = mount(FloatingTimeTracker, { global: { plugins: [vuetify] } });
     await flushPromises();

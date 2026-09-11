@@ -5,7 +5,7 @@
 - [x] Add privacy-safe web, extension, and backend diagnostics with correlated
   request IDs and explicit authentication and popup lifecycle stages.
 
-- [x] Establish the approved flat Overview design.
+- [x] Establish the approved flat workspace design.
 - [x] Extend its shared shell, typography, controls, and flat sections to Sessions,
   Paths, session labels, Timeline, Calendar, Notes, Reports, Imports, and authentication.
 - [x] Add persistent light/dark selection, system default, early theme bootstrap,
