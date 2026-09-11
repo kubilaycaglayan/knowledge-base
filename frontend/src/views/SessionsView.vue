@@ -48,13 +48,6 @@ const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const pathFor = (id?: string) => paths.value.find((path) => path.id === id);
 const labelFor = (id?: string) => labels.value.find((label) => label.id === id);
 const sessionLabelIds = (session: Session) => session.labelIds || [];
-const sessionLabelSummary = (session: Session) =>
-  sessionLabelIds(session)
-    .map((id) => {
-      const label = labelFor(id);
-      return label?.name || "Removed label";
-    })
-    .join(", ");
 const availableLabels = computed(() => labels.value);
 const localDateTime = (iso?: string) => {
   if (!iso) return "";
@@ -207,6 +200,10 @@ onMounted(load);
         <div v-if="editingId !== session.id" class="session-heading">
           <div>
             <h3>{{ pathFor(session.pathId)?.name || "Unassigned path" }}</h3>
+            <div class="session-card-labels" aria-label="Session labels">
+              <span v-for="labelId in sessionLabelIds(session)" :key="labelId">{{ labelFor(labelId)?.name || "Removed label" }}</span>
+              <span v-if="!sessionLabelIds(session).length">Unassigned labels</span>
+            </div>
             <p class="session-description">{{ session.description || "No description" }}</p>
           </div>
           <button class="text-button" :disabled="session.running" @click="beginEdit(session)">
@@ -217,7 +214,6 @@ onMounted(load);
           </button>
         </div>
         <div v-if="editingId !== session.id" class="session-summary">
-          <span>{{ sessionLabelSummary(session) || "Unassigned labels" }}</span>
           <span>{{ duration(session) }}</span>
           <span>{{ session.source }} · {{ sessionDate(session.startedAt) }}</span>
         </div>
