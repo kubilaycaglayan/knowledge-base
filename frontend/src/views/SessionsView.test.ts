@@ -68,7 +68,10 @@ describe("SessionsView", () => {
 
     expect(wrapper.get(".session-summary").text()).toContain("Vue, Removed label");
     await wrapper.get("button.text-button").trigger("click");
-    expect((wrapper.get('select[aria-label="Edit session labels"]').element as HTMLSelectElement).selectedOptions[0]?.value).toBe("label-1");
+    expect(wrapper.get(".session-label-chips").text()).toContain("Vue");
+    await wrapper.get(".session-label-chips button").trigger("click");
+    await wrapper.get('select[aria-label="Add session label"]').setValue("label-1");
+    expect(wrapper.get(".session-label-chips").text()).toContain("Vue");
   });
 
   it("updates every editable session property", async () => {
@@ -78,7 +81,8 @@ describe("SessionsView", () => {
     await wrapper.get('[aria-label="Edit session description"]').setValue("Updated");
     await wrapper.get('[aria-label="Edit session source"]').setValue("IOS");
     await wrapper.get('[aria-label="Edit session path"]').setValue("path-1");
-    await wrapper.get('[aria-label="Edit session labels"]').setValue("label-1");
+    await wrapper.get('[aria-label="Remove Vue"]').trigger("click");
+    await wrapper.get('[aria-label="Add session label"]').setValue("label-1");
     await wrapper.get("form").trigger("submit");
     expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/new", expect.objectContaining({
       method: "PUT",
