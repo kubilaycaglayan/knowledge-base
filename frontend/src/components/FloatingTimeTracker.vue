@@ -157,7 +157,7 @@ onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) wi
         <button class="floating-tracker-action primary" type="button" :disabled="busy" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span>{{ timer ? "Stop session" : "Start a session" }}</span></button>
         <button class="floating-tracker-clock" type="button" :disabled="!timer" aria-label="Edit timer start time; elapsed session time" @click="editStartedAt"><strong role="timer" aria-live="off">{{ clock(elapsed) }}</strong></button>
         <span class="floating-tracker-summary">{{ timerSummary }}</span>
-        <span v-if="pathName || selectedLabelNames.length" class="floating-tracker-context"><span v-if="pathName">{{ pathName }}</span><span v-if="pathName && selectedLabelNames.length" aria-hidden="true">·</span><span v-if="selectedLabelNames.length">{{ selectedLabelNames.join(', ') }}</span></span>
+        <span v-if="selectedLabelNames.length" class="floating-tracker-context">{{ selectedLabelNames.join(', ') }}</span>
         <button v-if="!props.inline" class="floating-tracker-toggle" type="button" :aria-expanded="open" aria-controls="floating-tracker-panel" @click="open = !open"><span class="sr-only">{{ open ? "Collapse tracker" : "Expand tracker" }}</span><span aria-hidden="true" class="chevron" :class="{ up: !open }"></span></button>
         <button v-if="timer" type="button" class="cancel-timer text-button danger" :disabled="busy" @click="cancel">Cancel</button>
       </div>

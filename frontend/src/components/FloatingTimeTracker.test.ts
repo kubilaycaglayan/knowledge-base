@@ -46,7 +46,7 @@ describe("FloatingTimeTracker", () => {
     floating.unmount();
   });
 
-  it("shows the running status, path, and label names in the collapsed dock", async () => {
+  it("shows the running status and label names without repeating the path in the collapsed dock", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
       if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus" }, { id: "label-2", name: "Review" }];
@@ -58,8 +58,8 @@ describe("FloatingTimeTracker", () => {
 
     expect(wrapper.get(".tracker-status").classes()).toContain("running");
     expect(wrapper.get(".tracker-status").attributes("aria-label")).toBe("Session running");
-    expect(wrapper.get(".floating-tracker-context").text()).toContain("Knowledge Base");
     expect(wrapper.get(".floating-tracker-context").text()).toContain("Focus, Review");
+    expect(wrapper.get(".floating-tracker-context").text()).not.toContain("Knowledge Base");
     wrapper.unmount();
   });
 
