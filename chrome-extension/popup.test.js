@@ -166,6 +166,17 @@ test("logs the failing workspace stage without exposing the token", async () => 
   assert.doesNotMatch(serialized, /private-token/);
 });
 
+test("shows a sanitized diagnostic reference for production workspace failures", async () => {
+  const popup = createPopup({ token: "private-token", statusByPath: { "/paths": 500 } });
+  await flush();
+  await flush();
+  await flush();
+
+  assert.match(popup.elements.error.textContent, /Sign in failed or the API is unavailable/);
+  assert.match(popup.elements.error.textContent, /diagnostic popup-/);
+  assert.doesNotMatch(popup.elements.error.textContent, /private-token/);
+});
+
 test("starts a server timer with selected path, labels, description, and extension source", async () => {
   const popup = createPopup({ token: "token" });
   await flush();
@@ -235,5 +246,5 @@ test("clears an expired token and reloads when the API returns unauthorized", as
   assert.equal(popup.state.token, undefined);
   assert.equal(popup.state.activeTimer, undefined);
   assert.equal(popup.state.reloaded, true);
-  assert.equal(popup.elements.error.textContent, "Sign in failed or the API is unavailable.");
+  assert.match(popup.elements.error.textContent, /^Sign in failed or the API is unavailable\. \[diagnostic popup-/);
 });
