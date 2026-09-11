@@ -25,9 +25,10 @@
 .dashboard-skip { position: absolute; top: 8px; left: 16px; z-index: 20; transform: translateY(-160%); background: var(--workspace-accent); color: var(--workspace-on-accent); padding: 10px 16px; border-radius: 4px; }
 .dashboard-skip:focus { transform: translateY(0); }
 .shell-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.theme-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 8px; border: 1px solid var(--workspace-border); border-radius: var(--workspace-radius); background: var(--workspace-surface); color: var(--workspace-text); font-size: 12px; cursor: pointer; }
-.theme-toggle:hover { background: var(--workspace-hover); border-color: var(--workspace-muted); }
-.theme-toggle:active { background: var(--workspace-active); }
+.settings-link { display: inline-flex; align-items: center; justify-content: center; width: 36px; min-height: 36px; padding: 6px; border-radius: var(--workspace-radius); color: var(--workspace-muted); }
+.settings-link svg { display: block; width: 18px; height: 18px; }
+.settings-link:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
+.settings-link:active { background: var(--workspace-active); }
 @media (max-width: 1100px) {
   .dashboard-shell > header { gap: 10px 20px; }
   .dashboard-shell nav { order: 3; flex-basis: 100%; }
@@ -37,6 +38,6 @@
   .dashboard-shell { padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right)); }
   .dashboard-shell > header { margin-bottom: 24px; padding-block: 12px; }
   .dashboard-shell nav { gap: 2px; }
-  .dashboard-shell nav a, .dashboard-shell .ghost, .dashboard-shell .brand, .theme-toggle { min-height: 44px; }
+  .dashboard-shell nav a, .dashboard-shell .ghost, .dashboard-shell .brand, .settings-link { min-height: 44px; }
   .dashboard-shell .brand { display: inline-flex; align-items: center; }
 }
