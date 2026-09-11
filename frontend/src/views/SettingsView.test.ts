@@ -48,6 +48,7 @@ describe("SettingsView", () => {
     expect(wrapper.get('input[name="currentPassword"]').attributes("autocomplete")).toBe("current-password");
     await wrapper.get('input[name="currentPassword"]').setValue("old-password");
     await wrapper.get('input[name="newPassword"]').setValue("new-password");
+    await wrapper.get('input[name="confirmPassword"]').setValue("new-password");
     vi.mocked(api).mockResolvedValue({ email: "person@example.com", hasPassword: true, hasGoogle: true });
     await wrapper.get("form").trigger("submit");
 
@@ -68,6 +69,7 @@ describe("SettingsView", () => {
     expect((form.get('input[name="username"]').element as HTMLInputElement).value).toBe("person@example.com");
     expect(form.get("#current-password").attributes("autocomplete")).toBe("current-password");
     expect(form.get("#new-password").attributes("autocomplete")).toBe("new-password");
+    expect(form.get("#confirm-password").attributes("autocomplete")).toBe("new-password");
   });
 
   it("offers the changed password to browser credential storage after success", async () => {
@@ -88,11 +90,26 @@ describe("SettingsView", () => {
     await flushPromises();
     await wrapper.get('input[name="currentPassword"]').setValue("old-password");
     await wrapper.get('input[name="newPassword"]').setValue("new-password");
+    await wrapper.get('input[name="confirmPassword"]').setValue("new-password");
 
     await wrapper.get("form").trigger("submit");
     await flushPromises();
 
     expect(store).toHaveBeenCalledWith(expect.objectContaining({ id: "person@example.com", password: "new-password" }));
     expect(store.mock.calls[0][0]).toBeInstanceOf(PasswordCredentialMock);
+  });
+
+  it("rejects mismatched new passwords before calling the API", async () => {
+    vi.mocked(api).mockResolvedValue({ email: "person@example.com", hasPassword: true, hasGoogle: false });
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get('input[name="currentPassword"]').setValue("old-password");
+    await wrapper.get('input[name="newPassword"]').setValue("new-password");
+    await wrapper.get('input[name="confirmPassword"]').setValue("different-password");
+
+    await wrapper.get("form").trigger("submit");
+
+    expect(vi.mocked(api)).toHaveBeenCalledTimes(1);
+    expect(wrapper.get('[role="alert"]').text()).toContain("Passwords do not match");
   });
 });
