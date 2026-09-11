@@ -149,7 +149,7 @@ onMounted(load);
     <p class="eyebrow">TIME TRACKING</p>
     <h1>Sessions</h1>
     <p class="lede">Every recorded session, with the newest one first.</p>
-    <p v-if="error" class="notice" role="alert">{{ error }}</p>
+    <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
     <div class="session-list" role="region" aria-label="Sessions">
       <article v-for="session in sessions" :key="session.id" class="card session-card">
         <div v-if="editingId !== session.id" class="session-heading">
@@ -170,20 +170,20 @@ onMounted(load);
           <span>{{ sessionLabelSummary(session) || "Unassigned labels" }}</span>
         </div>
         <form v-else-if="draft" class="session-edit" @submit.prevent="save(session)">
-          <label>Description<input v-model="draft.description" aria-label="Edit session description" /></label>
+          <label class="session-edit-path">Path<select v-model="draft.pathId" name="session-path" autocomplete="off" aria-label="Edit session path">
+            <option value="">Unassigned</option>
+            <option v-for="path in paths" :key="path.id" :value="path.id">{{ path.name }}</option>
+          </select></label>
           <div class="session-edit-grid">
-            <label>Path<select v-model="draft.pathId" aria-label="Edit session path">
-              <option value="">Unassigned</option>
-              <option v-for="path in paths" :key="path.id" :value="path.id">{{ path.name }}</option>
-            </select></label>
-            <label>Labels<select v-model="draft.labelIds" aria-label="Edit session labels" multiple>
+            <label class="session-edit-description">Description <span>(optional)</span><input v-model="draft.description" name="session-description" autocomplete="off" aria-label="Edit session description" placeholder="What did you work on…" /></label>
+            <label>Labels<select v-model="draft.labelIds" name="session-labels" autocomplete="off" aria-label="Edit session labels" multiple>
               <option v-for="label in availableLabels" :key="label.id" :value="label.id">{{ label.name }}</option>
             </select></label>
-            <label>Source<select v-model="draft.source" aria-label="Edit session source">
+            <label>Source<select v-model="draft.source" name="session-source" autocomplete="off" aria-label="Edit session source">
               <option v-for="source in sources" :key="source">{{ source }}</option>
             </select></label>
-            <label>Started<input v-model="draft.startedAt" type="datetime-local" aria-label="Edit session start" required /></label>
-            <label>Ended<input v-model="draft.endedAt" type="datetime-local" aria-label="Edit session end" required /></label>
+            <label>Started<input v-model="draft.startedAt" type="datetime-local" name="session-started-at" autocomplete="off" aria-label="Edit session start" required /></label>
+            <label>Ended<input v-model="draft.endedAt" type="datetime-local" name="session-ended-at" autocomplete="off" aria-label="Edit session end" required /></label>
           </div>
           <div class="session-actions">
             <button class="primary" :disabled="saving">{{ saving ? "Saving…" : "Save session" }}</button>
