@@ -123,7 +123,7 @@ async function cancel() {
 }
 async function editStartedAt() {
   if (!timer.value) return;
-  const value = await promptDialog.value?.open("Started at", timerStartedAt.value);
+  const value = await promptDialog.value?.open("Started at", timerStartedAt.value, { inputType: "datetime-local" });
   if (value === null || value === undefined) return;
   if (Number.isNaN(Date.parse(value))) {
     error.value = "Enter a valid date and time.";
