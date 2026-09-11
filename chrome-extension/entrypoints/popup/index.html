@@ -9,7 +9,7 @@
   </head>
   <body>
     <main>
-      <header class="extension-header"><span class="brand" aria-label="Knowledge Base" translate="no">knowledge<span>.</span>base</span><span class="eyebrow">TIMER</span></header>
+      <header class="extension-header"><span class="brand" aria-label="Knowledge Base" translate="no">knowledge<span>.</span>base</span><div class="header-actions"><span class="eyebrow">TIMER</span><button id="settings-menu-toggle" class="icon-button" type="button" aria-label="Open settings menu" aria-expanded="false" aria-controls="settings-menu"><span aria-hidden="true">⚙</span></button><div id="settings-menu" class="settings-menu" hidden><button id="options" class="menu-button" type="button">API Settings…</button><button id="logout" class="menu-button danger" type="button">Sign out</button></div></div></header>
       <p id="loading" class="loading-state" role="status" aria-live="polite">Loading…</p>
       <section id="auth" hidden>
         <h1>Sign In</h1><p class="lede">Connect the timer to your private workspace.</p>
@@ -31,13 +31,11 @@
         <label for="description">Description</label>
         <textarea id="description" name="description" rows="2" autocomplete="off" placeholder="For example, review project notes…"></textarea>
         <button id="toggle">Start timer</button>
-        <button id="logout" class="secondary">Sign out</button>
         <section class="history" aria-labelledby="history-title">
           <p class="eyebrow">HISTORY</p><h2 id="history-title">Recent Sessions</h2>
           <div id="sessions"><p class="empty">Loading sessions…</p></div>
         </section>
       </section>
-      <button id="options" class="secondary">API Settings…</button>
       <p id="error" role="alert" tabindex="-1"></p>
     </main>
     <script type="module" src="./main.js"></script>
