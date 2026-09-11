@@ -27,14 +27,9 @@
           <div class="timer-start-inputs"><input id="timer-started-date" name="timerStartedDate" type="date" autocomplete="off" aria-label="Timer start date" required /><input id="timer-started-time" name="timerStartedTime" type="time" step="60" autocomplete="off" aria-label="Timer start time" required /></div>
           <div class="timer-start-actions"><button id="save-timer-start" type="submit">Save</button><button id="cancel-timer-start" class="text-button" type="button">Cancel</button></div>
         </form>
-        <label for="path">Path</label>
-        <select id="path" name="path" autocomplete="off"><option value="">Select a path</option></select>
-        <label for="label">Labels</label>
-        <div id="selected-labels" class="label-chips" aria-live="polite"></div>
-        <select id="label" name="labelPicker" autocomplete="off" aria-describedby="label-help"></select>
-        <small id="label-help">Choose a label to add it. Select × on a chip to remove it.</small>
-        <label for="description">Description</label>
-        <textarea id="description" name="description" rows="2" autocomplete="off" placeholder="For example, review project notes…"></textarea>
+        <div class="timer-field"><label for="path">Path</label><select id="path" name="path" autocomplete="off"><option value="">Select a path</option></select></div>
+        <div class="timer-field timer-label-field"><label for="label">Labels</label><div class="timer-label-control"><select id="label" name="labelPicker" autocomplete="off" aria-describedby="label-help"></select><div id="selected-labels" class="label-chips" aria-live="polite"></div><small id="label-help">Choose a label to add it. Select × on a chip to remove it.</small></div></div>
+        <div class="timer-field"><label for="description">Description</label><textarea id="description" name="description" rows="2" autocomplete="off" placeholder="For example, review project notes…"></textarea></div>
         <section class="history" aria-labelledby="history-title">
           <p class="eyebrow">HISTORY</p><h2 id="history-title">Recent Sessions</h2>
           <div id="sessions"><p class="empty">Loading sessions…</p></div>
