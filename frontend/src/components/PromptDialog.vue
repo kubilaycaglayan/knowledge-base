@@ -4,13 +4,14 @@ import { vDialogFocus } from "../lib/dialog-focus";
 
 defineProps<{ appearance?: "flat" }>();
 
-type PromptOptions = { multiline?: boolean; confirmation?: boolean };
+type PromptOptions = { multiline?: boolean; confirmation?: boolean; inputType?: "text" | "datetime-local" };
 
 const visible = ref(false);
 const message = ref("");
 const value = ref("");
 const multiline = ref(false);
 const confirmation = ref(false);
+const inputType = ref<PromptOptions["inputType"]>("text");
 let resolvePrompt: ((result: string | null) => void) | null = null;
 
 function finish(result: string | null) {
@@ -36,6 +37,7 @@ function open(
   value.value = defaultValue;
   multiline.value = Boolean(options.multiline);
   confirmation.value = Boolean(options.confirmation);
+  inputType.value = options.inputType || "text";
   visible.value = true;
   void nextTick(() => {
     document
@@ -79,6 +81,7 @@ defineExpose({ open });
       <input
         v-else-if="!confirmation"
         v-model="value"
+        :type="inputType"
         :aria-label="message"
         enterkeyhint="done"
         @beforeinput="handleSingleLineBeforeInput"
