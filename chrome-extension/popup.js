@@ -1,7 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const debug = (..._args) => {};
 const errorDetails = (error) => error instanceof Error ? error.message : String(error || "Unknown error");
-function logError(..._args) {}
 function userError(fallback, error) {
   return fallback;
 }
@@ -73,27 +71,13 @@ async function request(path, options = {}) {
   let apiBase;
   try {
     ({ token, apiBase } = await chrome.storage.local.get(["token", "apiBase"]));
-  } catch (error) {
-    logError("Read API configuration", error, { path });
-    throw error;
-  }
+  } catch (error) { throw error; }
   let base;
   try {
     base = KnowApiConfig.apiBase(apiBase);
-  } catch (error) {
-    logError("Resolve API configuration", error, { path, storedApiBase: apiBase || null });
-    throw error;
-  }
+  } catch (error) { throw error; }
   const url = base + path;
   const method = options.method || "GET";
-  debug("Preparing popup API request", {
-    method,
-    apiBase: base,
-    path,
-    storedApiBase: apiBase || null,
-    tokenPresent: Boolean(token),
-    tokenLength: typeof token === "string" ? token.length : 0,
-  });
   let r;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   const timeout = setTimeout(() => controller?.abort(), 15000);
@@ -105,39 +89,22 @@ async function request(path, options = {}) {
     });
   } catch (error) {
     clearTimeout(timeout);
-    logError("API request", error, { method, url, kind: "network-or-cors" });
     throw Error("Could not reach " + url + ". Check the SSH tunnel, API host permission, and CORS_ORIGINS. (" + errorDetails(error) + ")");
   }
   clearTimeout(timeout);
-  debug("Popup API response", {
-    requestUrl: url,
-    responseUrl: r.url,
-    status: r.status,
-    redirected: r.redirected,
-    contentType: r.headers.get("content-type"),
-  });
   const responseText = await r.text();
-  debug("Popup API response body", {
-    requestUrl: url,
-    status: r.status,
-    body: responseText.slice(0, 1000),
-    bodyTruncated: responseText.length > 1000,
-  });
   if (r.status === 401 && token) {
-    logError("API authentication", Error("Session token rejected"), { method, url, status: r.status, responseBody: responseText });
     await chrome.storage.local.remove(["token", "activeTimer"]);
     location.reload();
     throw Error("Session expired");
   }
   if (!r.ok) {
     const error = Error("HTTP " + r.status + (responseText ? ": " + responseText.slice(0, 500) : ""));
-    logError("API response", error, { method, url, status: r.status, responseBody: responseText });
     throw error;
   }
   try {
     return responseText ? JSON.parse(responseText) : null;
   } catch (error) {
-    logError("API response parsing", error, { method, url, status: r.status, responseBody: responseText });
     throw Error("API returned invalid JSON (" + errorDetails(error) + ")");
   }
 }
@@ -215,7 +182,6 @@ async function syncTimerState() {
       await restoreTimerSelection(timerSelection(timer));
     }
   } catch (error) {
-    logError("Synchronize timer state", error);
     // The popup's normal load/request error handling remains authoritative.
   } finally {
     liveSyncInFlight = false;
@@ -247,7 +213,7 @@ function renderLabelChips() {
     remove.onclick = async () => {
       timerLabelIds = timerLabelIds.filter((labelId) => labelId !== id);
       renderTimerLabels();
-      try { await configureCurrentTimer(); } catch (error) { logError("Remove timer label", error, { labelId: id }); $("error").textContent = userError("Could not update the timer.", error); }
+      try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
     };
     chip.append(text, remove);
     container.append(chip);
@@ -340,7 +306,6 @@ async function loadSessions() {
   try {
     renderSessions(await request("/time-entries?page=0&size=20"));
   } catch (error) {
-    logError("Load session history", error);
     const empty = document.createElement("p");
     empty.className = "empty";
     empty.textContent = "Recent sessions are unavailable. Try again later.";
@@ -359,7 +324,7 @@ function renderSessionEditor(article, session) {
     try {
       await request(`/time-entries/${session.id}`, { method: "PUT", body: JSON.stringify({ pathId: data.get("pathId") || null, labelIds: selectedOptionIds(form.querySelector('[name="labelIds"]')), startedAt: isoDateTime(start), endedAt: isoDateTime(end), description: data.get("description") || null, source: data.get("source") }) });
       await loadSessions();
-    } catch (error) { logError("Update session", error, { sessionId }); $("error").textContent = userError("Could not update this session.", error); }
+    } catch (error) { $("error").textContent = userError("Could not update this session.", error); }
   };
   form.querySelector(".cancel-session").onclick = loadSessions;
 }
@@ -373,7 +338,7 @@ async function load() {
     fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
     $("path").onchange = async () => {
       renderTimerLabels();
-      try { await configureCurrentTimer(); } catch (error) { logError("Change timer path", error); $("error").textContent = userError("Could not update the timer.", error); }
+      try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
     };
     if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
     else {
@@ -383,16 +348,15 @@ async function load() {
     }
     showWorkspace(); startLiveTimerSync(); void loadSessions();
   } catch (error) {
-    logError("Load workspace", error); showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error);
+    showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error);
   }
 }
 async function login() {
   const button = $("login");
   const email = $("email").value;
-  debug("Starting password login", { email, passwordPresent: Boolean($("password").value), passwordLength: $("password").value.length });
   setButtonBusy(button, true);
   try { const result = await request("/auth/login", { method: "POST", body: JSON.stringify({ email, password: $("password").value }) }); await chrome.storage.local.set({ token: result.token }); $("error").textContent = ""; await load(); }
-  catch (error) { logError("Password login", error, { email }); $("error").textContent = userError("Check your credentials and API connection, then try again.", error); }
+  catch (error) { $("error").textContent = userError("Check your credentials and API connection, then try again.", error); }
   finally { setButtonBusy(button, false); }
 }
 
@@ -413,7 +377,6 @@ async function googleLogin() {
     });
     $("error").textContent = "Complete Google sign-in, then reopen the extension.";
   } catch (error) {
-    logError("Google sign-in", error);
     $("error").textContent = userError("Google sign-in could not be completed. Try again.", error);
   } finally {
     setButtonBusy(button, false);
@@ -450,7 +413,6 @@ $("timer-start-editor").onsubmit = async (event) => {
     closeTimerStartEditor();
     $("error").textContent = "";
   } catch (error) {
-    logError("Update timer start", error, { timerId: currentTimer.id });
     $("error").textContent = userError("Could not update the timer start.", error);
   } finally {
     setButtonBusy(button, false);
@@ -463,7 +425,7 @@ $("toggle").onclick = async () => {
     const current = await request("/timers/current");
     if (KnowCore.timerIsRunning(current)) { await flushDescriptionSave(); await request("/timers/stop", { method: "POST", body: "{}" }); await chrome.storage.local.remove("activeTimer"); await resetTimerForm(); showTimer(null); await loadSessions(); }
     else { const timer = await request("/timers", { method: "POST", body: JSON.stringify(KnowCore.timerStartPayload($("path").value, selectedLabelIds($("label")), $("description").value)) }); await persistTimerSelection(); await chrome.storage.local.set({ activeTimer: timer }); showTimer(timer); }
-  } catch (error) { logError("Toggle timer", error); $("error").textContent = userError("Could not update the timer. Check the API connection and try again.", error); }
+  } catch (error) { $("error").textContent = userError("Could not update the timer. Check the API connection and try again.", error); }
   finally { setButtonBusy(button, false); }
 };
 $("label").onchange = async () => {
@@ -471,20 +433,20 @@ $("label").onchange = async () => {
   if (!labelId || timerLabelIds.includes(labelId)) return;
   timerLabelIds = [...timerLabelIds, labelId];
   renderTimerLabels();
-  try { await configureCurrentTimer(); } catch (error) { logError("Add timer label", error, { labelId }); $("error").textContent = userError("Could not update the timer.", error); }
+  try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
 };
 $("description").oninput = () => {
   void persistTimerSelection();
   if (descriptionSaveTicker) clearTimeout(descriptionSaveTicker);
   descriptionSaveTicker = setTimeout(async () => {
-    try { await configureCurrentTimer(); } catch (error) { logError("Save timer description", error); $("error").textContent = userError("Could not update the timer.", error); }
+    try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
   }, 300);
 };
 $("sessions").onclick = async (event) => {
   const article = event.target.closest("article"); if (!article) return;
   const sessionId = article.dataset.id;
   if (event.target.closest(".edit-session")) { const history = await request("/time-entries?page=0&size=20"); const session = (history.sessions || []).find((entry) => entry.id === sessionId); if (session) renderSessionEditor(article, session); }
-  if (event.target.closest(".remove-session") && confirm("Remove this session? This cannot be undone.")) { try { await request(`/time-entries/${sessionId}`, { method: "DELETE" }); await loadSessions(); } catch (error) { logError("Remove session", error, { sessionId }); $("error").textContent = userError("Could not remove this session.", error); } }
+  if (event.target.closest(".remove-session") && confirm("Remove this session? This cannot be undone.")) { try { await request(`/time-entries/${sessionId}`, { method: "DELETE" }); await loadSessions(); } catch (error) { $("error").textContent = userError("Could not remove this session.", error); } }
 };
 $("settings-menu-toggle").onclick = () => {
   const menu = $("settings-menu");
@@ -504,7 +466,6 @@ $("clockify-import-toggle").onclick = async () => {
     await chrome.storage.local.set({ [KnowClockifySettings.KEY]: enabled });
   } catch (error) {
     setClockifyImportEnabled(!enabled);
-    logError("Save Clockify import setting", error);
     $("error").textContent = userError("Could not save Clockify import setting.", error);
   }
 };
@@ -512,11 +473,9 @@ $("options").onclick = () => chrome.runtime.openOptionsPage();
 chrome.storage.local.get(["token", "googleAuthError", KnowClockifySettings.KEY]).then(({ token, googleAuthError, [KnowClockifySettings.KEY]: clockifyImportEnabled }) => {
   const importEnabled = KnowClockifySettings.isEnabled(clockifyImportEnabled);
   setClockifyImportEnabled(importEnabled);
-  debug("Popup initialized", { tokenPresent: Boolean(token), googleAuthErrorPresent: Boolean(googleAuthError), clockifyImportEnabled: importEnabled, apiLocked: !KnowApiConfig.isProduction ? null : KnowApiConfig.isProduction });
   if (googleAuthError) $("error").textContent = googleAuthError;
   if (token) load();
   else showAuth();
 }).catch((error) => {
-  logError("Read extension session", error);
   showAuth(); $("error").textContent = userError("Could not read extension session.", error);
 });
