@@ -1,3 +1,4 @@
+html { scrollbar-gutter: stable; }
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 16px; color: var(--workspace-text); background: var(--workspace-background); }
 * { box-sizing: border-box; }
 body { margin: 0; font-size: 14px; line-height: 1.5; }
