@@ -16,6 +16,7 @@ const deployProduction = read('scripts/production-web-deploy.sh')
 const deployProductionNoCache = read('scripts/production-web-deploy-no-cache.sh')
 const developmentCompose = read('docker-compose.dev.yml')
 const productionCompose = read('docker-compose.production.yml')
+const iosDevelopmentCompose = read('docker-compose.ios-dev.yml')
 
 const checks = [
   [application.includes('jwt-secret: ${JWT_SECRET:}'), 'JWT secret has no fallback value'],
@@ -35,6 +36,8 @@ const checks = [
   [deployProduction.includes('export COMPOSE_PROJECT_NAME="knowledge-base-production"') && deployProduction.includes('compose_args=(--project-name knowledge-base-production'), 'production deployment uses the fixed production Compose project name'],
   [deployProductionNoCache.includes('export COMPOSE_PROJECT_NAME="knowledge-base-production"') && deployProductionNoCache.includes('compose_args=(--project-name knowledge-base-production'), 'no-cache production deployment uses the fixed production Compose project name'],
   [developmentCompose.startsWith('name: knowledge-base-dev\n') && productionCompose.startsWith('name: knowledge-base-production\n'), 'Compose overlays default to isolated development and production project names'],
+  [iosDevelopmentCompose.includes('IOS_LAN_API_BIND_ADDRESS:-0.0.0.0') && iosDevelopmentCompose.includes('api:'), 'iPhone development overlay exposes only the API with an explicit bind setting'],
+  [startDevelopment.includes('IOS_LAN_API:-0') && startDevelopment.includes('docker-compose.ios-dev.yml'), 'iPhone LAN API exposure is opt-in during development startup'],
   [proxy.includes('Content-Security-Policy'), 'proxy emits CSP'],
   [proxy.includes('ws://localhost:* ws://127.0.0.1:*'), 'proxy CSP permits local Vite hot-reload websockets only on loopback hosts'],
   [proxy.includes('Permissions-Policy'), 'proxy emits Permissions-Policy'],
