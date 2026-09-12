@@ -15,13 +15,18 @@ class LabelManagementServiceTest {
   private final DailyRecordLabelRepository calendar = mock(DailyRecordLabelRepository.class);
   private final TimeEntryLabelRepository timeEntries = mock(TimeEntryLabelRepository.class);
   private final NoteTagRepository notes = mock(NoteTagRepository.class);
+  private final LogLabelRepository logs = mock(LogLabelRepository.class);
+
+  private LabelManagementService service() {
+    return new LabelManagementService(labels, scopes, calendar, timeEntries, notes, logs);
+  }
 
   @Test
   void createsOneLabelWithMultipleScopes() {
     UUID user = UUID.randomUUID();
     when(labels.findByUserIdAndNameIgnoreCase(user, "Work")).thenReturn(Optional.empty());
     when(labels.save(any(Label.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    LabelManagementService service = new LabelManagementService(labels, scopes, calendar, timeEntries, notes);
+    LabelManagementService service = service();
 
     LabelManagementService.View view = service.create(user, " Work ", "#2878D5", List.of(LabelScopeType.NOTE, LabelScopeType.TIME_ENTRY));
 
@@ -36,7 +41,7 @@ class LabelManagementServiceTest {
     when(labels.findByIdAndUserId(label.getId(), user)).thenReturn(Optional.of(label));
     when(scopes.existsByIdLabelIdAndIdScope(label.getId(), LabelScopeType.TIME_ENTRY)).thenReturn(true);
     when(timeEntries.existsByIdLabelId(label.getId())).thenReturn(true);
-    LabelManagementService service = new LabelManagementService(labels, scopes, calendar, timeEntries, notes);
+    LabelManagementService service = service();
 
     assertThrows(ResponseStatusException.class, () -> service.update(user, label.getId(), "Work", "#2878D5", List.of()));
     verify(scopes, never()).deleteById(any());
@@ -48,7 +53,7 @@ class LabelManagementServiceTest {
     Label label = new Label(user, "Work", "#2878D5");
     when(labels.findByIdAndUserId(label.getId(), user)).thenReturn(Optional.of(label));
     when(calendar.existsByIdLabelId(label.getId())).thenReturn(true);
-    LabelManagementService service = new LabelManagementService(labels, scopes, calendar, timeEntries, notes);
+    LabelManagementService service = service();
 
     service.delete(user, label.getId(), true);
 

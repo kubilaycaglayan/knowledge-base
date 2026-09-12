@@ -5,8 +5,8 @@ import { api } from "../lib/api";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
-const log = (id: string, body: string, occurredAt: string, version = 0) => ({
-  id, body, occurredAt, version, createdAt: occurredAt, updatedAt: occurredAt,
+const log = (id: string, body: string, occurredAt: string, version = 0, labelIds: string[] = []) => ({
+  id, body, occurredAt, version, labelIds, createdAt: occurredAt, updatedAt: occurredAt,
 });
 
 describe("LogsView", () => {
@@ -15,7 +15,7 @@ describe("LogsView", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
-    vi.mocked(api).mockResolvedValue([log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("same-hour", "Another thought", "2026-09-11T11:20:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
+    vi.mocked(api).mockImplementation(async (path) => path === "/labels?scope=LOG" ? [{ id: "highlight", name: "Highlight" }] : [log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("same-hour", "Another thought", "2026-09-11T11:20:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); config.global.stubs = {}; });
 
@@ -85,5 +85,15 @@ describe("LogsView", () => {
     expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
     expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new", { method: "DELETE" });
     expect(wrapper.text()).not.toContain("Recent thought");
+  });
+
+  it("assigns the Highlight label from the star button", async () => {
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    vi.mocked(api).mockResolvedValueOnce({ ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds: ["highlight"] });
+    await wrapper.get('button[aria-label="Add Highlight label"]').trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new/highlight", expect.objectContaining({ method: "PATCH", body: '{"highlighted":true}' }));
+    expect(wrapper.get('button[aria-label="Remove Highlight label"]').attributes("aria-pressed")).toBe("true");
   });
 });

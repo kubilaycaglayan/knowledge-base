@@ -1,7 +1,6 @@
 package com.know.service;
 
-import com.know.domain.Log;
-import com.know.domain.LogRepository;
+import com.know.domain.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -13,12 +12,17 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class LogService {
   private final LogRepository logs;
+  private final LogLabelRepository logLabels;
+  private final LabelManagementService labelManagement;
 
-  public LogService(LogRepository logs) { this.logs = logs; }
+  public LogService(LogRepository logs, LogLabelRepository logLabels, LabelManagementService labelManagement) {
+    this.logs = logs; this.logLabels = logLabels; this.labelManagement = labelManagement;
+  }
 
-  public record LogView(UUID id, String body, Instant occurredAt, Instant createdAt, Instant updatedAt, long version) {}
+  public record LogView(UUID id, String body, Instant occurredAt, List<UUID> labelIds, Instant createdAt, Instant updatedAt, long version) {}
 
   public List<LogView> list(UUID userId) {
+    labelManagement.highlight(userId);
     return logs.findAllByUserIdOrderByOccurredAtDescIdDesc(userId).stream().map(this::view).toList();
   }
 
@@ -50,8 +54,19 @@ public class LogService {
     logs.delete(log);
   }
 
+  @Transactional
+  public LogView setHighlight(UUID userId, UUID id, boolean highlighted) {
+    Log log = logs.findByIdAndUserId(id, userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log not found"));
+    UUID labelId = labelManagement.highlight(userId).getId();
+    LogLabelId assignment = new LogLabelId(id, labelId);
+    if (highlighted && !logLabels.existsById(assignment)) logLabels.save(new LogLabel(assignment));
+    if (!highlighted) logLabels.deleteById(assignment);
+    return view(log);
+  }
+
   private LogView view(Log log) {
-    return new LogView(log.getId(), log.getBody(), log.getOccurredAt(), log.getCreatedAt(), log.getUpdatedAt(), log.getVersion());
+    return new LogView(log.getId(), log.getBody(), log.getOccurredAt(), logLabels.findAllByIdLogId(log.getId()).stream().map(value -> value.getId().getLabelId()).toList(), log.getCreatedAt(), log.getUpdatedAt(), log.getVersion());
   }
 
   private static String cleanBody(String body) {
