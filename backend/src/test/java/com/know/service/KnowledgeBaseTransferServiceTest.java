@@ -1,6 +1,7 @@
 package com.know.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -85,6 +86,7 @@ class KnowledgeBaseTransferServiceTest {
   @Test
   void importingTheSameStableIdsSkipsExistingRecords() {
     UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), labelId = UUID.randomUUID();
+    when(paths.findByIdAndUserIdIncludingDeleted(pathId, user)).thenReturn(Optional.empty());
     when(paths.findByIdAndUserId(pathId, user)).thenReturn(Optional.of(new Path(user, "Existing", null)));
     when(labels.findByIdAndUserId(labelId, user)).thenReturn(Optional.of(new Label(user, "Existing", null)));
     when(batches.save(any(ImportBatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -101,5 +103,43 @@ class KnowledgeBaseTransferServiceTest {
     assertThat(summary.skipped()).isEqualTo(2);
     verify(paths, never()).save(any(Path.class));
     verify(labels, never()).save(any(Label.class));
+  }
+
+  @Test
+  void importingIntoProductionSkipsLabelNameAndCalendarDateConflicts() {
+    UUID user = UUID.randomUUID(), labelId = UUID.randomUUID(), recordId = UUID.randomUUID();
+    when(batches.save(any(ImportBatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(labels.findByUserIdAndNameIgnoreCase(user, "Focus"))
+        .thenReturn(Optional.of(new Label(user, "focus", "#123456")));
+    when(days.findByUserIdAndRecordDate(user, java.time.LocalDate.of(2026, 9, 12)))
+        .thenReturn(Optional.of(new DailyRecord(user, java.time.LocalDate.of(2026, 9, 12), "Existing")));
+
+    String csv = """
+        entity,id,payload
+        label,%s,"{\"\"name\"\":\"\"Focus\"\",\"\"scopes\"\":[] }"
+        calendar,%s,"{\"\"recordDate\"\":\"\"2026-09-12\"\",\"\"note\"\":\"\"Imported\"\"}"
+        """.formatted(labelId, recordId);
+
+    var summary = service.importCsv(user, csv);
+
+    assertThat(summary.imported()).isZero();
+    assertThat(summary.skipped()).isEqualTo(2);
+    verify(labels, never()).save(any(Label.class));
+    verify(days, never()).save(any(DailyRecord.class));
+  }
+
+  @Test
+  void rejectsMissingOversizedAndMalformedCsvBeforeCreatingAImportBatch() {
+    assertThatThrownBy(() -> service.importCsv(UUID.randomUUID(), null))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .hasMessageContaining("missing");
+    assertThatThrownBy(() -> service.importCsv(UUID.randomUUID(), "x".repeat(25_000_001)))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .hasMessageContaining("25 MB");
+    assertThatThrownBy(() -> service.importCsv(UUID.randomUUID(),
+        "entity,id,payload\npath,not-a-uuid,{}\n"))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .hasMessageContaining("Invalid Knowledge Base CSV");
+    verifyNoInteractions(batches);
   }
 }
