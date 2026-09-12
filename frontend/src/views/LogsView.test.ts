@@ -51,4 +51,23 @@ describe("LogsView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"body":"Changed thought"') }));
     expect(wrapper.text()).toContain("Changed thought");
   });
+
+  it("keeps the new-log timestamp current until it is manually changed", async () => {
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    const timestamp = wrapper.get("#new-log-time").element as HTMLInputElement;
+    expect(timestamp.value).toBe("2026-09-11T12:00");
+    vi.advanceTimersByTime(61_000);
+    await wrapper.vm.$nextTick();
+    expect(timestamp.value).toBe("2026-09-11T12:01");
+
+    await wrapper.get("#new-log-time").setValue("2026-09-11T12:00");
+    expect(wrapper.find(".timestamp-drift").exists()).toBe(true);
+    expect(wrapper.find(".timestamp-drift .hour.drift-part").exists()).toBe(false);
+    expect(wrapper.find(".timestamp-drift .minute.drift-part").exists()).toBe(true);
+    expect(wrapper.find(".timestamp-drift .date.drift-part").exists()).toBe(false);
+    vi.advanceTimersByTime(61_000);
+    await wrapper.vm.$nextTick();
+    expect(timestamp.value).toBe("2026-09-11T12:00");
+  });
 });
