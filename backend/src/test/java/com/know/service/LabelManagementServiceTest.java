@@ -63,6 +63,7 @@ class LabelManagementServiceTest {
 
     assertSame(label, service().highlight(user));
 
+    verify(users).findForUpdateById(user);
     verify(labels, never()).save(any(Label.class));
     verify(scopes, never()).save(any(LabelScope.class));
   }
@@ -77,6 +78,7 @@ class LabelManagementServiceTest {
 
     service().highlight(user);
 
+    verify(users).findForUpdateById(user);
     verify(labels, never()).save(any(Label.class));
     verify(scopes).save(argThat(scope -> scope.getId().equals(new LabelScopeId(label.getId(), LabelScopeType.LOG))));
   }

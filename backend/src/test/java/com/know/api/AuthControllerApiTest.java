@@ -142,6 +142,7 @@ class AuthControllerApiTest {
         .andExpect(jsonPath("$.email").value("person@example.com"));
     org.junit.jupiter.api.Assertions.assertEquals("google-sub", existing.getGoogleSubject());
     verify(users).save(existing);
+    verify(labelManagement).highlight(existing.getId());
     verifyNoInteractions(encoder);
   }
 
@@ -168,6 +169,7 @@ class AuthControllerApiTest {
     org.junit.jupiter.api.Assertions.assertEquals("new-sub", account.getValue().getGoogleSubject());
     org.junit.jupiter.api.Assertions.assertEquals(
         "New Person", account.getValue().getDisplayName());
+    verify(labelManagement).highlight(account.getValue().getId());
     verify(encoder).encode(anyString());
   }
 
