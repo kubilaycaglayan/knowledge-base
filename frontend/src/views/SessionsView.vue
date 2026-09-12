@@ -8,23 +8,13 @@ import PromptDialog from "../components/PromptDialog.vue";
 import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
+import { useSessionsStore, type Session, type SessionPage } from "../stores/sessions";
 
 type Path = { id: string; name: string; description?: string; status: string; color?: string | null };
 type Label = {
   id: string;
   name: string;
   color?: string | null;
-};
-type Session = {
-  id: string;
-  pathId?: string;
-  labelIds?: string[];
-  startedAt: string;
-  endedAt?: string;
-  durationSeconds?: number;
-  description?: string;
-  source: string;
-  running?: boolean;
 };
 type Draft = {
   pathId: string;
@@ -39,6 +29,7 @@ type SessionGroup = { key: string; label: string; sessions: Session[] };
 const sessions = ref<Session[]>([]);
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
+const sessionsStore = useSessionsStore();
 const { paths } = storeToRefs(pathsStore);
 const { labels } = storeToRefs(labelsStore);
 const editingId = ref("");
@@ -113,19 +104,22 @@ const sessionGroups = computed<SessionGroup[]>(() => {
 });
 
 const pageNumbers = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1));
-async function load(nextPage = page.value) {
+async function load(nextPage = page.value, force = false) {
   try {
+    const cacheKey = `${nextPage - 1}:50`;
+    const cached = !force && sessionsStore.cachedPage(cacheKey);
     const [history, loadedPaths, loadedLabels] = await Promise.all([
-      api<{ sessions: Session[]; page: number; totalPages: number; totalSessions: number }>(`/time-entries?page=${nextPage - 1}&size=50`),
+      cached ? Promise.resolve(cached) : api<SessionPage>(`/time-entries?page=${nextPage - 1}&size=50`),
       pathsStore.load(),
       labelsStore.loadScope("TIME_ENTRY").then(value => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
     ]);
+    sessionsStore.setPage(cacheKey, history);
     sessions.value = history.sessions;
     page.value = history.page + 1;
     totalPages.value = history.totalPages;
     totalSessions.value = history.totalSessions;
     void loadedPaths;
-    labelsStore.setAll(loadedLabels);
+    labelsStore.setAll(loadedLabels, "TIME_ENTRY");
   } catch {
     error.value = "Unable to load sessions.";
   }
@@ -178,7 +172,8 @@ async function save(session: Session) {
       }),
     });
     cancelEdit();
-    await load(page.value);
+    sessionsStore.clearPages();
+    await load(page.value, true);
   } catch {
     error.value = "Could not update this session. Check its time range and selections.";
   } finally {
@@ -194,7 +189,8 @@ async function remove(session: Session) {
   if (confirmation === null) return;
   try {
     await api(`/time-entries/${session.id}`, { method: "DELETE" });
-    await load(page.value);
+    sessionsStore.clearPages();
+    await load(page.value, true);
   } catch {
     error.value = "Could not remove this session.";
   }
@@ -203,7 +199,7 @@ onMounted(load);
 </script>
 
 <template>
-  <FloatingTimeTracker inline @changed="load(1)" />
+  <FloatingTimeTracker inline @changed="load(1, true)" />
   <PromptDialog ref="promptDialog" />
   <section>
     <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
