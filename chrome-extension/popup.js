@@ -19,8 +19,7 @@ function logError(operation, error, details = {}) {
   });
 }
 function userError(fallback, error) {
-  const detail = errorDetails(error);
-  return `${fallback}${detail ? ` (${detail})` : ""}`;
+  return fallback;
 }
 
 function setButtonBusy(button, busy) {
