@@ -10,7 +10,7 @@ import { useTimerStore, type Timer as StoreTimer } from "../stores/timer";
 import { useReportsStore } from "../stores/reports";
 
 type Path = { id: string; name: string; status: string };
-type Label = { id: string; name: string; color?: string | null };
+type Label = { id: string; name: string; color?: string | null; scopes?: ("NOTE" | "CALENDAR" | "TIME_ENTRY")[] };
 type Timer = StoreTimer;
 
 const props = defineProps<{ inline?: boolean }>();
@@ -18,7 +18,7 @@ const emit = defineEmits<{ changed: [] }>();
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const { paths } = storeToRefs(pathsStore);
-const { labels } = storeToRefs(labelsStore);
+const sessionLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const timerStore = useTimerStore();
 const reportsStore = useReportsStore();
 const { current: timer } = storeToRefs(timerStore);
@@ -37,7 +37,7 @@ const elapsed = computed(() => timer.value ? Math.max(0, Math.floor((now.value -
 const clock = (seconds: number) => [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60].map((value) => String(value).padStart(2, "0")).join(":");
 const pathName = computed(() => paths.value.find((path) => path.id === (timer.value?.pathId || pathId.value))?.name || "");
 const selectedLabelNames = computed(() => selectedLabelIds.value
-  .map((id) => labels.value.find((label) => label.id === id)?.name)
+  .map((id) => sessionLabels.value.find((label) => label.id === id)?.name)
   .filter((name): name is string => Boolean(name)));
 const timerSummary = computed(() => timer.value ? timer.value.description || "Session running" : selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin.");
 
@@ -72,7 +72,7 @@ async function load() {
   try {
     const [loadedPaths, loadedLabels, current] = await Promise.all([
       pathsStore.load(),
-      labelsStore.loadScope("TIME_ENTRY").catch(() => api<Label[]>("/calendar/labels")),
+      labelsStore.loadScope("TIME_ENTRY"),
       api<Timer | null>("/timers/current"),
     ]);
     pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels, "TIME_ENTRY");
@@ -133,8 +133,7 @@ async function createLabel() {
   const name = newLabel.value.trim(); if (!name || busy.value) return;
   busy.value = true; error.value = "";
   try {
-    let created = await api<Label | undefined>("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) }).catch(() => undefined);
-    if (!created) created = await api<Label>("/calendar/labels", { method: "POST", body: JSON.stringify({ name, color: null }) });
+    const created = await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) });
     labelsStore.add({ ...created, scopes: created.scopes || ["TIME_ENTRY"] }); selectedLabelIds.value = [...new Set([...selectedLabelIds.value, created.id])]; newLabel.value = "";
     if (timer.value) await updateTimer(true);
   } catch { error.value = "Could not create the session label."; }
@@ -246,9 +245,9 @@ onUnmounted(() => {
           <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths"><span>Recent</span><button v-for="path in recentPaths" :key="path.id" type="button" class="recent-path" :class="{ selected: path.id === pathId }" @click="choosePath(path.id)">{{ path.name }}</button></div>
         </div>
         <div class="tracker-field">
-          <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ labels.length }} available</span></div>
-          <v-select class="tracker-test-select" :items="labels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
-          <div id="tt-labels" class="label-picker" role="group" aria-label="Session labels"><button v-for="label in labels" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button></div>
+          <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ sessionLabels.length }} available</span></div>
+          <v-select class="tracker-test-select" :items="sessionLabels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
+          <div id="tt-labels" class="label-picker" role="group" aria-label="Session labels"><button v-for="label in sessionLabels" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button></div>
           <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create label</button></div>
         </div>
         <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" aria-label="Timer description" rows="2" autocomplete="off" placeholder="What are you working on…" @change="updateTimer"></textarea></div>

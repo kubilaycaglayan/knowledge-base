@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
@@ -41,7 +41,7 @@ const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const reportsStore = useReportsStore();
 const { paths } = storeToRefs(pathsStore);
-const { labels } = storeToRefs(labelsStore);
+const sessionLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
   description = ref(""),
@@ -64,7 +64,7 @@ const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
   return match ? formatTrackedDuration(Number(match[1])) : "";
 };
-const labelFor = (id?: string) => labels.value.find((label) => label.id === id);
+const labelFor = (id?: string) => sessionLabels.value.find((label) => label.id === id);
 const activityLabelIds = (activity: Activity) => activity.labelIds || [];
 const linkPattern = /https?:\/\/[^\s<>]+/g;
 function linkParts(text?: string): DescriptionPart[] {
