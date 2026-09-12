@@ -95,6 +95,9 @@ describe("LabelsView", () => {
     expect(wrapper.get(".scope-list").text()).toBe("Logs");
     expect(wrapper.text()).toContain("System label");
     expect(wrapper.get(".label-row button").text()).toBe("Edit");
+    const removeButton = wrapper.get(".label-row button.danger");
+    expect(removeButton.text()).toBe("Remove");
+    expect(removeButton.attributes("disabled")).toBeDefined();
     await wrapper.get(".label-row button").trigger("click");
     const logsScope = wrapper.findAll(".scope-editor label").find((label) => label.text() === "Logs");
     expect(logsScope?.get("input").attributes("disabled")).toBeDefined();
