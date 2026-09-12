@@ -23,7 +23,7 @@ public class LabelManagementService {
     this.timeAssignments = timeAssignments; this.noteAssignments = noteAssignments; this.logAssignments = logAssignments;
   }
 
-  public record View(UUID id, String name, String color, Set<LabelScopeType> scopes) {}
+  public record View(UUID id, String name, String color, Set<LabelScopeType> scopes, boolean system) {}
 
   public List<View> list(UUID userId) {
     return labels.findAllByUserIdOrderByName(userId).stream().map(this::view).toList();
@@ -36,8 +36,10 @@ public class LabelManagementService {
 
   @Transactional
   public Label highlight(UUID userId) {
-    Label label = labels.findByUserIdAndNameIgnoreCase(userId, "Highlight")
-        .orElseGet(() -> labels.save(new Label(userId, "Highlight", null)));
+    Label label = labels.findByUserIdAndSystemTrue(userId)
+        .orElseGet(() -> labels.findByUserIdAndNameIgnoreCase(userId, "Highlight")
+            .orElseGet(() -> labels.save(new Label(userId, "Highlight", null))));
+    if (!label.isSystem()) { label.markSystem(); label = labels.save(label); }
     if (!scopes.existsByIdLabelIdAndIdScope(label.getId(), LabelScopeType.LOG))
       scopes.save(new LabelScope(new LabelScopeId(label.getId(), LabelScopeType.LOG)));
     return label;
@@ -72,6 +74,7 @@ public class LabelManagementService {
   @Transactional
   public void delete(UUID userId, UUID id, boolean removeAssignments) {
     Label label = owned(userId, id);
+    if (label.isSystem()) throw conflict("System labels cannot be removed");
     boolean assigned = calendarAssignments.existsByIdLabelId(id) || timeAssignments.existsByIdLabelId(id) || noteAssignments.existsByIdLabelId(id) || logAssignments.existsByIdLabelId(id);
     if (assigned && !removeAssignments)
       throw conflict("Labels in use cannot be deleted; remove their assignments first");
@@ -91,7 +94,8 @@ public class LabelManagementService {
       boolean present = scopes.existsByIdLabelIdAndIdScope(label.getId(), scope);
       if (next.contains(scope) && !present) scopes.save(new LabelScope(new LabelScopeId(label.getId(), scope)));
       if (!next.contains(scope) && present) {
-        if ((scope == LabelScopeType.CALENDAR && calendarAssignments.existsByIdLabelId(label.getId()))
+        if ((label.isSystem() && scope == LabelScopeType.LOG)
+            || (scope == LabelScopeType.CALENDAR && calendarAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.TIME_ENTRY && timeAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.NOTE && noteAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.LOG && logAssignments.existsByIdLabelId(label.getId())))
@@ -103,7 +107,7 @@ public class LabelManagementService {
 
   private View view(Label label) {
     return new View(label.getId(), label.getName(), label.getColor(),
-        scopes.findAllByIdLabelId(label.getId()).stream().map(value -> value.getId().getScope()).collect(java.util.stream.Collectors.toCollection(() -> EnumSet.noneOf(LabelScopeType.class))));
+        scopes.findAllByIdLabelId(label.getId()).stream().map(value -> value.getId().getScope()).collect(java.util.stream.Collectors.toCollection(() -> EnumSet.noneOf(LabelScopeType.class))), label.isSystem());
   }
   private Label owned(UUID userId, UUID id) { return labels.findByIdAndUserId(id, userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Label not found")); }
   private static String normalize(String name) { if (name == null || name.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Label name is required"); return name.trim(); }

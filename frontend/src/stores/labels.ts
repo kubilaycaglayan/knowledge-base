@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import { api } from "../lib/api";
 
 export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY" | "LOG";
-export type Label = { id: string; name: string; color?: string | null; scopes: LabelScope[] };
+export type Label = { id: string; name: string; color?: string | null; scopes: LabelScope[]; system?: boolean };
 const scopeLoadPromises = new Map<LabelScope, Promise<Label[]>>();
 
 export const useLabelsStore = defineStore("labels", {
