@@ -14,6 +14,12 @@ The API is rooted at `/api/v1`. Public endpoints are `POST /auth/register`, `POS
 
 Interactive OpenAPI documentation is available at `/swagger-ui.html` during development; the machine-readable contract is at `/v3/api-docs`. Both endpoints are disabled in the production Spring profile.
 
+The native iOS client uses the same authentication contracts. Google Sign-In's
+`GIDServerClientID` must match backend `GOOGLE_CLIENT_ID` (the web OAuth client),
+while `GIDClientID` identifies the iOS OAuth client. The app exchanges the Google
+ID token for the backend JWT and saves the application session in Keychain.
+See [iOS setup and smoke checks](../ios/README.md).
+
 Authenticated endpoints currently include:
 
 - `GET /auth/me` returns the signed-in account’s email and available sign-in methods. `PUT /auth/password` sets a first password for a Google-only account, or changes an existing password only when the correct current password is supplied. A Google-only account without a configured password may set one without a current password; Google sign-in remains linked and usable afterward. Passwords must be at least 9 characters; the password-configuration state is stored explicitly so new Google-only accounts’ random unusable hashes cannot be mistaken for usable passwords.

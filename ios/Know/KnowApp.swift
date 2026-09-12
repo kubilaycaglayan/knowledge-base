@@ -91,10 +91,9 @@ func isUITesting(arguments: [String] = ProcessInfo.processInfo.arguments) -> Boo
 }
 
 enum KeychainTokenStore {
-    private static let service = "com.know.ios"
     private static let account = "session"
 
-    static func read() -> String? {
+    static func read(service: String = "com.know.ios") -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -111,8 +110,8 @@ enum KeychainTokenStore {
         return String(data: data, encoding: .utf8)
     }
 
-    static func save(_ token: String) throws {
-        delete()
+    static func save(_ token: String, service: String = "com.know.ios") throws {
+        delete(service: service)
         let data = Data(token.utf8)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -126,7 +125,7 @@ enum KeychainTokenStore {
         }
     }
 
-    static func delete() {
+    static func delete(service: String = "com.know.ios") {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
