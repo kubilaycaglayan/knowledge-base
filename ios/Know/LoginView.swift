@@ -28,7 +28,7 @@ struct LoginView: View {
                         }
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Email").font(.subheadline.weight(.medium))
-                            TextField("you@example.com…", text: $email)
+                            TextField("Email", text: $email, prompt: Text(verbatim: "you@example.com…"))
                                 .textContentType(.username).autocorrectionDisabled()
                                 #if os(iOS)
                                 .textInputAutocapitalization(.never).keyboardType(.emailAddress)
@@ -58,10 +58,10 @@ struct LoginView: View {
                         .background(accent, in: RoundedRectangle(cornerRadius: 6))
                         .accessibilityIdentifier("auth.submit")
                         HStack { Rectangle().frame(height: 1); Text("or continue with").font(.caption).fixedSize(); Rectangle().frame(height: 1) }.foregroundStyle(.secondary)
-                        GoogleSignInButton(scheme: dark ? .dark : .light, style: .wide, state: model.isAuthenticating ? .disabled : .normal) {
+                        NativeGoogleButton(isEnabled: !model.isAuthenticating) {
                             focus = nil
                             Task { await model.authenticateWithGoogle(idToken: GoogleAuthentication.idToken) }
-                        }.frame(minHeight: 44).accessibilityIdentifier("auth.google")
+                        }.frame(height: 48).accessibilityIdentifier("auth.google")
                         if let error = model.authError {
                             validation(error).accessibilityIdentifier("auth.error")
                         }

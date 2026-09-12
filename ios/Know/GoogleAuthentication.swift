@@ -1,6 +1,40 @@
 import Foundation
 import SwiftUI
 import GoogleSignIn
+import GoogleSignInSwift
+
+#if os(iOS)
+struct NativeGoogleButton: UIViewRepresentable {
+    let isEnabled: Bool
+    let action: () -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
+    func makeUIView(context: Context) -> GIDSignInButton {
+        let button = GIDSignInButton()
+        button.style = .wide
+        button.colorScheme = .light
+        button.accessibilityIdentifier = "auth.google"
+        button.addTarget(context.coordinator, action: #selector(Coordinator.signIn), for: .touchUpInside)
+        return button
+    }
+    func updateUIView(_ button: GIDSignInButton, context: Context) {
+        button.isEnabled = isEnabled
+        context.coordinator.action = action
+    }
+    final class Coordinator: NSObject {
+        var action: () -> Void
+        init(action: @escaping () -> Void) { self.action = action }
+        @objc func signIn() { action() }
+    }
+}
+#else
+struct NativeGoogleButton: View {
+    let isEnabled: Bool
+    let action: () -> Void
+    var body: some View {
+        GoogleSignInButton(scheme: .light, style: .wide, state: isEnabled ? .normal : .disabled, action: action)
+    }
+}
+#endif
 
 enum SessionError: LocalizedError {
     case storage, google, configuration, presentation
