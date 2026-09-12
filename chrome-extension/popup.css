@@ -255,6 +255,18 @@ button.secondary,
   color: var(--workspace-muted)
 }
 
+.menu-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px
+}
+
+.menu-toggle-state {
+  color: var(--workspace-muted);
+  font-size: 11px
+}
+
 button.secondary:hover,
 .text-button:hover,
 .menu-button:hover {

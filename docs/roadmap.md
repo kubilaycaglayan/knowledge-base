@@ -29,6 +29,8 @@
 - [x] Edit individual sessions directly from a path’s history dialog.
 - [x] Add timestamped, owner-scoped text logs with chronological groups and in-place editing.
 - [x] Let users assign one or more reusable `LOG`-scoped labels to logs from the log timeline.
+- [x] Add a persistent Clockify import toggle to the extension settings, gating
+  both the floating report overlay and automatic imports.
 
 Continue applying these foundations to future web features. Native iOS and
 extension design work remains outside this web redesign; their API contracts,
