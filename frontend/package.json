@@ -20,6 +20,7 @@
     "@vuepic/vue-datepicker": "^12.1.0",
     "date-fns": "^4.4.0",
     "echarts": "^6.1.0",
+    "pinia": "^3.0.4",
     "sass": "^1.103.1",
     "typescript": "latest",
     "vite": "latest",

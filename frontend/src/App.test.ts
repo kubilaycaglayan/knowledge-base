@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import App from "./App.vue";
 import { routeLocationKey, routerKey } from "vue-router";
+import { createPinia, setActivePinia } from "pinia";
 
 const stubs = {
   RouterLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -13,7 +14,10 @@ const stubs = {
 };
 
 describe("App", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    setActivePinia(createPinia());
+  });
 
   it("shows authentication before a token exists", () => {
     const wrapper = mount(App, { global: { stubs } });

@@ -1,4 +1,5 @@
 import { createApp } from "vue";
+import { createPinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import vuetify from "./plugins/vuetify";
@@ -37,6 +38,7 @@ router.beforeEach((to, from) => {
   return true;
 });
 createApp(App)
+  .use(createPinia())
   .use(router)
   .use(vuetify)
   .mount("#app");
