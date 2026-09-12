@@ -3,6 +3,7 @@ import FloatingTimeTracker from "./FloatingTimeTracker.vue";
 import { api } from "../lib/api";
 import vuetify from "../plugins/vuetify";
 import { createPinia, setActivePinia } from "pinia";
+import { useReportsStore } from "../stores/reports";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -26,6 +27,26 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/timers", expect.objectContaining({ method: "POST" }));
+    wrapper.unmount();
+  });
+
+  it("invalidates reports and emits a change when a session is stopped", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return { id: "timer-1", startedAt: new Date().toISOString(), running: true };
+      if (path === "/timers/timer-1/stop" && options.method === "POST") return undefined;
+      return undefined;
+    });
+    const reports = useReportsStore();
+    reports.set("week", { totalSeconds: 60 });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    await wrapper.get("button.floating-tracker-action").trigger("click");
+    await flushPromises();
+
+    expect(reports.get("week")).toBeUndefined();
+    expect(wrapper.emitted("changed")).toHaveLength(1);
     wrapper.unmount();
   });
 
