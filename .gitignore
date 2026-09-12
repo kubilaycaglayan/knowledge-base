@@ -18,3 +18,7 @@ backend/build/
 .DS_Store
 backend/.idea
 .idea
+deployment/cloudflare/.terraform/
+deployment/cloudflare/*.tfstate
+deployment/cloudflare/*.tfstate.*
+deployment/cloudflare/terraform.tfvars

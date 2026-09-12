@@ -42,6 +42,7 @@ On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS a
 - Use `apply_patch` for source edits and avoid destructive repository commands.
 - When running Gradle outside the Dockerized development app, use a unique per-agent `--project-cache-dir` (for example, `/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}`) so it cannot contend with the human development container; this isolates Gradle metadata only, not source or build outputs.
 - Update API documentation, tests, smoke coverage, and the roadmap when a product behavior changes.
+- Cloudflare WAF policy is managed as Terraform in `deployment/cloudflare`; never commit `terraform.tfvars`, Terraform state, API tokens, or other Cloudflare credentials.
 
 Concise rules for building accessible, fast, delightful UIs. Use MUST/SHOULD/NEVER to guide decisions.
 
