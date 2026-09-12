@@ -478,19 +478,19 @@ onBeforeUnmount(() =>
 
 <template>
   <section class="reports-page">
-    <div class="reports-actions reports-header-actions">
-      <ReportDateRange
-        :model-value="selectedRange"
-        @previous="shiftAnchor(-1)"
-        @next="shiftAnchor(1)"
-        @update:model-value="selectRange"
-      />
-    </div>
     <div class="reports-nav">
-      <ReportTabs
-        :model-value="aggregation"
-        @update:model-value="selectAggregation"
-      />
+      <div class="reports-period-controls">
+        <ReportDateRange
+          :model-value="selectedRange"
+          @previous="shiftAnchor(-1)"
+          @next="shiftAnchor(1)"
+          @update:model-value="selectRange"
+        />
+        <ReportTabs
+          :model-value="aggregation"
+          @update:model-value="selectAggregation"
+        />
+      </div>
       <div class="report-visualization-toggles">
         <button
           v-if="report?.sankey"

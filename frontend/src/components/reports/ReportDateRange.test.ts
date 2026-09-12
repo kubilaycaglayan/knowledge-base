@@ -11,16 +11,13 @@ vi.mock("@vuepic/vue-datepicker", () => ({
 }));
 
 describe("ReportDateRange", () => {
-  it("configures two calendars and emits a complete ISO date range", async () => {
+  it("configures one calendar and emits a complete ISO date range", async () => {
     const wrapper = mount(ReportDateRange, {
       props: { modelValue: { startDate: "2026-08-24", endDate: "2026-08-30" } },
     });
     const provider = wrapper.findComponent({ name: "VueDatePicker" });
 
-    expect(provider.props("multiCalendars")).toEqual({
-      count: 2,
-      static: true,
-    });
+    expect(provider.props("multiCalendars")).toBe(false);
     expect(provider.props("presetDates")).toHaveLength(11);
     expect(
       (provider.props("presetDates") as Array<{ label: string }>).map(
