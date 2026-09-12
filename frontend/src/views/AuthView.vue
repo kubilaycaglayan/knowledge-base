@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { api } from "../lib/api";
 import { theme } from "../lib/theme";
+import { useAuthStore } from "../stores/auth";
 
 type GoogleApi = {
   accounts: {
@@ -24,6 +25,7 @@ declare global {
 }
 
 const emit = defineEmits<{ authenticated: [] }>();
+const auth = useAuthStore();
 const register = ref(false),
   email = ref(""),
   password = ref(""),
@@ -34,7 +36,7 @@ const googleClientId =
 const googleConfigured = Boolean(googleClientId);
 
 async function acceptToken(result: { token: string }) {
-  localStorage.setItem("know_token", result.token);
+  auth.setToken(result.token);
   emit("authenticated");
 }
 
