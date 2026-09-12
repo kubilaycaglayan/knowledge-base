@@ -15,6 +15,7 @@ fi
 
 export JWT_SECRET="${JWT_SECRET:-development-jwt-secret-at-least-32-chars-long}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-dev-postgres-password}"
+export BACKEND_HOT_RELOAD="${BACKEND_HOT_RELOAD:-0}"
 if [[ -n "${CHROME_EXTENSION_ID:-}" ]]; then
   chrome_extension_origin="chrome-extension://${CHROME_EXTENSION_ID}"
   case ",${CORS_ORIGINS:-}," in
@@ -50,6 +51,7 @@ docker compose "${compose_args[@]}" up -d --force-recreate api web
 docker compose "${compose_args[@]}" ps
 echo
 echo "Development API CORS origins: ${CORS_ORIGINS:-http://localhost:5177}"
+echo "Backend hot reload: ${BACKEND_HOT_RELOAD} (set BACKEND_HOT_RELOAD=1 to enable)"
 echo
 echo "Compose service/image names:"
 docker compose "${compose_args[@]}" images
