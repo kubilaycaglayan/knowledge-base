@@ -24,6 +24,7 @@
   with searchable target selection, confirmation, and server-side session transfer.
 - [x] Discard timers stopped before 2 seconds so accidental starts do not create sessions.
 - [x] Preserve path and label colors, scopes, and assignments in Knowledge Base imports and exports.
+- [x] Add user-scoped native WebSocket timer snapshots with REST polling fallback for web and legacy clients.
 
 Continue applying these foundations to future web features. Native iOS and
 extension design work remains outside this web redesign; their API contracts,
