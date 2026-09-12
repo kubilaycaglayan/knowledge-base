@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import AuthView from "./AuthView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
 import { applyTheme } from "../lib/theme";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
@@ -20,6 +21,7 @@ type GoogleTestWindow = Window &
 const testWindow = window as GoogleTestWindow;
 
 describe("AuthView", () => {
+  beforeEach(() => setActivePinia(createPinia()));
   beforeEach(() => {
     applyTheme("light");
     localStorage.clear();
