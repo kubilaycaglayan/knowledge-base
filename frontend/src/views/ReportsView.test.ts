@@ -115,6 +115,40 @@ describe("ReportsView", () => {
     expect(wrapper.find("button").exists()).toBe(true);
   });
 
+  it("keeps the current report visible behind a refresh state while parameters load", async () => {
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    let resolveNextReport: (value: unknown) => void = () => undefined;
+    vi.mocked(api).mockImplementation((path: string) => {
+      if (path.startsWith("/reports?")) {
+        return new Promise((resolve) => {
+          resolveNextReport = resolve;
+        });
+      }
+      return Promise.resolve([]);
+    });
+
+    await wrapper.find(".test-range").trigger("click");
+    expect(wrapper.find(".report-refresh-overlay").exists()).toBe(true);
+    expect(wrapper.find(".report-refresh-badge").text()).toContain("Updating report");
+    expect(wrapper.text()).toContain("Tracked time");
+    expect(wrapper.text()).toContain("Wander");
+
+    resolveNextReport({
+      period: "CUSTOM",
+      from: "2026-08-10",
+      to: "2026-08-20",
+      totalSeconds: 0,
+      days: [],
+      paths: [],
+      sessionLabels: [],
+      calendarLabels: [],
+    });
+    await flushPromises();
+    expect(wrapper.find(".report-refresh-overlay").exists()).toBe(false);
+  });
+
   it("reuses a cached report and reference data when mounted again", async () => {
     const report = {
       period: "WEEK",
