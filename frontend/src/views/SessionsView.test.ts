@@ -1,6 +1,7 @@
 import { config, flushPromises, mount } from "@vue/test-utils";
 import SessionsView from "./SessionsView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -10,6 +11,7 @@ const timerStub = {
 };
 
 describe("SessionsView", () => {
+  beforeEach(() => setActivePinia(createPinia()));
   beforeEach(() => {
     config.global.stubs = { FloatingTimeTracker: timerStub };
     vi.clearAllMocks();
