@@ -173,6 +173,10 @@ describe("FloatingTimeTracker", () => {
 
     expect(wrapper.get("button.floating-tracker-action").text()).toContain("Stop session");
     expect(wrapper.get(".tracker-status").classes()).toContain("running");
+    sockets[0].onmessage?.({ data: JSON.stringify({ type: "TIMER_STATE", timer: { id: "timer-1", startedAt: "2026-09-12T10:00:00Z", endedAt: "2026-09-12T10:30:00Z", running: false } }) });
+    await flushPromises();
+    expect(wrapper.get("button.floating-tracker-action").text()).toContain("Start a session");
+    expect(wrapper.get(".tracker-status").classes()).not.toContain("running");
     wrapper.unmount();
     localStorage.removeItem("know_token");
     globalThis.WebSocket = originalWebSocket;
