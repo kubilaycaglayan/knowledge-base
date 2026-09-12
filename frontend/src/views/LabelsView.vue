@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
+import { vDialogFocus } from "../lib/dialog-focus";
 import { useLabelsStore, type Label, type LabelScope } from "../stores/labels";
 import { useReportsStore } from "../stores/reports";
 
@@ -25,6 +26,7 @@ const editingId = ref("");
 const draft = ref<{ name: string; color: string; scopes: Scope[] } | null>(null);
 const saving = ref(false);
 const error = ref("");
+const addDialogOpen = ref(false);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const sortedLabels = computed(() => [...labels.value].sort((a, b) => a.name.localeCompare(b.name)));
 
@@ -43,9 +45,20 @@ async function add() {
   try {
     const created = await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name: name.value.trim(), color: color.value, scopes: scopes.value }) });
     labelStore.add(created); name.value = "";
+    color.value = colors[0];
+    scopes.value = ["NOTE"];
+    addDialogOpen.value = false;
     reportsStore.clear();
   } catch { error.value = "Could not create this label. Names must be unique."; }
   finally { saving.value = false; }
+}
+function openAddDialog() {
+  error.value = "";
+  addDialogOpen.value = true;
+}
+function closeAddDialog() {
+  addDialogOpen.value = false;
+  error.value = "";
 }
 function beginEdit(label: Label) {
   editingId.value = label.id;
@@ -88,19 +101,12 @@ onMounted(load);
 <template>
   <PromptDialog ref="promptDialog" />
   <section class="labels-view">
-    <p class="eyebrow">WORKSPACE</p>
-    <h1>Labels</h1>
+    <header class="labels-heading">
+      <div><p class="eyebrow">WORKSPACE</p><h1>Labels</h1></div>
+      <button class="icon-button" type="button" aria-label="Add label" title="Add label" aria-haspopup="dialog" @click="openAddDialog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+    </header>
     <p class="lede">Create reusable labels and choose where they appear. A label can be used in more than one place.</p>
-    <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
-    <section class="card label-create" aria-labelledby="new-label-title">
-      <h2 id="new-label-title">New label</h2>
-      <form @submit.prevent="add">
-        <label>Name<input v-model="name" name="label-name" maxlength="80" placeholder="e.g. Deep work…" required /></label>
-        <ColorPalette v-model="color" legend="Label color" option-label="Choose label color" />
-        <fieldset><legend>Show in</legend><label v-for="option in scopeOptions" :key="option.value" class="scope-option"><input type="checkbox" :checked="checked(option.value, scopes)" @change="toggleScope(scopes, option.value)" />{{ option.label }}</label></fieldset>
-        <button class="primary" type="submit" :disabled="saving">{{ saving ? "Adding…" : "Add label" }}</button>
-      </form>
-    </section>
+    <p v-if="error && !addDialogOpen" class="notice" role="alert" aria-live="polite">{{ error }}</p>
     <section class="card label-list" aria-labelledby="label-list-title">
       <div class="label-list-heading"><h2 id="label-list-title">Your labels</h2><span class="muted">{{ labels.length }} total</span></div>
       <p v-if="loading" class="muted">Loading labels…</p>
@@ -110,19 +116,45 @@ onMounted(load);
         <template v-else-if="draft"><input v-model="draft.name" class="edit-name" maxlength="80" :aria-label="`Edit ${label.name} name`" /><ColorPalette v-model="draft.color" class="label-edit-colors" :legend="`Edit ${label.name} color`" option-label="Set edit label color" /><span class="scope-editor"><label v-for="option in scopeOptions" :key="option.value"><input type="checkbox" :checked="checked(option.value, draft.scopes)" @change="toggleScope(draft.scopes, option.value)" />{{ option.label }}</label></span><button class="primary compact" type="button" :disabled="saving" @click="save(label)">Save</button><button class="ghost" type="button" @click="cancelEdit">Cancel</button></template>
       </div>
     </section>
+    <div v-if="addDialogOpen" class="prompt-dialog-backdrop" @click.self="closeAddDialog">
+      <section v-dialog-focus class="prompt-dialog card label-create-dialog" role="dialog" aria-modal="true" aria-labelledby="new-label-title" tabindex="-1" @keydown.esc.prevent="closeAddDialog">
+        <div class="label-dialog-heading">
+          <div><p class="eyebrow">NEW LABEL</p><h2 id="new-label-title">Add a label</h2></div>
+        </div>
+        <form class="label-create-form" @submit.prevent="add">
+          <label>Name<input v-model="name" name="label-name" maxlength="80" placeholder="e.g. Deep work…" autocomplete="off" required /></label>
+          <ColorPalette v-model="color" legend="Label color" option-label="Choose label color" />
+          <fieldset><legend>Show in</legend><label v-for="option in scopeOptions" :key="option.value" class="scope-option"><input type="checkbox" :checked="checked(option.value, scopes)" @change="toggleScope(scopes, option.value)" /><span>{{ option.label }}</span></label></fieldset>
+          <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
+          <div class="prompt-dialog-actions">
+            <button type="button" class="text-button" @click="closeAddDialog">Cancel</button>
+            <button class="primary" type="submit" :disabled="saving">{{ saving ? "Adding…" : "Add label" }}</button>
+          </div>
+        </form>
+      </section>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.labels-view { max-width: 920px; display: grid; gap: 18px; }
+.labels-view { max-width: 1200px; margin: 0 auto; display: grid; gap: 18px; }
 .labels-view h1, .labels-view h2, .labels-view p { margin: 0; }
-.label-create, .label-list { display: grid; gap: 16px; }
-.label-create :deep(.color-palette), .label-list :deep(.color-palette) { display: grid; grid-template-columns: repeat(5, 28px); gap: 2px; width: max-content; }
-.label-create form { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(240px, 1fr) auto; gap: 14px; align-items: end; }
-.label-create label, .scope-editor label { display: grid; gap: 6px; font-weight: 600; }
-.label-create fieldset { display: flex; gap: 12px; border: 0; padding: 0; margin: 0; align-items: center; }
-.label-create fieldset legend { font-weight: 600; margin-bottom: 6px; }
-.scope-option { display: flex !important; align-items: center; gap: 6px; font-weight: 400 !important; }
+.labels-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.labels-heading h1 { margin: 8px 0 0; }
+.icon-button { display: inline-flex; width: 46px; height: 46px; align-items: center; justify-content: center; border: 0; border-radius: var(--workspace-radius); background: var(--workspace-accent); color: var(--workspace-on-accent); cursor: pointer; }
+.icon-button:hover { background: var(--workspace-accent-hover); }
+.label-list { display: grid; gap: 16px; }
+.label-create-dialog { width: min(560px, calc(100vw - 32px)); }
+.label-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.label-dialog-heading h2 { margin: 3px 0 0; font-size: 20px; }
+.label-create-form { display: grid; gap: 14px; margin-top: 4px; }
+.label-create-form label, .scope-editor label { display: grid; gap: 6px; font-weight: 600; }
+.label-create-form fieldset { display: grid; gap: 6px; border: 0; padding: 0; margin: 0; }
+.label-create-form fieldset legend { font-weight: 600; margin-bottom: 2px; }
+.label-create-form :deep(.color-palette), .label-list :deep(.color-palette) { display: grid; grid-template-columns: repeat(5, 28px); gap: 2px; width: max-content; }
+.scope-option { display: grid !important; grid-template-columns: 18px 1fr; align-items: center; gap: 8px; width: max-content; min-height: 28px; font-weight: 400 !important; }
+.scope-option input { margin: 0; }
+.scope-option span { display: block; white-space: nowrap; }
 .label-list-heading, .label-row { display: flex; align-items: center; gap: 12px; }
 .label-list-heading { justify-content: space-between; }
 .label-row { border-top: 1px solid var(--workspace-border); padding: 14px 0; min-width: 0; }
@@ -134,6 +166,6 @@ onMounted(load);
 .scope-editor { display: flex; gap: 10px; flex-wrap: wrap; flex: 1; }
 .scope-editor label { display: flex; align-items: center; gap: 5px; font-weight: 400; white-space: nowrap; }
 .compact { padding: 8px 12px; }
-@media (max-width: 760px) { .label-create form { grid-template-columns: 1fr 1fr; } .label-create form > label:first-child, .label-create fieldset, .label-create button { grid-column: 1 / -1; } .label-row { flex-wrap: wrap; } .scope-list { order: 4; flex-basis: 100%; } }
-@media (max-width: 700px) { .label-create :deep(.color-palette), .label-list :deep(.color-palette) { grid-template-columns: repeat(5, 44px); } }
+@media (max-width: 760px) { .label-row { flex-wrap: wrap; } .scope-list { order: 4; flex-basis: 100%; } }
+@media (max-width: 700px) { .label-create-form :deep(.color-palette), .label-list :deep(.color-palette) { grid-template-columns: repeat(5, 44px); } }
 </style>

@@ -130,7 +130,7 @@ const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const reportsStore = useReportsStore();
 const { paths: availablePaths } = storeToRefs(pathsStore);
-const { labels: availableLabels } = storeToRefs(labelsStore);
+const availableLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const report = ref<Report | null>(null);
 const error = ref("");
 const loading = ref(false);

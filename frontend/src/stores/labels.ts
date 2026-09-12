@@ -9,7 +9,7 @@ export const useLabelsStore = defineStore("labels", {
   state: () => ({ labels: [] as Label[], loaded: false, loadedScopes: [] as LabelScope[], loading: false }),
   getters: {
     byId: (state) => (id?: string) => state.labels.find((label) => label.id === id),
-    forScope: (state) => (scope: LabelScope) => state.labels.filter((label) => label.scopes.includes(scope)),
+    forScope: (state) => (scope: LabelScope) => state.labels.filter((label) => label.scopes?.includes(scope)),
   },
   actions: {
     async load(force = false) {
