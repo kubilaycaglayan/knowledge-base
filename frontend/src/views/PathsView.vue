@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
@@ -8,8 +9,10 @@ import MergePathDialog from "../components/MergePathDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import { paletteColors } from "../lib/color-palette";
 import { vDialogFocus } from "../lib/dialog-focus";
+import { useLabelsStore } from "../stores/labels";
+import { usePathsStore, type Path as StorePath } from "../stores/paths";
 
-type Path = {
+type Path = StorePath & {
   id: string;
   name: string;
   description?: string;
@@ -33,9 +36,11 @@ type Summary = {
 type DescriptionPart = { text: string; url?: string };
 type ActivityGroup = { key: string; label: string; activities: Activity[] };
 const colors = paletteColors;
-const paths = ref<Path[]>([]),
-  labels = ref<Label[]>([]),
-  summaries = ref<Record<string, Summary>>({}),
+const pathsStore = usePathsStore();
+const labelsStore = useLabelsStore();
+const { paths } = storeToRefs(pathsStore);
+const { labels } = storeToRefs(labelsStore);
+const summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
   description = ref(""),
   selectedColor = ref(colors[0]),
@@ -145,8 +150,8 @@ async function load() {
       api<Path[]>("/paths"),
       api<Label[]>("/labels?scope=TIME_ENTRY"),
     ]);
-    paths.value = loadedPaths;
-    labels.value = loadedLabels || [];
+    pathsStore.setAll(loadedPaths);
+    labelsStore.setAll(loadedLabels || []);
   } catch {
     error.value = "Unable to load paths.";
   }
@@ -287,7 +292,7 @@ async function remove(path: Path) {
     await api(`/paths/${path.id}`, { method: "DELETE" });
     delete summaries.value[path.id];
     if (historyPath.value?.id === path.id) closeHistory();
-    paths.value = paths.value.filter((candidate) => candidate.id !== path.id);
+    pathsStore.remove(path.id);
     if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
     pendingDelete.value = path;
     pendingDeleteTimer = setTimeout(() => {
@@ -303,7 +308,7 @@ async function undoRemove() {
   if (!path) return;
   try {
     await api(`/paths/${path.id}/restore`, { method: "POST" });
-    paths.value = [path, ...paths.value];
+    pathsStore.restore(path);
     pendingDelete.value = null;
     if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
     pendingDeleteTimer = undefined;

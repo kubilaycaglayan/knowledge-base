@@ -1,12 +1,14 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import PathsView from "./PathsView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("PathsView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setActivePinia(createPinia());
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [
