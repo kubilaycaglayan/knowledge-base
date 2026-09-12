@@ -96,14 +96,22 @@ function isEmptyNote(note: Note) {
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }
-async function loadNotes() {
+async function loadNotes(force = false) {
   loading.value = true;
   error.value = "";
   try {
     const params = new URLSearchParams({ page: String(page.value), size: String(size.value), archived: String(showArchived.value) });
     if (query.value.trim()) params.set("q", query.value.trim());
+    const cacheKey = params.toString();
+    const cached = !force && notesStore.cachedPage(cacheKey);
+    if (cached) {
+      notesStore.setPage(cacheKey, cached);
+      totalPages.value = cached.totalPages;
+      totalItems.value = cached.totalItems;
+      return;
+    }
     const result = await api<NotePage>(`/notes?${params}`);
-    notesStore.setPage(result.items);
+    notesStore.setPage(cacheKey, result);
     totalPages.value = result.totalPages;
     totalItems.value = result.totalItems;
   } catch {
@@ -117,12 +125,14 @@ async function archiveNote(note: Note) {
   try {
     await api(`/notes/${note.id}`, { method: "DELETE" });
     notesStore.remove(note.id);
+    notesStore.clearPages();
     await loadNotes();
   } catch { error.value = "Unable to archive note."; }
 }
 async function restoreNote(note: Note) {
   try {
     await api(`/notes/${note.id}/restore`, { method: "POST" });
+    notesStore.clearPages();
     await loadNotes();
   } catch { error.value = "Unable to restore note."; }
 }
@@ -139,6 +149,7 @@ async function newNote() {
       method: "POST",
       body: JSON.stringify({ title: "Untitled note", content: JSON.stringify(defaultDocument), contentText: "", tags: [] }),
     });
+    notesStore.clearPages();
     notesStore.upsert(created);
     await router.push({ name: "note-editor", params: { id: created.id } });
   } catch {
@@ -209,6 +220,7 @@ async function save() {
       saved = await api<Note>(`/notes/${selected.value.id}`, { method: "PUT", body: JSON.stringify({ ...snapshot, version: latest.version }) });
     }
     notesStore.upsert(saved);
+    notesStore.clearPages();
     notesStore.setSelected(saved);
     const stillOnSnapshot = title.value.trim() === snapshot.title
       && JSON.stringify(editor.value.getJSON()) === snapshot.content
@@ -255,7 +267,7 @@ watch(query, searchLater);
 watch(size, () => { page.value = 0; loadNotes(); });
 watch(() => route.params.id, async () => { if (isEditor.value) { await nextTick(); await loadEditor(); } else { editor.value?.destroy(); editor.value = null; notesStore.setSelected(null); await loadNotes(); } });
 function refreshVisibleList() {
-  if (!isEditor.value && document.visibilityState === "visible") void loadNotes();
+  if (!isEditor.value && document.visibilityState === "visible") void loadNotes(true);
 }
 onMounted(async () => {
   if (isEditor.value) { await nextTick(); await loadEditor(); }

@@ -10,7 +10,8 @@ export const usePathsStore = defineStore("paths", {
     byId: (state) => (id?: string) => state.paths.find((path) => path.id === id),
   },
   actions: {
-    async load() {
+    async load(force = false) {
+      if (this.loaded && !force) return this.paths;
       this.loading = true;
       try {
         this.paths = await api<Path[]>("/paths");

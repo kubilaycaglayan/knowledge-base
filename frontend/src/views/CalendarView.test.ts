@@ -111,7 +111,8 @@ describe("CalendarView", () => {
     await wrapper.get('[aria-label="Next month"]').trigger("click");
     await flushPromises();
     const requests = vi.mocked(api).mock.calls.filter(([path]) => typeof path === "string" && path.startsWith("/calendar/days?"));
-    expect(requests.at(-1)?.[0]).toBe(initialDayRequest);
+    expect(requests).toHaveLength(2);
+    expect(requests.at(-1)?.[0]).not.toBe(initialDayRequest);
     const days = wrapper.findAll("button.calendar-day");
     await days[8].trigger("mousedown", { button: 0 });
     await days[10].trigger("mouseenter");

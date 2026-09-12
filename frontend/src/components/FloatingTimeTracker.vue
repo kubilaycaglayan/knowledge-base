@@ -62,7 +62,7 @@ async function load() {
       api<Label[]>("/labels?scope=TIME_ENTRY").then((value) => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
       api<Timer | null>("/timers/current"),
     ]);
-    pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels); applyTimer(current);
+    pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels, "TIME_ENTRY"); applyTimer(current);
   } catch { error.value = "Unable to load the time tracker."; }
 }
 async function toggleRun() {

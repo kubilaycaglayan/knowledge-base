@@ -66,9 +66,13 @@ async function load() {
   try {
     const startDate = format(startOfMonth(month.value), "yyyy-MM-dd");
     const endDate = format(endOfMonth(month.value), "yyyy-MM-dd");
-    const [savedLabels, savedDays] = await Promise.all([labelsStore.loadScope("CALENDAR"), api<Day[]>(`/calendar/days?startDate=${startDate}&endDate=${endDate}`)]);
+    const range = `${startDate}:${endDate}`;
+    const [savedLabels, savedDays] = await Promise.all([
+      labelsStore.loadScope("CALENDAR"),
+      calendarStore.loadedRanges.includes(range) ? Promise.resolve([] as Day[]) : api<Day[]>(`/calendar/days?startDate=${startDate}&endDate=${endDate}`),
+    ]);
     void savedLabels;
-    calendarStore.setRange(`${startDate}:${endDate}`, savedDays);
+    if (savedDays.length || !calendarStore.loadedRanges.includes(range)) calendarStore.setRange(range, savedDays);
     selectDay(parseISO(selected.value));
   } catch { error.value = "Unable to load calendar records."; }
 }

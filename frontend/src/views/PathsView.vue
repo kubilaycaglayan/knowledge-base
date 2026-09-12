@@ -144,14 +144,9 @@ function historyActivityGroups(pathId: string): ActivityGroup[] {
   }
   return groups;
 }
-async function load() {
+async function load(force = false) {
   try {
-    const [loadedPaths, loadedLabels] = await Promise.all([
-      api<Path[]>("/paths"),
-      api<Label[]>("/labels?scope=TIME_ENTRY"),
-    ]);
-    pathsStore.setAll(loadedPaths);
-    labelsStore.setAll(loadedLabels || []);
+    await Promise.all([pathsStore.load(force), labelsStore.loadScope("TIME_ENTRY", force)]);
   } catch {
     error.value = "Unable to load paths.";
   }
@@ -249,7 +244,7 @@ async function merge(path: Path) {
     delete summaries.value[source.id];
     cancelMerge();
     cancelEdit();
-    await load();
+    await load(true);
   } catch {
     error.value = "Could not merge paths. Try again.";
   } finally {
