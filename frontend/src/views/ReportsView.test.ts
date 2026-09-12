@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import ReportsView from "./ReportsView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
 import { endOfWeek, format, startOfWeek, subDays, subYears } from "date-fns";
 
 vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
@@ -8,6 +9,7 @@ vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("ReportsView", () => {
+  beforeEach(() => setActivePinia(createPinia()));
   const global = {
     stubs: {
       VBtn: { template: "<button><slot /></button>" },
