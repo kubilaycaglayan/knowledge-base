@@ -22,6 +22,7 @@ describe("SummaryBarChart", () => {
     const tooltip = (wrapper.getComponent({ name: "VChart" }).props("option") as { tooltip: { formatter(params: unknown): string } }).tooltip.formatter([{ axisValue: "Fri, Sep 4", dataIndex: 0 }]);
     expect(tooltip).toContain("Fri, Sep 4");
     expect(tooltip).toContain("Annual leave");
+    expect(tooltip).toContain('<div class="tooltip-heading"><strong>Fri, Sep 4</strong><span>Total: 01:00:00</span></div>');
   });
 
   it("uses each path color for its bars and tooltip marker", () => {
