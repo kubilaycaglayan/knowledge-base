@@ -43,6 +43,13 @@ public class LogService {
     return view(logs.save(log));
   }
 
+  @Transactional
+  public void delete(UUID userId, UUID id) {
+    Log log = logs.findByIdAndUserId(id, userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log not found"));
+    logs.delete(log);
+  }
+
   private LogView view(Log log) {
     return new LogView(log.getId(), log.getBody(), log.getOccurredAt(), log.getCreatedAt(), log.getUpdatedAt(), log.getVersion());
   }
