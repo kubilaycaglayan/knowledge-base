@@ -7,7 +7,7 @@ Native SwiftUI client, iOS 17+. Authentication follows the web's private-workspa
 1. Install Xcode and XcodeGen (`brew install xcodegen`).
 2. Create `ios/Local.xcconfig` with the settings below. It is gitignored. The default API is `http://localhost:8080/api/v1` for a simulator with the backend running on this Mac.
 3. Run `cd ios && xcodegen generate --spec project.yml`, then open `Know.xcodeproj`. Select the **Know** scheme and an iPhone simulator; Run.
-4. For a physical iPhone, choose your personal Apple team (`YOUR_PERSONAL_TEAM_ID`) under Signing & Capabilities and use a reachable API address. `localhost` on the phone is the phone itself.
+4. For a physical iPhone, choose your personal Apple team under Signing & Capabilities and use a reachable API address. `localhost` on the phone is the phone itself.
 
 ```xcconfig
 // Empty substitution preserves the double slash in xcconfig.
@@ -22,25 +22,25 @@ OAuth identifiers and the Apple team ID are public identifiers, not secrets. Nev
 
 ## Test on your iPhone over local Wi-Fi
 
-An iPhone cannot use `localhost` to reach your Mac. Use the Mac's Wi-Fi address instead. This machine's current address is `<mac-lan-ip>`; run `ipconfig getifaddr en0` before each session because DHCP addresses can change.
+An iPhone cannot use `localhost` to reach your Mac. Use the Mac's Wi-Fi address instead. Run `ipconfig getifaddr en0` before each session because DHCP addresses can change.
 
 Add the following to the ignored `.env.development`, then start the development stack normally. The `IOS_LAN_API=1` overlay publishes only the API on your LAN. PostgreSQL and the development web proxy stay bound to the Mac.
 
 ```dotenv
 IOS_LAN_API=1
 IOS_LAN_API_BIND_ADDRESS=0.0.0.0
-IOS_LAN_API_URL=http://<mac-lan-ip>:8080
+IOS_LAN_API_URL=http://<mac-lan-ip>:<api-port>
 ```
 
 ```sh
 ./scripts/development-all-start.sh
-curl http://<mac-lan-ip>:8080/actuator/health
+curl http://<mac-lan-ip>:<api-port>/actuator/health
 ```
 
 Then put this in `ios/Local.xcconfig` and regenerate the project:
 
 ```xcconfig
-KNOWLEDGE_BASE_API_URL = http:/$()/<mac-lan-ip>:8080/api/v1
+KNOWLEDGE_BASE_API_URL = http:/$()/<mac-lan-ip>:<api-port>/api/v1
 ```
 
 `Debug` permits the plain-HTTP LAN API needed for this local workflow. `Release` retains App Transport Security and requires HTTPS. Keep `IOS_LAN_API=0` when you finish phone testing. Both devices must use the same private Wi-Fi; turn off VPNs that isolate local traffic and permit incoming connections to Docker when macOS asks.
