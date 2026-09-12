@@ -15,7 +15,7 @@ describe("LogsView", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
-    vi.mocked(api).mockResolvedValue([log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
+    vi.mocked(api).mockResolvedValue([log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("same-hour", "Another thought", "2026-09-11T11:20:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); config.global.stubs = {}; });
 
@@ -25,7 +25,9 @@ describe("LogsView", () => {
     expect(wrapper.findAll(".log-group-heading").map((item) => item.text())).toEqual(["Last hour", "Yesterday"]);
     expect(wrapper.find("time.log-time").text()).toBe("11:30");
     expect(wrapper.find(".log-body").text()).toBe("Recent thought");
-    expect(wrapper.findAll("time.log-time")[1].text()).toBe("Sept 10 11:00");
+    expect(wrapper.findAll(".log-entry")[1].classes()).not.toContain("log-hour-break");
+    expect(wrapper.find(".log-group-day-break").exists()).toBe(true);
+    expect(wrapper.findAll("time.log-time")[2].text()).toBe("Sept 10 11:00");
   });
 
   it("saves the browser timestamp and adds a new log to the store", async () => {
