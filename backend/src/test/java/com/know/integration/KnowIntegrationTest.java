@@ -1292,4 +1292,29 @@ class KnowIntegrationTest {
         HttpStatus.BAD_REQUEST,
         put("/api/v1/calendar/labels/" + labelId, owner, "{\"name\":\"Vacation\",\"color\":\"#123456\"}").getStatusCode());
   }
+
+  @Test
+  void logsAreOwnedTimestampedAndOptimisticallyEditable() {
+    String owner = freshToken();
+    String other = freshToken();
+    ResponseEntity<JsonNode> created = post("/api/v1/logs", owner,
+        "{\"body\":\"First thought\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}");
+    assertEquals(HttpStatus.CREATED, created.getStatusCode());
+    String id = created.getBody().get("id").asText();
+    long version = created.getBody().get("version").asLong();
+    assertEquals("First thought", created.getBody().get("body").asText());
+    assertEquals("2026-09-11T10:15:00Z", created.getBody().get("occurredAt").asText());
+    assertEquals(1, get("/api/v1/logs", owner).getBody().size());
+    assertEquals(0, get("/api/v1/logs", other).getBody().size());
+    assertEquals(HttpStatus.OK, get("/api/v1/logs/" + id, owner).getStatusCode());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/logs/" + id, other).getStatusCode());
+    assertEquals(HttpStatus.NOT_FOUND, put("/api/v1/logs/" + id, other,
+        "{\"body\":\"No access\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}").getStatusCode());
+    ResponseEntity<JsonNode> updated = put("/api/v1/logs/" + id, owner,
+        "{\"body\":\"Edited thought\",\"occurredAt\":\"2026-09-11T11:20:00Z\",\"version\":" + version + "}");
+    assertEquals(HttpStatus.OK, updated.getStatusCode());
+    assertEquals("Edited thought", updated.getBody().get("body").asText());
+    assertEquals(HttpStatus.CONFLICT, put("/api/v1/logs/" + id, owner,
+        "{\"body\":\"Stale\",\"occurredAt\":\"2026-09-11T11:20:00Z\",\"version\":" + version + "}").getStatusCode());
+  }
 }

@@ -1,6 +1,6 @@
 # Testing
 
-The backend suite covers authentication and ownership boundaries, paths, notes, reusable labels, session timers, time-entry editing, imports, reporting, activity search, and Flyway migrations. The item system is deliberately absent: sessions use owned label IDs.
+The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, and Flyway migrations. The item system is deliberately absent: sessions use owned label IDs.
 
 Run the required checks from the repository root:
 
