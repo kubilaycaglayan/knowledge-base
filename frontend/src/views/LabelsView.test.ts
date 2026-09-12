@@ -1,10 +1,15 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import LabelsView from "./LabelsView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("LabelsView", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setActivePinia(createPinia());
+  });
   it("shows the fifteen-color palette for new and edited labels", async () => {
     vi.mocked(api).mockResolvedValue([{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }]);
     const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
