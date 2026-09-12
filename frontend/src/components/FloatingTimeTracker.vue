@@ -6,10 +6,11 @@ import PromptDialog from "./PromptDialog.vue";
 import { paletteColors } from "../lib/color-palette";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
+import { useTimerStore, type Timer as StoreTimer } from "../stores/timer";
 
 type Path = { id: string; name: string; status: string };
 type Label = { id: string; name: string; color?: string | null };
-type Timer = { id: string; pathId?: string; labelIds?: string[]; startedAt: string; description?: string; running?: boolean };
+type Timer = StoreTimer;
 
 const props = defineProps<{ inline?: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
@@ -17,7 +18,8 @@ const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const { paths } = storeToRefs(pathsStore);
 const { labels } = storeToRefs(labelsStore);
-const timer = ref<Timer | null>(null);
+const timerStore = useTimerStore();
+const { current: timer } = storeToRefs(timerStore);
 const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref(""), newLabel = ref("");
 const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
 const busy = ref(false), error = ref("");
@@ -41,7 +43,7 @@ function rememberPath(id: string) {
   localStorage.setItem("know_recent_timer_paths", JSON.stringify(recentPathIds.value));
 }
 function applyTimer(value: Timer | null) {
-  timer.value = value;
+  timerStore.setCurrent(value);
   now.value = Date.now();
   if (value) {
     pathId.value = value.pathId || "";
