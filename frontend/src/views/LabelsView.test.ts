@@ -87,4 +87,15 @@ describe("LabelsView", () => {
     expect(wrapper.text()).toContain("Study time");
     expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/labels/one" && options?.method === "PUT")).toBe(true);
   });
+
+  it("shows Logs as a scope and protects the system Highlight label", async () => {
+    vi.mocked(api).mockResolvedValue([{ id: "highlight", name: "Highlight", color: null, scopes: ["LOG"] }]);
+    const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    await flushPromises();
+    expect(wrapper.get(".scope-list").text()).toBe("Logs");
+    expect(wrapper.text()).toContain("System label");
+    expect(wrapper.find(".label-row button").exists()).toBe(false);
+    await wrapper.get('button[aria-label="Add label"]').trigger("click");
+    expect(wrapper.text()).toContain("Logs");
+  });
 });
