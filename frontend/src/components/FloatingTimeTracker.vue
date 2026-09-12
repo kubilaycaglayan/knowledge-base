@@ -8,6 +8,7 @@ import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 import { useTimerStore, type Timer as StoreTimer } from "../stores/timer";
 import { useReportsStore } from "../stores/reports";
+import { useSessionsStore } from "../stores/sessions";
 
 type Path = { id: string; name: string; status: string };
 type Label = { id: string; name: string; color?: string | null; scopes?: ("NOTE" | "CALENDAR" | "TIME_ENTRY")[] };
@@ -21,6 +22,7 @@ const { paths } = storeToRefs(pathsStore);
 const sessionLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const timerStore = useTimerStore();
 const reportsStore = useReportsStore();
+const sessionsStore = useSessionsStore();
 const { current: timer } = storeToRefs(timerStore);
 const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref(""), newLabel = ref("");
 const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
@@ -87,6 +89,7 @@ async function toggleRun() {
       const versionAtRequest = ++timerStateVersion;
       await api(`/timers/${timer.value.id}/stop`, { method: "POST", body: "{}" });
       reportsStore.clear();
+      sessionsStore.clearPages();
       if (versionAtRequest === timerStateVersion) applyTimer(null);
     } else {
       const versionAtRequest = ++timerStateVersion;
