@@ -6,6 +6,7 @@ import {
   onMounted,
   ref,
 } from "vue";
+import { storeToRefs } from "pinia";
 import {
   addDays,
   differenceInCalendarDays,
@@ -31,6 +32,8 @@ import SummaryBarChart, {
 import ProjectDonutChart from "../components/reports/ProjectDonutChart.vue";
 import ProjectDurationTable from "../components/reports/ProjectDurationTable.vue";
 import { formatDuration } from "../utils/duration";
+import { useLabelsStore } from "../stores/labels";
+import { usePathsStore } from "../stores/paths";
 
 type Category = { id?: string; label: string; seconds: number };
 type CalendarAssignment = {
@@ -122,8 +125,10 @@ const aggregation = ref<Aggregation>(
 );
 const selectedPathIds = ref<string[]>(initialParams.getAll("pathId"));
 const selectedLabelIds = ref<string[]>(initialParams.getAll("labelId"));
-const availablePaths = ref<PathOption[]>([]);
-const availableLabels = ref<LabelOption[]>([]);
+const pathsStore = usePathsStore();
+const labelsStore = useLabelsStore();
+const { paths: availablePaths } = storeToRefs(pathsStore);
+const { labels: availableLabels } = storeToRefs(labelsStore);
 const report = ref<Report | null>(null);
 const error = ref("");
 const loading = ref(false);
@@ -371,18 +376,12 @@ async function load(preserveScroll?: { left: number; top: number }) {
   }
 }
 async function loadPaths() {
-  try {
-    const result = await api<PathOption[]>("/paths");
-    if (Array.isArray(result)) availablePaths.value = result;
-  } catch {
+  try { await pathsStore.load(); } catch {
     // The report remains usable with paths returned in its aggregate data.
   }
 }
 async function loadLabels() {
-  try {
-    const result = await api<LabelOption[]>("/labels?scope=TIME_ENTRY");
-    if (Array.isArray(result)) availableLabels.value = result;
-  } catch {
+  try { await labelsStore.loadScope("TIME_ENTRY"); } catch {
     // The report remains usable with labels returned in its aggregate data.
   }
 }
