@@ -94,6 +94,11 @@ public class TimerController {
     return service.history(user(a));
   }
 
+  @GetMapping("/time-entries/{id}")
+  public TimerService.TimeView get(Authentication a, @PathVariable UUID id) {
+    return service.get(user(a), id);
+  }
+
   @PutMapping("/time-entries/{id}")
   public TimerService.TimeView edit(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody ManualRequest r) {
