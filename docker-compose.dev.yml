@@ -12,16 +12,19 @@ services:
     mem_limit: 3g
     build: !reset null
     image: gradle:8.13-jdk21
+    environment:
+      BACKEND_HOT_RELOAD: ${BACKEND_HOT_RELOAD:-0}
     working_dir: /app
     command:
       - sh
       - -c
       - |
-        ./gradlew classes --no-daemon
-        ./gradlew classes --continuous --no-daemon &
-        compiler_pid=$$!
-        trap 'kill "$$compiler_pid" 2>/dev/null || true' EXIT
-        exec ./gradlew bootRun --no-daemon
+        if [ "$${BACKEND_HOT_RELOAD:-0}" = "1" ]; then
+          ./gradlew classes --continuous &
+          compiler_pid=$$!
+          trap 'kill "$$compiler_pid" 2>/dev/null || true' EXIT
+        fi
+        exec ./gradlew bootRun
     ports: !override ["127.0.0.1:${API_DEV_PORT:-8080}:8080"]
     volumes:
       - ./backend:/app
