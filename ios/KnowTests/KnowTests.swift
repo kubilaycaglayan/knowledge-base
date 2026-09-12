@@ -27,6 +27,102 @@ private final class URLProtocolStub: URLProtocol {
 }
 
 final class KnowTests: XCTestCase {
+    func testKeychainPersistsReplacesAndDeletesSession() throws {
+        let service = "knowledge-base.tests.\(UUID().uuidString)"
+        defer { KeychainTokenStore.delete(service: service) }
+        XCTAssertNil(KeychainTokenStore.read(service: service))
+        try KeychainTokenStore.save("first-session", service: service)
+        XCTAssertEqual(KeychainTokenStore.read(service: service), "first-session")
+        try KeychainTokenStore.save("replacement-session", service: service)
+        XCTAssertEqual(KeychainTokenStore.read(service: service), "replacement-session")
+        KeychainTokenStore.delete(service: service)
+        XCTAssertNil(KeychainTokenStore.read(service: service))
+    }
+    @MainActor
+    func testPasswordLoginTrimsEmailAndPreservesPassword() async throws {
+        let model = authenticationModel()
+        URLProtocolStub.responseData = authPayload
+        await model.authenticate(email: " person@example.com \n", password: " password123 ", register: false)
+        XCTAssertTrue(model.signedIn)
+        XCTAssertFalse(model.isAuthenticating)
+        XCTAssertNil(model.authError)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/auth/login")
+        let body = try requestBody()
+        XCTAssertEqual(body["email"], "person@example.com")
+        XCTAssertEqual(body["password"], " password123 ")
+    }
+
+    @MainActor
+    func testRegistrationUsesSharedEndpoint() async {
+        let model = authenticationModel()
+        URLProtocolStub.responseData = authPayload
+        await model.authenticate(email: "person@example.com", password: "password123", register: true)
+        XCTAssertTrue(model.signedIn)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/auth/register")
+    }
+
+    @MainActor
+    func testGoogleExchangesIDTokenForBackendSession() async throws {
+        let model = authenticationModel()
+        URLProtocolStub.responseData = authPayload
+        await model.authenticateWithGoogle { "google-id-token" }
+        XCTAssertEqual(model.token, "backend-session")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/auth/google")
+        XCTAssertEqual(try requestBody()["idToken"], "google-id-token")
+        XCTAssertNil(URLProtocolStub.lastRequest?.value(forHTTPHeaderField: "Authorization"))
+    }
+
+    @MainActor
+    func testRejectedCredentialsShowErrorAndAllowRetry() async {
+        let model = authenticationModel()
+        URLProtocolStub.statusCode = 401
+        await model.authenticate(email: "person@example.com", password: "password123", register: false)
+        XCTAssertFalse(model.signedIn)
+        XCTAssertNotNil(model.authError)
+        XCTAssertFalse(model.isAuthenticating)
+        URLProtocolStub.statusCode = 200
+        URLProtocolStub.responseData = authPayload
+        await model.authenticate(email: "person@example.com", password: "password123", register: false)
+        XCTAssertTrue(model.signedIn)
+        XCTAssertNil(model.authError)
+    }
+
+    @MainActor
+    func testMissingGoogleConfigurationDoesNotContactBackend() async {
+        let model = authenticationModel()
+        await model.authenticateWithGoogle { throw SessionError.configuration }
+        XCTAssertEqual(URLProtocolStub.requestCount, 0)
+        XCTAssertFalse(model.signedIn)
+        XCTAssertNotNil(model.authError)
+        XCTAssertFalse(model.isAuthenticating)
+    }
+
+    @MainActor private func authenticationModel() -> AppModel {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        return AppModel(api: APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration)), arguments: ["-ui-testing"])
+    }
+
+    private var authPayload: Data {
+        Data("{\"token\":\"backend-session\",\"userId\":\"00000000-0000-4000-8000-000000000001\",\"email\":\"person@example.com\",\"displayName\":\"Person\"}".utf8)
+    }
+
+    private func requestBody() throws -> [String: String] {
+        let request = try XCTUnwrap(URLProtocolStub.lastRequest)
+        // URLSession may convert httpBody to an input stream before interception.
+        if let data = request.httpBody { return try JSONDecoder().decode([String: String].self, from: data) }
+        let stream = try XCTUnwrap(request.httpBodyStream)
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var bytes = [UInt8](repeating: 0, count: 1024)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&bytes, maxLength: bytes.count)
+            guard count > 0 else { break }
+            data.append(contentsOf: bytes.prefix(count))
+        }
+        return try JSONDecoder().decode([String: String].self, from: data)
+    }
     override func tearDown() {
         URLProtocolStub.statusCode = 200
         URLProtocolStub.responseData = Data()
