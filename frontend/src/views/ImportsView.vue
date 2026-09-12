@@ -29,7 +29,7 @@ type ImportSummary = {
 
 const clockifyJson = ref(""),
   knowledgeBaseCsv = ref(""),
-  activeTab = ref<"clockify" | "knowledge-base">(props.knowledgeBaseOnly ? "knowledge-base" : "clockify"),
+  activeTab = ref<"clockify" | "knowledge-base">("knowledge-base"),
   importingKnowledgeBase = ref(false),
   importSummary = ref(""),
   error = ref(""),
@@ -133,8 +133,8 @@ onMounted(load);
       needed.
     </p>
     <div v-if="!props.knowledgeBaseOnly" class="import-tabs" role="tablist" aria-label="Import source">
-      <button id="imports-tab-clockify" type="button" role="tab" aria-controls="imports-panel-clockify" :aria-selected="activeTab === 'clockify'" :class="{ selected: activeTab === 'clockify' }" @click="selectTab('clockify')">Clockify</button>
       <button id="imports-tab-knowledge-base" type="button" role="tab" aria-controls="imports-panel-knowledge-base" :aria-selected="activeTab === 'knowledge-base'" :class="{ selected: activeTab === 'knowledge-base' }" @click="selectTab('knowledge-base')">Knowledge Base</button>
+      <button id="imports-tab-clockify" type="button" role="tab" aria-controls="imports-panel-clockify" :aria-selected="activeTab === 'clockify'" :class="{ selected: activeTab === 'clockify' }" @click="selectTab('clockify')">Clockify</button>
     </div>
     <section v-if="activeTab === 'clockify' && !props.knowledgeBaseOnly" id="imports-panel-clockify" class="card import-panel" role="tabpanel" aria-labelledby="imports-tab-clockify" tabindex="0">
       <textarea
