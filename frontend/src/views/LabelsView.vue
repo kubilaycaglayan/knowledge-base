@@ -1,35 +1,34 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
+import { useLabelsStore, type Label, type LabelScope } from "../stores/labels";
 
-type Scope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
-type Label = { id: string; name: string; color?: string | null; scopes: Scope[] };
+type Scope = LabelScope;
 const scopeOptions: { value: Scope; label: string }[] = [
   { value: "NOTE", label: "Notes" },
   { value: "CALENDAR", label: "Calendar" },
   { value: "TIME_ENTRY", label: "Sessions" },
 ];
 const colors = labelColors;
-const labels = ref<Label[]>([]);
+const labelStore = useLabelsStore();
+const { labels, loading } = storeToRefs(labelStore);
 const name = ref("");
 const color = ref(colors[0]);
 const scopes = ref<Scope[]>(["NOTE"]);
 const editingId = ref("");
 const draft = ref<{ name: string; color: string; scopes: Scope[] } | null>(null);
-const loading = ref(true);
 const saving = ref(false);
 const error = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const sortedLabels = computed(() => [...labels.value].sort((a, b) => a.name.localeCompare(b.name)));
 
 async function load() {
-  loading.value = true;
-  try { labels.value = await api<Label[]>("/labels"); }
+  try { await labelStore.load(); }
   catch { error.value = "Could not load labels."; }
-  finally { loading.value = false; }
 }
 function checked(scope: Scope, selected: Scope[]) { return selected.includes(scope); }
 function toggleScope(selected: Scope[], scope: Scope) {
@@ -41,7 +40,7 @@ async function add() {
   saving.value = true; error.value = "";
   try {
     const created = await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name: name.value.trim(), color: color.value, scopes: scopes.value }) });
-    labels.value.push(created); name.value = "";
+    labelStore.add(created); name.value = "";
   } catch { error.value = "Could not create this label. Names must be unique."; }
   finally { saving.value = false; }
 }
@@ -55,7 +54,7 @@ async function save(label: Label) {
   saving.value = true; error.value = "";
   try {
     const saved = await api<Label>(`/labels/${label.id}`, { method: "PUT", body: JSON.stringify({ ...draft.value, name: draft.value.name.trim() }) });
-    labels.value = labels.value.map(value => value.id === saved.id ? saved : value); cancelEdit();
+    labelStore.replace(saved); cancelEdit();
   } catch { error.value = "Could not save this label. Remove assignments before removing a scope."; }
   finally { saving.value = false; }
 }
@@ -64,7 +63,7 @@ async function remove(label: Label) {
   if (result === null) return;
   try {
     await api(`/labels/${label.id}`, { method: "DELETE" });
-    labels.value = labels.value.filter(value => value.id !== label.id);
+    labelStore.remove(label.id);
   } catch {
     const assigned = await promptDialog.value!.open(
       `“${label.name}” has assignments. Remove the label and its assignments?`,
@@ -74,7 +73,7 @@ async function remove(label: Label) {
     if (assigned === null) return;
     try {
       await api(`/labels/${label.id}?removeAssignments=true`, { method: "DELETE" });
-      labels.value = labels.value.filter(value => value.id !== label.id);
+      labelStore.remove(label.id);
     } catch { error.value = "Could not remove this label."; }
   }
 }
