@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import vuetify from "../plugins/vuetify";
 import { createPinia, setActivePinia } from "pinia";
 import { useReportsStore } from "../stores/reports";
+import { useSessionsStore } from "../stores/sessions";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -38,7 +39,9 @@ describe("FloatingTimeTracker", () => {
       return undefined;
     });
     const reports = useReportsStore();
+    const sessions = useSessionsStore();
     reports.set("week", { totalSeconds: 60 });
+    sessions.setPage("0:50", { sessions: [], page: 0, totalPages: 1, totalSessions: 0 });
     const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
     await flushPromises();
 
@@ -46,6 +49,7 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
 
     expect(reports.get("week")).toBeUndefined();
+    expect(sessions.cachedPage("0:50")).toBeUndefined();
     expect(wrapper.emitted("changed")).toHaveLength(1);
     wrapper.unmount();
   });
