@@ -15,7 +15,8 @@ describe("LabelsView", () => {
     const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
     await flushPromises();
 
-    expect(wrapper.findAll(".label-create .color-palette button")).toHaveLength(15);
+    await wrapper.get('button[aria-label="Add label"]').trigger("click");
+    expect(wrapper.findAll(".label-create-dialog .color-palette button")).toHaveLength(15);
     await wrapper.get(".label-row button.ghost").trigger("click");
     expect(wrapper.findAll(".label-edit-colors button")).toHaveLength(15);
   });
@@ -74,6 +75,7 @@ describe("LabelsView", () => {
     const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
     await flushPromises();
     expect(wrapper.text()).toContain("Study");
+    await wrapper.get('button[aria-label="Add label"]').trigger("click");
     await wrapper.get('input[name="label-name"]').setValue("Focus");
     await wrapper.get("form").trigger("submit");
     await flushPromises();

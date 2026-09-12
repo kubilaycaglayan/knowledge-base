@@ -16,6 +16,7 @@ type Label = {
   id: string;
   name: string;
   color?: string | null;
+  scopes: ("NOTE" | "CALENDAR" | "TIME_ENTRY")[];
 };
 type Draft = {
   pathId: string;
@@ -33,7 +34,7 @@ const labelsStore = useLabelsStore();
 const sessionsStore = useSessionsStore();
 const reportsStore = useReportsStore();
 const { paths } = storeToRefs(pathsStore);
-const { labels } = storeToRefs(labelsStore);
+const sessionLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const editingId = ref("");
 const draft = ref<Draft | null>(null);
 const error = ref("");
@@ -49,13 +50,13 @@ const sessionTitleStyle = (session: Session) => {
   const color = pathFor(session.pathId)?.color;
   return color ? { "--session-path-color": color } : undefined;
 };
-const labelFor = (id?: string) => labels.value.find((label) => label.id === id);
+const labelFor = (id?: string) => sessionLabels.value.find((label) => label.id === id);
 const sessionLabelStyle = (labelId: string) => {
   const color = labelFor(labelId)?.color;
   return color ? { "--session-label-color": color } : undefined;
 };
 const sessionLabelIds = (session: Session) => session.labelIds || [];
-const availableLabels = computed(() => labels.value);
+const availableLabels = sessionLabels;
 const localDateTime = (iso?: string) => {
   if (!iso) return "";
   const date = new Date(iso);
@@ -113,7 +114,7 @@ async function load(nextPage = page.value, force = false) {
     const [history, loadedPaths, loadedLabels] = await Promise.all([
       cached ? Promise.resolve(cached) : api<SessionPage>(`/time-entries?page=${nextPage - 1}&size=50`),
       pathsStore.load(),
-      labelsStore.loadScope("TIME_ENTRY").then(value => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
+      labelsStore.loadScope("TIME_ENTRY"),
     ]);
     sessionsStore.setPage(cacheKey, history);
     sessions.value = history.sessions;
