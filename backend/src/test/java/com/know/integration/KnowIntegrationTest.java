@@ -127,6 +127,11 @@ class KnowIntegrationTest {
         base + path, HttpMethod.PUT, new HttpEntity<>(body, bearer(token)), JsonNode.class);
   }
 
+  ResponseEntity<JsonNode> patch(String path, String token, String body) {
+    return rest.exchange(
+        base + path, HttpMethod.PATCH, new HttpEntity<>(body, bearer(token)), JsonNode.class);
+  }
+
   ResponseEntity<JsonNode> get(String path, String token) {
     return rest.exchange(
         base + path, HttpMethod.GET, new HttpEntity<>(bearer(token)), JsonNode.class);
@@ -1308,6 +1313,12 @@ class KnowIntegrationTest {
     assertEquals(0, get("/api/v1/logs", other).getBody().size());
     assertEquals(HttpStatus.OK, get("/api/v1/logs/" + id, owner).getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/logs/" + id, other).getStatusCode());
+    JsonNode highlight = get("/api/v1/labels?scope=LOG", owner).getBody().get(0);
+    assertEquals("Highlight", highlight.get("name").asText());
+    ResponseEntity<JsonNode> highlighted = patch("/api/v1/logs/" + id + "/highlight", owner, "{\"highlighted\":true}");
+    assertEquals(HttpStatus.OK, highlighted.getStatusCode());
+    assertTrue(highlighted.getBody().get("labelIds").toString().contains(highlight.get("id").asText()));
+    assertEquals(HttpStatus.NOT_FOUND, patch("/api/v1/logs/" + id + "/highlight", other, "{\"highlighted\":false}").getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, put("/api/v1/logs/" + id, other,
         "{\"body\":\"No access\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}").getStatusCode());
     ResponseEntity<JsonNode> updated = put("/api/v1/logs/" + id, owner,
