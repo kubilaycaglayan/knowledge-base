@@ -178,8 +178,8 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .timestamp-reset { width: 32px; min-height: 40px; padding: 7px; visibility: hidden; }
 .timestamp-reset-visible { visibility: visible; }
 .log-group { margin: 28px 0; }
-.log-group-heading { margin: 0 0 10px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
-.log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
+.log-group-heading { margin: 0 0 6px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+.log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin: 0; padding: 10px 0; border-bottom: 1px solid var(--workspace-border); }
 .log-body { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .log-time { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .log-edit-row { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 16px; }
