@@ -49,24 +49,31 @@ function rememberPath(id: string) {
 function applyTimer(value: Timer | null) {
   timerStore.setCurrent(value);
   now.value = Date.now();
-  if (value) {
-    pathId.value = value.pathId || "";
-    selectedLabelIds.value = value.labelIds || [];
-    description.value = value.description || "";
-    const date = new Date(value.startedAt);
-    const pad = (part: number) => String(part).padStart(2, "0");
-    timerStartedAt.value = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-    rememberPath(value.pathId || "");
+  if (!value) {
+    pathId.value = "";
+    selectedLabelIds.value = [];
+    description.value = "";
+    timerStartedAt.value = "";
+    return;
   }
+  pathId.value = value.pathId || "";
+  selectedLabelIds.value = value.labelIds || [];
+  description.value = value.description || "";
+  const date = new Date(value.startedAt);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  timerStartedAt.value = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  rememberPath(value.pathId || "");
 }
 async function load() {
+  const versionAtRequest = timerStateVersion;
   try {
     const [loadedPaths, loadedLabels, current] = await Promise.all([
       pathsStore.load(),
       labelsStore.loadScope("TIME_ENTRY").catch(() => api<Label[]>("/calendar/labels")),
       api<Timer | null>("/timers/current"),
     ]);
-    pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels, "TIME_ENTRY"); applyTimer(current);
+    pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels, "TIME_ENTRY");
+    if (versionAtRequest === timerStateVersion) applyTimer(current);
   } catch { error.value = "Unable to load the time tracker."; }
 }
 async function toggleRun() {
@@ -74,13 +81,14 @@ async function toggleRun() {
   busy.value = true; error.value = "";
   try {
     if (timer.value) {
-      timerStateVersion++;
+      const versionAtRequest = ++timerStateVersion;
       await api(`/timers/${timer.value.id}/stop`, { method: "POST", body: "{}" });
       reportsStore.clear();
-      applyTimer(null); description.value = ""; selectedLabelIds.value = [];
+      if (versionAtRequest === timerStateVersion) applyTimer(null);
     } else {
-      timerStateVersion++;
-      applyTimer(await api<Timer>("/timers", { method: "POST", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, description: description.value.trim() || null }) }));
+      const versionAtRequest = ++timerStateVersion;
+      const started = await api<Timer>("/timers", { method: "POST", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, description: description.value.trim() || null }) });
+      if (versionAtRequest === timerStateVersion) applyTimer(started);
       rememberPath(pathId.value);
     }
     emit("changed");
@@ -90,10 +98,11 @@ async function toggleRun() {
 async function updateTimer(alreadyBusy = false) {
   if (!timer.value || (busy.value && !alreadyBusy)) return;
   if (!alreadyBusy) busy.value = true;
-  timerStateVersion++; error.value = "";
+  const versionAtRequest = ++timerStateVersion; error.value = "";
   try {
     const startedAt = timerStartedAt.value ? new Date(timerStartedAt.value).toISOString() : timer.value.startedAt;
-    applyTimer(await api<Timer>(`/timers/${timer.value.id}`, { method: "PUT", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, startedAt, description: description.value.trim() || null }) }));
+    const updated = await api<Timer>(`/timers/${timer.value.id}`, { method: "PUT", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, startedAt, description: description.value.trim() || null }) });
+    if (versionAtRequest === timerStateVersion) applyTimer(updated);
     rememberPath(pathId.value);
     emit("changed");
   } catch { error.value = "Could not save the active timer settings."; }
@@ -131,7 +140,13 @@ async function createLabel() {
 async function cancel() {
   if (!timer.value || busy.value) return;
   busy.value = true; error.value = "";
-  try { timerStateVersion++; await api("/timers/cancel", { method: "POST", body: "{}" }); reportsStore.clear(); applyTimer(null); description.value = ""; selectedLabelIds.value = []; emit("changed"); }
+  try {
+    const versionAtRequest = ++timerStateVersion;
+    await api("/timers/cancel", { method: "POST", body: "{}" });
+    reportsStore.clear();
+    if (versionAtRequest === timerStateVersion) applyTimer(null);
+    emit("changed");
+  }
   catch { error.value = "Could not cancel the timer."; }
   finally { busy.value = false; }
 }
@@ -184,9 +199,14 @@ function connectWebSocket() {
       let message: { type?: string; timer?: Timer | null };
       try { message = JSON.parse(event.data) as typeof message; } catch { return; }
       if (message.type === "READY") {
+        // Invalidate any poll that was already in flight. The socket is now
+        // the authoritative live source; reconciliation is only needed after
+        // disconnect/reconnect or app resume.
+        timerStateVersion++;
         socketConnected.value = true;
         stopPolling();
       } else if (message.type === "TIMER_STATE") {
+        timerStateVersion++;
         applyTimer(message.timer || null);
       }
     };
@@ -207,7 +227,7 @@ function connectWebSocket() {
 onMounted(() => {
   try { recentPathIds.value = JSON.parse(localStorage.getItem("know_recent_timer_paths") || "[]"); } catch { recentPathIds.value = []; }
   void load(); ticker = window.setInterval(() => { now.value = Date.now(); }, 1000);
-  startPolling(); connectWebSocket();
+  connectWebSocket();
 });
 onUnmounted(() => {
   if (ticker) window.clearInterval(ticker);
