@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import PromptDialog from "./PromptDialog.vue";
 import { paletteColors } from "../lib/color-palette";
+import { useLabelsStore } from "../stores/labels";
+import { usePathsStore } from "../stores/paths";
 
 type Path = { id: string; name: string; status: string };
 type Label = { id: string; name: string; color?: string | null };
@@ -10,7 +13,11 @@ type Timer = { id: string; pathId?: string; labelIds?: string[]; startedAt: stri
 
 const props = defineProps<{ inline?: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
-const paths = ref<Path[]>([]), labels = ref<Label[]>([]), timer = ref<Timer | null>(null);
+const pathsStore = usePathsStore();
+const labelsStore = useLabelsStore();
+const { paths } = storeToRefs(pathsStore);
+const { labels } = storeToRefs(labelsStore);
+const timer = ref<Timer | null>(null);
 const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref(""), newLabel = ref("");
 const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
 const busy = ref(false), error = ref("");
@@ -53,7 +60,7 @@ async function load() {
       api<Label[]>("/labels?scope=TIME_ENTRY").then((value) => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
       api<Timer | null>("/timers/current"),
     ]);
-    paths.value = loadedPaths; labels.value = loadedLabels; applyTimer(current);
+    pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels); applyTimer(current);
   } catch { error.value = "Unable to load the time tracker."; }
 }
 async function toggleRun() {
@@ -92,7 +99,7 @@ async function choosePath(id: string) {
     if (!name) return;
     try {
       const created = await api<Path>("/paths", { method: "POST", body: JSON.stringify({ name, description: null, color: paletteColors[6] }) });
-      paths.value = [...paths.value, created]; pathId.value = created.id; rememberPath(created.id);
+      pathsStore.add(created); pathId.value = created.id; rememberPath(created.id);
       if (timer.value) await updateTimer();
     } catch { error.value = "Could not create path."; }
     return;
@@ -109,7 +116,7 @@ async function createLabel() {
   try {
     let created = await api<Label | undefined>("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) }).catch(() => undefined);
     if (!created) created = await api<Label>("/calendar/labels", { method: "POST", body: JSON.stringify({ name, color: null }) });
-    labels.value = [...labels.value, created]; selectedLabelIds.value = [...new Set([...selectedLabelIds.value, created.id])]; newLabel.value = "";
+    labelsStore.add({ ...created, scopes: created.scopes || ["TIME_ENTRY"] }); selectedLabelIds.value = [...new Set([...selectedLabelIds.value, created.id])]; newLabel.value = "";
     if (timer.value) await updateTimer(true);
   } catch { error.value = "Could not create the session label."; }
   finally { busy.value = false; }

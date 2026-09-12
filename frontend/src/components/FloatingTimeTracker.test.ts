@@ -2,12 +2,14 @@ import { flushPromises, mount } from "@vue/test-utils";
 import FloatingTimeTracker from "./FloatingTimeTracker.vue";
 import { api } from "../lib/api";
 import vuetify from "../plugins/vuetify";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("FloatingTimeTracker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setActivePinia(createPinia());
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths" || path === "/labels?scope=TIME_ENTRY" || path === "/calendar/labels") return [];
       if (path === "/timers/current") return null;

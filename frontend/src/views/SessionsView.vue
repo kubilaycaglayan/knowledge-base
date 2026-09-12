@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
+import { useLabelsStore } from "../stores/labels";
+import { usePathsStore } from "../stores/paths";
 
 type Path = { id: string; name: string; description?: string; status: string; color?: string | null };
 type Label = {
@@ -34,8 +37,10 @@ type Draft = {
 type SessionGroup = { key: string; label: string; sessions: Session[] };
 
 const sessions = ref<Session[]>([]);
-const paths = ref<Path[]>([]);
-const labels = ref<Label[]>([]);
+const pathsStore = usePathsStore();
+const labelsStore = useLabelsStore();
+const { paths } = storeToRefs(pathsStore);
+const { labels } = storeToRefs(labelsStore);
 const editingId = ref("");
 const draft = ref<Draft | null>(null);
 const error = ref("");
@@ -112,15 +117,15 @@ async function load(nextPage = page.value) {
   try {
     const [history, loadedPaths, loadedLabels] = await Promise.all([
       api<{ sessions: Session[]; page: number; totalPages: number; totalSessions: number }>(`/time-entries?page=${nextPage - 1}&size=50`),
-      api<Path[]>("/paths"),
-      api<Label[]>("/labels?scope=TIME_ENTRY").then(value => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
+      pathsStore.load(),
+      labelsStore.loadScope("TIME_ENTRY").then(value => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
     ]);
     sessions.value = history.sessions;
     page.value = history.page + 1;
     totalPages.value = history.totalPages;
     totalSessions.value = history.totalSessions;
-    paths.value = loadedPaths;
-    labels.value = loadedLabels;
+    void loadedPaths;
+    labelsStore.setAll(loadedLabels);
   } catch {
     error.value = "Unable to load sessions.";
   }

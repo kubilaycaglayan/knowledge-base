@@ -21,6 +21,18 @@ export const useLabelsStore = defineStore("labels", {
         this.loading = false;
       }
     },
+    async loadScope(scope: LabelScope) {
+      this.loading = true;
+      try {
+        const scoped = await api<Label[]>(`/labels?scope=${scope}`);
+        const ids = new Set(scoped.map((label) => label.id));
+        this.labels = [...this.labels.filter((label) => !ids.has(label.id)), ...scoped];
+        this.loaded = true;
+        return scoped;
+      } finally {
+        this.loading = false;
+      }
+    },
     setAll(labels: Label[]) { this.labels = labels; this.loaded = true; },
     replace(label: Label) { this.labels = this.labels.map((value) => value.id === label.id ? label : value); },
     add(label: Label) { this.labels = [...this.labels, label]; },
