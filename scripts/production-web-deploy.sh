@@ -31,8 +31,14 @@ echo 'Running Knowledge Base production preflight...'
 echo "Production host ports: API=${API_PROD_PORT}, PostgreSQL=${DB_PROD_PORT}, proxy=${PROXY_PROD_PORT} (proxy binding removed by Cloudflare overlay)"
 ./deployment/preflight.sh
 
-echo 'Building production images...'
-docker compose "${compose_args[@]}" build --pull
+build_args=()
+if [[ "${PULL_BASE_IMAGES:-0}" == "1" ]]; then
+  build_args+=(--pull)
+  echo 'Building production images with refreshed base images...'
+else
+  echo 'Building production images using cached base images (set PULL_BASE_IMAGES=1 to refresh)...'
+fi
+docker compose "${compose_args[@]}" build "${build_args[@]}"
 
 echo 'Updating the production stack (persistent volumes are preserved)...'
 docker compose "${compose_args[@]}" up -d --force-recreate
