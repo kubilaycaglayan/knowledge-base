@@ -312,7 +312,7 @@ const option = computed<EChartsOption>(() => ({
       const trendRow = props.trendlineMode !== "OFF" && trend !== undefined
         ? `<div>${props.trendlineMode === "LINEAR" ? "Linear" : "Parabolic"} trend: ${formatDuration(Math.round(trend))}</div>`
         : "";
-      return `<strong>${bucketLabel(day.date)}</strong><div>Total: ${formatDuration(day.totalSeconds)}</div>${trendRow}${rows}${props.showCalendar ? calendarRows(day) : ""}`;
+      return `<div class="tooltip-heading"><strong>${bucketLabel(day.date)}</strong><span>Total: ${formatDuration(day.totalSeconds)}</span></div>${trendRow}${rows}${props.showCalendar ? calendarRows(day) : ""}`;
     },
   },
   xAxis: {
