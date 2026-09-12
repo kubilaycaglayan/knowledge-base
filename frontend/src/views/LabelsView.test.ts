@@ -20,6 +20,18 @@ describe("LabelsView", () => {
     expect(wrapper.findAll(".label-edit-colors button")).toHaveLength(15);
   });
 
+  it("reuses cached labels when the view is mounted again", async () => {
+    vi.mocked(api).mockResolvedValue([{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }]);
+    const first = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    await flushPromises();
+    first.unmount();
+
+    mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/labels")).toHaveLength(1);
+  });
+
   it("offers a second confirmation and removes assignments only after confirming", async () => {
     const confirmations: string[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {

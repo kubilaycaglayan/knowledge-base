@@ -95,6 +95,19 @@ describe("SessionsView", () => {
     expect(wrapper.text()).toContain("Just completed");
   });
 
+  it("reuses the cached session page when the view is mounted again", async () => {
+    const first = mount(SessionsView);
+    await flushPromises();
+    const initialHistoryCalls = vi.mocked(api).mock.calls.filter(([path]) => path.startsWith("/time-entries?")).length;
+    first.unmount();
+
+    const second = mount(SessionsView);
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path.startsWith("/time-entries?")).length).toBe(initialHistoryCalls);
+    expect(second.findAll("article.session-card")).toHaveLength(2);
+  });
+
   it("lists sessions by latest completion time with path and label context", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();

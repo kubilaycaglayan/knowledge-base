@@ -117,6 +117,36 @@ describe("ReportsView", () => {
     expect(wrapper.find("button").exists()).toBe(true);
   });
 
+  it("reuses a cached report and reference data when mounted again", async () => {
+    const report = {
+      period: "WEEK",
+      from: "2026-08-24",
+      to: "2026-08-30",
+      totalSeconds: 0,
+      days: [],
+      paths: [],
+      sessionLabels: [],
+      calendarLabels: [],
+    };
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      return report;
+    });
+    const first = mount(ReportsView, { global });
+    await flushPromises();
+    const initialReportCalls = vi.mocked(api).mock.calls.filter(([path]) => String(path).startsWith("/reports?")).length;
+    const initialPathCalls = vi.mocked(api).mock.calls.filter(([path]) => path === "/paths").length;
+    const initialLabelCalls = vi.mocked(api).mock.calls.filter(([path]) => path === "/labels?scope=TIME_ENTRY").length;
+    first.unmount();
+
+    mount(ReportsView, { global });
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.filter(([path]) => String(path).startsWith("/reports?")).length).toBe(initialReportCalls);
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/paths").length).toBe(initialPathCalls);
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/labels?scope=TIME_ENTRY").length).toBe(initialLabelCalls);
+  });
+
   it("sends multiple selected paths as repeated report filters", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
