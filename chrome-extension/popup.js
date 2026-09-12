@@ -1,13 +1,7 @@
 const $ = (id) => document.getElementById(id);
-const debug = (...args) => {
-  if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
-    console.warn("[Know extension]", ...args);
-};
-const isDevelopment = () => typeof __KNOW_EXTENSION_ENV__ === "string" && __KNOW_EXTENSION_ENV__ !== "production";
+const debug = (..._args) => {};
 const errorDetails = (error) => error instanceof Error ? error.message : String(error || "Unknown error");
-function logError(operation, error, details = {}) {
-  debug("Operation failed", { operation, ...details, error: errorDetails(error), stack: error?.stack });
-}
+function logError(..._args) {}
 function userError(fallback, error) {
   return fallback;
 }
