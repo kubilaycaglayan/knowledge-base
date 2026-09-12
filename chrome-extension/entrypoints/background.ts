@@ -20,14 +20,6 @@ const logError = (operation: string, error: unknown, details: Record<string, unk
     error: errorDetails(error),
     stack: error instanceof Error ? error.stack : undefined,
   });
-if (typeof self.addEventListener === "function") {
-  self.addEventListener("error", (event) => {
-    logError("Uncaught background error", (event as ErrorEvent).error || Error((event as ErrorEvent).message || "Unknown script error"));
-  });
-  self.addEventListener("unhandledrejection", (event) => {
-    logError("Unhandled background promise rejection", (event as PromiseRejectionEvent).reason);
-  });
-}
 const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
