@@ -41,6 +41,9 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
 
   Optional<Path> findByIdAndUserId(UUID id, UUID userId);
 
+  @Query(value = "select * from path where id = :id and user_id = :userId", nativeQuery = true)
+  Optional<Path> findByIdAndUserIdIncludingDeleted(@Param("id") UUID id, @Param("userId") UUID userId);
+
   @Modifying
   @Query(
       value =

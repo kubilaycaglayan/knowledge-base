@@ -145,7 +145,7 @@ onMounted(load);
       </div>
     </section>
     <section v-else id="imports-panel-knowledge-base" class="card import-panel" role="tabpanel" aria-labelledby="imports-tab-knowledge-base" tabindex="0">
-      <p class="muted">Import a CSV previously downloaded from Settings. Path and label colors, scopes, and assignments are restored. Existing records with the same IDs are skipped.</p>
+      <p class="muted">Import a CSV previously downloaded from Settings. Path and label colors, scopes, and assignments are restored. Existing records and conflicting records are skipped.</p>
       <label class="file-input">Choose CSV file
         <input type="file" accept=".csv,text/csv" @change="async (event) => { const file = (event.target as HTMLInputElement).files?.[0]; if (file) knowledgeBaseCsv = await file.text(); }" />
       </label>
