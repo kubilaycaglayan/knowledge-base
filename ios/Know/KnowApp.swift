@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import Foundation
 import Security
+import GoogleSignIn
 
 struct Path: Codable, Identifiable {
     let id: UUID
@@ -110,7 +111,7 @@ enum KeychainTokenStore {
         return String(data: data, encoding: .utf8)
     }
 
-    static func save(_ token: String) {
+    static func save(_ token: String) throws {
         delete()
         let data = Data(token.utf8)
         let query: [String: Any] = [
@@ -120,7 +121,9 @@ enum KeychainTokenStore {
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
-        SecItemAdd(query as CFDictionary, nil)
+        guard SecItemAdd(query as CFDictionary, nil) == errSecSuccess else {
+            throw SessionError.storage
+        }
     }
 
     static func delete() {
@@ -140,7 +143,9 @@ struct APIClient {
 
     init(base: URL? = nil, session: URLSession = .shared) {
         self.base = base ?? URL(
-            string: ProcessInfo.processInfo.environment["KNOW_API_URL"] ?? "http://localhost:8080/api/v1"
+            string: ProcessInfo.processInfo.environment["KNOW_API_URL"]
+                ?? Bundle.main.object(forInfoDictionaryKey: "KnowledgeBaseAPIURL") as? String
+                ?? "http://localhost:8080/api/v1"
         )!
         self.session = session
     }
@@ -230,6 +235,8 @@ struct APIClient {
     @Published var stats: Statistics?
     @Published var error: String?
     @Published var isLoading = false
+    @Published var isAuthenticating = false
+    @Published var authError: String?
 
     let api: APIClient
     private let uiTesting: Bool
@@ -272,19 +279,52 @@ struct APIClient {
     }
 
     func authenticate(email: String, password: String, register: Bool) async {
+        guard !isAuthenticating else { return }
+        isAuthenticating = true
+        authError = nil
+        defer { isAuthenticating = false }
         do {
-            let body = try JSONEncoder().encode(["email": email, "password": password])
+            let body = try JSONEncoder().encode(["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
             let result: AuthResponse = try await api.request(
                 register ? "/auth/register" : "/auth/login",
                 method: "POST",
                 body: body
             )
-            token = result.token
-            KeychainTokenStore.save(result.token)
-            await refresh()
+            try acceptSession(result)
         } catch {
-            handle(error, "Authentication failed. Check your credentials.")
+            authError = authenticationMessage(error)
         }
+    }
+
+    func authenticateWithGoogle(idToken: () async throws -> String) async {
+        guard !isAuthenticating else { return }
+        isAuthenticating = true
+        authError = nil
+        defer { isAuthenticating = false }
+        do {
+            let credential = try await idToken()
+            guard !credential.isEmpty else { throw SessionError.google }
+            let result: AuthResponse = try await api.request("/auth/google", method: "POST",
+                body: JSONEncoder().encode(["idToken": credential]))
+            try acceptSession(result)
+        } catch {
+            if (error as NSError).domain == kGIDSignInErrorDomain,
+               (error as NSError).code == GIDSignInError.canceled.rawValue { return }
+            authError = authenticationMessage(error)
+        }
+    }
+
+    private func acceptSession(_ result: AuthResponse) throws {
+        guard !result.token.isEmpty else { throw SessionError.google }
+        if !uiTesting { try KeychainTokenStore.save(result.token) }
+        token = result.token
+    }
+
+    private func authenticationMessage(_ error: Error) -> String {
+        if case APIError.offline = error { return "No network connection. Reconnect and try again." }
+        if case SessionError.storage = error { return "Could not securely save your session. Please try again." }
+        if let error = error as? SessionError { return error.localizedDescription }
+        return "Could not sign in. Check your details and try again."
     }
 
     func refresh() async {
@@ -397,7 +437,10 @@ struct APIClient {
 
     func signOut() {
         token = nil
-        KeychainTokenStore.delete()
+        if !uiTesting {
+            KeychainTokenStore.delete()
+            GIDSignIn.sharedInstance.signOut()
+        }
         paths = []
         labels = []
         notes = []
@@ -416,32 +459,16 @@ func formatSeconds(_ value: Int64) -> String {
 @main
 struct KnowApp: App {
     @StateObject private var model = AppModel()
-    var body: some Scene { WindowGroup { RootView().environmentObject(model) } }
+    var body: some Scene { WindowGroup { RootView().environmentObject(model)
+        .onOpenURL { GIDSignIn.sharedInstance.handle($0) }
+    } }
 }
 
 struct RootView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
         Group { if model.signedIn { MainView() } else { LoginView() } }
-            .alert("Know", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") {} } message: { Text(model.error ?? "") }
-    }
-}
-
-struct LoginView: View {
-    @EnvironmentObject var model: AppModel
-    @State private var email = ""
-    @State private var password = ""
-    @State private var register = false
-    var body: some View {
-        Form {
-            Section { Text("know.").font(.largeTitle.bold()).foregroundStyle(.green); Text(register ? "Create your private workspace" : "Welcome back").font(.title3) }
-            Section {
-                TextField("Email", text: $email).textInputAutocapitalization(.never).keyboardType(.emailAddress).accessibilityIdentifier("auth.email")
-                SecureField("Password", text: $password).accessibilityIdentifier("auth.password")
-                Button(register ? "Create account" : "Sign in") { Task { await model.authenticate(email: email, password: password, register: register) } }.accessibilityIdentifier("auth.submit")
-            }
-            Section { Button(register ? "Already have an account? Sign in" : "New here? Create an account") { register.toggle() }.accessibilityIdentifier("auth.mode") }
-        }.padding(.top, 40)
+            .alert("Knowledge Base", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") {} } message: { Text(model.error ?? "") }
     }
 }
 
@@ -460,6 +487,14 @@ struct DashboardView: View {
     @State private var selectedPath = ""
     @State private var selectedLabel = ""
     @State private var timerStartedAt = Date()
+    private var pathPicker: some View {
+        Picker("Path", selection: $selectedPath) {
+            Text("No path").tag("")
+            ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in
+                Text(path.name).tag(path.id.uuidString)
+            }
+        }.accessibilityIdentifier("timer.path")
+    }
     private func syncTimerSelection() {
         guard let current = model.timer else { return }
         selectedPath = current.pathId?.uuidString ?? ""
@@ -471,7 +506,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
-                if model.isLoading { ProgressView("Loading workspace...") }
+                if model.isLoading { ProgressView("Loading workspace…") }
                 if let stats = model.stats {
                     Section("Tracked time") {
                         LabeledContent("Today", value: formatSeconds(stats.todaySeconds))
@@ -495,13 +530,7 @@ struct DashboardView: View {
                 }
                 Section("Focus today") {
                     Text(model.timer == nil ? "No active timer" : "Timer running").foregroundStyle(.secondary)
-                    Picker("Path", selection: $selectedPath) {
-                        Text("No path").tag("")
-                        ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in
-                            Text(path.name).tag(path.id.uuidString)
-                        }
-                    }
-                    .accessibilityIdentifier("timer.path")
+                    pathPicker
 
                     Picker("Label", selection: $selectedLabel) {
                         Text("No label").tag("")
@@ -548,7 +577,7 @@ struct DashboardView: View {
                     }
                 }
                 Section("Your paths") {
-                    if model.paths.isEmpty && !model.isLoading { ContentUnavailableView("No paths yet", "Create a path to organize your learning.") }
+                    if model.paths.isEmpty && !model.isLoading { ContentUnavailableView("No paths yet", systemImage: "folder", description: Text("Create a path to organize your learning.")) }
                     ForEach(model.paths) { path in
                         VStack(alignment: .leading) {
                             Text(path.name).font(.headline)
@@ -557,7 +586,7 @@ struct DashboardView: View {
                     }
                 }
             }
-            .navigationTitle("know.")
+            .navigationTitle("Knowledge Base")
             .refreshable { await model.refresh() }
             .onAppear { syncTimerSelection() }
             .onChange(of: model.timer?.pathId) { _, _ in syncTimerSelection() }
@@ -580,7 +609,7 @@ struct PathsView: View {
         NavigationStack {
             List {
                 if model.paths.isEmpty && !model.isLoading {
-                    ContentUnavailableView("No paths yet", "Create a path to organize your learning.")
+                    ContentUnavailableView("No paths yet", systemImage: "folder", description: Text("Create a path to organize your learning."))
                 }
                 ForEach(model.paths) { path in
                     VStack(alignment: .leading) {
@@ -629,7 +658,7 @@ struct TimelineView: View {
         NavigationStack {
             List {
                 if model.activities.isEmpty && !model.isLoading {
-                    ContentUnavailableView("No activity yet", "Your learning history will appear here.")
+                    ContentUnavailableView("No activity yet", systemImage: "clock", description: Text("Your learning history will appear here."))
                 }
                 ForEach(model.activities) { activity in
                     VStack(alignment: .leading) {

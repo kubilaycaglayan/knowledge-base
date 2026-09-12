@@ -1,4 +1,8 @@
 name: Know
+packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    exactVersion: 9.2.0
 options:
   minimumXcodeGenVersion: 2.38.0
   createIntermediateGroups: true
@@ -10,13 +14,34 @@ targets:
   Know:
     type: application
     platform: iOS
+    configFiles:
+      Debug: Config.xcconfig
+      Release: Config.xcconfig
+    dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
+      - package: GoogleSignIn
+        product: GoogleSignInSwift
+    info:
+      path: Know/Info.plist
+      properties:
+        CFBundleDisplayName: Knowledge Base
+        UILaunchScreen: {}
+        KnowledgeBaseAPIURL: $(KNOWLEDGE_BASE_API_URL)
+        GIDClientID: $(GOOGLE_IOS_CLIENT_ID)
+        GIDServerClientID: $(GOOGLE_SERVER_CLIENT_ID)
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - $(GOOGLE_REVERSED_CLIENT_ID)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     sources:
       - path: Know
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.know.ios
         PRODUCT_NAME: Know
-        GENERATE_INFOPLIST_FILE: YES
+        GENERATE_INFOPLIST_FILE: NO
         ENABLE_TESTABILITY: YES
   KnowTests:
     type: bundle.unit-test
