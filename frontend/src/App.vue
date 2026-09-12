@@ -2,6 +2,7 @@
 import { inject, watchEffect } from "vue";
 import { routeLocationKey, routerKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
+import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
 import { theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 const auth = useAuthStore();
@@ -61,6 +62,7 @@ function authenticated() {
         v-else
       />
     </main>
+    <FloatingTimeTracker v-if="auth.isAuthenticated && route?.path !== '/sessions'" />
   </div>
 </template>
 
