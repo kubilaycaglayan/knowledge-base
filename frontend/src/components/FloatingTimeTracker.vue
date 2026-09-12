@@ -172,7 +172,7 @@ async function sync() {
 }
 function websocketUrl() {
   const configured = import.meta.env.VITE_API_URL as string | undefined;
-  const base = configured ? new URL(configured, window.location.origin) : window.location;
+  const base = configured ? new URL(configured, window.location.origin) : new URL(window.location.href);
   base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
   base.pathname = "/ws/timers";
   base.search = "";
