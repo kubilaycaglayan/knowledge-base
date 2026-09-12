@@ -33,6 +33,7 @@ function authenticated() {
       <a class="brand" href="/" aria-label="Knowledge Base" translate="no">knowledge<span>.</span>base</a>
       <nav v-if="auth.isAuthenticated" aria-label="Main navigation">
         <RouterLink to="/sessions">Sessions</RouterLink
+        ><RouterLink to="/logs">Logs</RouterLink
         ><RouterLink to="/paths">Paths</RouterLink
         ><RouterLink to="/calendar">Calendar</RouterLink
         ><RouterLink to="/notes" :class="{ 'section-active': route?.path.startsWith('/notes/') }">Notes</RouterLink
