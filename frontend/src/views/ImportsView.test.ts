@@ -1,12 +1,16 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import ImportsView from "./ImportsView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
+import { useReportsStore } from "../stores/reports";
+import { useSessionsStore } from "../stores/sessions";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("ImportsView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setActivePinia(createPinia());
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -48,6 +52,22 @@ describe("ImportsView", () => {
     );
     expect(wrapper.text()).toContain("Imported 1 sessions");
     expect(vi.mocked(api)).toHaveBeenCalledWith("/imports/clockify/batches");
+  });
+
+  it("invalidates cached sessions and reports after importing activity", async () => {
+    const reports = useReportsStore();
+    const sessions = useSessionsStore();
+    reports.set("week", { totalSeconds: 60 });
+    sessions.setPage("0:50", { sessions: [], page: 0, totalPages: 1, totalSessions: 0 });
+
+    const wrapper = mount(ImportsView);
+    await flushPromises();
+    await wrapper.get('textarea[aria-label="Clockify JSON"]').setValue('{"timeentries":[]}');
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+
+    expect(reports.get("week")).toBeUndefined();
+    expect(sessions.cachedPage("0:50")).toBeUndefined();
   });
 
   it("shows import batches with an undo action", async () => {
