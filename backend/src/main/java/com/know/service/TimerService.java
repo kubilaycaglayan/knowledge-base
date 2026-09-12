@@ -18,6 +18,7 @@ public class TimerService {
   private final LabelRepository labels;
   private final LabelScopeRepository scopes;
   private final TimeEntryLabelRepository entryLabels;
+  private final TimerEventPublisher timerEvents;
 
   public TimerService(
       TimeEntryRepository entries,
@@ -25,11 +26,23 @@ public class TimerService {
       LabelRepository labels,
       TimeEntryLabelRepository entryLabels,
       LabelScopeRepository scopes) {
+    this(entries, paths, labels, entryLabels, scopes, null);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public TimerService(
+      TimeEntryRepository entries,
+      PathRepository paths,
+      LabelRepository labels,
+      TimeEntryLabelRepository entryLabels,
+      LabelScopeRepository scopes,
+      TimerEventPublisher timerEvents) {
     this.entries = entries;
     this.paths = paths;
     this.labels = labels;
     this.entryLabels = entryLabels;
     this.scopes = scopes;
+    this.timerEvents = timerEvents;
   }
 
   public record TimeView(
@@ -118,7 +131,9 @@ public class TimerService {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running");
     }
     replaceLabels(e.getId(), labelIds);
-    return view(e);
+    TimeView started = view(e);
+    publishChanged(userId, started);
+    return started;
   }
 
   @Transactional
@@ -134,9 +149,11 @@ public class TimerService {
     TimeView stopped = view(e);
     if (stopped.durationSeconds() < MINIMUM_SAVED_TIMER_SECONDS) {
       entries.delete(e);
+      publishChanged(userId, null);
       return stopped;
     }
     entries.save(e);
+    publishChanged(userId, stopped);
     return stopped;
   }
 
@@ -152,6 +169,7 @@ public class TimerService {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Only running timers can be cancelled");
     entries.delete(e);
+    publishChanged(userId, null);
   }
 
   @Transactional
@@ -183,7 +201,13 @@ public class TimerService {
     if (endedAt != null) {
       e.stop(endedAt);
     }
-    return view(entries.save(e));
+    TimeView updated = view(entries.save(e));
+    publishChanged(userId, updated.running() ? updated : null);
+    return updated;
+  }
+
+  private void publishChanged(UUID userId, TimeView timer) {
+    if (timerEvents != null) timerEvents.changed(userId, timer);
   }
 
   public TimeView current(UUID userId) {

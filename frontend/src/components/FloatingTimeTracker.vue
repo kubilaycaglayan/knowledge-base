@@ -27,7 +27,9 @@ const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), n
 const busy = ref(false), error = ref("");
 const timerStartedAt = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
-let ticker: number | undefined, syncTicker: number | undefined, syncInFlight = false, timerStateVersion = 0;
+let ticker: number | undefined, syncTicker: number | undefined, reconnectTicker: number | undefined;
+let syncInFlight = false, timerStateVersion = 0, socket: WebSocket | undefined;
+const socketConnected = ref(false);
 
 const activePaths = computed(() => paths.value.filter((path) => path.status === "ACTIVE"));
 const recentPaths = computed(() => recentPathIds.value.map((id) => paths.value.find((path) => path.id === id)).filter((path): path is Path => Boolean(path && path.status === "ACTIVE")).slice(0, 5));
@@ -153,11 +155,66 @@ async function sync() {
   } catch { /* Best-effort polling. */ }
   finally { syncInFlight = false; }
 }
+function websocketUrl() {
+  const configured = import.meta.env.VITE_API_URL as string | undefined;
+  const base = configured ? new URL(configured, window.location.origin) : window.location;
+  base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
+  base.pathname = "/ws/timers";
+  base.search = "";
+  return base.toString();
+}
+function startPolling() {
+  if (syncTicker) return;
+  void sync();
+  syncTicker = window.setInterval(() => { void sync(); }, 2000);
+}
+function stopPolling() {
+  if (syncTicker) window.clearInterval(syncTicker);
+  syncTicker = undefined;
+}
+function connectWebSocket() {
+  if (socket || !localStorage.getItem("know_token")) return;
+  try {
+    const candidate = new WebSocket(websocketUrl());
+    socket = candidate;
+    candidate.onopen = () => {
+      candidate.send(JSON.stringify({ type: "AUTH", token: localStorage.getItem("know_token") }));
+    };
+    candidate.onmessage = (event) => {
+      let message: { type?: string; timer?: Timer | null };
+      try { message = JSON.parse(event.data) as typeof message; } catch { return; }
+      if (message.type === "READY") {
+        socketConnected.value = true;
+        stopPolling();
+      } else if (message.type === "TIMER_STATE") {
+        applyTimer(message.timer || null);
+      }
+    };
+    candidate.onclose = () => {
+      if (socket === candidate) socket = undefined;
+      socketConnected.value = false;
+      startPolling();
+      if (!reconnectTicker) reconnectTicker = window.setTimeout(() => {
+        reconnectTicker = undefined;
+        connectWebSocket();
+      }, 5000);
+    };
+    candidate.onerror = () => candidate.close();
+  } catch {
+    startPolling();
+  }
+}
 onMounted(() => {
   try { recentPathIds.value = JSON.parse(localStorage.getItem("know_recent_timer_paths") || "[]"); } catch { recentPathIds.value = []; }
-  void load(); ticker = window.setInterval(() => { now.value = Date.now(); }, 1000); syncTicker = window.setInterval(() => { void sync(); }, 2000);
+  void load(); ticker = window.setInterval(() => { now.value = Date.now(); }, 1000);
+  startPolling(); connectWebSocket();
 });
-onUnmounted(() => { if (ticker) window.clearInterval(ticker); if (syncTicker) window.clearInterval(syncTicker); });
+onUnmounted(() => {
+  if (ticker) window.clearInterval(ticker);
+  stopPolling();
+  if (reconnectTicker) window.clearTimeout(reconnectTicker);
+  socket?.close(); socket = undefined;
+});
 </script>
 
 <template>
