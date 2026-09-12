@@ -6,6 +6,7 @@ import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import { useLabelsStore, type Label, type LabelScope } from "../stores/labels";
+import { useReportsStore } from "../stores/reports";
 
 type Scope = LabelScope;
 const scopeOptions: { value: Scope; label: string }[] = [
@@ -15,6 +16,7 @@ const scopeOptions: { value: Scope; label: string }[] = [
 ];
 const colors = labelColors;
 const labelStore = useLabelsStore();
+const reportsStore = useReportsStore();
 const { labels, loading } = storeToRefs(labelStore);
 const name = ref("");
 const color = ref(colors[0]);
@@ -41,6 +43,7 @@ async function add() {
   try {
     const created = await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name: name.value.trim(), color: color.value, scopes: scopes.value }) });
     labelStore.add(created); name.value = "";
+    reportsStore.clear();
   } catch { error.value = "Could not create this label. Names must be unique."; }
   finally { saving.value = false; }
 }
@@ -54,7 +57,7 @@ async function save(label: Label) {
   saving.value = true; error.value = "";
   try {
     const saved = await api<Label>(`/labels/${label.id}`, { method: "PUT", body: JSON.stringify({ ...draft.value, name: draft.value.name.trim() }) });
-    labelStore.replace(saved); cancelEdit();
+    labelStore.replace(saved); reportsStore.clear(); cancelEdit();
   } catch { error.value = "Could not save this label. Remove assignments before removing a scope."; }
   finally { saving.value = false; }
 }
@@ -64,6 +67,7 @@ async function remove(label: Label) {
   try {
     await api(`/labels/${label.id}`, { method: "DELETE" });
     labelStore.remove(label.id);
+    reportsStore.clear();
   } catch {
     const assigned = await promptDialog.value!.open(
       `“${label.name}” has assignments. Remove the label and its assignments?`,
@@ -74,6 +78,7 @@ async function remove(label: Label) {
     try {
       await api(`/labels/${label.id}?removeAssignments=true`, { method: "DELETE" });
       labelStore.remove(label.id);
+      reportsStore.clear();
     } catch { error.value = "Could not remove this label."; }
   }
 }

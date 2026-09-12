@@ -9,6 +9,7 @@ import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 import { useSessionsStore, type Session, type SessionPage } from "../stores/sessions";
+import { useReportsStore } from "../stores/reports";
 
 type Path = { id: string; name: string; description?: string; status: string; color?: string | null };
 type Label = {
@@ -30,6 +31,7 @@ const sessions = ref<Session[]>([]);
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const sessionsStore = useSessionsStore();
+const reportsStore = useReportsStore();
 const { paths } = storeToRefs(pathsStore);
 const { labels } = storeToRefs(labelsStore);
 const editingId = ref("");
@@ -173,6 +175,7 @@ async function save(session: Session) {
     });
     cancelEdit();
     sessionsStore.clearPages();
+    reportsStore.clear();
     await load(page.value, true);
   } catch {
     error.value = "Could not update this session. Check its time range and selections.";
@@ -190,6 +193,7 @@ async function remove(session: Session) {
   try {
     await api(`/time-entries/${session.id}`, { method: "DELETE" });
     sessionsStore.clearPages();
+    reportsStore.clear();
     await load(page.value, true);
   } catch {
     error.value = "Could not remove this session.";

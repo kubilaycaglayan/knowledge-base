@@ -34,6 +34,7 @@ import ProjectDurationTable from "../components/reports/ProjectDurationTable.vue
 import { formatDuration } from "../utils/duration";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
+import { useReportsStore } from "../stores/reports";
 
 type Category = { id?: string; label: string; seconds: number };
 type CalendarAssignment = {
@@ -127,6 +128,7 @@ const selectedPathIds = ref<string[]>(initialParams.getAll("pathId"));
 const selectedLabelIds = ref<string[]>(initialParams.getAll("labelId"));
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
+const reportsStore = useReportsStore();
 const { paths: availablePaths } = storeToRefs(pathsStore);
 const { labels: availableLabels } = storeToRefs(labelsStore);
 const report = ref<Report | null>(null);
@@ -339,6 +341,13 @@ async function load(preserveScroll?: { left: number; top: number }) {
     });
     selectedPathIds.value.forEach((pathId) => params.append("pathId", pathId));
     selectedLabelIds.value.forEach((labelId) => params.append("labelId", labelId));
+    const cacheKey = params.toString();
+    const cached = reportsStore.get<Report>(cacheKey);
+    if (cached) {
+      report.value = cached;
+      selectedRange.value = { startDate: cached.from, endDate: cached.to };
+      return;
+    }
     const result = await api<Report>(`/reports?${params.toString()}`, {
       signal: controller.signal,
     });
@@ -351,6 +360,7 @@ async function load(preserveScroll?: { left: number; top: number }) {
     )
       throw new Error("Invalid report response");
     report.value = result;
+    reportsStore.set(cacheKey, result);
     selectedRange.value = { startDate: result.from, endDate: result.to };
   } catch {
     if (sequence !== loadSequence) return;

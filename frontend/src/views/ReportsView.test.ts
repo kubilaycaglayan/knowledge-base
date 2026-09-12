@@ -222,6 +222,7 @@ describe("ReportsView", () => {
       ["Monthly", "MONTH", format(subYears(new Date(), 1), "yyyy-MM-dd")],
       ["Quarterly", "QUARTER", format(subYears(new Date(), 2), "yyyy-MM-dd")],
     ] as const) {
+      const reportRequestCount = vi.mocked(api).mock.calls.filter(([path]) => typeof path === "string" && path.startsWith("/reports?")).length;
       await wrapper
         .findAll("button")
         .find((button) => button.text() === label)!
@@ -231,9 +232,11 @@ describe("ReportsView", () => {
         aggregation === "DAY"
           ? format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd")
           : expectedEnd;
-      expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
+      const reportRequests = vi.mocked(api).mock.calls.filter(([path]) => typeof path === "string" && path.startsWith("/reports?"));
+      expect(reportRequests.at(-1)?.[0]).toBe(
         `/reports?startDate=${expectedStart}&endDate=${expectedRangeEnd}&aggregation=${aggregation}`,
       );
+      expect(reportRequests.length).toBe(reportRequestCount + (aggregation === "DAY" ? 0 : 1));
     }
   });
 
@@ -412,6 +415,7 @@ describe("ReportsView", () => {
     expect(filtered.text()).toContain("01:00:00");
     expect(filtered.text()).not.toContain("Other");
 
+    setActivePinia(createPinia());
     vi.mocked(api).mockResolvedValueOnce(null);
     const empty = mount(ReportsView, { global });
     await flushPromises();
