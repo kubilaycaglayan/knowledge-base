@@ -11,9 +11,11 @@
 .google-login ~ .text-button { margin-top: 20px; }
 .timeline-entry h2 { margin: 5px 0; font-size: 16px; }
 .path-content, .path-edit { width: 100%; min-width: 0; }
-.path-content { position: relative; padding-bottom: 44px; }
-.path-content .row-actions { position: absolute; right: 0; bottom: 0; left: 0; }
-.path-content > p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.path-content { display: flex; height: 100%; flex-direction: column; }
+.path-body { min-width: 0; }
+.path-content .row-actions { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--workspace-border); }
+.path-content .row-actions .danger { margin-left: auto; }
+.path-body > p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .tag { color: var(--workspace-muted); margin-right: 8px; font-size: 12px; }
 .row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .activity-pill { margin-left: 10px; }
