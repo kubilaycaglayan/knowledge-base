@@ -6,16 +6,18 @@ import { api } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
 import ColorPalette from "../components/ColorPalette.vue";
 import { useLabelsStore } from "../stores/labels";
+import { useCalendarStore, type CalendarDay } from "../stores/calendar";
 
 type Scope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
 type Label = { id: string; name: string; color?: string | null; scopes: Scope[] };
-type Assignment = { labelId: string; name: string; color?: string | null; portion?: number | null };
-type Day = { date: string; note?: string | null; labels: Assignment[] };
+type Assignment = CalendarDay["labels"][number];
+type Day = CalendarDay;
 const month = ref(startOfMonth(new Date()));
 const selected = ref(format(new Date(), "yyyy-MM-dd"));
 const labelsStore = useLabelsStore();
+const calendarStore = useCalendarStore();
 const { labels } = storeToRefs(labelsStore);
-const days = ref<Record<string, Day>>({});
+const { days } = storeToRefs(calendarStore);
 const note = ref("");
 const chosen = ref<Record<string, number | null>>({});
 const newLabel = ref("");
@@ -66,7 +68,7 @@ async function load() {
     const endDate = format(endOfMonth(month.value), "yyyy-MM-dd");
     const [savedLabels, savedDays] = await Promise.all([labelsStore.loadScope("CALENDAR"), api<Day[]>(`/calendar/days?startDate=${startDate}&endDate=${endDate}`)]);
     void savedLabels;
-    days.value = Object.fromEntries(savedDays.map(day => [day.date, day]));
+    calendarStore.setRange(`${startDate}:${endDate}`, savedDays);
     selectDay(parseISO(selected.value));
   } catch { error.value = "Unable to load calendar records."; }
 }
@@ -75,12 +77,11 @@ async function save() {
   try {
     if (selectedRange.value) {
       const saved = await api<Day[]>("/calendar/days/range", { method: "PUT", body: JSON.stringify({ startDate: selectedRange.value.start, endDate: selectedRange.value.end, note: note.value || null, labels: selectedAssignments() }) });
-      days.value = { ...days.value, ...Object.fromEntries(saved.map(day => [day.date, day])) };
+      saved.forEach((day) => calendarStore.setDay(day));
       selected.value = selectedRange.value.start; rangeStart.value = null; rangeEnd.value = null; selectDay(parseISO(selected.value)); return;
     }
     const saved = await api<Day>(`/calendar/days/${selected.value}`, { method: "PUT", body: JSON.stringify({ note: note.value || null, labels: selectedAssignments() }) });
-    days.value = { ...days.value, [selected.value]: saved };
-    if (!saved.note && !saved.labels.length) { const next = { ...days.value }; delete next[selected.value]; days.value = next; }
+    calendarStore.setDay(saved);
     selectDay(parseISO(selected.value));
   } catch { error.value = "Unable to save this day."; } finally { saving.value = false; }
 }

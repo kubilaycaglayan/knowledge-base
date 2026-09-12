@@ -203,7 +203,7 @@ onMounted(load);
 </script>
 
 <template>
-  <FloatingTimeTracker inline />
+  <FloatingTimeTracker inline @changed="load(1)" />
   <PromptDialog ref="promptDialog" />
   <section>
     <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>

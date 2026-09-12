@@ -62,6 +62,39 @@ describe("SessionsView", () => {
     expect(wrapper.element.firstElementChild?.getAttribute("data-test")).toBe("session-tracker");
   });
 
+  it("refreshes the sessions list when the tracker completes a session", async () => {
+    let historyLoads = 0;
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path.startsWith("/time-entries?")) {
+        historyLoads++;
+        return {
+          page: 0,
+          totalPages: 1,
+          totalSessions: historyLoads === 1 ? 1 : 2,
+          sessions: historyLoads === 1
+            ? [{ id: "old", startedAt: "2026-08-27T11:00:00Z", endedAt: "2026-08-27T12:00:00Z", durationSeconds: 3600, source: "WEB" }]
+            : [
+                { id: "fresh", startedAt: "2026-08-28T12:00:00Z", endedAt: "2026-08-28T13:00:00Z", durationSeconds: 3600, source: "WEB", description: "Just completed" },
+                { id: "old", startedAt: "2026-08-27T11:00:00Z", endedAt: "2026-08-27T12:00:00Z", durationSeconds: 3600, source: "WEB" },
+              ],
+        };
+      }
+      if (path === "/paths" || path === "/calendar/labels") return [];
+      return undefined;
+    });
+
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    expect(wrapper.findAll("article.session-card")).toHaveLength(1);
+
+    wrapper.findComponent(timerStub).vm.$emit("changed");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries?page=0&size=50");
+    expect(wrapper.findAll("article.session-card")).toHaveLength(2);
+    expect(wrapper.text()).toContain("Just completed");
+  });
+
   it("lists sessions by latest completion time with path and label context", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
