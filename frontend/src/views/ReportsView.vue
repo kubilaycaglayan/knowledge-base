@@ -527,7 +527,46 @@ onBeforeUnmount(() =>
       <button class="ghost" type="button" @click="load">Try again</button>
     </p>
     <div v-if="loading && !report" class="report-loading" role="status">
-      Loading report…
+      <span class="visually-hidden">Loading report…</span>
+      <section class="report-card report-chart-card report-skeleton-card" aria-hidden="true">
+        <div class="report-card-heading">
+          <div>
+            <span class="skeleton-block skeleton-kicker"></span>
+            <span class="skeleton-block skeleton-title"></span>
+          </div>
+          <span class="skeleton-block skeleton-total"></span>
+        </div>
+        <div class="report-skeleton-chart">
+          <span class="skeleton-chart-y skeleton-chart-y-one"></span>
+          <span class="skeleton-chart-y skeleton-chart-y-two"></span>
+          <div class="skeleton-chart-bars">
+            <span v-for="height in [38, 58, 46, 76, 52, 68, 42]" :key="height" class="skeleton-chart-bar" :style="{ height: `${height}%` }"></span>
+          </div>
+          <div class="skeleton-chart-x">
+            <span v-for="label in 7" :key="label" class="skeleton-chart-label"></span>
+          </div>
+        </div>
+      </section>
+      <section class="report-card breakdown-card report-skeleton-card" aria-hidden="true">
+        <div class="report-skeleton-toolbar">
+          <span class="skeleton-block skeleton-filter-label"></span>
+          <span class="skeleton-block skeleton-select skeleton-select-wide"></span>
+          <span class="skeleton-block skeleton-select skeleton-select-medium"></span>
+          <span class="skeleton-block skeleton-select skeleton-select-small"></span>
+          <span class="skeleton-block skeleton-active-days"></span>
+        </div>
+        <div class="breakdown-grid report-skeleton-breakdown">
+          <div class="report-skeleton-table">
+            <span class="skeleton-block skeleton-table-heading"></span>
+            <span v-for="row in 5" :key="row" class="skeleton-table-row">
+              <i class="skeleton-block"></i><i class="skeleton-block"></i><i class="skeleton-block"></i>
+            </span>
+          </div>
+          <div class="donut-panel">
+            <span class="skeleton-donut"></span>
+          </div>
+        </div>
+      </section>
     </div>
     <template v-else-if="report"
       ><section

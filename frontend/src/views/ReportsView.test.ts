@@ -405,6 +405,10 @@ describe("ReportsView", () => {
     const wrapper = mount(ReportsView, { global });
     await wrapper.vm.$nextTick();
     expect(wrapper.get('[role="status"]').text()).toBe("Loading report…");
+    expect(wrapper.find(".report-skeleton-chart").exists()).toBe(true);
+    expect(wrapper.findAll(".skeleton-chart-bar")).toHaveLength(7);
+    expect(wrapper.findAll(".skeleton-table-row")).toHaveLength(5);
+    expect(wrapper.find(".skeleton-donut").exists()).toBe(true);
 
     resolveReport({
       period: "WEEK",
