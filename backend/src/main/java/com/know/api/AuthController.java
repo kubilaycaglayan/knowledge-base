@@ -16,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import com.know.service.LabelManagementService;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -25,7 +24,6 @@ public class AuthController {
   private final PasswordEncoder encoder;
   private final com.know.security.AuthAttemptLimiter limiter;
   private final com.know.security.GoogleIdentityVerifier google;
-  private final LabelManagementService labelManagement;
   private final SecretKey key;
   private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -34,13 +32,11 @@ public class AuthController {
       PasswordEncoder encoder,
       com.know.security.AuthAttemptLimiter limiter,
       com.know.security.GoogleIdentityVerifier google,
-      LabelManagementService labelManagement,
       @Value("${app.jwt-secret}") String secret) {
     this.users = users;
     this.encoder = encoder;
     this.limiter = limiter;
     this.google = google;
-    this.labelManagement = labelManagement;
     this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
   }
 
@@ -74,7 +70,6 @@ public class AuthController {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
     User u = users.save(
         new User(email, encoder.encode(c.password()), email.substring(0, email.indexOf('@'))));
-    labelManagement.highlight(u.getId());
     return response(u);
   }
 
@@ -124,7 +119,6 @@ public class AuthController {
     }
     user.linkGoogleSubject(identity.subject());
     User saved = users.save(user);
-    labelManagement.highlight(saved.getId());
     return response(saved);
   }
 

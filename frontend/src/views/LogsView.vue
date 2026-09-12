@@ -6,6 +6,7 @@ import { useLogsStore, type Log } from "../stores/logs";
 import PromptDialog from "../components/PromptDialog.vue";
 
 type Draft = { body: string; occurredAt: string };
+type LogLabel = { id: string; name: string; color?: string | null };
 type LogGroup = { label: string; logs: Log[]; dayBreak: boolean };
 const logsStore = useLogsStore();
 const { logs } = storeToRefs(logsStore);
@@ -16,8 +17,9 @@ const draft = ref<Draft | null>(null);
 const error = ref("");
 const status = ref<"idle" | "saving" | "saved">("idle");
 const savingEdit = ref(false);
-const highlightLabelId = ref("");
-const highlightingId = ref("");
+const logLabels = ref<LogLabel[]>([]);
+const openLabelMenuId = ref("");
+const savingLabelsId = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const now = ref(new Date());
 const followsBrowserClock = ref(true);
@@ -116,23 +118,24 @@ async function load() {
   try { logsStore.setAll(await api<Log[]>("/logs")); error.value = ""; }
   catch { error.value = "Unable to load logs. Please try again."; }
 }
-async function loadHighlightLabel() {
+async function loadLogLabels() {
   try {
-    const labels = await api<{ id: string; name: string }[]>("/labels?scope=LOG");
-    highlightLabelId.value = labels.find((label) => label.name.toLowerCase() === "highlight")?.id || "";
+    logLabels.value = await api<LogLabel[]>("/labels?scope=LOG");
   } catch { error.value = "Unable to load log labels. Please try again."; }
 }
-function isHighlighted(log: Log) { return Boolean(highlightLabelId.value && log.labelIds?.includes(highlightLabelId.value)); }
-async function toggleHighlight(log: Log) {
-  if (!highlightLabelId.value || highlightingId.value) return;
-  highlightingId.value = log.id;
-  const highlighted = !isHighlighted(log);
+function hasLabel(log: Log, labelId: string) { return Boolean(log.labelIds?.includes(labelId)); }
+async function toggleLogLabel(log: Log, labelId: string) {
+  if (savingLabelsId.value === log.id) return;
+  savingLabelsId.value = log.id;
+  const nextLabelIds = hasLabel(log, labelId)
+    ? (log.labelIds || []).filter((id) => id !== labelId)
+    : [...(log.labelIds || []), labelId];
   try {
-    const saved = await api<Log>(`/logs/${log.id}/highlight`, { method: "PATCH", body: JSON.stringify({ highlighted }) });
+    const saved = await api<Log>(`/logs/${log.id}/labels`, { method: "PUT", body: JSON.stringify({ labelIds: nextLabelIds }) });
     logsStore.replaceLabels(log.id, saved.labelIds);
     error.value = "";
-  } catch { error.value = "Unable to update this log’s highlight. Please try again."; }
-  finally { highlightingId.value = ""; }
+  } catch { error.value = "Unable to update this log’s labels. Please try again."; }
+  finally { savingLabelsId.value = ""; }
 }
 async function saveNew() {
   if (status.value === "saving" || !body.value.trim()) return;
@@ -173,7 +176,7 @@ async function saveEdit(log: Log) {
   finally { savingEdit.value = false; }
 }
 function refreshVisibleList() { if (document.visibilityState === "visible" && !editingId.value) void load(); }
-onMounted(async () => { await Promise.all([load(), loadHighlightLabel()]); syncBrowserClock(); refreshTimer = setInterval(refreshVisibleList, 15000); clockTimer = setInterval(syncBrowserClock, 1000); window.addEventListener("focus", refreshVisibleList); });
+onMounted(async () => { await Promise.all([load(), loadLogLabels()]); syncBrowserClock(); refreshTimer = setInterval(refreshVisibleList, 15000); clockTimer = setInterval(syncBrowserClock, 1000); window.addEventListener("focus", refreshVisibleList); });
 onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clockTimer) clearInterval(clockTimer); window.removeEventListener("focus", refreshVisibleList); });
 </script>
 
@@ -211,9 +214,15 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
             <button class="log-edit-button ghost" type="button" :aria-label="`Edit log from ${formatTimestamp(log.occurredAt)}`" title="Edit log" @click="startEdit(log)">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 16-.7 4.7L8 20l11.3-11.3a2.1 2.1 0 0 0-3-3L5 17Z"/><path d="m14.8 7.2 2 2"/></svg>
             </button>
-            <button class="log-highlight-button ghost" type="button" :aria-label="isHighlighted(log) ? 'Remove Highlight label' : 'Add Highlight label'" :aria-pressed="isHighlighted(log)" title="Highlight log" :disabled="highlightingId === log.id" @click="toggleHighlight(log)">
-              <svg viewBox="0 0 24 24" width="16" height="16" :fill="isHighlighted(log) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" /></svg>
-            </button>
+            <template v-if="logLabels.length">
+              <button class="log-label-button ghost" type="button" :aria-label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`" :aria-expanded="openLabelMenuId === log.id" aria-haspopup="dialog" title="Choose log labels" @click="openLabelMenuId = openLabelMenuId === log.id ? '' : log.id">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m20.6 13.4-7.2 7.2a2 2 0 0 1-2.8 0L3.4 13.4a2 2 0 0 1 0-2.8l7.2-7.2a2 2 0 0 1 2.8 0l7.2 7.2a2 2 0 0 1 0 2.8Z"/><circle cx="9" cy="9" r="1.2"/></svg>
+              </button>
+              <div v-if="openLabelMenuId === log.id" class="log-label-menu card" role="dialog" :aria-label="`Labels for log from ${formatTimestamp(log.occurredAt)}`" @keydown.esc="openLabelMenuId = ''">
+                <strong>Log labels</strong>
+                <label v-for="label in logLabels" :key="label.id" class="log-label-option"><input type="checkbox" :checked="hasLabel(log, label.id)" :disabled="savingLabelsId === log.id" @change="toggleLogLabel(log, label.id)" /><span class="label-swatch" :style="{ backgroundColor: label.color || 'var(--workspace-accent)' }" aria-hidden="true"></span><span>{{ label.name }}</span></label>
+              </div>
+            </template>
             <button class="log-remove-button ghost" type="button" :aria-label="`Remove log from ${formatTimestamp(log.occurredAt)}`" title="Remove log" @click="removeLog(log)">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
             </button>
@@ -245,8 +254,12 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .log-edit-body { width: 100%; min-height: 34px; resize: vertical; }
 .log-edit-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
 .log-edit-button:hover, .log-edit-button:focus-visible { opacity: 1; }
-.log-highlight-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
-.log-highlight-button:hover, .log-highlight-button:focus-visible, .log-highlight-button[aria-pressed="true"] { color: var(--workspace-accent); opacity: 1; }
+.log-label-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .7; }
+.log-label-button:hover, .log-label-button:focus-visible, .log-label-button[aria-expanded="true"] { color: var(--workspace-accent); opacity: 1; }
+.log-label-menu { position: absolute; z-index: 2; right: 0; top: 36px; display: grid; gap: 8px; min-width: 190px; padding: 12px; box-shadow: var(--workspace-shadow); }
+.log-actions { position: relative; }
+.log-label-option { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 13px; }
+.log-label-option .label-swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .log-actions { display: flex; align-items: center; gap: 2px; }
 .log-remove-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
 .log-remove-button:hover, .log-remove-button:focus-visible { color: var(--workspace-danger); opacity: 1; }

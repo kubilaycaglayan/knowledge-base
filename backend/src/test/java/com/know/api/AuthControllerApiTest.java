@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.know.domain.User;
 import com.know.domain.UserRepository;
 import com.know.security.GoogleIdentityVerifier;
-import com.know.service.LabelManagementService;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -43,7 +42,6 @@ class AuthControllerApiTest {
   @MockBean PasswordEncoder encoder;
   @MockBean com.know.security.AuthAttemptLimiter limiter;
   @MockBean GoogleIdentityVerifier google;
-  @MockBean LabelManagementService labelManagement;
   @Autowired CorsConfigurationSource corsConfigurationSource;
 
   @BeforeEach
@@ -73,7 +71,6 @@ class AuthControllerApiTest {
         .andExpect(jsonPath("$.token").isNotEmpty())
         .andExpect(jsonPath("$.email").value("person@example.com"));
     verify(encoder).encode("correct-horse-battery");
-    verify(labelManagement).highlight(saved.getId());
   }
 
   @Test
@@ -142,7 +139,6 @@ class AuthControllerApiTest {
         .andExpect(jsonPath("$.email").value("person@example.com"));
     org.junit.jupiter.api.Assertions.assertEquals("google-sub", existing.getGoogleSubject());
     verify(users).save(existing);
-    verify(labelManagement).highlight(existing.getId());
     verifyNoInteractions(encoder);
   }
 
@@ -169,7 +165,6 @@ class AuthControllerApiTest {
     org.junit.jupiter.api.Assertions.assertEquals("new-sub", account.getValue().getGoogleSubject());
     org.junit.jupiter.api.Assertions.assertEquals(
         "New Person", account.getValue().getDisplayName());
-    verify(labelManagement).highlight(account.getValue().getId());
     verify(encoder).encode(anyString());
   }
 

@@ -15,7 +15,7 @@ describe("LogsView", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
-    vi.mocked(api).mockImplementation(async (path) => path === "/labels?scope=LOG" ? [{ id: "highlight", name: "Highlight" }] : [log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("same-hour", "Another thought", "2026-09-11T11:20:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
+    vi.mocked(api).mockImplementation(async (path) => path === "/labels?scope=LOG" ? [{ id: "important", name: "Important", color: "#2878D5" }] : [log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("same-hour", "Another thought", "2026-09-11T11:20:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); config.global.stubs = {}; });
 
@@ -87,13 +87,21 @@ describe("LogsView", () => {
     expect(wrapper.text()).not.toContain("Recent thought");
   });
 
-  it("assigns the Highlight label from the star button", async () => {
+  it("opens log labels and toggles a selected label", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
-    vi.mocked(api).mockResolvedValueOnce({ ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds: ["highlight"] });
-    await wrapper.get('button[aria-label="Add Highlight label"]').trigger("click");
+    vi.mocked(api).mockResolvedValueOnce({ ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds: ["important"] });
+    await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
+    expect(wrapper.get('[role="dialog"]').text()).toContain("Important");
+    await wrapper.get('[role="dialog"] input[type="checkbox"]').setValue(true);
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new/highlight", expect.objectContaining({ method: "PATCH", body: '{"highlighted":true}' }));
-    expect(wrapper.get('button[aria-label="Remove Highlight label"]').attributes("aria-pressed")).toBe("true");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new/labels", expect.objectContaining({ method: "PUT", body: '{"labelIds":["important"]}' }));
+  });
+
+  it("does not render a label button when the user has no log labels", async () => {
+    vi.mocked(api).mockImplementation(async (path) => path === "/labels?scope=LOG" ? [] : [log("new", "Recent thought", "2026-09-11T11:30:00Z")]);
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    expect(wrapper.find('button[aria-label^="Choose labels"]').exists()).toBe(false);
   });
 });

@@ -19,7 +19,7 @@ public class LogController {
   public LogController(LogService service) { this.service = service; }
 
   record LogRequest(@NotBlank @Size(max = 20000) String body, @NotNull Instant occurredAt, Long version) {}
-  record HighlightRequest(@NotNull Boolean highlighted) {}
+  record LabelsRequest(@NotNull @Size(max = 100) List<UUID> labelIds) {}
   private UUID user(Authentication authentication) { return UUID.fromString(authentication.getName()); }
 
   @GetMapping
@@ -43,8 +43,8 @@ public class LogController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(Authentication authentication, @PathVariable UUID id) { service.delete(user(authentication), id); }
 
-  @PatchMapping("/{id}/highlight")
-  public LogService.LogView setHighlight(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody HighlightRequest request) {
-    return service.setHighlight(user(authentication), id, request.highlighted());
+  @PutMapping("/{id}/labels")
+  public LogService.LogView setLabels(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody LabelsRequest request) {
+    return service.setLabels(user(authentication), id, request.labelIds());
   }
 }
