@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { useLogsStore, type Log } from "../stores/logs";
+import PromptDialog from "../components/PromptDialog.vue";
 
 type Draft = { body: string; occurredAt: string };
 type LogGroup = { label: string; logs: Log[]; dayBreak: boolean };
@@ -15,6 +16,7 @@ const draft = ref<Draft | null>(null);
 const error = ref("");
 const status = ref<"idle" | "saving" | "saved">("idle");
 const savingEdit = ref(false);
+const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const now = ref(new Date());
 const followsBrowserClock = ref(true);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -126,7 +128,8 @@ async function saveNew() {
 function startEdit(log: Log) { editingId.value = log.id; draft.value = { body: log.body, occurredAt: localDateTime(new Date(log.occurredAt)) }; error.value = ""; }
 function cancelEdit() { editingId.value = ""; draft.value = null; }
 async function removeLog(log: Log) {
-  if (!window.confirm("Remove this log? This cannot be undone.")) return;
+  const confirmation = await promptDialog.value?.open("Remove this log? This cannot be undone.", "", { confirmation: true });
+  if (confirmation === null || confirmation === undefined) return;
   try {
     await api(`/logs/${log.id}`, { method: "DELETE" });
     logsStore.remove(log.id);
@@ -157,6 +160,7 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 <template>
   <section class="logs-page">
     <h1 class="sr-only">Logs</h1>
+    <PromptDialog ref="promptDialog" />
     <form class="log-composer" autocomplete="off" @submit.prevent="saveNew">
       <label class="sr-only" for="new-log-body">Log text</label>
       <textarea id="new-log-body" v-model="body" name="body" rows="1" placeholder="Write a log…" @input="resizeComposer" @keydown.enter.prevent="saveNew"></textarea>

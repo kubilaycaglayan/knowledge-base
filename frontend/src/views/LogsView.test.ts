@@ -78,11 +78,11 @@ describe("LogsView", () => {
   it("confirms removal and removes the record after the API succeeds", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.mocked(api).mockResolvedValueOnce(undefined);
     await wrapper.get('button[aria-label^="Remove log"]').trigger("click");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
-    expect(window.confirm).toHaveBeenCalledWith("Remove this log? This cannot be undone.");
+    expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
     expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new", { method: "DELETE" });
     expect(wrapper.text()).not.toContain("Recent thought");
   });
