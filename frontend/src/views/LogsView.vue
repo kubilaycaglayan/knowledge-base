@@ -107,9 +107,8 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 
 <template>
   <section class="logs-page">
-    <p class="eyebrow">CAPTURE</p>
-    <h1>Logs</h1>
-    <form class="log-composer card" autocomplete="off" @submit.prevent="saveNew">
+    <h1 class="sr-only">Logs</h1>
+    <form class="log-composer" autocomplete="off" @submit.prevent="saveNew">
       <label class="sr-only" for="new-log-body">Log text</label>
       <textarea id="new-log-body" v-model="body" name="body" rows="1" placeholder="Write a log…" @input="resizeComposer" @keydown.enter.prevent="saveNew"></textarea>
       <label class="sr-only" for="new-log-time">Log timestamp</label>
@@ -121,7 +120,7 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
     <div v-if="!groupedLogs.length && !error" class="empty">No logs yet. Capture a thought above.</div>
     <div v-for="group in groupedLogs" :key="group.label" class="log-group">
       <h2 class="log-group-heading">{{ group.label }}</h2>
-      <article v-for="log in group.logs" :key="log.id" class="log-entry card">
+      <article v-for="log in group.logs" :key="log.id" class="log-entry">
         <template v-if="editingId === log.id && draft">
           <textarea v-model="draft.body" :aria-label="`Edit log text from ${formatTimestamp(log.occurredAt)}`" rows="2"></textarea>
           <div class="log-edit-row">
@@ -140,12 +139,12 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 
 <style scoped>
 .logs-page { max-width: 1200px; margin: 0 auto; }
-.log-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 10px; margin: 24px 0 32px; }
+.log-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 10px; margin: 0 0 32px; padding-bottom: 16px; border-bottom: 1px solid var(--workspace-border); }
 .log-composer textarea { min-height: 40px; resize: none; overflow: hidden; }
 .log-composer input { width: 190px; }
 .log-group { margin: 28px 0; }
 .log-group-heading { margin: 0 0 10px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
-.log-entry { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 8px 0; padding: 15px 16px; }
+.log-entry { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
 .log-body { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .log-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; color: var(--workspace-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .log-meta time { font-size: 12px; }
