@@ -81,38 +81,83 @@ public class KnowledgeBaseTransferService {
     int imported = 0, skipped = 0, createdPaths = 0;
     Map<UUID, Path> pathMap = new HashMap<>(); Map<UUID, Label> labelMap = new HashMap<>();
     for (Row r : rows) if (r.entity.equals("path")) {
-      if (paths.findByIdAndUserId(r.id, userId).isPresent()) { skipped++; continue; }
+      Optional<Path> existingPath = paths.findByIdAndUserIdIncludingDeleted(r.id, userId);
+      if (existingPath.isPresent()) {
+        Path path = existingPath.get();
+        if (path.getDeletedAt() != null) {
+          path.restore(); path.assignImportBatch(batch.getId()); paths.save(path); imported++;
+        }
+        else skipped++;
+        pathMap.put(r.id, path);
+        continue;
+      }
+      Optional<Path> activePath = paths.findByIdAndUserId(r.id, userId);
+      if (activePath.isPresent() || paths.existsById(r.id)) {
+        skipped++;
+        activePath.ifPresent(path -> pathMap.put(r.id, path));
+        continue;
+      }
       JsonNode p = r.payload; Path path = paths.save(Path.imported(r.id, userId, text(p,"name"), text(p,"description"), text(p,"color"),
           enumValue(PathStatus.class, text(p,"status")), instant(p,"createdAt"), instant(p,"updatedAt")));
       path.assignImportBatch(batch.getId()); paths.save(path); pathMap.put(r.id, path); imported++; createdPaths++;
     }
     for (Path p : paths.findAllByUserId(userId)) pathMap.putIfAbsent(p.getId(), p);
     for (Row r : rows) if (r.entity.equals("label")) {
-      if (labels.findByIdAndUserId(r.id, userId).isPresent()) { skipped++; continue; }
+      if (labels.existsById(r.id) || labels.findByIdAndUserId(r.id, userId).isPresent()
+          || labels.findByUserIdAndNameIgnoreCase(userId, text(r.payload, "name")).isPresent()) {
+        skipped++; continue;
+      }
       JsonNode p=r.payload; Label label=labels.save(Label.imported(r.id,userId,text(p,"name"),text(p,"color"),instant(p,"createdAt"))); label.assignImportBatch(batch.getId()); labels.save(label);
       for (JsonNode scope : p.path("scopes")) scopes.save(new LabelScope(new LabelScopeId(label.getId(), enumValue(LabelScopeType.class, scope.asText()))));
       labelMap.put(r.id,label); imported++;
     }
     for (Label l : labels.findAllByUserIdOrderByName(userId)) labelMap.putIfAbsent(l.getId(), l);
     Map<UUID, TimeEntry> entryMap = new HashMap<>(); Map<UUID, Activity> activityMap = new HashMap<>();
+    boolean runningEntryImported = false;
     for (Row r : rows) if (r.entity.equals("session")) {
-      if (entries.findByIdAndUserId(r.id,userId).isPresent()) { skipped++; continue; }
-      JsonNode p=r.payload; TimeEntry e=TimeEntry.imported(r.id,userId,idOf(pathMap,p,"pathId"),instant(p,"startedAt"),instant(p,"endedAt"),longValue(p,"durationSeconds"),text(p,"description"),enumValue(TimeSource.class,text(p,"source")));
+      JsonNode p=r.payload;
+      boolean running = !p.hasNonNull("endedAt");
+      Optional<TimeEntry> existingEntry = entries.findByIdAndUserIdIncludingDeleted(r.id, userId);
+      if (existingEntry.isPresent() && existingEntry.get().getDeletedAt() != null) {
+        if (running && (runningEntryImported || entries.findByUserIdAndEndedAtIsNull(userId).isPresent())) {
+          skipped++;
+        } else {
+          existingEntry.get().restore(); existingEntry.get().assignImportBatch(batch.getId());
+          entries.save(existingEntry.get()); entryMap.put(r.id, existingEntry.get()); imported++; runningEntryImported |= running;
+        }
+        continue;
+      }
+      if (existingEntry.isPresent() || entries.existsById(r.id) || entries.findByIdAndUserId(r.id,userId).isPresent()
+          || (running && (runningEntryImported || entries.findByUserIdAndEndedAtIsNull(userId).isPresent()))) {
+        skipped++; continue;
+      }
+      TimeEntry e=TimeEntry.imported(r.id,userId,idOf(pathMap,p,"pathId"),instant(p,"startedAt"),instant(p,"endedAt"),longValue(p,"durationSeconds"),text(p,"description"),enumValue(TimeSource.class,text(p,"source")));
       e.assignImportBatch(batch.getId()); entries.save(e); for(JsonNode id:p.path("labelIds")) if(labelMap.containsKey(uuid(id))) entryLabels.save(new TimeEntryLabel(e.getId(),uuid(id)));
-      entryMap.put(r.id,e); imported++;
+      entryMap.put(r.id,e); imported++; runningEntryImported |= running;
     }
     for (Row r : rows) if (r.entity.equals("timeline")) {
-      if (activities.findByIdAndUserId(r.id,userId).isPresent()) { skipped++; continue; }
+      if (activities.existsById(r.id) || activities.findByIdAndUserId(r.id,userId).isPresent()) { skipped++; continue; }
       JsonNode p=r.payload; Activity a=Activity.imported(r.id,userId,idOf(pathMap,p,"pathId"),idOf(entryMap,p,"timeEntryId"),enumValue(ActivityType.class,text(p,"type")),text(p,"title"),text(p,"detail"),instant(p,"occurredAt"));
       a.assignImportBatch(batch.getId()); activities.save(a); activityMap.put(r.id,a); imported++;
     }
     for (Row r : rows) if (r.entity.equals("calendar")) {
-      if (days.findByIdAndUserId(r.id, userId).isPresent()) { skipped++; continue; }
-      JsonNode p=r.payload; DailyRecord d=days.save(DailyRecord.imported(r.id,userId,LocalDate.parse(text(p,"recordDate")),text(p,"note"),instant(p,"createdAt"),instant(p,"updatedAt"))); d.assignImportBatch(batch.getId()); days.save(d);
+      JsonNode p=r.payload; LocalDate recordDate = LocalDate.parse(text(p,"recordDate"));
+      if (days.existsById(r.id) || days.findByIdAndUserId(r.id,userId).isPresent()
+          || days.findByUserIdAndRecordDate(userId, recordDate).isPresent()) { skipped++; continue; }
+      DailyRecord d=days.save(DailyRecord.imported(r.id,userId,recordDate,text(p,"note"),instant(p,"createdAt"),instant(p,"updatedAt"))); d.assignImportBatch(batch.getId()); days.save(d);
       for(JsonNode a:p.path("labels")) if(labelMap.containsKey(uuid(a.path("labelId")))) dayLabels.save(new DailyRecordLabel(new DailyRecordLabelId(d.getId(),uuid(a.path("labelId"))), a.hasNonNull("portion")?new BigDecimal(a.get("portion").asText()):null)); imported++;
     }
     for (Row r : rows) if (r.entity.equals("note")) {
-      if (notes.findByIdAndUserId(r.id,userId).isPresent()) { skipped++; continue; }
+      Optional<Note> existingNote = notes.findByIdAndUserIdIncludingArchived(r.id, userId);
+      if (existingNote.isPresent()) {
+        if (existingNote.get().getDeletedAt() != null) {
+          existingNote.get().restore(); existingNote.get().assignImportBatch(batch.getId());
+          notes.save(existingNote.get()); imported++;
+        }
+        else skipped++;
+        continue;
+      }
+      if (notes.existsById(r.id) || notes.findByIdAndUserId(r.id,userId).isPresent()) { skipped++; continue; }
       JsonNode p=r.payload; Note n=notes.save(Note.imported(r.id,userId,idOf(pathMap,p,"pathId"),idOf(activityMap,p,"activityId"),idOf(entryMap,p,"timeEntryId"),text(p,"title"),text(p,"content"),text(p,"contentText"),instant(p,"createdAt"),instant(p,"updatedAt"))); n.assignImportBatch(batch.getId()); notes.save(n);
       for(JsonNode id:p.path("tagIds")) if(labelMap.containsKey(uuid(id))) noteTags.save(new NoteTag(new NoteTagId(n.getId(),uuid(id)))); imported++;
     }

@@ -28,6 +28,9 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
 
   Optional<TimeEntry> findByIdAndUserId(UUID id, UUID userId);
 
+  @Query(value = "select * from time_entry where id = :id and user_id = :userId", nativeQuery = true)
+  Optional<TimeEntry> findByIdAndUserIdIncludingDeleted(@Param("id") UUID id, @Param("userId") UUID userId);
+
   Optional<TimeEntry> findByUserIdAndSourceAndExternalId(
       UUID userId, TimeSource source, String externalId);
 

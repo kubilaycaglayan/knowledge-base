@@ -118,12 +118,20 @@ public class TimeEntry {
     return importBatchId;
   }
 
+  public Instant getDeletedAt() {
+    return deletedAt;
+  }
+
   public boolean running() {
     return endedAt == null;
   }
 
   public void softDelete() {
     deletedAt = Instant.now();
+  }
+
+  public void restore() {
+    deletedAt = null;
   }
 
   public void assignImportBatch(UUID importBatchId) {
