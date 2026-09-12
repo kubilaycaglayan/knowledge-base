@@ -122,7 +122,7 @@ const formats = {
     <VueDatePicker
       :dark="theme === 'dark'"
       :model-value="dates"
-      :multi-calendars="{ count: 2, static: true }"
+      :multi-calendars="false"
       :preset-dates="presets"
       :formats="formats"
       :range="{ partialRange: false, maxRange: 732 }"

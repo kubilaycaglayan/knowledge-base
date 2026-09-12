@@ -132,7 +132,6 @@
 .calendar-picker { display: flex; align-items: center; gap: 4px; }
 .calendar-picker select { min-height: 32px; padding: 4px 8px; font-size: 12px; }
 .reports-actions { min-width: 0; max-width: 100%; }
-.reports-header-actions { justify-content: flex-end; margin-bottom: 24px; }
 .report-date-range { display: flex; align-items: center; min-width: 0; }
 .report-date-range .dp__main { width: 250px; min-width: 0; }
 .report-date-range .dp__input { height: 40px; border-radius: 4px 0 0 4px; font-family: inherit; font-size: 12px; }
@@ -147,12 +146,12 @@
 .report-date-range .range-arrow { flex: 0 0 36px; height: 40px; border: 1px solid var(--workspace-control-border); border-left: 0; background: var(--workspace-surface); font-size: 22px; line-height: 1; color: var(--workspace-muted); }
 .report-date-range .range-arrow:last-child { border-radius: 0 4px 4px 0; }
 .range-arrow:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
-.reports-nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--workspace-border); margin-bottom: 16px; }
+.reports-nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--workspace-border); margin-bottom: 16px; }
+.reports-period-controls { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .report-visualization-toggles { display: flex; align-items: center; gap: 8px; }
-.report-tabs { display: flex; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
-.report-tab { min-height: 40px; padding: 8px 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--workspace-muted); font-size: 13px; }
-.report-tab:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
-.report-tab.active { background: var(--workspace-selected); border-bottom-color: var(--workspace-accent); color: var(--workspace-text); font-weight: 600; }
+.report-tabs { max-width: 100%; }
+.report-tab { min-height: 40px; padding: 8px 16px; border: 1px solid var(--workspace-control-border); border-radius: var(--workspace-radius); background: var(--workspace-surface); color: var(--workspace-muted); font-size: 13px; font-weight: 600; }
+.report-tab:hover { background: var(--workspace-hover); color: var(--workspace-strong); border-color: var(--workspace-muted); }
 .report-type-note { color: var(--workspace-muted); font-size: 12px; }
 .filter-label, .section-kicker { color: var(--workspace-muted); font-size: 10px; letter-spacing: .1em; font-weight: 650; }
 .report-card { background: transparent; border: 0; border-block: 1px solid var(--workspace-border); }
@@ -293,7 +292,12 @@
 .calendar-log-label { display: inline-flex; align-items: center; gap: 5px; margin: 0 10px 5px 0; color: var(--workspace-muted); font-size: 12px; }
 .calendar-log-label { max-width: 100%; overflow-wrap: anywhere; }
 .calendar-log-label small { flex-shrink: 0; }
-.tooltip-row { display: flex; justify-content: space-between; gap: 28px; margin-top: 5px; }
+.tooltip-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--workspace-border); }
+.tooltip-heading strong { min-width: 0; }
+.tooltip-heading span { flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tooltip-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 28px; margin-top: 5px; }
+.tooltip-row span { min-width: 0; overflow-wrap: anywhere; }
+.tooltip-row b { min-width: max-content; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
 .tooltip-row i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
 .tooltip-row small { color: var(--workspace-muted); font-weight: 400; }
 @media (max-width: 1000px) {
@@ -325,6 +329,7 @@
   .report-date-range .dp__input { height: 44px; font-size: 16px; }
   .report-tab { min-height: 44px; padding: 8px 12px; }
   .reports-nav { align-items: start; flex-direction: column; gap: 8px; }
+  .reports-period-controls { width: 100%; }
   .report-type-note { padding-bottom: 8px; }
   .chart-frame, .report-echart { min-height: 280px; height: 280px; }
   .sankey-frame { min-height: 280px; overflow-x: auto; }
