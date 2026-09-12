@@ -60,8 +60,8 @@ describe("FloatingTimeTracker", () => {
     expect(inline.find(".floating-tracker-toggle").exists()).toBe(false);
     expect(floating.find("#floating-tracker-panel").exists()).toBe(false);
     expect(floating.get(".floating-tracker-toggle").attributes("aria-expanded")).toBe("false");
-    expect(floating.get(".tracker-status").classes()).not.toContain("running");
-    expect(floating.get(".tracker-status").attributes("aria-label")).toBe("No session running");
+    expect(floating.get("button.floating-tracker-action").classes()).not.toContain("is-running");
+    expect(floating.get("button.floating-tracker-action").attributes("aria-label")).toBe("Start timer");
 
     await floating.get(".floating-tracker-toggle").trigger("click");
     expect(floating.find("#floating-tracker-panel").exists()).toBe(true);
@@ -79,8 +79,8 @@ describe("FloatingTimeTracker", () => {
     const wrapper = mount(FloatingTimeTracker, { global: { plugins: [vuetify] } });
     await flushPromises();
 
-    expect(wrapper.get(".tracker-status").classes()).toContain("running");
-    expect(wrapper.get(".tracker-status").attributes("aria-label")).toBe("Session running");
+    expect(wrapper.get("button.floating-tracker-action").classes()).toContain("is-running");
+    expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
     expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
     expect(wrapper.get(".floating-tracker-context").text()).toContain("Focus, Review");
     expect(wrapper.get(".floating-tracker-context").text()).not.toContain("Knowledge Base");
@@ -172,11 +172,11 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
 
     expect(wrapper.get("button.floating-tracker-action").text()).toContain("Stop session");
-    expect(wrapper.get(".tracker-status").classes()).toContain("running");
+    expect(wrapper.get("button.floating-tracker-action").classes()).toContain("is-running");
     sockets[0].onmessage?.({ data: JSON.stringify({ type: "TIMER_STATE", timer: { id: "timer-1", startedAt: "2026-09-12T10:00:00Z", endedAt: "2026-09-12T10:30:00Z", running: false } }) });
     await flushPromises();
     expect(wrapper.get("button.floating-tracker-action").text()).toContain("Start a session");
-    expect(wrapper.get(".tracker-status").classes()).not.toContain("running");
+    expect(wrapper.get("button.floating-tracker-action").classes()).not.toContain("is-running");
     wrapper.unmount();
     localStorage.removeItem("know_token");
     globalThis.WebSocket = originalWebSocket;
