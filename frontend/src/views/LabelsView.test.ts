@@ -88,20 +88,12 @@ describe("LabelsView", () => {
     expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/labels/one" && options?.method === "PUT")).toBe(true);
   });
 
-  it("shows Logs as a scope and protects the system Highlight label", async () => {
-    vi.mocked(api).mockResolvedValue([{ id: "highlight", name: "Highlight", color: null, scopes: ["LOG"], system: true }]);
+  it("shows Logs as an editable label scope", async () => {
+    vi.mocked(api).mockResolvedValue([{ id: "log-label", name: "Important", color: null, scopes: ["LOG"], system: false }]);
     const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
     await flushPromises();
     expect(wrapper.get(".scope-list").text()).toBe("Logs");
-    expect(wrapper.text()).toContain("System label");
-    expect(wrapper.get(".label-row button").text()).toBe("Edit");
-    const removeButton = wrapper.get(".label-row button.danger");
-    expect(removeButton.text()).toBe("Remove");
-    expect(removeButton.attributes("disabled")).toBeDefined();
-    await wrapper.get(".label-row button").trigger("click");
-    const logsScope = wrapper.findAll(".scope-editor label").find((label) => label.text() === "Logs");
-    expect(logsScope?.get("input").attributes("disabled")).toBeDefined();
-    await wrapper.get('button[aria-label="Add label"]').trigger("click");
-    expect(wrapper.text()).toContain("Logs");
+    expect(wrapper.text()).not.toContain("System label");
+    expect(wrapper.get(".label-row button.danger").attributes("disabled")).toBeUndefined();
   });
 });

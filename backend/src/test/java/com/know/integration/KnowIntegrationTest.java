@@ -347,10 +347,7 @@ class KnowIntegrationTest {
     assertEquals(1, undone.getBody().get("deletedPaths").asInt());
     assertEquals(1, undone.getBody().get("deletedLogs").asInt());
     assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
-    JsonNode remainingLabels = get("/api/v1/labels", token).getBody();
-    assertEquals(1, remainingLabels.size());
-    assertEquals("Highlight", remainingLabels.get(0).get("name").asText());
-    assertTrue(remainingLabels.get(0).get("system").asBoolean());
+    assertTrue(get("/api/v1/labels", token).getBody().isEmpty());
     assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
     assertTrue(get("/api/v1/activities", token).getBody().isEmpty());
     assertTrue(get("/api/v1/notes", token).getBody().isEmpty());
@@ -1309,9 +1306,6 @@ class KnowIntegrationTest {
   void logsAreOwnedTimestampedAndOptimisticallyEditable() {
     String owner = freshToken();
     String other = freshToken();
-    JsonNode provisionedLabels = get("/api/v1/labels?scope=LOG", owner).getBody();
-    assertEquals(1, provisionedLabels.size());
-    assertEquals("Highlight", provisionedLabels.get(0).get("name").asText());
     ResponseEntity<JsonNode> created = post("/api/v1/logs", owner,
         "{\"body\":\"First thought\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}");
     assertEquals(HttpStatus.CREATED, created.getStatusCode());
@@ -1323,12 +1317,21 @@ class KnowIntegrationTest {
     assertEquals(0, get("/api/v1/logs", other).getBody().size());
     assertEquals(HttpStatus.OK, get("/api/v1/logs/" + id, owner).getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/logs/" + id, other).getStatusCode());
-    JsonNode highlight = get("/api/v1/labels?scope=LOG", owner).getBody().get(0);
-    assertEquals("Highlight", highlight.get("name").asText());
-    ResponseEntity<JsonNode> highlighted = patch("/api/v1/logs/" + id + "/highlight", owner, "{\"highlighted\":true}");
-    assertEquals(HttpStatus.OK, highlighted.getStatusCode());
-    assertTrue(highlighted.getBody().get("labelIds").toString().contains(highlight.get("id").asText()));
-    assertEquals(HttpStatus.NOT_FOUND, patch("/api/v1/logs/" + id + "/highlight", other, "{\"highlighted\":false}").getStatusCode());
+    assertTrue(get("/api/v1/labels?scope=LOG", owner).getBody().isEmpty());
+    String ownerLabelId = post("/api/v1/labels", owner,
+        "{\"name\":\"Important\",\"scopes\":[\"LOG\"]}").getBody().get("id").asText();
+    String otherLabelId = post("/api/v1/labels", other,
+        "{\"name\":\"Private\",\"scopes\":[\"LOG\"]}").getBody().get("id").asText();
+    ResponseEntity<JsonNode> labeled = put("/api/v1/logs/" + id + "/labels", owner,
+        "{\"labelIds\":[\"" + ownerLabelId + "\"]}");
+    assertEquals(HttpStatus.OK, labeled.getStatusCode());
+    assertTrue(labeled.getBody().get("labelIds").toString().contains(ownerLabelId));
+    assertEquals(HttpStatus.NOT_FOUND, put("/api/v1/logs/" + id + "/labels", other,
+        "{\"labelIds\":[]}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/logs/" + id + "/labels", owner,
+        "{\"labelIds\":[\"" + otherLabelId + "\"]}").getStatusCode());
+    assertEquals(HttpStatus.OK, put("/api/v1/logs/" + id + "/labels", owner,
+        "{\"labelIds\":[]}").getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, put("/api/v1/logs/" + id, other,
         "{\"body\":\"No access\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}").getStatusCode());
     ResponseEntity<JsonNode> updated = put("/api/v1/logs/" + id, owner,

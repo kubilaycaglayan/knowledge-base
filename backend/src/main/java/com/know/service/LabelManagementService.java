@@ -15,14 +15,13 @@ public class LabelManagementService {
   private final TimeEntryLabelRepository timeAssignments;
   private final NoteTagRepository noteAssignments;
   private final LogLabelRepository logAssignments;
-  private final UserRepository users;
 
   public LabelManagementService(LabelRepository labels, LabelScopeRepository scopes,
       DailyRecordLabelRepository calendarAssignments, TimeEntryLabelRepository timeAssignments,
-      NoteTagRepository noteAssignments, LogLabelRepository logAssignments, UserRepository users) {
+      NoteTagRepository noteAssignments, LogLabelRepository logAssignments) {
     this.labels = labels; this.scopes = scopes; this.calendarAssignments = calendarAssignments;
     this.timeAssignments = timeAssignments; this.noteAssignments = noteAssignments;
-    this.logAssignments = logAssignments; this.users = users;
+    this.logAssignments = logAssignments;
   }
 
   public record View(UUID id, String name, String color, Set<LabelScopeType> scopes, boolean system) {}
@@ -32,22 +31,8 @@ public class LabelManagementService {
     return labels.findAllByUserIdOrderByName(userId).stream().map(this::view).toList();
   }
 
-  @Transactional
   public List<View> list(UUID userId, LabelScopeType scope) {
-    if (scope == LabelScopeType.LOG) highlight(userId);
     return labels.findAllByUserIdAndScope(userId, scope).stream().map(this::view).toList();
-  }
-
-  @Transactional
-  public Label highlight(UUID userId) {
-    users.findForUpdateById(userId);
-    Label label = labels.findByUserIdAndSystemTrue(userId)
-        .orElseGet(() -> labels.findByUserIdAndNameIgnoreCase(userId, "Highlight")
-            .orElseGet(() -> labels.save(new Label(userId, "Highlight", null))));
-    if (!label.isSystem()) { label.markSystem(); label = labels.save(label); }
-    if (!scopes.existsByIdLabelIdAndIdScope(label.getId(), LabelScopeType.LOG))
-      scopes.save(new LabelScope(new LabelScopeId(label.getId(), LabelScopeType.LOG)));
-    return label;
   }
 
   @Transactional
@@ -99,8 +84,7 @@ public class LabelManagementService {
       boolean present = scopes.existsByIdLabelIdAndIdScope(label.getId(), scope);
       if (next.contains(scope) && !present) scopes.save(new LabelScope(new LabelScopeId(label.getId(), scope)));
       if (!next.contains(scope) && present) {
-        if ((label.isSystem() && scope == LabelScopeType.LOG)
-            || (scope == LabelScopeType.CALENDAR && calendarAssignments.existsByIdLabelId(label.getId()))
+        if ((scope == LabelScopeType.CALENDAR && calendarAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.TIME_ENTRY && timeAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.NOTE && noteAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.LOG && logAssignments.existsByIdLabelId(label.getId())))
