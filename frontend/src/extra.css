@@ -206,6 +206,14 @@
 .donut-total strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 .donut-total span { color: var(--workspace-muted); font-size: 12px; margin-top: 3px; }
 .report-loading { display: grid; gap: 24px; color: var(--workspace-muted); }
+.report-content-shell { position: relative; min-width: 0; }
+.report-content-shell.is-refreshing > :not(.report-refresh-overlay) { opacity: .68; transition: opacity 180ms ease-out; }
+.report-refresh-overlay { position: absolute; z-index: 2; inset: 0; overflow: hidden; pointer-events: none; border-radius: var(--workspace-radius); background: color-mix(in srgb, var(--workspace-background) 28%, transparent); }
+.report-refresh-scan { position: absolute; top: 0; left: -35%; width: 35%; height: 2px; background: var(--workspace-accent); box-shadow: 0 0 18px var(--workspace-accent); animation: report-refresh-scan 1.35s ease-in-out infinite; }
+.report-refresh-badge { position: sticky; top: 16px; display: flex; align-items: center; gap: 8px; width: fit-content; margin: 16px 16px 0 auto; padding: 7px 10px; border: 1px solid var(--workspace-selected-border); border-radius: 999px; background: color-mix(in srgb, var(--workspace-surface) 88%, transparent); color: var(--workspace-text); box-shadow: 0 6px 18px rgb(0 0 0 / 12%); font-size: 11px; font-weight: 650; letter-spacing: .02em; }
+.report-refresh-orbit { width: 9px; height: 9px; border: 2px solid var(--workspace-selected-border); border-top-color: var(--workspace-accent); border-radius: 50%; animation: report-refresh-orbit 800ms linear infinite; }
+@keyframes report-refresh-scan { 0% { transform: translateX(0); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(385%); opacity: 0; } }
+@keyframes report-refresh-orbit { to { transform: rotate(360deg); } }
 .report-skeleton-card { min-width: 0; }
 .skeleton-block, .skeleton-chart-bar { position: relative; display: block; overflow: hidden; }
 .skeleton-block { border-radius: 3px; background: var(--workspace-selected); animation: report-skeleton-pulse 2.2s ease-in-out infinite; }
@@ -245,6 +253,11 @@
 .skeleton-donut { width: 190px; height: 190px; border: 25px solid var(--workspace-selected); border-right-color: var(--workspace-selected-border); border-radius: 50%; animation: report-skeleton-pulse 2.2s ease-in-out infinite; }
 @keyframes report-skeleton-pulse { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
 @keyframes report-skeleton-shimmer { 0% { transform: translateX(0); } 55%, 100% { transform: translateX(310%); } }
+@media (prefers-reduced-motion: reduce) {
+  .report-content-shell.is-refreshing > :not(.report-refresh-overlay) { transition: none; }
+  .report-refresh-scan, .report-refresh-orbit { animation: none; }
+  .report-refresh-scan { left: 0; width: 100%; opacity: .7; }
+}
 .calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--workspace-border); background: var(--workspace-surface); }
 .calendar-weekday { padding: 10px; color: var(--workspace-muted); font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--workspace-border); }

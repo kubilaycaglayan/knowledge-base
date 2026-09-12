@@ -568,8 +568,20 @@ onBeforeUnmount(() =>
         </div>
       </section>
     </div>
-    <template v-else-if="report"
-      ><section
+    <div
+      v-else-if="report"
+      class="report-content-shell"
+      :class="{ 'is-refreshing': loading }"
+      :aria-busy="loading"
+    >
+      <div v-if="loading" class="report-refresh-overlay" role="status" aria-live="polite">
+        <span class="report-refresh-scan" aria-hidden="true"></span>
+        <span class="report-refresh-badge">
+          <span class="report-refresh-orbit" aria-hidden="true"></span>
+          Updating report…
+        </span>
+      </div>
+      <section
         v-if="!showSankey || !report.sankey"
         class="report-card report-chart-card"
       >
@@ -739,8 +751,8 @@ onBeforeUnmount(() =>
             }}</strong>
           </div>
         </div>
-      </section></template
-    >
+      </section>
+    </div>
     <div v-else-if="!loading" class="empty report-card">
       No report data for this period.
     </div>
