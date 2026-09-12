@@ -7,7 +7,7 @@ Native SwiftUI client, iOS 17+. Authentication follows the web's private-workspa
 1. Install Xcode and XcodeGen (`brew install xcodegen`).
 2. Create `ios/Local.xcconfig` with the settings below. It is gitignored. The default API is `http://localhost:8080/api/v1` for a simulator with the backend running on this Mac.
 3. Run `cd ios && xcodegen generate --spec project.yml`, then open `Know.xcodeproj`. Select the **Know** scheme and an iPhone simulator; Run.
-4. For a physical iPhone, choose your Apple development team under Signing & Capabilities and use a reachable HTTPS API address. `localhost` on the phone is the phone itself.
+4. For a physical iPhone, choose your personal Apple team (`YOUR_PERSONAL_TEAM_ID`) under Signing & Capabilities and use a reachable API address. `localhost` on the phone is the phone itself.
 
 ```xcconfig
 // Empty substitution preserves the double slash in xcconfig.
@@ -15,9 +15,10 @@ KNOWLEDGE_BASE_API_URL = https:/$()/your-host.example/api/v1
 GOOGLE_IOS_CLIENT_ID = YOUR_IOS_CLIENT_ID.apps.googleusercontent.com
 GOOGLE_SERVER_CLIENT_ID = YOUR_EXISTING_WEB_CLIENT_ID.apps.googleusercontent.com
 GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.YOUR_IOS_CLIENT_ID
+IOS_DEVELOPMENT_TEAM = YOUR_PERSONAL_TEAM_ID
 ```
 
-These are public OAuth identifiers, not secrets. Never put a Google client secret, JWT secret, or database password in the app. `KNOW_API_URL` remains supported as a scheme environment override; the build setting works in installed builds too.
+OAuth identifiers and the Apple team ID are public identifiers, not secrets. Never put a Google client secret, JWT secret, or database password in the app. `KNOW_API_URL` remains supported as a scheme environment override; the build setting works in installed builds too.
 
 ## Test on your iPhone over local Wi-Fi
 
