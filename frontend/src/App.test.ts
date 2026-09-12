@@ -50,6 +50,7 @@ describe("App", () => {
 
     expect(wrapper.get("nav").findAll("a").map((link) => link.text())).toEqual([
       "Sessions",
+      "Logs",
       "Paths",
       "Calendar",
       "Notes",

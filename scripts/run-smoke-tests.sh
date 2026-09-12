@@ -308,6 +308,18 @@ api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data='{"title":"Edited smoke note","content":"Updated knowledge"}' \
   "http://localhost:8080/api/v1/notes/$note_id" \
   | grep -q 'Updated knowledge'
+log_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+log="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"body\":\"Smoke log\",\"occurredAt\":\"$log_time\"}" http://localhost:8080/api/v1/logs)"
+log_id="$(printf '%s' "$log" | sed -n 's/.*"id":"\([^\"]*\)".*/\1/p')"
+[[ -n "$log_id" ]]
+api "${header[@]}" http://localhost:8080/api/v1/logs | grep -q 'Smoke log'
+api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"body\":\"Edited smoke log\",\"occurredAt\":\"$log_time\"}" \
+  "http://localhost:8080/api/v1/logs/$log_id" | grep -q 'Edited smoke log'
+if api "${other_header[@]}" "http://localhost:8080/api/v1/logs/$log_id" >/dev/null; then
+  echo "cross-user log access was allowed" >&2
+  exit 1
+fi
 discarded_timer="$(api "${header[@]}" "${content_json[@]}" --post-data='{"labelIds":[],"description":"Discarded quick timer"}' http://localhost:8080/api/v1/timers)"
 discarded_timer_id="$(printf '%s' "$discarded_timer" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 api "${header[@]}" --post-data='' "${content_json[@]}" "http://localhost:8080/api/v1/timers/$discarded_timer_id/stop" >/dev/null
