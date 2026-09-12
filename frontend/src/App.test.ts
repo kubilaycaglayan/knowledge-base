@@ -173,4 +173,13 @@ describe("App", () => {
     expect(restoredTracker.element).not.toBe(tracker.element);
     wrapper.unmount();
   });
+
+  it("does not flash the floating tracker while the root route redirects to sessions", () => {
+    const route = { path: "/", query: {} };
+    localStorage.setItem("know_token", "token");
+    const wrapper = mount(App, { global: { stubs, provide: { [routeLocationKey as symbol]: route } } });
+
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
 });

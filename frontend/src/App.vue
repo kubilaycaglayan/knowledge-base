@@ -8,6 +8,7 @@ import { useAuthStore } from "./stores/auth";
 const auth = useAuthStore();
 const route = inject(routeLocationKey, undefined);
 const router = inject(routerKey, undefined);
+const showFloatingTracker = () => auth.isAuthenticated && route?.path !== "/" && route?.path !== "/sessions";
 watchEffect(() => {
   const path = route?.path || "/";
   const page = !auth.isAuthenticated ? "Sign in" : path.startsWith("/notes/") ? "Note" : path === "/" ? "Sessions" : path.slice(1);
@@ -62,7 +63,7 @@ function authenticated() {
         v-else
       />
     </main>
-    <FloatingTimeTracker v-if="auth.isAuthenticated && route?.path !== '/sessions'" />
+    <FloatingTimeTracker v-if="showFloatingTracker()" />
   </div>
 </template>
 
