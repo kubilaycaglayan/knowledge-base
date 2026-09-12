@@ -63,12 +63,13 @@ describe("LogsView", () => {
     expect(timestamp.value).toBe("2026-09-11T12:01");
 
     await wrapper.get("#new-log-time").setValue("2026-09-11T12:00");
-    expect(wrapper.find(".timestamp-drift").exists()).toBe(true);
-    expect(wrapper.find(".timestamp-drift .hour.drift-part").exists()).toBe(false);
-    expect(wrapper.find(".timestamp-drift .minute.drift-part").exists()).toBe(true);
-    expect(wrapper.find(".timestamp-drift .date.drift-part").exists()).toBe(false);
+    expect(wrapper.find("#new-log-time").classes()).toContain("timestamp-input-drift");
+    expect(wrapper.get(".timestamp-reset").classes()).toContain("timestamp-reset-visible");
     vi.advanceTimersByTime(61_000);
     await wrapper.vm.$nextTick();
     expect(timestamp.value).toBe("2026-09-11T12:00");
+    await wrapper.get(".timestamp-reset").trigger("click");
+    expect(timestamp.value).toBe("2026-09-11T12:02");
+    expect(wrapper.get(".timestamp-reset").classes()).not.toContain("timestamp-reset-visible");
   });
 });

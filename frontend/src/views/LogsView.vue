@@ -83,19 +83,14 @@ const groupedLogs = computed<LogGroup[]>(() => {
 const timestampParts = computed(() => {
   const selected = new Date(occurredAt.value);
   const current = now.value;
-  const sameDate = selected.getFullYear() === current.getFullYear()
-    && selected.getMonth() === current.getMonth()
-    && selected.getDate() === current.getDate();
   return {
-    hour: String(selected.getHours()).padStart(2, "0"),
-    minute: String(selected.getMinutes()).padStart(2, "0"),
-    date: `${String(selected.getDate()).padStart(2, "0")}:${String(selected.getMonth() + 1).padStart(2, "0")}:${String(selected.getFullYear()).slice(-2)}`,
-    hourDrift: selected.getHours() !== current.getHours(),
-    minuteDrift: selected.getMinutes() !== current.getMinutes(),
-    dateDrift: !sameDate,
     isDrifting: Math.abs(selected.getTime() - current.getTime()) > 60 * 1000,
   };
 });
+function resetToBrowserClock() {
+  followsBrowserClock.value = true;
+  syncBrowserClock();
+}
 async function load() {
   try { logsStore.setAll(await api<Log[]>("/logs")); error.value = ""; }
   catch { error.value = "Unable to load logs. Please try again."; }
@@ -144,8 +139,9 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
       <label class="sr-only" for="new-log-time">Log timestamp</label>
       <div class="timestamp-control">
         <input id="new-log-time" v-model="occurredAt" name="occurredAt" type="datetime-local" aria-label="Log timestamp" :class="{ 'timestamp-input-drift': timestampParts.isDrifting }" @input="stopFollowingBrowserClock" />
-        <span v-if="timestampParts.isDrifting" class="timestamp-drift" aria-hidden="true"><span class="hour" :class="{ 'drift-part': timestampParts.hourDrift }">{{ timestampParts.hour }}</span>:<span class="minute" :class="{ 'drift-part': timestampParts.minuteDrift }">{{ timestampParts.minute }}</span> <span class="date" :class="{ 'drift-part': timestampParts.dateDrift }">{{ timestampParts.date }}</span></span>
-        <span v-if="timestampParts.isDrifting" class="sr-only" aria-live="polite">The log timestamp differs from browser time by more than one minute.</span>
+        <button class="timestamp-reset ghost" type="button" aria-label="Use browser time" title="Use browser time" :class="{ 'timestamp-reset-visible': !followsBrowserClock }" :disabled="followsBrowserClock" @click="resetToBrowserClock">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4v5h5M5.2 9A7 7 0 1 1 6 17" /></svg>
+        </button>
       </div>
       <button class="primary" type="submit" :disabled="status === 'saving'"><span v-if="status === 'saving'" class="spinner" aria-hidden="true"></span>Save</button>
     </form>
@@ -176,11 +172,11 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .logs-page { max-width: 1200px; margin: 0 auto; }
 .log-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin: 0 0 32px; padding-bottom: 16px; border-bottom: 1px solid var(--workspace-border); }
 .log-composer textarea { min-height: 40px; resize: none; overflow: hidden; }
-.timestamp-control { display: grid; justify-items: end; gap: 3px; }
+.timestamp-control { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .log-composer input { width: 190px; }
 .timestamp-input-drift { color: #8a6500; }
-.timestamp-drift { color: var(--workspace-muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.timestamp-drift .drift-part { color: #8a6500; font-weight: 700; }
+.timestamp-reset { width: 32px; min-height: 40px; padding: 7px; visibility: hidden; }
+.timestamp-reset-visible { visibility: visible; }
 .log-group { margin: 28px 0; }
 .log-group-heading { margin: 0 0 10px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
 .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
@@ -194,6 +190,6 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer button { grid-column: 2; grid-row: 2; } .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; } .log-entry > .log-time { grid-column: 1; } .log-entry > .log-body { grid-column: 2; } .log-entry > .text-button { grid-column: 2; justify-self: start; } .log-edit-row { display: block; } .log-edit-row input { width: 100%; } .log-edit-row .row-actions { margin-top: 12px; } }
+@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer > button.primary { grid-column: 2; grid-row: 2; } .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; } .log-entry > .log-time { grid-column: 1; } .log-entry > .log-body { grid-column: 2; } .log-entry > .text-button { grid-column: 2; justify-self: start; } .log-edit-row { display: block; } .log-edit-row input { width: 100%; } .log-edit-row .row-actions { margin-top: 12px; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 </style>
