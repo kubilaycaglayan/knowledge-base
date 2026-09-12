@@ -15,20 +15,24 @@ public class LabelManagementService {
   private final TimeEntryLabelRepository timeAssignments;
   private final NoteTagRepository noteAssignments;
   private final LogLabelRepository logAssignments;
+  private final UserRepository users;
 
   public LabelManagementService(LabelRepository labels, LabelScopeRepository scopes,
       DailyRecordLabelRepository calendarAssignments, TimeEntryLabelRepository timeAssignments,
-      NoteTagRepository noteAssignments, LogLabelRepository logAssignments) {
+      NoteTagRepository noteAssignments, LogLabelRepository logAssignments, UserRepository users) {
     this.labels = labels; this.scopes = scopes; this.calendarAssignments = calendarAssignments;
-    this.timeAssignments = timeAssignments; this.noteAssignments = noteAssignments; this.logAssignments = logAssignments;
+    this.timeAssignments = timeAssignments; this.noteAssignments = noteAssignments;
+    this.logAssignments = logAssignments; this.users = users;
   }
 
   public record View(UUID id, String name, String color, Set<LabelScopeType> scopes, boolean system) {}
 
+  @Transactional
   public List<View> list(UUID userId) {
     return labels.findAllByUserIdOrderByName(userId).stream().map(this::view).toList();
   }
 
+  @Transactional
   public List<View> list(UUID userId, LabelScopeType scope) {
     if (scope == LabelScopeType.LOG) highlight(userId);
     return labels.findAllByUserIdAndScope(userId, scope).stream().map(this::view).toList();
@@ -36,6 +40,7 @@ public class LabelManagementService {
 
   @Transactional
   public Label highlight(UUID userId) {
+    users.findForUpdateById(userId);
     Label label = labels.findByUserIdAndSystemTrue(userId)
         .orElseGet(() -> labels.findByUserIdAndNameIgnoreCase(userId, "Highlight")
             .orElseGet(() -> labels.save(new Label(userId, "Highlight", null))));

@@ -347,7 +347,10 @@ class KnowIntegrationTest {
     assertEquals(1, undone.getBody().get("deletedPaths").asInt());
     assertEquals(1, undone.getBody().get("deletedLogs").asInt());
     assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
-    assertTrue(get("/api/v1/labels", token).getBody().isEmpty());
+    JsonNode remainingLabels = get("/api/v1/labels", token).getBody();
+    assertEquals(1, remainingLabels.size());
+    assertEquals("Highlight", remainingLabels.get(0).get("name").asText());
+    assertTrue(remainingLabels.get(0).get("system").asBoolean());
     assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
     assertTrue(get("/api/v1/activities", token).getBody().isEmpty());
     assertTrue(get("/api/v1/notes", token).getBody().isEmpty());
@@ -1306,6 +1309,9 @@ class KnowIntegrationTest {
   void logsAreOwnedTimestampedAndOptimisticallyEditable() {
     String owner = freshToken();
     String other = freshToken();
+    JsonNode provisionedLabels = get("/api/v1/labels?scope=LOG", owner).getBody();
+    assertEquals(1, provisionedLabels.size());
+    assertEquals("Highlight", provisionedLabels.get(0).get("name").asText());
     ResponseEntity<JsonNode> created = post("/api/v1/logs", owner,
         "{\"body\":\"First thought\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}");
     assertEquals(HttpStatus.CREATED, created.getStatusCode());
