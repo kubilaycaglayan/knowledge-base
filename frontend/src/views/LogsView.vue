@@ -174,7 +174,7 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 
 <style scoped>
 .logs-page { max-width: 1200px; margin: 0 auto; }
-.log-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 10px; margin: 0 0 32px; padding-bottom: 16px; border-bottom: 1px solid var(--workspace-border); }
+.log-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin: 0 0 32px; padding-bottom: 16px; border-bottom: 1px solid var(--workspace-border); }
 .log-composer textarea { min-height: 40px; resize: none; overflow: hidden; }
 .timestamp-control { display: grid; justify-items: end; gap: 3px; }
 .log-composer input { width: 190px; }
@@ -183,10 +183,10 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .timestamp-drift .drift-part { color: #8a6500; font-weight: 700; }
 .log-group { margin: 28px 0; }
 .log-group-heading { margin: 0 0 10px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
-.log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
+.log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
 .log-body { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .log-time { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.log-edit-row { display: flex; flex: 1; align-items: end; justify-content: space-between; gap: 16px; }
+.log-edit-row { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 16px; }
 .log-edit-row > label { display: grid; gap: 4px; color: var(--workspace-muted); font-size: 12px; }
 .log-edit-row input { width: 190px; }
 .log-entry > textarea { flex: 1; }
