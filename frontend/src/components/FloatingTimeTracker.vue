@@ -47,6 +47,9 @@ function rememberPath(id: string) {
   localStorage.setItem("know_recent_timer_paths", JSON.stringify(recentPathIds.value));
 }
 function applyTimer(value: Timer | null) {
+  // A completed snapshot is history, not the current running timer. Keep
+  // older servers or delayed messages from making the counter appear active.
+  if (value?.running === false) value = null;
   timerStore.setCurrent(value);
   now.value = Date.now();
   if (!value) {
