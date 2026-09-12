@@ -30,7 +30,6 @@ const error = ref("");
 const addDialogOpen = ref(false);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const sortedLabels = computed(() => [...labels.value].sort((a, b) => a.name.localeCompare(b.name)));
-function isSystemHighlight(label: Label) { return label.system === true || (label.name.toLowerCase() === "highlight" && label.scopes.includes("LOG")); }
 
 async function load() {
   try { await labelStore.load(); }
@@ -114,8 +113,8 @@ onMounted(load);
       <p v-if="loading" class="muted">Loading labels…</p>
       <p v-else-if="!sortedLabels.length" class="muted">No labels yet. Add one above to get started.</p>
       <div v-for="label in sortedLabels" v-else :key="label.id" class="label-row">
-        <template v-if="editingId !== label.id"><span class="label-swatch" :style="{ backgroundColor: label.color || colors[0] }" aria-hidden="true"></span><strong>{{ label.name }}</strong><span v-if="isSystemHighlight(label)" class="system-label">System label</span><span class="scope-list">{{ label.scopes.map(scope => scopeOptions.find(option => option.value === scope)?.label).join(" · ") }}</span><button class="ghost" type="button" @click="beginEdit(label)">Edit</button><button class="ghost danger" type="button" :disabled="isSystemHighlight(label)" @click="remove(label)">Remove</button></template>
-        <template v-else-if="draft"><input v-model="draft.name" class="edit-name" maxlength="80" :aria-label="`Edit ${label.name} name`" /><ColorPalette v-model="draft.color" class="label-edit-colors" :legend="`Edit ${label.name} color`" option-label="Set edit label color" /><span class="scope-editor"><label v-for="option in scopeOptions" :key="option.value"><input type="checkbox" :checked="checked(option.value, draft.scopes)" :disabled="isSystemHighlight(label) && option.value === 'LOG'" @change="toggleScope(draft.scopes, option.value)" />{{ option.label }}</label></span><button class="primary compact" type="button" :disabled="saving" @click="save(label)">Save</button><button class="ghost" type="button" @click="cancelEdit">Cancel</button></template>
+        <template v-if="editingId !== label.id"><span class="label-swatch" :style="{ backgroundColor: label.color || colors[0] }" aria-hidden="true"></span><strong>{{ label.name }}</strong><span class="scope-list">{{ label.scopes.map(scope => scopeOptions.find(option => option.value === scope)?.label).join(" · ") }}</span><button class="ghost" type="button" @click="beginEdit(label)">Edit</button><button class="ghost danger" type="button" @click="remove(label)">Remove</button></template>
+        <template v-else-if="draft"><input v-model="draft.name" class="edit-name" maxlength="80" :aria-label="`Edit ${label.name} name`" /><ColorPalette v-model="draft.color" class="label-edit-colors" :legend="`Edit ${label.name} color`" option-label="Set edit label color" /><span class="scope-editor"><label v-for="option in scopeOptions" :key="option.value"><input type="checkbox" :checked="checked(option.value, draft.scopes)" @change="toggleScope(draft.scopes, option.value)" />{{ option.label }}</label></span><button class="primary compact" type="button" :disabled="saving" @click="save(label)">Save</button><button class="ghost" type="button" @click="cancelEdit">Cancel</button></template>
       </div>
     </section>
     <div v-if="addDialogOpen" class="prompt-dialog-backdrop" @click.self="closeAddDialog">

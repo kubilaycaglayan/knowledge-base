@@ -3,6 +3,7 @@ package com.know.service;
 import com.know.domain.*;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -13,16 +14,15 @@ import org.springframework.web.server.ResponseStatusException;
 public class LogService {
   private final LogRepository logs;
   private final LogLabelRepository logLabels;
-  private final LabelManagementService labelManagement;
+  private final LabelRepository labels;
 
-  public LogService(LogRepository logs, LogLabelRepository logLabels, LabelManagementService labelManagement) {
-    this.logs = logs; this.logLabels = logLabels; this.labelManagement = labelManagement;
+  public LogService(LogRepository logs, LogLabelRepository logLabels, LabelRepository labels) {
+    this.logs = logs; this.logLabels = logLabels; this.labels = labels;
   }
 
   public record LogView(UUID id, String body, Instant occurredAt, List<UUID> labelIds, Instant createdAt, Instant updatedAt, long version) {}
 
   public List<LogView> list(UUID userId) {
-    labelManagement.highlight(userId);
     return logs.findAllByUserIdOrderByOccurredAtDescIdDesc(userId).stream().map(this::view).toList();
   }
 
@@ -55,13 +55,16 @@ public class LogService {
   }
 
   @Transactional
-  public LogView setHighlight(UUID userId, UUID id, boolean highlighted) {
+  public LogView setLabels(UUID userId, UUID id, List<UUID> requestedLabelIds) {
     Log log = logs.findByIdAndUserId(id, userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log not found"));
-    UUID labelId = labelManagement.highlight(userId).getId();
-    LogLabelId assignment = new LogLabelId(id, labelId);
-    if (highlighted && !logLabels.existsById(assignment)) logLabels.save(new LogLabel(assignment));
-    if (!highlighted) logLabels.deleteById(assignment);
+    List<UUID> requested = requestedLabelIds == null ? List.of() : requestedLabelIds.stream().distinct().toList();
+    Set<UUID> available = labels.findAllByUserIdAndScope(userId, LabelScopeType.LOG).stream()
+        .map(Label::getId).collect(java.util.stream.Collectors.toSet());
+    if (!available.containsAll(requested))
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log labels must be owned LOG-scoped labels");
+    logLabels.deleteAllByIdLogId(id);
+    requested.forEach(labelId -> logLabels.save(new LogLabel(new LogLabelId(id, labelId))));
     return view(log);
   }
 
