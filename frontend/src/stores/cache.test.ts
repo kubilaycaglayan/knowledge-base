@@ -83,6 +83,21 @@ describe("reactive store caches", () => {
     expect(vi.mocked(api)).toHaveBeenCalledTimes(1);
   });
 
+  it("loads the full label catalog after a scoped load", async () => {
+    const scoped = { id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] as const };
+    const other = { id: "label-2", name: "Reading", scopes: ["NOTE"] as const };
+    vi.mocked(api)
+      .mockResolvedValueOnce([scoped])
+      .mockResolvedValueOnce([scoped, other]);
+    const store = useLabelsStore();
+
+    await store.loadScope("TIME_ENTRY");
+    await store.load();
+
+    expect(vi.mocked(api)).toHaveBeenNthCalledWith(2, "/labels");
+    expect(store.labels).toEqual([scoped, other]);
+  });
+
   it("removes empty calendar days but keeps populated days reactive", () => {
     const store = useCalendarStore();
     const day = { date: "2026-09-12", note: "Milestone", labels: [] };
