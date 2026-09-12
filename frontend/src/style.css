@@ -26,11 +26,11 @@ input[type="checkbox"], input[type="radio"] { width: 16px; min-height: 16px; hei
 .primary { background: var(--workspace-accent); color: var(--workspace-on-accent); border-color: var(--workspace-accent); }
 .primary:hover { background: var(--workspace-accent-hover); border-color: var(--workspace-accent-hover); }
 .primary:active { background: var(--workspace-accent-active); }
-.text-button:hover, .progress-button:hover, .page-number:hover, .flat-button:hover, .ghost:hover { background: var(--workspace-hover); color: var(--workspace-strong); border-color: var(--workspace-muted); }
+.text-button:hover:not(:disabled), .progress-button:hover:not(:disabled), .page-number:hover:not(:disabled), .flat-button:hover:not(:disabled), .ghost:hover:not(:disabled) { background: var(--workspace-hover); color: var(--workspace-strong); border-color: var(--workspace-muted); }
 .text-button:active, .progress-button:active, .page-number:active, .flat-button:active, .ghost:active { background: var(--workspace-active); }
 .ghost, .flat-button { border-color: transparent; background: transparent; }
 .danger { color: var(--workspace-danger); }
-.danger:hover { color: var(--workspace-danger-hover); border-color: var(--workspace-danger-border); background: var(--workspace-danger-surface); }
+.danger:hover:not(:disabled) { color: var(--workspace-danger-hover); border-color: var(--workspace-danger-border); background: var(--workspace-danger-surface); }
 button:disabled, input:disabled, select:disabled, textarea:disabled { background: var(--workspace-disabled); color: var(--workspace-muted); border-color: var(--workspace-border); cursor: not-allowed; }
 :focus:not(:focus-visible) { outline: none; }
 :focus-visible { outline: 2px solid var(--workspace-focus); outline-offset: 3px; }

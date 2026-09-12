@@ -35,7 +35,6 @@ export const useLabelsStore = defineStore("labels", {
         const scoped = await request;
         const ids = new Set(scoped.map((label) => label.id));
         this.labels = [...this.labels.filter((label) => !ids.has(label.id)), ...scoped];
-        this.loaded = true;
         this.loadedScopes = [...new Set([...this.loadedScopes, scope])];
         return scoped;
       } finally {
@@ -52,7 +51,6 @@ export const useLabelsStore = defineStore("labels", {
       }
       const ids = new Set(labels.map((label) => label.id));
       this.labels = [...this.labels.filter((label) => !ids.has(label.id)), ...labels];
-      this.loaded = true;
       this.loadedScopes = [...new Set([...this.loadedScopes, scope])];
     },
     replace(label: Label) { this.labels = this.labels.map((value) => value.id === label.id ? label : value); },
