@@ -141,4 +141,40 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
     vi.useRealTimers();
   });
+
+  it("does not let an older initial timer response overwrite WebSocket state", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    const sockets: MockSocket[] = [];
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() { sockets.push(this); }
+      send() {}
+      close() { this.onclose?.(); }
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    let resolveCurrent: ((value: unknown) => void) | undefined;
+    vi.mocked(api).mockImplementation((path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return Promise.resolve([]);
+      if (path === "/timers/current") return new Promise((resolve) => { resolveCurrent = resolve; });
+      return Promise.resolve(undefined);
+    });
+
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    sockets[0].onopen?.();
+    sockets[0].onmessage?.({ data: '{"type":"READY"}' });
+    sockets[0].onmessage?.({ data: JSON.stringify({ type: "TIMER_STATE", timer: { id: "timer-1", startedAt: "2026-09-12T10:00:00Z", running: true } }) });
+    resolveCurrent?.(null);
+    await flushPromises();
+
+    expect(wrapper.get("button.floating-tracker-action").text()).toContain("Stop session");
+    expect(wrapper.get(".tracker-status").classes()).toContain("running");
+    wrapper.unmount();
+    localStorage.removeItem("know_token");
+    globalThis.WebSocket = originalWebSocket;
+  });
 });
