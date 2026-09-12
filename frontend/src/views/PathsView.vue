@@ -373,19 +373,21 @@ onBeforeUnmount(() => {
           </div>
         </form>
         <div v-else class="path-content">
-          <span
-            class="dot"
-            :style="{ backgroundColor: path.color || colors[0] }"
-          ></span>
-          <h2>{{ path.name }}</h2>
-          <span v-if="path.activityLabel" class="activity-pill">{{ path.activityLabel }}</span>
-          <p v-if="path.description">
-            <template v-for="(part, index) in linkParts(path.description)" :key="index">
-              <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
-              <template v-else>{{ part.text }}</template>
-            </template>
-          </p>
-          <p v-else>No description yet</p>
+          <div class="path-body">
+            <span
+              class="dot"
+              :style="{ backgroundColor: path.color || colors[0] }"
+            ></span>
+            <h2>{{ path.name }}</h2>
+            <span v-if="path.activityLabel" class="activity-pill">{{ path.activityLabel }}</span>
+            <p v-if="path.description">
+              <template v-for="(part, index) in linkParts(path.description)" :key="index">
+                <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
+                <template v-else>{{ part.text }}</template>
+              </template>
+            </p>
+            <p v-else>No description yet</p>
+          </div>
           <div class="row-actions">
             <button
               class="text-button"
