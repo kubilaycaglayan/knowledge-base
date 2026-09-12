@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { api } from "../lib/api";
 
-export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
+export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY" | "LOG";
 export type Label = { id: string; name: string; color?: string | null; scopes: LabelScope[] };
 const scopeLoadPromises = new Map<LabelScope, Promise<Label[]>>();
 
@@ -18,7 +18,7 @@ export const useLabelsStore = defineStore("labels", {
       try {
         this.labels = await api<Label[]>("/labels");
         this.loaded = true;
-        this.loadedScopes = ["NOTE", "CALENDAR", "TIME_ENTRY"];
+        this.loadedScopes = ["NOTE", "CALENDAR", "TIME_ENTRY", "LOG"];
         return this.labels;
       } finally {
         this.loading = false;
@@ -47,7 +47,7 @@ export const useLabelsStore = defineStore("labels", {
       if (!scope) {
         this.labels = labels;
         this.loaded = true;
-        this.loadedScopes = ["NOTE", "CALENDAR", "TIME_ENTRY"];
+        this.loadedScopes = ["NOTE", "CALENDAR", "TIME_ENTRY", "LOG"];
         return;
       }
       const ids = new Set(labels.map((label) => label.id));
