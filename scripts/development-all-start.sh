@@ -47,7 +47,7 @@ fi
 # the web container so npm ci runs when package.json/package-lock.json changes.
 # The named frontend node_modules volume is disposable; the protected
 # development database volume is never recreated here.
-docker compose "${compose_args[@]}" up -d --force-recreate api web
+docker compose "${compose_args[@]}" up -d --force-recreate api web proxy
 docker compose "${compose_args[@]}" ps
 echo
 echo "Development API CORS origins: ${CORS_ORIGINS:-http://localhost:5177}"
