@@ -93,6 +93,7 @@ try {
         await route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) });
       });
       const page = await context.newPage();
+      const shellGeometry = new Map();
       page.on('pageerror', error => failures.push({ mode, state, error: error.message }));
       for (const path of routes) {
         if (path === '/auth') {
@@ -106,6 +107,21 @@ try {
         for (const width of widths) {
           await page.setViewportSize({ width, height: width < 700 ? 844 : 1050 });
           await page.waitForFunction(() => Array.from(document.querySelectorAll('.echarts')).every(chart => !chart.querySelector('svg') || Math.abs(chart.querySelector('svg').getBoundingClientRect().width - chart.getBoundingClientRect().width) < 2));
+          const geometry = await page.evaluate(() => {
+            const header = document.querySelector('.dashboard-shell > header');
+            const main = document.querySelector('.dashboard-shell > main');
+            if (!header || !main) return null;
+            const headerRect = header.getBoundingClientRect();
+            const mainRect = main.getBoundingClientRect();
+            return { headerLeft: headerRect.left, headerRight: headerRect.right, mainLeft: mainRect.left, mainRight: mainRect.right };
+          });
+          if (geometry) {
+            const previous = shellGeometry.get(width);
+            if (previous && Object.keys(geometry).some(key => Math.abs(geometry[key] - previous[key]) > 1)) {
+              failures.push({ label: `${mode}-${state}-${width}-shell-alignment`, previous, geometry });
+            }
+            shellGeometry.set(width, geometry);
+          }
           const label = `${mode}-${state}-${path === '/' ? 'overview' : path.slice(1).replaceAll('/', '-')}-${width}`;
           // Full axe audit at desktop and mobile; other sizes check geometry.
           if (width === 1440 || width === 390) await check(page, label);
