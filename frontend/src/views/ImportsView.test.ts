@@ -16,6 +16,7 @@ describe("ImportsView", () => {
       vi.fn(() => true),
     );
     vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/imports/knowledge-base/batches") return [];
       if (path === "/imports/clockify/batches")
         return [
           {
@@ -36,8 +37,20 @@ describe("ImportsView", () => {
     });
   });
 
+  it("places the Knowledge Base tab before Clockify", () => {
+    const wrapper = mount(ImportsView);
+
+    expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual([
+      "Knowledge Base",
+      "Clockify",
+    ]);
+    expect(wrapper.get("#imports-tab-knowledge-base").attributes("aria-selected")).toBe("true");
+  });
+
   it("imports Clockify JSON and reloads the batch list", async () => {
     const wrapper = mount(ImportsView);
+    await flushPromises();
+    await wrapper.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
 
     await wrapper
@@ -62,6 +75,8 @@ describe("ImportsView", () => {
 
     const wrapper = mount(ImportsView);
     await flushPromises();
+    await wrapper.get("#imports-tab-clockify").trigger("click");
+    await flushPromises();
     await wrapper.get('textarea[aria-label="Clockify JSON"]').setValue('{"timeentries":[]}');
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
@@ -72,6 +87,8 @@ describe("ImportsView", () => {
 
   it("shows import batches with an undo action", async () => {
     const wrapper = mount(ImportsView);
+    await flushPromises();
+    await wrapper.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
 
     expect(wrapper.text()).toContain("2 imported");
@@ -87,12 +104,15 @@ describe("ImportsView", () => {
 
   it("renders completed batches as already undone without an undo button", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/imports/knowledge-base/batches") return [];
       if (path === "/imports/clockify/batches") {
         return [{ id: "batch-done", source: "IMPORT", imported: 3, skipped: 0, createdPaths: 0, createdAt: "2026-08-26T10:00:00Z", undoneAt: "2026-08-26T11:00:00Z" }];
       }
       return undefined;
     });
     const wrapper = mount(ImportsView);
+    await flushPromises();
+    await wrapper.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
 
     expect(wrapper.text()).toContain("undone");
@@ -101,6 +121,7 @@ describe("ImportsView", () => {
 
   it("paginates import history with five batches per page", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/imports/knowledge-base/batches") return [];
       if (path === "/imports/clockify/batches") {
         return Array.from({ length: 6 }, (_, index) => ({
           id: `batch-${index}`,
@@ -116,6 +137,8 @@ describe("ImportsView", () => {
     });
     const wrapper = mount(ImportsView);
     await flushPromises();
+    await wrapper.get("#imports-tab-clockify").trigger("click");
+    await flushPromises();
 
     expect(wrapper.findAll(".history-row")).toHaveLength(5);
     expect(wrapper.text()).toContain("Page 1 of 2");
@@ -126,6 +149,8 @@ describe("ImportsView", () => {
 
   it("reports malformed and structurally invalid Clockify input", async () => {
     const wrapper = mount(ImportsView);
+    await flushPromises();
+    await wrapper.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
     const input = wrapper.get('textarea[aria-label="Clockify JSON"]');
     await input.setValue("not json");
@@ -139,6 +164,8 @@ describe("ImportsView", () => {
   it("does not undo a batch when confirmation is declined", async () => {
     vi.stubGlobal("confirm", vi.fn(() => false));
     const wrapper = mount(ImportsView);
+    await flushPromises();
+    await wrapper.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
     await wrapper.get("button.text-button.danger").trigger("click");
     expect(vi.mocked(api)).not.toHaveBeenCalledWith("/imports/clockify/batches/batch-1", expect.anything());
@@ -155,6 +182,8 @@ describe("ImportsView", () => {
       throw new Error("delete failed");
     });
     const undoFailure = mount(ImportsView);
+    await flushPromises();
+    await undoFailure.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
     await undoFailure.get("button.text-button.danger").trigger("click");
     await flushPromises();
