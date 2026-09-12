@@ -15,6 +15,7 @@
     <key>GIDClientID</key><string>$(GOOGLE_IOS_CLIENT_ID)</string>
     <key>GIDServerClientID</key><string>$(GOOGLE_SERVER_CLIENT_ID)</string>
     <key>KnowledgeBaseAPIURL</key><string>$(KNOWLEDGE_BASE_API_URL)</string>
+    <key>NSLocalNetworkUsageDescription</key><string>Knowledge Base connects to your local development server on the same Wi-Fi network.</string>
     <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/><key>NSAllowsLocalNetworking</key><true/></dict>
     <key>UILaunchScreen</key><dict/>
 </dict>
