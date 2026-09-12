@@ -50,6 +50,9 @@ cleanup() {
   # only its Compose-managed volumes; external volumes are never removed.
   compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
   if [[ -n "$buildx_builder" ]]; then
+    # Temporary smoke builders must not leave their intermediate BuildKit
+    # records in the Docker engine after the test stack is removed.
+    docker buildx prune --builder "$buildx_builder" --all --force >/dev/null 2>&1 || true
     docker buildx rm --force "$buildx_builder" >/dev/null 2>&1 || true
   fi
   if [[ -n "$backup_dir" && -d "$backup_dir" ]]; then
