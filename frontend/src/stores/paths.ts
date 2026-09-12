@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { api } from "../lib/api";
 
 export type Path = { id: string; name: string; description?: string | null; color?: string | null; status: string };
+let loadPromise: Promise<Path[]> | null = null;
 
 export const usePathsStore = defineStore("paths", {
   state: () => ({ paths: [] as Path[], loaded: false, loading: false }),
@@ -12,13 +13,16 @@ export const usePathsStore = defineStore("paths", {
   actions: {
     async load(force = false) {
       if (this.loaded && !force) return this.paths;
+      if (loadPromise && !force) return loadPromise;
       this.loading = true;
+      loadPromise = api<Path[]>("/paths");
       try {
-        this.paths = await api<Path[]>("/paths");
+        this.paths = await loadPromise;
         this.loaded = true;
         return this.paths;
       } finally {
         this.loading = false;
+        loadPromise = null;
       }
     },
     setAll(paths: Path[]) { this.paths = paths; this.loaded = true; },

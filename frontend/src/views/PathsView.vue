@@ -11,6 +11,7 @@ import { paletteColors } from "../lib/color-palette";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore, type Path as StorePath } from "../stores/paths";
+import { useReportsStore } from "../stores/reports";
 
 type Path = StorePath & {
   id: string;
@@ -38,6 +39,7 @@ type ActivityGroup = { key: string; label: string; activities: Activity[] };
 const colors = paletteColors;
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
+const reportsStore = useReportsStore();
 const { paths } = storeToRefs(pathsStore);
 const { labels } = storeToRefs(labelsStore);
 const summaries = ref<Record<string, Summary>>({}),
@@ -166,6 +168,7 @@ async function add() {
       }),
     });
     pathsStore.add(created);
+    reportsStore.clear();
     name.value = "";
     description.value = "";
     selectedColor.value = colors[0];
@@ -241,6 +244,7 @@ async function merge(path: Path) {
       method: "POST",
       body: JSON.stringify({ targetPathId: path.id }),
     });
+    reportsStore.clear();
     delete summaries.value[source.id];
     cancelMerge();
     cancelEdit();
@@ -271,6 +275,7 @@ async function saveEdit(path: Path) {
       }),
     });
     pathsStore.replace(saved);
+    reportsStore.clear();
     cancelEdit();
     await load();
     if (summaries.value[path.id]) await loadSummary(path);
@@ -290,6 +295,7 @@ async function remove(path: Path) {
     delete summaries.value[path.id];
     if (historyPath.value?.id === path.id) closeHistory();
     pathsStore.remove(path.id);
+    reportsStore.clear();
     if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
     pendingDelete.value = path;
     pendingDeleteTimer = setTimeout(() => {
@@ -306,6 +312,7 @@ async function undoRemove() {
   try {
     await api(`/paths/${path.id}/restore`, { method: "POST" });
     pathsStore.restore(path);
+    reportsStore.clear();
     pendingDelete.value = null;
     if (pendingDeleteTimer) clearTimeout(pendingDeleteTimer);
     pendingDeleteTimer = undefined;
