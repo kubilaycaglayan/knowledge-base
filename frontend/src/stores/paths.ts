@@ -20,6 +20,7 @@ export const usePathsStore = defineStore("paths", {
         this.loading = false;
       }
     },
+    setAll(paths: Path[]) { this.paths = paths; this.loaded = true; },
     add(path: Path) { this.paths = [path, ...this.paths]; },
     replace(path: Path) { this.paths = this.paths.map((value) => value.id === path.id ? path : value); },
     remove(id: string) { this.paths = this.paths.filter((path) => path.id !== id); },
