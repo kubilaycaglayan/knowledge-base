@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 
 export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
 export type Label = { id: string; name: string; color?: string | null; scopes: LabelScope[] };
+const scopeLoadPromises = new Map<LabelScope, Promise<Label[]>>();
 
 export const useLabelsStore = defineStore("labels", {
   state: () => ({ labels: [] as Label[], loaded: false, loadedScopes: [] as LabelScope[], loading: false }),
@@ -25,9 +26,13 @@ export const useLabelsStore = defineStore("labels", {
     },
     async loadScope(scope: LabelScope, force = false) {
       if (this.loadedScopes.includes(scope) && !force) return this.labels.filter((label) => label.scopes.includes(scope));
+      const pending = scopeLoadPromises.get(scope);
+      if (pending && !force) return pending;
       this.loading = true;
+      const request = api<Label[]>(`/labels?scope=${scope}`);
+      scopeLoadPromises.set(scope, request);
       try {
-        const scoped = await api<Label[]>(`/labels?scope=${scope}`);
+        const scoped = await request;
         const ids = new Set(scoped.map((label) => label.id));
         this.labels = [...this.labels.filter((label) => !ids.has(label.id)), ...scoped];
         this.loaded = true;
@@ -35,6 +40,7 @@ export const useLabelsStore = defineStore("labels", {
         return scoped;
       } finally {
         this.loading = false;
+        scopeLoadPromises.delete(scope);
       }
     },
     setAll(labels: Label[], scope?: LabelScope) {

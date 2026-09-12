@@ -7,6 +7,7 @@ import { labelColors } from "../lib/label-colors";
 import ColorPalette from "../components/ColorPalette.vue";
 import { useLabelsStore } from "../stores/labels";
 import { useCalendarStore, type CalendarDay } from "../stores/calendar";
+import { useReportsStore } from "../stores/reports";
 
 type Scope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
 type Label = { id: string; name: string; color?: string | null; scopes: Scope[] };
@@ -16,6 +17,7 @@ const month = ref(startOfMonth(new Date()));
 const selected = ref(format(new Date(), "yyyy-MM-dd"));
 const labelsStore = useLabelsStore();
 const calendarStore = useCalendarStore();
+const reportsStore = useReportsStore();
 const { labels } = storeToRefs(labelsStore);
 const { days } = storeToRefs(calendarStore);
 const note = ref("");
@@ -81,10 +83,12 @@ async function save() {
   try {
     if (selectedRange.value) {
       const saved = await api<Day[]>("/calendar/days/range", { method: "PUT", body: JSON.stringify({ startDate: selectedRange.value.start, endDate: selectedRange.value.end, note: note.value || null, labels: selectedAssignments() }) });
+      reportsStore.clear();
       saved.forEach((day) => calendarStore.setDay(day));
       selected.value = selectedRange.value.start; rangeStart.value = null; rangeEnd.value = null; selectDay(parseISO(selected.value)); return;
     }
     const saved = await api<Day>(`/calendar/days/${selected.value}`, { method: "PUT", body: JSON.stringify({ note: note.value || null, labels: selectedAssignments() }) });
+    reportsStore.clear();
     calendarStore.setDay(saved);
     selectDay(parseISO(selected.value));
   } catch { error.value = "Unable to save this day."; } finally { saving.value = false; }

@@ -7,6 +7,7 @@ import { paletteColors } from "../lib/color-palette";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 import { useTimerStore, type Timer as StoreTimer } from "../stores/timer";
+import { useReportsStore } from "../stores/reports";
 
 type Path = { id: string; name: string; status: string };
 type Label = { id: string; name: string; color?: string | null };
@@ -19,6 +20,7 @@ const labelsStore = useLabelsStore();
 const { paths } = storeToRefs(pathsStore);
 const { labels } = storeToRefs(labelsStore);
 const timerStore = useTimerStore();
+const reportsStore = useReportsStore();
 const { current: timer } = storeToRefs(timerStore);
 const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref(""), newLabel = ref("");
 const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
@@ -58,8 +60,8 @@ function applyTimer(value: Timer | null) {
 async function load() {
   try {
     const [loadedPaths, loadedLabels, current] = await Promise.all([
-      api<Path[]>("/paths"),
-      api<Label[]>("/labels?scope=TIME_ENTRY").then((value) => value ?? api<Label[]>("/calendar/labels")).catch(() => api<Label[]>("/calendar/labels")),
+      pathsStore.load(),
+      labelsStore.loadScope("TIME_ENTRY").catch(() => api<Label[]>("/calendar/labels")),
       api<Timer | null>("/timers/current"),
     ]);
     pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels, "TIME_ENTRY"); applyTimer(current);
@@ -72,6 +74,7 @@ async function toggleRun() {
     if (timer.value) {
       timerStateVersion++;
       await api(`/timers/${timer.value.id}/stop`, { method: "POST", body: "{}" });
+      reportsStore.clear();
       applyTimer(null); description.value = ""; selectedLabelIds.value = [];
     } else {
       timerStateVersion++;
@@ -126,7 +129,7 @@ async function createLabel() {
 async function cancel() {
   if (!timer.value || busy.value) return;
   busy.value = true; error.value = "";
-  try { timerStateVersion++; await api("/timers/cancel", { method: "POST", body: "{}" }); applyTimer(null); description.value = ""; selectedLabelIds.value = []; emit("changed"); }
+  try { timerStateVersion++; await api("/timers/cancel", { method: "POST", body: "{}" }); reportsStore.clear(); applyTimer(null); description.value = ""; selectedLabelIds.value = []; emit("changed"); }
   catch { error.value = "Could not cancel the timer."; }
   finally { busy.value = false; }
 }
