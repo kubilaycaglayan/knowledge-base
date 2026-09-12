@@ -42,6 +42,14 @@ function formatTimestamp(value: string) {
   const part = (type: string) => parts.find((item) => item.type === type)?.value || "";
   return `${part("hour")}:${part("minute")} ${part("day")}:${part("month")}:${part("year")}`;
 }
+function formatLogTimestamp(value: string, group: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short", hourCycle: "h23",
+  }).formatToParts(new Date(value));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value || "";
+  const time = `${part("hour")}:${part("minute")}`;
+  return group === "Last hour" || group === "Today" ? time : `${part("month")} ${part("day")} ${time}`;
+}
 const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
 const sameDay = (left: Date, right: Date) => left.getTime() === right.getTime();
 function groupLabel(value: string) {
@@ -155,8 +163,9 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
           </div>
         </template>
         <template v-else>
+          <time class="log-time" :datetime="log.occurredAt">{{ formatLogTimestamp(log.occurredAt, group.label) }}</time>
           <p class="log-body">{{ log.body }}</p>
-          <div class="log-meta"><time :datetime="log.occurredAt">{{ formatTimestamp(log.occurredAt) }}</time><button class="text-button" type="button" :aria-label="`Edit log from ${formatTimestamp(log.occurredAt)}`" @click="startEdit(log)">Edit</button></div>
+          <button class="text-button" type="button" :aria-label="`Edit log from ${formatTimestamp(log.occurredAt)}`" @click="startEdit(log)">Edit</button>
         </template>
       </article>
     </div>
@@ -174,10 +183,9 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .timestamp-drift .drift-part { color: #8a6500; font-weight: 700; }
 .log-group { margin: 28px 0; }
 .log-group-heading { margin: 0 0 10px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
-.log-entry { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
+.log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
 .log-body { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.log-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; color: var(--workspace-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.log-meta time { font-size: 12px; }
+.log-time { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .log-edit-row { display: flex; flex: 1; align-items: end; justify-content: space-between; gap: 16px; }
 .log-edit-row > label { display: grid; gap: 4px; color: var(--workspace-muted); font-size: 12px; }
 .log-edit-row input { width: 190px; }
@@ -186,6 +194,6 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer button { grid-column: 2; grid-row: 2; } .log-entry { display: block; } .log-meta { justify-content: space-between; margin-top: 12px; } .log-edit-row { display: block; } .log-edit-row input { width: 100%; } .log-edit-row .row-actions { margin-top: 12px; } }
+@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer button { grid-column: 2; grid-row: 2; } .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; } .log-entry > .log-time { grid-column: 1; } .log-entry > .log-body { grid-column: 2; } .log-entry > .text-button { grid-column: 2; justify-self: start; } .log-edit-row { display: block; } .log-edit-row input { width: 100%; } .log-edit-row .row-actions { margin-top: 12px; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 </style>

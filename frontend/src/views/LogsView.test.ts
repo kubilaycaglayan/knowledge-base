@@ -15,16 +15,17 @@ describe("LogsView", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
-    vi.mocked(api).mockResolvedValue([log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("old", "Older thought", "2026-09-09T11:00:00Z")]);
+    vi.mocked(api).mockResolvedValue([log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
   });
   afterEach(() => { vi.useRealTimers(); config.global.stubs = {}; });
 
   it("groups newest logs and shows the requested timestamp format", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
-    expect(wrapper.findAll(".log-group-heading").map((item) => item.text())).toEqual(["Last hour", "This week"]);
-    expect(wrapper.find("time").text()).toBe("11:30 11:09:26");
+    expect(wrapper.findAll(".log-group-heading").map((item) => item.text())).toEqual(["Last hour", "Yesterday"]);
+    expect(wrapper.find("time.log-time").text()).toBe("11:30");
     expect(wrapper.find(".log-body").text()).toBe("Recent thought");
+    expect(wrapper.findAll("time.log-time")[1].text()).toBe("Sept 10 11:00");
   });
 
   it("saves the browser timestamp and adds a new log to the store", async () => {
