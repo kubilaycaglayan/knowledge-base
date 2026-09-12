@@ -7,24 +7,17 @@ import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { api } from "../lib/api";
+import { storeToRefs } from "pinia";
+import { useNotesStore, type Note as StoreNote, type NoteLabel as StoreNoteLabel } from "../stores/notes";
 
-type Note = {
-  id: string;
-  title: string;
-  content: string;
-  contentText?: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt?: string;
-  version: number;
-  tags: string[];
-};
-type NoteLabel = { id: string; name: string };
+type Note = StoreNote;
+type NoteLabel = StoreNoteLabel;
 type NotePage = { items: Note[]; page: number; size: number; totalItems: number; totalPages: number };
 
 const route = useRoute();
 const router = useRouter();
-const notes = ref<Note[]>([]);
+const notesStore = useNotesStore();
+const { notes, selected, existingLabels } = storeToRefs(notesStore);
 const query = ref("");
 const showArchived = ref(false);
 const page = ref(0);
@@ -33,11 +26,9 @@ const totalPages = ref(0);
 const totalItems = ref(0);
 const loading = ref(false);
 const error = ref("");
-const selected = ref<Note | null>(null);
 const title = ref("");
 const tagInput = ref("");
 const tags = ref<string[]>([]);
-const existingLabels = ref<NoteLabel[]>([]);
 const highlightedLabelIndex = ref(0);
 const status = ref<"saved" | "saving" | "error">("saved");
 const editorHost = ref<HTMLElement | null>(null);
@@ -112,7 +103,7 @@ async function loadNotes() {
     const params = new URLSearchParams({ page: String(page.value), size: String(size.value), archived: String(showArchived.value) });
     if (query.value.trim()) params.set("q", query.value.trim());
     const result = await api<NotePage>(`/notes?${params}`);
-    notes.value = result.items;
+    notesStore.setPage(result.items);
     totalPages.value = result.totalPages;
     totalItems.value = result.totalItems;
   } catch {
@@ -212,10 +203,10 @@ async function save() {
     } catch (cause) {
       if (!String(cause).includes("Note changed in another window")) throw cause;
       const latest = await api<Note>(`/notes/${selected.value.id}`);
-      selected.value = latest;
+      notesStore.setSelected(latest);
       saved = await api<Note>(`/notes/${selected.value.id}`, { method: "PUT", body: JSON.stringify({ ...snapshot, version: latest.version }) });
     }
-    selected.value = saved;
+    notesStore.setSelected(saved);
     const stillOnSnapshot = title.value.trim() === snapshot.title
       && JSON.stringify(editor.value.getJSON()) === snapshot.content
       && JSON.stringify(tags.value) === JSON.stringify(snapshot.tags);
@@ -236,13 +227,13 @@ async function loadEditor() {
   if (!id || typeof id !== "string") return;
   try {
     const fromList = await api<Note>(`/notes/${id}`);
-    selected.value = fromList;
+    notesStore.setSelected(fromList);
     title.value = fromList.title;
     tags.value = [...(fromList.tags || [])];
     try {
-      existingLabels.value = (await api<NoteLabel[]>("/notes/labels")) || [];
+      notesStore.setLabels((await api<NoteLabel[]>("/notes/labels")) || []);
     } catch {
-      existingLabels.value = [];
+      notesStore.setLabels([]);
     }
     editor.value?.destroy();
     editor.value = new Editor({
@@ -258,7 +249,7 @@ function previousPage() { if (page.value > 0) { page.value--; loadNotes(); } }
 function nextPage() { if (page.value + 1 < totalPages.value) { page.value++; loadNotes(); } }
 watch(query, searchLater);
 watch(size, () => { page.value = 0; loadNotes(); });
-watch(() => route.params.id, async () => { if (isEditor.value) { await nextTick(); await loadEditor(); } else { editor.value?.destroy(); editor.value = null; selected.value = null; await loadNotes(); } });
+watch(() => route.params.id, async () => { if (isEditor.value) { await nextTick(); await loadEditor(); } else { editor.value?.destroy(); editor.value = null; notesStore.setSelected(null); await loadNotes(); } });
 function refreshVisibleList() {
   if (!isEditor.value && document.visibilityState === "visible") void loadNotes();
 }

@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import NotesView from "./NotesView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -18,6 +19,7 @@ function router() {
 function page(items = [note]) { return { items, page: 0, size: 20, totalItems: items.length, totalPages: 1 }; }
 
 describe("NotesView", () => {
+  beforeEach(() => setActivePinia(createPinia()));
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string) => {
