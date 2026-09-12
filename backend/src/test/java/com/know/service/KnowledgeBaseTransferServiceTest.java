@@ -26,6 +26,8 @@ class KnowledgeBaseTransferServiceTest {
   @Mock TimeEntryLabelRepository entryLabels;
   @Mock NoteRepository notes;
   @Mock NoteTagRepository noteTags;
+  @Mock LogRepository logs;
+  @Mock LogLabelRepository logLabels;
   @Mock LabelRepository labels;
   @Mock LabelScopeRepository scopes;
   @Mock ImportBatchRepository batches;
@@ -47,6 +49,7 @@ class KnowledgeBaseTransferServiceTest {
     when(activities.findAllByUserId(user)).thenReturn(List.of());
     when(days.findAllByUserId(user)).thenReturn(List.of());
     when(notes.findAllActiveByUserId(user)).thenReturn(List.of());
+    when(logs.findAllByUserIdOrderByOccurredAtDescIdDesc(user)).thenReturn(List.of());
 
     String csv = new String(service.exportCsv(user));
 
@@ -56,6 +59,25 @@ class KnowledgeBaseTransferServiceTest {
     assertThat(csv).contains("#abcdef");
     assertThat(csv).contains("TIME_ENTRY");
     assertThat(csv).contains(label.getId().toString());
+  }
+
+  @Test
+  void exportContainsLogsAndTheirLabelAssignments() {
+    UUID user = UUID.randomUUID();
+    Log log = new Log(user, "A durable thought", Instant.parse("2026-01-02T10:00:00Z"));
+    UUID labelId = UUID.randomUUID();
+    when(paths.findAllByUserId(user)).thenReturn(List.of());
+    when(labels.findAllByUserIdOrderByName(user)).thenReturn(List.of());
+    when(entries.findAllByUserId(user)).thenReturn(List.of());
+    when(activities.findAllByUserId(user)).thenReturn(List.of());
+    when(days.findAllByUserId(user)).thenReturn(List.of());
+    when(notes.findAllActiveByUserId(user)).thenReturn(List.of());
+    when(logs.findAllByUserIdOrderByOccurredAtDescIdDesc(user)).thenReturn(List.of(log));
+    when(logLabels.findAllByIdLogId(log.getId())).thenReturn(List.of(new LogLabel(new LogLabelId(log.getId(), labelId))));
+
+    String csv = new String(service.exportCsv(user));
+
+    assertThat(csv).contains("log," + log.getId(), "A durable thought", "occurredAt", labelId.toString());
   }
 
   @Test
