@@ -6,7 +6,7 @@ const { webcrypto } = require("node:crypto");
 
 const source = fs.readFileSync(require.resolve("./clockify-overlay.js"), "utf8");
 
-function createOverlay({ response = { ok: true, summary: { imported: 1, skipped: 0, createdPaths: 0 } } } = {}) {
+function createOverlay({ enabled = true, response = { ok: true, summary: { imported: 1, skipped: 0, createdPaths: 0 } } } = {}) {
   const elements = {
     ".message": { textContent: "Watching detailed reports…", className: "message" },
     ".imported": { textContent: "0" },
@@ -29,6 +29,7 @@ function createOverlay({ response = { ok: true, summary: { imported: 1, skipped:
   };
   window.top = window;
   const sent = [];
+  const ready = Promise.resolve();
   const context = {
     window,
     document: {
@@ -36,6 +37,7 @@ function createOverlay({ response = { ok: true, summary: { imported: 1, skipped:
       createElement: () => ({}),
     },
     chrome: {
+      storage: { local: { get: async () => ({ clockifyImportEnabled: enabled }) } },
       runtime: {
         lastError: null,
         sendMessage: (message, callback) => { sent.push(message); callback(response); },
@@ -46,18 +48,19 @@ function createOverlay({ response = { ok: true, summary: { imported: 1, skipped:
         ? { ok: true }
         : { ok: false, error: "Clockify report is invalid or too large." },
     },
+    KnowClockifySettings: { KEY: "clockifyImportEnabled", isEnabled: (value) => value !== false },
     crypto: webcrypto,
     URL,
     TextEncoder,
     setTimeout,
   };
-  vm.runInNewContext(source.replace('import "./clockify-validation.js";', ""), context);
+  vm.runInNewContext(source.replace('import "./clockify-validation.js";', "").replace('import "./clockify-settings.js";', ""), context);
   return {
     elements,
     sent,
     window,
     navigate: (href) => { window.location.href = href; routeHandlers.popstate?.(); },
-    emit: (data, origin = "https://app.clockify.me", sourceWindow = window) => messageHandler({ source: sourceWindow, origin, data }),
+    emit: async (data, origin = "https://app.clockify.me", sourceWindow = window) => { await ready; return messageHandler({ source: sourceWindow, origin, data }); },
   };
 }
 
@@ -88,6 +91,14 @@ test("shows validation and empty-report messages without sending imports", async
   await overlay.emit({ source: "know-clockify", type: "detailed-report", payload: { timeentries: [] } });
   assert.equal(overlay.sent.length, 0);
   assert.equal(overlay.elements[".message"].textContent, "No completed entries in this report.");
+});
+
+test("does not mount or import when Clockify import is disabled", async () => {
+  const overlay = createOverlay({ enabled: false });
+  await overlay.emit(report);
+
+  assert.equal(overlay.sent.length, 0);
+  assert.equal(overlay.elements[".message"].textContent, "Watching detailed reports…");
 });
 
 test("shows the overlay after SPA navigation to the detailed report", async () => {

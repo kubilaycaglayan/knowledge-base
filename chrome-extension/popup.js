@@ -25,7 +25,7 @@ function userError(fallback, error, details = {}) {
 }
 
 function checkPopupDomContract() {
-  const required = ["loading", "auth", "workspace", "status", "timer-details", "timer-start-editor", "timer-started-date", "timer-started-time", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error", "settings-menu-toggle", "settings-menu", "options", "logout"];
+  const required = ["loading", "auth", "workspace", "status", "timer-details", "timer-start-editor", "timer-started-date", "timer-started-time", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error", "settings-menu-toggle", "settings-menu", "clockify-import-toggle", "options", "logout"];
   const missing = required.filter((id) => !$(id));
   if (missing.length) throw Error(`Popup DOM contract missing: ${missing.join(",")}`);
   debug("Popup DOM contract verified", { requiredCount: required.length });
@@ -549,9 +549,28 @@ $("settings-menu-toggle").onclick = () => {
   menu.hidden = !menu.hidden;
   $("settings-menu-toggle").setAttribute("aria-expanded", String(!menu.hidden));
 };
+function setClockifyImportEnabled(enabled) {
+  const toggle = $("clockify-import-toggle");
+  toggle.setAttribute("aria-checked", String(enabled));
+  const state = toggle.querySelector?.(".menu-toggle-state");
+  if (state) state.textContent = enabled ? "On" : "Off";
+}
+$("clockify-import-toggle").onclick = async () => {
+  const enabled = $("clockify-import-toggle").getAttribute("aria-checked") !== "true";
+  setClockifyImportEnabled(enabled);
+  try {
+    await chrome.storage.local.set({ [KnowClockifySettings.KEY]: enabled });
+  } catch (error) {
+    setClockifyImportEnabled(!enabled);
+    logError("Save Clockify import setting", error);
+    $("error").textContent = userError("Could not save Clockify import setting.", error);
+  }
+};
 $("options").onclick = () => chrome.runtime.openOptionsPage();
-chrome.storage.local.get(["token", "googleAuthError"]).then(({ token, googleAuthError }) => {
-  debug("Popup initialized", { tokenPresent: Boolean(token), googleAuthErrorPresent: Boolean(googleAuthError), apiLocked: !KnowApiConfig.isProduction ? null : KnowApiConfig.isProduction });
+chrome.storage.local.get(["token", "googleAuthError", KnowClockifySettings.KEY]).then(({ token, googleAuthError, [KnowClockifySettings.KEY]: clockifyImportEnabled }) => {
+  const importEnabled = KnowClockifySettings.isEnabled(clockifyImportEnabled);
+  setClockifyImportEnabled(importEnabled);
+  debug("Popup initialized", { tokenPresent: Boolean(token), googleAuthErrorPresent: Boolean(googleAuthError), clockifyImportEnabled: importEnabled, apiLocked: !KnowApiConfig.isProduction ? null : KnowApiConfig.isProduction });
   if (googleAuthError) $("error").textContent = googleAuthError;
   if (token) load();
   else showAuth();

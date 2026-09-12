@@ -25,6 +25,7 @@ class Element {
     else this.children.push(...items);
   }
   setAttribute(name, value) { this[name] = value; }
+  getAttribute(name) { return this[name] ?? null; }
   focus() { this.focused = true; }
   replaceChildren() { this.options = []; this.children = []; }
   insertAdjacentHTML() {}
@@ -34,7 +35,7 @@ class Element {
 function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false } = {}) {
   const elements = Object.fromEntries([
     "status", "timer-details", "timer-start-editor", "timer-started-date", "timer-started-time", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
-    "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options", "settings-menu-toggle", "settings-menu",
+    "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options", "settings-menu-toggle", "settings-menu", "clockify-import-toggle",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [], diagnostics: [], errors: [] };
   const storage = {
@@ -73,6 +74,7 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
       formatTimer: () => "00:00:00",
     },
     KnowGoogleAuth: {},
+    KnowClockifySettings: { KEY: "clockifyImportEnabled", isEnabled: (value) => value !== false },
     fetch: async (url, options = {}) => {
       const path = new URL(url).pathname.replace("/api/v1", "") + (new URL(url).search || "");
       state.calls.push({ path, options });
@@ -98,8 +100,8 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 test("hides the loading state after bootstrap", () => {
-  assert.match(styles, /\.loading-state\[hidden\]\{display:none\}/);
-  assert.match(styles, /\.timer-start-editor\[hidden\]\{display:none\}/);
+  assert.match(styles, /\.loading-state\[hidden\]\s*\{\s*display:\s*none\s*\}/);
+  assert.match(styles, /\.timer-start-editor\[hidden\]\s*\{\s*display:\s*none\s*\}/);
 });
 
 test("keeps account actions behind the compact settings menu", async () => {
@@ -114,6 +116,20 @@ test("keeps account actions behind the compact settings menu", async () => {
   assert.equal(popup.elements["settings-menu-toggle"]["aria-expanded"], "true");
   await popup.elements.options.onclick();
   assert.equal(popup.state.optionsOpened, true);
+});
+
+test("persists the Clockify import toggle from the settings menu", async () => {
+  const popup = createPopup({ token: "token" });
+  await flush();
+  await flush();
+
+  assert.equal(popup.elements["clockify-import-toggle"]["aria-checked"], "true");
+  await popup.elements["clockify-import-toggle"].onclick();
+  assert.equal(popup.state.clockifyImportEnabled, false);
+  assert.equal(popup.elements["clockify-import-toggle"]["aria-checked"], "false");
+  await popup.elements["clockify-import-toggle"].onclick();
+  assert.equal(popup.state.clockifyImportEnabled, true);
+  assert.equal(popup.elements["clockify-import-toggle"]["aria-checked"], "true");
 });
 
 test("signs in, stores the token, and loads the timer workspace", async () => {
