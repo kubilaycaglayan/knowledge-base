@@ -35,6 +35,10 @@ class KnowIntegrationTest {
     return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
   }
 
+  private static String csvRow(String entity, UUID id, String payload) {
+    return entity + "," + id + ",\"" + payload.replace("\"", "\"\"") + "\"\n";
+  }
+
   @DynamicPropertySource
   static void configureDataSource(DynamicPropertyRegistry registry) {
     registry.add(
@@ -124,6 +128,18 @@ class KnowIntegrationTest {
   ResponseEntity<JsonNode> delete(String path, String token) {
     return rest.exchange(
         base + path, HttpMethod.DELETE, new HttpEntity<>(bearer(token)), JsonNode.class);
+  }
+
+  ResponseEntity<JsonNode> importCsv(String token, String csv) {
+    HttpHeaders headers = bearer(token);
+    headers.setContentType(MediaType.parseMediaType("text/csv"));
+    return rest.exchange(base + "/api/v1/imports/knowledge-base", HttpMethod.POST,
+        new HttpEntity<>(csv, headers), JsonNode.class);
+  }
+
+  ResponseEntity<String> exportCsv(String token) {
+    return rest.exchange(base + "/api/v1/imports/knowledge-base/export", HttpMethod.GET,
+        new HttpEntity<>(bearer(token)), String.class);
   }
 
   // Criteria: password-hashed registration / login and JWT auth
@@ -271,6 +287,119 @@ class KnowIntegrationTest {
     ResponseEntity<JsonNode> bad =
         post("/api/v1/paths", token, "{\"name\":\"Bad Color\",\"color\":\"red\"}");
     assertEquals(HttpStatus.BAD_REQUEST, bad.getStatusCode());
+  }
+
+  @Test
+  void knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo() {
+    String token = freshToken();
+    UUID pathId = UUID.randomUUID(), labelId = UUID.randomUUID(), sessionId = UUID.randomUUID();
+    UUID activityId = UUID.randomUUID(), dayId = UUID.randomUUID(), noteId = UUID.randomUUID();
+    String started = "2026-09-10T10:00:00Z";
+    String ended = "2026-09-10T11:00:00Z";
+    String created = "2026-09-10T09:00:00Z";
+    String updated = "2026-09-10T12:00:00Z";
+    String content = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+    String csv = "entity,id,payload\n"
+        + csvRow("path", pathId, "{\"name\":\"Imported path\",\"description\":\"All fields\",\"color\":\"#123456\",\"status\":\"ARCHIVED\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\"}")
+        + csvRow("label", labelId, "{\"name\":\"Imported label\",\"color\":\"#ABCDEF\",\"createdAt\":\"" + created + "\",\"scopes\":[\"NOTE\",\"CALENDAR\",\"TIME_ENTRY\"]}")
+        + csvRow("session", sessionId, "{\"pathId\":\"" + pathId + "\",\"startedAt\":\"" + started + "\",\"endedAt\":\"" + ended + "\",\"durationSeconds\":3600,\"description\":\"Imported session\",\"source\":\"MANUAL\",\"labelIds\":[\"" + labelId + "\"]}")
+        + csvRow("timeline", activityId, "{\"pathId\":\"" + pathId + "\",\"timeEntryId\":\"" + sessionId + "\",\"type\":\"TIME_TRACKED\",\"title\":\"Imported activity\",\"detail\":\"Activity detail\",\"occurredAt\":\"" + updated + "\"}")
+        + csvRow("calendar", dayId, "{\"recordDate\":\"2026-09-10\",\"note\":\"Day note\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":\"0.50\"}]}")
+        + csvRow("note", noteId, "{\"pathId\":\"" + pathId + "\",\"activityId\":null,\"timeEntryId\":null,\"title\":\"Imported note\",\"content\":" + quote(content) + ",\"contentText\":\"Plain content\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"tagIds\":[\"" + labelId + "\"]}");
+
+    ResponseEntity<JsonNode> imported = importCsv(token, csv);
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(6, imported.getBody().get("imported").asInt());
+    assertEquals(0, imported.getBody().get("skipped").asInt());
+
+    String exported = exportCsv(token).getBody();
+    assertNotNull(exported);
+    assertTrue(exported.contains("Imported path") && exported.contains("#123456") && exported.contains("ARCHIVED"));
+    assertTrue(exported.contains("Imported label") && exported.contains("#ABCDEF") && exported.contains("NOTE") && exported.contains("CALENDAR") && exported.contains("TIME_ENTRY"));
+    assertTrue(exported.contains("Imported session") && exported.contains("3600") && exported.contains("MANUAL") && exported.contains(labelId.toString()));
+    assertTrue(exported.contains("Imported activity") && exported.contains("Activity detail") && exported.contains(sessionId.toString()));
+    assertTrue(exported.contains("2026-09-10") && exported.contains("Day note") && exported.contains("0.50"));
+    assertTrue(exported.contains("Imported note") && exported.contains("Plain content") && exported.contains("paragraph"));
+
+    JsonNode batches = get("/api/v1/imports/knowledge-base/batches", token).getBody();
+    assertEquals(1, batches.size());
+    String batchId = batches.get(0).get("id").asText();
+    assertEquals(6, batches.get(0).get("imported").asInt());
+
+    ResponseEntity<JsonNode> undone = delete("/api/v1/imports/knowledge-base/batches/" + batchId, token);
+    assertEquals(HttpStatus.OK, undone.getStatusCode());
+    assertEquals(1, undone.getBody().get("deletedEntries").asInt());
+    assertEquals(1, undone.getBody().get("deletedActivities").asInt());
+    assertEquals(1, undone.getBody().get("deletedPaths").asInt());
+    assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/labels", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/activities", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/notes", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/calendar/days?startDate=2026-09-10&endDate=2026-09-10", token).getBody().isEmpty());
+  }
+
+  @Test
+  void knowledgeBaseImportRestoresSoftDeletedRecordsAndUndoRemovesRestoredRecords() {
+    String token = freshToken();
+    String pathId = post("/api/v1/paths", token, "{\"name\":\"Restore path\"}")
+        .getBody().get("id").asText();
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/paths/" + pathId, token).getStatusCode());
+
+    String noteId = post("/api/v1/notes", token, "{\"title\":\"Restore note\",\"content\":\"body\"}")
+        .getBody().get("id").asText();
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/notes/" + noteId, token).getStatusCode());
+
+    String start = "2026-09-11T10:00:00Z";
+    String end = "2026-09-11T11:00:00Z";
+    String sessionId = post("/api/v1/time-entries", token,
+        "{\"pathId\":null,\"labelIds\":[],\"startedAt\":\"" + start
+            + "\",\"endedAt\":\"" + end + "\",\"description\":\"Restore session\"}")
+        .getBody().get("id").asText();
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/time-entries/" + sessionId, token).getStatusCode());
+
+    String csv = "entity,id,payload\n"
+        + csvRow("path", UUID.fromString(pathId), "{\"name\":\"Restore path\",\"description\":null,\"color\":\"#E8754E\",\"status\":\"ACTIVE\"}")
+        + csvRow("session", UUID.fromString(sessionId), "{\"pathId\":null,\"startedAt\":\"" + start + "\",\"endedAt\":\"" + end + "\",\"durationSeconds\":3600,\"description\":\"Restore session\",\"source\":\"MANUAL\",\"labelIds\":[]}")
+        + csvRow("note", UUID.fromString(noteId), "{\"pathId\":null,\"activityId\":null,\"timeEntryId\":null,\"title\":\"Restore note\",\"content\":\"body\",\"contentText\":\"body\",\"tagIds\":[]}");
+
+    ResponseEntity<JsonNode> imported = importCsv(token, csv);
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(3, imported.getBody().get("imported").asInt());
+    assertEquals(0, imported.getBody().get("skipped").asInt());
+    assertEquals(HttpStatus.OK, get("/api/v1/paths/" + pathId, token).getStatusCode());
+    assertFalse(get("/api/v1/time-entries", token).getBody().isEmpty());
+    assertFalse(get("/api/v1/notes", token).getBody().isEmpty());
+
+    String batchId = get("/api/v1/imports/knowledge-base/batches", token).getBody().get(0).get("id").asText();
+    ResponseEntity<JsonNode> undone = delete("/api/v1/imports/knowledge-base/batches/" + batchId, token);
+    assertEquals(HttpStatus.OK, undone.getStatusCode());
+    assertEquals(1, undone.getBody().get("deletedEntries").asInt());
+    assertEquals(1, undone.getBody().get("deletedPaths").asInt());
+    assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/notes", token).getBody().isEmpty());
+  }
+
+  @Test
+  void knowledgeBaseImportSkipsDuplicatesWithinFileAndPreservesOtherUsersData() {
+    String ownerToken = freshToken();
+    String importingToken = freshToken();
+    String foreignPathId = post("/api/v1/paths", ownerToken, "{\"name\":\"Foreign path\"}")
+        .getBody().get("id").asText();
+    UUID duplicatePathId = UUID.randomUUID();
+    String csv = "entity,id,payload\n"
+        + csvRow("path", duplicatePathId, "{\"name\":\"First\",\"description\":null,\"color\":\"#123456\",\"status\":\"ACTIVE\"}")
+        + csvRow("path", duplicatePathId, "{\"name\":\"Second\",\"description\":null,\"color\":\"#654321\",\"status\":\"ARCHIVED\"}")
+        + csvRow("path", UUID.fromString(foreignPathId), "{\"name\":\"Should not cross ownership\",\"description\":null,\"color\":\"#ABCDEF\",\"status\":\"ACTIVE\"}");
+
+    ResponseEntity<JsonNode> imported = importCsv(importingToken, csv);
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(1, imported.getBody().get("imported").asInt());
+    assertEquals(2, imported.getBody().get("skipped").asInt());
+    assertEquals("First", get("/api/v1/paths/" + duplicatePathId, importingToken).getBody().get("name").asText());
+    assertEquals("Foreign path", get("/api/v1/paths/" + foreignPathId, ownerToken).getBody().get("name").asText());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + foreignPathId, importingToken).getStatusCode());
   }
 
   @Test
