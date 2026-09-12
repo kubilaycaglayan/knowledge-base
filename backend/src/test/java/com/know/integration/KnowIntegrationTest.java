@@ -6,6 +6,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.WebSocket;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -600,6 +607,42 @@ class KnowIntegrationTest {
     ResponseEntity<JsonNode> history = get("/api/v1/time-entries", token);
     assertEquals(HttpStatus.OK, history.getStatusCode());
     assertTrue(history.getBody().isArray());
+  }
+
+  @Test
+  void timerWebSocketReceivesCommittedStateForTheAuthenticatedUser() throws Exception {
+    String token = freshToken();
+    LinkedBlockingQueue<String> messages = new LinkedBlockingQueue<>();
+    WebSocket socket =
+        HttpClient.newHttpClient()
+            .newWebSocketBuilder()
+            .buildAsync(
+                URI.create("ws://localhost:" + port + "/ws/timers"),
+                new WebSocket.Listener() {
+                  @Override
+                  public void onOpen(WebSocket webSocket) {
+                    webSocket.sendText("{\"type\":\"AUTH\",\"token\":\"" + token + "\"}", true);
+                    WebSocket.Listener.super.onOpen(webSocket);
+                  }
+
+                  @Override
+                  public CompletionStage<?> onText(
+                      WebSocket webSocket, CharSequence data, boolean last) {
+                    if (last) messages.offer(data.toString());
+                    webSocket.request(1);
+                    return CompletableFuture.completedFuture(null);
+                  }
+                })
+            .get(5, TimeUnit.SECONDS);
+
+    assertEquals("READY", mapper.readTree(messages.poll(5, TimeUnit.SECONDS)).get("type").asText());
+    ResponseEntity<JsonNode> started =
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Socket test\"}");
+    assertEquals(HttpStatus.CREATED, started.getStatusCode());
+    JsonNode state = mapper.readTree(messages.poll(5, TimeUnit.SECONDS));
+    assertEquals("TIMER_STATE", state.get("type").asText());
+    assertEquals(started.getBody().get("id").asText(), state.get("timer").get("id").asText());
+    socket.sendClose(WebSocket.NORMAL_CLOSURE, "done").get(5, TimeUnit.SECONDS);
   }
 
   @Test
