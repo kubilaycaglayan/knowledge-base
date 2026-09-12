@@ -1,6 +1,7 @@
 import "../clockify-validation.js";
 import "../api-config.js";
 import "../google-auth.js";
+import "../clockify-settings.js";
 
 const diagnosticSessionId = `worker-${crypto.randomUUID()}`;
 const debug = (event: string, details: Record<string, unknown> = {}) =>
@@ -65,7 +66,11 @@ export default defineBackground({
         sendResponse({ ok: false, error: validation.error });
         return false;
       }
-      chrome.storage.local.get(["token", "apiBase"]).then(async ({ token, apiBase }) => {
+      chrome.storage.local.get(["token", "apiBase", KnowClockifySettings.KEY]).then(async ({ token, apiBase, [KnowClockifySettings.KEY]: clockifyImportEnabled }) => {
+        if (!KnowClockifySettings.isEnabled(clockifyImportEnabled)) {
+          debug("Import skipped because Clockify import is disabled");
+          return sendResponse({ ok: false, disabled: true, error: "Clockify import is disabled in extension settings." });
+        }
         const base = KnowApiConfig.apiBase(apiBase);
         const url = base + "/imports/clockify";
         const requestId = `extension-${crypto.randomUUID()}`;

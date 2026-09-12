@@ -1,4 +1,5 @@
 import "./clockify-validation.js";
+import "./clockify-settings.js";
 
 (function () {
   if (window.top !== window) return;
@@ -10,6 +11,7 @@ import "./clockify-validation.js";
   };
   let root;
   let shadow;
+  let enabled = null;
   const mount = () => {
     if (root) return;
     root = document.documentElement.appendChild(document.createElement("div"));
@@ -27,6 +29,10 @@ import "./clockify-validation.js";
   };
   const $ = (selector) => shadow?.querySelector(selector);
   const updateRoute = () => {
+    if (!KnowClockifySettings.isEnabled(enabled)) {
+      if (root) root.hidden = true;
+      return;
+    }
     mount();
     root.hidden = !detailedRoute();
   };
@@ -44,12 +50,20 @@ import "./clockify-validation.js";
     $(".paths").textContent = summary.createdPaths;
     $(".counts").hidden = false;
   };
-  updateRoute();
+  chrome.storage.local.get(KnowClockifySettings.KEY).then((stored) => {
+    enabled = KnowClockifySettings.isEnabled(stored[KnowClockifySettings.KEY]);
+    updateRoute();
+  });
+  chrome.storage.onChanged?.addListener((changes, areaName) => {
+    if (areaName !== "local" || !changes[KnowClockifySettings.KEY]) return;
+    enabled = KnowClockifySettings.isEnabled(changes[KnowClockifySettings.KEY].newValue);
+    updateRoute();
+  });
   window.addEventListener("popstate", updateRoute);
   window.addEventListener("hashchange", updateRoute);
   if (typeof window.setInterval === "function") window.setInterval(updateRoute, 250);
   window.addEventListener("message", async (event) => {
-    if (!detailedRoute() || event.source !== window || event.origin !== "https://app.clockify.me" || event.data?.source !== "know-clockify" || event.data.type !== "detailed-report" || importing) return;
+    if (!KnowClockifySettings.isEnabled(enabled) || !detailedRoute() || event.source !== window || event.origin !== "https://app.clockify.me" || event.data?.source !== "know-clockify" || event.data.type !== "detailed-report" || importing) return;
     const payload = event.data.payload;
     const validation = KnowClockifyValidation.validate(payload);
     if (!validation.ok) { $(".message").textContent = validation.error; $(".message").className = "message error"; return; }
