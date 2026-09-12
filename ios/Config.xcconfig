@@ -2,6 +2,7 @@
 // Debug and Release use separate Info.plists so only Debug may call a plain-HTTP
 // API on your private Wi-Fi. Release builds require HTTPS.
 KNOWLEDGE_BASE_API_URL = http:/$()/localhost:8080/api/v1
+IOS_DEVELOPMENT_TEAM =
 GOOGLE_IOS_CLIENT_ID =
 GOOGLE_SERVER_CLIENT_ID =
 GOOGLE_REVERSED_CLIENT_ID = com.know.ios.google-unconfigured
