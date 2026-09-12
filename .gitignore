@@ -16,6 +16,11 @@ frontend/tsconfig.tsbuildinfo
 backend/build/
 .gradle/
 .DS_Store
+ios/Local.xcconfig
+ios/Know.xcodeproj/
+ios/Know/Info.plist
+ios/.build/
+ios/.swiftpm/
 backend/.idea
 .idea
 deployment/cloudflare/.terraform/
