@@ -56,6 +56,17 @@ describe("PathsView", () => {
     expect(wrapper.text()).toContain("2 minutes tracked");
   });
 
+  it("reuses cached paths when the view is mounted again", async () => {
+    const first = mount(PathsView);
+    await flushPromises();
+    first.unmount();
+
+    mount(PathsView);
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/paths")).toHaveLength(1);
+  });
+
   it("shows backend-provided activity labels on paths", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")

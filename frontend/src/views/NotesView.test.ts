@@ -41,6 +41,19 @@ describe("NotesView", () => {
     expect(vi.mocked(api).mock.calls.some(([path]) => String(path).includes("q=graph"))).toBe(true);
   });
 
+  it("reuses the cached notes page when returning to the list", async () => {
+    const firstRouter = router(); await firstRouter.push("/notes"); await firstRouter.isReady();
+    const first = mount(NotesView, { global: { plugins: [firstRouter] } }); await flushPromises();
+    const initialListCalls = vi.mocked(api).mock.calls.filter(([path]) => String(path).startsWith("/notes?")).length;
+    first.unmount();
+
+    const secondRouter = router(); await secondRouter.push("/notes"); await secondRouter.isReady();
+    const second = mount(NotesView, { global: { plugins: [secondRouter] } }); await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.filter(([path]) => String(path).startsWith("/notes?")).length).toBe(initialListCalls);
+    expect(second.get(".note-row").text()).toContain("Learning");
+  });
+
   it("searches notes by label", async () => {
     const r = router(); await r.push("/notes"); await r.isReady();
     const wrapper = mount(NotesView, { global: { plugins: [r] } }); await flushPromises();
