@@ -99,6 +99,10 @@ public class Path {
     return importBatchId;
   }
 
+  public Instant getDeletedAt() {
+    return deletedAt;
+  }
+
   public void assignImportBatch(UUID importBatchId) {
     this.importBatchId = importBatchId;
   }
@@ -118,6 +122,11 @@ public class Path {
 
   public void delete() {
     deletedAt = Instant.now();
+    updatedAt = Instant.now();
+  }
+
+  public void restore() {
+    deletedAt = null;
     updatedAt = Instant.now();
   }
 }
