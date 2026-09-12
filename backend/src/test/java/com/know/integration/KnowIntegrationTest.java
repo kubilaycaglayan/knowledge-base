@@ -305,7 +305,7 @@ class KnowIntegrationTest {
   void knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo() {
     String token = freshToken();
     UUID pathId = UUID.randomUUID(), labelId = UUID.randomUUID(), sessionId = UUID.randomUUID();
-    UUID activityId = UUID.randomUUID(), dayId = UUID.randomUUID(), noteId = UUID.randomUUID();
+    UUID activityId = UUID.randomUUID(), dayId = UUID.randomUUID(), noteId = UUID.randomUUID(), logId = UUID.randomUUID();
     String started = "2026-09-10T10:00:00Z";
     String ended = "2026-09-10T11:00:00Z";
     String created = "2026-09-10T09:00:00Z";
@@ -317,11 +317,12 @@ class KnowIntegrationTest {
         + csvRow("session", sessionId, "{\"pathId\":\"" + pathId + "\",\"startedAt\":\"" + started + "\",\"endedAt\":\"" + ended + "\",\"durationSeconds\":3600,\"description\":\"Imported session\",\"source\":\"MANUAL\",\"labelIds\":[\"" + labelId + "\"]}")
         + csvRow("timeline", activityId, "{\"pathId\":\"" + pathId + "\",\"timeEntryId\":\"" + sessionId + "\",\"type\":\"TIME_TRACKED\",\"title\":\"Imported activity\",\"detail\":\"Activity detail\",\"occurredAt\":\"" + updated + "\"}")
         + csvRow("calendar", dayId, "{\"recordDate\":\"2026-09-10\",\"note\":\"Day note\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":\"0.50\"}]}")
-        + csvRow("note", noteId, "{\"pathId\":\"" + pathId + "\",\"activityId\":null,\"timeEntryId\":null,\"title\":\"Imported note\",\"content\":" + quote(content) + ",\"contentText\":\"Plain content\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"tagIds\":[\"" + labelId + "\"]}");
+        + csvRow("note", noteId, "{\"pathId\":\"" + pathId + "\",\"activityId\":null,\"timeEntryId\":null,\"title\":\"Imported note\",\"content\":" + quote(content) + ",\"contentText\":\"Plain content\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"tagIds\":[\"" + labelId + "\"]}")
+        + csvRow("log", logId, "{\"body\":\"Imported log\",\"occurredAt\":\"" + updated + "\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"labelIds\":[\"" + labelId + "\"]}");
 
     ResponseEntity<JsonNode> imported = importCsv(token, csv);
     assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
-    assertEquals(6, imported.getBody().get("imported").asInt());
+    assertEquals(7, imported.getBody().get("imported").asInt());
     assertEquals(0, imported.getBody().get("skipped").asInt());
 
     String exported = exportCsv(token).getBody();
@@ -332,22 +333,25 @@ class KnowIntegrationTest {
     assertTrue(exported.contains("Imported activity") && exported.contains("Activity detail") && exported.contains(sessionId.toString()));
     assertTrue(exported.contains("2026-09-10") && exported.contains("Day note") && exported.contains("0.50"));
     assertTrue(exported.contains("Imported note") && exported.contains("Plain content") && exported.contains("paragraph"));
+    assertTrue(exported.contains("Imported log") && exported.contains(logId.toString()) && exported.contains(labelId.toString()));
 
     JsonNode batches = get("/api/v1/imports/knowledge-base/batches", token).getBody();
     assertEquals(1, batches.size());
     String batchId = batches.get(0).get("id").asText();
-    assertEquals(6, batches.get(0).get("imported").asInt());
+    assertEquals(7, batches.get(0).get("imported").asInt());
 
     ResponseEntity<JsonNode> undone = delete("/api/v1/imports/knowledge-base/batches/" + batchId, token);
     assertEquals(HttpStatus.OK, undone.getStatusCode());
     assertEquals(1, undone.getBody().get("deletedEntries").asInt());
     assertEquals(1, undone.getBody().get("deletedActivities").asInt());
     assertEquals(1, undone.getBody().get("deletedPaths").asInt());
+    assertEquals(1, undone.getBody().get("deletedLogs").asInt());
     assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
     assertTrue(get("/api/v1/labels", token).getBody().isEmpty());
     assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
     assertTrue(get("/api/v1/activities", token).getBody().isEmpty());
     assertTrue(get("/api/v1/notes", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/logs", token).getBody().isEmpty());
     assertTrue(get("/api/v1/calendar/days?startDate=2026-09-10&endDate=2026-09-10", token).getBody().isEmpty());
   }
 

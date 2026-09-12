@@ -23,20 +23,23 @@ public class KnowledgeBaseTransferService {
   private final ActivityRepository activities; private final DailyRecordRepository days;
   private final DailyRecordLabelRepository dayLabels; private final TimeEntryLabelRepository entryLabels;
   private final NoteRepository notes; private final NoteTagRepository noteTags;
+  private final LogRepository logs; private final LogLabelRepository logLabels;
   private final LabelRepository labels; private final LabelScopeRepository scopes;
   private final ImportBatchRepository batches; private final UserRepository users;
 
   public KnowledgeBaseTransferService(ObjectMapper json, PathRepository paths, TimeEntryRepository entries,
       ActivityRepository activities, DailyRecordRepository days, DailyRecordLabelRepository dayLabels,
       TimeEntryLabelRepository entryLabels, NoteRepository notes, NoteTagRepository noteTags,
-      LabelRepository labels, LabelScopeRepository scopes, ImportBatchRepository batches, UserRepository users) {
+      LogRepository logs, LogLabelRepository logLabels, LabelRepository labels, LabelScopeRepository scopes,
+      ImportBatchRepository batches, UserRepository users) {
     this.json = json; this.paths = paths; this.entries = entries; this.activities = activities;
     this.days = days; this.dayLabels = dayLabels; this.entryLabels = entryLabels; this.notes = notes;
-    this.noteTags = noteTags; this.labels = labels; this.scopes = scopes; this.batches = batches; this.users = users;
+    this.noteTags = noteTags; this.logs = logs; this.logLabels = logLabels;
+    this.labels = labels; this.scopes = scopes; this.batches = batches; this.users = users;
   }
 
   public record ImportSummary(UUID batchId, int imported, int skipped, int createdPaths) {}
-  public record UndoSummary(UUID batchId, long deletedEntries, long deletedActivities, long deletedPaths) {}
+  public record UndoSummary(UUID batchId, long deletedEntries, long deletedActivities, long deletedPaths, long deletedLogs) {}
   public record BatchView(UUID id, TimeSource source, int imported, int skipped, int createdPaths,
       Instant createdAt, Instant undoneAt) {
     static BatchView of(ImportBatch b) { return new BatchView(b.getId(), b.getSource(), b.getImportedCount(),
@@ -68,6 +71,10 @@ public class KnowledgeBaseTransferService {
           "pathId", value(n.getPathId()), "activityId", value(n.getActivityId()), "timeEntryId", value(n.getTimeEntryId()),
           "title", n.getTitle(), "content", n.getContent(), "contentText", value(n.getContentText()),
           "createdAt", n.getCreatedAt(), "updatedAt", n.getUpdatedAt(), "tagIds", noteTags.findAllByIdNoteId(n.getId()).stream().map(t -> t.getId().getLabelId()).toList()));
+      for (Log l : logs.findAllByUserIdOrderByOccurredAtDescIdDesc(userId)) row(out, "log", l.getId(), payload(
+          "body", l.getBody(), "occurredAt", l.getOccurredAt(), "createdAt", l.getCreatedAt(),
+          "updatedAt", l.getUpdatedAt(), "labelIds", logLabels.findAllByIdLogId(l.getId()).stream()
+              .map(value -> value.getId().getLabelId()).toList()));
       return out.toString().getBytes(StandardCharsets.UTF_8);
     } catch (Exception e) { throw new IllegalStateException("Could not create Knowledge Base export", e); }
   }
@@ -161,17 +168,29 @@ public class KnowledgeBaseTransferService {
       JsonNode p=r.payload; Note n=notes.save(Note.imported(r.id,userId,idOf(pathMap,p,"pathId"),idOf(activityMap,p,"activityId"),idOf(entryMap,p,"timeEntryId"),text(p,"title"),text(p,"content"),text(p,"contentText"),instant(p,"createdAt"),instant(p,"updatedAt"))); n.assignImportBatch(batch.getId()); notes.save(n);
       for(JsonNode id:p.path("tagIds")) if(labelMap.containsKey(uuid(id))) noteTags.save(new NoteTag(new NoteTagId(n.getId(),uuid(id)))); imported++;
     }
+    for (Row r : rows) if (r.entity.equals("log")) {
+      if (logs.existsById(r.id) || logs.findByIdAndUserId(r.id, userId).isPresent()) { skipped++; continue; }
+      JsonNode p = r.payload;
+      Log log = logs.save(Log.imported(r.id, userId, text(p, "body"), instant(p, "occurredAt"),
+          instant(p, "createdAt"), instant(p, "updatedAt")));
+      log.assignImportBatch(batch.getId()); logs.save(log);
+      for (JsonNode id : p.path("labelIds")) if (labelMap.containsKey(uuid(id)))
+        logLabels.save(new LogLabel(new LogLabelId(log.getId(), uuid(id))));
+      imported++;
+    }
     batch.complete(imported, skipped, createdPaths); batches.save(batch); return new ImportSummary(batch.getId(),imported,skipped,createdPaths);
   }
 
   public List<BatchView> listBatches(UUID userId) { return batches.findAllByUserIdAndSourceOrderByCreatedAtDesc(userId, TimeSource.KNOWLEDGE_BASE, PageRequest.of(0,100)).stream().map(BatchView::of).toList(); }
   @Transactional public UndoSummary undo(UUID userId, UUID id) {
     ImportBatch b=batches.findByIdAndUserId(id,userId).filter(x->x.getSource()==TimeSource.KNOWLEDGE_BASE).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Import batch not found"));
-    if(b.getUndoneAt()!=null)return new UndoSummary(id,0,0,0);
+    if(b.getUndoneAt()!=null)return new UndoSummary(id,0,0,0,0);
     long n=notes.deleteByUserIdAndImportBatchId(userId,id), d=days.deleteByUserIdAndImportBatchId(userId,id);
     long a=activities.deleteByUserIdAndImportBatchId(userId,id), e=entries.deleteByUserIdAndImportBatchId(userId,id);
-    long p=paths.deleteByUserIdAndImportBatchId(userId,id); labels.deleteByUserIdAndImportBatchId(userId,id);
-    b.undo(); batches.save(b); return new UndoSummary(id,e,a,p);
+    long p=paths.deleteByUserIdAndImportBatchId(userId,id);
+    long l=logs.deleteByUserIdAndImportBatchId(userId,id);
+    labels.deleteByUserIdAndImportBatchId(userId,id);
+    b.undo(); batches.save(b); return new UndoSummary(id,e,a,p,l);
   }
 
   private void row(StringBuilder out,String entity,UUID id,Object payload)throws Exception { out.append(entity).append(',').append(id).append(',').append(csv(json.writeValueAsString(payload))).append('\n'); }
