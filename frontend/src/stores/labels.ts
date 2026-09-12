@@ -21,6 +21,7 @@ export const useLabelsStore = defineStore("labels", {
         this.loading = false;
       }
     },
+    setAll(labels: Label[]) { this.labels = labels; this.loaded = true; },
     replace(label: Label) { this.labels = this.labels.map((value) => value.id === label.id ? label : value); },
     add(label: Label) { this.labels = [...this.labels, label]; },
     remove(id: string) { this.labels = this.labels.filter((label) => label.id !== id); },
