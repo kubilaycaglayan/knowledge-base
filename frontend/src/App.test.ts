@@ -41,7 +41,12 @@ describe("App", () => {
 
   it("shows the authenticated navigation and signs out", async () => {
     localStorage.setItem("know_token", "token");
-    const wrapper = mount(App, { global: { stubs } });
+    const wrapper = mount(App, {
+      global: {
+        stubs,
+        provide: { [routeLocationKey as symbol]: { path: "/paths", query: {} } },
+      },
+    });
 
     expect(wrapper.get("nav").findAll("a").map((link) => link.text())).toEqual([
       "Sessions",
@@ -53,7 +58,7 @@ describe("App", () => {
     ]);
     expect(wrapper.get('.settings-link').attributes('aria-label')).toBe('Settings');
     expect(wrapper.find(".theme-toggle").exists()).toBe(false);
-    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(true);
 
     await wrapper.get("button.ghost").trigger("click");
 
@@ -143,6 +148,29 @@ describe("App", () => {
     await wrapper.get("button.ghost").trigger("click");
     expect(wrapper.classes()).toContain("dashboard-shell");
     expect(wrapper.find(".dashboard-skip").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("does not mount the floating tracker on the sessions page", async () => {
+    const { reactive } = await import("vue");
+    const route = reactive({ path: "/paths", query: {} });
+    localStorage.setItem("know_token", "token");
+    const wrapper = mount(App, { global: { stubs, provide: { [routeLocationKey as symbol]: route } } });
+    const tracker = wrapper.find('[data-test="floating-tracker"]');
+
+    expect(tracker.exists()).toBe(true);
+    expect(tracker.attributes("style") || "").not.toContain("display: none");
+
+    route.path = "/sessions";
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
+
+    route.path = "/calendar";
+    await wrapper.vm.$nextTick();
+    const restoredTracker = wrapper.find('[data-test="floating-tracker"]');
+    expect(restoredTracker.exists()).toBe(true);
+    expect(restoredTracker.attributes("style") || "").not.toContain("display: none");
+    expect(restoredTracker.element).not.toBe(tracker.element);
     wrapper.unmount();
   });
 });
