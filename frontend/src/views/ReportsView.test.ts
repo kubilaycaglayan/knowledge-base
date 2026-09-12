@@ -83,9 +83,7 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Monthly");
     expect(wrapper.text()).toContain("Quarterly");
     expect(wrapper.text()).toContain("Yearly");
-    expect(
-      wrapper.get('[data-report-tab="DAY"]').attributes("aria-selected"),
-    ).toBe("true");
+    expect((wrapper.get('[aria-label="Report aggregation"]').element as HTMLSelectElement).value).toBe("DAY");
     const initialQuery = new URL(
       vi.mocked(api).mock.calls[0][0] as string,
       "https://knowledge-base.test",
@@ -194,10 +192,7 @@ describe("ReportsView", () => {
     expect(initialReportCall?.[0]).toEqual(
       expect.stringContaining("aggregation=DAY"),
     );
-    await wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Monthly")!
-      .trigger("click");
+    await wrapper.get('[aria-label="Report aggregation"]').setValue("MONTH");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
       expect.stringContaining("aggregation=MONTH"),
@@ -207,9 +202,7 @@ describe("ReportsView", () => {
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
       "/reports?startDate=2026-08-10&endDate=2026-08-20&aggregation=MONTH",
     );
-    expect(
-      wrapper.get('[data-report-tab="MONTH"]').attributes("aria-selected"),
-    ).toBe("true");
+    expect((wrapper.get('[aria-label="Report aggregation"]').element as HTMLSelectElement).value).toBe("MONTH");
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
@@ -253,10 +246,7 @@ describe("ReportsView", () => {
       ["Quarterly", "QUARTER", format(subYears(new Date(), 2), "yyyy-MM-dd")],
     ] as const) {
       const reportRequestCount = vi.mocked(api).mock.calls.filter(([path]) => typeof path === "string" && path.startsWith("/reports?")).length;
-      await wrapper
-        .findAll("button")
-        .find((button) => button.text() === label)!
-        .trigger("click");
+      await wrapper.get('[aria-label="Report aggregation"]').setValue(aggregation);
       await flushPromises();
       const expectedRangeEnd =
         aggregation === "DAY"
@@ -304,10 +294,7 @@ describe("ReportsView", () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
 
-    await wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Quarterly")!
-      .trigger("click");
+    await wrapper.get('[aria-label="Report aggregation"]').setValue("QUARTER");
     await flushPromises();
 
     expect(wrapper.get(".chart-frame").attributes("aria-label")).toContain(
@@ -364,10 +351,7 @@ describe("ReportsView", () => {
   it("loads yearly aggregations and shifts the interval forward", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    await wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Yearly")!
-      .trigger("click");
+    await wrapper.get('[aria-label="Report aggregation"]').setValue("YEAR");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
       expect.stringContaining("aggregation=YEAR"),
