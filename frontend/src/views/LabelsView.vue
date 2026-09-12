@@ -14,6 +14,7 @@ const scopeOptions: { value: Scope; label: string }[] = [
   { value: "NOTE", label: "Notes" },
   { value: "CALENDAR", label: "Calendar" },
   { value: "TIME_ENTRY", label: "Sessions" },
+  { value: "LOG", label: "Logs" },
 ];
 const colors = labelColors;
 const labelStore = useLabelsStore();
@@ -29,6 +30,7 @@ const error = ref("");
 const addDialogOpen = ref(false);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const sortedLabels = computed(() => [...labels.value].sort((a, b) => a.name.localeCompare(b.name)));
+function isSystemHighlight(label: Label) { return label.name.toLowerCase() === "highlight" && label.scopes.includes("LOG"); }
 
 async function load() {
   try { await labelStore.load(); }
@@ -112,7 +114,7 @@ onMounted(load);
       <p v-if="loading" class="muted">Loading labels…</p>
       <p v-else-if="!sortedLabels.length" class="muted">No labels yet. Add one above to get started.</p>
       <div v-for="label in sortedLabels" v-else :key="label.id" class="label-row">
-        <template v-if="editingId !== label.id"><span class="label-swatch" :style="{ backgroundColor: label.color || colors[0] }" aria-hidden="true"></span><strong>{{ label.name }}</strong><span class="scope-list">{{ label.scopes.map(scope => scopeOptions.find(option => option.value === scope)?.label).join(" · ") }}</span><button class="ghost" type="button" @click="beginEdit(label)">Edit</button><button class="ghost danger" type="button" @click="remove(label)">Remove</button></template>
+        <template v-if="editingId !== label.id"><span class="label-swatch" :style="{ backgroundColor: label.color || colors[0] }" aria-hidden="true"></span><strong>{{ label.name }}</strong><span v-if="isSystemHighlight(label)" class="system-label">System label</span><span class="scope-list">{{ label.scopes.map(scope => scopeOptions.find(option => option.value === scope)?.label).join(" · ") }}</span><template v-if="!isSystemHighlight(label)"><button class="ghost" type="button" @click="beginEdit(label)">Edit</button><button class="ghost danger" type="button" @click="remove(label)">Remove</button></template></template>
         <template v-else-if="draft"><input v-model="draft.name" class="edit-name" maxlength="80" :aria-label="`Edit ${label.name} name`" /><ColorPalette v-model="draft.color" class="label-edit-colors" :legend="`Edit ${label.name} color`" option-label="Set edit label color" /><span class="scope-editor"><label v-for="option in scopeOptions" :key="option.value"><input type="checkbox" :checked="checked(option.value, draft.scopes)" @change="toggleScope(draft.scopes, option.value)" />{{ option.label }}</label></span><button class="primary compact" type="button" :disabled="saving" @click="save(label)">Save</button><button class="ghost" type="button" @click="cancelEdit">Cancel</button></template>
       </div>
     </section>
@@ -161,6 +163,7 @@ onMounted(load);
 .label-row strong { min-width: 120px; overflow-wrap: anywhere; }
 .label-swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .scope-list { color: var(--workspace-muted); flex: 1; min-width: 0; }
+.system-label { color: var(--workspace-muted); font-size: 12px; white-space: nowrap; }
 .danger { color: var(--workspace-danger); }
 .edit-name { flex: 1; min-width: 120px; }
 .scope-editor { display: flex; gap: 10px; flex-wrap: wrap; flex: 1; }
