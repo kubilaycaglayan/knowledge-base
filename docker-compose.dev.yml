@@ -2,8 +2,14 @@ name: knowledge-base-dev
 
 services:
   db:
+    cpuset: "0-3,6-9"
+    cpus: 0.5
+    mem_limit: 1g
     ports: !override ["127.0.0.1:${DB_DEV_PORT:-15432}:5432"]
   api:
+    cpuset: "0-3,6-9"
+    cpus: 2.0
+    mem_limit: 3g
     build: !reset null
     image: gradle:8.13-jdk21
     working_dir: /app
@@ -21,6 +27,9 @@ services:
       - ./backend:/app
       - gradle-cache:/home/gradle/.gradle
   web:
+    cpuset: "0-3,6-9"
+    cpus: 1.0
+    mem_limit: 1.5g
     build: !reset null
     image: node:22-alpine
     working_dir: /app
@@ -32,6 +41,9 @@ services:
       - frontend-node-modules:/app/node_modules
     expose: ["5177"]
   proxy:
+    cpuset: "0-3,6-9"
+    cpus: 0.1
+    mem_limit: 128m
     ports: !override ["127.0.0.1:${PROXY_DEV_PORT:-3000}:80"]
     environment:
       WEB_UPSTREAM: web:5177
