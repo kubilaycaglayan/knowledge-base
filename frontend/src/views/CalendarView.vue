@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, parseISO, startOfMonth, startOfWeek, subMonths } from "date-fns";
 import { api } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
 import ColorPalette from "../components/ColorPalette.vue";
+import { useLabelsStore } from "../stores/labels";
 
 type Scope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
 type Label = { id: string; name: string; color?: string | null; scopes: Scope[] };
@@ -11,7 +13,8 @@ type Assignment = { labelId: string; name: string; color?: string | null; portio
 type Day = { date: string; note?: string | null; labels: Assignment[] };
 const month = ref(startOfMonth(new Date()));
 const selected = ref(format(new Date(), "yyyy-MM-dd"));
-const labels = ref<Label[]>([]);
+const labelsStore = useLabelsStore();
+const { labels } = storeToRefs(labelsStore);
 const days = ref<Record<string, Day>>({});
 const note = ref("");
 const chosen = ref<Record<string, number | null>>({});
@@ -61,8 +64,8 @@ async function load() {
   try {
     const startDate = format(startOfMonth(month.value), "yyyy-MM-dd");
     const endDate = format(endOfMonth(month.value), "yyyy-MM-dd");
-    const [savedLabels, savedDays] = await Promise.all([api<Label[]>("/labels?scope=CALENDAR"), api<Day[]>(`/calendar/days?startDate=${startDate}&endDate=${endDate}`)]);
-    labels.value = savedLabels;
+    const [savedLabels, savedDays] = await Promise.all([labelsStore.loadScope("CALENDAR"), api<Day[]>(`/calendar/days?startDate=${startDate}&endDate=${endDate}`)]);
+    void savedLabels;
     days.value = Object.fromEntries(savedDays.map(day => [day.date, day]));
     selectDay(parseISO(selected.value));
   } catch { error.value = "Unable to load calendar records."; }
@@ -84,7 +87,7 @@ async function save() {
 async function addLabel() {
   if (addingLabel.value || !newLabel.value.trim()) return;
   addingLabel.value = true;
-  try { labels.value = [...labels.value, await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name: newLabel.value.trim(), color: newLabelColor.value, scopes: ["CALENDAR"] }) })].sort((a, b) => a.name.localeCompare(b.name)); newLabel.value = ""; }
+  try { labelsStore.add(await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name: newLabel.value.trim(), color: newLabelColor.value, scopes: ["CALENDAR"] }) })); labelsStore.labels.sort((a, b) => a.name.localeCompare(b.name)); newLabel.value = ""; }
   catch { error.value = "Unable to add that label. Label names must be unique."; }
   finally { addingLabel.value = false; }
 }
@@ -109,7 +112,7 @@ function toggleEditingColor(labelId: string) {
   newLabelColorOpen.value = false;
 }
 async function changeColor(label: Label, color: string) {
-  try { const saved = await api<Label>(`/labels/${label.id}`, { method: "PUT", body: JSON.stringify({ name: label.name, color, scopes: label.scopes }) }); labels.value = labels.value.map(value => value.id === saved.id ? saved : value); editingColor.value = null; }
+  try { const saved = await api<Label>(`/labels/${label.id}`, { method: "PUT", body: JSON.stringify({ name: label.name, color, scopes: label.scopes }) }); labelsStore.replace(saved); editingColor.value = null; }
   catch { error.value = "Unable to update that label color."; }
 }
 function previousMonth() { month.value = subMonths(month.value, 1); selected.value = format(startOfMonth(month.value), "yyyy-MM-dd"); void load(); }
