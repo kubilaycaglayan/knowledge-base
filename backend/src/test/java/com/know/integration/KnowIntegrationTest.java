@@ -1316,5 +1316,8 @@ class KnowIntegrationTest {
     assertEquals("Edited thought", updated.getBody().get("body").asText());
     assertEquals(HttpStatus.CONFLICT, put("/api/v1/logs/" + id, owner,
         "{\"body\":\"Stale\",\"occurredAt\":\"2026-09-11T11:20:00Z\",\"version\":" + version + "}").getStatusCode());
+    assertEquals(HttpStatus.NOT_FOUND, delete("/api/v1/logs/" + id, other).getStatusCode());
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/logs/" + id, owner).getStatusCode());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/logs/" + id, owner).getStatusCode());
   }
 }

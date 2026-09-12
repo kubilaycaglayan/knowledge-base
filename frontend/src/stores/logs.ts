@@ -18,5 +18,6 @@ export const useLogsStore = defineStore("logs", {
       this.logs = [log, ...remaining].sort((left, right) =>
         right.occurredAt.localeCompare(left.occurredAt) || right.id.localeCompare(left.id));
     },
+    remove(id: string) { this.logs = this.logs.filter((log) => log.id !== id); },
   },
 });
