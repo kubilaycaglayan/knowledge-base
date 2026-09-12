@@ -140,19 +140,6 @@ async function createLabel() {
   } catch { error.value = "Could not create the session label."; }
   finally { busy.value = false; }
 }
-async function cancel() {
-  if (!timer.value || busy.value) return;
-  busy.value = true; error.value = "";
-  try {
-    const versionAtRequest = ++timerStateVersion;
-    await api("/timers/cancel", { method: "POST", body: "{}" });
-    reportsStore.clear();
-    if (versionAtRequest === timerStateVersion) applyTimer(null);
-    emit("changed");
-  }
-  catch { error.value = "Could not cancel the timer."; }
-  finally { busy.value = false; }
-}
 async function editStartedAt() {
   if (!timer.value) return;
   const value = await promptDialog.value?.open("Started at", timerStartedAt.value, { inputType: "datetime-local" });
@@ -245,14 +232,12 @@ onUnmounted(() => {
   <div class="floating-tracker-host" :class="{ inline: props.inline }">
     <section class="floating-tracker session-grid" aria-label="Focus today">
       <div class="floating-tracker-bar focus">
-        <span class="tracker-status" :class="{ running: timer }" :aria-label="timer ? 'Session running' : 'No session running'" role="status"></span>
-        <button class="floating-tracker-action primary" type="button" :disabled="busy" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span>{{ timer ? "Stop session" : "Start a session" }}</span></button>
+        <button class="floating-tracker-action primary" :class="{ 'is-running': timer }" type="button" :disabled="busy" :aria-busy="busy" :aria-label="timer ? 'Stop timer' : 'Start timer'" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span class="sr-only">{{ timer ? "Stop session" : "Start a session" }}</span></button>
         <button class="floating-tracker-clock" type="button" :disabled="!timer" aria-label="Edit timer start time; elapsed session time" @click="editStartedAt"><strong role="timer" aria-live="off">{{ clock(elapsed) }}</strong></button>
         <span v-if="pathName" class="floating-tracker-path">{{ pathName }}</span>
         <span class="floating-tracker-summary">{{ timerSummary }}</span>
         <span v-if="selectedLabelNames.length" class="floating-tracker-context">{{ selectedLabelNames.join(', ') }}</span>
         <button v-if="!props.inline" class="floating-tracker-toggle" type="button" :aria-expanded="open" aria-controls="floating-tracker-panel" @click="open = !open"><span class="sr-only">{{ open ? "Collapse tracker" : "Expand tracker" }}</span><span aria-hidden="true" class="chevron" :class="{ up: !open }"></span></button>
-        <button v-if="timer" type="button" class="cancel-timer text-button danger" :disabled="busy" @click="cancel">Cancel</button>
       </div>
       <div v-if="open" id="floating-tracker-panel" class="floating-tracker-panel">
         <div class="tracker-field">
@@ -279,15 +264,15 @@ onUnmounted(() => {
 .floating-tracker-host.inline .floating-tracker { max-width: none; }
 .floating-tracker { width: 100%; max-width: 768px; overflow: hidden; pointer-events: auto; border: 1px solid var(--workspace-border); border-radius: 8px; background: var(--workspace-surface); box-shadow: 0 2px 5px rgb(24 33 47 / 12%), 0 14px 32px rgb(24 33 47 / 22%); }
 .floating-tracker-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
-.tracker-status { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--workspace-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-danger) 14%, transparent); }.tracker-status.running { background: var(--workspace-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-success) 14%, transparent); }
-.floating-tracker-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; border: 0; border-radius: 6px; padding: 6px 12px; background: var(--workspace-accent); color: var(--workspace-on-accent); font-size: 14px; font-weight: 600; }
-.floating-tracker-action:hover { background: var(--workspace-accent-hover); }.floating-tracker-action:disabled { opacity: .4; cursor: not-allowed; }
+.floating-tracker-action { display: inline-flex; width: 36px; min-width: 36px; align-items: center; justify-content: center; min-height: 36px; margin: 0 0 0 auto; order: 2; border: 1px solid #4f9b6d; border-radius: 6px; padding: 0; background: #edf8f0; color: #197a43; font-size: 20px; line-height: 1; cursor: pointer; }
+.floating-tracker-action:hover { border-color: #197a43; background: #d9f0e0; color: #105d31; }.floating-tracker-action:active { background: #c8e8d1; }.floating-tracker-action:disabled { opacity: .4; cursor: not-allowed; }
+.floating-tracker-action.is-running { border-color: var(--workspace-danger-border); background: var(--workspace-danger-surface); color: var(--workspace-danger); }
+.floating-tracker-action.is-running:hover { border-color: var(--workspace-danger); background: var(--workspace-danger-surface); color: var(--workspace-danger-hover); }
 .floating-tracker-clock { border: 0; padding: 0; background: transparent; color: var(--workspace-text); font: 400 18px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }.floating-tracker-clock:disabled { cursor: default; }
 .floating-tracker-path { min-width: 0; max-width: 220px; overflow: hidden; border-radius: 4px; padding: 3px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-summary { min-width: 0; overflow: hidden; flex: 1; color: var(--workspace-muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .floating-tracker-context { display: inline-flex; min-width: 0; max-width: 220px; gap: 6px; overflow: hidden; border-radius: 4px; padding: 3px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.floating-tracker-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--workspace-muted); }.floating-tracker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }
-.cancel-timer { border: 0; border-radius: 4px; padding: 5px 8px; background: transparent; color: var(--workspace-danger); font-size: 12px; }
+.floating-tracker-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; order: 3; border: 0; border-radius: 6px; background: transparent; color: var(--workspace-muted); }.floating-tracker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }
 .chevron { width: 9px; height: 9px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); }.chevron.up { transform: rotate(225deg) translate(-1px, -1px); }
 .floating-tracker-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px 12px 12px; border-top: 1px solid var(--workspace-border); }
 .tracker-field { display: grid; align-content: start; gap: 8px; min-width: 0; }.tracker-field-wide { grid-column: 1 / -1; }
@@ -298,6 +283,6 @@ onUnmounted(() => {
 .tracker-test-select { display: none; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; }.tracker-status { width: 7px; height: 7px; } }
+@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { width: 44px; min-width: 44px; min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; } }
 @media (prefers-reduced-motion: reduce) { .floating-tracker, .floating-tracker * { transition: none !important; animation: none !important; } }
 </style>
