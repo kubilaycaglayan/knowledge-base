@@ -36,8 +36,8 @@ final class KnowUITests: XCTestCase {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Paths"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Paths"].tap()
+        XCTAssertTrue(app.buttons["workspace.paths"].waitForExistence(timeout: 5))
+        app.buttons["workspace.paths"].tap()
         XCTAssertTrue(app.buttons["paths.add"].waitForExistence(timeout: 5))
         app.buttons["paths.add"].tap()
         XCTAssertTrue(app.textFields["paths.name"].waitForExistence(timeout: 5))
@@ -46,9 +46,92 @@ final class KnowUITests: XCTestCase {
 
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Today"].tap()
+        XCTAssertTrue(app.buttons["workspace.sessions"].waitForExistence(timeout: 5))
+        app.buttons["workspace.sessions"].tap()
         XCTAssertTrue(app.buttons["timer.path"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["timer.label"].exists)
+        XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
+    }
+
+    private func launchSessions(_ arguments: [String] = []) {
+        app.terminate()
+        app.launchArguments = ["-ui-testing", "-ui-testing-authenticated"] + arguments
+        app.launch()
+        XCTAssertTrue(app.buttons["timer.toggle"].waitForExistence(timeout: 5))
+    }
+
+    func testSessionsTimerAndMultipleLabelCreation() {
+        launchSessions()
+        app.buttons["timer.path"].tap()
+        app.buttons["Distributed systems"].firstMatch.tap()
+        app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].tap()
+        let name = app.textFields["timer.newLabel"]
+        name.tap()
+        name.typeText("Reading")
+        app.buttons["timer.createLabel"].tap()
+        app.swipeDown()
+        app.buttons["timer.toggle"].tap()
+        XCTAssertEqual(app.buttons["timer.toggle"].label, "Stop timer")
+        app.buttons["timer.clock"].tap()
+        XCTAssertTrue(app.buttons["Save start time"].waitForExistence(timeout: 3))
+        app.buttons["Cancel"].firstMatch.tap()
+        app.buttons["timer.toggle"].tap()
+        XCTAssertEqual(app.buttons["timer.toggle"].label, "Start timer")
+    }
+
+    func testSessionEditPersistsAndDeletionRequiresConfirmation() {
+        launchSessions()
+        app.swipeUp()
+        let edit = app.buttons["session.edit.00000000-0000-4000-8000-000000000003"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        edit.tap()
+        let description = app.descendants(matching: .any).matching(identifier: "session.description").firstMatch
+        XCTAssertTrue(description.waitForExistence(timeout: 3))
+        description.tap()
+        description.typeText(" updated")
+        app.swipeUp()
+        app.buttons["session.save"].tap()
+        XCTAssertTrue(app.staticTexts["Replication and consistency models updated"].waitForExistence(timeout: 5))
+        app.buttons["session.remove.00000000-0000-4000-8000-000000000003"].tap()
+        app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(edit.exists)
+        app.buttons["session.remove.00000000-0000-4000-8000-000000000003"].tap()
+        app.buttons["Remove session"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["No sessions recorded yet."].waitForExistence(timeout: 5))
+    }
+
+    func testSessionUnsavedChangesCanBeKeptOrDiscarded() {
+        launchSessions()
+        app.swipeUp()
+        app.buttons["session.edit.00000000-0000-4000-8000-000000000003"].tap()
+        let description = app.descendants(matching: .any).matching(identifier: "session.description").firstMatch
+        description.tap()
+        description.typeText(" unsaved")
+        app.swipeUp()
+        app.buttons["session.cancel"].tap()
+        app.buttons["Keep editing"].tap()
+        XCTAssertTrue(description.exists)
+        app.buttons["session.cancel"].tap()
+        app.buttons["Discard changes"].tap()
+        XCTAssertTrue(app.staticTexts["Replication and consistency models"].waitForExistence(timeout: 3))
+    }
+
+    func testSessionsOfflineRetryAndEmptyState() {
+        launchSessions(["-sessions-error", "-sessions-empty"])
+        XCTAssertTrue(app.staticTexts["No network connection. Reconnect and try again."].waitForExistence(timeout: 3))
+        app.swipeUp()
+        app.buttons["Retry"].tap()
+        XCTAssertTrue(app.staticTexts["No sessions recorded yet."].waitForExistence(timeout: 5))
+    }
+
+    func testSessionsAppearanceScreenshots() {
+        launchSessions()
+        for mode in ["Light", "Dark"] {
+            app.buttons["workspace.appearance"].tap()
+            app.buttons[mode].tap()
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Sessions-\(mode)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 }
