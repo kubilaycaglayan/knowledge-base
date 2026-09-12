@@ -23,6 +23,7 @@ type Path = StorePath & {
 type Label = { id: string; name: string; color?: string | null };
 type Activity = {
   id: string;
+  timeEntryId?: string;
   type?: string;
   title: string;
   detail?: string;
@@ -36,6 +37,14 @@ type Summary = {
 };
 type DescriptionPart = { text: string; url?: string };
 type ActivityGroup = { key: string; label: string; activities: Activity[] };
+type SessionDraft = {
+  pathId: string;
+  labelIds: string[];
+  startedAt: string;
+  endedAt: string;
+  description: string;
+  source: string;
+};
 const colors = paletteColors;
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
@@ -58,6 +67,10 @@ const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const pendingDelete = ref<Path | null>(null);
 const mergeSource = ref<Path | null>(null);
 const historyPath = ref<Path | null>(null);
+const editingSession = ref<Activity | null>(null);
+const sessionDraft = ref<SessionDraft | null>(null);
+const savingSession = ref(false);
+const sessionSources = ["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"];
 const merging = ref(false);
 let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 const activityDuration = (title: string) => {
@@ -206,6 +219,75 @@ async function inspect(path: Path) {
 }
 function closeHistory() {
   historyPath.value = null;
+}
+const localDateTime = (iso?: string) => {
+  if (!iso) return "";
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+const isoDateTime = (value: string) => new Date(value).toISOString();
+async function editSession(event: Activity) {
+  if (!event.timeEntryId) return;
+  try {
+    const session = await api<{ pathId?: string; labelIds?: string[]; startedAt: string; endedAt?: string; description?: string; source: string }>(`/time-entries/${event.timeEntryId}`);
+    editingSession.value = event;
+    sessionDraft.value = {
+      pathId: session.pathId || historyPath.value?.id || "",
+      labelIds: session.labelIds || [],
+      startedAt: localDateTime(session.startedAt),
+      endedAt: localDateTime(session.endedAt),
+      description: session.description || "",
+      source: session.source,
+    };
+    error.value = "";
+  } catch {
+    error.value = "Could not load this session for editing.";
+  }
+}
+function closeSessionEdit() {
+  editingSession.value = null;
+  sessionDraft.value = null;
+}
+function addSessionLabel(event: Event) {
+  const select = event.target as HTMLSelectElement;
+  if (sessionDraft.value && select.value && !sessionDraft.value.labelIds.includes(select.value)) {
+    sessionDraft.value.labelIds = [...sessionDraft.value.labelIds, select.value];
+  }
+  select.value = "";
+}
+function removeSessionLabel(labelId: string) {
+  if (sessionDraft.value) sessionDraft.value.labelIds = sessionDraft.value.labelIds.filter((id) => id !== labelId);
+}
+async function saveSession() {
+  const event = editingSession.value;
+  const draft = sessionDraft.value;
+  if (!event?.timeEntryId || !draft) return;
+  if (!draft.startedAt || !draft.endedAt) {
+    error.value = "A session needs both a start and an end time.";
+    return;
+  }
+  savingSession.value = true;
+  try {
+    await api(`/time-entries/${event.timeEntryId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        pathId: draft.pathId || null,
+        labelIds: draft.labelIds,
+        startedAt: isoDateTime(draft.startedAt),
+        endedAt: isoDateTime(draft.endedAt),
+        description: draft.description || null,
+        source: draft.source,
+      }),
+    });
+    closeSessionEdit();
+    if (historyPath.value) await loadSummary(historyPath.value);
+    reportsStore.clear();
+  } catch {
+    error.value = "Could not update this session. Check its time range and selections.";
+  } finally {
+    savingSession.value = false;
+  }
 }
 function startEdit(path: Path) {
   editingId.value = path.id;
@@ -467,10 +549,34 @@ onBeforeUnmount(() => {
                 <template v-else>{{ part.text }}</template>
               </template>
             </p>
+            <button v-if="event.timeEntryId" type="button" class="text-button path-history-edit" @click="editSession(event)">Edit session</button>
           </article>
           </section>
           <p v-if="!recentActivity(historyPath.id).length" class="muted">No recent activity yet.</p>
         </div>
+      </section>
+    </div>
+    <div v-if="editingSession && sessionDraft" class="prompt-dialog-backdrop" @click.self="closeSessionEdit">
+      <section v-dialog-focus class="prompt-dialog card session-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="session-edit-heading" tabindex="-1" @keydown.esc.prevent="closeSessionEdit">
+        <p class="eyebrow">EDIT SESSION</p>
+        <h2 id="session-edit-heading">Edit session</h2>
+        <form class="session-edit" @submit.prevent="saveSession">
+          <label class="session-edit-path">Path<select v-model="sessionDraft.pathId" name="history-session-path" aria-label="Edit session path">
+            <option value="">Unassigned</option>
+            <option v-for="path in paths" :key="path.id" :value="path.id">{{ path.name }}</option>
+          </select></label>
+          <div class="session-edit-grid">
+            <label class="session-edit-description">Description <span>(optional)</span><input v-model="sessionDraft.description" name="history-session-description" aria-label="Edit session description" placeholder="What did you work on…" /></label>
+            <fieldset class="session-edit-labels"><legend>Labels</legend><div class="session-label-picker">
+              <div v-if="sessionDraft.labelIds.length" class="session-label-chips" aria-label="Selected session labels"><button v-for="labelId in sessionDraft.labelIds" :key="labelId" type="button" :aria-label="`Remove ${labelFor(labelId)?.name || 'removed label'}`" @click="removeSessionLabel(labelId)">{{ labelFor(labelId)?.name || "Removed label" }} <span aria-hidden="true">×</span></button></div>
+              <select name="history-session-labels" aria-label="Add session label" @change="addSessionLabel"><option value="">Add a label…</option><option v-for="label in sessionLabels.filter((label) => !sessionDraft.labelIds.includes(label.id))" :key="label.id" :value="label.id">{{ label.name }}</option></select>
+            </div></fieldset>
+            <label>Source<select v-model="sessionDraft.source" name="history-session-source" aria-label="Edit session source"><option v-for="source in sessionSources" :key="source">{{ source }}</option></select></label>
+            <label>Started<input v-model="sessionDraft.startedAt" type="datetime-local" name="history-session-started-at" aria-label="Edit session start" required /></label>
+            <label>Ended<input v-model="sessionDraft.endedAt" type="datetime-local" name="history-session-ended-at" aria-label="Edit session end" required /></label>
+          </div>
+          <div class="session-actions"><button class="primary" :disabled="savingSession">{{ savingSession ? "Saving…" : "Save session" }}</button><button type="button" class="text-button" @click="closeSessionEdit">Cancel</button></div>
+        </form>
       </section>
     </div>
   </section>

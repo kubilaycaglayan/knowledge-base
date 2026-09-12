@@ -216,6 +216,12 @@ public class TimerService {
     return entries.findByUserIdAndEndedAtIsNull(userId).map(this::view).orElse(null);
   }
 
+  public TimeView get(UUID userId, UUID id) {
+    TimeEntry entry = entries.findByIdAndUserId(id, userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
+    return view(entry);
+  }
+
   public List<TimeView> history(UUID userId) {
     return views(entries.findAllByUserIdOrderByCompletionTimeDesc(
         userId, org.springframework.data.domain.PageRequest.of(0, 100)));

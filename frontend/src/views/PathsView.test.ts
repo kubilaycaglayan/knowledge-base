@@ -27,6 +27,7 @@ describe("PathsView", () => {
           recentActivity: [
             {
               id: "activity-1",
+              timeEntryId: "session-1",
               title: "Imported Clockify session",
               detail: "Session: 2026-07-31T09:51:19Z – 2026-07-31T12:01:39Z",
               occurredAt: "2026-07-31T09:51:19Z",
@@ -54,6 +55,37 @@ describe("PathsView", () => {
     expect(wrapper.find(".path-history-entry time").text()).toContain("31/07/2026");
     expect(wrapper.find(".path-history-entry .activity-duration").exists()).toBe(false);
     expect(wrapper.text()).toContain("2 minutes tracked");
+  });
+
+  it("opens and saves the session editor from path history", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/paths/path-1/summary") return {
+        path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+        trackedSeconds: 120,
+        recentActivity: [{ id: "activity-1", timeEntryId: "session-1", title: "Tracked 120 seconds", occurredAt: "2026-07-31T12:01:39Z" }],
+      };
+      if (path === "/time-entries/session-1" && !options?.method) return {
+        id: "session-1", pathId: "path-1", labelIds: [], startedAt: "2026-07-31T09:51:19Z", endedAt: "2026-07-31T12:01:39Z", description: "Focus", source: "IMPORT",
+      };
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button.text-button[aria-haspopup="dialog"]').trigger("click");
+    await flushPromises();
+    await wrapper.get(".path-history-edit").trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.map(([path]) => path)).toContain("/time-entries/session-1");
+    expect(wrapper.find(".session-edit-dialog").exists()).toBe(true);
+    await wrapper.get('[aria-label="Edit session description"]').setValue("Updated focus");
+    await wrapper.get(".session-edit-dialog form").trigger("submit");
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/session-1", expect.objectContaining({
+      method: "PUT",
+      body: expect.stringContaining('"description":"Updated focus"'),
+    }));
   });
 
   it("reuses cached paths when the view is mounted again", async () => {
