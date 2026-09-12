@@ -16,6 +16,7 @@ const error = ref("");
 const status = ref<"idle" | "saving" | "saved">("idle");
 const savingEdit = ref(false);
 const now = ref(new Date());
+const followsBrowserClock = ref(true);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -29,6 +30,11 @@ function resizeComposer(event: Event) {
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
 }
+function syncBrowserClock() {
+  now.value = new Date();
+  if (followsBrowserClock.value) occurredAt.value = localDateTime(now.value);
+}
+function stopFollowingBrowserClock() { followsBrowserClock.value = false; }
 function formatTimestamp(value: string) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "2-digit", hourCycle: "h23",
@@ -66,6 +72,22 @@ const groupedLogs = computed<LogGroup[]>(() => {
   }
   return groups;
 });
+const timestampParts = computed(() => {
+  const selected = new Date(occurredAt.value);
+  const current = now.value;
+  const sameDate = selected.getFullYear() === current.getFullYear()
+    && selected.getMonth() === current.getMonth()
+    && selected.getDate() === current.getDate();
+  return {
+    hour: String(selected.getHours()).padStart(2, "0"),
+    minute: String(selected.getMinutes()).padStart(2, "0"),
+    date: `${String(selected.getDate()).padStart(2, "0")}:${String(selected.getMonth() + 1).padStart(2, "0")}:${String(selected.getFullYear()).slice(-2)}`,
+    hourDrift: selected.getHours() !== current.getHours(),
+    minuteDrift: selected.getMinutes() !== current.getMinutes(),
+    dateDrift: !sameDate,
+    isDrifting: Math.abs(selected.getTime() - current.getTime()) > 60 * 1000,
+  };
+});
 async function load() {
   try { logsStore.setAll(await api<Log[]>("/logs")); error.value = ""; }
   catch { error.value = "Unable to load logs. Please try again."; }
@@ -77,7 +99,7 @@ async function saveNew() {
   try {
     const created = await api<Log>("/logs", { method: "POST", body: JSON.stringify({ body: snapshot.body, occurredAt: isoDateTime(snapshot.occurredAt) }) });
     logsStore.upsert(created);
-    if (body.value === snapshot.body && occurredAt.value === snapshot.occurredAt) { body.value = ""; occurredAt.value = localDateTime(new Date()); }
+    if (body.value === snapshot.body && occurredAt.value === snapshot.occurredAt) { body.value = ""; followsBrowserClock.value = true; occurredAt.value = localDateTime(new Date()); }
     status.value = "saved";
   } catch { status.value = "idle"; error.value = "Unable to save log. Please try again."; }
 }
@@ -101,7 +123,7 @@ async function saveEdit(log: Log) {
   finally { savingEdit.value = false; }
 }
 function refreshVisibleList() { if (document.visibilityState === "visible" && !editingId.value) void load(); }
-onMounted(async () => { await load(); refreshTimer = setInterval(refreshVisibleList, 15000); clockTimer = setInterval(() => { now.value = new Date(); }, 60000); window.addEventListener("focus", refreshVisibleList); });
+onMounted(async () => { await load(); syncBrowserClock(); refreshTimer = setInterval(refreshVisibleList, 15000); clockTimer = setInterval(syncBrowserClock, 1000); window.addEventListener("focus", refreshVisibleList); });
 onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clockTimer) clearInterval(clockTimer); window.removeEventListener("focus", refreshVisibleList); });
 </script>
 
@@ -112,7 +134,11 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
       <label class="sr-only" for="new-log-body">Log text</label>
       <textarea id="new-log-body" v-model="body" name="body" rows="1" placeholder="Write a log…" @input="resizeComposer" @keydown.enter.prevent="saveNew"></textarea>
       <label class="sr-only" for="new-log-time">Log timestamp</label>
-      <input id="new-log-time" v-model="occurredAt" name="occurredAt" type="datetime-local" aria-label="Log timestamp" />
+      <div class="timestamp-control">
+        <input id="new-log-time" v-model="occurredAt" name="occurredAt" type="datetime-local" aria-label="Log timestamp" :class="{ 'timestamp-input-drift': timestampParts.isDrifting }" @input="stopFollowingBrowserClock" />
+        <span v-if="timestampParts.isDrifting" class="timestamp-drift" aria-hidden="true"><span class="hour" :class="{ 'drift-part': timestampParts.hourDrift }">{{ timestampParts.hour }}</span>:<span class="minute" :class="{ 'drift-part': timestampParts.minuteDrift }">{{ timestampParts.minute }}</span> <span class="date" :class="{ 'drift-part': timestampParts.dateDrift }">{{ timestampParts.date }}</span></span>
+        <span v-if="timestampParts.isDrifting" class="sr-only" aria-live="polite">The log timestamp differs from browser time by more than one minute.</span>
+      </div>
       <button class="primary" type="submit" :disabled="status === 'saving'"><span v-if="status === 'saving'" class="spinner" aria-hidden="true"></span>Save</button>
     </form>
     <p v-if="status === 'saved'" class="sr-only" aria-live="polite">Log saved.</p>
@@ -141,7 +167,11 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .logs-page { max-width: 1200px; margin: 0 auto; }
 .log-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 10px; margin: 0 0 32px; padding-bottom: 16px; border-bottom: 1px solid var(--workspace-border); }
 .log-composer textarea { min-height: 40px; resize: none; overflow: hidden; }
+.timestamp-control { display: grid; justify-items: end; gap: 3px; }
 .log-composer input { width: 190px; }
+.timestamp-input-drift { color: #8a6500; }
+.timestamp-drift { color: var(--workspace-muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.timestamp-drift .drift-part { color: #8a6500; font-weight: 700; }
 .log-group { margin: 28px 0; }
 .log-group-heading { margin: 0 0 10px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
 .log-entry { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }
@@ -156,6 +186,6 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer input { grid-column: 1; width: 100%; } .log-composer button { grid-column: 2; grid-row: 2; } .log-entry { display: block; } .log-meta { justify-content: space-between; margin-top: 12px; } .log-edit-row { display: block; } .log-edit-row input { width: 100%; } .log-edit-row .row-actions { margin-top: 12px; } }
+@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer button { grid-column: 2; grid-row: 2; } .log-entry { display: block; } .log-meta { justify-content: space-between; margin-top: 12px; } .log-edit-row { display: block; } .log-edit-row input { width: 100%; } .log-edit-row .row-actions { margin-top: 12px; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 </style>
