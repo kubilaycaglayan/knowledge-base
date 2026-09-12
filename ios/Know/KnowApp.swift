@@ -9,6 +9,7 @@ struct Path: Codable, Identifiable {
     let name: String
     let description: String?
     let status: String
+    var color: String? = nil
 }
 
 struct DailyLabel: Codable, Identifiable {
@@ -155,7 +156,13 @@ struct APIClient {
         body: Data?,
         token: String?
     ) -> URLRequest {
-        var request = URLRequest(url: base.appendingPathComponent(path))
+        // Resolve query parameters separately: appendingPathComponent percent-encodes '?'.
+        var components = URLComponents(url: base, resolvingAgainstBaseURL: false)!
+        let relative = URLComponents(string: path)!
+        components.path = base.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .isEmpty ? relative.path : base.path + (relative.path.hasPrefix("/") ? "" : "/") + relative.path
+        components.queryItems = relative.queryItems
+        var request = URLRequest(url: components.url!)
         request.httpMethod = method
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -216,7 +223,7 @@ struct APIClient {
         token: String? = nil
     ) async throws -> T? {
         let data = try await send(makeRequest(path, method: method, body: body, token: token))
-        return data.isEmpty ? nil : try JSONDecoder().decode(T.self, from: data)
+        return data.isEmpty ? nil : try JSONDecoder().decode(T?.self, from: data)
     }
 
     func empty(_ path: String, method: String, token: String) async throws {
@@ -466,139 +473,11 @@ struct KnowApp: App {
 struct RootView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
-        Group { if model.signedIn { MainView() } else { LoginView() } }
+        Group { if model.signedIn { WorkspaceView(app: model) } else { LoginView() } }
             .alert("Knowledge Base", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") {} } message: { Text(model.error ?? "") }
     }
 }
 
-struct MainView: View {
-    @EnvironmentObject var model: AppModel
-    var body: some View {
-        TabView {
-            DashboardView().accessibilityIdentifier("tab.today").tabItem { Label("Today", systemImage: "sparkles") }
-            PathsView().accessibilityIdentifier("tab.paths").tabItem { Label("Paths", systemImage: "point.3.connected.trianglepath.dotted") }
-            TimelineView().accessibilityIdentifier("tab.timeline").tabItem { Label("Timeline", systemImage: "clock.arrow.circlepath") }
-        }.task { await model.refresh() }
-    }
-}
-struct DashboardView: View {
-    @EnvironmentObject var model: AppModel
-    @State private var selectedPath = ""
-    @State private var selectedLabel = ""
-    @State private var timerStartedAt = Date()
-    private var pathPicker: some View {
-        Picker("Path", selection: $selectedPath) {
-            Text("No path").tag("")
-            ForEach(model.paths.filter { $0.status == "ACTIVE" }) { path in
-                Text(path.name).tag(path.id.uuidString)
-            }
-        }.accessibilityIdentifier("timer.path")
-    }
-    private func syncTimerSelection() {
-        guard let current = model.timer else { return }
-        selectedPath = current.pathId?.uuidString ?? ""
-        selectedLabel = current.labelIds.first?.uuidString ?? ""
-        if let date = ISO8601DateFormatter().date(from: current.startedAt) { timerStartedAt = date }
-    }
-    private func pathName(_ id: String) -> String { model.paths.first(where: { $0.id.uuidString == id })?.name ?? id }
-    private func labelName(_ id: String) -> String { model.labels.first(where: { $0.id.uuidString == id })?.name ?? id }
-    var body: some View {
-        NavigationStack {
-            List {
-                if model.isLoading { ProgressView("Loading workspace…") }
-                if let stats = model.stats {
-                    Section("Tracked time") {
-                        LabeledContent("Today", value: formatSeconds(stats.todaySeconds))
-                        LabeledContent("This week", value: formatSeconds(stats.weekSeconds))
-                        LabeledContent("This month", value: formatSeconds(stats.monthSeconds))
-                    }
-                    if !stats.weekByPath.isEmpty {
-                        Section("This week by path") {
-                            ForEach(stats.weekByPath.sorted(by: { $0.key < $1.key }), id: \.key) { entry in
-                                LabeledContent(pathName(entry.key), value: formatSeconds(entry.value))
-                            }
-                        }
-                    }
-                    if !stats.weekByLabel.isEmpty {
-                        Section("This week by label") {
-                            ForEach(stats.weekByLabel.sorted(by: { $0.key < $1.key }), id: \.key) { entry in
-                                LabeledContent(labelName(entry.key), value: formatSeconds(entry.value))
-                            }
-                        }
-                    }
-                }
-                Section("Focus today") {
-                    Text(model.timer == nil ? "No active timer" : "Timer running").foregroundStyle(.secondary)
-                    pathPicker
-
-                    Picker("Label", selection: $selectedLabel) {
-                        Text("No label").tag("")
-                        ForEach(model.labels) { label in
-                            Text(label.name).tag(label.id.uuidString)
-                        }
-                    }
-                    .accessibilityIdentifier("timer.label")
-
-                    if model.timer != nil {
-                        DatePicker(
-                            "Timer start",
-                            selection: $timerStartedAt,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-                        .environment(\.locale, Locale(identifier: "en_GB"))
-                        .accessibilityIdentifier("timer.start")
-                        Button("Save timer settings") {
-                            Task {
-                                await model.configureTimer(
-                                    pathId: UUID(uuidString: selectedPath),
-                                    labelId: UUID(uuidString: selectedLabel),
-                                    startedAt: timerStartedAt,
-                                    description: model.timer?.description
-                                )
-                            }
-                        }
-                        .accessibilityIdentifier("timer.configure")
-                    }
-
-                    Button(model.timer == nil ? "Start a session" : "Stop session") {
-                        Task {
-                            await model.toggleTimer(
-                                pathId: UUID(uuidString: selectedPath),
-                                labelId: UUID(uuidString: selectedLabel)
-                            )
-                        }
-                    }
-                    .accessibilityIdentifier("timer.toggle")
-                    if model.timer != nil {
-                        Button("Cancel", role: .destructive) {
-                            Task { await model.cancelTimer() }
-                        }
-                    }
-                }
-                Section("Your paths") {
-                    if model.paths.isEmpty && !model.isLoading { ContentUnavailableView("No paths yet", systemImage: "folder", description: Text("Create a path to organize your learning.")) }
-                    ForEach(model.paths) { path in
-                        VStack(alignment: .leading) {
-                            Text(path.name).font(.headline)
-                            Text(path.status.capitalized).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Knowledge Base")
-            .refreshable { await model.refresh() }
-            .onAppear { syncTimerSelection() }
-            .onChange(of: model.timer?.pathId) { _, _ in syncTimerSelection() }
-            .onChange(of: model.timer?.labelIds) { _, _ in syncTimerSelection() }
-            .onChange(of: model.timer?.startedAt) { _, value in
-                if let value, let date = ISO8601DateFormatter().date(from: value) {
-                    timerStartedAt = date
-                }
-            }
-            .toolbar { Button("Sign out") { model.signOut() } }
-        }
-    }
-}
 struct PathsView: View {
     @EnvironmentObject var model: AppModel
     @State private var adding = false

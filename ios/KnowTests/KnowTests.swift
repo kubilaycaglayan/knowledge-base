@@ -27,6 +27,35 @@ private final class URLProtocolStub: URLProtocol {
 }
 
 final class KnowTests: XCTestCase {
+    func testAPIClientPreservesQueryItemsAndDecodesNullTimer() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        let api = APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration))
+        URLProtocolStub.responseData = Data("{\"sessions\":[],\"page\":1,\"totalPages\":2,\"totalSessions\":51}".utf8)
+        let page = try await SessionsAPI(client: api, token: "session").history(page: 1)
+        XCTAssertEqual(page.page, 1)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/time-entries")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.query, "page=1&size=50")
+        URLProtocolStub.responseData = Data("null".utf8)
+        let timer = try await SessionsAPI(client: api, token: "session").current()
+        XCTAssertNil(timer)
+    }
+
+    func testSessionDraftEncodesExplicitClearsAndMultipleLabels() throws {
+        var draft = SessionDraft()
+        draft.labelIds = [UUID(), UUID()]
+        draft.description = "   "
+        draft.source = "IMPORT"
+        let fields = try XCTUnwrap(JSONSerialization.jsonObject(with: draft.body(completed: true)) as? [String: Any])
+        XCTAssertTrue(fields["pathId"] is NSNull)
+        XCTAssertTrue(fields["description"] is NSNull)
+        XCTAssertEqual(fields["labelIds"] as? [String], draft.labelIds.map(\.uuidString))
+        XCTAssertEqual(fields["source"] as? String, "IMPORT")
+        XCTAssertNotNil(fields["endedAt"])
+        let running = try XCTUnwrap(JSONSerialization.jsonObject(with: draft.body(completed: false)) as? [String: Any])
+        XCTAssertNil(running["endedAt"])
+        XCTAssertNil(running["source"])
+    }
     func testKeychainPersistsReplacesAndDeletesSession() throws {
         let service = "knowledge-base.tests.\(UUID().uuidString)"
         defer { KeychainTokenStore.delete(service: service) }
