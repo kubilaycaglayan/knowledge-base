@@ -14,6 +14,14 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.secureTextFields["auth.password"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["auth.submit"].exists)
+        XCTAssertTrue(app.buttons["auth.google"].exists)
+        XCTAssertTrue(app.staticTexts["Welcome back"].exists)
+    }
+
+    func testEmptySubmissionShowsInlineValidation() {
+        app.buttons["auth.submit"].tap()
+        XCTAssertTrue(app.staticTexts["Enter a valid email address."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["auth.submit"].isEnabled)
     }
 
     func testAuthenticationModeCanSwitchToRegistration() {
@@ -28,8 +36,8 @@ final class KnowUITests: XCTestCase {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["tab.paths"].waitForExistence(timeout: 5))
-        app.buttons["tab.paths"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Paths"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Paths"].tap()
         XCTAssertTrue(app.buttons["paths.add"].waitForExistence(timeout: 5))
         app.buttons["paths.add"].tap()
         XCTAssertTrue(app.textFields["paths.name"].waitForExistence(timeout: 5))
@@ -38,8 +46,8 @@ final class KnowUITests: XCTestCase {
 
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.buttons["tab.today"].waitForExistence(timeout: 5))
-        app.buttons["tab.today"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Today"].tap()
         XCTAssertTrue(app.buttons["timer.path"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["timer.label"].exists)
     }

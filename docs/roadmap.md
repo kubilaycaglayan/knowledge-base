@@ -1,5 +1,9 @@
 # Knowledge Base UI roadmap
 
+- [x] Rebuild native iOS authentication from the web design with password login,
+  registration, Google SDK token exchange, and Keychain session persistence.
+- [ ] Complete live Google consent smoke verification with the owner's iOS OAuth client.
+
 - [x] Preserve sign-in across deployment outages and API recreation, keep error
   dispatches from causing false sign-outs, and verify token continuity in smoke tests.
 
