@@ -27,6 +27,7 @@
 - [x] Add user-scoped native WebSocket timer snapshots with REST polling fallback for web and legacy clients.
 - [x] Edit individual sessions directly from a path’s history dialog.
 - [x] Add timestamped, owner-scoped text logs with chronological groups and in-place editing.
+- [x] Use the owner-scoped `Highlight` label as the persistent favorite control for logs.
 
 Continue applying these foundations to future web features. Native iOS and
 extension design work remains outside this web redesign; their API contracts,

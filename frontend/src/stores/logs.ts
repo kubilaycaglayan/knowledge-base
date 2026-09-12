@@ -7,6 +7,7 @@ export type Log = {
   createdAt: string;
   updatedAt: string;
   version: number;
+  labelIds?: string[];
 };
 
 export const useLogsStore = defineStore("logs", {
@@ -19,5 +20,9 @@ export const useLogsStore = defineStore("logs", {
         right.occurredAt.localeCompare(left.occurredAt) || right.id.localeCompare(left.id));
     },
     remove(id: string) { this.logs = this.logs.filter((log) => log.id !== id); },
+    replaceLabels(id: string, labelIds: string[]) {
+      const log = this.logs.find((value) => value.id === id);
+      if (log) log.labelIds = labelIds;
+    },
   },
 });

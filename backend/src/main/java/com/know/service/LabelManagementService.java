@@ -14,12 +14,13 @@ public class LabelManagementService {
   private final DailyRecordLabelRepository calendarAssignments;
   private final TimeEntryLabelRepository timeAssignments;
   private final NoteTagRepository noteAssignments;
+  private final LogLabelRepository logAssignments;
 
   public LabelManagementService(LabelRepository labels, LabelScopeRepository scopes,
       DailyRecordLabelRepository calendarAssignments, TimeEntryLabelRepository timeAssignments,
-      NoteTagRepository noteAssignments) {
+      NoteTagRepository noteAssignments, LogLabelRepository logAssignments) {
     this.labels = labels; this.scopes = scopes; this.calendarAssignments = calendarAssignments;
-    this.timeAssignments = timeAssignments; this.noteAssignments = noteAssignments;
+    this.timeAssignments = timeAssignments; this.noteAssignments = noteAssignments; this.logAssignments = logAssignments;
   }
 
   public record View(UUID id, String name, String color, Set<LabelScopeType> scopes) {}
@@ -29,7 +30,17 @@ public class LabelManagementService {
   }
 
   public List<View> list(UUID userId, LabelScopeType scope) {
+    if (scope == LabelScopeType.LOG) highlight(userId);
     return labels.findAllByUserIdAndScope(userId, scope).stream().map(this::view).toList();
+  }
+
+  @Transactional
+  public Label highlight(UUID userId) {
+    Label label = labels.findByUserIdAndNameIgnoreCase(userId, "Highlight")
+        .orElseGet(() -> labels.save(new Label(userId, "Highlight", null)));
+    if (!scopes.existsByIdLabelIdAndIdScope(label.getId(), LabelScopeType.LOG))
+      scopes.save(new LabelScope(new LabelScopeId(label.getId(), LabelScopeType.LOG)));
+    return label;
   }
 
   @Transactional
@@ -61,13 +72,14 @@ public class LabelManagementService {
   @Transactional
   public void delete(UUID userId, UUID id, boolean removeAssignments) {
     Label label = owned(userId, id);
-    boolean assigned = calendarAssignments.existsByIdLabelId(id) || timeAssignments.existsByIdLabelId(id) || noteAssignments.existsByIdLabelId(id);
+    boolean assigned = calendarAssignments.existsByIdLabelId(id) || timeAssignments.existsByIdLabelId(id) || noteAssignments.existsByIdLabelId(id) || logAssignments.existsByIdLabelId(id);
     if (assigned && !removeAssignments)
       throw conflict("Labels in use cannot be deleted; remove their assignments first");
     if (removeAssignments) {
       calendarAssignments.deleteAllByIdLabelId(id);
       timeAssignments.deleteAllByIdLabelId(id);
       noteAssignments.deleteAllByIdLabelId(id);
+      logAssignments.deleteAllByIdLabelId(id);
     }
     scopes.deleteAllByIdLabelId(id);
     labels.delete(label);
@@ -81,7 +93,8 @@ public class LabelManagementService {
       if (!next.contains(scope) && present) {
         if ((scope == LabelScopeType.CALENDAR && calendarAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.TIME_ENTRY && timeAssignments.existsByIdLabelId(label.getId()))
-            || (scope == LabelScopeType.NOTE && noteAssignments.existsByIdLabelId(label.getId())))
+            || (scope == LabelScopeType.NOTE && noteAssignments.existsByIdLabelId(label.getId()))
+            || (scope == LabelScopeType.LOG && logAssignments.existsByIdLabelId(label.getId())))
           throw conflict("Cannot remove a scope while the label is in use");
         scopes.deleteById(new LabelScopeId(label.getId(), scope));
       }
