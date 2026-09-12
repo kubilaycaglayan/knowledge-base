@@ -642,6 +642,11 @@ class KnowIntegrationTest {
     JsonNode state = mapper.readTree(messages.poll(5, TimeUnit.SECONDS));
     assertEquals("TIMER_STATE", state.get("type").asText());
     assertEquals(started.getBody().get("id").asText(), state.get("timer").get("id").asText());
+    ResponseEntity<JsonNode> stopped = post("/api/v1/timers/stop", token, "{}");
+    assertEquals(HttpStatus.OK, stopped.getStatusCode());
+    JsonNode cleared = mapper.readTree(messages.poll(5, TimeUnit.SECONDS));
+    assertEquals("TIMER_STATE", cleared.get("type").asText());
+    assertTrue(cleared.get("timer").isNull());
     socket.sendClose(WebSocket.NORMAL_CLOSURE, "done").get(5, TimeUnit.SECONDS);
   }
 

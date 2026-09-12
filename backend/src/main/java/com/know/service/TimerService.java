@@ -153,7 +153,9 @@ public class TimerService {
       return stopped;
     }
     entries.save(e);
-    publishChanged(userId, stopped);
+    // The event describes the current running-timer state, not the completed
+    // history row returned to the command caller.
+    publishChanged(userId, null);
     return stopped;
   }
 
