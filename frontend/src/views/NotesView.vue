@@ -116,6 +116,7 @@ async function archiveNote(note: Note) {
   if (!window.confirm(`Move “${note.title}” to Archive? Archived notes are permanently deleted after 30 days.`)) return;
   try {
     await api(`/notes/${note.id}`, { method: "DELETE" });
+    notesStore.remove(note.id);
     await loadNotes();
   } catch { error.value = "Unable to archive note."; }
 }
@@ -138,6 +139,7 @@ async function newNote() {
       method: "POST",
       body: JSON.stringify({ title: "Untitled note", content: JSON.stringify(defaultDocument), contentText: "", tags: [] }),
     });
+    notesStore.upsert(created);
     await router.push({ name: "note-editor", params: { id: created.id } });
   } catch {
     error.value = "Unable to create a note.";
@@ -206,6 +208,7 @@ async function save() {
       notesStore.setSelected(latest);
       saved = await api<Note>(`/notes/${selected.value.id}`, { method: "PUT", body: JSON.stringify({ ...snapshot, version: latest.version }) });
     }
+    notesStore.upsert(saved);
     notesStore.setSelected(saved);
     const stillOnSnapshot = title.value.trim() === snapshot.title
       && JSON.stringify(editor.value.getJSON()) === snapshot.content
@@ -227,6 +230,7 @@ async function loadEditor() {
   if (!id || typeof id !== "string") return;
   try {
     const fromList = await api<Note>(`/notes/${id}`);
+    notesStore.upsert(fromList);
     notesStore.setSelected(fromList);
     title.value = fromList.title;
     tags.value = [...(fromList.tags || [])];
