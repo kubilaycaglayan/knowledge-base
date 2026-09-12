@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import { useLogsStore, type Log } from "../stores/logs";
 
 type Draft = { body: string; occurredAt: string };
-type LogGroup = { label: string; logs: Log[] };
+type LogGroup = { label: string; logs: Log[]; dayBreak: boolean };
 const logsStore = useLogsStore();
 const { logs } = storeToRefs(logsStore);
 const body = ref("");
@@ -52,6 +52,15 @@ function formatLogTimestamp(value: string, group: string) {
 }
 const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
 const sameDay = (left: Date, right: Date) => left.getTime() === right.getTime();
+const sameLocalDate = (left: string, right: string) => {
+  const a = new Date(left);
+  const b = new Date(right);
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+};
+const sameLocalHour = (left: string, right: string) => {
+  const a = new Date(left);
+  return sameLocalDate(left, right) && a.getHours() === new Date(right).getHours();
+};
 function groupLabel(value: string) {
   const date = new Date(value);
   const today = startOfDay(now.value);
@@ -76,10 +85,18 @@ const groupedLogs = computed<LogGroup[]>(() => {
     const label = groupLabel(log.occurredAt);
     const current = groups.at(-1);
     if (current?.label === label) current.logs.push(log);
-    else groups.push({ label, logs: [log] });
+    else groups.push({ label, logs: [log], dayBreak: Boolean(current && !sameLocalDate(current.logs.at(-1)!.occurredAt, log.occurredAt)) });
   }
   return groups;
 });
+function logRowClass(logsInGroup: Log[], index: number) {
+  const previous = logsInGroup[index - 1];
+  if (!previous) return {};
+  return {
+    "log-hour-break": !sameLocalHour(previous.occurredAt, logsInGroup[index].occurredAt),
+    "log-day-break": !sameLocalDate(previous.occurredAt, logsInGroup[index].occurredAt),
+  };
+}
 const timestampParts = computed(() => {
   const selected = new Date(occurredAt.value);
   const current = now.value;
@@ -155,9 +172,9 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
     <p v-if="status === 'saved'" class="sr-only" aria-live="polite">Log saved.</p>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
     <div v-if="!groupedLogs.length && !error" class="empty">No logs yet. Capture a thought above.</div>
-    <div v-for="group in groupedLogs" :key="group.label" class="log-group">
+    <div v-for="group in groupedLogs" :key="group.label" class="log-group" :class="{ 'log-group-day-break': group.dayBreak }">
       <h2 class="log-group-heading">{{ group.label }}</h2>
-      <article v-for="log in group.logs" :key="log.id" class="log-entry">
+      <article v-for="(log, index) in group.logs" :key="log.id" class="log-entry" :class="logRowClass(group.logs, index)">
         <template v-if="editingId === log.id && draft">
           <input v-model="draft.occurredAt" class="log-time-input" type="datetime-local" aria-label="Edit log timestamp" />
           <textarea v-model="draft.body" class="log-body log-edit-body" :aria-label="`Edit log text from ${formatTimestamp(log.occurredAt)}`" rows="1"></textarea>
@@ -190,8 +207,11 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .timestamp-reset { width: 32px; min-height: 40px; padding: 7px; visibility: hidden; }
 .timestamp-reset-visible { visibility: visible; }
 .log-group { margin: 28px 0; }
+.log-group-day-break { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--workspace-border); }
 .log-group-heading { margin: 0 0 6px; color: var(--workspace-muted); font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
-.log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin: 0; padding: 10px 0; border-bottom: 1px solid var(--workspace-border); }
+.log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin: 0; padding: 6px 0; }
+.log-entry.log-hour-break { margin-top: 12px; padding-top: 10px; }
+.log-entry.log-day-break { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--workspace-border); }
 .log-body { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .log-time { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .log-time-input { width: 135px; min-height: 34px; padding: 6px 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
