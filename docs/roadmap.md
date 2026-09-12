@@ -2,8 +2,6 @@
 
 - [x] Preserve sign-in across deployment outages and API recreation, keep error
   dispatches from causing false sign-outs, and verify token continuity in smoke tests.
-- [x] Add privacy-safe web, extension, and backend diagnostics with correlated
-  request IDs and explicit authentication and popup lifecycle stages.
 
 - [x] Establish the approved flat workspace design.
 - [x] Extend its shared shell, typography, controls, and flat sections to Sessions,
