@@ -17,7 +17,7 @@ describe("LogsView", () => {
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
     vi.mocked(api).mockResolvedValue([log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
   });
-  afterEach(() => { vi.useRealTimers(); config.global.stubs = {}; });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); config.global.stubs = {}; });
 
   it("groups newest logs and shows the requested timestamp format", async () => {
     const wrapper = mount(LogsView);
@@ -71,5 +71,17 @@ describe("LogsView", () => {
     await wrapper.get(".timestamp-reset").trigger("click");
     expect(timestamp.value).toBe("2026-09-11T12:02");
     expect(wrapper.get(".timestamp-reset").classes()).not.toContain("timestamp-reset-visible");
+  });
+
+  it("confirms removal and removes the record after the API succeeds", async () => {
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.mocked(api).mockResolvedValueOnce(undefined);
+    await wrapper.get('button[aria-label^="Remove log"]').trigger("click");
+    await flushPromises();
+    expect(window.confirm).toHaveBeenCalledWith("Remove this log? This cannot be undone.");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new", { method: "DELETE" });
+    expect(wrapper.text()).not.toContain("Recent thought");
   });
 });

@@ -37,4 +37,8 @@ public class LogController {
   public LogService.LogView update(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody LogRequest request) {
     return service.update(user(authentication), id, request.body(), request.occurredAt(), request.version());
   }
+
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(Authentication authentication, @PathVariable UUID id) { service.delete(user(authentication), id); }
 }

@@ -108,6 +108,13 @@ async function saveNew() {
 }
 function startEdit(log: Log) { editingId.value = log.id; draft.value = { body: log.body, occurredAt: localDateTime(new Date(log.occurredAt)) }; error.value = ""; }
 function cancelEdit() { editingId.value = ""; draft.value = null; }
+async function removeLog(log: Log) {
+  if (!window.confirm("Remove this log? This cannot be undone.")) return;
+  try {
+    await api(`/logs/${log.id}`, { method: "DELETE" });
+    logsStore.remove(log.id);
+  } catch { error.value = "Unable to remove this log. Please try again."; }
+}
 async function saveEdit(log: Log) {
   if (!draft.value?.body.trim() || savingEdit.value) return;
   savingEdit.value = true; error.value = "";
@@ -159,9 +166,14 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
         <template v-else>
           <time class="log-time" :datetime="log.occurredAt">{{ formatLogTimestamp(log.occurredAt, group.label) }}</time>
           <p class="log-body">{{ log.body }}</p>
-          <button class="log-edit-button ghost" type="button" :aria-label="`Edit log from ${formatTimestamp(log.occurredAt)}`" title="Edit log" @click="startEdit(log)">
+          <div class="log-actions">
+            <button class="log-edit-button ghost" type="button" :aria-label="`Edit log from ${formatTimestamp(log.occurredAt)}`" title="Edit log" @click="startEdit(log)">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 16-.7 4.7L8 20l11.3-11.3a2.1 2.1 0 0 0-3-3L5 17Z"/><path d="m14.8 7.2 2 2"/></svg>
-          </button>
+            </button>
+            <button class="log-remove-button ghost" type="button" :aria-label="`Remove log from ${formatTimestamp(log.occurredAt)}`" title="Remove log" @click="removeLog(log)">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+            </button>
+          </div>
         </template>
       </article>
     </div>
@@ -186,10 +198,13 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .log-edit-body { width: 100%; min-height: 34px; resize: vertical; }
 .log-edit-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
 .log-edit-button:hover, .log-edit-button:focus-visible { opacity: 1; }
+.log-actions { display: flex; align-items: center; gap: 2px; }
+.log-remove-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
+.log-remove-button:hover, .log-remove-button:focus-visible { color: var(--workspace-danger); opacity: 1; }
 .row-actions { display: flex; gap: 8px; }
 .spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer > button.primary { grid-column: 2; grid-row: 2; } .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; } .log-entry > .log-time, .log-entry > .log-time-input { grid-column: 1; } .log-entry > .log-body { grid-column: 2; } .log-entry > .text-button, .log-entry > .row-actions, .log-entry > .log-edit-button { grid-column: 2; justify-self: start; } .log-time-input { width: 100%; } .log-entry > .row-actions { margin-top: 4px; } }
+@media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer > button.primary { grid-column: 2; grid-row: 2; } .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; } .log-entry > .log-time, .log-entry > .log-time-input { grid-column: 1; } .log-entry > .log-body { grid-column: 2; } .log-entry > .text-button, .log-entry > .row-actions, .log-entry > .log-actions { grid-column: 2; justify-self: start; } .log-time-input { width: 100%; } .log-entry > .row-actions { margin-top: 4px; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 </style>
