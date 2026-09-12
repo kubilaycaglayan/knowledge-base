@@ -3,13 +3,9 @@ import "../api-config.js";
 import "../google-auth.js";
 import "../clockify-settings.js";
 
-const debug = (...args: unknown[]) => {
-  if (typeof __KNOW_EXTENSION_ENV__ !== "string" || __KNOW_EXTENSION_ENV__ !== "production")
-    console.warn("[Know extension]", ...args);
-};
+const debug = (..._args: unknown[]) => {};
 const errorDetails = (error: unknown) => error instanceof Error ? error.message : String(error || "Unknown error");
-const logError = (operation: string, error: unknown, details: Record<string, unknown> = {}) =>
-  debug("Operation failed", { operation, ...details, error: errorDetails(error), stack: error instanceof Error ? error.stack : undefined });
+const logError = (..._args: unknown[]) => {};
 const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
