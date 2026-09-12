@@ -5,17 +5,17 @@ Knowledge Base is a personal knowledge, learning-history, and activity tracker. 
 ## Local development
 
 1. Copy `.env.example` to `.env.development` and set local values. Set `GOOGLE_CLIENT_ID` to the Google OAuth client ID used by the web app and extension when Google sign-in is required.
-2. Run `./scripts/start-development.sh` for the local hot-reload stack at `http://localhost:3000`. Both frontend changes and backend changes are picked up automatically.
-3. For a clean production-shaped rebuild, run `./scripts/deploy-production-web-no-cache.sh`. It preserves the database volume.
-4. For Chrome extension development from a separate user machine, run `source ~/.profile && ./scripts/start-development.sh` on Ubuntu; it starts the API, WXT, and other development services. From the user machine, create an SSH tunnel with `ssh -N -L 8080:127.0.0.1:8080 -L 43127:127.0.0.1:43127 <ubuntu-user>@<ubuntu-server>` and continuously sync `.output/chrome-mv3-dev` to the user machine. Load that synced directory as an unpacked extension in Chrome. WXT provides HMR for extension pages and reloads the extension when background changes. Sign in in the popup; the tunnel makes the existing `http://localhost:8080/api/v1` default reach the Ubuntu API.
+2. Run `./scripts/development-all-start.sh` for the local hot-reload stack at `http://localhost:3000`. Both frontend changes and backend changes are picked up automatically.
+3. For a clean production-shaped rebuild, run `./scripts/production-web-deploy-no-cache.sh`. It preserves the database volume.
+4. For Chrome extension development from a separate user machine, run `source ~/.profile && ./scripts/development-all-start.sh` on Ubuntu; it starts the API, WXT, and other development services. From the user machine, create an SSH tunnel with `ssh -N -L 8080:127.0.0.1:8080 -L 43127:127.0.0.1:43127 <ubuntu-user>@<ubuntu-server>` and continuously sync `.output/chrome-mv3-dev` to the user machine. Load that synced directory as an unpacked extension in Chrome. WXT provides HMR for extension pages and reloads the extension when background changes. Sign in in the popup; the tunnel makes the existing `http://localhost:8080/api/v1` default reach the Ubuntu API.
 
 Run the shared backend smoke test with `./scripts/run-smoke-tests.sh` after setting the required environment variables. It starts the API and database, exercises authentication, paths, labels, notes, timers, search, timeline filtering, and statistics, then stops the stack.
 
 ## Scripts
 
-- `start-development.sh` starts the isolated hot-reload development stack.
-- `deploy-production-web.sh` deploys the web/API production stack with cached image builds.
-- `deploy-production-web-no-cache.sh` deliberately rebuilds the web/API production images from scratch.
+- `development-all-start.sh` starts the isolated hot-reload development stack.
+- `production-web-deploy.sh` deploys the web/API production stack with cached image builds.
+- `production-web-deploy-no-cache.sh` deliberately rebuilds the web/API production images from scratch.
 - `run-smoke-tests.sh` runs the disposable end-to-end verification stack.
 - `check-*.mjs` runs focused source and configuration checks.
 
@@ -27,7 +27,7 @@ The API applies Flyway migrations and validates the JPA schema; Hibernate never 
 
 The repository includes `.env.example` as a public template. Copy it to the appropriate untracked file and provide values for that environment:
 
-- `.env.development` is loaded automatically by `scripts/start-development.sh`.
+- `.env.development` is loaded automatically by `scripts/development-all-start.sh`.
 - `.env.production` is loaded automatically by the production deployment scripts and must contain real production secrets.
 
 Do not commit either file, `secrets`, passwords, signing material, production hostnames that should stay private, or user data. Production deployment refuses to run when `.env.production` is missing.
