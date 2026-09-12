@@ -22,27 +22,23 @@ targets:
         product: GoogleSignIn
       - package: GoogleSignIn
         product: GoogleSignInSwift
-    info:
-      path: Know/Info.plist
-      properties:
-        CFBundleDisplayName: Knowledge Base
-        UILaunchScreen: {}
-        KnowledgeBaseAPIURL: $(KNOWLEDGE_BASE_API_URL)
-        GIDClientID: $(GOOGLE_IOS_CLIENT_ID)
-        GIDServerClientID: $(GOOGLE_SERVER_CLIENT_ID)
-        CFBundleURLTypes:
-          - CFBundleURLSchemes:
-              - $(GOOGLE_REVERSED_CLIENT_ID)
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
     sources:
       - path: Know
+        excludes:
+          - Info.plist
+          - Info-Debug.plist
+          - Info-Release.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.know.ios
         PRODUCT_NAME: Know
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_TESTABILITY: YES
+      configs:
+        Debug:
+          INFOPLIST_FILE: Know/Info-Debug.plist
+        Release:
+          INFOPLIST_FILE: Know/Info-Release.plist
   KnowTests:
     type: bundle.unit-test
     platform: iOS

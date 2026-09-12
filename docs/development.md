@@ -14,6 +14,10 @@ For frontend hot reloading through the same local URL as the app proxy, run `./s
 
 Compose does not automatically load `.env.development`; use `./scripts/development-all-start.sh` or pass `--env-file .env.development` to a direct Compose command so the extension CORS origin is passed to the API.
 
+### Physical iPhone development
+
+The iOS simulator reaches the Mac through `localhost`, but a physical iPhone must use the Mac's LAN address. For an intentional, temporary Wi-Fi test, set `IOS_LAN_API=1`, `IOS_LAN_API_BIND_ADDRESS=0.0.0.0`, and `IOS_LAN_API_URL=http://<mac-lan-ip>:8080` in ignored `.env.development`, then run `./scripts/development-all-start.sh`. The opt-in `docker-compose.ios-dev.yml` overlay exposes only port 8080 for the API; it does not publish PostgreSQL or Caddy. Set `KNOWLEDGE_BASE_API_URL = http:/$()/<mac-lan-ip>:8080/api/v1` in ignored `ios/Local.xcconfig`, replacing the address with the Mac's current LAN address, regenerate `ios/Know.xcodeproj`, and install the Debug build on the iPhone. See [iOS setup](../ios/README.md) for the full instructions. Do not use this configuration outside a private development network.
+
 CI runs the backend tests, web build, extension checks, macOS native build, and the Docker smoke test on pushes and pull requests.
 
 Production extension builds require an explicit HTTPS API, lock requests to that API, disable debug logging, and omit wildcard host permissions. Development builds retain localhost defaults and are not publishable. Configure the exact published extension origin (`chrome-extension://<extension-id>`) in production `CORS_ORIGINS` and the exact `chrome.identity.getRedirectURL()` value in Google OAuth.

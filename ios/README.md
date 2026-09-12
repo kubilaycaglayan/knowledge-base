@@ -19,6 +19,31 @@ GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.YOUR_IOS_CLIENT_ID
 
 These are public OAuth identifiers, not secrets. Never put a Google client secret, JWT secret, or database password in the app. `KNOW_API_URL` remains supported as a scheme environment override; the build setting works in installed builds too.
 
+## Test on your iPhone over local Wi-Fi
+
+An iPhone cannot use `localhost` to reach your Mac. Use the Mac's Wi-Fi address instead. This machine's current address is `<mac-lan-ip>`; run `ipconfig getifaddr en0` before each session because DHCP addresses can change.
+
+Add the following to the ignored `.env.development`, then start the development stack normally. The `IOS_LAN_API=1` overlay publishes only the API on your LAN. PostgreSQL and the development web proxy stay bound to the Mac.
+
+```dotenv
+IOS_LAN_API=1
+IOS_LAN_API_BIND_ADDRESS=0.0.0.0
+IOS_LAN_API_URL=http://<mac-lan-ip>:8080
+```
+
+```sh
+./scripts/development-all-start.sh
+curl http://<mac-lan-ip>:8080/actuator/health
+```
+
+Then put this in `ios/Local.xcconfig` and regenerate the project:
+
+```xcconfig
+KNOWLEDGE_BASE_API_URL = http:/$()/<mac-lan-ip>:8080/api/v1
+```
+
+`Debug` permits the plain-HTTP LAN API needed for this local workflow. `Release` retains App Transport Security and requires HTTPS. Keep `IOS_LAN_API=0` when you finish phone testing. Both devices must use the same private Wi-Fi; turn off VPNs that isolate local traffic and permit incoming connections to Docker when macOS asks.
+
 ## Google setup
 
 In the same Google Cloud project used by the web app, create an OAuth client of type **iOS**, with bundle ID **com.know.ios**. Copy its client ID and displayed iOS URL scheme into the settings above. For `GOOGLE_SERVER_CLIENT_ID`, reuse the **Web application** client ID already used by backend `GOOGLE_CLIENT_ID` and frontend `VITE_GOOGLE_CLIENT_ID`. The SDK requests an ID token for this server audience; no backend audience expansion is needed.
