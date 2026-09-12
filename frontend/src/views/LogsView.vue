@@ -150,6 +150,9 @@ async function saveNew() {
 }
 function startEdit(log: Log) { editingId.value = log.id; draft.value = { body: log.body, occurredAt: localDateTime(new Date(log.occurredAt)) }; error.value = ""; }
 function cancelEdit() { editingId.value = ""; draft.value = null; }
+function closeLabelMenuWhenClickingElsewhere(event: MouseEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest(".log-label-control")) openLabelMenuId.value = "";
+}
 async function removeLog(log: Log) {
   const confirmation = await promptDialog.value?.open("Remove this log? This cannot be undone.", "", { confirmation: true });
   if (confirmation === null || confirmation === undefined) return;
@@ -176,8 +179,8 @@ async function saveEdit(log: Log) {
   finally { savingEdit.value = false; }
 }
 function refreshVisibleList() { if (document.visibilityState === "visible" && !editingId.value) void load(); }
-onMounted(async () => { await Promise.all([load(), loadLogLabels()]); syncBrowserClock(); refreshTimer = setInterval(refreshVisibleList, 15000); clockTimer = setInterval(syncBrowserClock, 1000); window.addEventListener("focus", refreshVisibleList); });
-onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clockTimer) clearInterval(clockTimer); window.removeEventListener("focus", refreshVisibleList); });
+onMounted(async () => { await Promise.all([load(), loadLogLabels()]); syncBrowserClock(); refreshTimer = setInterval(refreshVisibleList, 15000); clockTimer = setInterval(syncBrowserClock, 1000); window.addEventListener("focus", refreshVisibleList); document.addEventListener("click", closeLabelMenuWhenClickingElsewhere); });
+onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clockTimer) clearInterval(clockTimer); window.removeEventListener("focus", refreshVisibleList); document.removeEventListener("click", closeLabelMenuWhenClickingElsewhere); });
 </script>
 
 <template>
@@ -211,18 +214,21 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
           <time class="log-time" :datetime="log.occurredAt">{{ formatLogTimestamp(log.occurredAt, group.label) }}</time>
           <p class="log-body">{{ log.body }}</p>
           <div class="log-actions">
+            <template v-if="logLabels.length">
+              <div class="log-label-control">
+                <button class="log-label-button ghost" :class="{ 'log-label-button-active': Boolean(log.labelIds?.length) }" type="button" :aria-label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`" :aria-expanded="openLabelMenuId === log.id" aria-haspopup="dialog" title="Choose log labels" @click="openLabelMenuId = openLabelMenuId === log.id ? '' : log.id">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M17.63 5.84C17.27 5.33 16.68 5 16 5H5C3.9 5 3 5.9 3 7V17C3 18.1 3.9 19 5 19H16C16.68 19 17.27 18.67 17.63 18.16L22 12L17.63 5.84M16 17H5V7H16L19.55 12L16 17M7.5 9C6.67 9 6 9.67 6 10.5C6 11.33 6.67 12 7.5 12C8.33 12 9 11.33 9 10.5C9 9.67 8.33 9 7.5 9Z" /></svg>
+                </button>
+                <div v-if="openLabelMenuId === log.id" class="log-label-menu card" role="dialog" :aria-label="`Labels for log from ${formatTimestamp(log.occurredAt)}`" @keydown.esc="openLabelMenuId = ''">
+                  <button class="log-label-menu-close ghost" type="button" aria-label="Close log labels" title="Close" @click="openLabelMenuId = ''"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+                  <label v-for="label in logLabels" :key="label.id" class="log-label-option"><input type="checkbox" :checked="hasLabel(log, label.id)" :disabled="savingLabelsId === log.id" @change="toggleLogLabel(log, label.id)" /><span class="label-swatch" :style="{ backgroundColor: label.color || 'var(--workspace-accent)' }" aria-hidden="true"></span><span>{{ label.name }}</span></label>
+                </div>
+              </div>
+              <span class="log-actions-separator" aria-hidden="true">|</span>
+            </template>
             <button class="log-edit-button ghost" type="button" :aria-label="`Edit log from ${formatTimestamp(log.occurredAt)}`" title="Edit log" @click="startEdit(log)">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 16-.7 4.7L8 20l11.3-11.3a2.1 2.1 0 0 0-3-3L5 17Z"/><path d="m14.8 7.2 2 2"/></svg>
             </button>
-            <template v-if="logLabels.length">
-              <button class="log-label-button ghost" type="button" :aria-label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`" :aria-expanded="openLabelMenuId === log.id" aria-haspopup="dialog" title="Choose log labels" @click="openLabelMenuId = openLabelMenuId === log.id ? '' : log.id">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m20.6 13.4-7.2 7.2a2 2 0 0 1-2.8 0L3.4 13.4a2 2 0 0 1 0-2.8l7.2-7.2a2 2 0 0 1 2.8 0l7.2 7.2a2 2 0 0 1 0 2.8Z"/><circle cx="9" cy="9" r="1.2"/></svg>
-              </button>
-              <div v-if="openLabelMenuId === log.id" class="log-label-menu card" role="dialog" :aria-label="`Labels for log from ${formatTimestamp(log.occurredAt)}`" @keydown.esc="openLabelMenuId = ''">
-                <strong>Log labels</strong>
-                <label v-for="label in logLabels" :key="label.id" class="log-label-option"><input type="checkbox" :checked="hasLabel(log, label.id)" :disabled="savingLabelsId === log.id" @change="toggleLogLabel(log, label.id)" /><span class="label-swatch" :style="{ backgroundColor: label.color || 'var(--workspace-accent)' }" aria-hidden="true"></span><span>{{ label.name }}</span></label>
-              </div>
-            </template>
             <button class="log-remove-button ghost" type="button" :aria-label="`Remove log from ${formatTimestamp(log.occurredAt)}`" title="Remove log" @click="removeLog(log)">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
             </button>
@@ -255,9 +261,14 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .log-edit-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
 .log-edit-button:hover, .log-edit-button:focus-visible { opacity: 1; }
 .log-label-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .7; }
+.log-label-button-active { color: var(--workspace-muted); opacity: 1; }
+.log-label-button-active svg { color: color-mix(in srgb, var(--workspace-text) 85%, #000); }
 .log-label-button:hover, .log-label-button:focus-visible, .log-label-button[aria-expanded="true"] { color: var(--workspace-accent); opacity: 1; }
-.log-label-menu { position: absolute; z-index: 2; right: 0; top: 36px; display: grid; gap: 8px; min-width: 190px; padding: 12px; box-shadow: var(--workspace-shadow); }
-.log-actions { position: relative; }
+.log-label-control { position: relative; }
+.log-label-menu { position: absolute; z-index: 2; right: 0; top: 36px; display: grid; gap: 8px; min-width: 190px; padding: 42px 12px 12px; box-shadow: var(--workspace-shadow); }
+.log-label-menu-close { position: absolute; top: 8px; right: 8px; width: 32px; min-height: 32px; padding: 0; border-color: var(--workspace-accent); background: var(--workspace-accent); color: var(--workspace-on-accent); opacity: 1; }
+.log-label-menu-close:hover, .log-label-menu-close:focus-visible { border-color: var(--workspace-accent-hover); background: var(--workspace-accent-hover); color: var(--workspace-on-accent); }
+.log-actions-separator { color: var(--workspace-border); font-size: 16px; line-height: 1; }
 .log-label-option { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 13px; }
 .log-label-option .label-swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .log-actions { display: flex; align-items: center; gap: 2px; }

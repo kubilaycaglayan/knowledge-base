@@ -93,9 +93,24 @@ describe("LogsView", () => {
     vi.mocked(api).mockResolvedValueOnce({ ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds: ["important"] });
     await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
     expect(wrapper.get('[role="dialog"]').text()).toContain("Important");
+    expect(wrapper.find('[role="dialog"] strong').exists()).toBe(false);
+    await wrapper.get('button[aria-label="Close log labels"]').trigger("click");
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+
+    await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
     await wrapper.get('[role="dialog"] input[type="checkbox"]').setValue(true);
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new/labels", expect.objectContaining({ method: "PUT", body: '{"labelIds":["important"]}' }));
+    expect(wrapper.get('button[aria-label^="Choose labels"]').classes()).toContain("log-label-button-active");
+  });
+
+  it("closes log labels when the user clicks elsewhere", async () => {
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
+    document.body.click();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
   });
 
   it("does not render a label button when the user has no log labels", async () => {
