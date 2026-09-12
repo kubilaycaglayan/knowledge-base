@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars locally or provide these values through CI secrets.
+# Never commit the real file; it contains the API token.
+cloudflare_api_token = "replace-with-a-short-lived-zone-waf-token"
+cloudflare_zone_id   = "replace-with-zone-id"
+domain               = "knowledge.example.com"
+
+# Keep enabled after reviewing the Cloudflare Security Events dashboard.
+enable_managed_waf  = true
+enable_rate_limits   = true
