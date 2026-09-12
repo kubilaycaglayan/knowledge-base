@@ -1,0 +1,5 @@
+# Opt-in physical iPhone development overlay. It publishes only the API to the
+# local network; PostgreSQL and the web proxy remain loopback-only.
+services:
+  api:
+    ports: !override ["${IOS_LAN_API_BIND_ADDRESS:-0.0.0.0}:${API_DEV_PORT:-8080}:8080"]

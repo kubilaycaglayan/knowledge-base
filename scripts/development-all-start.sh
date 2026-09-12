@@ -35,6 +35,9 @@ if [[ -f "$development_env_file" ]]; then
   compose_args+=(--env-file "$development_env_file")
 fi
 compose_args+=(-f docker-compose.yml -f docker-compose.dev.yml)
+if [[ "${IOS_LAN_API:-0}" == "1" ]]; then
+  compose_args+=(-f docker-compose.ios-dev.yml)
+fi
 
 dev_db_volume="knowledge-base-dev_know-db"
 if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
@@ -52,6 +55,9 @@ docker compose "${compose_args[@]}" ps
 echo
 echo "Development API CORS origins: ${CORS_ORIGINS:-http://localhost:5177}"
 echo "Backend hot reload: ${BACKEND_HOT_RELOAD} (set BACKEND_HOT_RELOAD=1 to enable)"
+if [[ "${IOS_LAN_API:-0}" == "1" ]]; then
+  echo "iPhone LAN API: enabled on ${IOS_LAN_API_BIND_ADDRESS:-0.0.0.0}:${API_DEV_PORT}"
+fi
 echo
 echo "Compose service/image names:"
 docker compose "${compose_args[@]}" images
@@ -70,6 +76,13 @@ Knowledge Base development stack is available at:
 
 Backend changes are picked up automatically by Spring DevTools.
 EOF
+
+if [[ "${IOS_LAN_API:-0}" == "1" ]]; then
+  cat <<EOF
+
+Physical iPhone API: ${IOS_LAN_API_URL:-set IOS_LAN_API_URL in .env.development}/api/v1
+EOF
+fi
 
 if [[ ! -d "$repo_root/chrome-extension/node_modules" ]]; then
   (cd "$repo_root/chrome-extension" && npm ci)
