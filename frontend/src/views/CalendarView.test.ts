@@ -1,10 +1,12 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import CalendarView from "./CalendarView.vue";
 import { api } from "../lib/api";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("CalendarView", () => {
+  beforeEach(() => setActivePinia(createPinia()));
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
