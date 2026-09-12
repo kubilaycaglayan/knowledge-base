@@ -139,7 +139,7 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 </template>
 
 <style scoped>
-.logs-page { max-width: 860px; margin-inline: auto; }
+.logs-page { max-width: 1200px; margin: 0 auto; }
 .log-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 10px; margin: 24px 0 32px; }
 .log-composer textarea { min-height: 40px; resize: none; overflow: hidden; }
 .log-composer input { width: 190px; }
