@@ -3,9 +3,13 @@ import { computed, onMounted, ref } from "vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 import ErrorNotice from "../components/ErrorNotice.vue";
+import { useReportsStore } from "../stores/reports";
+import { useSessionsStore } from "../stores/sessions";
 
 const props = defineProps<{ knowledgeBaseOnly?: boolean; embedded?: boolean }>();
 const HISTORY_PAGE_SIZE = 5;
+const reportsStore = useReportsStore();
+const sessionsStore = useSessionsStore();
 
 type ImportBatch = {
   id: string;
@@ -35,6 +39,10 @@ const clockifyJson = ref(""),
 const visibleBatches = computed(() => batches.value.slice((historyPage.value - 1) * HISTORY_PAGE_SIZE, historyPage.value * HISTORY_PAGE_SIZE));
 const totalHistoryPages = computed(() => Math.max(1, Math.ceil(batches.value.length / HISTORY_PAGE_SIZE)));
 const formatDate = (iso: string) => formatDateTime(iso);
+function invalidateActivityCaches() {
+  sessionsStore.clearPages();
+  reportsStore.clear();
+}
 function showError(message: string, cause?: unknown) {
   error.value = message;
   errorDetails.value = cause && typeof cause === "object" && "details" in cause
@@ -67,6 +75,7 @@ async function importClockify() {
     });
     importSummary.value = `Imported ${summary.imported} sessions, skipped ${summary.skipped} duplicates, and created ${summary.createdPaths} paths.`;
     clockifyJson.value = "";
+    invalidateActivityCaches();
     await load();
   } catch (cause) {
     showError(
@@ -88,6 +97,7 @@ async function importKnowledgeBase() {
     });
     importSummary.value = `Imported ${summary.imported} records, skipped ${summary.skipped} duplicates, and created ${summary.createdPaths} paths.`;
     knowledgeBaseCsv.value = "";
+    invalidateActivityCaches();
     await load();
   } catch (cause) {
     showError("Could not import Knowledge Base data.", cause);
@@ -105,6 +115,7 @@ async function undo(batch: ImportBatch) {
       deletedPaths?: number;
     }>(`/imports/${batch.source === "KNOWLEDGE_BASE" ? "knowledge-base" : "clockify"}/batches/${batch.id}`, { method: "DELETE" });
     importSummary.value = `Removed ${result.deletedEntries} imported sessions, ${result.deletedActivities} timeline records, and ${result.deletedPaths ?? 0} paths.`;
+    invalidateActivityCaches();
     await load();
   } catch {
     showError("Could not undo this import batch.");
