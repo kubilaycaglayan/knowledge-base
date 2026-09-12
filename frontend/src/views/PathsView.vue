@@ -162,7 +162,7 @@ async function add() {
     return;
   }
   try {
-    await api("/paths", {
+    const created = await api<Path>("/paths", {
       method: "POST",
       body: JSON.stringify({
         name: name.value,
@@ -170,6 +170,7 @@ async function add() {
         color: selectedColor.value,
       }),
     });
+    pathsStore.add(created);
     name.value = "";
     description.value = "";
     selectedColor.value = colors[0];
@@ -266,7 +267,7 @@ function chooseEditColor(color: string) {
 async function saveEdit(path: Path) {
   if (!editName.value.trim()) return;
   try {
-    await api(`/paths/${path.id}`, {
+    const saved = await api<Path>(`/paths/${path.id}`, {
       method: "PUT",
       body: JSON.stringify({
         name: editName.value,
@@ -274,6 +275,7 @@ async function saveEdit(path: Path) {
         color: editColor.value,
       }),
     });
+    pathsStore.replace(saved);
     cancelEdit();
     await load();
     if (summaries.value[path.id]) await loadSummary(path);
