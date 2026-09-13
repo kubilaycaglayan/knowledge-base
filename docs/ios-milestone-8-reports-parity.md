@@ -104,7 +104,7 @@ Native Reports work is split into semantic commits:
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 89 native package tests, including 9
+- `swift test --package-path ios` passes 91 native package tests, including 10
   Reports tests.
 - The forwarded Ubuntu web reference suite passes 1 file and 17 tests.
 - Docker is unavailable in the local environment, so the documented
