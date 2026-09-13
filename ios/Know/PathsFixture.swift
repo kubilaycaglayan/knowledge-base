@@ -4,6 +4,7 @@ actor PathsFixture: PathsTransport {
     static let pathID = UUID(uuidString: "00000000-0000-4000-8000-000000000001")!
     static let otherID = UUID(uuidString: "00000000-0000-4000-8000-000000000003")!
     static let sessionID = UUID(uuidString: "00000000-0000-4000-8000-000000000004")!
+    static let labelID = UUID(uuidString: "00000000-0000-4000-8000-000000000002")!
     private var values: [Path]
     private let empty: Bool
     private let offline: Bool
@@ -22,7 +23,7 @@ actor PathsFixture: PathsTransport {
     func summary(id: UUID) async throws -> PathSummary {
         try check()
         let path = values.first { $0.id == id }!
-        let activity = Activity(id: Self.sessionID, type: "TIME_TRACKED", title: "Tracked 3600 seconds", detail: "Replication and consistency models", occurredAt: SessionFormatting.iso(Date().addingTimeInterval(-1800)), timeEntryId: Self.sessionID, labelIds: nil)
+        let activity = Activity(id: Self.sessionID, type: "TIME_TRACKED", title: "Tracked 3600 seconds", detail: "Replication and consistency models", occurredAt: SessionFormatting.iso(Date().addingTimeInterval(-1800)), timeEntryId: Self.sessionID, labelIds: [Self.labelID, UUID()])
         return PathSummary(path: path, trackedSeconds: 3600, recentActivity: empty ? [] : [activity])
     }
     func create(name: String, description: String?, color: String) async throws -> Path {
