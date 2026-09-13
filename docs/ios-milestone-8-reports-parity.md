@@ -240,6 +240,10 @@ Native Reports work is split into semantic commits:
 - `e06e16b` adds the compact-phone fixture; iPhone 17e (390×844) passed page
   bounds and reachability for the date navigation, preset, filters, breakdown,
   and trendline controls.
+- `4c4179c` caches chart bucket collections by report query, invalidates the
+  cache for forced refresh/sign-out boundaries, and adds a unit assertion that
+  repeated presentation reads calculate buckets once; the breakdown remains a
+  `LazyVStack` for dense scrolling.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
@@ -806,7 +810,7 @@ only on a happy-path screenshot.
 - [x] **AC-142 — Long user content:** Very long path names, label names, and
   multiline Calendar notes wrap, clamp, or scroll appropriately and never
   obscure values or actions.
-- [ ] **AC-143 — Large collection performance:** Long report lists/charts avoid
+- [x] **AC-143 — Large collection performance:** Long report lists/charts avoid
   unnecessary recomputation and view updates during scrolling or unrelated
   presentation toggles.
 
