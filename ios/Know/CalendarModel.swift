@@ -82,7 +82,7 @@ import Foundation
     func inRange(_ date: Date) -> Bool { guard let start = rangeStart else { return false }; let end = rangeEnd ?? start; return date >= min(start, end) && date <= max(start, end) }
 
     func toggle(_ label: KBLabel) { if selectedAssignments[label.id] != nil { selectedAssignments.removeValue(forKey: label.id) } else { selectedAssignments[label.id] = .marker } }
-    func setPortion(_ portion: CalendarPortion, for label: KBLabel) { selectedAssignments[label.id] = portion.value }
+    func setPortion(_ portion: CalendarPortion, for label: KBLabel) { selectedAssignments[label.id] = portion }
 
     func save() async -> Bool {
         guard !saving else { return false }; saving = true; error = nil
