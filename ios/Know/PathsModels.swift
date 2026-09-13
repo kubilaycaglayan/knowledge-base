@@ -61,27 +61,43 @@ struct PathsAPI: PathsTransport {
 
     private let transport: PathsTransport
     private let unauthorized: () -> Void
+    private let invalidateReports: () -> Void
     private var removalTask: Task<Void, Never>?
+    private var loadRevision = 0
+    private var summaryRevisions: [UUID: Int] = [:]
 
-    init(transport: PathsTransport, unauthorized: @escaping () -> Void = {}) {
+    init(transport: PathsTransport, unauthorized: @escaping () -> Void = {}, invalidateReports: @escaping () -> Void = {}) {
         self.transport = transport
         self.unauthorized = unauthorized
+        self.invalidateReports = invalidateReports
     }
 
     deinit { removalTask?.cancel() }
 
     func load(force: Bool = false) async {
         guard !isLoading || force else { return }
+        loadRevision += 1
+        let revision = loadRevision
         isLoading = true
         error = nil
-        do { paths = try await transport.paths() }
+        do {
+            let values = try await transport.paths()
+            guard revision == loadRevision else { return }
+            paths = values
+        }
         catch { fail(error, "Unable to load paths.") }
         isLoading = false
     }
 
     func loadSummary(for path: Path) async {
+        let revision = (summaryRevisions[path.id] ?? 0) + 1
+        summaryRevisions[path.id] = revision
         error = nil
-        do { summaries[path.id] = try await transport.summary(id: path.id) }
+        do {
+            let value = try await transport.summary(id: path.id)
+            guard summaryRevisions[path.id] == revision else { return }
+            summaries[path.id] = value
+        }
         catch { fail(error, "Could not load path history.") }
     }
 
@@ -94,6 +110,7 @@ struct PathsAPI: PathsTransport {
         do {
             let value = try await transport.create(name: cleanName, description: clean(description), color: color)
             paths.insert(value, at: 0)
+            invalidateReports()
             return true
         } catch { fail(error, "Could not create the path."); return false }
     }
@@ -108,6 +125,7 @@ struct PathsAPI: PathsTransport {
             let value = try await transport.update(id: path.id, name: cleanName, description: clean(description), color: color)
             replace(value)
             if summaries[path.id] != nil { await loadSummary(for: value) }
+            invalidateReports()
             return true
         } catch { fail(error, "Could not update path."); return false }
     }
@@ -120,6 +138,7 @@ struct PathsAPI: PathsTransport {
             try await transport.remove(id: path.id)
             paths.removeAll { $0.id == path.id }
             summaries[path.id] = nil
+            invalidateReports()
             pendingRemoval = path
             removalTask?.cancel()
             removalTask = Task { [weak self] in
@@ -140,6 +159,7 @@ struct PathsAPI: PathsTransport {
             paths.insert(path, at: 0)
             pendingRemoval = nil
             removalTask?.cancel()
+            invalidateReports()
             return true
         } catch { fail(error, "Could not undo path removal."); return false }
     }
@@ -152,6 +172,7 @@ struct PathsAPI: PathsTransport {
             try await transport.merge(source: source.id, target: target.id)
             summaries[source.id] = nil
             await load(force: true)
+            invalidateReports()
             return true
         } catch { fail(error, "Could not merge paths. Try again."); return false }
     }
@@ -178,5 +199,40 @@ struct PathsAPI: PathsTransport {
         if let failure = failure as? APIError, case .offline = failure {
             error = "No network connection. Reconnect and try again."
         } else { error = message }
+    }
+}
+
+enum PathHistoryFormatting {
+    static func date(_ value: String?) -> Date? { SessionFormatting.date(value) }
+
+    static func group(_ value: String, now: Date = Date(), calendar: Calendar = .current) -> String {
+        guard let date = date(value) else { return "Unknown date" }
+        let today = calendar.startOfDay(for: now)
+        if calendar.isDate(date, inSameDayAs: today) { return "Today" }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: today), calendar.isDate(date, inSameDayAs: yesterday) { return "Yesterday" }
+        let offset = (calendar.component(.weekday, from: today) + 5) % 7
+        let week = calendar.date(byAdding: .day, value: -offset, to: today)!
+        if date >= week { return "This week" }
+        if date >= calendar.date(byAdding: .day, value: -7, to: week)! { return "Last week" }
+        let month = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
+        if calendar.isDate(date, equalTo: calendar.date(byAdding: .month, value: -1, to: month)!, toGranularity: .month) { return "Last month" }
+        let formatter = DateFormatter(); formatter.calendar = calendar; formatter.locale = .current; formatter.timeZone = calendar.timeZone; formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        return formatter.string(from: date)
+    }
+
+    static func display(_ value: String, calendar: Calendar = .current) -> String {
+        guard let date = date(value) else { return value }
+        let formatter = DateFormatter(); formatter.calendar = calendar; formatter.locale = .current; formatter.timeZone = calendar.timeZone; formatter.setLocalizedDateFormatFromTemplate("d MMM yyyy, HH:mm")
+        return formatter.string(from: date)
+    }
+
+    static func visible(_ events: [Activity]) -> [Activity] {
+        let stopped = events.filter { $0.type == "TIMER_STOPPED" }
+        return events.filter { event in
+            if event.type == "TIMER_STOPPED" { return false }
+            if event.type == "TIME_TRACKED" { return true }
+            guard event.type == "TIMER_STARTED" else { return true }
+            return !stopped.contains { $0.detail == event.detail }
+        }
     }
 }

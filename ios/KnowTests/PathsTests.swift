@@ -59,6 +59,19 @@ private actor PathsStub: PathsTransport {
         await model.load(force: true)
         XCTAssertEqual(model.error, "No network connection. Reconnect and try again.")
     }
+
+    func testHistoryFormattingUsesLocalGroupsAndFiltersTimerBookkeeping() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 3 * 3600)!
+        let now = SessionFormatting.date("2026-09-13T12:00:00Z")!
+        XCTAssertEqual(PathHistoryFormatting.group("2026-09-13T10:00:00Z", now: now, calendar: calendar), "Today")
+        XCTAssertEqual(PathHistoryFormatting.group("2026-09-05T10:00:00Z", now: now, calendar: calendar), "Last week")
+
+        let started = Activity(id: UUID(), type: "TIMER_STARTED", title: "Started", detail: "Focus", occurredAt: "2026-09-13T10:00:00Z", timeEntryId: nil)
+        let stopped = Activity(id: UUID(), type: "TIMER_STOPPED", title: "Stopped", detail: "Focus", occurredAt: "2026-09-13T11:00:00Z", timeEntryId: nil)
+        let session = Activity(id: UUID(), type: "TIME_TRACKED", title: "Tracked 3600 seconds", detail: "Focus", occurredAt: "2026-09-13T11:00:00Z", timeEntryId: UUID())
+        XCTAssertEqual(PathHistoryFormatting.visible([started, stopped, session]).map(\.id), [session.id])
+    }
 }
 
 private extension PathsStub {
