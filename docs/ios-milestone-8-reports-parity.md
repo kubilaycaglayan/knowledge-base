@@ -207,6 +207,10 @@ Native Reports work is split into semantic commits:
   date-picker round trip.
 - `1d9b183` replaces the platform-sized inline DatePicker targets with
   accessible 44-point date buttons while preserving arbitrary date selection.
+- `57ee05b` adapts only insufficient-contrast category swatches for chart,
+  donut, and Calendar marks against the active light/dark background; the
+  shared palette test verifies every rendered swatch clears 3:1, while the
+  semantic text/control test verifies the 4.5:1 text pairs.
 - Reports disables view transactions when Reduce Motion is enabled; the
   reduced-motion iPhone 13 Pro fixture verifies the page and trendline remain
   usable without relying on animation.
