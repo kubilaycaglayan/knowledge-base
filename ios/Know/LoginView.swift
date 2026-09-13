@@ -64,10 +64,11 @@ struct LoginView: View {
                         }.frame(height: 48).accessibilityIdentifier("auth.google")
                         if let error = model.authError {
                             validation(error).accessibilityIdentifier("auth.error")
+                                .accessibilityAddTraits(.isStaticText)
+                                .accessibilityHint("Correct the form and try again.")
                         }
                         Button(register ? "Already have an account? Sign in" : "New here? Create an account") {
                             register.toggle()
-                            password = ""
                             emailError = nil
                             passwordError = nil
                             model.authError = nil
