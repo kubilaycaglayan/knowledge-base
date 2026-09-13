@@ -30,6 +30,7 @@ targets:
           - Info.plist
           - Info-Debug.plist
           - Info-Release.plist
+      - path: Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.know.ios

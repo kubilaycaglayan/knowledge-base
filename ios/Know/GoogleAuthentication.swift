@@ -76,6 +76,13 @@ enum SessionError: LocalizedError {
             throw SessionError.configuration
         }
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID, serverClientID: serverID)
+        // Reuse Google's saved session after an app sign-out. This avoids
+        // starting a new OAuth authorization flow for the same account.
+        if GIDSignIn.sharedInstance.hasPreviousSignIn(),
+           let user = try? await GIDSignIn.sharedInstance.restorePreviousSignIn(),
+           let token = user.idToken?.tokenString {
+            return token
+        }
         #if os(iOS)
         guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
               var presenter = scene.windows.first(where: \.isKeyWindow)?.rootViewController else {
