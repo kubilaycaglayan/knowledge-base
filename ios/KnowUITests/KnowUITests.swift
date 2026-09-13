@@ -238,6 +238,9 @@ final class KnowUITests: XCTestCase {
         labelsFilter.tap(); XCTAssertTrue(app.buttons["Planning"].waitForExistence(timeout: 3)); app.buttons["Planning"].tap()
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000012"].exists)
+        app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].tap()
+        XCTAssertFalse(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000012"].exists)
         app.buttons["reports.trendline"].tap()
         XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
 

@@ -207,12 +207,17 @@ import XCTest
 
     func testFixtureHonorsRepeatedPathAndLabelFiltersWithoutAccountAccess() async throws {
         let fixture = ReportsFixture(arguments: ["-reports-filtered"])
-        let query = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", pathIDs: [UUID(uuidString: "00000000-0000-0000-0000-000000000002")!])
+        let research = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!; let writing = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!; let deepWork = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!; let planning = UUID(uuidString: "00000000-0000-0000-0000-000000000012")!
+        let query = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", pathIDs: [writing])
         let report = try await fixture.report(query: query)
         XCTAssertEqual(report.paths.map(\.label), ["Writing"])
-        XCTAssertEqual(report.days.filter { !$0.paths.isEmpty }.count, 1)
-        let labelQuery = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", labelIDs: [UUID(uuidString: "00000000-0000-0000-0000-000000000012")!])
+        XCTAssertEqual(report.days.filter { !$0.paths.isEmpty }.count, 1); XCTAssertTrue(report.days.flatMap(\.paths).allSatisfy { $0.id == writing }); XCTAssertFalse(report.days.flatMap(\.paths).contains { $0.id == research })
+        let bothPaths = try await fixture.report(query: ReportQuery(startDate: query.startDate, endDate: query.endDate, pathIDs: [research, writing]))
+        XCTAssertEqual(Set(bothPaths.paths.compactMap(\.id)), Set([research, writing]))
+        let labelQuery = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", labelIDs: [planning])
         let labelReport = try await fixture.report(query: labelQuery)
         XCTAssertEqual(labelReport.totalSeconds, 0)
+        let matching = try await fixture.report(query: ReportQuery(startDate: query.startDate, endDate: query.endDate, pathIDs: [research], labelIDs: [deepWork]))
+        XCTAssertTrue(matching.paths.allSatisfy { $0.id == research }); XCTAssertGreaterThan(matching.totalSeconds, 0)
     }
 }
