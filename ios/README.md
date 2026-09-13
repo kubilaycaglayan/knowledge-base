@@ -53,9 +53,10 @@ Configure Google Auth Platform branding/audience and add your account as a test 
 
 The app handles Google's callback URL and sends `{ "idToken": "…" }` to `POST /api/v1/auth/google`. After a user has signed in once, later explicit Google sign-ins first restore Google's saved session silently and fall back to the interactive flow only when needed. App sign-out keeps that Google session so repeat sign-ins do not unnecessarily start a new OAuth authorization. Google may still send security alerts for new devices or suspicious activity; those notifications are controlled by Google. Cancellation returns to login. If OAuth settings are absent, the Google separator and button are omitted, matching the web; email/password remains available. Passwords are preserved exactly; email whitespace is trimmed.
 
-The workspace includes native Notes parity with the web list and editor, and
-native Paths parity with path management, colors, history, merge, and removal
-recovery. Notes
+The workspace includes native Logs parity with timestamped entries, inline
+editing, conflict recovery, and reusable labels; native Notes parity with the
+web list and editor; and native Paths parity with path management, colors,
+history, merge, and removal recovery. Notes
 use the shared `/api/v1/notes` contract, support active/archive pagination and
 search, label suggestions, Tiptap-compatible paragraph JSON, debounced
 autosave with version-conflict replay, and archive/restore. The server remains
