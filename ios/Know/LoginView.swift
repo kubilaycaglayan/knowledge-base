@@ -63,9 +63,16 @@ struct LoginView: View {
                             Task { await model.authenticateWithGoogle(idToken: GoogleAuthentication.idToken) }
                         }.frame(height: 48).accessibilityIdentifier("auth.google")
                         if let error = model.authError {
-                            validation(error).accessibilityIdentifier("auth.error")
-                                .accessibilityAddTraits(.isStaticText)
-                                .accessibilityHint("Correct the form and try again.")
+                            VStack(alignment: .leading, spacing: 8) {
+                                validation(error).accessibilityIdentifier("auth.error")
+                                    .accessibilityAddTraits(.isStaticText)
+                                    .accessibilityHint("Correct the form and try again.")
+                                Button("Try again", action: submit)
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(accent)
+                                    .frame(minHeight: 44)
+                                    .accessibilityIdentifier("auth.retry")
+                            }
                         }
                         Button(register ? "Already have an account? Sign in" : "New here? Create an account") {
                             register.toggle()
