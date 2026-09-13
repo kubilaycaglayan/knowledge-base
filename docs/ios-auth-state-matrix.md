@@ -95,7 +95,7 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Inspected the 390px light sign-in and dark registration screenshots. Evidence
   directory: `<temporary evidence directory>`.
   Evidence is temporary and can be regenerated with the script.
-- Swift package baseline: 32 tests passed on Xcode 26.6/macOS. This does not
+- Swift package baseline: 33 tests passed on Xcode 26.6/macOS. This does not
   prove simulator, physical device, or new milestone coverage.
 - Generated `ios/Know.xcodeproj` with XcodeGen and started the aggregate iPhone
   17 Pro simulator test. The build reached test execution, but the runner hung
@@ -112,6 +112,8 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   latter through XCTest's masked value representation).
 - The added model regression `testMalformedAuthResponsePreservesExistingSession`
   passes, proving malformed login data leaves an existing token intact.
+- `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the
+  provider cancellation path without a false form error or session mutation.
 - Auth layout tokens were aligned in `LoginView`: 4-point card/control radii,
   480-point maximum card width, and 16-point compact-width side/card padding.
   Swift package tests and the simulator control test still pass after this
