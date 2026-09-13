@@ -209,6 +209,16 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(bucket.exists)
     }
 
+    func testReportsRemainUsableWithReducedMotion() {
+        app.launchArguments += ["-ui-testing-authenticated", "-UIAccessibilityReduceMotionEnabled", "YES"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reports.page"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Tracked time"].exists)
+        XCTAssertTrue(app.buttons["reports.trendline"].exists)
+        app.buttons["reports.trendline"].tap()
+        XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
+    }
+
     func testReportsEmptyStateAndRecoverableErrorFixtures() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-empty"]
         app.launch(); app.buttons["workspace.reports"].tap()
