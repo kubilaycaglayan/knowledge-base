@@ -107,7 +107,7 @@ private actor LogsStub: LogsTransport {
 
     func testLabelReplacementAndDelete() async {
         let stub = LogsStub(); let model = LogsModel(transport: stub); await model.load()
-        await model.toggleLabel(await stub.labelID, for: model.logs[0])
+        await model.toggleLabel(stub.labelID, for: model.logs[0])
         let savedLabelCount = await stub.savedLabelCount()
         XCTAssertEqual(savedLabelCount, 1)
         await model.remove(model.logs[0])
