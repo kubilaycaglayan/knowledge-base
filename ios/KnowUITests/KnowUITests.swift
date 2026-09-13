@@ -267,6 +267,16 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Dense label 12"].waitForExistence(timeout: 5))
     }
 
+    func testReportsGeneratedContentRemainsLiteralText() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-unsafe", "-reports-calendar"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        app.buttons["reports.paths.filter"].tap(); let unsafePath = app.buttons.matching(NSPredicate(format: "label CONTAINS '<script>alert(1)</script>'")).firstMatch
+        XCTAssertTrue(unsafePath.waitForExistence(timeout: 5)); XCTAssertTrue(unsafePath.label.contains("<script>alert(1)</script>")); unsafePath.tap()
+        app.buttons["reports.breakdown"].tap(); let labelChoices = app.buttons.matching(NSPredicate(format: "label == 'Labels'")); XCTAssertTrue(labelChoices.count > 1); labelChoices.element(boundBy: labelChoices.count - 1).tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '<b>Deep work</b>'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Calendar log"].waitForExistence(timeout: 5)); XCTAssertTrue(app.staticTexts["<em>Planning</em>"].exists)
+    }
+
     func testReportsLoadingSkeletonAndEmptySankeyRemainRecoverable() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-loading"]
         app.launch(); app.buttons["workspace.reports"].tap()
