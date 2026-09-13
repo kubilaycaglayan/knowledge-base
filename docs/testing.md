@@ -19,6 +19,14 @@ JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scr
 
 On macOS, generate the iOS Xcode project from `ios/project.yml` and run the generated scheme for native SwiftUI and UI-test validation.
 
+Agents may create disposable local test accounts for authenticated verification
+and may navigate/interact with the local web app, Chrome extension, and iOS
+simulator. When visual parity matters, take representative screenshots from
+the web app, extension, and mobile app in relevant themes and responsive sizes.
+Keep accounts and data isolated to local development; do not use production or
+personal credentials, and do not commit credentials, tokens, or screenshots
+containing secrets or personal data.
+
 For the Milestone 2 authentication reference, run from `frontend/`:
 
 ```bash
