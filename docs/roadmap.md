@@ -19,7 +19,7 @@
 - [x] Milestone 4: bring the iOS `/labels` page to parity with the current web
   behavior, scopes, colors, dialogs, destructive recovery, accessibility, and
   regression coverage (see `docs/ios-milestone-4-labels-parity.md`).
-- [ ] Milestone 5: bring the iOS `/notes` page to parity with the current web
+- [x] Milestone 5: bring the iOS `/notes` page to parity with the current web
   behavior, rich-text editing, autosave/conflict recovery, labels,
   archive/restore, accessibility, and regression coverage (see
   `docs/ios-milestone-5-notes-parity.md`).
