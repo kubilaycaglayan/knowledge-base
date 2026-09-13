@@ -129,6 +129,33 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
     }
 
+    func testPathsHistoryAndEditControlsAreReachable() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.paths"].tap()
+        XCTAssertTrue(app.staticTexts["Distributed systems"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["paths.history.00000000-0000-4000-8000-000000000001"].exists)
+        app.buttons["paths.history.00000000-0000-4000-8000-000000000001"].tap()
+        XCTAssertTrue(app.staticTexts["Distributed systems"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["paths.history.close"].exists)
+        app.buttons["paths.history.close"].tap()
+        XCTAssertTrue(app.buttons["paths.edit.00000000-0000-4000-8000-000000000001"].exists)
+    }
+
+    func testPathsEmptyAndOfflineFixturesOfferRecovery() {
+        app.launchArguments += ["-ui-testing-authenticated", "-paths-empty"]
+        app.launch()
+        app.buttons["workspace.paths"].tap()
+        XCTAssertTrue(app.staticTexts["Your first path is waiting to be named."].waitForExistence(timeout: 5))
+
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-paths-offline"]
+        app.launch()
+        app.buttons["workspace.paths"].tap()
+        XCTAssertTrue(app.staticTexts["No network connection. Reconnect and try again."].waitForExistence(timeout: 5))
+    }
+
     func testLabelsListAndCreateControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()

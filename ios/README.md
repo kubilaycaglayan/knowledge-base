@@ -53,7 +53,9 @@ Configure Google Auth Platform branding/audience and add your account as a test 
 
 The app handles Google's callback URL and sends `{ "idToken": "…" }` to `POST /api/v1/auth/google`. After a user has signed in once, later explicit Google sign-ins first restore Google's saved session silently and fall back to the interactive flow only when needed. App sign-out keeps that Google session so repeat sign-ins do not unnecessarily start a new OAuth authorization. Google may still send security alerts for new devices or suspicious activity; those notifications are controlled by Google. Cancellation returns to login. If OAuth settings are absent, the Google separator and button are omitted, matching the web; email/password remains available. Passwords are preserved exactly; email whitespace is trimmed.
 
-The workspace includes native Notes parity with the web list and editor. Notes
+The workspace includes native Notes parity with the web list and editor, and
+native Paths parity with path management, colors, history, merge, and removal
+recovery. Notes
 use the shared `/api/v1/notes` contract, support active/archive pagination and
 search, label suggestions, Tiptap-compatible paragraph JSON, debounced
 autosave with version-conflict replay, and archive/restore. The server remains
@@ -80,4 +82,4 @@ With your backend and Google configuration, run this manual smoke check:
 - Use the same Google account as the web and confirm the same account data appears.
 - Check light/dark appearance, large text, VoiceOver, keyboard focus, and the visible keyboard on a smaller iPhone.
 
-Live Google consent requires your OAuth configuration and interactive account selection. Automated tests never use personal Google credentials. Paths and Timeline remain legacy scaffolding; Sessions, Logs, Labels, and Notes have native workspace implementations, with remaining web features tracked as later milestones.
+Live Google consent requires your OAuth configuration and interactive account selection. Automated tests never use personal Google credentials. Timeline remains legacy scaffolding; Sessions, Logs, Labels, Notes, and Paths have native workspace implementations, with remaining web features tracked as later milestones.
