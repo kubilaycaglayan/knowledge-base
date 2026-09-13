@@ -52,6 +52,7 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.textFields["paths.name"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textViews["paths.description"].exists)
         XCTAssertTrue(app.buttons["paths.save"].exists)
+        app.buttons["Cancel"].firstMatch.tap()
 
         app.buttons["workspace.sessions"].tap()
         XCTAssertTrue(app.buttons["workspace.sessions"].waitForExistence(timeout: 5))
