@@ -13,7 +13,7 @@ enum ReportTrendline: String, CaseIterable { case off = "OFF", linear = "LINEAR"
 
 enum ReportBreakdown: String, CaseIterable { case path = "Path", labels = "Labels" }
 
-struct ReportCategory: Codable, Equatable, Identifiable {
+struct ReportCategory: Codable, Equatable {
     let id: UUID?
     let label: String
     let seconds: Int64
