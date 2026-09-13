@@ -135,6 +135,9 @@ Native Reports work is split into semantic commits:
   label-chip removal in the simulator.
 - `7a80724` adds partial-boundary bucket assertions, category-to-bucket total
   equality, and filtered report-total equality while preserving API colors.
+- `d9fcf41` localizes Calendar summary dates, renders API-colored assignment
+  rows with marker/note symbols, and exposes aggregate day/marker totals;
+  simulator assertions cover both assignments and the aggregate copy.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -625,22 +628,22 @@ only on a happy-path screenshot.
   state or tracked-time content.
 - [ ] **AC-115 — Note-only overlay:** A day with only a Calendar note receives
   the neutral note marker/overlay and exposes the note in bucket detail.
-- [ ] **AC-116 — Marker-only label:** A null or zero portion renders as a visible
+- [x] **AC-116 — Marker-only label:** A null or zero portion renders as a visible
   marker-sized segment and is described as `Marked`, not `0 day`.
 - [ ] **AC-117 — Fractional portions:** `0.25`, `0.50`, `0.75`, and `1.00`
   portions produce separate proportional segments without merging labels.
-- [ ] **AC-118 — Calendar colors:** Each assignment uses its API color or the
+- [x] **AC-118 — Calendar colors:** Each assignment uses its API color or the
   same safe fallback color as the web; pattern plus text provides a redundant
   non-color cue.
-- [ ] **AC-119 — Multiple labels:** Multiple Calendar assignments on one date
+- [x] **AC-119 — Multiple labels:** Multiple Calendar assignments on one date
   remain individually visible and individually named in chart detail.
 - [x] **AC-120 — Calendar log heading:** Visible Calendar details use the
   hierarchy `DAILY RECORDS` then `Calendar log`.
-- [ ] **AC-121 — Calendar log rows:** Every annotated day displays its localized
+- [x] **AC-121 — Calendar log rows:** Every annotated day displays its localized
   date, multiline note when present, label names, colors, and portion text.
-- [ ] **AC-122 — Calendar aggregate days:** A Calendar aggregate with positive
+- [x] **AC-122 — Calendar aggregate days:** A Calendar aggregate with positive
   `days` shows correct singular/plural copy such as `1 day` or `2 days`.
-- [ ] **AC-123 — Calendar aggregate markers:** An aggregate with no day portion
+- [x] **AC-123 — Calendar aggregate markers:** An aggregate with no day portion
   shows correct singular/plural copy such as `1 marked day` or
   `2 marked days`.
 - [x] **AC-124 — Read-only Calendar data:** Reports offers no edit, create,
