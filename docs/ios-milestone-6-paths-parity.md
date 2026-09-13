@@ -164,5 +164,8 @@ of this milestone.
 - 2026-09-13: focused iPhone 17 Pro UI accessibility case passed for selected
   Paths navigation, add/history/edit/remove accessible names, and button
   hittability. Full VoiceOver and contrast review remains open.
+- 2026-09-13: repository accessibility contract passed all 38 checks after
+  updating its native Paths source-location expectations; security, cleanup,
+  shell syntax, and the full 57-test Swift package suite also passed.
 - Full visual, VoiceOver, large Dynamic Type, backend integration, smoke, and
   physical-device evidence remains open.
