@@ -136,7 +136,15 @@ enum ReportCalculations {
             return ReportBucket(id: ReportDateMath.iso(value.0, calendar: calendar), label: formatter.string(from: value.0), seconds: value.1, categories: value.2.values.sorted { $0.label < $1.label })
         }
     }
-    static func trend(_ buckets: [ReportBucket], mode: ReportTrendline) -> [(String, Int64)] { let points = buckets.enumerated().filter { $0.element.seconds > 0 }; guard points.count >= (mode == .parabolic ? 3 : 2) else { return [] }; let xs = points.map { Double($0.offset) }, ys = points.map { Double($0.element.seconds) }; if mode == .linear { let n = Double(xs.count), sx = xs.reduce(0,+), sy = ys.reduce(0,+), sxx = xs.reduce(0) { $0 + $1*$1 }, sxy = zip(xs,ys).reduce(0) { $0 + $1.0*$1.1 }, denominator = n*sxx-sx*sx; guard denominator != 0 else { return [] }; let slope = (n*sxy-sx*sy)/denominator, intercept = (sy-slope*sx)/n; return points.map { ($0.element.id, max(0, Int64((intercept+slope*Double($0.offset)).rounded()))) } }; return [] }
+    static func trend(_ buckets: [ReportBucket], mode: ReportTrendline) -> [(String, Int64)] {
+        let points = buckets.enumerated().filter { $0.element.seconds > 0 }; guard points.count >= (mode == .parabolic ? 3 : 2) else { return [] }
+        let xs = points.map { Double($0.offset) }, ys = points.map { Double($0.element.seconds) }
+        if mode == .linear { let n = Double(xs.count), sx = xs.reduce(0,+), sy = ys.reduce(0,+), sxx = xs.reduce(0) { $0 + $1*$1 }, sxy = zip(xs,ys).reduce(0) { $0 + $1.0*$1.1 }, denominator = n*sxx-sx*sx; guard denominator != 0 else { return [] }; let slope = (n*sxy-sx*sy)/denominator, intercept = (sy-slope*sx)/n; return points.map { ($0.element.id, max(0, Int64((intercept+slope*Double($0.offset)).rounded()))) } }
+        let n = Double(xs.count), sx = xs.reduce(0,+), sx2 = xs.reduce(0) { $0 + $1*$1 }, sx3 = xs.reduce(0) { $0 + $1*$1*$1 }, sx4 = xs.reduce(0) { $0 + $1*$1*$1*$1 }, sy = ys.reduce(0,+), sxy = zip(xs,ys).reduce(0) { $0 + $1.0*$1.1 }, sx2y = zip(xs,ys).reduce(0) { $0 + $1.0*$1.0*$1.1 }
+        var matrix = [[n, sx, sx2, sy], [sx, sx2, sx3, sxy], [sx2, sx3, sx4, sx2y]]
+        for column in 0..<3 { guard let pivot = (column..<3).max(by: { abs(matrix[$0][column]) < abs(matrix[$1][column]) }), abs(matrix[pivot][column]) > 0.000001 else { return [] }; matrix.swapAt(column, pivot); let divisor = matrix[column][column]; for i in column..<4 { matrix[column][i] /= divisor }; for row in 0..<3 where row != column { let factor = matrix[row][column]; for i in column..<4 { matrix[row][i] -= factor * matrix[column][i] } } }
+        let a = matrix[0][3], b = matrix[1][3], c = matrix[2][3]; return points.map { let x = Double($0.offset); return ($0.element.id, max(0, Int64((a + b*x + c*x*x).rounded()))) }
+    }
 }
 
 protocol ReportsTransport { func report(query: ReportQuery) async throws -> Report; func paths() async throws -> [Path]; func labels() async throws -> [KBLabel] }
@@ -154,6 +162,7 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     @Published private(set) var loading = false
     @Published private(set) var refreshing = false
     @Published var error: String?
+    @Published var rangeError: String?
     @Published var trendline: ReportTrendline = .off
     @Published var showSankey = false
     @Published var showCalendarInputs = true
@@ -165,6 +174,14 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     func load(force: Bool = false) async { let key = query.cacheKey; if !force, let cached = cache[key] { report = cached; return }; generation += 1; let current = generation; loading = report == nil; refreshing = report != nil; error = nil; do { async let value = transport.report(query: query); async let reference = loadReferences(); let result = try await value; _ = await reference; guard current == generation else { return }; guard !result.days.isEmpty || result.paths.isEmpty else { throw APIError.http(status: 422, message: "Malformed report") }; report = result; cache[key] = result } catch { guard current == generation else { return }; if case APIError.unauthorized = error { unauthorized() } else if (error as? URLError)?.code == .timedOut { self.error = "The report took too long to load." } else { self.error = "Unable to load the report. Please try again." } }; if current == generation { loading = false; refreshing = false } }
     private func loadReferences() async { guard !loadedReferences else { return }; async let p = try? transport.paths(); async let l = try? transport.labels(); if let p = await p { paths = p }; if let l = await l { labels = l }; loadedReferences = true }
     func retry() async { await load(force: true) }
+    func setRange(start: String?, end: String?, calendar: Calendar = .current) async {
+        guard let start, let end else { return }
+        guard let a = ReportDateMath.date(start, calendar: calendar), let b = ReportDateMath.date(end, calendar: calendar) else { rangeError = "Choose valid start and end dates."; return }
+        guard b >= a else { rangeError = "End date must be on or after start date."; return }
+        guard calendar.date(byAdding: .year, value: 2, to: a)! >= b else { rangeError = "Report range cannot exceed two years."; return }
+        guard start != query.startDate || end != query.endDate else { return }
+        rangeError = nil; query.startDate = start; query.endDate = end; await load()
+    }
     func setPreset(_ name: String, now: Date = Date(), calendar: Calendar = .current) async { guard let range = ReportDateMath.preset(name, now: now, calendar: calendar), range != (query.startDate, query.endDate) else { return }; query.startDate = range.0; query.endDate = range.1; await load() }
     func setAggregation(_ aggregation: ReportAggregation, now: Date = Date(), calendar: Calendar = .current) async { guard query.aggregation != aggregation else { return }; query.aggregation = aggregation; if aggregation == .day { let r = ReportDateMath.weekRange(containing: now, calendar: calendar); query.startDate = ReportDateMath.iso(r.0, calendar: calendar); query.endDate = ReportDateMath.iso(r.1, calendar: calendar) } else if aggregation == .week { query.endDate = ReportDateMath.iso(calendar.startOfDay(for: now), calendar: calendar); query.startDate = ReportDateMath.iso(calendar.date(byAdding: .day, value: -29, to: now)!, calendar: calendar) } else if aggregation == .month { query.endDate = ReportDateMath.iso(now, calendar: calendar); query.startDate = ReportDateMath.iso(calendar.date(byAdding: .year, value: -1, to: now)!, calendar: calendar) } else if aggregation == .quarter { query.endDate = ReportDateMath.iso(now, calendar: calendar); query.startDate = ReportDateMath.iso(calendar.date(byAdding: .year, value: -2, to: now)!, calendar: calendar) }; await load() }
     func shift(_ direction: Int, calendar: Calendar = .current) async { guard let q = ReportDateMath.shifted(query, by: direction, calendar: calendar) else { return }; query = q; await load() }

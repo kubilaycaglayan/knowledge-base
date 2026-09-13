@@ -155,6 +155,19 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
     }
 
+    func testReportsDestinationAndAccessibleSummaryAreReachable() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        let reports = app.buttons["workspace.reports"]
+        XCTAssertTrue(reports.waitForExistence(timeout: 5))
+        XCTAssertFalse(reports.isSelected)
+        reports.tap()
+        XCTAssertTrue(reports.isSelected)
+        XCTAssertTrue(app.descendants(matching: .any)["reports.page"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Tracked time"].exists)
+        XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
+    }
+
     func testCalendarNavigationGridAndEditorAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
