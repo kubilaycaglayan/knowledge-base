@@ -168,6 +168,9 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["SUMMARY"].exists)
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
         XCTAssertTrue(app.staticTexts["3h 40m"].waitForExistence(timeout: 5))
+        let status = app.descendants(matching: .any)["reports.status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(status.label.contains("Report updated"))
         let aggregation = app.descendants(matching: .any)["reports.aggregation"]
         XCTAssertTrue(aggregation.waitForExistence(timeout: 5))
         XCTAssertGreaterThanOrEqual(aggregation.frame.height, 44)
@@ -251,6 +254,7 @@ final class KnowUITests: XCTestCase {
         app.terminate(); app = XCUIApplication(); app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-reports-error"]
         app.launch(); app.buttons["workspace.reports"].tap()
         XCTAssertTrue(app.staticTexts["Unable to load the report. Please try again."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["reports.status"].label.contains("Report error"))
         XCTAssertTrue(app.buttons["reports.retry"].exists)
         XCTAssertEqual(app.buttons["reports.retry"].label, "Try again")
         XCTAssertTrue(app.buttons["workspace.signOut"].exists)
@@ -360,6 +364,7 @@ final class KnowUITests: XCTestCase {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-loading"]
         app.launch(); app.buttons["workspace.reports"].tap()
         XCTAssertTrue(app.staticTexts["Loading report…"].waitForExistence(timeout: 1))
+        XCTAssertTrue(app.descendants(matching: .any)["reports.status"].label.contains("Loading report"))
 
         app.terminate(); app = XCUIApplication(); app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-reports-empty", "-reports-sankey"]
         app.launch(); app.buttons["workspace.reports"].tap()
