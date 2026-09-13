@@ -294,6 +294,9 @@ are exercised.
   also passed. Xcode emitted its known LLDB debugger-store warning.
 - 2026-09-13: focused iPhone 17 Pro simulator create-flow test passed and
   verified the polite `Log saved.` success announcement after saving a draft.
+- 2026-09-13: Logs light/dark appearance screenshot regression passed on the
+  iPhone 17 Pro simulator. This records rendered artifacts for review; full
+  VoiceOver, contrast, reduced-motion, and physical-device checks remain open.
 
 ## Prompt for a fresh session
 
