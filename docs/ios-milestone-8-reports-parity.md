@@ -219,6 +219,11 @@ Native Reports work is split into semantic commits:
   and label lists lazy while preserving the deterministic dense fixture test.
 - A focused iPhone 13 Pro UI fixture rotates Reports to landscape and back,
   confirming the summary, filter, and trendline controls remain reachable.
+- `778cee4` adds a native contrast regression test for Reports-facing semantic
+  text, muted text, error, selected-state, and primary-button colors in both
+  light and dark `WorkspaceTheme` appearances. Raw category swatches remain
+  chart data marks with textual summaries and are not claimed as body-text
+  contrast evidence.
 - The complete Reports UI selection passes **16/16** on iPhone 13 Pro,
   including dense scrolling, offline recovery, Dynamic Type, reduced motion,
   live appearance switching, Calendar/Sankey, filters, and literal-content
