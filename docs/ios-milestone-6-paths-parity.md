@@ -73,7 +73,7 @@ compatible.
   light/dark/system appearance, small and large iPhones, empty/loading/offline/
   rejection states, edit/remove/undo/merge/history flows, long content, large
   text, focus recovery, and sign-out/expired-auth behavior.
-- [ ] Update `docs/api.md`, `docs/roadmap.md`, `ios/README.md` where behavior or
+- [x] Update `docs/api.md`, `docs/roadmap.md`, `ios/README.md` where behavior or
   supported native sections changes, and record web reference, Swift package,
   simulator, accessibility, and smoke evidence in this document.
 
