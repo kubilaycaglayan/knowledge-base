@@ -287,9 +287,9 @@ are exercised.
 
 ## Verification log
 
-- 2026-09-13: `swift test --filter LogsTests` passed all 9 Logs model/formatter
-  tests, including failed-edit draft retention, conflict replay, and every
-  calendar grouping boundary.
+- 2026-09-13: `swift test --filter LogsTests` passed all 10 Logs model/formatter
+  tests, including failed-edit and failed-delete recovery, conflict replay,
+  and every calendar grouping boundary.
 - 2026-09-13: focused iPhone 17 Pro simulator UI test for Logs composer,
   labels, edit, confirmation/delete passed; the large Dynamic Type Logs case
   also passed. Xcode emitted its known LLDB debugger-store warning.
@@ -311,6 +311,8 @@ are exercised.
   test passed, covering Logs API bearer authentication, request paths and
   methods, timestamp encoding, optimistic-lock versioning, and full label ID
   replacement.
+- 2026-09-13: failed-delete coverage passed; a transport failure leaves the
+  existing log available and presents the retryable error copy.
 
 ## Prompt for a fresh session
 
