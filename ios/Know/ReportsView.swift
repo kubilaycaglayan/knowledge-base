@@ -12,7 +12,17 @@ struct ReportsView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Reports").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
                 HStack { Text("SUMMARY").font(.caption.weight(.bold)); Spacer(); if model.refreshing { Text("Updating report…").font(.caption).accessibilityAddTraits(.updatesFrequently) } }
-                if model.loading && model.report == nil { skeleton } else { content }
+                if model.report == nil {
+                    if model.loading {
+                        skeleton
+                    } else {
+                        ProgressView("Loading report…")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                    }
+                } else {
+                    content
+                }
             }.padding(16).frame(maxWidth: 1200, alignment: .leading).frame(maxWidth: .infinity)
         }.refreshable { await model.retry() }
         .task { await model.load() }
