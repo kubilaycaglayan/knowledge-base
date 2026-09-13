@@ -326,82 +326,82 @@ only on a happy-path screenshot.
 
 ### Navigation and lifecycle
 
-- [ ] **AC-001 — Reports destination:** The workspace exposes a visible
+- [x] **AC-001 — Reports destination:** The workspace exposes a visible
   **Reports** destination with accessibility identifier `workspace.reports`.
-- [ ] **AC-002 — Selected destination:** The Reports destination exposes the
+- [x] **AC-002 — Selected destination:** The Reports destination exposes the
   selected accessibility trait only while Reports is the active section.
-- [ ] **AC-003 — Native page:** Selecting Reports opens the native SwiftUI
+- [x] **AC-003 — Native page:** Selecting Reports opens the native SwiftUI
   implementation and does not embed or navigate to the web page.
-- [ ] **AC-004 — Section restoration:** Switching to another workspace section
+- [x] **AC-004 — Section restoration:** Switching to another workspace section
   and back restores the latest report query and presentation choices during
   the authenticated app session.
 - [ ] **AC-005 — First activation:** The first Reports activation loads one
   report, the owned path options, and `TIME_ENTRY` label options without
   duplicate requests caused by SwiftUI view recomposition.
-- [ ] **AC-006 — Later activation:** Returning to an unchanged, successfully
+- [x] **AC-006 — Later activation:** Returning to an unchanged, successfully
   cached query reuses the report and reference data instead of immediately
   issuing identical requests.
 - [ ] **AC-007 — App resume:** Returning from background refreshes or validates
   Reports according to the model’s cache policy without clearing the visible
   report or resetting query state.
-- [ ] **AC-008 — Sign-out lifecycle:** Sign-out cancels/invalidate in-flight
+- [x] **AC-008 — Sign-out lifecycle:** Sign-out cancels/invalidate in-flight
   report work and clears account-scoped report caches so another account can
   never see the previous account’s data.
 
 ### Default range, custom ranges, and presets
 
-- [ ] **AC-009 — Default aggregation:** With no restored state, aggregation is
+- [x] **AC-009 — Default aggregation:** With no restored state, aggregation is
   `DAY` and the visible choice is **Daily**.
-- [ ] **AC-010 — Default range:** With no restored state, the range starts on
+- [x] **AC-010 — Default range:** With no restored state, the range starts on
   the current local Monday and ends on the current local Sunday.
-- [ ] **AC-011 — LocalDate serialization:** Start and end dates are encoded as
+- [x] **AC-011 — LocalDate serialization:** Start and end dates are encoded as
   `YYYY-MM-DD` values without conversion through a UTC instant.
-- [ ] **AC-012 — Inclusive range:** The selected start and end dates are both
+- [x] **AC-012 — Inclusive range:** The selected start and end dates are both
   included in the request, chart interval, active-day calculation, and
   accessible summary.
-- [ ] **AC-013 — Complete-range requirement:** An incomplete date selection
+- [x] **AC-013 — Complete-range requirement:** An incomplete date selection
   does not replace the current range or start a request.
 - [ ] **AC-014 — Unchanged-range behavior:** Re-selecting the exact current
   range does not add redundant navigation history or start a duplicate load.
-- [ ] **AC-015 — Reversed-range prevention:** The UI prevents or rejects an end
+- [x] **AC-015 — Reversed-range prevention:** The UI prevents or rejects an end
   date before the start date and leaves the previous valid report usable.
-- [ ] **AC-016 — Maximum range:** A range of exactly two years is accepted when
+- [x] **AC-016 — Maximum range:** A range of exactly two years is accepted when
   allowed by the API contract; a range beyond two years is prevented or shown
   as an inline actionable validation error before replacing visible data.
-- [ ] **AC-017 — Today preset:** **Today** selects the current local date as
+- [x] **AC-017 — Today preset:** **Today** selects the current local date as
   both boundaries.
-- [ ] **AC-018 — Yesterday preset:** **Yesterday** selects the previous local
+- [x] **AC-018 — Yesterday preset:** **Yesterday** selects the previous local
   calendar date as both boundaries.
-- [ ] **AC-019 — Week preset:** **Week** selects the current Monday–Sunday week.
-- [ ] **AC-020 — Last week preset:** **Last week** selects the complete previous
+- [x] **AC-019 — Week preset:** **Week** selects the current Monday–Sunday week.
+- [x] **AC-020 — Last week preset:** **Last week** selects the complete previous
   Monday–Sunday week.
-- [ ] **AC-021 — Past two weeks preset:** **Past two weeks** selects today and
+- [x] **AC-021 — Past two weeks preset:** **Past two weeks** selects today and
   the preceding 13 local dates, for 14 inclusive days.
-- [ ] **AC-022 — Month preset:** **Month** selects the first through last local
+- [x] **AC-022 — Month preset:** **Month** selects the first through last local
   dates of the current month.
-- [ ] **AC-023 — Last month preset:** **Last month** selects the first through
+- [x] **AC-023 — Last month preset:** **Last month** selects the first through
   last dates of the previous month.
-- [ ] **AC-024 — Quarter preset:** **Quarter** selects the natural current
+- [x] **AC-024 — Quarter preset:** **Quarter** selects the natural current
   calendar quarter.
-- [ ] **AC-025 — Last quarter preset:** **Last quarter** selects the complete
+- [x] **AC-025 — Last quarter preset:** **Last quarter** selects the complete
   previous natural calendar quarter.
-- [ ] **AC-026 — Year preset:** **Year** selects January 1 through December 31
+- [x] **AC-026 — Year preset:** **Year** selects January 1 through December 31
   of the current year.
-- [ ] **AC-027 — Last year preset:** **Last year** selects January 1 through
+- [x] **AC-027 — Last year preset:** **Last year** selects January 1 through
   December 31 of the previous year.
-- [ ] **AC-028 — Previous interval:** Previous-range navigation shifts both
+- [x] **AC-028 — Previous interval:** Previous-range navigation shifts both
   boundaries backward by the current interval’s exact inclusive day count.
-- [ ] **AC-029 — Next interval:** Next-range navigation shifts both boundaries
+- [x] **AC-029 — Next interval:** Next-range navigation shifts both boundaries
   forward by the current interval’s exact inclusive day count.
 - [ ] **AC-030 — Shift stability:** Previous/next navigation preserves
   aggregation, path filters, label filters, trendline mode, Sankey mode, and
   Calendar-input visibility.
-- [ ] **AC-031 — Date edge cases:** Presets and interval shifts remain correct
+- [x] **AC-031 — Date edge cases:** Presets and interval shifts remain correct
   across month/year boundaries, leap day, and daylight-saving transitions.
 
 ### Aggregation and report query
 
-- [ ] **AC-032 — Aggregation choices:** The control offers exactly **Daily**,
+- [x] **AC-032 — Aggregation choices:** The control offers exactly **Daily**,
   **Weekly**, **Monthly**, **Quarterly**, and **Yearly**.
 - [ ] **AC-033 — Daily range reset:** Choosing Daily selects the current local
   Monday–Sunday week before loading.
@@ -415,16 +415,16 @@ only on a happy-path screenshot.
   selected date interval rather than silently selecting another preset.
 - [ ] **AC-038 — Range/aggregation independence:** Selecting a custom range
   after choosing an aggregation preserves that aggregation.
-- [ ] **AC-039 — Required report parameters:** Every custom request sends
+- [x] **AC-039 — Required report parameters:** Every custom request sends
   `startDate`, `endDate`, and uppercase `aggregation` exactly once.
-- [ ] **AC-040 — Path query items:** Every selected path is sent as a repeated
+- [x] **AC-040 — Path query items:** Every selected path is sent as a repeated
   `pathId` query item; no placeholder or empty ID is sent.
-- [ ] **AC-041 — Label query items:** Every selected session label is sent as a
+- [x] **AC-041 — Label query items:** Every selected session label is sent as a
   repeated `labelId` query item; no placeholder or empty ID is sent.
-- [ ] **AC-042 — Deterministic query:** Duplicate filter IDs are removed and
+- [x] **AC-042 — Deterministic query:** Duplicate filter IDs are removed and
   query/cache ordering is deterministic, so equivalent selections reuse one
   cache entry.
-- [ ] **AC-043 — Server response boundaries:** If the API returns normalized
+- [x] **AC-043 — Server response boundaries:** If the API returns normalized
   `from`/`to` boundaries, those values become the displayed authoritative
   range for that completed query.
 - [ ] **AC-044 — Presentation-only state:** Trendline, bar/Sankey choice, and
@@ -433,11 +433,11 @@ only on a happy-path screenshot.
 
 ### Path and label filters
 
-- [ ] **AC-045 — Path option source:** Path choices come from the owner-scoped
+- [x] **AC-045 — Path option source:** Path choices come from the owner-scoped
   `/paths` response when available.
-- [ ] **AC-046 — Path fallback:** If path reference loading fails, categories
+- [x] **AC-046 — Path fallback:** If path reference loading fails, categories
   with IDs from the current report remain available as path filter options.
-- [ ] **AC-047 — Label option source:** Label choices come only from
+- [x] **AC-047 — Label option source:** Label choices come only from
   `/labels?scope=TIME_ENTRY` when reference data is available.
 - [ ] **AC-048 — Label fallback:** If label reference loading fails, session
   label categories with IDs from the current report remain available.
@@ -464,39 +464,39 @@ only on a happy-path screenshot.
 
 ### Loading, refresh, caching, and errors
 
-- [ ] **AC-058 — Initial loading copy:** The first unresolved report request
+- [x] **AC-058 — Initial loading copy:** The first unresolved report request
   exposes the accessible status `Loading report…`.
-- [ ] **AC-059 — Initial skeleton:** Initial loading displays placeholders for
+- [x] **AC-059 — Initial skeleton:** Initial loading displays placeholders for
   the chart heading/total, chart body, filter toolbar, breakdown rows, and
   donut so the final layout does not shift substantially.
-- [ ] **AC-060 — No premature empty state:** `No report data for this period.`
+- [x] **AC-060 — No premature empty state:** `No report data for this period.`
   is not shown while the first request is pending.
-- [ ] **AC-061 — Refresh copy:** A parameter change with an existing report
+- [x] **AC-061 — Refresh copy:** A parameter change with an existing report
   exposes polite `Updating report…` status.
-- [ ] **AC-062 — Refresh visibility:** The last valid report remains visible
+- [x] **AC-062 — Refresh visibility:** The last valid report remains visible
   and recognizably busy/dimmed during refresh.
-- [ ] **AC-063 — Refresh interaction safety:** Controls cannot accidentally
+- [x] **AC-063 — Refresh interaction safety:** Controls cannot accidentally
   submit duplicate equivalent loads while the same query is active.
 - [ ] **AC-064 — Matching completion:** Only the response belonging to the
   current query may replace the visible report.
 - [ ] **AC-065 — Stale completion:** A slower response for an older range,
   aggregation, filter, account, or app lifecycle cannot overwrite newer state.
-- [ ] **AC-066 — Successful cache reuse:** Revisiting a successfully cached
+- [x] **AC-066 — Successful cache reuse:** Revisiting a successfully cached
   query restores its report without a duplicate network request.
-- [ ] **AC-067 — Complete cache key:** Changing any query-affecting date,
+- [x] **AC-067 — Complete cache key:** Changing any query-affecting date,
   aggregation, path, or label value addresses a distinct cache entry.
-- [ ] **AC-068 — No error caching:** A failed, cancelled, malformed, or timed-out
+- [x] **AC-068 — No error caching:** A failed, cancelled, malformed, or timed-out
   response is not stored as a successful cache entry.
-- [ ] **AC-069 — Generic error:** A non-timeout load failure presents
+- [x] **AC-069 — Generic error:** A non-timeout load failure presents
   `Unable to load the report. Please try again.` as an accessible alert.
-- [ ] **AC-070 — Timeout error:** A request exceeding the intended timeout
+- [x] **AC-070 — Timeout error:** A request exceeding the intended timeout
   presents `The report took too long to load.` as an accessible alert.
-- [ ] **AC-071 — Retry action:** Every report load error provides an accessible
+- [x] **AC-071 — Retry action:** Every report load error provides an accessible
   `Try again` action that repeats the current query, not the default query.
-- [ ] **AC-072 — Refresh failure retention:** If refresh fails, the last valid
+- [x] **AC-072 — Refresh failure retention:** If refresh fails, the last valid
   report and current query controls remain available; the UI does not replace
   them with a false empty state.
-- [ ] **AC-073 — Reference failure tolerance:** Failure of `/paths` or
+- [x] **AC-073 — Reference failure tolerance:** Failure of `/paths` or
   `/labels?scope=TIME_ENTRY` does not hide an otherwise valid report or replace
   it with the report-load error.
 - [ ] **AC-074 — Malformed response:** Missing required report arrays or an
@@ -507,18 +507,18 @@ only on a happy-path screenshot.
 
 - [ ] **AC-075 — Summary hierarchy:** A loaded report exposes `SUMMARY`,
   `Tracked time`, and the filtered total as the first report data section.
-- [ ] **AC-076 — Authoritative days:** Every day returned by the API is retained
+- [x] **AC-076 — Authoritative days:** Every day returned by the API is retained
   in interval order, including zero-duration days.
-- [ ] **AC-077 — Daily buckets:** DAY aggregation produces one bucket per
+- [x] **AC-077 — Daily buckets:** DAY aggregation produces one bucket per
   returned date labeled like `EEE, MMM d` using locale-aware formatting.
-- [ ] **AC-078 — Weekly buckets:** WEEK aggregation groups dates into
+- [x] **AC-078 — Weekly buckets:** WEEK aggregation groups dates into
   Monday-first weeks and labels the covered week/range consistently with web
   and server semantics.
-- [ ] **AC-079 — Monthly buckets:** MONTH aggregation groups dates by natural
+- [x] **AC-079 — Monthly buckets:** MONTH aggregation groups dates by natural
   calendar month and labels buckets like `MMM yyyy`.
-- [ ] **AC-080 — Quarterly buckets:** QUARTER aggregation groups dates into
+- [x] **AC-080 — Quarterly buckets:** QUARTER aggregation groups dates into
   natural quarters and labels buckets like `Q1 2026`.
-- [ ] **AC-081 — Yearly buckets:** YEAR aggregation groups dates by calendar
+- [x] **AC-081 — Yearly buckets:** YEAR aggregation groups dates by calendar
   year and labels buckets with the year.
 - [ ] **AC-082 — Partial boundary buckets:** A custom interval beginning or
   ending inside a week/month/quarter/year includes only the requested dates
@@ -531,7 +531,7 @@ only on a happy-path screenshot.
 - [ ] **AC-085 — Duration precision:** Main tracked totals use the web’s report
   duration format; breakdown rows and compact bucket labels use their matching
   hours/minutes formats without accidental decimal-hour conversion.
-- [ ] **AC-086 — Tabular numbers:** Comparable durations and counts use tabular
+- [x] **AC-086 — Tabular numbers:** Comparable durations and counts use tabular
   numerals and remain aligned at larger Dynamic Type sizes.
 - [ ] **AC-087 — Category colors:** API-provided path colors are used when
   present; missing colors use the deterministic report palette consistently
@@ -544,24 +544,24 @@ only on a happy-path screenshot.
   presentation equivalent to the web tooltip.
 - [ ] **AC-090 — Safe generated content:** User-controlled path names, label
   names, and Calendar notes render as text and cannot be interpreted as markup.
-- [ ] **AC-091 — Textual chart equivalent:** VoiceOver and nonvisual users can
+- [x] **AC-091 — Textual chart equivalent:** VoiceOver and nonvisual users can
   access every bucket’s label, total, and category values without relying on
   chart geometry or color.
 
 ### Trendline
 
-- [ ] **AC-092 — Trendline initial state:** Trendline starts at **Off** unless
+- [x] **AC-092 — Trendline initial state:** Trendline starts at **Off** unless
   restored presentation state specifies another valid mode.
-- [ ] **AC-093 — Trendline cycle:** Repeated activation cycles exactly Off →
+- [x] **AC-093 — Trendline cycle:** Repeated activation cycles exactly Off →
   Linear → Parabolic → Off.
-- [ ] **AC-094 — Trendline visible state:** The control visibly names the
+- [x] **AC-094 — Trendline visible state:** The control visibly names the
   current mode and exposes pressed/state information accessibly.
-- [ ] **AC-095 — Linear calculation:** Linear mode fits only positive/non-empty
+- [x] **AC-095 — Linear calculation:** Linear mode fits only positive/non-empty
   bucket totals and produces the same rounded, nonnegative values as the web.
-- [ ] **AC-096 — Parabolic calculation:** Parabolic mode fits only positive/
+- [x] **AC-096 — Parabolic calculation:** Parabolic mode fits only positive/
   non-empty bucket totals and follows the web fallback behavior when the
   quadratic system cannot be solved.
-- [ ] **AC-097 — Insufficient trend data:** A trendline is omitted when there
+- [x] **AC-097 — Insufficient trend data:** A trendline is omitted when there
   are too few non-empty points for its calculation; the app does not crash or
   draw misleading zero data.
 - [ ] **AC-098 — Trendline extent:** Trend data starts at the first non-empty
@@ -571,38 +571,38 @@ only on a happy-path screenshot.
 
 ### Breakdown table and donut
 
-- [ ] **AC-100 — Filter toolbar:** The breakdown section exposes path filters,
+- [x] **AC-100 — Filter toolbar:** The breakdown section exposes path filters,
   label filters, grouping, and active-day count as one logically labeled area.
-- [ ] **AC-101 — Default grouping:** Breakdown grouping starts at **Path** unless
+- [x] **AC-101 — Default grouping:** Breakdown grouping starts at **Path** unless
   a valid restored state specifies **Labels**.
 - [ ] **AC-102 — Path grouping:** Path mode shows the report’s path aggregate
   categories with a `Path` heading and one total per category.
 - [ ] **AC-103 — Label grouping:** Labels mode shows the report’s session-label
   aggregate categories with a `Label` heading and one total per category.
-- [ ] **AC-104 — Active-day count:** `N active days` counts only displayed days
+- [x] **AC-104 — Active-day count:** `N active days` counts only displayed days
   with a positive filtered tracked-time total.
-- [ ] **AC-105 — Breakdown total:** The donut center total equals the sum of the
+- [x] **AC-105 — Breakdown total:** The donut center total equals the sum of the
   categories in the currently selected breakdown mode.
 - [ ] **AC-106 — Donut segments:** Donut segment values and colors match the
   visible breakdown rows one-for-one.
-- [ ] **AC-107 — Donut accessibility:** The donut has an accessible description
+- [x] **AC-107 — Donut accessibility:** The donut has an accessible description
   containing every category and duration, including an explicit no-tracked-
   time description when empty.
-- [ ] **AC-108 — Empty breakdown:** A grouping with no categories shows
+- [x] **AC-108 — Empty breakdown:** A grouping with no categories shows
   `No tracked time in this period.` and a zero `00:00` donut total.
 - [ ] **AC-109 — Compact stacking:** On a small iPhone, the breakdown table and
   donut stack vertically in reading order with no clipped rows or labels.
 
 ### Calendar inputs and daily-record summary
 
-- [ ] **AC-110 — Calendar data separation:** Calendar notes, markers, and day
+- [x] **AC-110 — Calendar data separation:** Calendar notes, markers, and day
   portions never change tracked seconds, bucket totals, breakdown totals,
   active-day counts, trendline inputs, or Sankey values.
 - [ ] **AC-111 — Daily-only overlay:** Calendar overlays appear in the summary
   chart only while aggregation is DAY.
-- [ ] **AC-112 — Toggle availability:** The Calendar-input toggle appears only
+- [x] **AC-112 — Toggle availability:** The Calendar-input toggle appears only
   when at least one returned day contains a Calendar note or label assignment.
-- [ ] **AC-113 — Toggle copy:** The enabled state says `Hide calendar inputs`;
+- [x] **AC-113 — Toggle copy:** The enabled state says `Hide calendar inputs`;
   the disabled state says `Show calendar inputs`.
 - [ ] **AC-114 — Toggle scope:** Hiding Calendar inputs removes both chart
   overlays and the separate Calendar log/summary without changing API/query
@@ -618,7 +618,7 @@ only on a happy-path screenshot.
   non-color cue.
 - [ ] **AC-119 — Multiple labels:** Multiple Calendar assignments on one date
   remain individually visible and individually named in chart detail.
-- [ ] **AC-120 — Calendar log heading:** Visible Calendar details use the
+- [x] **AC-120 — Calendar log heading:** Visible Calendar details use the
   hierarchy `DAILY RECORDS` then `Calendar log`.
 - [ ] **AC-121 — Calendar log rows:** Every annotated day displays its localized
   date, multiline note when present, label names, colors, and portion text.
@@ -627,21 +627,21 @@ only on a happy-path screenshot.
 - [ ] **AC-123 — Calendar aggregate markers:** An aggregate with no day portion
   shows correct singular/plural copy such as `1 marked day` or
   `2 marked days`.
-- [ ] **AC-124 — Read-only Calendar data:** Reports offers no edit, create,
+- [x] **AC-124 — Read-only Calendar data:** Reports offers no edit, create,
   delete, or recolor action for Calendar notes or labels.
 
 ### Sankey path flow
 
-- [ ] **AC-125 — Sankey availability:** `Show Sankey` appears only when the
+- [x] **AC-125 — Sankey availability:** `Show Sankey` appears only when the
   report response includes a Sankey object.
-- [ ] **AC-126 — Sankey switch:** Selecting `Show Sankey` replaces the bar chart
+- [x] **AC-126 — Sankey switch:** Selecting `Show Sankey` replaces the bar chart
   with the flow view while preserving all other report sections and query
   state.
-- [ ] **AC-127 — Bar restoration:** Sankey mode offers `Show bar chart`, which
+- [x] **AC-127 — Bar restoration:** Sankey mode offers `Show bar chart`, which
   restores the existing bar chart without a report request.
-- [ ] **AC-128 — Sankey hierarchy:** The flow section exposes `TIME FLOW` and
+- [x] **AC-128 — Sankey hierarchy:** The flow section exposes `TIME FLOW` and
   `Path timing by <granularity>` with the API granularity in readable form.
-- [ ] **AC-129 — Flow count:** The visible tracked-flow count equals the number
+- [x] **AC-129 — Flow count:** The visible tracked-flow count equals the number
   of server-provided links and uses understandable singular/plural wording.
 - [ ] **AC-130 — Authoritative nodes:** Every server node preserves its ID,
   path label, bucket label, depth, value, and optional color; the client does
@@ -653,10 +653,10 @@ only on a happy-path screenshot.
   chronological order and display aggregate bucket totals consistently.
 - [ ] **AC-133 — Flow detail:** Selecting/focusing a node or link exposes its
   bucket/path or source/target labels and formatted duration.
-- [ ] **AC-134 — Empty Sankey:** A provided Sankey with no nodes displays
+- [x] **AC-134 — Empty Sankey:** A provided Sankey with no nodes displays
   `No tracked time to show in this flow.` and remains switchable back to the
   bar chart.
-- [ ] **AC-135 — Sankey accessibility:** VoiceOver can read a textual sequence
+- [x] **AC-135 — Sankey accessibility:** VoiceOver can read a textual sequence
   of all flows and values without interpreting the diagram geometry.
 - [ ] **AC-136 — Compact Sankey:** On a small iPhone, Sankey content uses an
   intentional horizontal scroll or equivalent compact representation; the
@@ -664,10 +664,10 @@ only on a happy-path screenshot.
 
 ### Empty, sparse, dense, and long-content states
 
-- [ ] **AC-137 — Null/invalid report:** A null or unusable report cannot produce
+- [x] **AC-137 — Null/invalid report:** A null or unusable report cannot produce
   misleading totals; after loading settles, the page shows the report empty
   state or a recoverable validation error according to the web behavior.
-- [ ] **AC-138 — Report empty copy:** A valid settled state with no report data
+- [x] **AC-138 — Report empty copy:** A valid settled state with no report data
   shows `No report data for this period.`.
 - [ ] **AC-139 — Zero-day stability:** A valid report containing only zero
   duration days keeps those dates visible and shows zero totals without NaN,
@@ -749,19 +749,19 @@ only on a happy-path screenshot.
 
 ### Verification evidence and completion gate
 
-- [ ] **AC-168 — Web reference tests:** The current remote
+- [x] **AC-168 — Web reference tests:** The current remote
   `ReportsView.test.ts` suite passes and its test count/result is recorded in
   the implementation handoff.
 - [ ] **AC-169 — Backend reference tests:** Relevant report controller,
   service, integration, ownership, filter, Calendar, and Sankey tests pass in
   the appropriate Ubuntu/deployed-shaped environment.
-- [ ] **AC-170 — Native unit tests:** All report model, transport, query,
+- [x] **AC-170 — Native unit tests:** All report model, transport, query,
   aggregation, trendline, Calendar, Sankey, cache, lifecycle, and error tests
   pass on the macOS iOS development host.
 - [ ] **AC-171 — Native UI tests:** Reports UI tests pass for populated, empty,
   loading, refresh, error, offline, filtered, Calendar, Sankey, light/dark,
   small-phone, Dynamic Type, and reduced-motion fixtures.
-- [ ] **AC-172 — Existing regression tests:** Existing authentication,
+- [x] **AC-172 — Existing regression tests:** Existing authentication,
   Sessions, Logs, Labels, Notes, Paths, Calendar, and workspace tests remain
   green.
 - [ ] **AC-173 — Web screenshots:** Sanitized reference screenshots are
@@ -778,13 +778,13 @@ only on a happy-path screenshot.
 - [ ] **AC-176 — Screenshot/data hygiene:** Reference evidence contains no
   token, password, personal account, production data, or unsanitized private
   content and is not committed unless explicitly approved and sanitized.
-- [ ] **AC-177 — No frontend changes:** The milestone diff contains no frontend
+- [x] **AC-177 — No frontend changes:** The milestone diff contains no frontend
   implementation change; any web discrepancy discovered during comparison is
   documented separately rather than fixed as part of iOS Reports work.
 - [ ] **AC-178 — Final diff review:** The final diff contains no generated
   project noise, credentials, stale local addresses, inaccessible chart-only
   information, accidental compatibility changes, or unrelated edits.
-- [ ] **AC-179 — Unavailable gates recorded:** Any simulator, physical-device,
+- [x] **AC-179 — Unavailable gates recorded:** Any simulator, physical-device,
   Ubuntu, or full-stack check that cannot run is recorded explicitly with its
   reason and remains unchecked.
 - [ ] **AC-180 — Completion rule:** The milestone is not marked complete until
