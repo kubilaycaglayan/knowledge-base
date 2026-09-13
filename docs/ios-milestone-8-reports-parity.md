@@ -196,6 +196,10 @@ Native Reports work is split into semantic commits:
 - The current slice adds explicit report hit-area treatment for retry, date
   navigation, preset, aggregation, date-range, and breakdown controls, plus
   simulator assertions that Previous and Next expose at least 44 points.
+- The accessibility slice gives report controls explicit names, values, hints,
+  identifiers, and selected traits; focused iPhone 13 Pro UI tests cover those
+  semantics, non-color Calendar/filter cues, and accessibility text-size
+  reflow.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -211,6 +215,9 @@ Current evidence is deliberately narrower than the completion gate:
   containerized Gradle command could not run. The local `backend/gradlew`
   fallback fails during Gradle task configuration with `Type T not present`;
   backend gates remain unchecked.
+- The local simulator set has iPhone 13 Pro and iPhone 17 Pro but no supported
+  small-phone device; small-phone, physical-device, and screenshot gates remain
+  unchecked.
 - `xcodegen generate --spec project.yml` succeeds, the generated Xcode project
   builds with `CODE_SIGNING_ALLOWED=NO`, and the focused iPhone 17 Pro
   simulator test `testReportsDestinationAndAccessibleSummaryAreReachable`
@@ -765,7 +772,7 @@ only on a happy-path screenshot.
 - [x] **AC-144 — Semantic hierarchy:** Reports has a clear page heading and
   correctly ordered section headings; decorative chart elements are hidden
   from accessibility.
-- [ ] **AC-145 — Accessible controls:** Every date, filter, aggregation,
+- [x] **AC-145 — Accessible controls:** Every date, filter, aggregation,
   trendline, Calendar, Sankey, retry, and chip-removal control has a precise
   accessible name, role, value/state, and hint where needed.
 - [ ] **AC-146 — Touch targets:** Every interactive target is at least 44×44
@@ -777,9 +784,9 @@ only on a happy-path screenshot.
 - [ ] **AC-149 — VoiceOver updates:** Initial loading, refresh, errors, retry
   results, and major presentation-mode changes are announced politely without
   repeatedly reading the entire page.
-- [ ] **AC-150 — Non-color status:** Category identity, Calendar input, selected
+- [x] **AC-150 — Non-color status:** Category identity, Calendar input, selected
   state, and chart meaning are never communicated by color alone.
-- [ ] **AC-151 — Dynamic Type:** All controls and report text remain readable at
+- [x] **AC-151 — Dynamic Type:** All controls and report text remain readable at
   accessibility text sizes; content reflows instead of clipping or overlapping.
 - [ ] **AC-152 — Small iPhone:** At the project’s smallest supported iPhone
   viewport, controls wrap/stack, charts remain usable, and only Sankey may
