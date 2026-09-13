@@ -58,7 +58,7 @@ struct CalendarView: View {
         .accessibilityLabel(dayLabel(day, record: record))
         .accessibilityHint("Tap to edit this day. Long-press to start a date range.")
         .accessibilityAddTraits(selected ? .isSelected : [])
-        .onLongPressGesture(minimumDuration: 0.35) { model.beginRange(day) }
+        .highPriorityGesture(LongPressGesture(minimumDuration: 0.35).onEnded { _ in model.beginRange(day) })
         .accessibilityAction(named: "Start range") { model.beginRange(day) }
     }
 

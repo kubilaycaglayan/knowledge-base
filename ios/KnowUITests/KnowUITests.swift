@@ -227,6 +227,29 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Vacation"].waitForExistence(timeout: 5))
     }
 
+    func testCalendarLongPressAndTapCompleteInclusiveRange() {
+        app.launchArguments += ["-ui-testing-authenticated", "-calendar-range"]
+        app.launch(); app.buttons["workspace.calendar"].tap()
+        let start = app.buttons["calendar.day.2026-09-13"]
+        let end = app.buttons["calendar.day.2026-09-15"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5)); XCTAssertTrue(end.waitForExistence(timeout: 5))
+        start.press(forDuration: 0.5); end.tap()
+        XCTAssertTrue(app.buttons["Apply to range"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Sep 13 – Sep 15, 2026"].exists)
+        app.buttons["Apply to range"].tap()
+        XCTAssertTrue(app.buttons["Save day"].waitForExistence(timeout: 5))
+    }
+
+    func testCalendarControlsRemainReachableInDarkAccessibilityAppearance() {
+        app.launchArguments += ["-ui-testing", "-ui-testing-authenticated", "-AppleInterfaceStyle", "Dark", "-UIPreferredContentSizeCategory", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch(); app.buttons["workspace.calendar"].tap()
+        XCTAssertTrue(app.buttons["workspace.calendar"].isSelected)
+        XCTAssertTrue(app.descendants(matching: .any)["calendar.grid"].waitForExistence(timeout: 5))
+        app.swipeUp()
+        XCTAssertTrue(app.descendants(matching: .any)["calendar.editor"].exists)
+        XCTAssertTrue(app.buttons["Save day"].exists)
+    }
+
     func testNewPathDraftRequiresDiscardConfirmation() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
