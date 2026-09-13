@@ -164,6 +164,7 @@ final class KnowUITests: XCTestCase {
         reports.tap()
         XCTAssertTrue(reports.isSelected)
         XCTAssertTrue(app.descendants(matching: .any)["reports.page"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["SUMMARY"].exists)
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
         XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
     }
