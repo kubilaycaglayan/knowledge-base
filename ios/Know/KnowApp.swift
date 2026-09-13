@@ -10,6 +10,12 @@ struct Path: Codable, Identifiable {
     let description: String?
     let status: String
     var color: String? = nil
+    var activityLabel: String? = nil
+    var createdAt: String? = nil
+    var updatedAt: String? = nil
+    init(id: UUID, name: String, description: String?, status: String, color: String? = nil, activityLabel: String? = nil, createdAt: String? = nil, updatedAt: String? = nil) {
+        self.id = id; self.name = name; self.description = description; self.status = status; self.color = color; self.activityLabel = activityLabel; self.createdAt = createdAt; self.updatedAt = updatedAt
+    }
 }
 
 struct DailyLabel: Codable, Identifiable {
@@ -40,6 +46,10 @@ struct Activity: Codable, Identifiable {
     let detail: String?
     let occurredAt: String
     let timeEntryId: UUID?
+    let labelIds: [UUID]?
+    init(id: UUID, type: String, title: String, detail: String?, occurredAt: String, timeEntryId: UUID?, labelIds: [UUID]? = nil) {
+        self.id = id; self.type = type; self.title = title; self.detail = detail; self.occurredAt = occurredAt; self.timeEntryId = timeEntryId; self.labelIds = labelIds
+    }
 }
 
 struct TimerState: Codable, Identifiable {
@@ -69,6 +79,8 @@ struct TimerUpdateRequest: Codable {
 struct PathRequest: Codable {
     let name: String
     let description: String?
+    let color: String?
+    init(name: String, description: String?, color: String? = nil) { self.name = name; self.description = description; self.color = color }
 }
 
 struct LabelRequest: Codable {
@@ -242,8 +254,8 @@ struct APIClient {
         return data.isEmpty ? nil : try JSONDecoder().decode(T?.self, from: data)
     }
 
-    func empty(_ path: String, method: String, token: String) async throws {
-        _ = try await send(makeRequest(path, method: method, body: Data("{}".utf8), token: token))
+    func empty(_ path: String, method: String, body: Data = Data("{}".utf8), token: String) async throws {
+        _ = try await send(makeRequest(path, method: method, body: body, token: token))
     }
 }
 
@@ -529,58 +541,6 @@ struct RootView: View {
     var body: some View {
         Group { if model.signedIn { WorkspaceView(app: model) } else { LoginView() } }
             .alert("Knowledge Base", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") {} } message: { Text(model.error ?? "") }
-    }
-}
-
-struct PathsView: View {
-    @EnvironmentObject var model: AppModel
-    @State private var adding = false
-    @State private var name = ""
-    @State private var description = ""
-    var body: some View {
-        NavigationStack {
-            List {
-                if model.paths.isEmpty && !model.isLoading {
-                    ContentUnavailableView("No paths yet", systemImage: "folder", description: Text("Create a path to organize your learning."))
-                }
-                ForEach(model.paths) { path in
-                    VStack(alignment: .leading) {
-                        Text(path.name).font(.headline)
-                        if let description = path.description {
-                            Text(description).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Paths")
-            .toolbar { Button("Add path") { adding = true }.accessibilityIdentifier("paths.add") }
-            .sheet(isPresented: $adding) {
-                NavigationStack {
-                    Form {
-                        TextField("Name", text: $name).accessibilityIdentifier("paths.name")
-                        TextEditor(text: $description)
-                            .frame(minHeight: 100)
-                            .accessibilityIdentifier("paths.description")
-                    }
-                        .navigationTitle("New path")
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { adding = false } }
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Save") {
-                                    Task {
-                                        await model.createPath(name: name, description: description)
-                                        name = ""
-                                        description = ""
-                                        adding = false
-                                    }
-                                }
-                                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                                .accessibilityIdentifier("paths.save")
-                            }
-                        }
-                }
-            }
-        }
     }
 }
 
