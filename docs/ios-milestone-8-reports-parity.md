@@ -205,6 +205,9 @@ Native Reports work is split into semantic commits:
   areas; targeted iPhone 13 Pro tests verify those frames. Native DatePicker
   accessibility frames remain platform-owned and are not used to claim the
   broad touch-target gate.
+- Reports disables view transactions when Reduce Motion is enabled; the
+  reduced-motion iPhone 13 Pro fixture verifies the page and trendline remain
+  usable without relying on animation.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -807,7 +810,7 @@ only on a happy-path screenshot.
   in dark mode, and chart/system surfaces match `WorkspaceTheme`.
 - [ ] **AC-157 — System appearance:** Changing the system appearance updates the
   report and native chart colors without requiring a reload or losing state.
-- [ ] **AC-158 — Reduced motion:** Reduced Motion disables shimmer/scan/orbit
+- [x] **AC-158 — Reduced motion:** Reduced Motion disables shimmer/scan/orbit
   animation and nonessential chart transitions while retaining clear loading
   and refresh feedback.
 - [ ] **AC-159 — Locale awareness:** Displayed dates, counts, percentages, and
