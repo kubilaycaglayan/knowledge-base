@@ -255,10 +255,12 @@ Native Reports work is split into semantic commits:
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
+- The repository accessibility contract passes all 38 checks after the custom
+  date controls and chart rendering updates.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 117 native package tests, including 35
+- `swift test --package-path ios` passes 119 native package tests, including 36
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 13 Pro and iPhone 17 Pro simulator UI coverage passes for Reports navigation,
