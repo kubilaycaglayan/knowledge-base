@@ -49,11 +49,20 @@ enum SessionError: LocalizedError {
 }
 
 @MainActor enum GoogleAuthentication {
-    static func idToken() async throws -> String {
+    static var isConfigured: Bool {
         guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
               let serverID = Bundle.main.object(forInfoDictionaryKey: "GIDServerClientID") as? String,
               clientID.hasSuffix(".apps.googleusercontent.com"),
-              serverID.hasSuffix(".apps.googleusercontent.com") else { throw SessionError.configuration }
+              serverID.hasSuffix(".apps.googleusercontent.com") else { return false }
+        let callback = clientID.split(separator: ".").reversed().joined(separator: ".")
+        let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
+        return urlTypes.contains { ($0["CFBundleURLSchemes"] as? [String] ?? []).contains(callback) }
+    }
+
+    static func idToken() async throws -> String {
+        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
+              let serverID = Bundle.main.object(forInfoDictionaryKey: "GIDServerClientID") as? String,
+              isConfigured else { throw SessionError.configuration }
         let callback = clientID.split(separator: ".").reversed().joined(separator: ".")
         let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
         guard urlTypes.contains(where: { ($0["CFBundleURLSchemes"] as? [String] ?? []).contains(callback) }) else {

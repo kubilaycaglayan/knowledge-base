@@ -13,12 +13,6 @@ struct LoginView: View {
     private enum Field { case email, password }
     private var dark: Bool { scheme == .dark }
     private var accent: Color { dark ? Color(red: 0.77, green: 0.82, blue: 0.89) : Color(red: 0.20, green: 0.25, blue: 0.33) }
-    private var googleConfigured: Bool {
-        guard let client = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
-              let server = Bundle.main.object(forInfoDictionaryKey: "GIDServerClientID") as? String else { return false }
-        return client.hasSuffix(".apps.googleusercontent.com") && server.hasSuffix(".apps.googleusercontent.com")
-    }
-
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -62,7 +56,7 @@ struct LoginView: View {
                         .buttonStyle(.plain).foregroundStyle(dark ? .black : .white)
                         .background(accent, in: RoundedRectangle(cornerRadius: 4))
                         .accessibilityIdentifier("auth.submit")
-                        if googleConfigured {
+                        if GoogleAuthentication.isConfigured {
                             HStack { Rectangle().frame(height: 1); Text("or continue with").font(.caption).fixedSize(); Rectangle().frame(height: 1) }.foregroundStyle(.secondary)
                             NativeGoogleButton(isEnabled: !model.isAuthenticating) {
                                 focus = nil
