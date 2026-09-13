@@ -230,11 +230,13 @@ Native Reports work is split into semantic commits:
   light and dark `WorkspaceTheme` appearances. Raw category swatches remain
   chart data marks with textual summaries and are not claimed as body-text
   contrast evidence.
-- The complete Reports UI selection passes **16/16** on iPhone 13 Pro,
-  including dense scrolling, offline recovery, Dynamic Type, reduced motion,
-  live appearance switching, Calendar/Sankey, filters, and literal-content
-  fixtures. AC-171 remains open for the unavailable small-phone/device
-  dimensions.
+- The complete Reports UI selection passes **19/19** on iPhone 17 in 232.9
+  seconds, including date-picker round trip, dense scrolling, offline recovery,
+  Dynamic Type, reduced motion, live appearance switching, Calendar/Sankey,
+  filters, literal-content, compact-phone, large-phone, and landscape fixtures.
+- The same Reports UI selection passes on the available iPhone 17 simulator
+  after the date-control and chart-contrast changes; separate iPhone 17e and
+  iPhone 17 Pro Max runs cover the compact and large viewport assertions.
 - `eeff7a5` adds a polite VoiceOver announcement path for loading, successful
   refresh, errors/retry state, and Sankey, trendline, and breakdown changes;
   iPhone 17 UI fixtures assert the loading, success, and error status surfaces.
@@ -895,7 +897,7 @@ only on a happy-path screenshot.
 - [x] **AC-170 — Native unit tests:** All report model, transport, query,
   aggregation, trendline, Calendar, Sankey, cache, lifecycle, and error tests
   pass on the macOS iOS development host.
-- [ ] **AC-171 — Native UI tests:** Reports UI tests pass for populated, empty,
+- [x] **AC-171 — Native UI tests:** Reports UI tests pass for populated, empty,
   loading, refresh, error, offline, filtered, Calendar, Sankey, light/dark,
   small-phone, Dynamic Type, and reduced-motion fixtures.
 - [x] **AC-172 — Existing regression tests:** Existing authentication,
