@@ -147,6 +147,8 @@ Native Reports work is split into semantic commits:
   report requests.
 - `ea2d754` adds a simulator assertion for the loaded Reports hierarchy:
   `SUMMARY`, `Tracked time`, and the aggregation controls.
+- `bc78212` extends the long-content fixture to labels and verifies that long
+  path/label options retain accessible, hittable removal controls on iPhone.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -489,7 +491,7 @@ only on a happy-path screenshot.
 - [x] **AC-056 — No category leakage:** Daily chart categories not present in
   the report’s filtered aggregate categories are not included in displayed
   totals, bars, tables, tooltips, or accessibility summaries.
-- [ ] **AC-057 — Long option content:** Very long path and label names wrap or
+- [x] **AC-057 — Long option content:** Very long path and label names wrap or
   truncate without hiding removal controls, creating horizontal page overflow,
   or losing their full accessible name.
 
