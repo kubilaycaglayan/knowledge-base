@@ -182,6 +182,8 @@ Native Reports work is split into semantic commits:
   labels, model collection assertions, and iPhone 13 Pro rendering coverage.
 - `0a8ac57` gives each chart bucket a stable accessibility identifier and
   verifies its combined date, total, and category detail on iPhone.
+- `b4201f9` adds literal-markup fixtures for path, label, and Calendar-note
+  content and verifies they remain plain text in iPhone accessibility output.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -608,7 +610,7 @@ only on a happy-path screenshot.
 - [x] **AC-089 — Chart detail:** Selecting/focusing a bucket exposes its date,
   total, category durations, and percentages in a native accessible detail
   presentation equivalent to the web tooltip.
-- [ ] **AC-090 — Safe generated content:** User-controlled path names, label
+- [x] **AC-090 — Safe generated content:** User-controlled path names, label
   names, and Calendar notes render as text and cannot be interpreted as markup.
 - [x] **AC-091 — Textual chart equivalent:** VoiceOver and nonvisual users can
   access every bucket’s label, total, and category values without relying on
