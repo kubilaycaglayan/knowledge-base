@@ -116,6 +116,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - The five unauthenticated simulator UI checks now pass together on iPhone 17
   Pro: controls, empty validation, mode switching, draft preservation, and
   Accessibility XXXL layout.
+- `testSignOutReturnsToAuthenticationFlow` passes on the same simulator,
+  confirming the authenticated fixture clears into reachable email/password
+  controls.
 - The added model regression `testMalformedAuthResponsePreservesExistingSession`
   passes, proving malformed login data leaves an existing token intact.
 - `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the
