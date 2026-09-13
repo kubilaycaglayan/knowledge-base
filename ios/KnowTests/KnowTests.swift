@@ -151,6 +151,15 @@ final class KnowTests: XCTestCase {
     }
 
     @MainActor
+    func testGoogleConfigurationRequiresMatchingIDsAndCallbackScheme() {
+        let client = "123.apps.googleusercontent.com"
+        let server = "456.apps.googleusercontent.com"
+        XCTAssertTrue(GoogleAuthentication.configurationIsValid(clientID: client, serverID: server, urlSchemes: ["com.googleusercontent.apps.123"]))
+        XCTAssertFalse(GoogleAuthentication.configurationIsValid(clientID: client, serverID: nil, urlSchemes: ["com.googleusercontent.apps.123"]))
+        XCTAssertFalse(GoogleAuthentication.configurationIsValid(clientID: client, serverID: server, urlSchemes: []))
+    }
+
+    @MainActor
     func testClearingAuthenticationErrorReturnsPhaseToIdle() async {
         let model = authenticationModel()
         URLProtocolStub.statusCode = 401
