@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct ReportsView: View {
     @ObservedObject var model: ReportsModel
@@ -12,7 +15,15 @@ struct ReportsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Reports").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-                HStack { Text("SUMMARY").font(.caption.weight(.bold)); Spacer(); if model.refreshing { Text("Updating report…").font(.caption).accessibilityAddTraits(.updatesFrequently) } }
+                HStack {
+                    Text("SUMMARY").font(.caption.weight(.bold))
+                    Spacer()
+                    Text(accessibilityStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("reports.status")
+                        .accessibilityAddTraits(.updatesFrequently)
+                }
                 if model.report == nil {
                     if model.loading {
                         skeleton
@@ -28,9 +39,26 @@ struct ReportsView: View {
         }.refreshable { await model.retry() }
         .task { await model.load() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.load() } } }
+        .onChange(of: accessibilityStatus) { _, status in announce(status) }
+        .onChange(of: model.showSankey) { _, showSankey in announce(showSankey ? "Showing Sankey time flow." : "Showing activity bar chart.") }
+        .onChange(of: model.trendline) { _, trendline in announce("Trendline \(trendline.title).") }
+        .onChange(of: model.breakdown) { _, breakdown in announce("Breakdown grouped by \(breakdown.rawValue).") }
         .transaction { transaction in if reduceMotion { transaction.animation = nil } }
         .overlay(alignment: .top) { if let error = model.error { HStack { Label(error, systemImage: "exclamationmark.triangle"); Spacer(); Button("Try again") { Task { await model.retry() } }.frame(minWidth: 44, minHeight: 44).accessibilityHint("Retries loading the current report.").accessibilityIdentifier("reports.retry") }.padding(12).background(.thinMaterial).accessibilityElement(children: .contain) } }
         .accessibilityIdentifier("reports.page")
+    }
+    private var accessibilityStatus: String {
+        if model.loading { return "Loading report…" }
+        if let error = model.error { return "Report error: \(error) Try again." }
+        if model.refreshing { return "Updating report…" }
+        if let report = model.report { return "Report updated for \(report.from) through \(report.to)." }
+        return "Reports ready."
+    }
+    private func announce(_ status: String) {
+        #if canImport(UIKit)
+        guard UIAccessibility.isVoiceOverRunning else { return }
+        UIAccessibility.post(notification: .announcement, argument: status)
+        #endif
     }
     private var skeleton: some View { VStack(alignment: .leading, spacing: 14) { ProgressView("Loading report…"); RoundedRectangle(cornerRadius: 8).fill(.secondary.opacity(0.15)).frame(height: 180); ForEach(0..<3, id: \.self) { _ in RoundedRectangle(cornerRadius: 5).fill(.secondary.opacity(0.12)).frame(height: 32) } }.accessibilityElement(children: .combine) }
     private var content: some View { VStack(alignment: .leading, spacing: 18) {
