@@ -18,7 +18,7 @@ import XCTest
 
     func testDefaultAndAllPresetsUseInclusiveLocalDates() {
         let c = calendar(); let now = c.date(from: DateComponents(year: 2026, month: 9, day: 13))!
-        XCTAssertEqual(ReportDateMath.defaultQuery(now: now, calendar: c).startDate, "2026-09-07")
+        let defaultQuery = ReportDateMath.defaultQuery(now: now, calendar: c); XCTAssertEqual(defaultQuery.aggregation, .day); XCTAssertEqual(defaultQuery.startDate, "2026-09-07"); XCTAssertEqual(defaultQuery.endDate, "2026-09-13")
         XCTAssertEqual(ReportDateMath.preset("Past two weeks", now: now, calendar: c)?.0, "2026-08-31")
         XCTAssertEqual(ReportDateMath.preset("Last week", now: now, calendar: c)?.0, "2026-08-31")
         XCTAssertEqual(ReportDateMath.preset("Last month", now: now, calendar: c)?.1, "2026-08-31")
