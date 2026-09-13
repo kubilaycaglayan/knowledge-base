@@ -4,6 +4,8 @@ import Observation
 @MainActor @Observable final class SessionsModel {
     private(set) var paths: [Path] = []
     private(set) var labels: [SessionLabel] = []
+    private(set) var pathsByID: [UUID: Path] = [:]
+    private(set) var labelsByID: [UUID: SessionLabel] = [:]
     private(set) var history = SessionPage(sessions: [], page: 0, totalPages: 0, totalSessions: 0)
     private(set) var timer: TrackedSession?
     var draft = SessionDraft()
@@ -61,7 +63,9 @@ import Observation
             async let p = transport.paths()
             async let l = transport.labels()
             paths = try await p
+            pathsByID = Dictionary(uniqueKeysWithValues: paths.map { ($0.id, $0) })
             labels = try await l.filter { $0.scopes.contains("TIME_ENTRY") }
+            labelsByID = Dictionary(uniqueKeysWithValues: labels.map { ($0.id, $0) })
             await loadHistory(page: history.page)
             await sync()
             loaded = true
@@ -180,6 +184,7 @@ import Observation
         do {
             let path = try await transport.createPath(name: name)
             paths.append(path)
+            pathsByID[path.id] = path
             draft.pathId = path.id
             remember(path.id)
             busy = false
@@ -196,7 +201,10 @@ import Observation
         error = nil
         do {
             let label = try await transport.createLabel(name: name)
-            if !labels.contains(where: { $0.id == label.id }) { labels.append(label) }
+            if !labels.contains(where: { $0.id == label.id }) {
+                labels.append(label)
+                labelsByID[label.id] = label
+            }
             if !draft.labelIds.contains(label.id) { draft.labelIds.append(label.id) }
             busy = false
             await saveTimer()

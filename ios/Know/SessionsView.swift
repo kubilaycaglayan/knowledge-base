@@ -109,11 +109,11 @@ struct SessionsView: View {
                         .accessibilityLabel("Edit timer start time; elapsed session time")
                         .accessibilityIdentifier("timer.clock")
                 }
-                if let path = model.paths.first(where: { $0.id == model.draft.pathId }) {
+                if let path = model.draft.pathId.flatMap({ model.pathsByID[$0] }) {
                     WorkspaceChip(text: path.name).lineLimit(1).frame(maxWidth: 110)
                 }
                 if !model.draft.labelIds.isEmpty {
-                    WorkspaceChip(text: model.draft.labelIds.compactMap { id in model.labels.first { $0.id == id }?.name }.joined(separator: ", "))
+                    WorkspaceChip(text: model.draft.labelIds.compactMap { model.labelsByID[$0]?.name }.joined(separator: ", "))
                         .lineLimit(1).frame(maxWidth: 110)
                 }
                 Spacer(minLength: 0)
@@ -147,7 +147,7 @@ struct SessionsView: View {
                     ForEach(model.activePaths) { path in Button(path.name) { Task { await model.choosePath(path.id) } } }
                     Button("＋ Add a new path…") { addingPath = true }
                 } label: {
-                    HStack { Text(model.paths.first { $0.id == model.draft.pathId }?.name ?? "Choose a path…"); Spacer(); Image(systemName: "chevron.down").font(.caption) }
+                    HStack { Text(model.draft.pathId.flatMap { model.pathsByID[$0] }?.name ?? "Choose a path…"); Spacer(); Image(systemName: "chevron.down").font(.caption) }
                         .frame(maxWidth: .infinity, alignment: .leading).modifier(WorkspaceControl())
                 }.buttonStyle(.plain).disabled(model.busy).accessibilityLabel("Timer path").accessibilityIdentifier("timer.path")
                 if !model.recentPaths.isEmpty {
@@ -225,11 +225,11 @@ struct SessionsView: View {
             if editing?.id == session.id {
                 SessionEditor(model: model, session: editing ?? session) { editing = nil }
             } else {
-            let path = model.paths.first { $0.id == session.pathId }
+            let path = session.pathId.flatMap { model.pathsByID[$0] }
             if let path { WorkspaceChip(text: path.name, color: path.color, prominent: true) }
             WorkspaceFlow(spacing: 4) {
                 ForEach(session.labelIds ?? [], id: \.self) { id in
-                    let label = model.labels.first { $0.id == id }
+                    let label = model.labelsByID[id]
                     WorkspaceChip(text: label?.name ?? "Removed label", color: label?.color)
                 }
             }
