@@ -292,6 +292,8 @@ are exercised.
 - 2026-09-13: focused iPhone 17 Pro simulator UI test for Logs composer,
   labels, edit, confirmation/delete passed; the large Dynamic Type Logs case
   also passed. Xcode emitted its known LLDB debugger-store warning.
+- 2026-09-13: focused iPhone 17 Pro simulator create-flow test passed and
+  verified the polite `Log saved.` success announcement after saving a draft.
 
 ## Prompt for a fresh session
 
