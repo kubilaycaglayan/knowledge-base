@@ -167,5 +167,8 @@ of this milestone.
 - 2026-09-13: repository accessibility contract passed all 38 checks after
   updating its native Paths source-location expectations; security, cleanup,
   shell syntax, and the full 57-test Swift package suite also passed.
+- 2026-09-13: native Paths and Labels editors now consume the exact 15-color
+  web shared palette, with a unit test preventing future palette drift. Focused
+  Paths workspace and Dynamic Type simulator tests passed afterward.
 - Full visual, VoiceOver, large Dynamic Type, backend integration, smoke, and
   physical-device evidence remains open.
