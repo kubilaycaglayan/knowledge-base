@@ -23,7 +23,7 @@ try {
     });
     const page = await context.newPage();
     await page.goto('http://127.0.0.1:5192/');
-    await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
+    await page.getByRole('heading', { name: 'Sign in' }).waitFor();
     for (const width of [320, 390, 430, 1440, 2560]) {
       await page.setViewportSize({ width, height: 932 });
       for (const registration of [false, true]) {
@@ -45,6 +45,7 @@ try {
     await page.getByLabel('Password', { exact: true }).fill('fixture-password');
     await page.getByRole('button', { name: 'New here? Create an account', exact: true }).click();
     assert.equal(await page.getByLabel('Password', { exact: true }).inputValue(), 'fixture-password');
+    await page.getByLabel('Confirm password', { exact: true }).fill('fixture-password');
     await page.getByLabel('Password', { exact: true }).press('Enter');
     await page.getByRole('alert').waitFor();
     assert.equal(await page.getByRole('alert').innerText(), 'Could not authenticate. Use a valid email and a password of at least 9 characters.');
