@@ -169,6 +169,14 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
         XCTAssertTrue(app.staticTexts["3h 40m"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
+        XCTAssertTrue(app.buttons["reports.preset"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["reports.start"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["reports.end"].exists)
+        let aggregation = app.buttons["reports.aggregation"].exists ? app.buttons["reports.aggregation"] : app.segmentedControls["reports.aggregation"]
+        XCTAssertTrue(aggregation.label.contains("Report aggregation"))
+        XCTAssertTrue(app.buttons["reports.paths.filter"].exists)
+        XCTAssertTrue(app.buttons["reports.labels.filter"].exists)
+        XCTAssertEqual(app.buttons["reports.trendline"].label, "Trendline: Off")
         let previous = app.buttons["Previous"]
         let next = app.buttons["Next"]
         XCTAssertTrue(previous.exists); XCTAssertTrue(next.exists)
@@ -183,6 +191,22 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Deep work"].exists)
     }
 
+    func testReportsRemainReadableAtAccessibilityTextSize() {
+        app.launchArguments += [
+            "-ui-testing-authenticated",
+            "-UIPreferredContentSizeCategory",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["Reports"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Tracked time"].exists)
+        XCTAssertTrue(app.buttons["reports.paths.filter"].exists)
+        XCTAssertTrue(app.buttons["reports.labels.filter"].exists)
+        for _ in 0..<3 { app.swipeUp() }
+        let bucket = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'reports.bucket.'")).firstMatch
+        XCTAssertTrue(bucket.exists)
+    }
+
     func testReportsEmptyStateAndRecoverableErrorFixtures() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-empty"]
         app.launch(); app.buttons["workspace.reports"].tap()
@@ -192,6 +216,7 @@ final class KnowUITests: XCTestCase {
         app.launch(); app.buttons["workspace.reports"].tap()
         XCTAssertTrue(app.staticTexts["Unable to load the report. Please try again."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.retry"].exists)
+        XCTAssertEqual(app.buttons["reports.retry"].label, "Try again")
         XCTAssertTrue(app.buttons["workspace.signOut"].exists)
     }
 
@@ -211,6 +236,7 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reports.calendar.toggle"].label.contains("Show calendar inputs"))
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Calendar input'")).firstMatch.exists)
         app.buttons["reports.calendar.toggle"].tap()
+        XCTAssertTrue(app.buttons["reports.sankey.toggle"].exists)
         app.buttons["Show Sankey"].tap()
         XCTAssertTrue(app.staticTexts["TIME FLOW"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["Path timing by day"].exists)
@@ -245,6 +271,7 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(pathOption.waitForExistence(timeout: 5)); pathOption.tap()
         XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].isHittable)
+        XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].label.contains("Remove"))
         app.buttons["reports.labels.filter"].tap(); let labelOption = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Deep work label with a long accessible name'")).firstMatch
         XCTAssertTrue(labelOption.waitForExistence(timeout: 5)); labelOption.tap()
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 5))
