@@ -18,6 +18,8 @@ import XCTest
         XCTAssertEqual(model.sortedLabels.map(\.name), ["Alpha", "zeta"])
         let data = try! JSONEncoder().encode(stub.values[0])
         XCTAssertEqual(try! JSONDecoder().decode(KBLabel.self, from: data), stub.values[0])
+        let legacy = try! JSONDecoder().decode(KBLabel.self, from: Data("{\"id\":\"00000000-0000-4000-8000-000000000010\",\"name\":\"Legacy\",\"color\":null,\"scopes\":[\"CALENDAR\"]}".utf8))
+        XCTAssertFalse(legacy.system)
     }
 
     func testNewLabelUsesFirstSharedPaletteColor() {

@@ -448,6 +448,34 @@ final class KnowTests: XCTestCase {
         }
     }
 
+    func testCalendarAPIUsesScopedAuthenticatedContracts() async throws {
+        URLProtocolStub.statusCode = 200; URLProtocolStub.failure = nil
+        let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [URLProtocolStub.self]
+        let api = CalendarAPI(client: APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration)), token: "calendar-token")
+        let id = UUID(uuidString: "00000000-0000-4000-8000-000000000020")!
+
+        URLProtocolStub.responseData = Data("[{\"id\":\"\(id)\",\"name\":\"Leave\",\"color\":null,\"scopes\":[\"CALENDAR\"]}]".utf8)
+        _ = try await api.labels()
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/labels")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.query, "scope=CALENDAR")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer calendar-token")
+
+        URLProtocolStub.responseData = Data("[]".utf8)
+        _ = try await api.days(startDate: "2026-09-01", endDate: "2026-09-30")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/calendar/days")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.query, "startDate=2026-09-01&endDate=2026-09-30")
+
+        URLProtocolStub.responseData = Data("{\"date\":\"2026-09-03\",\"note\":null,\"labels\":[]}".utf8)
+        _ = try await api.saveDay(date: "2026-09-03", request: CalendarDayRequest(note: nil, labels: [CalendarDayAssignment(labelId: id, portion: 0.5)]))
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "PUT"); XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/calendar/days/2026-09-03")
+        let dayBody = try requestJSONObject(); XCTAssertTrue(dayBody["note"] is NSNull); XCTAssertEqual(((dayBody["labels"] as? [[String: Any]])?.first?["portion"] as? NSNumber)?.doubleValue, 0.5)
+
+        URLProtocolStub.responseData = Data("[]".utf8)
+        _ = try await api.saveRange(request: CalendarRangeRequest(startDate: "2026-09-01", endDate: "2026-09-03", note: "Away", labels: []))
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "PUT"); XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/calendar/days/range")
+        let rangeBody = try requestJSONObject(); XCTAssertEqual(rangeBody["startDate"] as? String, "2026-09-01"); XCTAssertEqual(rangeBody["endDate"] as? String, "2026-09-03")
+    }
+
     func testAPIClientRetriesTransientFailuresAndSurfacesOfflineState() async throws {
         URLProtocolStub.failure = .notConnectedToInternet
         let configuration = URLSessionConfiguration.ephemeral
