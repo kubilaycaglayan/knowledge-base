@@ -211,6 +211,8 @@ Native Reports work is split into semantic commits:
 - Duration rendering now uses Foundation locale-aware components while
   preserving the stable zero display; native tests compare English and French
   output and the iPhone summary fixture remains green.
+- A focused iPhone 13 Pro UI test switches the workspace between Dark and Light
+  while Reports is open and confirms the page remains mounted without reload.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -811,7 +813,7 @@ only on a happy-path screenshot.
   focus, selected states, and errors meet contrast requirements in light mode.
 - [ ] **AC-156 — Dark appearance:** The same elements meet contrast requirements
   in dark mode, and chart/system surfaces match `WorkspaceTheme`.
-- [ ] **AC-157 — System appearance:** Changing the system appearance updates the
+- [x] **AC-157 — System appearance:** Changing the system appearance updates the
   report and native chart colors without requiring a reload or losing state.
 - [x] **AC-158 — Reduced motion:** Reduced Motion disables shimmer/scan/orbit
   animation and nonessential chart transitions while retaining clear loading
