@@ -219,6 +219,11 @@ Native Reports work is split into semantic commits:
   and label lists lazy while preserving the deterministic dense fixture test.
 - A focused iPhone 13 Pro UI fixture rotates Reports to landscape and back,
   confirming the summary, filter, and trendline controls remain reachable.
+- The complete Reports UI selection passes **16/16** on iPhone 13 Pro,
+  including dense scrolling, offline recovery, Dynamic Type, reduced motion,
+  live appearance switching, Calendar/Sankey, filters, and literal-content
+  fixtures. AC-171 remains open for the unavailable small-phone/device
+  dimensions.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
