@@ -174,6 +174,8 @@ Native Reports work is split into semantic commits:
 - `5781af9` validates the cached Reports query when the scene returns active,
   while `387981d` adds a simulator assertion for the semantic `Reports` page
   heading.
+- `e7cab14` counts first-activation transport calls and verifies repeated model
+  loads issue exactly one report, paths, and scoped-label request.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -393,7 +395,7 @@ only on a happy-path screenshot.
 - [x] **AC-004 — Section restoration:** Switching to another workspace section
   and back restores the latest report query and presentation choices during
   the authenticated app session.
-- [ ] **AC-005 — First activation:** The first Reports activation loads one
+- [x] **AC-005 — First activation:** The first Reports activation loads one
   report, the owned path options, and `TIME_ENTRY` label options without
   duplicate requests caused by SwiftUI view recomposition.
 - [x] **AC-006 — Later activation:** Returning to an unchanged, successfully
