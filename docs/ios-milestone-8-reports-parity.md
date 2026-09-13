@@ -130,6 +130,9 @@ Native Reports work is split into semantic commits:
 - `dc22fe3` adds direct Reports model coverage for aggregation range resets,
   TIME_ENTRY reference scoping and report-category fallback, malformed payload
   rejection, and suppression of an older range completion.
+- `9c5597d` verifies OR-within/AND-between filter semantics, prevents
+  filtered category leakage in fixture responses, and exercises independent
+  label-chip removal in the simulator.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -458,15 +461,15 @@ only on a happy-path screenshot.
   every selected value remains visibly identifiable.
 - [x] **AC-051 — Multiple labels:** The user can select more than one session
   label and every selected value remains visibly identifiable.
-- [ ] **AC-052 — Individual removal:** Each selected path or label can be
+- [x] **AC-052 — Individual removal:** Each selected path or label can be
   removed independently with an accessible control.
 - [x] **AC-053 — Clear filters:** Path and label filters can each be cleared
   without resetting the date range, aggregation, or the other filter group.
-- [ ] **AC-054 — Filter semantics:** The resulting data demonstrates OR within
+- [x] **AC-054 — Filter semantics:** The resulting data demonstrates OR within
   selected paths, OR within selected labels, and AND between the two groups.
 - [ ] **AC-055 — Filtering refresh:** Changing filters keeps the previous
   report visible until the matching filtered response succeeds.
-- [ ] **AC-056 — No category leakage:** Daily chart categories not present in
+- [x] **AC-056 — No category leakage:** Daily chart categories not present in
   the report’s filtered aggregate categories are not included in displayed
   totals, bars, tables, tooltips, or accessibility summaries.
 - [ ] **AC-057 — Long option content:** Very long path and label names wrap or
