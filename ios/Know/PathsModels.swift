@@ -144,7 +144,7 @@ struct PathsAPI: PathsTransport {
             removalTask = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(8))
                 guard !Task.isCancelled else { return }
-                await self?.expireRemoval()
+                self?.expireRemoval()
             }
             return true
         } catch { fail(error, "Could not remove path."); return false }
