@@ -137,6 +137,11 @@ enum KeychainTokenStore {
 }
 
 enum APIError: Error { case unauthorized; case offline }
+enum AuthPhase: Equatable {
+    case idle
+    case authenticating
+    case failed
+}
 struct APIClient {
     let base: URL
     let session: URLSession
@@ -243,6 +248,7 @@ struct APIClient {
     @Published var isLoading = false
     @Published var isAuthenticating = false
     @Published var authError: String?
+    @Published private(set) var authPhase: AuthPhase = .idle
 
     let api: APIClient
     private let uiTesting: Bool
@@ -293,8 +299,12 @@ struct APIClient {
         authGeneration += 1
         let generation = authGeneration
         isAuthenticating = true
+        authPhase = .authenticating
         authError = nil
-        defer { isAuthenticating = false }
+        defer {
+            isAuthenticating = false
+            if authPhase == .authenticating { authPhase = .idle }
+        }
         do {
             let body = try JSONEncoder().encode(["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
             let result: AuthResponse = try await api.request(
@@ -305,7 +315,10 @@ struct APIClient {
             guard generation == authGeneration else { return }
             try acceptSession(result)
         } catch {
-            if generation == authGeneration { authError = authenticationMessage(error) }
+            if generation == authGeneration {
+                authError = authenticationMessage(error)
+                authPhase = .failed
+            }
         }
     }
 
@@ -314,8 +327,12 @@ struct APIClient {
         authGeneration += 1
         let generation = authGeneration
         isAuthenticating = true
+        authPhase = .authenticating
         authError = nil
-        defer { isAuthenticating = false }
+        defer {
+            isAuthenticating = false
+            if authPhase == .authenticating { authPhase = .idle }
+        }
         do {
             let credential = try await idToken()
             guard !credential.isEmpty else { throw SessionError.google }
@@ -326,7 +343,10 @@ struct APIClient {
         } catch {
             if (error as NSError).domain == kGIDSignInErrorDomain,
                (error as NSError).code == GIDSignInError.canceled.rawValue { return }
-            if generation == authGeneration { authError = authenticationMessage(error) }
+            if generation == authGeneration {
+                authError = authenticationMessage(error)
+                authPhase = .failed
+            }
         }
     }
 
@@ -457,6 +477,7 @@ struct APIClient {
         authGeneration += 1
         token = nil
         authError = nil
+        authPhase = .idle
         if !uiTesting {
             KeychainTokenStore.delete()
             GIDSignIn.sharedInstance.signOut()

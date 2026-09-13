@@ -114,6 +114,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   passes, proving malformed login data leaves an existing token intact.
 - `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the
   provider cancellation path without a false form error or session mutation.
+- `AppModel.authPhase` now exposes explicit `idle`, `authenticating`, and
+  `failed` states while retaining `isAuthenticating` for view compatibility;
+  rejected credential tests assert the failed-to-idle transition.
 - Auth layout tokens were aligned in `LoginView`: 4-point card/control radii,
   480-point maximum card width, and 16-point compact-width side/card padding.
   Swift package tests and the simulator control test still pass after this
