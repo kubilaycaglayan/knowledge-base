@@ -139,6 +139,19 @@ import XCTest
         XCTAssertEqual(stub.reportQueries.count, 1)
     }
 
+    func testRefreshRetainsVisibleReportWhileFailureIsInFlightAndAfterwards() async {
+        final class RefreshStub: Stub {
+            var delay: Duration = .zero
+            override func report(query: ReportQuery) async throws -> Report { if delay != .zero { try await Task.sleep(for: delay) }; return try await super.report(query: query) }
+        }
+        let stub = RefreshStub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load()
+        stub.failure = APIError.offline; stub.delay = .milliseconds(40)
+        let refresh = Task { await model.retry() }; try? await Task.sleep(for: .milliseconds(5))
+        XCTAssertTrue(model.refreshing); XCTAssertNotNil(model.report)
+        await refresh.value
+        XCTAssertFalse(model.refreshing); XCTAssertNotNil(model.report); XCTAssertEqual(model.error, "Unable to load the report. Please try again.")
+    }
+
     func testFixtureHonorsRepeatedPathAndLabelFiltersWithoutAccountAccess() async throws {
         let fixture = ReportsFixture(arguments: ["-reports-filtered"])
         let query = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", pathIDs: [UUID(uuidString: "00000000-0000-0000-0000-000000000002")!])
