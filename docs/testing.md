@@ -18,3 +18,19 @@ JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scr
 ```
 
 On macOS, generate the iOS Xcode project from `ios/project.yml` and run the generated scheme for native SwiftUI and UI-test validation.
+
+For the Milestone 2 authentication reference, run from `frontend/`:
+
+```bash
+NODE_OPTIONS=--no-experimental-webstorage npm test -- src/views/AuthView.test.ts src/stores/auth.test.ts src/lib/api.test.ts src/App.test.ts
+npx playwright install chromium
+node scripts/check-auth-ui.mjs
+```
+
+The Node option avoids Node 26's native storage shadowing jsdom storage. The
+browser script uses isolated rejected-auth fixtures and blocks Google traffic;
+it checks both form modes/themes, responsive layout, axe accessibility,
+keyboard submission, and draft retention, and prints its temporary screenshot
+directory. It does not replace live Google, iOS simulator, or physical-device
+checks. See [the state matrix](ios-auth-state-matrix.md) for current evidence
+and remaining gates.
