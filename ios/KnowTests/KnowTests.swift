@@ -109,12 +109,14 @@ final class KnowTests: XCTestCase {
         await model.authenticate(email: "person@example.com", password: "password123", register: false)
         XCTAssertFalse(model.signedIn)
         XCTAssertNotNil(model.authError)
+        XCTAssertEqual(model.authPhase, .failed)
         XCTAssertFalse(model.isAuthenticating)
         URLProtocolStub.statusCode = 200
         URLProtocolStub.responseData = authPayload
         await model.authenticate(email: "person@example.com", password: "password123", register: false)
         XCTAssertTrue(model.signedIn)
         XCTAssertNil(model.authError)
+        XCTAssertEqual(model.authPhase, .idle)
     }
 
     @MainActor
