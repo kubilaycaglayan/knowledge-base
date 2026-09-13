@@ -75,6 +75,7 @@ struct SessionsView: View {
         }
         .confirmationDialog("Remove this session? This cannot be undone.", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
             Button("Remove session", role: .destructive) { if let session = removing { Task { await model.remove(session) } }; removing = nil }
+                .accessibilityIdentifier("session.remove.confirm")
             Button("Cancel", role: .cancel) { removing = nil }
         }
         .sheet(isPresented: $editingStart) {
