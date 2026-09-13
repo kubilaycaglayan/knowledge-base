@@ -156,6 +156,9 @@ password visibility, empty validation, registration switching/draft retention,
 password confirmation, and accessibility text size. Native Google button
 styling now follows the active light/dark appearance.
 
+The malformed-email UI regression also passes on the iPhone 17 Pro simulator;
+`person@@example.com` is rejected locally and does not submit credentials.
+
 ## Prompt for a fresh session
 
 > Implement `docs/ios-milestone-2-sign-in-parity.md`. Start by reading the
