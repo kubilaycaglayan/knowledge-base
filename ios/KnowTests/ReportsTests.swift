@@ -199,6 +199,13 @@ private final class ReportsURLProtocolStub: URLProtocol {
         XCTAssertTrue(signedOut); XCTAssertNil(model.report); XCTAssertNil(model.error)
     }
 
+    func testNonAuthHTTPFailuresRemainRecoverableWithoutSignOut() async {
+        for status in [404, 409, 503] {
+            var signedOut = false; let stub = Stub(); stub.failure = APIError.http(status: status, message: "failure"); let model = ReportsModel(transport: stub, unauthorized: { signedOut = true }); await model.load()
+            XCTAssertFalse(signedOut); XCTAssertEqual(model.error, "Unable to load the report. Please try again.")
+        }
+    }
+
     func testAllNamedPresetsReturnCompleteExpectedRanges() {
         let c = calendar(); let now = c.date(from: DateComponents(year: 2026, month: 9, day: 13))!
         let expected: [(String, String, String)] = [
