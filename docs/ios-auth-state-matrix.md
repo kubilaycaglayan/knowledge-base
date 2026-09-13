@@ -97,6 +97,11 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   Evidence is temporary and can be regenerated with the script.
 - Swift package baseline: 31 tests passed on Xcode 26.6/macOS. This does not
   prove simulator, physical device, or new milestone coverage.
+- Generated `ios/Know.xcodeproj` with XcodeGen and started the aggregate iPhone
+  17 Pro simulator test. The build reached test execution, but the runner hung
+  while materializing test workers and was interrupted after repeated LLDB
+  snapshot errors; no simulator/UI pass is claimed. A physical iPhone was not
+  connected to this host, so device verification remains open.
 
 ## Remaining acceptance evidence
 
