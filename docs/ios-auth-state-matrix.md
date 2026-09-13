@@ -95,7 +95,7 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Inspected the 390px light sign-in and dark registration screenshots. Evidence
   directory: `<temporary evidence directory>`.
   Evidence is temporary and can be regenerated with the script.
-- Swift package baseline: 34 tests passed on Xcode 26.6/macOS. This does not
+- Swift package baseline: 35 tests passed on Xcode 26.6/macOS. This does not
   prove simulator, physical device, or new milestone coverage.
 - Generated `ios/Know.xcodeproj` with XcodeGen and started the aggregate iPhone
   17 Pro simulator test. The build reached test execution, but the runner hung
@@ -123,6 +123,8 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   passes, proving malformed login data leaves an existing token intact.
 - `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the
   provider cancellation path without a false form error or session mutation.
+- `testRefreshUnauthorizedExpiresCurrentSession` passes, verifying a 401 during
+  authenticated refresh clears the expired current token.
 - `AppModel.authPhase` now exposes explicit `idle`, `authenticating`, and
   `failed` states while retaining `isAuthenticating` for view compatibility;
   rejected credential tests assert the failed-to-idle transition.
