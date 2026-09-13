@@ -211,6 +211,26 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["reports.page"].exists)
     }
 
+    func testReportsFixtureScreenshotEvidence() {
+        for (appearance, arguments) in [
+            ("light", ["-ui-testing-authenticated"]),
+            ("dark", ["-ui-testing-authenticated", "-AppleInterfaceStyle", "Dark"]),
+        ] {
+            app.launchArguments = ["-ui-testing"] + arguments
+            app.launch()
+            app.buttons["workspace.reports"].tap()
+            XCTAssertTrue(app.staticTexts["Tracked time"].waitForExistence(timeout: 5))
+            app.buttons["workspace.appearance"].tap()
+            app.buttons[appearance.capitalized].tap()
+            let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            attachment.name = "reports-populated-\(appearance)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            app.terminate()
+            app = XCUIApplication()
+        }
+    }
+
     func testReportsRemainReadableAtAccessibilityTextSize() {
         app.launchArguments += [
             "-ui-testing-authenticated",
