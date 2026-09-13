@@ -16,8 +16,8 @@ enum WorkspaceTheme {
     static func surface(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "1c2430" : "ffffff") }
     static func text(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "e1e6ee" : "252b36") }
     static func muted(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "a7b2c2" : "606b7b") }
-    static func border(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "343e4c" : "dfe3e9") }
-    static func control(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "697789" : "aab3c0") }
+    static func border(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "697789" : "7c8796") }
+    static func control(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "697789" : "7c8796") }
     static func selected(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "303e52" : "e7ebf0") }
     static func accent(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "c4d1e2" : "334155") }
     static func onAccent(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "18212e" : "ffffff") }
