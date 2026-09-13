@@ -90,6 +90,17 @@ import XCTest
         XCTAssertEqual(month.map(\.seconds), [60, 120, 180]); XCTAssertEqual(quarter.map(\.seconds), [180, 180]); XCTAssertEqual(year.map(\.seconds), [360])
     }
 
+    func testPartialBoundaryBucketsRetainSemanticLabelsAndCategoryTotals() {
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000041")!
+        let days = [
+            ReportDay(date: "2026-09-30", totalSeconds: 90, paths: [ReportCategory(id: a, label: "Research", seconds: 90, color: "#2878D5")], sessionLabels: [], calendarNote: nil, calendarLabels: []),
+            ReportDay(date: "2026-10-01", totalSeconds: 30, paths: [ReportCategory(id: a, label: "Research", seconds: 30, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])
+        ]
+        let report = Report(period: "CUSTOM", from: "2026-09-30", to: "2026-10-01", totalSeconds: 120, days: days, paths: [ReportCategory(id: a, label: "Research", seconds: 120, color: "#2878D5")], sessionLabels: [], calendarLabels: [], sankey: nil)
+        let buckets = ReportCalculations.buckets(report, query: ReportQuery(startDate: report.from, endDate: report.to, aggregation: .month), calendar: calendar())
+        XCTAssertEqual(buckets.map(\.id), ["2026-09-01", "2026-10-01"]); XCTAssertEqual(buckets.map(\.seconds), [90, 30]); XCTAssertEqual(buckets.map { $0.categories.reduce(0) { $0 + $1.seconds } }, [90, 30]); XCTAssertEqual(buckets.first?.categories.first?.color, "#2878D5")
+    }
+
     func testLocalDateShiftsAcrossDaylightSavingByCalendarDays() {
         var c = Calendar(identifier: .gregorian); c.locale = Locale(identifier: "en_US_POSIX"); c.timeZone = TimeZone(identifier: "America/New_York")!
         let query = ReportQuery(startDate: "2026-03-08", endDate: "2026-03-14")
@@ -218,6 +229,6 @@ import XCTest
         let labelReport = try await fixture.report(query: labelQuery)
         XCTAssertEqual(labelReport.totalSeconds, 0)
         let matching = try await fixture.report(query: ReportQuery(startDate: query.startDate, endDate: query.endDate, pathIDs: [research], labelIDs: [deepWork]))
-        XCTAssertTrue(matching.paths.allSatisfy { $0.id == research }); XCTAssertGreaterThan(matching.totalSeconds, 0)
+        XCTAssertTrue(matching.paths.allSatisfy { $0.id == research }); XCTAssertGreaterThan(matching.totalSeconds, 0); XCTAssertEqual(matching.totalSeconds, matching.days.flatMap(\.paths).reduce(0) { $0 + $1.seconds })
     }
 }
