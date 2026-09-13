@@ -184,7 +184,7 @@ Native Reports work is split into semantic commits:
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 112 native package tests, including 30
+- `swift test --package-path ios` passes 113 native package tests, including 31
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 17 Pro simulator UI coverage passes for Reports navigation,
