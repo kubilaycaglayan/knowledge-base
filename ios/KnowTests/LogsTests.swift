@@ -9,11 +9,15 @@ private actor LogsStub: LogsTransport {
     var conflict = false
     var updateFailure: APIError?
     var removeFailure: APIError?
+    var loadFailure: APIError?
     var labelsSaved: [UUID] = []
     init() {
         values = [Log(id: id, body: "Original", occurredAt: "2026-09-11T11:30:00Z", labelIds: [], createdAt: "2026-09-11T11:30:00Z", updatedAt: "2026-09-11T11:30:00Z", version: 2)]
     }
-    func logs() async throws -> [Log] { values }
+    func logs() async throws -> [Log] {
+        if let loadFailure { throw loadFailure }
+        return values
+    }
     func labels() async throws -> [LogLabel] { [LogLabel(id: labelID, name: "Important", color: "#2878D5", scopes: ["LOG"])] }
     func create(_ draft: LogDraft) async throws -> Log { let log = Log(id: UUID(), body: draft.body.trimmingCharacters(in: .whitespacesAndNewlines), occurredAt: LogFormatting.iso(draft.occurredAt), labelIds: [], createdAt: LogFormatting.iso(Date()), updatedAt: LogFormatting.iso(Date()), version: 0); values.append(log); return log }
     func fetch(id: UUID) async throws -> Log { values.first { $0.id == id }! }
@@ -127,10 +131,23 @@ private actor LogsStub: LogsTransport {
         XCTAssertEqual(model.logs.first?.id, stub.id)
         XCTAssertEqual(model.error, "Unable to remove this log. Please try again.")
     }
+
+    func testUnauthorizedLoadExpiresSessionThroughRecoveryCallback() async {
+        let stub = LogsStub()
+        await stub.setLoadFailure(.unauthorized)
+        var recoveryCalled = false
+        let model = LogsModel(transport: stub) { recoveryCalled = true }
+
+        await model.load()
+
+        XCTAssertTrue(recoveryCalled)
+        XCTAssertFalse(model.loading)
+    }
 }
 
 private extension LogsStub {
     func setConflict(_ value: Bool) { conflict = value }
     func setUpdateFailure(_ value: APIError) { updateFailure = value }
     func setRemoveFailure(_ value: APIError) { removeFailure = value }
+    func setLoadFailure(_ value: APIError) { loadFailure = value }
 }
