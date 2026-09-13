@@ -3,11 +3,11 @@ import XCTest
 
 @MainActor final class ReportsTests: XCTestCase {
     class Stub: ReportsTransport {
-        var reportValue: Report; var reportQueries: [ReportQuery] = []; var failure: Error?
+        var reportValue: Report; var reportQueries: [ReportQuery] = []; var failure: Error?; var pathsValue: [Path] = []; var labelsValue: [KBLabel] = []; var echoQueryBoundaries = false
         init() { reportValue = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 3600, days: [ReportDay(date: "2026-09-07", totalSeconds: 3600, paths: [ReportCategory(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001"), label: "Research", seconds: 3600, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [ReportCategory(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001"), label: "Research", seconds: 3600, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil) }
-        func report(query: ReportQuery) async throws -> Report { reportQueries.append(query); if let failure { throw failure }; return reportValue }
-        func paths() async throws -> [Path] { [] }
-        func labels() async throws -> [KBLabel] { [] }
+        func report(query: ReportQuery) async throws -> Report { reportQueries.append(query); if let failure { throw failure }; guard echoQueryBoundaries else { return reportValue }; return Report(period: reportValue.period, from: query.startDate, to: query.endDate, totalSeconds: reportValue.totalSeconds, days: reportValue.days, paths: reportValue.paths, sessionLabels: reportValue.sessionLabels, calendarLabels: reportValue.calendarLabels, sankey: reportValue.sankey) }
+        func paths() async throws -> [Path] { pathsValue }
+        func labels() async throws -> [KBLabel] { labelsValue }
     }
     final class TimeoutStub: ReportsTransport {
         func report(query: ReportQuery) async throws -> Report { throw ReportLoadError.timeout }
@@ -42,6 +42,21 @@ import XCTest
         let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.setRange(start: nil, end: "2026-09-13"); XCTAssertTrue(stub.reportQueries.isEmpty)
         await model.setRange(start: "2026-09-14", end: "2026-09-13"); XCTAssertEqual(model.rangeError, "End date must be on or after start date.")
         await model.setRange(start: "2026-01-01", end: "2028-01-02"); XCTAssertEqual(model.rangeError, "Report range cannot exceed two years."); XCTAssertEqual(model.query.startDate, "2026-09-07")
+    }
+
+    func testAggregationPresetsResetExpectedRangesAndYearKeepsCurrentRange() async {
+        let c = calendar(); let now = c.date(from: DateComponents(year: 2026, month: 9, day: 13))!
+        let stub = Stub(); stub.echoQueryBoundaries = true; let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-08-01", endDate: "2026-08-10"))
+        await model.setAggregation(.week, now: now, calendar: c)
+        XCTAssertEqual(model.query.startDate, "2026-08-15"); XCTAssertEqual(model.query.endDate, "2026-09-13")
+        await model.setAggregation(.month, now: now, calendar: c)
+        XCTAssertEqual(model.query.startDate, "2025-09-13"); XCTAssertEqual(model.query.endDate, "2026-09-13")
+        await model.setAggregation(.quarter, now: now, calendar: c)
+        XCTAssertEqual(model.query.startDate, "2024-09-13"); XCTAssertEqual(model.query.endDate, "2026-09-13")
+        await model.setAggregation(.year, now: now, calendar: c)
+        XCTAssertEqual(model.query.startDate, "2024-09-13"); XCTAssertEqual(model.query.endDate, "2026-09-13")
+        await model.setAggregation(.day, now: now, calendar: c)
+        XCTAssertEqual(model.query.startDate, "2026-09-07"); XCTAssertEqual(model.query.endDate, "2026-09-13")
     }
 
     func testTrendlineUsesNonEmptyPointsAndQuadraticFallback() {
@@ -94,6 +109,28 @@ import XCTest
         XCTAssertFalse(model.loaded)
     }
 
+    func testReferenceOptionsUseTimeEntryScopeAndFallBackToReportCategories() async {
+        let stub = Stub()
+        let pathID = UUID(uuidString: "00000000-0000-0000-0000-000000000031")!
+        let timeID = UUID(uuidString: "00000000-0000-0000-0000-000000000032")!
+        let calendarID = UUID(uuidString: "00000000-0000-0000-0000-000000000033")!
+        stub.pathsValue = [Path(id: pathID, name: "Owned", description: nil, status: "ACTIVE", color: nil)]
+        stub.labelsValue = [KBLabel(id: timeID, name: "Time", color: nil, scopes: [.timeEntry]), KBLabel(id: calendarID, name: "Calendar", color: nil, scopes: [.calendar])]
+        await ReportsModel(transport: stub).load()
+        let model = ReportsModel(transport: stub); await model.load()
+        XCTAssertEqual(model.pathOptions.map(\.name), ["Owned"]); XCTAssertEqual(model.labelOptions.map(\.name), ["Time"])
+
+        let fallback = Stub(); fallback.reportValue = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 60, days: stub.reportValue.days, paths: [ReportCategory(id: pathID, label: "Fallback path", seconds: 60, color: nil)], sessionLabels: [ReportCategory(id: timeID, label: "Fallback label", seconds: 60, color: nil)], calendarLabels: [], sankey: nil)
+        let fallbackModel = ReportsModel(transport: fallback); await fallbackModel.load()
+        XCTAssertEqual(fallbackModel.pathOptions.map(\.name), ["Fallback path"]); XCTAssertEqual(fallbackModel.labelOptions.map(\.name), ["Fallback label"])
+    }
+
+    func testMalformedReportIsRejectedAsRecoverableError() async {
+        let stub = Stub(); stub.reportValue = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 60, days: [], paths: [ReportCategory(id: UUID(), label: "Unexpected", seconds: 60, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil)
+        let model = ReportsModel(transport: stub); await model.load()
+        XCTAssertFalse(model.loaded); XCTAssertNil(model.report); XCTAssertEqual(model.error, "Unable to load the report. Please try again.")
+    }
+
     func testTimeoutUsesRecoverableTimeoutCopyWithoutSigningOut() async {
         var signedOut = false; let model = ReportsModel(transport: TimeoutStub(), unauthorized: { signedOut = true }); await model.load()
         XCTAssertEqual(model.error, "The report took too long to load."); XCTAssertFalse(signedOut); XCTAssertNil(model.report)
@@ -137,6 +174,22 @@ import XCTest
         }
         let stub = SlowStub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); let first = Task { await model.load() }; try? await Task.sleep(for: .milliseconds(5)); await model.load(); await first.value
         XCTAssertEqual(stub.reportQueries.count, 1)
+    }
+
+    func testOlderRangeCompletionCannotReplaceNewerReport() async {
+        final class RaceStub: ReportsTransport {
+            var queries: [ReportQuery] = []
+            func report(query: ReportQuery) async throws -> Report {
+                queries.append(query)
+                try await Task.sleep(for: query.startDate == "2026-09-07" ? .milliseconds(80) : .milliseconds(5))
+                return Report(period: "CUSTOM", from: query.startDate, to: query.endDate, totalSeconds: 60, days: [ReportDay(date: query.startDate, totalSeconds: 60, paths: [ReportCategory(id: nil, label: query.startDate, seconds: 60, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [ReportCategory(id: nil, label: query.startDate, seconds: 60, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil)
+            }
+            func paths() async throws -> [Path] { [] }
+            func labels() async throws -> [KBLabel] { [] }
+        }
+        let stub = RaceStub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); let first = Task { await model.load() }
+        try? await Task.sleep(for: .milliseconds(10)); await model.setRange(start: "2026-09-08", end: "2026-09-13"); await first.value
+        XCTAssertEqual(stub.queries.count, 2); XCTAssertEqual(model.query.startDate, "2026-09-08"); XCTAssertEqual(model.report?.from, "2026-09-08"); XCTAssertEqual(model.report?.paths.first?.label, "2026-09-08")
     }
 
     func testRefreshRetainsVisibleReportWhileFailureIsInFlightAndAfterwards() async {
