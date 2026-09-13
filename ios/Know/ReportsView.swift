@@ -89,7 +89,7 @@ struct ReportsView: View {
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { Task { await applyDate(field); editingDate = nil } }.workspaceFocusRing() } }
             }
         }.accessibilityElement(children: .contain)
-        Text("\(model.query.startDate) – \(model.query.endDate)").font(.subheadline).monospacedDigit(); if let rangeError = model.rangeError { Text(rangeError).font(.caption).foregroundStyle(.red).accessibilityAddTraits(.isStaticText) }
+        Text("\(model.query.startDate) – \(model.query.endDate)").font(.subheadline).monospacedDigit(); if let rangeError = model.rangeError { Text(rangeError).font(.caption).foregroundStyle(WorkspaceTheme.danger(scheme)).accessibilityAddTraits(.isStaticText) }
         filterMenu(title: "Paths", options: model.pathOptions, selected: model.query.pathIDs, toggle: model.togglePath, clear: model.clearPaths)
         filterMenu(title: "Labels", options: model.labelOptions.map { Path(id: $0.id, name: $0.name, description: nil, status: "ACTIVE", color: $0.color) }, selected: model.query.labelIDs, toggle: model.toggleLabel, clear: model.clearLabels)
     }.accessibilityElement(children: .contain) }
@@ -101,6 +101,7 @@ struct ReportsView: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .workspaceFocusRing()
                     .background(model.query.aggregation == value ? WorkspaceTheme.selected(scheme) : .clear)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(model.query.aggregation == value ? WorkspaceTheme.accent(scheme) : .clear, lineWidth: 2))
                     .accessibilityAddTraits(model.query.aggregation == value ? .isSelected : [])
                     .accessibilityIdentifier("reports.aggregation.\(value.rawValue.lowercased())")
             }
