@@ -170,6 +170,7 @@ import XCTest
         let report = try await fixture.report(query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13"))
         let decoded = try JSONDecoder().decode(Report.self, from: JSONEncoder().encode(report))
         XCTAssertEqual(decoded, report); XCTAssertEqual(decoded.days[2].calendarLabels.count, 2); XCTAssertEqual(decoded.sankey?.links.count, 1)
+        XCTAssertEqual(decoded.sankey?.nodes.map(\.id), ["research", "deep-work"]); XCTAssertEqual(decoded.sankey?.nodes.map(\.depth), [0, 1]); XCTAssertEqual(decoded.sankey?.nodes.map(\.value), [3_600, 3_600]); XCTAssertEqual(decoded.sankey?.links.first?.source, "research"); XCTAssertEqual(decoded.sankey?.links.first?.target, "deep-work"); XCTAssertEqual(decoded.sankey?.links.first?.value, 3_600)
     }
 
     func testNormalizedServerBoundariesBecomeTheDisplayedQuery() async {
