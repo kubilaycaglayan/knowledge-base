@@ -148,6 +148,12 @@ Google exchange/cancellation/failure, malformed responses, and retry pass.
 Visual, VoiceOver, full web/API integration, and physical-iPhone gates remain
 open until those environments are exercised.
 
+Additional verification (2026-09-13): the seven focused authentication UI
+cases passed on the iPhone 17 Pro simulator, covering sign-in controls,
+password visibility, empty validation, registration switching/draft retention,
+password confirmation, and accessibility text size. Native Google button
+styling now follows the active light/dark appearance.
+
 ## Prompt for a fresh session
 
 > Implement `docs/ios-milestone-2-sign-in-parity.md`. Start by reading the
