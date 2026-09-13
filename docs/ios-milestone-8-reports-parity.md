@@ -110,6 +110,9 @@ Native Reports work is split into semantic commits:
 - `e327686` corrects Off trendline semantics, preserves empty Sankey
   switchability, and removes shared-date-formatter mutation from report date
   calculations.
+- `6647003` adds loaded-state reporting, loading/offline/filtered fixture
+  flags, zero-duration copy, and simulator coverage for loading skeletons and
+  empty Sankey recovery.
 
 Current evidence is deliberately narrower than the completion gate:
 
