@@ -235,6 +235,8 @@ Native Reports work is split into semantic commits:
 - `f6548af` extends the landscape Reports UI test with page-to-window bounds
   assertions; the iPhone 17 simulator passed the orientation transition with
   summary, filters, trendline, and safe visible bounds intact.
+- `453a530` adds a large-phone width fixture; iPhone 17 Pro Max passed page
+  bounds and Reports control reachability without horizontal overflow.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
@@ -829,7 +831,7 @@ only on a happy-path screenshot.
 - [ ] **AC-152 — Small iPhone:** At the project’s smallest supported iPhone
   viewport, controls wrap/stack, charts remain usable, and only Sankey may
   intentionally scroll horizontally.
-- [ ] **AC-153 — Large iPhone:** Available width is used without stretching
+- [x] **AC-153 — Large iPhone:** Available width is used without stretching
   readable content or leaving accidental alignment gaps.
 - [x] **AC-154 — Orientation and safe areas:** Portrait and supported landscape
   layouts respect top, bottom, and horizontal safe areas and avoid unwanted
