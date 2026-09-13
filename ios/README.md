@@ -83,4 +83,4 @@ With your backend and Google configuration, run this manual smoke check:
 - Use the same Google account as the web and confirm the same account data appears.
 - Check light/dark appearance, large text, VoiceOver, keyboard focus, and the visible keyboard on a smaller iPhone.
 
-Live Google consent requires your OAuth configuration and interactive account selection. Automated tests never use personal Google credentials. Timeline remains legacy scaffolding; Sessions, Logs, Labels, Notes, and Paths have native workspace implementations, with remaining web features tracked as later milestones.
+Live Google consent requires your OAuth configuration and interactive account selection. Automated tests never use personal Google credentials. Sessions, Logs, Labels, Notes, Paths, Calendar, and Reports have native workspace implementations, with remaining web features tracked as later milestones.
