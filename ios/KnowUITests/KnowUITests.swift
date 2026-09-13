@@ -193,16 +193,18 @@ final class KnowUITests: XCTestCase {
         app.buttons["workspace.logs"].tap()
         XCTAssertTrue(app.textViews["logs.composer"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["logs.save"].exists)
-        XCTAssertTrue(app.buttons["logs.edit.00000000-0000-4000-8000-000000000101"].exists)
-        app.buttons["logs.labels.00000000-0000-4000-8000-000000000101"].tap()
+        XCTAssertTrue(app.buttons["Edit log"].firstMatch.exists)
+        app.buttons["Choose labels for log"].firstMatch.tap()
         XCTAssertTrue(app.buttons["Important"].waitForExistence(timeout: 3))
         app.buttons["Important"].tap()
-        app.buttons["logs.edit.00000000-0000-4000-8000-000000000101"].tap()
-        XCTAssertTrue(app.buttons["logs.edit.save.00000000-0000-4000-8000-000000000101"].waitForExistence(timeout: 3))
+        app.buttons["logs.labels.close"].tap()
+        app.buttons["Edit log"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 3))
         app.buttons["Cancel"].tap()
-        app.buttons["logs.remove.00000000-0000-4000-8000-000000000101"].tap()
+        app.buttons["Remove log"].firstMatch.tap()
         XCTAssertTrue(app.buttons["Remove log"].waitForExistence(timeout: 3))
-        app.buttons["Cancel"].tap()
+        app.buttons.matching(identifier: "Remove log").element(boundBy: 1).tap()
+        XCTAssertTrue(app.staticTexts["No logs yet. Capture a thought above."].waitForExistence(timeout: 3))
     }
 
     func testLogsEmptyAndOfflineFixturesOfferRecovery() {
@@ -225,7 +227,7 @@ final class KnowUITests: XCTestCase {
         app.buttons["workspace.logs"].tap()
         XCTAssertTrue(app.textViews["logs.composer"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["logs.save"].exists)
-        XCTAssertTrue(app.buttons["logs.remove.00000000-0000-4000-8000-000000000101"].exists)
+        XCTAssertTrue(app.buttons["Remove log"].firstMatch.exists)
     }
 
     func testLabelsListAndCreateControlsAreReachable() {
