@@ -245,6 +245,14 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["workspace.signOut"].exists)
     }
 
+    func testReportsOfflineFixtureKeepsRetryAndSessionRecoveryAvailable() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-offline"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["Unable to load the report. Please try again."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reports.retry"].exists)
+        XCTAssertTrue(app.buttons["workspace.signOut"].exists)
+    }
+
     func testReportsCalendarAndSankeyFixturesExposeTextualDetails() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-calendar", "-reports-sankey"]
         app.launch(); app.buttons["workspace.reports"].tap()
