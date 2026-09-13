@@ -9,8 +9,8 @@ observed source behavior separately from native requirements in Milestone 2.
 
 | State / trigger | Current web behavior | Required Swift model/action and UI |
 | --- | --- | --- |
-| Initial sign-in | “YOUR PRIVATE WORKSPACE”; “Welcome back”; “Keep the things you learn, do, and remember in one place.”; Email, Password, “Sign in” | Signed out, sign-in mode, empty in-memory draft; identical copy |
-| Registration | “Create account” heading and submit label; only Email and Password | Registration mode uses `/auth/register`; no name, password confirmation, or extra consent fields |
+| Initial sign-in | “Sign in”; Email, Password, “Sign in” | Signed out, sign-in mode, empty in-memory draft; concise action-oriented copy |
+| Registration | “Create account” heading and submit label; Email, Password, Confirm password | Registration mode uses `/auth/register`; matching password confirmation is required; no name or extra consent fields |
 | Change mode / back | “New here? Create an account” / “Already have an account? Sign in”; toggles in place, preserves both inputs and existing API error; no separate route/history entry | Explicit mode action preserves draft; no destructive back transition |
 | Missing email | Browser `required` validation prevents POST and focuses email | Inline email error; focus email; no request |
 | Invalid email | Browser `type=email` validation prevents POST | Model validation matching HTML email syntax; inline error; focus email |
@@ -119,6 +119,11 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - `testSignOutReturnsToAuthenticationFlow` passes on the same simulator,
   confirming the authenticated fixture clears into reachable email/password
   controls.
+- A fresh serialized simulator UI run with parallel workers disabled passed all
+  14 `KnowUITests` cases on iPhone 17 Pro, including all unauthenticated auth
+  cases, password visibility, registration confirmation, and the existing
+  Sessions regression cases. Xcode still emitted the known LLDB debugger-store
+  warning, but no UI assertion failed.
 - The added model regression `testMalformedAuthResponsePreservesExistingSession`
   passes, proving malformed login data leaves an existing token intact.
 - `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the

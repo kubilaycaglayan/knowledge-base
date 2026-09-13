@@ -13,6 +13,9 @@
   deletion confirmation, light/dark theme parity, and WebSocket/REST reconciliation.
 - [x] Finish the aggregate simulator UI-test pass for the new Sessions editor on
   the local Xcode 26.5 runner: all 9 UI cases pass on iPhone 17 Pro.
+- [ ] Milestone 3: bring the iOS `/logs` page to parity with the current web
+  behavior, states, grouping, labels, optimistic editing, accessibility, and
+  regression coverage (see `docs/ios-milestone-3-logs-parity.md`).
 - [ ] Complete live Google consent smoke verification with the owner's iOS OAuth client.
 
 - [x] Preserve sign-in across deployment outages and API recreation, keep error
