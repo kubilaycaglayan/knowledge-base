@@ -238,12 +238,18 @@ final class KnowUITests: XCTestCase {
     func testReportsRemainReachableInLandscape() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch(); app.buttons["workspace.reports"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["reports.page"].waitForExistence(timeout: 5))
+        let page = app.descendants(matching: .any)["reports.page"]
+        XCTAssertTrue(page.waitForExistence(timeout: 5))
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
         XCTAssertTrue(app.staticTexts["Tracked time"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.paths.filter"].exists)
         XCTAssertTrue(app.buttons["reports.trendline"].exists)
+        let window = app.windows.firstMatch
+        XCTAssertGreaterThanOrEqual(page.frame.minX, window.frame.minX)
+        XCTAssertGreaterThanOrEqual(page.frame.minY, window.frame.minY)
+        XCTAssertLessThanOrEqual(page.frame.maxX, window.frame.maxX)
+        XCTAssertLessThanOrEqual(page.frame.maxY, window.frame.maxY)
     }
 
     func testReportsEmptyStateAndRecoverableErrorFixtures() {
