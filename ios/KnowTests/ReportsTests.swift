@@ -62,6 +62,26 @@ import XCTest
         XCTAssertEqual(ReportCalculations.buckets(report, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-08", aggregation: .week), calendar: calendar()).count, 1)
     }
 
+    func testBucketsUseNaturalMonthQuarterAndYearBoundaries() {
+        let days = [
+            ReportDay(date: "2026-01-31", totalSeconds: 60, paths: [ReportCategory(id: nil, label: "A", seconds: 60, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: []),
+            ReportDay(date: "2026-02-01", totalSeconds: 120, paths: [ReportCategory(id: nil, label: "A", seconds: 120, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: []),
+            ReportDay(date: "2026-04-01", totalSeconds: 180, paths: [ReportCategory(id: nil, label: "A", seconds: 180, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])
+        ]
+        let report = Report(period: "CUSTOM", from: "2026-01-31", to: "2026-04-01", totalSeconds: 360, days: days, paths: [], sessionLabels: [], calendarLabels: [], sankey: nil)
+        let month = ReportCalculations.buckets(report, query: ReportQuery(startDate: report.from, endDate: report.to, aggregation: .month), calendar: calendar())
+        let quarter = ReportCalculations.buckets(report, query: ReportQuery(startDate: report.from, endDate: report.to, aggregation: .quarter), calendar: calendar())
+        let year = ReportCalculations.buckets(report, query: ReportQuery(startDate: report.from, endDate: report.to, aggregation: .year), calendar: calendar())
+        XCTAssertEqual(month.map(\.seconds), [60, 120, 180]); XCTAssertEqual(quarter.map(\.seconds), [180, 180]); XCTAssertEqual(year.map(\.seconds), [360])
+    }
+
+    func testLocalDateShiftsAcrossDaylightSavingByCalendarDays() {
+        var c = Calendar(identifier: .gregorian); c.locale = Locale(identifier: "en_US_POSIX"); c.timeZone = TimeZone(identifier: "America/New_York")!
+        let query = ReportQuery(startDate: "2026-03-08", endDate: "2026-03-14")
+        XCTAssertEqual(ReportDateMath.shifted(query, by: -1, calendar: c)?.startDate, "2026-03-01")
+        XCTAssertEqual(ReportDateMath.shifted(query, by: 1, calendar: c)?.endDate, "2026-03-21")
+    }
+
     func testDisplayedActiveDaysUseFilteredPathDurationsNotCalendarOrRawDayTotal() {
         let report = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-08", totalSeconds: 0, days: [ReportDay(date: "2026-09-07", totalSeconds: 120, paths: [], sessionLabels: [], calendarNote: "Note", calendarLabels: []), ReportDay(date: "2026-09-08", totalSeconds: 120, paths: [ReportCategory(id: nil, label: "A", seconds: 60, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [], sessionLabels: [], calendarLabels: [], sankey: nil)
         let displayed = report.days.filter { $0.paths.reduce(Int64(0), { $0 + $1.seconds }) > 0 }
