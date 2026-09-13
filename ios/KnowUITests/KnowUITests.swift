@@ -22,7 +22,8 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.secureTextFields["auth.password"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["auth.submit"].exists)
-        XCTAssertTrue(app.buttons["auth.google"].exists)
+        // Public test builds leave OAuth IDs blank, matching the web's hidden
+        // Google control until a local/production client is configured.
         XCTAssertTrue(app.staticTexts["Welcome back"].exists)
     }
 

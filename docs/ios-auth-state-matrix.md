@@ -134,6 +134,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Form-level failures now expose an explicit `auth.retry` “Try again” button
   with a 44-point hit target; it invokes the same validated submit action and
   retains the entered draft.
+- Native Google controls now follow the web configuration rule: the separator
+  and button are omitted when valid `GIDClientID`/`GIDServerClientID` values
+  are absent, avoiding a dead button in the public default build.
 - Auth layout tokens were aligned in `LoginView`: 4-point card/control radii,
   480-point maximum card width, and 16-point compact-width side/card padding.
   Swift package tests and the simulator control test still pass after this
