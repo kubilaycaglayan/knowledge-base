@@ -231,6 +231,55 @@ final class KnowUITests: XCTestCase {
         }
     }
 
+    func testReportsLiveAPIFlowWhenExplicitlyConfigured() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let baseURL = environment["KNOW_PHYSICAL_REPORTS_API_URL"],
+              let email = environment["KNOW_PHYSICAL_REPORTS_EMAIL"],
+              let password = environment["KNOW_PHYSICAL_REPORTS_PASSWORD"] else {
+            throw XCTSkip("Requires an explicitly configured disposable physical-device Reports account.")
+        }
+
+        app.launchEnvironment["KNOW_API_URL"] = baseURL
+        app.launch()
+        let emailField = app.textFields["auth.email"]
+        let passwordField = app.secureTextFields["auth.password"]
+        XCTAssertTrue(emailField.waitForExistence(timeout: 8))
+        emailField.tap()
+        emailField.typeText(email)
+        passwordField.tap()
+        passwordField.typeText(password)
+        app.buttons["auth.submit"].tap()
+
+        let reports = app.buttons["workspace.reports"]
+        XCTAssertTrue(reports.waitForExistence(timeout: 10))
+        reports.tap()
+        XCTAssertTrue(app.staticTexts["Tracked time"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["reports.preset"].exists)
+        app.buttons["Previous"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reports.status"].waitForExistence(timeout: 8))
+        app.buttons["Next"].tap()
+        app.buttons["reports.aggregation.day"].tap()
+        let pathFilter = app.buttons["reports.paths.filter"]
+        XCTAssertTrue(pathFilter.exists)
+        XCTAssertTrue(app.buttons["reports.labels.filter"].exists)
+        pathFilter.tap()
+        let fixturePath = app.buttons["Physical Reports path"]
+        XCTAssertTrue(fixturePath.waitForExistence(timeout: 8))
+        fixturePath.tap()
+        let removalChip = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'reports.paths.remove.'"))
+            .firstMatch
+        XCTAssertTrue(removalChip.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["reports.calendar.toggle"].waitForExistence(timeout: 8))
+        app.buttons["reports.calendar.toggle"].tap()
+        XCTAssertTrue(app.staticTexts["Calendar log"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["reports.sankey.toggle"].exists)
+        app.buttons["reports.sankey.toggle"].tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Path timing by'")).firstMatch.waitForExistence(timeout: 8))
+        app.swipeDown()
+        XCTAssertTrue(app.descendants(matching: .any)["reports.page"].exists)
+    }
+
     func testReportsRemainReadableAtAccessibilityTextSize() {
         app.launchArguments += [
             "-ui-testing-authenticated",
