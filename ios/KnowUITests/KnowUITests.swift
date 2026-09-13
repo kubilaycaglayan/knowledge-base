@@ -168,6 +168,45 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
     }
 
+    func testReportsEmptyStateAndRecoverableErrorFixtures() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-empty"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["No report data for this period."].waitForExistence(timeout: 5))
+
+        app.terminate(); app = XCUIApplication(); app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-reports-error"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["Unable to load the report. Please try again."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reports.retry"].exists)
+        XCTAssertTrue(app.buttons["workspace.signOut"].exists)
+    }
+
+    func testReportsCalendarAndSankeyFixturesExposeTextualDetails() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-calendar", "-reports-sankey"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.buttons["reports.calendar.toggle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["DAILY RECORDS"].exists)
+        XCTAssertTrue(app.staticTexts["Calendar log"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Planning'")).firstMatch.exists)
+        app.buttons["reports.calendar.toggle"].tap()
+        XCTAssertTrue(app.buttons["reports.calendar.toggle"].label.contains("Show calendar inputs"))
+        app.buttons["reports.calendar.toggle"].tap()
+        app.buttons["Show Sankey"].tap()
+        XCTAssertTrue(app.staticTexts["TIME FLOW"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Path timing by day"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Flow from Research to Deep work'")).firstMatch.exists)
+        XCTAssertTrue(app.buttons["Show bar chart"].exists)
+    }
+
+    func testReportsReferenceFailureFallsBackToReportCategories() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-paths-error", "-reports-labels-error"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.buttons["Choose paths"].waitForExistence(timeout: 5))
+        app.buttons["Choose paths"].tap()
+        XCTAssertTrue(app.buttons["Research"].waitForExistence(timeout: 3))
+        app.buttons["Research"].tap()
+        XCTAssertTrue(app.staticTexts["Research"].exists)
+    }
+
     func testCalendarNavigationGridAndEditorAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
