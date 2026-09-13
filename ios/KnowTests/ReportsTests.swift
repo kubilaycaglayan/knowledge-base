@@ -1,6 +1,21 @@
 import XCTest
 @testable import Know
 
+private final class ReportsURLProtocolStub: URLProtocol {
+    static var responseData = Data()
+    static var requests: [URLRequest] = []
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        Self.requests.append(request)
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Self.responseData)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
 @MainActor final class ReportsTests: XCTestCase {
     class Stub: ReportsTransport {
         var reportValue: Report; var reportQueries: [ReportQuery] = []; var failure: Error?; var pathsValue: [Path] = []; var labelsValue: [KBLabel] = []; var echoQueryBoundaries = false
@@ -30,6 +45,20 @@ import XCTest
         let a = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!, b = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let query = ReportQuery(startDate: "2026-09-01", endDate: "2026-09-30", aggregation: .month, pathIDs: [a, b, a], labelIDs: [b, b])
         XCTAssertEqual(query.pathIDs, [b, a]); XCTAssertEqual(query.labelIDs, [b]); XCTAssertEqual(query.queryItems.filter { $0.name == "pathId" }.count, 2); XCTAssertEqual(query.queryItems.filter { $0.name == "labelId" }.count, 1)
+    }
+
+    func testReportsAPIUsesBearerAndReadOnlyScopedContracts() async throws {
+        let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [ReportsURLProtocolStub.self]
+        let client = APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration)); ReportsURLProtocolStub.requests = []
+        let report = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [], sankey: nil)
+        ReportsURLProtocolStub.responseData = try JSONEncoder().encode(report)
+        let pathID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!; let labelID = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
+        _ = try await ReportsAPI(client: client, token: "report-token").report(query: ReportQuery(startDate: report.from, endDate: report.to, pathIDs: [pathID], labelIDs: [labelID]))
+        ReportsURLProtocolStub.responseData = Data("[]".utf8); _ = try await ReportsAPI(client: client, token: "report-token").paths(); _ = try await ReportsAPI(client: client, token: "report-token").labels()
+        XCTAssertEqual(ReportsURLProtocolStub.requests.count, 3)
+        let reportRequest = try XCTUnwrap(ReportsURLProtocolStub.requests[0]); XCTAssertEqual(reportRequest.httpMethod, "GET"); XCTAssertEqual(reportRequest.value(forHTTPHeaderField: "Authorization"), "Bearer report-token"); XCTAssertTrue(reportRequest.url?.path == "/api/v1/reports"); XCTAssertTrue(reportRequest.url?.query?.contains("pathId=\(pathID.uuidString)") == true); XCTAssertTrue(reportRequest.url?.query?.contains("labelId=\(labelID.uuidString)") == true)
+        let pathsRequest = try XCTUnwrap(ReportsURLProtocolStub.requests[1]); XCTAssertEqual(pathsRequest.url?.path, "/api/v1/paths"); XCTAssertEqual(pathsRequest.httpMethod, "GET")
+        let labelsRequest = try XCTUnwrap(ReportsURLProtocolStub.requests[2]); XCTAssertEqual(labelsRequest.url?.path, "/api/v1/labels"); XCTAssertEqual(labelsRequest.url?.query, "scope=TIME_ENTRY"); XCTAssertEqual(labelsRequest.httpMethod, "GET"); XCTAssertEqual(labelsRequest.value(forHTTPHeaderField: "Authorization"), "Bearer report-token")
     }
 
     func testShiftPreservesPresentationIndependentQueryValues() {
