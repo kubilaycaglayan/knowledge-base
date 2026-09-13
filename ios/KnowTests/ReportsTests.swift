@@ -2,7 +2,7 @@ import XCTest
 @testable import Know
 
 @MainActor final class ReportsTests: XCTestCase {
-    final class Stub: ReportsTransport {
+    class Stub: ReportsTransport {
         var reportValue: Report; var reportQueries: [ReportQuery] = []; var failure: Error?
         init() { reportValue = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 3600, days: [ReportDay(date: "2026-09-07", totalSeconds: 3600, paths: [ReportCategory(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001"), label: "Research", seconds: 3600, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [ReportCategory(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001"), label: "Research", seconds: 3600, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil) }
         func report(query: ReportQuery) async throws -> Report { reportQueries.append(query); if let failure { throw failure }; return reportValue }
@@ -75,5 +75,45 @@ import XCTest
     func testTimeoutUsesRecoverableTimeoutCopyWithoutSigningOut() async {
         var signedOut = false; let model = ReportsModel(transport: TimeoutStub(), unauthorized: { signedOut = true }); await model.load()
         XCTAssertEqual(model.error, "The report took too long to load."); XCTAssertFalse(signedOut); XCTAssertNil(model.report)
+    }
+
+    func testAllNamedPresetsReturnCompleteExpectedRanges() {
+        let c = calendar(); let now = c.date(from: DateComponents(year: 2026, month: 9, day: 13))!
+        let expected: [(String, String, String)] = [
+            ("Today", "2026-09-13", "2026-09-13"),
+            ("Yesterday", "2026-09-12", "2026-09-12"),
+            ("Week", "2026-09-07", "2026-09-13"),
+            ("Last week", "2026-08-31", "2026-09-06"),
+            ("Past two weeks", "2026-08-31", "2026-09-13"),
+            ("Month", "2026-09-01", "2026-09-30"),
+            ("Last month", "2026-08-01", "2026-08-31"),
+            ("Quarter", "2026-07-01", "2026-09-30"),
+            ("Last quarter", "2026-04-01", "2026-06-30"),
+            ("Year", "2026-01-01", "2026-12-31"),
+            ("Last year", "2025-01-01", "2025-12-31")
+        ]
+        for (name, start, end) in expected { XCTAssertEqual(ReportDateMath.preset(name, now: now, calendar: c)?.0, start); XCTAssertEqual(ReportDateMath.preset(name, now: now, calendar: c)?.1, end) }
+    }
+
+    func testReportCodableRoundTripPreservesCalendarAndSankeyDetails() async throws {
+        let fixture = ReportsFixture(arguments: ["-ui-testing-authenticated", "-reports-calendar", "-reports-sankey"])
+        let report = try await fixture.report(query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13"))
+        let decoded = try JSONDecoder().decode(Report.self, from: JSONEncoder().encode(report))
+        XCTAssertEqual(decoded, report); XCTAssertEqual(decoded.days[2].calendarLabels.count, 2); XCTAssertEqual(decoded.sankey?.links.count, 1)
+    }
+
+    func testNormalizedServerBoundariesBecomeTheDisplayedQuery() async {
+        let stub = Stub(); stub.reportValue = Report(period: "CUSTOM", from: "2026-09-08", to: "2026-09-12", totalSeconds: 60, days: stub.reportValue.days, paths: stub.reportValue.paths, sessionLabels: [], calendarLabels: [], sankey: nil)
+        let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load()
+        XCTAssertEqual(model.query.startDate, "2026-09-08"); XCTAssertEqual(model.query.endDate, "2026-09-12"); XCTAssertEqual(stub.reportQueries.count, 1)
+    }
+
+    func testEquivalentLoadsDoNotStartDuplicateInFlightRequests() async {
+        final class SlowStub: Stub {
+            override init() { super.init() }
+            override func report(query: ReportQuery) async throws -> Report { try await Task.sleep(for: .milliseconds(40)); return try await super.report(query: query) }
+        }
+        let stub = SlowStub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); let first = Task { await model.load() }; try? await Task.sleep(for: .milliseconds(5)); await model.load(); await first.value
+        XCTAssertEqual(stub.reportQueries.count, 1)
     }
 }
