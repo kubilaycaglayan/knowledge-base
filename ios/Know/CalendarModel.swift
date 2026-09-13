@@ -97,7 +97,7 @@ import Foundation
         guard !saving else { return false }; saving = true; error = nil
         let assignments = selectedAssignments.map { CalendarDayAssignment(labelId: $0.key, portion: $0.value.value) }.sorted { $0.labelId.uuidString < $1.labelId.uuidString }
         do {
-            let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmed = String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20_000))
             if rangeStart != nil && rangeEnd == nil { saving = false; return false }
             if let start = rangeStart, let end = rangeEnd {
                 let normalizedStart = min(start, end), normalizedEnd = max(start, end)
@@ -114,7 +114,7 @@ import Foundation
     func retry() async { await load(force: true) }
 
     func createLabel(name: String, color: String = WorkspaceTheme.palette[0]) async -> Bool {
-        let value = name.trimmingCharacters(in: .whitespacesAndNewlines); guard !value.isEmpty, !addingLabel else { return false }
+        let value = name.trimmingCharacters(in: .whitespacesAndNewlines); guard !value.isEmpty, WorkspaceTheme.palette.contains(color), !addingLabel else { return false }
         addingLabel = true; error = nil
         do { let label = try await transport.createLabel(name: String(value.prefix(80)), color: color); if !labels.contains(where: { $0.name.caseInsensitiveCompare(label.name) == .orderedSame }) { labels.append(label); labels.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending } }; addingLabel = false; invalidateReports(); return true }
         catch { addingLabel = false; fail(error, "Unable to add that label. Label names must be unique."); return false }

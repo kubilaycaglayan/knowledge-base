@@ -70,7 +70,7 @@ describe("CalendarView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST", body: expect.stringContaining('"name":"Mobile label"') }));
   });
 
-  it("opens the ten-color palette and persists a selected label color", async () => {
+  it("opens the fifteen-color palette and persists a selected label color", async () => {
     const wrapper = mount(CalendarView);
     await flushPromises();
     await wrapper.get('[aria-label="Change Sick leave color"]').trigger("click");
