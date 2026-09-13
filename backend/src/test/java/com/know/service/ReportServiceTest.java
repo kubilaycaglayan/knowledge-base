@@ -12,6 +12,53 @@ import org.junit.jupiter.api.Test;
 
 class ReportServiceTest {
   @Test
+  void reportUsesTheRequestedOwnerForPathsLabelsAndCalendarData() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    PathRepository paths = mock(PathRepository.class);
+    LabelRepository labels = mock(LabelRepository.class);
+    TimeEntryLabelRepository entryLabels = mock(TimeEntryLabelRepository.class);
+    CalendarService calendar = mock(CalendarService.class);
+    UUID owner = UUID.randomUUID();
+    UUID foreignOwner = UUID.randomUUID();
+    Path ownedPath = new Path(owner, "Owned path", null, "#2878D5");
+    Path foreignPath = new Path(foreignOwner, "Foreign path", null, "#E05D44");
+    Label ownedLabel = new Label(owner, "Owned label", "#2878D5");
+    Label foreignLabel = new Label(foreignOwner, "Foreign label", "#E05D44");
+    TimeEntry entry = new TimeEntry(
+        owner, ownedPath.getId(), Instant.parse("2026-09-10T10:00:00Z"), "owned", TimeSource.WEB);
+    entry.stop(Instant.parse("2026-09-10T11:00:00Z"));
+    LocalDate date = LocalDate.of(2026, 9, 10);
+
+    when(entries.findOverlappingByUserId(eq(owner), any(), any())).thenReturn(List.of(entry));
+    when(paths.findByUserIdAndIdIn(owner, Set.of(ownedPath.getId()))).thenReturn(List.of(ownedPath));
+    when(entryLabels.findAllByIdTimeEntryIdIn(List.of(entry.getId())))
+        .thenReturn(List.of(
+            new TimeEntryLabel(entry.getId(), ownedLabel.getId()),
+            new TimeEntryLabel(entry.getId(), foreignLabel.getId())));
+    when(labels.findAllByUserIdAndIdIn(owner, Set.of(ownedLabel.getId(), foreignLabel.getId())))
+        .thenReturn(List.of(ownedLabel));
+    when(calendar.days(owner, date, date)).thenReturn(List.of(
+        new CalendarService.DayView(date, "Owned calendar note", List.of(
+            new CalendarService.LabelAssignmentView(UUID.randomUUID(), "Owned calendar", "#2878D5", null)))));
+
+    ReportService.Report report = new ReportService(entries, paths, labels, entryLabels, calendar)
+        .report(owner, date, date);
+
+    assertEquals(3600, report.totalSeconds());
+    assertEquals(List.of("Owned path"), report.paths().stream().map(ReportService.Category::label).toList());
+    assertTrue(report.sessionLabels().stream().noneMatch(value -> value.label().equals("Foreign label")));
+    assertTrue(report.sankey().nodes().stream().allMatch(value -> value.label().contains("Owned path")));
+    assertEquals("Owned calendar note", report.days().getFirst().calendarNote());
+    assertEquals("Owned calendar", report.calendarLabels().getFirst().label());
+    assertFalse(report.toString().contains(foreignPath.getName()));
+    assertFalse(report.toString().contains(foreignLabel.getName()));
+    verify(entries).findOverlappingByUserId(eq(owner), any(), any());
+    verify(paths).findByUserIdAndIdIn(owner, Set.of(ownedPath.getId()));
+    verify(labels).findAllByUserIdAndIdIn(owner, Set.of(ownedLabel.getId(), foreignLabel.getId()));
+    verify(calendar).days(owner, date, date);
+  }
+
+  @Test
   void sankeyCarriesRemainingTimeIntoAPathInTheNextBucket() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);
