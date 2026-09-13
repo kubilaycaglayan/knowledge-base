@@ -39,6 +39,12 @@ On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS a
 - Add schema changes as new Flyway migrations; do not enable Hibernate schema mutation.
 - Scope every read and write by the authenticated user and preserve ownership checks for referenced paths, items, notes, and activities.
 - Keep timer state server-owned. Preserve the one-running-timer invariant and do not calculate historical duration only in a client.
+- Agents may create disposable test accounts and use them to authenticate and
+  interact with the local development web app, API, Chrome extension, and iOS
+  simulator. Capture representative screenshots in the web app, extension,
+  and mobile app when visual verification is relevant. Use only isolated local
+  data; never use production/personal credentials or commit account details,
+  tokens, screenshots containing secrets, or personal data.
 - Use `apply_patch` for source edits and avoid destructive repository commands.
 - When running Gradle outside the Dockerized development app, use a unique per-agent `--project-cache-dir` (for example, `/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}`) so it cannot contend with the human development container; this isolates Gradle metadata only, not source or build outputs.
 - Update API documentation, tests, smoke coverage, and the roadmap when a product behavior changes.
