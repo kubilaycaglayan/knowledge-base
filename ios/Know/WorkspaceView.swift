@@ -45,7 +45,8 @@ struct WorkspaceView: View {
         let pathsAPI = PathsAPI(client: app.api, token: app.token ?? "")
         self._paths = StateObject(wrappedValue: PathsModel(
             transport: uiTesting ? PathsFixture(arguments: arguments) : pathsAPI,
-            unauthorized: { [weak app] in app?.signOut() }
+            unauthorized: { [weak app] in app?.signOut() },
+            invalidateReports: { [weak app] in Task { await app?.refresh() } }
         ))
     }
 
