@@ -7,6 +7,7 @@ private actor LogsStub: LogsTransport {
     var values: [Log]
     var updateCount = 0
     var conflict = false
+    var updateFailure: APIError?
     var labelsSaved: [UUID] = []
     init() {
         values = [Log(id: id, body: "Original", occurredAt: "2026-09-11T11:30:00Z", labelIds: [], createdAt: "2026-09-11T11:30:00Z", updatedAt: "2026-09-11T11:30:00Z", version: 2)]
@@ -17,6 +18,7 @@ private actor LogsStub: LogsTransport {
     func fetch(id: UUID) async throws -> Log { values.first { $0.id == id }! }
     func update(id: UUID, draft: LogDraft, version: Int) async throws -> Log {
         updateCount += 1
+        if let updateFailure { throw updateFailure }
         if conflict && updateCount == 1 { throw APIError.http(status: 409, message: "Log changed in another window") }
         let old = try await fetch(id: id)
         let result = Log(id: id, body: draft.body, occurredAt: LogFormatting.iso(draft.occurredAt), labelIds: old.labelIds, createdAt: old.createdAt, updatedAt: old.updatedAt, version: version + 1)
@@ -65,6 +67,16 @@ private actor LogsStub: LogsTransport {
         XCTAssertEqual(model.logs.first?.body, "Local draft")
     }
 
+    func testFailedEditRetainsDraftForRetry() async {
+        let stub = LogsStub(); let model = LogsModel(transport: stub); await model.load()
+        model.beginEdit(model.logs[0]); model.editDraft.body = "Keep this text"
+        await stub.setUpdateFailure(.http(status: 503, message: "Unavailable"))
+        await model.saveEdit()
+        XCTAssertEqual(model.editing?.id, stub.id)
+        XCTAssertEqual(model.editDraft.body, "Keep this text")
+        XCTAssertEqual(model.error, "Unable to save this log. Your text is still here; try again.")
+    }
+
     func testLabelReplacementAndDelete() async {
         let stub = LogsStub(); let model = LogsModel(transport: stub); await model.load()
         await model.toggleLabel(await stub.labelID, for: model.logs[0])
@@ -77,4 +89,5 @@ private actor LogsStub: LogsTransport {
 
 private extension LogsStub {
     func setConflict(_ value: Bool) { conflict = value }
+    func setUpdateFailure(_ value: APIError) { updateFailure = value }
 }

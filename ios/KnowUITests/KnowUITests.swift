@@ -187,6 +187,47 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["1h"].waitForExistence(timeout: 5))
     }
 
+    func testLogsComposerEditDeleteAndLabelsAreReachable() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.logs"].tap()
+        XCTAssertTrue(app.textViews["logs.composer"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["logs.save"].exists)
+        XCTAssertTrue(app.buttons["logs.edit.00000000-0000-4000-8000-000000000101"].exists)
+        app.buttons["logs.labels.00000000-0000-4000-8000-000000000101"].tap()
+        XCTAssertTrue(app.buttons["Important"].waitForExistence(timeout: 3))
+        app.buttons["Important"].tap()
+        app.buttons["logs.edit.00000000-0000-4000-8000-000000000101"].tap()
+        XCTAssertTrue(app.buttons["logs.edit.save.00000000-0000-4000-8000-000000000101"].waitForExistence(timeout: 3))
+        app.buttons["Cancel"].tap()
+        app.buttons["logs.remove.00000000-0000-4000-8000-000000000101"].tap()
+        XCTAssertTrue(app.buttons["Remove log"].waitForExistence(timeout: 3))
+        app.buttons["Cancel"].tap()
+    }
+
+    func testLogsEmptyAndOfflineFixturesOfferRecovery() {
+        app.launchArguments += ["-ui-testing-authenticated", "-logs-empty"]
+        app.launch()
+        app.buttons["workspace.logs"].tap()
+        XCTAssertTrue(app.staticTexts["No logs yet. Capture a thought above."].waitForExistence(timeout: 5))
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-logs-offline"]
+        app.launch()
+        app.buttons["workspace.logs"].tap()
+        XCTAssertTrue(app.staticTexts["No network connection. Reconnect and try again."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Retry"].exists)
+    }
+
+    func testLogsControlsRemainReachableAtAccessibilityTextSize() {
+        app.launchArguments += ["-ui-testing-authenticated", "-UIPreferredContentSizeCategory", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        app.buttons["workspace.logs"].tap()
+        XCTAssertTrue(app.textViews["logs.composer"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["logs.save"].exists)
+        XCTAssertTrue(app.buttons["logs.remove.00000000-0000-4000-8000-000000000101"].exists)
+    }
+
     func testLabelsListAndCreateControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
