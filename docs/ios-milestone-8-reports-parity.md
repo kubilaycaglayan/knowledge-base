@@ -139,6 +139,13 @@ Native Reports work is split into semantic commits:
   and 390×844 phone sizes. Representative light/dark desktop, light phone,
   empty, Sankey, and Calendar captures were visually inspected; no token,
   password, personal account, or production data appeared in the evidence.
+- `testReportsFixtureScreenshotEvidence` passes on iPhone 17 and attaches
+  sanitized native populated light/dark screenshots to the Xcode result bundle;
+  both exported attachments were visually reviewed against matching web
+  captures using the same synthetic 3h40m Research/Writing fixture. The review
+  covered hierarchy, spacing, chart colors, responsive ordering, and state
+  copy; platform-specific navigation and semantic presentation differences are
+  intentional rather than pixel-match claims.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
@@ -251,10 +258,11 @@ Native Reports work is split into semantic commits:
   light and dark `WorkspaceTheme` appearances. Raw category swatches remain
   chart data marks with textual summaries and are not claimed as body-text
   contrast evidence.
-- The complete Reports UI selection passes **19/19** on iPhone 17 in 232.9
+- The complete Reports UI selection passes **20/20** on iPhone 17 in 252.9
   seconds, including date-picker round trip, dense scrolling, offline recovery,
   Dynamic Type, reduced motion, live appearance switching, Calendar/Sankey,
-  filters, literal-content, compact-phone, large-phone, and landscape fixtures.
+  filters, literal-content, compact-phone, large-phone, landscape, and native
+  light/dark screenshot-evidence fixtures.
 - The same Reports UI selection passes on the available iPhone 17 simulator
   after the date-control and chart-contrast changes; separate iPhone 17e and
   iPhone 17 Pro Max runs cover the compact and large viewport assertions.
@@ -294,15 +302,13 @@ Current evidence is deliberately narrower than the completion gate:
   fallback fails during Gradle task configuration with `Type T not present`;
   backend gates remain unchecked.
 - The local simulator set has iPhone 13 Pro and iPhone 17 Pro but no supported
-  small-phone device; small-phone, physical-device, and screenshot gates remain
-  unchecked.
+  small-phone device; the physical-device gate remains unchecked.
 - `xcodegen generate --spec project.yml` succeeds, the generated Xcode project
   builds with `CODE_SIGNING_ALLOWED=NO`, and the focused iPhone 17 Pro
   simulator test `testReportsDestinationAndAccessibleSummaryAreReachable`
   passes. The broader simulator suite still has unrelated pre-existing
-  failures in keychain/UI coverage; physical iPhone API flow and sanitized
-  web/native comparison screenshots have not been run and remain unchecked
-  below.
+  failures in keychain/UI coverage; the physical iPhone API flow remains
+  unchecked below.
 
 This section records progress only; it does not waive the completion rule or
 mark unverified acceptance criteria complete.
@@ -932,9 +938,11 @@ only on a happy-path screenshot.
   filters, trendline, Sankey, and Calendar-input states. The complete
   temporary matrix was exercised with Playwright against the forwarded stack;
   screenshots were intentionally not committed.
-- [ ] **AC-174 — Native comparison screenshots:** Matching iOS fixture/device
+- [x] **AC-174 — Native comparison screenshots:** Matching iOS fixture/device
   screenshots are captured and reviewed beside the web references for visual
-  hierarchy, spacing, wrapping, responsive order, colors, and state copy.
+  hierarchy, spacing, wrapping, responsive order, colors, and state copy. The
+  native and web captures use the same synthetic 3h40m Research/Writing data;
+  navigation and semantic presentation differences are documented above.
 - [ ] **AC-175 — Real-device API flow:** A Debug build on a physical iPhone
   loads the disposable Ubuntu-backed account through
   `http://<ubuntu-host>:8080/api/v1` and verifies range, aggregation, filters,
