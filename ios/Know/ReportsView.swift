@@ -76,7 +76,7 @@ struct ReportsView: View {
                 HStack { Circle().fill(WorkspaceTheme.color(value.color ?? WorkspaceTheme.palette[index % WorkspaceTheme.palette.count])).frame(width: 10, height: 10); Text(value.label).lineLimit(2); Spacer(); Text(duration(value.seconds)).monospacedDigit() }.padding(.vertical, 6)
             }
             if values.isEmpty { Text("No tracked time in this period.").foregroundStyle(.secondary) }
-            HStack {
+            VStack(alignment: .leading, spacing: 8) {
                 donut(values: values, total: total).frame(width: 54, height: 54)
                 VStack(alignment: .leading) { Text("Donut summary").font(.caption.weight(.semibold)); Text(duration(total)).monospacedDigit(); Text(values.isEmpty ? "No tracked time in this period." : values.map { "\($0.label): \(duration($0.seconds))" }.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
             }.accessibilityElement(children: .combine).accessibilityLabel("Breakdown total \(duration(total)). \(values.isEmpty ? "No tracked time in this period." : values.map { "\($0.label): \(duration($0.seconds))" }.joined(separator: ", "))")
