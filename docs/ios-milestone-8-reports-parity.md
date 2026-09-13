@@ -133,6 +133,8 @@ Native Reports work is split into semantic commits:
 - `9c5597d` verifies OR-within/AND-between filter semantics, prevents
   filtered category leakage in fixture responses, and exercises independent
   label-chip removal in the simulator.
+- `7a80724` adds partial-boundary bucket assertions, category-to-bucket total
+  equality, and filtered report-total equality while preserving API colors.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -534,12 +536,12 @@ only on a happy-path screenshot.
   natural quarters and labels buckets like `Q1 2026`.
 - [x] **AC-081 — Yearly buckets:** YEAR aggregation groups dates by calendar
   year and labels buckets with the year.
-- [ ] **AC-082 — Partial boundary buckets:** A custom interval beginning or
+- [x] **AC-082 — Partial boundary buckets:** A custom interval beginning or
   ending inside a week/month/quarter/year includes only the requested dates
   while retaining the correct semantic bucket label.
-- [ ] **AC-083 — Bucket totals:** Each bucket total equals the sum of its
+- [x] **AC-083 — Bucket totals:** Each bucket total equals the sum of its
   displayed filtered path categories.
-- [ ] **AC-084 — Report total:** The summary total equals the sum of all
+- [x] **AC-084 — Report total:** The summary total equals the sum of all
   displayed filtered daily path durations and does not include Calendar
   portions or notes.
 - [ ] **AC-085 — Duration precision:** Main tracked totals use the web’s report
