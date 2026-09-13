@@ -9,6 +9,11 @@ import XCTest
         func paths() async throws -> [Path] { [] }
         func labels() async throws -> [KBLabel] { [] }
     }
+    final class TimeoutStub: ReportsTransport {
+        func report(query: ReportQuery) async throws -> Report { throw ReportLoadError.timeout }
+        func paths() async throws -> [Path] { [] }
+        func labels() async throws -> [KBLabel] { [] }
+    }
     private func calendar() -> Calendar { var c = Calendar(identifier: .gregorian); c.locale = Locale(identifier: "en_US_POSIX"); c.timeZone = TimeZone(identifier: "Europe/Istanbul")!; return c }
 
     func testDefaultAndAllPresetsUseInclusiveLocalDates() {
@@ -65,5 +70,10 @@ import XCTest
     func testModelCachesSuccessRetainsQueryOnFailureAndSignsOutClearsCache() async {
         let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load(); await model.load(); XCTAssertEqual(stub.reportQueries.count, 1)
         stub.failure = APIError.offline; await model.retry(); XCTAssertNotNil(model.report); XCTAssertEqual(model.query.startDate, "2026-09-07"); model.signOut(); XCTAssertNil(model.report)
+    }
+
+    func testTimeoutUsesRecoverableTimeoutCopyWithoutSigningOut() async {
+        var signedOut = false; let model = ReportsModel(transport: TimeoutStub(), unauthorized: { signedOut = true }); await model.load()
+        XCTAssertEqual(model.error, "The report took too long to load."); XCTAssertFalse(signedOut); XCTAssertNil(model.report)
     }
 }
