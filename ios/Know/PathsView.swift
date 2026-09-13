@@ -22,7 +22,7 @@ struct PathsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            LazyVStack(alignment: .leading, spacing: 18) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) { Text("ORGANIZE").font(.caption.weight(.semibold)); Text("Your paths").font(.largeTitle.bold()) }
                     Spacer()
