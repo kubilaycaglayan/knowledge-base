@@ -927,9 +927,12 @@ only on a happy-path screenshot.
 - [x] **AC-177 — No frontend changes:** The milestone diff contains no frontend
   implementation change; any web discrepancy discovered during comparison is
   documented separately rather than fixed as part of iOS Reports work.
-- [ ] **AC-178 — Final diff review:** The final diff contains no generated
+- [x] **AC-178 — Final diff review:** The final diff contains no generated
   project noise, credentials, stale local addresses, inaccessible chart-only
-  information, accidental compatibility changes, or unrelated edits.
+  information, accidental compatibility changes, or unrelated edits. The
+  final review ran `git diff --check`, inspected the changed-file list, and
+  scanned the Reports implementation/evidence for credentials and accidental
+  bearer data; the only local address is the documented development fallback.
 - [x] **AC-179 — Unavailable gates recorded:** Any simulator, physical-device,
   Ubuntu, or full-stack check that cannot run is recorded explicitly with its
   reason and remains unchecked.
