@@ -107,6 +107,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   `testEmptySubmissionShowsInlineValidation`, and
   `testAuthenticationModeCanSwitchToRegistration` on iPhone 17 Pro. This
   covers basic controls only; it does not satisfy the full matrix gate.
+- Added and passed `testAuthenticationModeSwitchPreservesDraftFields` on the
+  same simulator, verifying email and secure-password draft retention (the
+  latter through XCTest's masked value representation).
 
 ## Remaining acceptance evidence
 
