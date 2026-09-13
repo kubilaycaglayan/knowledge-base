@@ -169,6 +169,11 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
         XCTAssertTrue(app.staticTexts["3h 40m"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
+        let previous = app.buttons["Previous"]
+        let next = app.buttons["Next"]
+        XCTAssertTrue(previous.exists); XCTAssertTrue(next.exists)
+        XCTAssertGreaterThanOrEqual(previous.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(next.frame.height, 44)
         let bucket = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'reports.bucket.'")).firstMatch
         XCTAssertTrue(bucket.waitForExistence(timeout: 5)); XCTAssertTrue(bucket.label.contains("Research"))
         let breakdown = app.buttons["reports.breakdown"]
