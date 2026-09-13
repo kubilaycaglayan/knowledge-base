@@ -164,6 +164,7 @@ final class KnowUITests: XCTestCase {
         reports.tap()
         XCTAssertTrue(reports.isSelected)
         XCTAssertTrue(app.descendants(matching: .any)["reports.page"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Reports"].exists)
         XCTAssertTrue(app.staticTexts["SUMMARY"].exists)
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
         XCTAssertTrue(app.staticTexts["3h 40m"].waitForExistence(timeout: 5))
