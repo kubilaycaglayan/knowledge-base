@@ -80,13 +80,12 @@ struct PathsAPI: PathsTransport {
         let revision = loadRevision
         isLoading = true
         error = nil
+        defer { if revision == loadRevision { isLoading = false } }
         do {
             let values = try await transport.paths()
-            guard revision == loadRevision else { return }
-            paths = values
+            if revision == loadRevision { paths = values }
         }
         catch { fail(error, "Unable to load paths.") }
-        isLoading = false
     }
 
     func loadSummary(for path: Path) async {
