@@ -121,6 +121,19 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["auth.mode"].exists)
     }
 
+    func testAuthenticationAppearanceScreenshots() {
+        for mode in ["Light", "Dark"] {
+            app.launchArguments = ["-ui-testing", "-AppleInterfaceStyle", mode]
+            app.launch()
+            XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "Authentication-\(mode)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            app.terminate()
+        }
+    }
+
     func testAuthenticatedWorkspaceControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
