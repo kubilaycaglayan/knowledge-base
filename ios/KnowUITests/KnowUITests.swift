@@ -221,6 +221,25 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Show bar chart"].exists)
     }
 
+    func testReportsFiltersAndPresentationRestoreAcrossWorkspaceSections() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        let pathsFilter = app.buttons["reports.paths.filter"]
+        XCTAssertTrue(pathsFilter.waitForExistence(timeout: 5)); pathsFilter.tap()
+        XCTAssertTrue(app.buttons["Research"].waitForExistence(timeout: 3)); app.buttons["Research"].tap()
+        let remove = app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        app.buttons["reports.trendline"].tap()
+        XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
+
+        app.buttons["workspace.paths"].tap(); XCTAssertTrue(app.buttons["workspace.paths"].isSelected)
+        app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
+        app.buttons["reports.paths.clear"].tap()
+        XCTAssertFalse(remove.waitForExistence(timeout: 2))
+    }
+
     func testCalendarNavigationGridAndEditorAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
