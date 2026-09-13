@@ -187,6 +187,22 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["1h"].waitForExistence(timeout: 5))
     }
 
+    func testPathsAccessibilityNamesAndRemovalRecoveryAnnouncement() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        let pathsTab = app.buttons["workspace.paths"]
+        XCTAssertTrue(pathsTab.waitForExistence(timeout: 5))
+        pathsTab.tap()
+        XCTAssertTrue(pathsTab.isSelected)
+        let add = app.buttons["paths.add"]
+        XCTAssertEqual(add.label, "Add path")
+        XCTAssertTrue(app.buttons["History"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Edit"].firstMatch.exists)
+        let remove = app.buttons["Remove"].firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        XCTAssertTrue(remove.isHittable)
+    }
+
     func testLogsComposerEditDeleteAndLabelsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
