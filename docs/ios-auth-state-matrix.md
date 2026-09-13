@@ -125,6 +125,8 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   cases, password visibility, registration confirmation, and the existing
   Sessions regression cases. Xcode still emitted the known LLDB debugger-store
   warning, but no UI assertion failed.
+- The running development web app and API health endpoint both responded with
+  HTTP 200 at `http://localhost:3000` and `http://localhost:8080/actuator/health`.
 - The added model regression `testMalformedAuthResponsePreservesExistingSession`
   passes, proving malformed login data leaves an existing token intact.
 - `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the
