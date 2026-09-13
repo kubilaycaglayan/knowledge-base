@@ -166,6 +166,13 @@ Native Reports work is split into semantic commits:
   focused iPhone 17 `testReportsFixtureScreenshotEvidence` also passes after
   the contrast change and its sanitized light/dark attachments were visually
   reviewed; the Xcode result bundle remains local and uncommitted.
+- The complete backend suite ran in an isolated, ephemeral
+  `gradle:8.13-jdk21` container on the Ubuntu development host using a staged
+  copy of `backend/` and H2 test data only. Its persisted JUnit XML reports 26
+  suites, 157 tests, zero failures, and zero errors, including report API,
+  service, integration, ownership, filter, Calendar, Sankey, and the new
+  owner-isolation regression coverage. No development or production database
+  was contacted or changed.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
@@ -320,7 +327,8 @@ Current evidence is deliberately narrower than the completion gate:
 - Docker is unavailable in the local environment, so the documented
   containerized Gradle command could not run. The local `backend/gradlew`
   fallback fails during Gradle task configuration with `Type T not present`;
-  backend gates remain unchecked.
+  the isolated Ubuntu Java 21 container run recorded above supplies the
+  backend-gate evidence instead.
 - The local simulator set has iPhone 13 Pro and iPhone 17 Pro but no supported
   small-phone device; the physical-device gate remains unchecked.
 - `xcodegen generate --spec project.yml` succeeds, the generated Xcode project
@@ -947,9 +955,11 @@ only on a happy-path screenshot.
 - [x] **AC-168 — Web reference tests:** The current remote
   `ReportsView.test.ts` suite passes and its test count/result is recorded in
   the implementation handoff.
-- [ ] **AC-169 — Backend reference tests:** Relevant report controller,
+- [x] **AC-169 — Backend reference tests:** Relevant report controller,
   service, integration, ownership, filter, Calendar, and Sankey tests pass in
-  the appropriate Ubuntu/deployed-shaped environment.
+  the appropriate Ubuntu/deployed-shaped environment. The isolated Ubuntu
+  Java 21 suite completed 157 tests across 26 JUnit suites with zero failures
+  or errors; its persisted reports include the new owner-isolation regression.
 - [x] **AC-170 — Native unit tests:** All report model, transport, query,
   aggregation, trendline, Calendar, Sankey, cache, lifecycle, and error tests
   pass on the macOS iOS development host.
