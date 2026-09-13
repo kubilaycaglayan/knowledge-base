@@ -33,6 +33,22 @@ import XCTest
         XCTAssertEqual(ReportDateMath.shifted(q, by: 1, calendar: calendar())?.endDate, "2026-03-08")
     }
 
+    func testRangeValidationRejectsIncompleteReversedAndOverlongWithoutLoading() async {
+        let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.setRange(start: nil, end: "2026-09-13"); XCTAssertTrue(stub.reportQueries.isEmpty)
+        await model.setRange(start: "2026-09-14", end: "2026-09-13"); XCTAssertEqual(model.rangeError, "End date must be on or after start date.")
+        await model.setRange(start: "2026-01-01", end: "2028-01-02"); XCTAssertEqual(model.rangeError, "Report range cannot exceed two years."); XCTAssertEqual(model.query.startDate, "2026-09-07")
+    }
+
+    func testTrendlineUsesNonEmptyPointsAndQuadraticFallback() {
+        let buckets: [ReportBucket] = (0..<4).map { index in
+            let seconds: Int64 = index == 1 ? 0 : Int64(index * index + 1)
+            return ReportBucket(id: String(index), label: "B\(index)", seconds: seconds, categories: [])
+        }
+        XCTAssertEqual(ReportCalculations.trend(buckets, mode: .linear).first?.0, "0")
+        XCTAssertEqual(ReportCalculations.trend(buckets, mode: .parabolic).count, 3)
+        XCTAssertTrue(ReportCalculations.trend(Array(buckets.prefix(2)), mode: .parabolic).isEmpty)
+    }
+
     func testBucketsRetainZeroDaysAndGroupMondayWeeks() {
         let report = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 60, days: [ReportDay(date: "2026-09-07", totalSeconds: 60, paths: [ReportCategory(id: nil, label: "A", seconds: 60, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: []), ReportDay(date: "2026-09-08", totalSeconds: 0, paths: [], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [ReportCategory(id: nil, label: "A", seconds: 60, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil)
         let buckets = ReportCalculations.buckets(report, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-08", aggregation: .day), calendar: calendar())
