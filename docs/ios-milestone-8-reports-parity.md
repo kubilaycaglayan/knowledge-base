@@ -237,6 +237,9 @@ Native Reports work is split into semantic commits:
   summary, filters, trendline, and safe visible bounds intact.
 - `453a530` adds a large-phone width fixture; iPhone 17 Pro Max passed page
   bounds and Reports control reachability without horizontal overflow.
+- `e06e16b` adds the compact-phone fixture; iPhone 17e (390×844) passed page
+  bounds and reachability for the date navigation, preset, filters, breakdown,
+  and trendline controls.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
@@ -828,7 +831,7 @@ only on a happy-path screenshot.
   state, and chart meaning are never communicated by color alone.
 - [x] **AC-151 — Dynamic Type:** All controls and report text remain readable at
   accessibility text sizes; content reflows instead of clipping or overlapping.
-- [ ] **AC-152 — Small iPhone:** At the project’s smallest supported iPhone
+- [x] **AC-152 — Small iPhone:** At the project’s smallest supported iPhone
   viewport, controls wrap/stack, charts remain usable, and only Sankey may
   intentionally scroll horizontally.
 - [x] **AC-153 — Large iPhone:** Available width is used without stretching
