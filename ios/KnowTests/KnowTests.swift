@@ -241,6 +241,14 @@ final class KnowTests: XCTestCase {
         XCTAssertEqual(json["color"] as? String, "#2878D5")
     }
 
+    func testNativeColorPaletteMatchesWebSharedPalette() {
+        XCTAssertEqual(WorkspaceTheme.palette, [
+            "#F8FAFC", "#64748B", "#0F172A", "#EAB308", "#F59E0B",
+            "#F97316", "#EF4444", "#EC4899", "#A855F7", "#6366F1",
+            "#3B82F6", "#06B6D4", "#14B8A6", "#22C55E", "#84CC16",
+        ])
+    }
+
     func testUITestingLaunchArgumentIsRecognized() {
         XCTAssertTrue(isUITesting(arguments: ["Know", "-ui-testing"]))
         XCTAssertFalse(isUITesting(arguments: ["Know"]))
