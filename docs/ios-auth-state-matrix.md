@@ -95,7 +95,7 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Inspected the 390px light sign-in and dark registration screenshots. Evidence
   directory: `<temporary evidence directory>`.
   Evidence is temporary and can be regenerated with the script.
-- Swift package baseline: 31 tests passed on Xcode 26.6/macOS. This does not
+- Swift package baseline: 32 tests passed on Xcode 26.6/macOS. This does not
   prove simulator, physical device, or new milestone coverage.
 - Generated `ios/Know.xcodeproj` with XcodeGen and started the aggregate iPhone
   17 Pro simulator test. The build reached test execution, but the runner hung
@@ -110,6 +110,8 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Added and passed `testAuthenticationModeSwitchPreservesDraftFields` on the
   same simulator, verifying email and secure-password draft retention (the
   latter through XCTest's masked value representation).
+- The added model regression `testMalformedAuthResponsePreservesExistingSession`
+  passes, proving malformed login data leaves an existing token intact.
 - The required Dockerized backend test command could not run because this host
   has no `docker` executable. Frontend build and web auth tests remain green;
   backend/API integration and smoke checks therefore remain unverified here.

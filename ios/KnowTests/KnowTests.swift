@@ -115,6 +115,17 @@ final class KnowTests: XCTestCase {
         XCTAssertTrue(model.signedIn)
         XCTAssertNil(model.authError)
     }
+
+    @MainActor
+    func testMalformedAuthResponsePreservesExistingSession() async {
+        let model = authenticationModel()
+        model.token = "existing-session"
+        URLProtocolStub.responseData = Data("{\"token\":null}".utf8)
+        await model.authenticate(email: "person@example.com", password: "password123", register: false)
+        XCTAssertEqual(model.token, "existing-session")
+        XCTAssertFalse(model.isAuthenticating)
+        XCTAssertNotNil(model.authError)
+    }
     @MainActor
     func testMissingGoogleConfigurationDoesNotContactBackend() async {
         let model = authenticationModel()
