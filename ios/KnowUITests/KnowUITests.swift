@@ -21,10 +21,29 @@ final class KnowUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.secureTextFields["auth.password"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["auth.password.visibility"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["auth.submit"].exists)
         // Public test builds leave OAuth IDs blank, matching the web's hidden
         // Google control until a local/production client is configured.
-        XCTAssertTrue(app.staticTexts["Welcome back"].exists)
+        XCTAssertTrue(app.staticTexts["Sign in"].exists)
+    }
+
+    func testPasswordVisibilityCanBeToggled() {
+        app.launch()
+        let password = app.secureTextFields["auth.password"]
+        let visibility = app.buttons["auth.password.visibility"]
+        XCTAssertTrue(password.waitForExistence(timeout: 5))
+        XCTAssertEqual(visibility.label, "Show password")
+        password.tap()
+        password.typeText("password123")
+        visibility.tap()
+        XCTAssertTrue(app.textFields["auth.password"].exists)
+        XCTAssertEqual(app.textFields["auth.password"].value as? String, "password123")
+        XCTAssertEqual(visibility.label, "Hide password")
+        visibility.tap()
+        XCTAssertTrue(app.secureTextFields["auth.password"].exists)
+        XCTAssertEqual((app.secureTextFields["auth.password"].value as? String)?.count, "password123".count)
+        XCTAssertEqual(visibility.label, "Show password")
     }
 
     func testEmptySubmissionShowsInlineValidation() {
@@ -40,6 +59,7 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(mode.waitForExistence(timeout: 5))
         mode.tap()
         XCTAssertEqual(app.buttons["auth.submit"].label, "Create account")
+        XCTAssertTrue(app.secureTextFields["auth.passwordConfirmation"].exists)
     }
 
     func testAuthenticationModeSwitchPreservesDraftFields() {
@@ -57,6 +77,24 @@ final class KnowUITests: XCTestCase {
         // field itself retains the entered credential.
         XCTAssertEqual((password.value as? String)?.count, "password123".count)
         XCTAssertEqual(app.buttons["auth.submit"].label, "Create account")
+    }
+
+    func testRegistrationRequiresMatchingPasswordConfirmation() {
+        app.launch()
+        app.buttons["auth.mode"].tap()
+        let email = app.textFields["auth.email"]
+        let password = app.secureTextFields["auth.password"]
+        let confirmation = app.secureTextFields["auth.passwordConfirmation"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        email.tap()
+        email.typeText("learner@example.com")
+        password.tap()
+        password.typeText("password123")
+        confirmation.tap()
+        confirmation.typeText("password321")
+        app.buttons["auth.submit"].tap()
+        XCTAssertTrue(app.staticTexts["Passwords do not match."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["auth.submit"].isEnabled)
     }
 
     func testAuthenticationControlsRemainReachableAtAccessibilityTextSize() {

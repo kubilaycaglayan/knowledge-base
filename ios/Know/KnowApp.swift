@@ -485,7 +485,8 @@ struct APIClient {
         authPhase = .idle
         if !uiTesting {
             KeychainTokenStore.delete()
-            GIDSignIn.sharedInstance.signOut()
+            // Keep Google's saved session so the next explicit Google login
+            // can restore silently instead of starting a new OAuth flow.
         }
         paths = []
         labels = []

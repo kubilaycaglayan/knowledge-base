@@ -6,11 +6,15 @@ struct LoginView: View {
     @Environment(\.colorScheme) private var scheme
     @State private var email = ""
     @State private var password = ""
+    @State private var passwordConfirmation = ""
     @State private var register = false
+    @State private var passwordVisible = false
+    @State private var passwordConfirmationVisible = false
     @State private var emailError: String?
     @State private var passwordError: String?
+    @State private var passwordConfirmationError: String?
     @FocusState private var focus: Field?
-    private enum Field { case email, password }
+    private enum Field { case email, password, passwordConfirmation }
     private var dark: Bool { scheme == .dark }
     private var accent: Color { dark ? Color(red: 0.77, green: 0.82, blue: 0.89) : Color(red: 0.20, green: 0.25, blue: 0.33) }
     var body: some View {
@@ -20,11 +24,9 @@ struct LoginView: View {
                     Label("Knowledge Base", systemImage: "square.stack.3d.up")
                         .font(.headline).accessibilityAddTraits(.isHeader)
                     VStack(alignment: .leading, spacing: 24) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("YOUR PRIVATE WORKSPACE").font(.caption.weight(.semibold)).tracking(1.5).foregroundStyle(.secondary)
-                            Text(register ? "Create account" : "Welcome back").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-                            Text("Keep the things you learn, do, and remember in one place.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
+                        Text(register ? "Create account" : "Sign in")
+                            .font(.largeTitle.bold())
+                            .accessibilityAddTraits(.isHeader)
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Email").font(.subheadline.weight(.medium))
                             TextField("Email", text: $email, prompt: Text(verbatim: "you@example.com…"))
@@ -40,12 +42,66 @@ struct LoginView: View {
                         }
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Password").font(.subheadline.weight(.medium))
-                            SecureField("At least 9 characters…", text: $password)
+                            ZStack(alignment: .trailing) {
+                                Group {
+                                    if passwordVisible {
+                                        TextField("At least 9 characters…", text: $password)
+                                    } else {
+                                        SecureField("At least 9 characters…", text: $password)
+                                    }
+                                }
                                 .textContentType(register ? .newPassword : .password)
-                                .focused($focus, equals: .password).submitLabel(.go).onSubmit(submit)
+                                .focused($focus, equals: .password)
+                                .submitLabel(register ? .next : .go)
+                                .onSubmit { register ? (focus = .passwordConfirmation) : submit() }
                                 .accessibilityLabel("Password").accessibilityIdentifier("auth.password")
+                                .padding(.trailing, 44)
                                 .modifier(AuthInput(focused: focus == .password))
+                                Button {
+                                    passwordVisible.toggle()
+                                } label: {
+                                    Image(systemName: passwordVisible ? "eye.slash" : "eye")
+                                        .frame(width: 44, height: 44)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")
+                                .accessibilityHint(passwordVisible ? "Password is visible." : "Password is hidden.")
+                                .accessibilityIdentifier("auth.password.visibility")
+                            }
                             if let passwordError { validation(passwordError) }
+                        }
+                        if register {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Confirm password").font(.subheadline.weight(.medium))
+                                ZStack(alignment: .trailing) {
+                                    Group {
+                                        if passwordConfirmationVisible {
+                                            TextField("Re-enter your password…", text: $passwordConfirmation)
+                                        } else {
+                                            SecureField("Re-enter your password…", text: $passwordConfirmation)
+                                        }
+                                    }
+                                    .textContentType(.newPassword)
+                                    .focused($focus, equals: .passwordConfirmation)
+                                    .submitLabel(.go)
+                                    .onSubmit(submit)
+                                    .accessibilityLabel("Confirm password")
+                                    .accessibilityIdentifier("auth.passwordConfirmation")
+                                    .padding(.trailing, 44)
+                                    .modifier(AuthInput(focused: focus == .passwordConfirmation))
+                                    Button {
+                                        passwordConfirmationVisible.toggle()
+                                    } label: {
+                                        Image(systemName: passwordConfirmationVisible ? "eye.slash" : "eye")
+                                            .frame(width: 44, height: 44)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(passwordConfirmationVisible ? "Hide password confirmation" : "Show password confirmation")
+                                    .accessibilityHint(passwordConfirmationVisible ? "Password confirmation is visible." : "Password confirmation is hidden.")
+                                    .accessibilityIdentifier("auth.passwordConfirmation.visibility")
+                                }
+                                if let passwordConfirmationError { validation(passwordConfirmationError) }
+                            }
                         }
                         Button(action: submit) {
                             HStack {
@@ -80,6 +136,7 @@ struct LoginView: View {
                             register.toggle()
                             emailError = nil
                             passwordError = nil
+                            passwordConfirmationError = nil
                             model.clearAuthError()
                         }.buttonStyle(.plain).foregroundStyle(accent).frame(minHeight: 44)
                             .accessibilityIdentifier("auth.mode")
@@ -94,7 +151,18 @@ struct LoginView: View {
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }.scrollDismissesKeyboard(.interactively)
         }
-        .background(dark ? Color(red: 0.08, green: 0.10, blue: 0.13) : Color(red: 0.97, green: 0.97, blue: 0.98))
+        .background {
+            ZStack {
+                dark ? Color(red: 0.08, green: 0.10, blue: 0.13) : Color(red: 0.97, green: 0.97, blue: 0.98)
+                Image("LoginBackground")
+                    .resizable()
+                    .scaledToFill()
+                    .saturation(0.65)
+                    .opacity(dark ? 0.20 : 0.07)
+                    .accessibilityHidden(true)
+            }
+            .ignoresSafeArea()
+        }
     }
 
     private func validation(_ message: String) -> some View {
@@ -108,8 +176,10 @@ struct LoginView: View {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         emailError = trimmed.contains("@") && !trimmed.hasSuffix("@") && !trimmed.hasPrefix("@") ? nil : "Enter a valid email address."
         passwordError = (9...200).contains(password.count) ? nil : "Use a password of 9 to 200 characters."
+        passwordConfirmationError = register && passwordConfirmation != password ? "Passwords do not match." : nil
         if emailError != nil { focus = .email; return }
         if passwordError != nil { focus = .password; return }
+        if passwordConfirmationError != nil { focus = .passwordConfirmation; return }
         focus = nil
         Task { await model.authenticate(email: trimmed, password: password, register: register) }
     }
