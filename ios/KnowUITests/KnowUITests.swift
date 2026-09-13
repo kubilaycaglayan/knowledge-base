@@ -168,11 +168,13 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["SUMMARY"].exists)
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
         XCTAssertTrue(app.staticTexts["3h 40m"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
+        let aggregation = app.descendants(matching: .any)["reports.aggregation"]
+        XCTAssertTrue(aggregation.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(aggregation.frame.height, 44)
         XCTAssertTrue(app.buttons["reports.preset"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["reports.start"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["reports.end"].exists)
-        let aggregation = app.buttons["reports.aggregation"].exists ? app.buttons["reports.aggregation"] : app.segmentedControls["reports.aggregation"]
+        let start = app.descendants(matching: .any)["reports.start"]
+        let end = app.descendants(matching: .any)["reports.end"]
+        XCTAssertTrue(start.exists); XCTAssertTrue(end.exists)
         XCTAssertTrue(aggregation.label.contains("Report aggregation"))
         XCTAssertTrue(app.buttons["reports.paths.filter"].exists)
         XCTAssertTrue(app.buttons["reports.labels.filter"].exists)
@@ -185,7 +187,7 @@ final class KnowUITests: XCTestCase {
         let bucket = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'reports.bucket.'")).firstMatch
         XCTAssertTrue(bucket.waitForExistence(timeout: 5)); XCTAssertTrue(bucket.label.contains("Research"))
         let breakdown = app.buttons["reports.breakdown"]
-        XCTAssertTrue(breakdown.waitForExistence(timeout: 5)); breakdown.tap()
+        XCTAssertTrue(breakdown.waitForExistence(timeout: 5)); XCTAssertGreaterThanOrEqual(breakdown.frame.height, 44); breakdown.tap()
         let labelChoices = app.buttons.matching(NSPredicate(format: "label == 'Labels'"))
         XCTAssertTrue(labelChoices.count > 1); labelChoices.element(boundBy: labelChoices.count - 1).tap()
         XCTAssertTrue(app.staticTexts["Deep work"].exists)
@@ -270,8 +272,10 @@ final class KnowUITests: XCTestCase {
         app.buttons["reports.paths.filter"].tap(); let pathOption = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Research and planning with a very long path name'")).firstMatch
         XCTAssertTrue(pathOption.waitForExistence(timeout: 5)); pathOption.tap()
         XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].isHittable)
-        XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].label.contains("Remove"))
+        let removePath = app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"]
+        XCTAssertTrue(removePath.isHittable)
+        XCTAssertGreaterThanOrEqual(removePath.frame.height, 44)
+        XCTAssertTrue(removePath.label.contains("Remove"))
         app.buttons["reports.labels.filter"].tap(); let labelOption = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Deep work label with a long accessible name'")).firstMatch
         XCTAssertTrue(labelOption.waitForExistence(timeout: 5)); labelOption.tap()
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 5))
