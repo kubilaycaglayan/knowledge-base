@@ -38,10 +38,28 @@ import XCTest
         XCTAssertEqual(ReportDateMath.shifted(q, by: 1, calendar: calendar())?.endDate, "2026-03-08")
     }
 
+    func testShiftPreservesFiltersAndPresentationState() async {
+        let path = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!; let label = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
+        let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", aggregation: .week, pathIDs: [path], labelIDs: [label])); model.trendline = .parabolic; model.showSankey = true; model.showCalendarInputs = false; await model.shift(1, calendar: calendar())
+        XCTAssertEqual(model.query.pathIDs, [path]); XCTAssertEqual(model.query.labelIDs, [label]); XCTAssertEqual(model.query.aggregation, .week); XCTAssertEqual(model.trendline, .parabolic); XCTAssertTrue(model.showSankey); XCTAssertFalse(model.showCalendarInputs)
+    }
+
     func testRangeValidationRejectsIncompleteReversedAndOverlongWithoutLoading() async {
         let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.setRange(start: nil, end: "2026-09-13"); XCTAssertTrue(stub.reportQueries.isEmpty)
         await model.setRange(start: "2026-09-14", end: "2026-09-13"); XCTAssertEqual(model.rangeError, "End date must be on or after start date.")
         await model.setRange(start: "2026-01-01", end: "2028-01-02"); XCTAssertEqual(model.rangeError, "Report range cannot exceed two years."); XCTAssertEqual(model.query.startDate, "2026-09-07")
+    }
+
+    func testUnchangedRangeAndAggregationDoNotStartRedundantLoads() async {
+        let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load(); let count = stub.reportQueries.count
+        await model.setRange(start: "2026-09-07", end: "2026-09-13"); await model.setAggregation(.day)
+        XCTAssertEqual(stub.reportQueries.count, count)
+    }
+
+    func testPresentationOnlyChangesDoNotStartReportLoads() async {
+        let stub = Stub(); let model = ReportsModel(transport: stub); await model.load(); let count = stub.reportQueries.count
+        model.trendline = .linear; model.showSankey = true; model.showCalendarInputs = false; model.breakdown = .labels
+        XCTAssertEqual(stub.reportQueries.count, count)
     }
 
     func testAggregationPresetsResetExpectedRangesAndYearKeepsCurrentRange() async {
