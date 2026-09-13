@@ -69,8 +69,9 @@ import XCTest
     }
 
     func testModelCachesSuccessRetainsQueryOnFailureAndSignsOutClearsCache() async {
-        let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load(); await model.load(); XCTAssertEqual(stub.reportQueries.count, 1)
+        let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load(); XCTAssertTrue(model.loaded); await model.load(); XCTAssertEqual(stub.reportQueries.count, 1)
         stub.failure = APIError.offline; await model.retry(); XCTAssertNotNil(model.report); XCTAssertEqual(model.query.startDate, "2026-09-07"); model.signOut(); XCTAssertNil(model.report)
+        XCTAssertFalse(model.loaded)
     }
 
     func testTimeoutUsesRecoverableTimeoutCopyWithoutSigningOut() async {
@@ -116,5 +117,16 @@ import XCTest
         }
         let stub = SlowStub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); let first = Task { await model.load() }; try? await Task.sleep(for: .milliseconds(5)); await model.load(); await first.value
         XCTAssertEqual(stub.reportQueries.count, 1)
+    }
+
+    func testFixtureHonorsRepeatedPathAndLabelFiltersWithoutAccountAccess() async throws {
+        let fixture = ReportsFixture(arguments: ["-reports-filtered"])
+        let query = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", pathIDs: [UUID(uuidString: "00000000-0000-0000-0000-000000000002")!])
+        let report = try await fixture.report(query: query)
+        XCTAssertEqual(report.paths.map(\.label), ["Writing"])
+        XCTAssertEqual(report.days.filter { !$0.paths.isEmpty }.count, 1)
+        let labelQuery = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13", labelIDs: [UUID(uuidString: "00000000-0000-0000-0000-000000000012")!])
+        let labelReport = try await fixture.report(query: labelQuery)
+        XCTAssertEqual(labelReport.totalSeconds, 0)
     }
 }
