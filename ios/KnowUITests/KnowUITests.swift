@@ -168,6 +168,11 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
         XCTAssertTrue(app.staticTexts["3h 40m"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
+        let breakdown = app.buttons["reports.breakdown"]
+        XCTAssertTrue(breakdown.waitForExistence(timeout: 5)); breakdown.tap()
+        let labelChoices = app.buttons.matching(NSPredicate(format: "label == 'Labels'"))
+        XCTAssertTrue(labelChoices.count > 1); labelChoices.element(boundBy: labelChoices.count - 1).tap()
+        XCTAssertTrue(app.staticTexts["Deep work"].exists)
     }
 
     func testReportsEmptyStateAndRecoverableErrorFixtures() {
