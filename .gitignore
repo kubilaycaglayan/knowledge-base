@@ -28,3 +28,4 @@ deployment/cloudflare/*.tfstate
 deployment/cloudflare/*.tfstate.*
 deployment/cloudflare/terraform.tfvars
 import-logs-draft.sql
+docs/ios-milestone-5-notes-parity.md
