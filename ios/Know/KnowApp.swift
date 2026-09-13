@@ -18,13 +18,19 @@ struct DailyLabel: Codable, Identifiable {
     let color: String?
 }
 
-struct Note: Codable, Identifiable {
+struct Note: Codable, Identifiable, Equatable {
     let id: UUID
     let pathId: UUID?
     let activityId: UUID?
     let timeEntryId: UUID?
-    let title: String
-    let content: String
+    var title: String
+    var content: String
+    var contentText: String?
+    let createdAt: String
+    let updatedAt: String
+    let deletedAt: String?
+    let version: Int
+    var tags: [String]
 }
 
 struct Activity: Codable, Identifiable {
