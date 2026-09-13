@@ -30,7 +30,8 @@ struct ReportsFixture: ReportsTransport {
 
     func report(query: ReportQuery) async throws -> Report {
         if arguments.contains("-reports-timeout") { try await Task.sleep(for: .seconds(20)) }
-        if arguments.contains("-reports-error") { throw APIError.offline }
+        if arguments.contains("-reports-loading") { try await Task.sleep(for: .seconds(2)) }
+        if arguments.contains("-reports-error") || arguments.contains("-reports-offline") { throw APIError.offline }
 
         let empty = arguments.contains("-reports-empty")
         let malformed = arguments.contains("-reports-malformed")
@@ -45,9 +46,12 @@ struct ReportsFixture: ReportsTransport {
             let iso = ReportDateMath.iso(date, calendar: calendar)
             let researchSeconds: Int64 = offset.isMultiple(of: 2) ? Int64(1_800 + offset * 300) : 0
             let writingSeconds: Int64 = offset == 3 ? 2_400 : 0
+            let pathFilterAllowsResearch = query.pathIDs.isEmpty || query.pathIDs.contains(Self.researchID)
+            let pathFilterAllowsWriting = query.pathIDs.isEmpty || query.pathIDs.contains(Self.writingID)
+            let labelFilterAllowsEntry = query.labelIDs.isEmpty || query.labelIDs.contains(Self.deepWorkID)
             let paths = [
-                researchSeconds > 0 ? category(Self.researchID, label: "Research", seconds: researchSeconds, color: "#2878D5") : nil,
-                writingSeconds > 0 ? category(Self.writingID, label: "Writing", seconds: writingSeconds, color: "#9B51E0") : nil
+                researchSeconds > 0 && pathFilterAllowsResearch && labelFilterAllowsEntry ? category(Self.researchID, label: "Research", seconds: researchSeconds, color: "#2878D5") : nil,
+                writingSeconds > 0 && pathFilterAllowsWriting && labelFilterAllowsEntry ? category(Self.writingID, label: "Writing", seconds: writingSeconds, color: "#9B51E0") : nil
             ].compactMap { $0 }
             let labels = paths.isEmpty ? [] : [category(Self.deepWorkID, label: names, seconds: paths.reduce(0) { $0 + $1.seconds }, color: "#2878D5")]
             let calendarLabels: [ReportCalendarLabel] = arguments.contains("-reports-calendar") && offset == 2 ? [

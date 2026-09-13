@@ -207,6 +207,20 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Research"].exists)
     }
 
+    func testReportsLoadingSkeletonAndEmptySankeyRemainRecoverable() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-loading"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["Loading report…"].waitForExistence(timeout: 1))
+
+        app.terminate(); app = XCUIApplication(); app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-reports-empty", "-reports-sankey"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["No report data for this period."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Show Sankey"].exists)
+        app.buttons["Show Sankey"].tap()
+        XCTAssertTrue(app.staticTexts["No tracked time to show in this flow."].exists)
+        XCTAssertTrue(app.buttons["Show bar chart"].exists)
+    }
+
     func testCalendarNavigationGridAndEditorAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()

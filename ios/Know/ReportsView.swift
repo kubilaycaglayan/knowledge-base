@@ -5,6 +5,7 @@ struct ReportsView: View {
     @Environment(\.colorScheme) private var scheme
     private let duration: (Int64) -> String = { seconds in
         let hours = seconds / 3600; let minutes = (seconds % 3600) / 60
+        if seconds == 0 { return "00:00" }
         return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
     }
     var body: some View {

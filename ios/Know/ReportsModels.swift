@@ -159,6 +159,7 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
 @MainActor final class ReportsModel: ObservableObject {
     @Published private(set) var query: ReportQuery
     @Published private(set) var report: Report?
+    @Published private(set) var loaded = false
     @Published private(set) var paths: [Path] = []
     @Published private(set) var labels: [KBLabel] = []
     @Published private(set) var loading = false
@@ -176,7 +177,7 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     func load(force: Bool = false) async {
         let requestedQuery = query
         let key = requestedQuery.cacheKey
-        if !force, let cached = cache[key] { report = cached; return }
+        if !force, let cached = cache[key] { report = cached; loaded = true; return }
         if !force, inflightKey == key { return }
         generation += 1
         let current = generation
@@ -198,6 +199,7 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
                 query = completedQuery
             }
             report = result
+            loaded = true
             cache[key] = result
             cache[completedQuery.cacheKey] = result
         } catch {
@@ -229,5 +231,5 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     func togglePath(_ id: UUID) async { query.pathIDs = query.pathIDs.contains(id) ? query.pathIDs.filter { $0 != id } : query.pathIDs + [id]; query = ReportQuery(startDate: query.startDate, endDate: query.endDate, aggregation: query.aggregation, pathIDs: query.pathIDs, labelIDs: query.labelIDs); await load() }
     func toggleLabel(_ id: UUID) async { query.labelIDs = query.labelIDs.contains(id) ? query.labelIDs.filter { $0 != id } : query.labelIDs + [id]; query = ReportQuery(startDate: query.startDate, endDate: query.endDate, aggregation: query.aggregation, pathIDs: query.pathIDs, labelIDs: query.labelIDs); await load() }
     func clearPaths() async { query.pathIDs = []; await load() }; func clearLabels() async { query.labelIDs = []; await load() }
-    func signOut() { generation += 1; inflightKey = nil; loadedReferences = false; cache.removeAll(); report = nil; paths = []; labels = [] }
+    func signOut() { generation += 1; inflightKey = nil; loadedReferences = false; loaded = false; cache.removeAll(); report = nil; paths = []; labels = [] }
 }
