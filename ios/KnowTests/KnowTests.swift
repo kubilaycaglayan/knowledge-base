@@ -389,6 +389,33 @@ final class KnowTests: XCTestCase {
         ])
     }
 
+    func testReportsThemeTextAndControlContrastInBothAppearances() {
+        let light = (background: "f7f8fa", surface: "ffffff", selected: "e7ebf0", text: "252b36", muted: "606b7b", danger: "a12727", accent: "334155", onAccent: "ffffff")
+        let dark = (background: "151a22", surface: "1c2430", selected: "303e52", text: "e1e6ee", muted: "a7b2c2", danger: "ffaaaa", accent: "c4d1e2", onAccent: "18212e")
+
+        for theme in [light, dark] {
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.text, theme.background), 4.5)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.text, theme.surface), 4.5)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.text, theme.selected), 4.5)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.muted, theme.background), 4.5)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.danger, theme.background), 4.5)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.onAccent, theme.accent), 4.5)
+        }
+    }
+
+    private func contrastRatio(_ foreground: String, _ background: String) -> Double {
+        func luminance(_ hex: String) -> Double {
+            let value = UInt64(hex, radix: 16)!
+            let channels = [Double((value >> 16) & 255), Double((value >> 8) & 255), Double(value & 255)].map { $0 / 255 }
+            let linear = channels.map { $0 <= 0.03928 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+        }
+
+        let foregroundLuminance = luminance(foreground)
+        let backgroundLuminance = luminance(background)
+        return (max(foregroundLuminance, backgroundLuminance) + 0.05) / (min(foregroundLuminance, backgroundLuminance) + 0.05)
+    }
+
     func testUITestingLaunchArgumentIsRecognized() {
         XCTAssertTrue(isUITesting(arguments: ["Know", "-ui-testing"]))
         XCTAssertFalse(isUITesting(arguments: ["Know"]))
