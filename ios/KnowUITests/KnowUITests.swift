@@ -178,6 +178,8 @@ final class KnowUITests: XCTestCase {
         let start = app.descendants(matching: .any)["reports.start"]
         let end = app.descendants(matching: .any)["reports.end"]
         XCTAssertTrue(start.exists); XCTAssertTrue(end.exists)
+        XCTAssertGreaterThanOrEqual(start.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(end.frame.height, 44)
         XCTAssertTrue(aggregation.label.contains("Report aggregation"))
         XCTAssertTrue(app.buttons["reports.paths.filter"].exists)
         XCTAssertTrue(app.buttons["reports.labels.filter"].exists)
@@ -194,6 +196,19 @@ final class KnowUITests: XCTestCase {
         let labelChoices = app.buttons.matching(NSPredicate(format: "label == 'Labels'"))
         XCTAssertTrue(labelChoices.count > 1); labelChoices.element(boundBy: labelChoices.count - 1).tap()
         XCTAssertTrue(app.staticTexts["Deep work"].exists)
+    }
+
+    func testReportsDateButtonsOpenAccessiblePickerAndReturnToSummary() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        let start = app.buttons["reports.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(start.frame.height, 44)
+        start.tap()
+        XCTAssertTrue(app.datePickers.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Done"].exists)
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reports.page"].exists)
     }
 
     func testReportsRemainReadableAtAccessibilityTextSize() {
