@@ -102,6 +102,11 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   while materializing test workers and was interrupted after repeated LLDB
   snapshot errors; no simulator/UI pass is claimed. A physical iPhone was not
   connected to this host, so device verification remains open.
+- Isolated simulator UI checks pass for the three unauthenticated cases
+  `testAuthenticationControlsAreReachable`,
+  `testEmptySubmissionShowsInlineValidation`, and
+  `testAuthenticationModeCanSwitchToRegistration` on iPhone 17 Pro. This
+  covers basic controls only; it does not satisfy the full matrix gate.
 
 ## Remaining acceptance evidence
 
