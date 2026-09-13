@@ -125,6 +125,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   provider cancellation path without a false form error or session mutation.
 - `testRefreshUnauthorizedExpiresCurrentSession` passes, verifying a 401 during
   authenticated refresh clears the expired current token.
+- Session safety is now evidenced end to end at the available scope: direct
+  Keychain persistence/restore tests, unauthorized-refresh expiration tests,
+  offline-refresh token preservation tests, and simulator sign-out routing.
 - `AppModel.authPhase` now exposes explicit `idle`, `authenticating`, and
   `failed` states while retaining `isAuthenticating` for view compatibility;
   rejected credential tests assert the failed-to-idle transition.
