@@ -252,6 +252,21 @@ final class KnowUITests: XCTestCase {
         XCTAssertLessThanOrEqual(page.frame.maxY, window.frame.maxY)
     }
 
+    func testReportsUseLargePhoneWidthWithoutHorizontalOverflow() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        let page = app.descendants(matching: .any)["reports.page"]
+        XCTAssertTrue(page.waitForExistence(timeout: 5))
+        let window = app.windows.firstMatch
+        XCTAssertLessThanOrEqual(page.frame.width, window.frame.width)
+        XCTAssertGreaterThanOrEqual(page.frame.minX, window.frame.minX)
+        XCTAssertLessThanOrEqual(page.frame.maxX, window.frame.maxX)
+        XCTAssertTrue(app.buttons["reports.paths.filter"].exists)
+        XCTAssertTrue(app.buttons["reports.labels.filter"].exists)
+        XCTAssertTrue(app.buttons["reports.breakdown"].exists)
+        XCTAssertTrue(app.buttons["reports.trendline"].exists)
+    }
+
     func testReportsEmptyStateAndRecoverableErrorFixtures() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-empty"]
         app.launch(); app.buttons["workspace.reports"].tap()
