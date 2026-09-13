@@ -39,6 +39,12 @@ private actor LogsStub: LogsTransport {
         XCTAssertEqual(model.logs.first?.body, "Original")
     }
 
+    func testLogLabelsRetainColorAndScope() async {
+        let stub = LogsStub(); let model = LogsModel(transport: stub); await model.load()
+        XCTAssertEqual(model.labels.first?.color, "#2878D5")
+        XCTAssertTrue(model.labels.first?.scopes.contains("LOG") == true)
+    }
+
     func testGroupsRespectLocalMondayAndHourBoundaries() {
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 3 * 3600)!
         let now = LogFormatting.date("2026-09-14T12:30:00+03:00")!
