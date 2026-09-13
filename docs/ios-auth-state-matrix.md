@@ -113,6 +113,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - `testAuthenticationControlsRemainReachableAtAccessibilityTextSize` passes on
   iPhone 17 Pro using `UICTContentSizeCategoryAccessibilityXXXL`; the form
   remains scrollable and all auth controls remain discoverable.
+- The five unauthenticated simulator UI checks now pass together on iPhone 17
+  Pro: controls, empty validation, mode switching, draft preservation, and
+  Accessibility XXXL layout.
 - The added model regression `testMalformedAuthResponsePreservesExistingSession`
   passes, proving malformed login data leaves an existing token intact.
 - `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the
