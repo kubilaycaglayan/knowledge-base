@@ -313,6 +313,8 @@ are exercised.
   replacement.
 - 2026-09-13: failed-delete coverage passed; a transport failure leaves the
   existing log available and presents the retryable error copy.
+- 2026-09-13: unauthorized-load coverage passed and fixed session-expiry
+  cleanup so Logs stops loading before invoking the app recovery callback.
 
 ## Prompt for a fresh session
 
