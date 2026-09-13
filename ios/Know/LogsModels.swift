@@ -19,12 +19,16 @@ struct Log: Codable, Identifiable, Equatable {
 
 struct LogDraft: Equatable {
     var body = ""
-    var occurredAt = Date()
-    init() {}
+    var occurredAt: Date
+    init() { occurredAt = LogFormatting.deviceMinute(Date()) }
     init(_ log: Log) { body = log.body; occurredAt = LogFormatting.date(log.occurredAt) ?? Date() }
 }
 
 enum LogFormatting {
+    static func deviceMinute(_ value: Date, calendar: Calendar = .current) -> Date {
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: value)
+        return calendar.date(from: components) ?? value
+    }
     static func date(_ value: String?) -> Date? {
         guard let value else { return nil }
         let formatter = ISO8601DateFormatter()
