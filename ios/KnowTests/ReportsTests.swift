@@ -29,6 +29,21 @@ private final class ReportsURLProtocolStub: URLProtocol {
         func paths() async throws -> [Path] { [] }
         func labels() async throws -> [KBLabel] { [] }
     }
+    final class DelayedUnauthorizedStub: ReportsTransport {
+        var calls = 0
+        var firstContinuation: CheckedContinuation<Report, Error>?
+        var reportValue = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 120, days: [ReportDay(date: "2026-09-07", totalSeconds: 120, paths: [ReportCategory(id: nil, label: "New account", seconds: 120, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [ReportCategory(id: nil, label: "New account", seconds: 120, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil)
+        func report(query: ReportQuery) async throws -> Report {
+            calls += 1
+            if calls == 1 {
+                return try await withCheckedThrowingContinuation { continuation in firstContinuation = continuation }
+            }
+            return reportValue
+        }
+        func paths() async throws -> [Path] { [] }
+        func labels() async throws -> [KBLabel] { [] }
+        func releaseObsoleteUnauthorized() { firstContinuation?.resume(throwing: APIError.unauthorized); firstContinuation = nil }
+    }
     private func calendar() -> Calendar { var c = Calendar(identifier: .gregorian); c.locale = Locale(identifier: "en_US_POSIX"); c.timeZone = TimeZone(identifier: "Europe/Istanbul")!; return c }
 
     func testDefaultAndAllPresetsUseInclusiveLocalDates() {
@@ -197,6 +212,24 @@ private final class ReportsURLProtocolStub: URLProtocol {
     func testCurrentReportUnauthorizedResponseUsesRecoveryCallback() async {
         var signedOut = false; let stub = Stub(); stub.failure = APIError.unauthorized; let model = ReportsModel(transport: stub, unauthorized: { signedOut = true }); await model.load()
         XCTAssertTrue(signedOut); XCTAssertNil(model.report); XCTAssertNil(model.error)
+    }
+
+    func testDelayedUnauthorizedFromSupersededLoadCannotSignOutNewAccount() async {
+        var signedOut = false
+        let stub = DelayedUnauthorizedStub()
+        let model = ReportsModel(transport: stub, unauthorized: { signedOut = true })
+        let obsoleteLoad = Task { await model.load(force: true) }
+        for _ in 0..<20 where stub.calls == 0 { try? await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(stub.calls, 1)
+        model.signOut()
+        let currentLoad = Task { await model.load(force: true) }
+        for _ in 0..<20 where stub.calls < 2 { try? await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(stub.calls, 2)
+        stub.releaseObsoleteUnauthorized()
+        await obsoleteLoad.value
+        await currentLoad.value
+        XCTAssertFalse(signedOut)
+        XCTAssertEqual(model.report?.paths.first?.label, "New account")
     }
 
     func testNonAuthHTTPFailuresRemainRecoverableWithoutSignOut() async {
