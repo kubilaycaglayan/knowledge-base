@@ -409,6 +409,7 @@ final class KnowUITests: XCTestCase {
         app.launch(); app.buttons["workspace.reports"].tap()
         app.buttons["reports.paths.filter"].tap(); let unsafePath = app.buttons.matching(NSPredicate(format: "label CONTAINS '<script>alert(1)</script>'")).firstMatch
         XCTAssertTrue(unsafePath.waitForExistence(timeout: 5)); XCTAssertTrue(unsafePath.label.contains("<script>alert(1)</script>")); unsafePath.tap()
+        app.swipeUp()
         app.buttons["reports.breakdown"].tap(); let labelChoices = app.buttons.matching(NSPredicate(format: "label == 'Labels'")); XCTAssertTrue(labelChoices.count > 1); labelChoices.element(boundBy: labelChoices.count - 1).tap()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '<b>Deep work</b>'")).firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Calendar log"].waitForExistence(timeout: 5)); XCTAssertTrue(app.staticTexts["<em>Planning</em>"].exists)
@@ -438,6 +439,7 @@ final class KnowUITests: XCTestCase {
         pathsFilter.tap(); XCTAssertTrue(app.buttons["Writing"].waitForExistence(timeout: 3)); app.buttons["Writing"].tap()
         let remove = app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"]
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        app.swipeUp()
         XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000002"].exists)
         app.buttons["reports.trendline"].tap()
         XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
