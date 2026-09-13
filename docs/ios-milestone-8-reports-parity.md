@@ -164,6 +164,8 @@ Native Reports work is split into semantic commits:
 - `be98db7` adds 60-day, all-zero, and sparse report fixtures with native model
   assertions and iPhone 13 Pro UI coverage for zero-state copy and long-range
   navigability.
+- `989f2c6` verifies long path/label content remains exposed in the loaded
+  breakdown as well as in filter menus and retains accessible removal controls.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -724,7 +726,7 @@ only on a happy-path screenshot.
   the full interval and reports exactly one active day.
 - [ ] **AC-141 — Dense report:** Many paths, labels, daily records, buckets, and
   Sankey links remain scrollable and responsive without overlapping controls.
-- [ ] **AC-142 — Long user content:** Very long path names, label names, and
+- [x] **AC-142 — Long user content:** Very long path names, label names, and
   multiline Calendar notes wrap, clamp, or scroll appropriately and never
   obscure values or actions.
 - [ ] **AC-143 — Large collection performance:** Long report lists/charts avoid
