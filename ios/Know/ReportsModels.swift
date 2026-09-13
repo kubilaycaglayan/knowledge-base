@@ -168,11 +168,49 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     @Published var showSankey = false
     @Published var showCalendarInputs = true
     @Published var breakdown: ReportBreakdown = .path
-    private let transport: ReportsTransport; private let unauthorized: () -> Void; private var generation = 0; private var cache: [String: Report] = [:]; private var loadedReferences = false
+    private let transport: ReportsTransport; private let unauthorized: () -> Void; private var generation = 0; private var cache: [String: Report] = [:]; private var loadedReferences = false; private var inflightKey: String?
     init(transport: ReportsTransport, query: ReportQuery? = nil, calendar: Calendar = .current, unauthorized: @escaping () -> Void = {}) { self.transport = transport; self.query = query ?? ReportDateMath.defaultQuery(calendar: calendar); self.unauthorized = unauthorized }
     var pathOptions: [Path] { paths.isEmpty ? (report?.paths.compactMap { guard let id = $0.id else { return nil }; return Path(id: id, name: $0.label, description: nil, status: "ACTIVE", color: $0.color) } ?? []) : paths }
     var labelOptions: [KBLabel] { labels.isEmpty ? (report?.sessionLabels.compactMap { guard let id = $0.id else { return nil }; return KBLabel(id: id, name: $0.label, color: $0.color, scopes: [.timeEntry]) } ?? []) : labels.filter { $0.scopes.contains(.timeEntry) } }
-    func load(force: Bool = false) async { let key = query.cacheKey; if !force, let cached = cache[key] { report = cached; return }; generation += 1; let current = generation; loading = report == nil; refreshing = report != nil; error = nil; do { async let value = timedReport(query); async let reference = loadReferences(); let result = try await value; _ = await reference; guard current == generation else { return }; guard !result.days.isEmpty || result.paths.isEmpty else { throw APIError.http(status: 422, message: "Malformed report") }; report = result; cache[key] = result } catch { guard current == generation else { return }; if case APIError.unauthorized = error { unauthorized() } else if error is ReportLoadError || (error as? URLError)?.code == .timedOut { self.error = "The report took too long to load." } else { self.error = "Unable to load the report. Please try again." } }; if current == generation { loading = false; refreshing = false } }
+    func load(force: Bool = false) async {
+        let requestedQuery = query
+        let key = requestedQuery.cacheKey
+        if !force, let cached = cache[key] { report = cached; return }
+        if !force, inflightKey == key { return }
+        generation += 1
+        let current = generation
+        inflightKey = key
+        loading = report == nil
+        refreshing = report != nil
+        error = nil
+        do {
+            async let value = timedReport(requestedQuery)
+            async let reference = loadReferences()
+            let result = try await value
+            _ = await reference
+            guard current == generation else { return }
+            guard !result.days.isEmpty || result.paths.isEmpty else { throw APIError.http(status: 422, message: "Malformed report") }
+            var completedQuery = requestedQuery
+            if ReportDateMath.date(result.from) != nil, ReportDateMath.date(result.to) != nil {
+                completedQuery.startDate = result.from
+                completedQuery.endDate = result.to
+                query = completedQuery
+            }
+            report = result
+            cache[key] = result
+            cache[completedQuery.cacheKey] = result
+        } catch {
+            guard current == generation else { return }
+            if case APIError.unauthorized = error { unauthorized() }
+            else if error is ReportLoadError || (error as? URLError)?.code == .timedOut { self.error = "The report took too long to load." }
+            else { self.error = "Unable to load the report. Please try again." }
+        }
+        if current == generation {
+            inflightKey = nil
+            loading = false
+            refreshing = false
+        }
+    }
     private func timedReport(_ query: ReportQuery) async throws -> Report { try await withThrowingTaskGroup(of: Report.self) { group in group.addTask { try await self.transport.report(query: query) }; group.addTask { try await Task.sleep(for: .seconds(15)); throw ReportLoadError.timeout }; defer { group.cancelAll() }; return try await group.next()! } }
     private func loadReferences() async { guard !loadedReferences else { return }; async let p = try? transport.paths(); async let l = try? transport.labels(); if let p = await p { paths = p }; if let l = await l { labels = l }; loadedReferences = true }
     func retry() async { await load(force: true) }
@@ -184,11 +222,11 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
         guard start != query.startDate || end != query.endDate else { return }
         rangeError = nil; query.startDate = start; query.endDate = end; await load()
     }
-    func setPreset(_ name: String, now: Date = Date(), calendar: Calendar = .current) async { guard let range = ReportDateMath.preset(name, now: now, calendar: calendar), range != (query.startDate, query.endDate) else { return }; query.startDate = range.0; query.endDate = range.1; await load() }
+    func setPreset(_ name: String, now: Date = Date(), calendar: Calendar = .current) async { guard let range = ReportDateMath.preset(name, now: now, calendar: calendar), range != (query.startDate, query.endDate) else { return }; rangeError = nil; query.startDate = range.0; query.endDate = range.1; await load() }
     func setAggregation(_ aggregation: ReportAggregation, now: Date = Date(), calendar: Calendar = .current) async { guard query.aggregation != aggregation else { return }; query.aggregation = aggregation; if aggregation == .day { let r = ReportDateMath.weekRange(containing: now, calendar: calendar); query.startDate = ReportDateMath.iso(r.0, calendar: calendar); query.endDate = ReportDateMath.iso(r.1, calendar: calendar) } else if aggregation == .week { query.endDate = ReportDateMath.iso(calendar.startOfDay(for: now), calendar: calendar); query.startDate = ReportDateMath.iso(calendar.date(byAdding: .day, value: -29, to: now)!, calendar: calendar) } else if aggregation == .month { query.endDate = ReportDateMath.iso(now, calendar: calendar); query.startDate = ReportDateMath.iso(calendar.date(byAdding: .year, value: -1, to: now)!, calendar: calendar) } else if aggregation == .quarter { query.endDate = ReportDateMath.iso(now, calendar: calendar); query.startDate = ReportDateMath.iso(calendar.date(byAdding: .year, value: -2, to: now)!, calendar: calendar) }; await load() }
     func shift(_ direction: Int, calendar: Calendar = .current) async { guard let q = ReportDateMath.shifted(query, by: direction, calendar: calendar) else { return }; query = q; await load() }
     func togglePath(_ id: UUID) async { query.pathIDs = query.pathIDs.contains(id) ? query.pathIDs.filter { $0 != id } : query.pathIDs + [id]; query = ReportQuery(startDate: query.startDate, endDate: query.endDate, aggregation: query.aggregation, pathIDs: query.pathIDs, labelIDs: query.labelIDs); await load() }
     func toggleLabel(_ id: UUID) async { query.labelIDs = query.labelIDs.contains(id) ? query.labelIDs.filter { $0 != id } : query.labelIDs + [id]; query = ReportQuery(startDate: query.startDate, endDate: query.endDate, aggregation: query.aggregation, pathIDs: query.pathIDs, labelIDs: query.labelIDs); await load() }
     func clearPaths() async { query.pathIDs = []; await load() }; func clearLabels() async { query.labelIDs = []; await load() }
-    func signOut() { generation += 1; cache.removeAll(); report = nil; paths = []; labels = [] }
+    func signOut() { generation += 1; inflightKey = nil; loadedReferences = false; cache.removeAll(); report = nil; paths = []; labels = [] }
 }
