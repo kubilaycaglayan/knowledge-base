@@ -5,10 +5,8 @@ struct ReportsView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private let duration: (Int64) -> String = { seconds in
-        let hours = seconds / 3600; let minutes = (seconds % 3600) / 60
-        if seconds == 0 { return "00:00" }
-        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
+    private func duration(_ seconds: Int64) -> String {
+        ReportsFormatting.duration(seconds)
     }
     var body: some View {
         ScrollView {
