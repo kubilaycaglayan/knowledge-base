@@ -200,11 +200,13 @@ Native Reports work is split into semantic commits:
   identifiers, and selected traits; focused iPhone 13 Pro UI tests cover those
   semantics, non-color Calendar/filter cues, and accessibility text-size
   reflow.
-- Aggregation now uses explicit 44-point SwiftUI buttons, breakdown uses an
-  explicit 44-point Menu, and selected/removal controls expose measurable hit
-  areas; targeted iPhone 13 Pro tests verify those frames. Native DatePicker
-  accessibility frames remain platform-owned and are not used to claim the
-  broad touch-target gate.
+- Aggregation now uses explicit 44-point SwiftUI buttons, the date range uses
+  explicit 44-point buttons that open a graphical DatePicker sheet, breakdown
+  uses an explicit 44-point Menu, and selected/removal controls expose
+  measurable hit areas; iPhone simulator tests verify those frames and the
+  date-picker round trip.
+- `1d9b183` replaces the platform-sized inline DatePicker targets with
+  accessible 44-point date buttons while preserving arbitrary date selection.
 - Reports disables view transactions when Reduce Motion is enabled; the
   reduced-motion iPhone 13 Pro fixture verifies the page and trendline remain
   usable without relying on animation.
@@ -822,7 +824,7 @@ only on a happy-path screenshot.
 - [x] **AC-145 — Accessible controls:** Every date, filter, aggregation,
   trendline, Calendar, Sankey, retry, and chip-removal control has a precise
   accessible name, role, value/state, and hint where needed.
-- [ ] **AC-146 — Touch targets:** Every interactive target is at least 44×44
+- [x] **AC-146 — Touch targets:** Every interactive target is at least 44×44
   points on iPhone, including previous/next arrows and chip removal.
 - [ ] **AC-147 — Keyboard support:** Hardware-keyboard users can reach and
   activate every control in logical order without a focus trap.
