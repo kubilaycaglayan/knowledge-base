@@ -8,6 +8,7 @@ struct WorkspaceView: View {
     @StateObject private var notes: NotesModel
     @StateObject private var paths: PathsModel
     @StateObject private var calendar: CalendarModel
+    @StateObject private var reports: ReportsModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     @AppStorage("knowledge-base.appearance") private var appearance = "system"
@@ -55,6 +56,11 @@ struct WorkspaceView: View {
             unauthorized: { [weak app] in app?.signOut() },
             invalidateReports: { [weak app] in Task { await app?.refresh() } }
         ))
+        let reportsAPI = ReportsAPI(client: app.api, token: app.token ?? "")
+        self._reports = StateObject(wrappedValue: ReportsModel(
+            transport: uiTesting ? ReportsFixture(arguments: arguments) : reportsAPI,
+            unauthorized: { [weak app] in app?.signOut() }
+        ))
     }
 
     // The public JWT subject scopes recent IDs by account without persisting the JWT.
@@ -86,7 +92,7 @@ struct WorkspaceView: View {
                     }.font(.caption).frame(minHeight: 44).accessibilityIdentifier("workspace.signOut")
                 }
                 ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 2) {
-                    ForEach(["Sessions", "Logs", "Labels", "Notes", "Paths", "Calendar", "Timeline"], id: \.self) { name in
+                    ForEach(["Sessions", "Logs", "Labels", "Notes", "Paths", "Calendar", "Reports", "Timeline"], id: \.self) { name in
                         Button { section = name } label: {
                             Text(name).font(.subheadline.weight(section == name ? .semibold : .regular))
                                 .padding(.horizontal, 10).frame(minHeight: 44)
@@ -104,6 +110,7 @@ struct WorkspaceView: View {
                 NotesView(model: notes).opacity(section == "Notes" ? 1 : 0).allowsHitTesting(section == "Notes").accessibilityHidden(section != "Notes")
                 if section == "Paths" { PathsView(model: paths, sessions: sessions) }
                 if section == "Calendar" { CalendarView(model: calendar) }
+                if section == "Reports" { ReportsView(model: reports) }
                 if section == "Timeline" { TimelineView() }
             }
         }
