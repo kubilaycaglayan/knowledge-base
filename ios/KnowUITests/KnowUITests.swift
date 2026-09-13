@@ -90,6 +90,16 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
     }
 
+    func testSignOutReturnsToAuthenticationFlow() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        let signOut = app.buttons["workspace.signOut"]
+        XCTAssertTrue(signOut.waitForExistence(timeout: 5))
+        signOut.tap()
+        XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.secureTextFields["auth.password"].exists)
+    }
+
     private func launchSessions(_ arguments: [String] = []) {
         app.launchArguments = ["-ui-testing", "-ui-testing-authenticated"] + arguments
         app.launch()
