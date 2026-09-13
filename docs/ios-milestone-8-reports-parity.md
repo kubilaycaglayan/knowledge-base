@@ -149,6 +149,9 @@ Native Reports work is split into semantic commits:
   `SUMMARY`, `Tracked time`, and the aggregation controls.
 - `bc78212` extends the long-content fixture to labels and verifies that long
   path/label options retain accessible, hittable removal controls on iPhone.
+- `3572225` adds dedicated note-only and 0.25/0.50/0.75/1.00 Calendar
+  fixtures, model assertions, and iPhone UI coverage for their distinct
+  visible details.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -640,11 +643,11 @@ only on a happy-path screenshot.
 - [x] **AC-114 — Toggle scope:** Hiding Calendar inputs removes both chart
   overlays and the separate Calendar log/summary without changing API/query
   state or tracked-time content.
-- [ ] **AC-115 — Note-only overlay:** A day with only a Calendar note receives
+- [x] **AC-115 — Note-only overlay:** A day with only a Calendar note receives
   the neutral note marker/overlay and exposes the note in bucket detail.
 - [x] **AC-116 — Marker-only label:** A null or zero portion renders as a visible
   marker-sized segment and is described as `Marked`, not `0 day`.
-- [ ] **AC-117 — Fractional portions:** `0.25`, `0.50`, `0.75`, and `1.00`
+- [x] **AC-117 — Fractional portions:** `0.25`, `0.50`, `0.75`, and `1.00`
   portions produce separate proportional segments without merging labels.
 - [x] **AC-118 — Calendar colors:** Each assignment uses its API color or the
   same safe fallback color as the web; pattern plus text provides a redundant
