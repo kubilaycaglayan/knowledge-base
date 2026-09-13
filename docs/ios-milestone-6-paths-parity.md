@@ -148,6 +148,9 @@ of this milestone.
 - Swift package verification on 2026-09-13: 53 tests passed, including the
   Paths model tests for load/create/update, remove/undo/merge, validation, and
   offline recovery.
+- Swift package verification on 2026-09-13: focused Paths API transport coverage
+  passed, including bearer authentication, create/update/delete/restore/merge
+  paths, and the merge target request body.
 - XcodeGen simulator build and focused iPhone 17 Pro UI verification on
   2026-09-13: `testAuthenticatedWorkspaceControlsAreReachable`,
   `testPathsHistoryAndEditControlsAreReachable`, and
