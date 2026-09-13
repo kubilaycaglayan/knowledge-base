@@ -181,10 +181,13 @@ Native Reports work is split into semantic commits:
   unconfigured iPhone 17 simulator run compiles and skips cleanly.
 - A connected physical iPhone was detected and a disposable Reports fixture was
   prepared through the existing private development bridge, but the physical
-  UI-test runner cannot be installed because `KnowTests` and `KnowUITests`
-  have no configured development team. The bridge is not the literal direct
-  `http://<ubuntu-host>:8080/api/v1` route required by the gate, so this is
-  recorded as partial preparation rather than completion evidence.
+  UI-test runner cannot be installed: the ignored local override supplies a
+  development team and the Mac has an Apple Development identity, but Xcode
+  has no matching profiles for the UI-test runner and Swift Package targets.
+  The bridge is also not the literal direct `http://<ubuntu-host>:8080/api/v1`
+  route required by the gate. `-allowProvisioningUpdates` was not used because
+  it would change Apple Developer account state, so this remains partial
+  preparation rather than completion evidence.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
