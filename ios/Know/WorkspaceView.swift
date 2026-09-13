@@ -104,10 +104,10 @@ struct WorkspaceView: View {
             }.padding(.horizontal, 16).padding(.vertical, 12).frame(maxWidth: 1200)
             Rectangle().fill(WorkspaceTheme.border(scheme)).frame(height: 1).padding(.horizontal, 16)
             ZStack {
-                SessionsView(model: sessions).opacity(section == "Sessions" ? 1 : 0).allowsHitTesting(section == "Sessions").accessibilityHidden(section != "Sessions")
-                LogsView(model: logs).opacity(section == "Logs" ? 1 : 0).allowsHitTesting(section == "Logs").accessibilityHidden(section != "Logs")
-                LabelsView(model: labels).opacity(section == "Labels" ? 1 : 0).allowsHitTesting(section == "Labels").accessibilityHidden(section != "Labels")
-                NotesView(model: notes).opacity(section == "Notes" ? 1 : 0).allowsHitTesting(section == "Notes").accessibilityHidden(section != "Notes")
+                if section == "Sessions" { SessionsView(model: sessions) }
+                if section == "Logs" { LogsView(model: logs) }
+                if section == "Labels" { LabelsView(model: labels) }
+                if section == "Notes" { NotesView(model: notes) }
                 if section == "Paths" { PathsView(model: paths, sessions: sessions) }
                 if section == "Calendar" { CalendarView(model: calendar) }
                 if section == "Reports" { ReportsView(model: reports) }
