@@ -129,9 +129,10 @@ struct CalendarAPI: CalendarTransport {
         return try await client.request("/labels", method: "POST", body: body, token: token)
     }
     func updateLabel(_ label: KBLabel) async throws -> KBLabel {
+        let color: Any = label.color.map { $0 as Any } ?? NSNull()
         let body = try JSONSerialization.data(withJSONObject: [
             "name": label.name,
-            "color": label.color as Any,
+            "color": color,
             "scopes": label.scopes.map(\.rawValue).sorted(),
         ])
         return try await client.request("/labels/\(label.id)", method: "PUT", body: body, token: token)
