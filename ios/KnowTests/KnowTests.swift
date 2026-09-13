@@ -150,6 +150,17 @@ final class KnowTests: XCTestCase {
         XCTAssertFalse(model.isAuthenticating)
     }
 
+    @MainActor
+    func testClearingAuthenticationErrorReturnsPhaseToIdle() async {
+        let model = authenticationModel()
+        URLProtocolStub.statusCode = 401
+        await model.authenticate(email: "person@example.com", password: "password123", register: false)
+        XCTAssertEqual(model.authPhase, .failed)
+        model.clearAuthError()
+        XCTAssertNil(model.authError)
+        XCTAssertEqual(model.authPhase, .idle)
+    }
+
     @MainActor private func authenticationModel() -> AppModel {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [URLProtocolStub.self]

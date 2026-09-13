@@ -71,7 +71,7 @@ struct LoginView: View {
                             register.toggle()
                             emailError = nil
                             passwordError = nil
-                            model.authError = nil
+                            model.clearAuthError()
                         }.buttonStyle(.plain).foregroundStyle(accent).frame(minHeight: 44)
                             .accessibilityIdentifier("auth.mode")
                     }

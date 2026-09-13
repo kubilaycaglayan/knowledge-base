@@ -281,6 +281,11 @@ struct APIClient {
 
     var signedIn: Bool { token != nil }
 
+    func clearAuthError() {
+        authError = nil
+        if authPhase == .failed { authPhase = .idle }
+    }
+
     func handle(_ failure: Error, _ message: String, expectedToken: String? = nil) {
         if let failure = failure as? APIError {
             switch failure {
