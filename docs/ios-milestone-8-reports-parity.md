@@ -123,6 +123,10 @@ Native Reports work is split into semantic commits:
   the focused control. The app builds successfully for iPhone 17; focused
   hardware-keyboard traversal still needs simulator/device evidence before
   AC-147 and AC-148 can be checked.
+- An XCTest probe using `XCUIElement.hasFocus` and `typeKey` was attempted on
+  iPhone 17. The simulator's touch interaction did not establish hardware
+  focus, and `simctl io` exposes no keyboard-input operation, so the probe was
+  removed rather than accepted as a false-positive keyboard gate.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
