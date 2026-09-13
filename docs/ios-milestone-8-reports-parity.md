@@ -178,6 +178,8 @@ Native Reports work is split into semantic commits:
   loads issue exactly one report, paths, and scoped-label request.
 - The Calendar/Sankey textual-detail UI test also passes on iPhone 13 Pro;
   Sankey content remains reachable through its horizontal scroll container.
+- `efbd0f4` adds a deterministic 60-day dense fixture with 12+ paths and
+  labels, model collection assertions, and iPhone 13 Pro rendering coverage.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -736,7 +738,7 @@ only on a happy-path screenshot.
   division-by-zero percentages, or missing axes.
 - [x] **AC-140 — Sparse report:** One active date among many zero dates renders
   the full interval and reports exactly one active day.
-- [ ] **AC-141 — Dense report:** Many paths, labels, daily records, buckets, and
+- [x] **AC-141 — Dense report:** Many paths, labels, daily records, buckets, and
   Sankey links remain scrollable and responsive without overlapping controls.
 - [x] **AC-142 — Long user content:** Very long path names, label names, and
   multiline Calendar notes wrap, clamp, or scroll appropriately and never
