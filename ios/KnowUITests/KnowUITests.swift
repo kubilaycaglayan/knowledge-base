@@ -229,8 +229,15 @@ final class KnowUITests: XCTestCase {
         let pathsFilter = app.buttons["reports.paths.filter"]
         XCTAssertTrue(pathsFilter.waitForExistence(timeout: 5)); pathsFilter.tap()
         XCTAssertTrue(app.buttons["Research"].waitForExistence(timeout: 3)); app.buttons["Research"].tap()
+        pathsFilter.tap(); XCTAssertTrue(app.buttons["Writing"].waitForExistence(timeout: 3)); app.buttons["Writing"].tap()
         let remove = app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"]
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000002"].exists)
+        let labelsFilter = app.buttons["reports.labels.filter"]
+        labelsFilter.tap(); XCTAssertTrue(app.buttons["Deep work"].waitForExistence(timeout: 3)); app.buttons["Deep work"].tap()
+        labelsFilter.tap(); XCTAssertTrue(app.buttons["Planning"].waitForExistence(timeout: 3)); app.buttons["Planning"].tap()
+        XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000012"].exists)
         app.buttons["reports.trendline"].tap()
         XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
 
@@ -238,6 +245,9 @@ final class KnowUITests: XCTestCase {
         app.buttons["workspace.reports"].tap()
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
+        app.buttons["reports.labels.clear"].tap()
+        XCTAssertFalse(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 2))
+        XCTAssertTrue(remove.exists)
         app.buttons["reports.paths.clear"].tap()
         XCTAssertFalse(remove.waitForExistence(timeout: 2))
     }
