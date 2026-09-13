@@ -151,6 +151,16 @@ final class KnowTests: XCTestCase {
     }
 
     @MainActor
+    func testGoogleVerificationFailureUsesGoogleRecoveryCopy() async {
+        let model = authenticationModel()
+        URLProtocolStub.statusCode = 503
+        await model.authenticateWithGoogle { "google-id-token" }
+        XCTAssertEqual(model.authError, "Google sign-in could not be completed. Try again.")
+        XCTAssertEqual(model.authPhase, .failed)
+        XCTAssertFalse(model.isAuthenticating)
+    }
+
+    @MainActor
     func testGoogleConfigurationRequiresMatchingIDsAndCallbackScheme() {
         let client = "123.apps.googleusercontent.com"
         let server = "456.apps.googleusercontent.com"
