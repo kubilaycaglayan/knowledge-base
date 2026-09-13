@@ -215,6 +215,8 @@ Native Reports work is split into semantic commits:
   while Reports is open and confirms the page remains mounted without reload.
 - The native UI fixture set also explicitly covers the offline Reports response,
   retry affordance, and retained session recovery controls.
+- The Reports breakdown collection now uses a `LazyVStack`, keeping dense path
+  and label lists lazy while preserving the deterministic dense fixture test.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
