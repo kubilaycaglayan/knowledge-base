@@ -129,6 +129,33 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
     }
 
+    func testLabelsListAndCreateControlsAreReachable() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        let labelsTab = app.buttons["workspace.labels"]
+        XCTAssertTrue(labelsTab.waitForExistence(timeout: 5))
+        labelsTab.tap()
+        XCTAssertTrue(app.staticTexts["Labels"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["labels.add"].exists)
+        app.buttons["labels.add"].tap()
+        XCTAssertTrue(app.textFields["labels.name"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Add label"].exists)
+        XCTAssertTrue(app.switches["Notes"].exists)
+        app.buttons["Cancel"].firstMatch.tap()
+    }
+
+    func testLabelsEmptyAndOfflineFixturesOfferRecovery() {
+        app.launchArguments += ["-ui-testing-authenticated", "-labels-empty"]
+        app.launch()
+        app.buttons["workspace.labels"].tap()
+        XCTAssertTrue(app.staticTexts["No labels yet. Add one above to get started."].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-labels-offline"]
+        app.launch()
+        app.buttons["workspace.labels"].tap()
+        XCTAssertTrue(app.staticTexts["No network connection. Reconnect and try again."].waitForExistence(timeout: 5))
+    }
+
     func testSignOutReturnsToAuthenticationFlow() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()

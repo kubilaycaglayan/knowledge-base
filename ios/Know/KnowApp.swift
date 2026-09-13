@@ -136,7 +136,11 @@ enum KeychainTokenStore {
     }
 }
 
-enum APIError: Error { case unauthorized; case offline }
+enum APIError: Error {
+    case unauthorized
+    case offline
+    case http(status: Int, message: String?)
+}
 enum AuthPhase: Equatable {
     case idle
     case authenticating
@@ -189,7 +193,8 @@ struct APIClient {
                     throw APIError.unauthorized
                 }
                 guard 200..<300 ~= http.statusCode else {
-                    throw URLError(.badServerResponse)
+                    let message = String(data: data, encoding: .utf8)
+                    throw APIError.http(status: http.statusCode, message: message)
                 }
                 return data
             } catch let error as APIError { throw error }
@@ -293,6 +298,8 @@ struct APIClient {
                 if expectedToken == nil || expectedToken == token { signOut() }
             case .offline:
                 error = "No network connection. Reconnect and try again."
+            case .http:
+                error = message
             }
         } else {
             error = message
