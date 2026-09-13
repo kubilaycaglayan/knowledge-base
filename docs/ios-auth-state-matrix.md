@@ -123,6 +123,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - `clearAuthError()` is the model-owned recovery action used by mode switching;
   its regression confirms that clearing an error also returns `authPhase` to
   `.idle`.
+- Form-level failures now expose an explicit `auth.retry` “Try again” button
+  with a 44-point hit target; it invokes the same validated submit action and
+  retains the entered draft.
 - Auth layout tokens were aligned in `LoginView`: 4-point card/control radii,
   480-point maximum card width, and 16-point compact-width side/card padding.
   Swift package tests and the simulator control test still pass after this
