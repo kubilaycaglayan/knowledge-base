@@ -166,6 +166,7 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["reports.page"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["SUMMARY"].exists)
         XCTAssertTrue(app.staticTexts["Tracked time"].exists)
+        XCTAssertTrue(app.staticTexts["3h 40m"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.aggregation"].exists || app.segmentedControls["reports.aggregation"].exists)
     }
 
@@ -261,6 +262,9 @@ final class KnowUITests: XCTestCase {
         let remove = app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"]
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000002"].exists)
+        app.buttons["reports.trendline"].tap()
+        XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Linear trend'")).firstMatch.exists)
         let labelsFilter = app.buttons["reports.labels.filter"]
         labelsFilter.tap(); XCTAssertTrue(app.buttons["Deep work"].waitForExistence(timeout: 3)); app.buttons["Deep work"].tap()
         labelsFilter.tap(); XCTAssertTrue(app.buttons["Planning"].waitForExistence(timeout: 3)); app.buttons["Planning"].tap()
@@ -269,9 +273,6 @@ final class KnowUITests: XCTestCase {
         app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].tap()
         XCTAssertFalse(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000012"].exists)
-        app.buttons["reports.trendline"].tap()
-        XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
-
         app.buttons["workspace.paths"].tap(); XCTAssertTrue(app.buttons["workspace.paths"].isSelected)
         app.buttons["workspace.reports"].tap()
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
