@@ -8,7 +8,8 @@ if (( ${#JWT_SECRET} < 32 )); then
   exit 1
 fi
 if [[ -z "${COMPOSE_PROJECT_NAME:-}" ]]; then
-  export COMPOSE_PROJECT_NAME="knowledge-base-smoke-${BASHPID}-$(date +%s%N)"
+  smoke_pid="${BASHPID:-$$}"
+  export COMPOSE_PROJECT_NAME="knowledge-base-smoke-${smoke_pid}-$(date +%s%N)"
 elif [[ "$COMPOSE_PROJECT_NAME" != *smoke* ]]; then
   echo "COMPOSE_PROJECT_NAME must contain 'smoke' so cleanup cannot target a persistent stack" >&2
   exit 1
@@ -66,7 +67,8 @@ content_json=(--header='Content-Type: application/json')
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   services+=(web proxy)
 fi
-buildx_builder="knowledge-base-smoke-${COMPOSE_PROJECT_NAME:-knowledge-base}-${BASHPID}-$(date +%s%N)"
+smoke_pid="${BASHPID:-$$}"
+buildx_builder="knowledge-base-smoke-${COMPOSE_PROJECT_NAME:-knowledge-base}-${smoke_pid}-$(date +%s%N)"
 if ! docker buildx create --name "$buildx_builder" --driver docker-container >/dev/null 2>&1; then
   echo "Smoke tests require Docker Buildx so their build cache can be cleaned safely" >&2
   exit 1
