@@ -157,6 +157,8 @@ Native Reports work is split into semantic commits:
 - `4b95848` replaces the single-color activity bars with API-colored category
   stacks and renders the breakdown donut as proportional category segments;
   focused summary and Calendar/Sankey simulator tests remain green.
+- `44effba` adds a stable breakdown control and simulator coverage switching
+  between path aggregates and session-label aggregates.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -616,9 +618,9 @@ only on a happy-path screenshot.
   label filters, grouping, and active-day count as one logically labeled area.
 - [x] **AC-101 — Default grouping:** Breakdown grouping starts at **Path** unless
   a valid restored state specifies **Labels**.
-- [ ] **AC-102 — Path grouping:** Path mode shows the report’s path aggregate
+- [x] **AC-102 — Path grouping:** Path mode shows the report’s path aggregate
   categories with a `Path` heading and one total per category.
-- [ ] **AC-103 — Label grouping:** Labels mode shows the report’s session-label
+- [x] **AC-103 — Label grouping:** Labels mode shows the report’s session-label
   aggregate categories with a `Label` heading and one total per category.
 - [x] **AC-104 — Active-day count:** `N active days` counts only displayed days
   with a positive filtered tracked-time total.
