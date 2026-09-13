@@ -71,7 +71,10 @@ enum CalendarDate {
 
     static func date(_ value: String) -> Date? { iso.date(from: value) }
     static func string(_ value: Date, calendar: Calendar = .current) -> String {
-        let formatter = iso
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
         formatter.calendar = calendar
         formatter.timeZone = calendar.timeZone
         return formatter.string(from: value)

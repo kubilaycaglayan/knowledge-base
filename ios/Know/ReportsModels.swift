@@ -89,7 +89,7 @@ struct ReportQuery: Equatable, Hashable, Codable {
 enum ReportDateMath {
     static func calendar(_ calendar: Calendar = .current) -> Calendar { var c = calendar; c.locale = Locale.current; return c }
     static func iso(_ date: Date, calendar: Calendar = .current) -> String { CalendarDate.string(date, calendar: calendar) }
-    static func date(_ value: String, calendar: Calendar = .current) -> Date? { CalendarDate.iso.calendar = calendar; CalendarDate.iso.timeZone = calendar.timeZone; return CalendarDate.iso.date(from: value) }
+    static func date(_ value: String, calendar: Calendar = .current) -> Date? { let formatter = DateFormatter(); formatter.calendar = calendar; formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.timeZone = calendar.timeZone; formatter.dateFormat = "yyyy-MM-dd"; return formatter.date(from: value) }
     static func weekStart(_ date: Date, calendar: Calendar = .current) -> Date { let c = calendar; let start = c.startOfDay(for: date); let offset = (c.component(.weekday, from: start) + 5) % 7; return c.date(byAdding: .day, value: -offset, to: start)! }
     static func weekRange(containing date: Date, calendar: Calendar = .current) -> (Date, Date) { let start = weekStart(date, calendar: calendar); return (start, calendar.date(byAdding: .day, value: 6, to: start)!) }
     static func monthRange(containing date: Date, calendar: Calendar = .current) -> (Date, Date) { let start = calendar.date(from: calendar.dateComponents([.year, .month], from: date))!; return (start, calendar.date(byAdding: .day, value: -1, to: calendar.date(byAdding: .month, value: 1, to: start)!)!) }
@@ -137,6 +137,7 @@ enum ReportCalculations {
         }
     }
     static func trend(_ buckets: [ReportBucket], mode: ReportTrendline) -> [(String, Int64)] {
+        guard mode != .off else { return [] }
         let points = buckets.enumerated().filter { $0.element.seconds > 0 }; guard points.count >= (mode == .parabolic ? 3 : 2) else { return [] }
         let xs = points.map { Double($0.offset) }, ys = points.map { Double($0.element.seconds) }
         if mode == .linear { let n = Double(xs.count), sx = xs.reduce(0,+), sy = ys.reduce(0,+), sxx = xs.reduce(0) { $0 + $1*$1 }, sxy = zip(xs,ys).reduce(0) { $0 + $1.0*$1.1 }, denominator = n*sxx-sx*sx; guard denominator != 0 else { return [] }; let slope = (n*sxy-sx*sy)/denominator, intercept = (sy-slope*sx)/n; return points.map { ($0.element.id, max(0, Int64((intercept+slope*Double($0.offset)).rounded()))) } }
