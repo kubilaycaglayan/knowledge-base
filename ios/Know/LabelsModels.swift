@@ -22,7 +22,7 @@ struct KBLabel: Codable, Identifiable, Equatable {
 
 struct LabelDraft: Equatable {
     var name = ""
-    var color: String? = "#2878D5"
+    var color: String? = WorkspaceTheme.palette[0]
     var scopes: Set<LabelScope> = [.note]
 
     init() {}
