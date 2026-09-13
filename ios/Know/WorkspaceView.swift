@@ -88,7 +88,7 @@ struct WorkspaceView: View {
                     } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44) }
                         .accessibilityLabel("Appearance settings").accessibilityIdentifier("workspace.appearance")
                     Button("Sign out") {
-                        if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft || labels.hasUnsavedDraft || notes.hasUnsavedDraft || calendar.hasUnsavedDraft { signOutConfirmation = true } else { app.signOut() }
+                        if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft || labels.hasUnsavedDraft || notes.hasUnsavedDraft || calendar.hasUnsavedDraft { signOutConfirmation = true } else { reports.signOut(); app.signOut() }
                     }.font(.caption).frame(minHeight: 44).accessibilityIdentifier("workspace.signOut")
                 }
                 ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 2) {
@@ -119,11 +119,11 @@ struct WorkspaceView: View {
         .background(WorkspaceTheme.background(scheme))
         .preferredColorScheme(appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
         .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load(); await notes.load(); await notes.loadLabels(); await paths.load(); await calendar.load() } else { resume() } }
-        .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resume() } } else { sessions.suspend(); logs.suspend() } }
+        .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resume(); Task { await reports.load(force: true) } } } else { sessions.suspend(); logs.suspend() } }
         .onChange(of: section) { _, value in if value != "Sessions" { Task { await app.refresh() } } }
         .onDisappear { sessions.suspend(); logs.suspend() }
         .confirmationDialog("Discard unsaved changes and sign out?", isPresented: $signOutConfirmation, titleVisibility: .visible) {
-            Button("Discard and sign out", role: .destructive) { app.signOut() }
+            Button("Discard and sign out", role: .destructive) { reports.signOut(); app.signOut() }
             Button("Keep editing", role: .cancel) {}
         }
     }
