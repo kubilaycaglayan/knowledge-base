@@ -111,7 +111,6 @@ struct WorkspaceView: View {
                 if section == "Paths" { PathsView(model: paths, sessions: sessions) }
                 if section == "Calendar" { CalendarView(model: calendar) }
                 if section == "Reports" { ReportsView(model: reports) }
-                if section == "Timeline" { TimelineView() }
             }
         }
         .foregroundStyle(WorkspaceTheme.text(scheme))

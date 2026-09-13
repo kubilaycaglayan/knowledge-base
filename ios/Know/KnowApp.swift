@@ -264,7 +264,6 @@ struct APIClient {
     @Published var paths: [Path] = []
     @Published var labels: [DailyLabel] = []
     @Published var notes: [Note] = []
-    @Published var activities: [Activity] = []
     @Published var timer: TimerState?
     @Published var stats: Statistics?
     @Published var error: String?
@@ -405,12 +404,10 @@ struct APIClient {
             async let p: [Path] = api.request("/paths", token: token)
             async let l: [DailyLabel] = api.request("/calendar/labels", token: token)
             async let n: [Note] = api.request("/notes", token: token)
-            async let a: [Activity] = api.request("/activities", token: token)
             async let s: Statistics = api.request("/statistics", token: token)
             paths = try await p
             labels = try await l
             notes = try await n
-            activities = try await a
             stats = try await s
             timer = try await api.optional("/timers/current", token: token)
         } catch {
@@ -517,7 +514,6 @@ struct APIClient {
         paths = []
         labels = []
         notes = []
-        activities = []
         timer = nil
         stats = nil
     }
@@ -542,29 +538,5 @@ struct RootView: View {
     var body: some View {
         Group { if model.signedIn { WorkspaceView(app: model) } else { LoginView() } }
             .alert("Knowledge Base", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") {} } message: { Text(model.error ?? "") }
-    }
-}
-
-struct TimelineView: View {
-    @EnvironmentObject var model: AppModel
-    var body: some View {
-        NavigationStack {
-            List {
-                if model.activities.isEmpty && !model.isLoading {
-                    ContentUnavailableView("No activity yet", systemImage: "clock", description: Text("Your learning history will appear here."))
-                }
-                ForEach(model.activities) { activity in
-                    VStack(alignment: .leading) {
-                        Text(activity.title).font(.headline)
-                        Text(activity.type.replacingOccurrences(of: "_", with: " "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if let detail = activity.detail {
-                            Text(detail).font(.subheadline)
-                        }
-                    }
-                }
-            }.navigationTitle("Timeline")
-        }
     }
 }
