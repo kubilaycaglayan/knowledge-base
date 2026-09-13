@@ -64,6 +64,19 @@ private actor LogsStub: LogsTransport {
         XCTAssertFalse(LogFormatting.sameHour("2026-09-11T11:10:00Z", "2026-09-11T12:00:00Z", calendar: calendar))
     }
 
+    func testEveryLogCalendarGroupBoundary() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_GB")
+        calendar.timeZone = TimeZone(secondsFromGMT: 3 * 3600)!
+        let now = LogFormatting.date("2026-09-16T09:30:00Z")!
+        XCTAssertEqual(LogFormatting.group("2026-09-16T08:45:00Z", now: now, calendar: calendar), "Last hour")
+        XCTAssertEqual(LogFormatting.group("2026-09-14T12:00:00Z", now: now, calendar: calendar), "This week")
+        XCTAssertEqual(LogFormatting.group("2026-09-08T12:00:00Z", now: now, calendar: calendar), "Last week")
+        XCTAssertEqual(LogFormatting.group("2026-09-02T12:00:00Z", now: now, calendar: calendar), "This month")
+        XCTAssertEqual(LogFormatting.group("2026-08-15T12:00:00Z", now: now, calendar: calendar), "Last month")
+        XCTAssertEqual(LogFormatting.group("2026-07-15T12:00:00Z", now: now, calendar: calendar), "July 2026")
+    }
+
     func testCreateTrimsAndKeepsChangedDraftDuringRequest() async {
         let stub = LogsStub(); let model = LogsModel(transport: stub); model.draft.body = "  Thought  "
         await model.create()
