@@ -138,6 +138,9 @@ Native Reports work is split into semantic commits:
 - `d9fcf41` localizes Calendar summary dates, renders API-colored assignment
   rows with marker/note symbols, and exposes aggregate day/marker totals;
   simulator assertions cover both assignments and the aggregate copy.
+- `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
+  values in the native Codable/fixture test; the simulator separately exposes
+  the named flow detail.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -662,15 +665,15 @@ only on a happy-path screenshot.
   `Path timing by <granularity>` with the API granularity in readable form.
 - [x] **AC-129 — Flow count:** The visible tracked-flow count equals the number
   of server-provided links and uses understandable singular/plural wording.
-- [ ] **AC-130 — Authoritative nodes:** Every server node preserves its ID,
+- [x] **AC-130 — Authoritative nodes:** Every server node preserves its ID,
   path label, bucket label, depth, value, and optional color; the client does
   not recompute node values.
-- [ ] **AC-131 — Authoritative links:** Every server link preserves source,
+- [x] **AC-131 — Authoritative links:** Every server link preserves source,
   target, source/target labels, and value; the client does not reconnect or
   redistribute flow.
-- [ ] **AC-132 — Chronological depth:** Node columns follow server depth in
+- [x] **AC-132 — Chronological depth:** Node columns follow server depth in
   chronological order and display aggregate bucket totals consistently.
-- [ ] **AC-133 — Flow detail:** Selecting/focusing a node or link exposes its
+- [x] **AC-133 — Flow detail:** Selecting/focusing a node or link exposes its
   bucket/path or source/target labels and formatted duration.
 - [x] **AC-134 — Empty Sankey:** A provided Sankey with no nodes displays
   `No tracked time to show in this flow.` and remains switchable back to the
