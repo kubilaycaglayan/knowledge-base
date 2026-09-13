@@ -95,7 +95,7 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Inspected the 390px light sign-in and dark registration screenshots. Evidence
   directory: `<temporary evidence directory>`.
   Evidence is temporary and can be regenerated with the script.
-- Swift package baseline: 35 tests passed on Xcode 26.6/macOS. This does not
+- Swift package baseline: 36 tests passed on Xcode 26.6/macOS. This does not
   prove simulator, physical device, or new milestone coverage.
 - Generated `ios/Know.xcodeproj` with XcodeGen and started the aggregate iPhone
   17 Pro simulator test. The build reached test execution, but the runner hung
@@ -138,6 +138,8 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   and button are omitted unless valid `GIDClientID`/`GIDServerClientID` values
   and the matching reversed URL scheme are present, avoiding a dead button in
   the public default build.
+- `GoogleAuthentication.configurationIsValid` has pure unit coverage for valid
+  IDs, missing server audience, and missing callback scheme.
 - Auth layout tokens were aligned in `LoginView`: 4-point card/control radii,
   480-point maximum card width, and 16-point compact-width side/card padding.
   Swift package tests and the simulator control test still pass after this
