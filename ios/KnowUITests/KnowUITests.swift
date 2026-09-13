@@ -196,6 +196,35 @@ final class KnowUITests: XCTestCase {
         app.buttons["Restore"].tap()
     }
 
+    func testNotesControlsRemainReachableAtAccessibilityTextSize() {
+        app.launchArguments += [
+            "-ui-testing-authenticated",
+            "-UIPreferredContentSizeCategory",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+        app.buttons["workspace.notes"].tap()
+        XCTAssertTrue(app.buttons["notes.add"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["notes.archive-toggle"].exists)
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["notes.archive-toggle"].exists)
+    }
+
+    func testNotesAppearanceScreenshots() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.notes"].tap()
+        XCTAssertTrue(app.staticTexts["Notes"].waitForExistence(timeout: 5))
+        for mode in ["Light", "Dark"] {
+            app.buttons["workspace.appearance"].tap()
+            app.buttons[mode].tap()
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Notes-\(mode)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
     func testSignOutReturnsToAuthenticationFlow() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
