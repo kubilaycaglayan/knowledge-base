@@ -117,4 +117,11 @@ import XCTest
         model.note = "One"; async let first = model.save(); try? await Task.sleep(nanoseconds: 2_000_000); let second = await model.save(); let firstResult = await first
         XCTAssertTrue(firstResult); XCTAssertFalse(second); XCTAssertEqual(stub.saves, 1)
     }
+
+    func testLoadingStateIsObservableUntilBothCalendarRequestsSettle() async {
+        let stub = DelayedStub(); let model = CalendarModel(transport: stub, calendar: calendar())
+        let task = Task { await model.load() }
+        try? await Task.sleep(nanoseconds: 10_000_000)
+        XCTAssertTrue(model.loading); await task.value; XCTAssertFalse(model.loading); XCTAssertTrue(model.loaded)
+    }
 }
