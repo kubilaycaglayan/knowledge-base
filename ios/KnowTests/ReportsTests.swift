@@ -164,7 +164,7 @@ private final class ReportsURLProtocolStub: URLProtocol {
     func testModelCachesSuccessRetainsQueryOnFailureAndSignsOutClearsCache() async {
         let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load(); XCTAssertTrue(model.loaded); await model.load(); XCTAssertEqual(stub.reportQueries.count, 1)
         stub.failure = APIError.offline; await model.retry(); XCTAssertNotNil(model.report); XCTAssertEqual(model.query.startDate, "2026-09-07"); model.signOut(); XCTAssertNil(model.report)
-        XCTAssertFalse(model.loaded)
+        XCTAssertFalse(model.loaded); stub.failure = nil; stub.reportValue = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 120, days: stub.reportValue.days, paths: [ReportCategory(id: nil, label: "Second account", seconds: 120, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil); await model.load(); XCTAssertEqual(model.report?.paths.first?.label, "Second account")
     }
 
     func testReferenceOptionsUseTimeEntryScopeAndFallBackToReportCategories() async {
