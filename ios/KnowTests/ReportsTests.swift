@@ -18,11 +18,11 @@ private final class ReportsURLProtocolStub: URLProtocol {
 
 @MainActor final class ReportsTests: XCTestCase {
     class Stub: ReportsTransport {
-        var reportValue: Report; var reportQueries: [ReportQuery] = []; var failure: Error?; var pathsValue: [Path] = []; var labelsValue: [KBLabel] = []; var echoQueryBoundaries = false
+        var reportValue: Report; var reportQueries: [ReportQuery] = []; var failure: Error?; var pathsValue: [Path] = []; var labelsValue: [KBLabel] = []; var pathCalls = 0; var labelCalls = 0; var echoQueryBoundaries = false
         init() { reportValue = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-13", totalSeconds: 3600, days: [ReportDay(date: "2026-09-07", totalSeconds: 3600, paths: [ReportCategory(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001"), label: "Research", seconds: 3600, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [ReportCategory(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001"), label: "Research", seconds: 3600, color: nil)], sessionLabels: [], calendarLabels: [], sankey: nil) }
         func report(query: ReportQuery) async throws -> Report { reportQueries.append(query); if let failure { throw failure }; guard echoQueryBoundaries else { return reportValue }; return Report(period: reportValue.period, from: query.startDate, to: query.endDate, totalSeconds: reportValue.totalSeconds, days: reportValue.days, paths: reportValue.paths, sessionLabels: reportValue.sessionLabels, calendarLabels: reportValue.calendarLabels, sankey: reportValue.sankey) }
-        func paths() async throws -> [Path] { pathsValue }
-        func labels() async throws -> [KBLabel] { labelsValue }
+        func paths() async throws -> [Path] { pathCalls += 1; return pathsValue }
+        func labels() async throws -> [KBLabel] { labelCalls += 1; return labelsValue }
     }
     final class TimeoutStub: ReportsTransport {
         func report(query: ReportQuery) async throws -> Report { throw ReportLoadError.timeout }
@@ -256,6 +256,11 @@ private final class ReportsURLProtocolStub: URLProtocol {
         }
         let stub = SlowStub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); let first = Task { await model.load() }; try? await Task.sleep(for: .milliseconds(5)); await model.load(); await first.value
         XCTAssertEqual(stub.reportQueries.count, 1)
+    }
+
+    func testFirstActivationLoadsReportAndReferencesOnce() async {
+        let stub = Stub(); let model = ReportsModel(transport: stub); await model.load(); await model.load()
+        XCTAssertEqual(stub.reportQueries.count, 1); XCTAssertEqual(stub.pathCalls, 1); XCTAssertEqual(stub.labelCalls, 1)
     }
 
     func testOlderRangeCompletionCannotReplaceNewerReport() async {
