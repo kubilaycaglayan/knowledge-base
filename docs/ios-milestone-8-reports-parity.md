@@ -208,10 +208,13 @@ Native Reports work is split into semantic commits:
 - Reports disables view transactions when Reduce Motion is enabled; the
   reduced-motion iPhone 13 Pro fixture verifies the page and trendline remain
   usable without relying on animation.
+- Duration rendering now uses Foundation locale-aware components while
+  preserving the stable zero display; native tests compare English and French
+  output and the iPhone summary fixture remains green.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 116 native package tests, including 34
+- `swift test --package-path ios` passes 117 native package tests, including 35
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 13 Pro and iPhone 17 Pro simulator UI coverage passes for Reports navigation,
@@ -813,7 +816,7 @@ only on a happy-path screenshot.
 - [x] **AC-158 — Reduced motion:** Reduced Motion disables shimmer/scan/orbit
   animation and nonessential chart transitions while retaining clear loading
   and refresh feedback.
-- [ ] **AC-159 — Locale awareness:** Displayed dates, counts, percentages, and
+- [x] **AC-159 — Locale awareness:** Displayed dates, counts, percentages, and
   durations use locale-aware formatting while API dates remain stable ISO
   LocalDate strings.
 
