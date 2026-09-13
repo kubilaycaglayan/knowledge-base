@@ -41,6 +41,23 @@ final class KnowUITests: XCTestCase {
         XCTAssertEqual(app.buttons["auth.submit"].label, "Create account")
     }
 
+    func testAuthenticationModeSwitchPreservesDraftFields() {
+        app.launch()
+        let email = app.textFields["auth.email"]
+        let password = app.secureTextFields["auth.password"]
+        XCTAssertTrue(email.waitForExistence(timeout: 5))
+        email.tap()
+        email.typeText("learner@example.com")
+        password.tap()
+        password.typeText("password123")
+        app.buttons["auth.mode"].tap()
+        XCTAssertEqual(email.value as? String, "learner@example.com")
+        // XCTest exposes secure-field values as masking bullets, while the
+        // field itself retains the entered credential.
+        XCTAssertEqual((password.value as? String)?.count, "password123".count)
+        XCTAssertEqual(app.buttons["auth.submit"].label, "Create account")
+    }
+
     func testAuthenticatedWorkspaceControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
