@@ -118,14 +118,19 @@ struct WorkspaceView: View {
         .tint(WorkspaceTheme.accent(scheme))
         .background(WorkspaceTheme.background(scheme))
         .preferredColorScheme(appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
-        .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load(); await notes.load(); await notes.loadLabels(); await paths.load(); await calendar.load() } else { resume() } }
-        .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resume(); Task { await reports.load(force: true) } } } else { sessions.suspend(); logs.suspend() } }
-        .onChange(of: section) { _, value in if value != "Sessions" { Task { await app.refresh() } } }
+        .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load(); await notes.load(); await notes.loadLabels(); await paths.load(); await calendar.load() } else { resumeVisibleSection() } }
+        .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resumeVisibleSection(); Task { await reports.load(force: true) } } } else { sessions.suspend(); logs.suspend() } }
+        .onChange(of: section) { _, value in if !uiTesting { resumeVisibleSection() }; if value != "Sessions" { Task { await app.refresh() } } }
         .onDisappear { sessions.suspend(); logs.suspend() }
         .confirmationDialog("Discard unsaved changes and sign out?", isPresented: $signOutConfirmation, titleVisibility: .visible) {
             Button("Discard and sign out", role: .destructive) { reports.signOut(); app.signOut() }
             Button("Keep editing", role: .cancel) {}
         }
     }
-    private func resume() { if let token = app.token { sessions.resume(client: app.api, token: token); logs.resume(); Task { await labels.load(); await notes.load(); await notes.loadLabels() } } }
+    private func resumeVisibleSection() {
+        guard let token = app.token else { return }
+        if section == "Sessions" { sessions.resume(client: app.api, token: token) } else { sessions.suspend() }
+        if section == "Logs" { logs.resume() } else { logs.suspend() }
+        Task { await labels.load(); await notes.load(); await notes.loadLabels() }
+    }
 }
