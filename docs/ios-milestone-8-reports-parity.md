@@ -118,6 +118,11 @@ Native Reports work is split into semantic commits:
   across workspace section changes in the simulator.
 - `f32c111` adds natural month/quarter/year bucket assertions and a
   daylight-saving calendar-day shift regression test.
+- The current working tree adds `WorkspaceFocusRing`, which opts Reports
+  actions into the iOS 17 focus system and renders a high-contrast ring from
+  the focused control. The app builds successfully for iPhone 17; focused
+  hardware-keyboard traversal still needs simulator/device evidence before
+  AC-147 and AC-148 can be checked.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
