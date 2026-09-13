@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 enum LabelScope: String, Codable, CaseIterable, Identifiable {
     case note = "NOTE"
@@ -65,17 +66,17 @@ struct LabelsAPI: LabelsTransport {
     }
 }
 
-@MainActor final class LabelsModel: ObservableObject {
-    @Published private(set) var labels: [KBLabel] = []
-    @Published private(set) var loading = false
-    @Published private(set) var loaded = false
-    @Published private(set) var busy = false
-    @Published var error: String?
-    @Published var draft = LabelDraft()
-    @Published private(set) var editingID: UUID?
-    @Published var editingDraft: LabelDraft?
-    @Published private(set) var deleteCandidate: KBLabel?
-    @Published private(set) var deleteAssignmentsCandidate: KBLabel?
+@MainActor @Observable final class LabelsModel {
+    private(set) var labels: [KBLabel] = []
+    private(set) var loading = false
+    private(set) var loaded = false
+    private(set) var busy = false
+    var error: String?
+    var draft = LabelDraft()
+    private(set) var editingID: UUID?
+    var editingDraft: LabelDraft?
+    private(set) var deleteCandidate: KBLabel?
+    private(set) var deleteAssignmentsCandidate: KBLabel?
     private let transport: LabelsTransport
     private let unauthorized: () -> Void
     private let invalidateReports: () -> Void

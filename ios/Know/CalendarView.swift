@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CalendarView: View {
-    @ObservedObject var model: CalendarModel
+    @Bindable var model: CalendarModel
     @Environment(\.colorScheme) private var scheme
     @State private var newLabel = ""
     @State private var newLabelColor = WorkspaceTheme.palette[0]

@@ -1,19 +1,20 @@
 import Foundation
+import Observation
 
-@MainActor final class NotesModel: ObservableObject {
-    @Published private(set) var notes: [Note] = []
-    @Published private(set) var selected: Note?
-    @Published private(set) var labels: [NoteLabel] = []
-    @Published var query = ""
-    @Published var archived = false
-    @Published var page = 0
-    @Published var size = 20
-    @Published private(set) var totalItems = 0
-    @Published private(set) var totalPages = 0
-    @Published private(set) var loading = false
-    @Published private(set) var busy = false
-    @Published var error: String?
-    @Published var saveState: SaveState = .saved
+@MainActor @Observable final class NotesModel {
+    private(set) var notes: [Note] = []
+    private(set) var selected: Note?
+    private(set) var labels: [NoteLabel] = []
+    var query = ""
+    var archived = false
+    var page = 0
+    var size = 20
+    private(set) var totalItems = 0
+    private(set) var totalPages = 0
+    private(set) var loading = false
+    private(set) var busy = false
+    var error: String?
+    var saveState: SaveState = .saved
 
     enum SaveState: Equatable { case saved, saving, failed }
     private let transport: NotesTransport

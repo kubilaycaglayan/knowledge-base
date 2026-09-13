@@ -5,7 +5,7 @@ import UIKit
 
 struct ReportsView: View {
     private enum DateField: String, Identifiable { case start, end; var id: String { rawValue } }
-    @ObservedObject var model: ReportsModel
+    @Bindable var model: ReportsModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

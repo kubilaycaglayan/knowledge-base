@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SessionsView: View {
-    @ObservedObject var model: SessionsModel
+    @Bindable var model: SessionsModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var newLabel = ""

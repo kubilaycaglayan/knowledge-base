@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LabelsView: View {
-    @ObservedObject var model: LabelsModel
+    @Bindable var model: LabelsModel
     @Environment(\.colorScheme) private var scheme
     @State private var createOpen = false
     @FocusState private var focused: Field?

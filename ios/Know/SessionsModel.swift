@@ -1,19 +1,20 @@
 import SwiftUI
+import Observation
 
-@MainActor final class SessionsModel: ObservableObject {
-    @Published private(set) var paths: [Path] = []
-    @Published private(set) var labels: [SessionLabel] = []
-    @Published private(set) var history = SessionPage(sessions: [], page: 0, totalPages: 0, totalSessions: 0)
-    @Published private(set) var timer: TrackedSession?
-    @Published var draft = SessionDraft()
-    @Published private(set) var busy = false
-    @Published private(set) var loading = false
-    @Published private(set) var loaded = false
-    @Published var error: String?
-    @Published private(set) var recentPathIds: [UUID] = []
-    @Published private(set) var connected = false
-    @Published var descriptionFocused = false
-    @Published var editingHistoryDraft = false
+@MainActor @Observable final class SessionsModel {
+    private(set) var paths: [Path] = []
+    private(set) var labels: [SessionLabel] = []
+    private(set) var history = SessionPage(sessions: [], page: 0, totalPages: 0, totalSessions: 0)
+    private(set) var timer: TrackedSession?
+    var draft = SessionDraft()
+    private(set) var busy = false
+    private(set) var loading = false
+    private(set) var loaded = false
+    var error: String?
+    private(set) var recentPathIds: [UUID] = []
+    private(set) var connected = false
+    var descriptionFocused = false
+    var editingHistoryDraft = false
     private let transport: SessionsTransport
     private let defaults: UserDefaults?
     private let recentKey: String

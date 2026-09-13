@@ -1,16 +1,17 @@
 import Foundation
+import Observation
 
-@MainActor final class LogsModel: ObservableObject {
-    @Published private(set) var logs: [Log] = []
-    @Published private(set) var labels: [LogLabel] = []
-    @Published var draft = LogDraft()
-    @Published var editing: Log?
-    @Published var editDraft = LogDraft()
-    @Published private(set) var loading = false
-    @Published private(set) var busy = false
-    @Published private(set) var labelBusyID: UUID?
-    @Published var error: String?
-    @Published var savedAnnouncement = false
+@MainActor @Observable final class LogsModel {
+    private(set) var logs: [Log] = []
+    private(set) var labels: [LogLabel] = []
+    var draft = LogDraft()
+    var editing: Log?
+    var editDraft = LogDraft()
+    private(set) var loading = false
+    private(set) var busy = false
+    private(set) var labelBusyID: UUID?
+    var error: String?
+    var savedAnnouncement = false
     private let transport: LogsTransport; private let unauthorized: () -> Void
     private var active = false; private var refreshTask: Task<Void, Never>?
     private var loadRevision = 0

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SessionEditor: View {
-    @ObservedObject var model: SessionsModel
+    @Bindable var model: SessionsModel
     let session: TrackedSession
     let close: () -> Void
     @Environment(\.colorScheme) private var scheme
