@@ -127,6 +127,10 @@ Native Reports work is split into semantic commits:
   iPhone 17. The simulator's touch interaction did not establish hardware
   focus, and `simctl io` exposes no keyboard-input operation, so the probe was
   removed rather than accepted as a false-positive keyboard gate.
+- The repository contract checks were rerun after the focus changes:
+  `check-accessibility.mjs` passed 38 checks, `check-security.mjs` passed 33,
+  `check-smoke-cleanup.mjs` passed 13, and all required shell scripts passed
+  `bash -n`.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
