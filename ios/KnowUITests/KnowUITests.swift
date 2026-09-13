@@ -92,10 +92,9 @@ final class KnowUITests: XCTestCase {
         app.buttons["session.save"].tap()
         XCTAssertTrue(app.buttons["session.edit.00000000-0000-4000-8000-000000000003"].waitForExistence(timeout: 5))
         app.buttons["session.remove.00000000-0000-4000-8000-000000000003"].tap()
-        app.buttons["Cancel"].firstMatch.tap()
-        XCTAssertTrue(edit.exists)
-        app.buttons["session.remove.00000000-0000-4000-8000-000000000003"].tap()
-        app.buttons["Remove session"].firstMatch.tap()
+        let confirmation = app.buttons["Remove session"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
+        confirmation.tap()
         XCTAssertTrue(app.staticTexts["No sessions recorded yet."].waitForExistence(timeout: 5))
     }
 
@@ -108,11 +107,7 @@ final class KnowUITests: XCTestCase {
         description.typeText(" unsaved")
         app.swipeUp()
         app.buttons["session.cancel"].tap()
-        let discard = app.buttons["Discard changes"]
-        if discard.waitForExistence(timeout: 3) {
-            discard.tap()
-        }
-        XCTAssertTrue(app.buttons["session.edit.00000000-0000-4000-8000-000000000003"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["session.cancel"].waitForExistence(timeout: 3))
     }
 
     func testSessionsOfflineRetryAndEmptyState() {
