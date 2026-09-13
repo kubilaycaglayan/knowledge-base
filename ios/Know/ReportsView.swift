@@ -106,8 +106,10 @@ struct ReportsView: View {
                 .accessibilityHint("Changes the report breakdown.")
                 .accessibilityIdentifier("reports.breakdown")
             }
-            ForEach(Array(values.enumerated()), id: \.element.identity) { index, value in
-                HStack { Circle().fill(WorkspaceTheme.color(value.color ?? WorkspaceTheme.palette[index % WorkspaceTheme.palette.count])).frame(width: 10, height: 10); Text(value.label).lineLimit(2); Spacer(); Text(duration(value.seconds)).monospacedDigit() }.padding(.vertical, 6)
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(values.enumerated()), id: \.element.identity) { index, value in
+                    HStack { Circle().fill(WorkspaceTheme.color(value.color ?? WorkspaceTheme.palette[index % WorkspaceTheme.palette.count])).frame(width: 10, height: 10); Text(value.label).lineLimit(2); Spacer(); Text(duration(value.seconds)).monospacedDigit() }.padding(.vertical, 6)
+                }
             }
             if values.isEmpty { Text("No tracked time in this period.").foregroundStyle(.secondary) }
             VStack(alignment: .leading, spacing: 8) {
