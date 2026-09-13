@@ -54,11 +54,17 @@ struct ReportsFixture: ReportsTransport {
                 writingSeconds > 0 && pathFilterAllowsWriting && labelFilterAllowsEntry ? category(Self.writingID, label: "Writing", seconds: writingSeconds, color: "#9B51E0") : nil
             ].compactMap { $0 }
             let labels = paths.isEmpty ? [] : [category(Self.deepWorkID, label: names, seconds: paths.reduce(0) { $0 + $1.seconds }, color: "#2878D5")]
-            let calendarLabels: [ReportCalendarLabel] = arguments.contains("-reports-calendar") && offset == 2 ? [
+            let calendarEnabled = arguments.contains("-reports-calendar") || arguments.contains("-reports-calendar-note-only") || arguments.contains("-reports-calendar-fractions")
+            let calendarLabels: [ReportCalendarLabel] = calendarEnabled && offset == 2 ? (arguments.contains("-reports-calendar-note-only") ? [] : arguments.contains("-reports-calendar-fractions") ? [
+                ReportCalendarLabel(id: Self.calendarID, label: "Planning", color: "#F2994A", portion: Decimal(string: "0.25")),
+                ReportCalendarLabel(id: Self.planningID, label: "Deep focus", color: "#2878D5", portion: Decimal(string: "0.50")),
+                ReportCalendarLabel(id: Self.researchID, label: "Writing block", color: "#9B51E0", portion: Decimal(string: "0.75")),
+                ReportCalendarLabel(id: Self.writingID, label: "Full day", color: "#22C55E", portion: Decimal(string: "1.00"))
+            ] : [
                 ReportCalendarLabel(id: Self.calendarID, label: "Planning", color: "#F2994A", portion: Decimal(string: "0.50")),
                 ReportCalendarLabel(id: Self.planningID, label: "Deep focus", color: "#2878D5", portion: nil)
-            ] : []
-            let note = arguments.contains("-reports-calendar") && offset == 2 ? "Planning day\nReview the weekly priorities." : nil
+            ]) : []
+            let note = (arguments.contains("-reports-calendar") || arguments.contains("-reports-calendar-note-only")) && offset == 2 ? "Planning day\nReview the weekly priorities." : nil
             return ReportDay(date: iso, totalSeconds: paths.reduce(0) { $0 + $1.seconds }, paths: paths, sessionLabels: labels, calendarNote: note, calendarLabels: calendarLabels)
         }
         let paths = aggregate(days.flatMap(\.paths))
