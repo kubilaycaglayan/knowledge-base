@@ -8,6 +8,7 @@ private actor LogsStub: LogsTransport {
     var updateCount = 0
     var conflict = false
     var updateFailure: APIError?
+    var removeFailure: APIError?
     var labelsSaved: [UUID] = []
     init() {
         values = [Log(id: id, body: "Original", occurredAt: "2026-09-11T11:30:00Z", labelIds: [], createdAt: "2026-09-11T11:30:00Z", updatedAt: "2026-09-11T11:30:00Z", version: 2)]
@@ -26,7 +27,10 @@ private actor LogsStub: LogsTransport {
         return result
     }
     func updateLabels(id: UUID, ids: [UUID]) async throws -> Log { labelsSaved = ids; let old = try await fetch(id: id); return Log(id: id, body: old.body, occurredAt: old.occurredAt, labelIds: ids, createdAt: old.createdAt, updatedAt: old.updatedAt, version: old.version + 1) }
-    func remove(id: UUID) async throws { values.removeAll { $0.id == id } }
+    func remove(id: UUID) async throws {
+        if let removeFailure { throw removeFailure }
+        values.removeAll { $0.id == id }
+    }
     func updateCalls() -> Int { updateCount }
     func savedLabelCount() -> Int { labelsSaved.count }
 }
@@ -113,9 +117,20 @@ private actor LogsStub: LogsTransport {
         await model.remove(model.logs[0])
         XCTAssertTrue(model.logs.isEmpty)
     }
+
+    func testFailedDeleteKeepsLogAvailableForRetry() async {
+        let stub = LogsStub(); let model = LogsModel(transport: stub); await model.load()
+        await stub.setRemoveFailure(.http(status: 503, message: "Unavailable"))
+
+        await model.remove(model.logs[0])
+
+        XCTAssertEqual(model.logs.first?.id, stub.id)
+        XCTAssertEqual(model.error, "Unable to remove this log. Please try again.")
+    }
 }
 
 private extension LogsStub {
     func setConflict(_ value: Bool) { conflict = value }
     func setUpdateFailure(_ value: APIError) { updateFailure = value }
+    func setRemoveFailure(_ value: APIError) { removeFailure = value }
 }
