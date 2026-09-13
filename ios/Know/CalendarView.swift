@@ -4,6 +4,8 @@ struct CalendarView: View {
     @ObservedObject var model: CalendarModel
     @Environment(\.colorScheme) private var scheme
     @State private var newLabel = ""
+    @State private var newLabelColor = WorkspaceTheme.palette[0]
+    @State private var newLabelPaletteOpen = false
     @State private var paletteLabel: KBLabel?
     private let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -17,11 +19,12 @@ struct CalendarView: View {
         }.padding(16).frame(maxWidth: 900, alignment: .leading) }
         .task { if !model.loaded { await model.load() } }
         .sheet(item: $paletteLabel) { label in palette(for: label) }
+        .sheet(isPresented: $newLabelPaletteOpen) { newLabelPalette }
     }
 
     private var monthHeader: some View { HStack {
         Button { Task { await model.moveMonth(-1) } } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.accessibilityLabel("Previous month")
-        VStack { Text(model.month, format: .dateTime.month(.wide).year()).font(.title3.bold()); DatePicker("Choose month", selection: Binding(get: { model.month }, set: { model.month = CalendarGrid.monthStart(containing: $0, calendar: model.calendar); Task { await model.load() } }), displayedComponents: [.date]).labelsHidden().accessibilityLabel("Choose month and year") }
+        VStack { Text(model.month, format: .dateTime.month(.wide).year()).font(.title3.bold()); DatePicker("Choose month", selection: Binding(get: { model.month }, set: { value in Task { await model.setMonth(value) } }), displayedComponents: [.date]).labelsHidden().accessibilityLabel("Choose month and year") }
         Button { Task { await model.moveMonth(1) } } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("Next month")
         Spacer()
     }.buttonStyle(.plain) }
@@ -59,13 +62,16 @@ struct CalendarView: View {
     private func dayLabel(_ day: Date, record: CalendarDay?) -> String { let formatter = DateFormatter(); formatter.dateStyle = .full; formatter.timeStyle = .none; formatter.calendar = model.calendar; var value = formatter.string(from: day); if record?.note != nil { value += ", note" }; if let labels = record?.labels, !labels.isEmpty { value += ", \(labels.count) label\(labels.count == 1 ? "" : "s")" }; return value }
 
     private var editor: some View { VStack(alignment: .leading, spacing: 12) {
-        if let title = model.rangeTitle { Text(title).font(.title3.bold()); Text("Release on another day to select a range.").font(.caption).foregroundStyle(WorkspaceTheme.muted(scheme)) } else { Text(model.selectedDate, format: .dateTime.weekday(.wide).month(.wide).day().year()).font(.title3.bold()) }
+        if let title = model.rangeTitle { Text(title).font(.title3.bold()) } else { Text(model.selectedDate, format: .dateTime.weekday(.wide).month(.wide).day().year()).font(.title3.bold()) }
+        if model.selectingRange { Text("Release on another day to select a range.").font(.caption).foregroundStyle(WorkspaceTheme.muted(scheme)).accessibilityIdentifier("calendar.range.prompt") }
         TextEditor(text: $model.note).frame(minHeight: 90).padding(4).overlay(RoundedRectangle(cornerRadius: 6).stroke(WorkspaceTheme.border(scheme))).accessibilityLabel("What happened today?").onChange(of: model.note) { _, value in if value.count > 20_000 { model.note = String(value.prefix(20_000)) } }
-        if model.labels.isEmpty { Text("Create a label below to begin.").foregroundStyle(WorkspaceTheme.muted(scheme)) } else { ForEach(model.labels) { label in labelRow(label) } }
-        HStack { Button(model.isRangeMode && model.rangeStart != nil && model.rangeEnd != nil ? "Apply to range" : "Save day") { Task { await model.save() } }.buttonStyle(WorkspaceButton(primary: true)).disabled(model.saving); if model.saving { ProgressView().accessibilityLabel("Saving…") }; if model.isRangeMode { Button("Cancel range") { model.cancelRange() }.buttonStyle(WorkspaceButton()) } else { Button("Select range") { model.beginRange(model.selectedDate) }.buttonStyle(WorkspaceButton()) } }
-        HStack { TextField("New label…", text: $newLabel).textFieldStyle(.roundedBorder).onSubmit { Task { if await model.createLabel(name: newLabel) { newLabel = "" } } }; Button("Add label") { Task { if await model.createLabel(name: newLabel) { newLabel = "" } } }.disabled(model.addingLabel || newLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }.accessibilityIdentifier("calendar.new-label")
+        if model.loaded && !model.loading && model.labels.isEmpty { Text("Create a label below to begin.").foregroundStyle(WorkspaceTheme.muted(scheme)) } else { ForEach(model.labels) { label in labelRow(label) } }
+        HStack { Button(model.rangeEnd != nil ? "Apply to range" : model.saving ? "Saving…" : "Save day") { Task { await model.save() } }.buttonStyle(WorkspaceButton(primary: true)).disabled(model.saving || model.selectingRange); if model.saving { ProgressView().accessibilityHidden(true) }; if model.isRangeMode { Button("Cancel range") { model.cancelRange() }.buttonStyle(WorkspaceButton()) } else { Button("Select range") { model.beginRange(model.selectedDate) }.buttonStyle(WorkspaceButton()) } }
+        HStack { TextField("New label, e.g. Vacation", text: $newLabel).modifier(WorkspaceControl()).accessibilityLabel("New calendar label").onChange(of: newLabel) { _, value in if value.count > 80 { newLabel = String(value.prefix(80)) } }.onSubmit { addLabel() }; Button { newLabelPaletteOpen = true } label: { Circle().fill(WorkspaceTheme.color(newLabelColor)).frame(width: 28, height: 28).frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Choose new label color (\(newLabelColor))"); Button("Add") { addLabel() }.disabled(model.addingLabel || newLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }.accessibilityIdentifier("calendar.new-label")
     }.padding(16).background(WorkspaceTheme.surface(scheme), in: RoundedRectangle(cornerRadius: 10)).accessibilityIdentifier("calendar.editor") }
 
     @ViewBuilder private func labelRow(_ label: KBLabel) -> some View { HStack { Button { model.toggle(label) } label: { Image(systemName: model.selectedAssignments[label.id] == nil ? "square" : "checkmark.square.fill").frame(width: 44, height: 44) }.buttonStyle(.plain).accessibilityLabel("\(model.selectedAssignments[label.id] == nil ? "Select" : "Deselect") \(label.name)"); Circle().fill(WorkspaceTheme.color(label.color ?? WorkspaceTheme.palette[0])).frame(width: 14, height: 14); Text(label.name).lineLimit(2); Spacer(); if let portion = model.selectedAssignments[label.id] { Picker("Portion for \(label.name)", selection: Binding(get: { portion }, set: { model.setPortion($0, for: label) })) { ForEach(CalendarPortion.allCases) { Text($0.title).tag($0) } }.pickerStyle(.menu) }; Button { paletteLabel = label } label: { Image(systemName: "paintpalette").frame(width: 44, height: 44) }.accessibilityLabel("Change \(label.name) color") } }
     private func palette(for label: KBLabel) -> some View { VStack { Text("Color for \(label.name)").font(.headline); ForEach(WorkspaceTheme.palette, id: \.self) { color in Button { Task { _ = await model.updateLabelColor(label, color: color); paletteLabel = nil } } label: { HStack { Circle().fill(WorkspaceTheme.color(color)).frame(width: 28, height: 28); Text(color); if label.color == color { Image(systemName: "checkmark") } }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }.accessibilityLabel("Choose \(color) color") } }.padding(24).presentationDetents([.medium]) }
+    private var newLabelPalette: some View { ScrollView { VStack { Text("New calendar label color").font(.headline); ForEach(WorkspaceTheme.palette, id: \.self) { color in Button { newLabelColor = color; newLabelPaletteOpen = false } label: { HStack { Circle().fill(WorkspaceTheme.color(color)).frame(width: 28, height: 28); Text(color); if newLabelColor == color { Image(systemName: "checkmark") } }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }.accessibilityLabel("Choose new label color: \(color)") } }.padding(24) }.presentationDetents([.medium, .large]) }
+    private func addLabel() { Task { if await model.createLabel(name: newLabel, color: newLabelColor) { newLabel = "" } } }
 }

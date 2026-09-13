@@ -33,35 +33,44 @@ import Foundation
     var isRangeMode: Bool { rangeStart != nil }
     var rangeTitle: String? {
         guard let start = rangeStart, let end = rangeEnd else { return nil }
-        let formatter = DateFormatter(); formatter.calendar = calendar; formatter.locale = .current; formatter.timeZone = calendar.timeZone; formatter.dateFormat = "MMM d, yyyy"
-        return "\(formatter.string(from: start)) – \(formatter.string(from: end))"
+        let formatter = DateFormatter(); formatter.calendar = calendar; formatter.locale = .current; formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "MMM d"; let startText = formatter.string(from: start)
+        formatter.dateFormat = "MMM d, yyyy"; return "\(startText) – \(formatter.string(from: end))"
     }
-    var hasUnsavedDraft: Bool { !note.isEmpty || isRangeMode || !selectedAssignments.isEmpty }
+    var selectingRange: Bool { rangeStart != nil && rangeEnd == nil }
+    var hasUnsavedDraft: Bool { isRangeMode || editorIsDirty }
 
     func load(force: Bool = false) async {
-        let bounds = CalendarGrid.range(for: month, calendar: calendar)
+        let bounds = CalendarGrid.monthRange(for: month, calendar: calendar)
         let start = CalendarDate.string(bounds.0, calendar: calendar), end = CalendarDate.string(bounds.1, calendar: calendar)
         let key = "\(start):\(end)"
-        if !force, loadedRanges.contains(key) { loaded = true; return }
+        if !force, loadedRanges.contains(key) { loaded = true; if !isRangeMode && !editorIsDirty { hydrate(date: selectedDate) }; return }
         loadGeneration += 1; let generation = loadGeneration
+        let draftSnapshot = (note, selectedAssignments, selectedDate, rangeStart, rangeEnd)
+        let preserveDraftAtStart = isRangeMode || editorIsDirty
         loading = true; error = nil
         do {
             async let fetchedLabels = transport.labels()
             async let fetchedDays = transport.days(startDate: start, endDate: end)
             let (newLabels, newDays) = try await (fetchedLabels, fetchedDays)
             guard generation == loadGeneration else { return }
-            labels = newLabels.filter { $0.scopes.contains(.calendar) }
-            for day in newDays { days[day.date] = day }
+            labels = newLabels.filter { $0.scopes.contains(.calendar) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            clearDays(start: start, end: end)
+            for day in newDays { apply(day) }
             loadedRanges.insert(key); loaded = true
-            if rangeStart == nil { hydrate(date: selectedDate) }
+            let draftChangedDuringLoad = note != draftSnapshot.0 || selectedAssignments != draftSnapshot.1 || selectedDate != draftSnapshot.2 || rangeStart != draftSnapshot.3 || rangeEnd != draftSnapshot.4
+            if !preserveDraftAtStart && !draftChangedDuringLoad { hydrate(date: selectedDate) }
         } catch { fail(error, "Unable to load calendar records.") }
         loading = false
     }
 
     func moveMonth(_ offset: Int) async {
-        month = calendar.date(byAdding: .month, value: offset, to: month) ?? month
-        selectedDate = CalendarGrid.monthStart(containing: month, calendar: calendar)
-        clearRange(); note = ""; selectedAssignments = [:]
+        await setMonth(calendar.date(byAdding: .month, value: offset, to: month) ?? month)
+    }
+
+    func setMonth(_ date: Date) async {
+        month = CalendarGrid.monthStart(containing: date, calendar: calendar)
+        selectedDate = month; clearRange(); hydrate(date: selectedDate)
         await load()
     }
 
@@ -70,7 +79,7 @@ import Foundation
         if let start = rangeStart {
             rangeEnd = day
             if rangeEnd == start { clearRange(); selectedDate = day; hydrate(date: day) }
-            else if day < start { rangeEnd = start; rangeStart = day }
+            else { selectedDate = day; if day < start { rangeEnd = start; rangeStart = day } }
             return
         }
         selectedDate = day; hydrate(date: day)
@@ -89,12 +98,14 @@ import Foundation
         let assignments = selectedAssignments.map { CalendarDayAssignment(labelId: $0.key, portion: $0.value.value) }.sorted { $0.labelId.uuidString < $1.labelId.uuidString }
         do {
             let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+            if rangeStart != nil && rangeEnd == nil { saving = false; return false }
             if let start = rangeStart, let end = rangeEnd {
-                let result = try await transport.saveRange(request: CalendarRangeRequest(startDate: CalendarDate.string(min(start, end), calendar: calendar), endDate: CalendarDate.string(max(start, end), calendar: calendar), note: trimmed.isEmpty ? nil : trimmed, labels: assignments))
-                for day in result { days[day.date] = day }; clearRange()
+                let normalizedStart = min(start, end), normalizedEnd = max(start, end)
+                let result = try await transport.saveRange(request: CalendarRangeRequest(startDate: CalendarDate.string(normalizedStart, calendar: calendar), endDate: CalendarDate.string(normalizedEnd, calendar: calendar), note: trimmed.isEmpty ? nil : trimmed, labels: assignments))
+                for day in result { apply(day) }; selectedDate = normalizedStart; clearRange(); hydrate(date: selectedDate)
             } else {
                 let date = CalendarDate.string(selectedDate, calendar: calendar)
-                let result = try await transport.saveDay(date: date, request: CalendarDayRequest(note: trimmed.isEmpty ? nil : trimmed, labels: assignments)); days[date] = result; hydrate(date: selectedDate)
+                let result = try await transport.saveDay(date: date, request: CalendarDayRequest(note: trimmed.isEmpty ? nil : trimmed, labels: assignments)); apply(result); hydrate(date: selectedDate)
             }
             saving = false; invalidateReports(); return true
         } catch { saving = false; fail(error, "Unable to save this day."); return false }
@@ -105,14 +116,14 @@ import Foundation
     func createLabel(name: String, color: String = WorkspaceTheme.palette[0]) async -> Bool {
         let value = name.trimmingCharacters(in: .whitespacesAndNewlines); guard !value.isEmpty, !addingLabel else { return false }
         addingLabel = true; error = nil
-        do { let label = try await transport.createLabel(name: value, color: color); if !labels.contains(where: { $0.name.caseInsensitiveCompare(label.name) == .orderedSame }) { labels.append(label) }; addingLabel = false; invalidateReports(); return true }
+        do { let label = try await transport.createLabel(name: String(value.prefix(80)), color: color); if !labels.contains(where: { $0.name.caseInsensitiveCompare(label.name) == .orderedSame }) { labels.append(label); labels.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending } }; addingLabel = false; invalidateReports(); return true }
         catch { addingLabel = false; fail(error, "Unable to add that label. Label names must be unique."); return false }
     }
 
     func updateLabelColor(_ label: KBLabel, color: String) async -> Bool {
         guard WorkspaceTheme.palette.contains(color) else { return false }
         var updated = label; updated.color = color
-        do { let saved = try await transport.updateLabel(updated); labels = labels.map { $0.id == saved.id ? saved : $0 }; return true }
+        do { let saved = try await transport.updateLabel(updated); labels = labels.map { $0.id == saved.id ? saved : $0 }; invalidateReports(); return true }
         catch { fail(error, "Unable to update that label color."); return false }
     }
 
@@ -120,5 +131,13 @@ import Foundation
         let key = CalendarDate.string(date, calendar: calendar); let day = days[key]
         note = day?.note ?? ""; selectedAssignments = Dictionary(uniqueKeysWithValues: (day?.labels ?? []).map { ($0.labelId, CalendarPortion(portion: $0.portion)) })
     }
+    private var editorIsDirty: Bool {
+        let saved = days[CalendarDate.string(selectedDate, calendar: calendar)]
+        let savedNote = saved?.note ?? ""
+        let savedAssignments = Dictionary(uniqueKeysWithValues: (saved?.labels ?? []).map { ($0.labelId, CalendarPortion(portion: $0.portion)) })
+        return note != savedNote || selectedAssignments != savedAssignments
+    }
+    private func apply(_ day: CalendarDay) { if day.note == nil && day.labels.isEmpty { days.removeValue(forKey: day.date) } else { days[day.date] = day } }
+    private func clearDays(start: String, end: String) { days.keys.filter { $0 >= start && $0 <= end }.forEach { days.removeValue(forKey: $0) } }
     private func fail(_ failure: Error, _ message: String) { if failure is CancellationError { return }; if case APIError.unauthorized = failure { unauthorized() } else if case APIError.offline = failure { error = message } else { error = message } }
 }

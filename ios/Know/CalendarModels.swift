@@ -98,6 +98,12 @@ enum CalendarGrid {
         let dates = monthDates(month: month, calendar: calendar)
         return (dates.first!, dates.last!)
     }
+
+    static func monthRange(for month: Date, calendar: Calendar = .current) -> (Date, Date) {
+        let start = monthStart(containing: month, calendar: calendar)
+        let end = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: start)!
+        return (start, end)
+    }
 }
 
 enum CalendarPortion: CaseIterable, Identifiable, Equatable {

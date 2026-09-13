@@ -8,9 +8,10 @@ import XCTest
         var failure: Error?
         var dayRequests: [(String, CalendarDayRequest)] = []
         var rangeRequests: [CalendarRangeRequest] = []
+        var loadedDayRanges: [(String, String)] = []
         var loads = 0
         func labels() async throws -> [KBLabel] { if let failure { throw failure }; loads += 1; return labelsValue }
-        func days(startDate: String, endDate: String) async throws -> [CalendarDay] { if let failure { throw failure }; loads += 1; return daysValue }
+        func days(startDate: String, endDate: String) async throws -> [CalendarDay] { if let failure { throw failure }; loads += 1; loadedDayRanges.append((startDate, endDate)); return daysValue }
         func saveDay(date: String, request: CalendarDayRequest) async throws -> CalendarDay { if let failure { throw failure }; dayRequests.append((date, request)); return CalendarDay(date: date, note: request.note, labels: request.labels.map { CalendarAssignment(labelId: $0.labelId, name: "Work", color: "#2878D5", portion: $0.portion) }) }
         func saveRange(request: CalendarRangeRequest) async throws -> [CalendarDay] { if let failure { throw failure }; rangeRequests.append(request); return [] }
         func createLabel(name: String, color: String) async throws -> KBLabel { KBLabel(id: UUID(), name: name, color: color, scopes: [.calendar]) }
@@ -46,8 +47,15 @@ import XCTest
         let stub = Stub(); let id = stub.labelsValue[0].id
         stub.daysValue = [CalendarDay(date: "2026-09-03", note: "Saved", labels: [CalendarAssignment(labelId: id, name: "Work", color: nil, portion: 0.25)])]
         let cal = calendar(); let now = cal.date(from: DateComponents(year: 2026, month: 9, day: 3))!
-        let model = CalendarModel(transport: stub, now: now, calendar: cal); await model.load(); XCTAssertEqual(model.note, "Saved"); XCTAssertEqual(model.selectedAssignments[id], .quarter)
+        let model = CalendarModel(transport: stub, now: now, calendar: cal); await model.load(); XCTAssertEqual(stub.loadedDayRanges.first?.0, "2026-09-01"); XCTAssertEqual(stub.loadedDayRanges.first?.1, "2026-09-30"); XCTAssertEqual(model.note, "Saved"); XCTAssertEqual(model.selectedAssignments[id], .quarter); XCTAssertFalse(model.hasUnsavedDraft)
         let count = stub.loads; await model.load(); XCTAssertEqual(stub.loads, count)
+    }
+
+    func testRefreshPreservesDirtyDraftAndEmptyResponseClearsLoadedMonth() async {
+        let stub = Stub(); let cal = calendar(); let now = cal.date(from: DateComponents(year: 2026, month: 9, day: 3))!
+        stub.daysValue = [CalendarDay(date: "2026-09-03", note: "Saved", labels: [])]
+        let model = CalendarModel(transport: stub, now: now, calendar: cal); await model.load(); model.note = "Unsaved"; stub.daysValue = []; await model.load(force: true)
+        XCTAssertEqual(model.note, "Unsaved"); XCTAssertNil(model.days["2026-09-03"]); XCTAssertTrue(model.hasUnsavedDraft)
     }
 
     func testBlankNoteTrimsToNullAndPortionToggleSaves() async {
@@ -57,7 +65,7 @@ import XCTest
 
     func testRangeNormalizesSameDayFallsBackAndRetainsDraftOnFailure() async {
         let stub = Stub(); let cal = calendar(); let a = cal.date(from: DateComponents(year: 2026, month: 9, day: 3))!; let b = cal.date(from: DateComponents(year: 2026, month: 9, day: 1))!
-        let model = CalendarModel(transport: stub, now: a, calendar: cal); model.beginRange(a); model.select(b); model.note = "Range note"; let firstSave = await model.save(); XCTAssertTrue(firstSave); XCTAssertEqual(stub.rangeRequests[0].startDate, "2026-09-01"); XCTAssertEqual(stub.rangeRequests[0].endDate, "2026-09-03")
+        let model = CalendarModel(transport: stub, now: a, calendar: cal); model.beginRange(a); XCTAssertTrue(model.selectingRange); let incomplete = await model.save(); XCTAssertFalse(incomplete); XCTAssertTrue(stub.dayRequests.isEmpty); model.select(b); XCTAssertEqual(CalendarDate.string(model.selectedDate, calendar: cal), "2026-09-01"); model.note = "Range note"; let firstSave = await model.save(); XCTAssertTrue(firstSave); XCTAssertEqual(stub.rangeRequests[0].startDate, "2026-09-01"); XCTAssertEqual(stub.rangeRequests[0].endDate, "2026-09-03"); XCTAssertEqual(CalendarDate.string(model.selectedDate, calendar: cal), "2026-09-01")
         model.beginRange(a); model.select(a); XCTAssertFalse(model.isRangeMode)
         stub.failure = APIError.offline; model.beginRange(a); model.select(b); model.note = "Keep me"; let failedSave = await model.save(); XCTAssertFalse(failedSave); XCTAssertEqual(model.note, "Keep me"); XCTAssertNotNil(model.error)
     }
@@ -71,5 +79,12 @@ import XCTest
     func testUnauthorizedLoadCallsSignOutAndMutationInvalidatesReports() async {
         let stub = Stub(); var signedOut = false; var invalidated = 0; let model = CalendarModel(transport: stub, calendar: calendar(), unauthorized: { signedOut = true }, invalidateReports: { invalidated += 1 })
         stub.failure = APIError.unauthorized; await model.load(); XCTAssertTrue(signedOut); stub.failure = nil; let created = await model.createLabel(name: "New"); XCTAssertTrue(created); XCTAssertEqual(invalidated, 1)
+    }
+
+    func testMonthChangeSelectsFirstDayAndCachedReturnHydratesIt() async {
+        let stub = Stub(); let cal = calendar(); let september = cal.date(from: DateComponents(year: 2026, month: 9, day: 13))!; let augustFirst = cal.date(from: DateComponents(year: 2026, month: 8, day: 1))!
+        stub.daysValue = [CalendarDay(date: "2026-08-01", note: "Month start", labels: [])]
+        let model = CalendarModel(transport: stub, now: september, calendar: cal); await model.setMonth(augustFirst); XCTAssertEqual(model.note, "Month start")
+        await model.setMonth(september); await model.setMonth(augustFirst); XCTAssertEqual(CalendarDate.string(model.selectedDate, calendar: cal), "2026-08-01"); XCTAssertEqual(model.note, "Month start")
     }
 }
