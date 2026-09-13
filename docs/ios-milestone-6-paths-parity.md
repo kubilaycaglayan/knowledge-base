@@ -161,5 +161,8 @@ of this milestone.
 - 2026-09-13: path loading now clears only for the current load revision, and
   the removal Undo banner exposes an accessible eight-second recovery message;
   the focused Paths package tests remain green.
+- 2026-09-13: focused iPhone 17 Pro UI accessibility case passed for selected
+  Paths navigation, add/history/edit/remove accessible names, and button
+  hittability. Full VoiceOver and contrast review remains open.
 - Full visual, VoiceOver, large Dynamic Type, backend integration, smoke, and
   physical-device evidence remains open.
