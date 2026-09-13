@@ -152,6 +152,8 @@ Native Reports work is split into semantic commits:
 - `3572225` adds dedicated note-only and 0.25/0.50/0.75/1.00 Calendar
   fixtures, model assertions, and iPhone UI coverage for their distinct
   visible details.
+- `672943a` adds simulator assertions for the fixture’s exact `3h 40m`
+  duration copy and accessible `Linear trend` detail.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -513,7 +515,7 @@ only on a happy-path screenshot.
   and recognizably busy/dimmed during refresh.
 - [x] **AC-063 — Refresh interaction safety:** Controls cannot accidentally
   submit duplicate equivalent loads while the same query is active.
-- [ ] **AC-064 — Matching completion:** Only the response belonging to the
+- [x] **AC-064 — Matching completion:** Only the response belonging to the
   current query may replace the visible report.
 - [x] **AC-065 — Stale completion:** A slower response for an older range,
   aggregation, filter, account, or app lifecycle cannot overwrite newer state.
@@ -564,7 +566,7 @@ only on a happy-path screenshot.
 - [x] **AC-084 — Report total:** The summary total equals the sum of all
   displayed filtered daily path durations and does not include Calendar
   portions or notes.
-- [ ] **AC-085 — Duration precision:** Main tracked totals use the web’s report
+- [x] **AC-085 — Duration precision:** Main tracked totals use the web’s report
   duration format; breakdown rows and compact bucket labels use their matching
   hours/minutes formats without accidental decimal-hour conversion.
 - [x] **AC-086 — Tabular numbers:** Comparable durations and counts use tabular
@@ -602,7 +604,7 @@ only on a happy-path screenshot.
   draw misleading zero data.
 - [x] **AC-098 — Trendline extent:** Trend data starts at the first non-empty
   bucket and stops at the last non-empty bucket.
-- [ ] **AC-099 — Trendline accessibility:** Bucket detail identifies the active
+- [x] **AC-099 — Trendline accessibility:** Bucket detail identifies the active
   trendline type and value without using line style/color as the only cue.
 
 ### Breakdown table and donut
