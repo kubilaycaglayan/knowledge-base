@@ -3,6 +3,8 @@ import SwiftUI
 struct WorkspaceView: View {
     @ObservedObject var app: AppModel
     @StateObject private var sessions: SessionsModel
+    @StateObject private var logs: LogsModel
+    @StateObject private var labels: LabelsModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     @AppStorage("knowledge-base.appearance") private var appearance = "system"
@@ -21,6 +23,17 @@ struct WorkspaceView: View {
             defaults: uiTesting ? nil : .standard,
             account: Self.accountID(app.token),
             unauthorized: { [weak app] in app?.signOut() }
+        ))
+        let logAPI = LogsAPI(client: app.api, token: app.token ?? "")
+        self._logs = StateObject(wrappedValue: LogsModel(
+            transport: uiTesting ? LogsFixture(arguments: arguments) : logAPI,
+            unauthorized: { [weak app] in app?.signOut() }
+        ))
+        let labelsAPI = LabelsAPI(client: app.api, token: app.token ?? "")
+        self._labels = StateObject(wrappedValue: LabelsModel(
+            transport: uiTesting ? LabelsFixture(arguments: arguments) : labelsAPI,
+            unauthorized: { [weak app] in app?.signOut() },
+            invalidateReports: { [weak app] in Task { await app?.refresh() } }
         ))
     }
 
@@ -49,11 +62,11 @@ struct WorkspaceView: View {
                     } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44) }
                         .accessibilityLabel("Appearance settings").accessibilityIdentifier("workspace.appearance")
                     Button("Sign out") {
-                        if sessions.hasUnsavedDraft || sessions.editingHistoryDraft { signOutConfirmation = true } else { app.signOut() }
+                        if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft || labels.hasUnsavedDraft { signOutConfirmation = true } else { app.signOut() }
                     }.font(.caption).frame(minHeight: 44).accessibilityIdentifier("workspace.signOut")
                 }
                 HStack(spacing: 2) {
-                    ForEach(["Sessions", "Paths", "Timeline"], id: \.self) { name in
+                    ForEach(["Sessions", "Logs", "Labels", "Paths", "Timeline"], id: \.self) { name in
                         Button { section = name } label: {
                             Text(name).font(.subheadline.weight(section == name ? .semibold : .regular))
                                 .padding(.horizontal, 10).frame(minHeight: 44)
@@ -66,6 +79,8 @@ struct WorkspaceView: View {
             Rectangle().fill(WorkspaceTheme.border(scheme)).frame(height: 1).padding(.horizontal, 16)
             ZStack {
                 SessionsView(model: sessions).opacity(section == "Sessions" ? 1 : 0).allowsHitTesting(section == "Sessions").accessibilityHidden(section != "Sessions")
+                LogsView(model: logs).opacity(section == "Logs" ? 1 : 0).allowsHitTesting(section == "Logs").accessibilityHidden(section != "Logs")
+                LabelsView(model: labels).opacity(section == "Labels" ? 1 : 0).allowsHitTesting(section == "Labels").accessibilityHidden(section != "Labels")
                 if section == "Paths" { PathsView() }
                 if section == "Timeline" { TimelineView() }
             }
@@ -74,14 +89,14 @@ struct WorkspaceView: View {
         .tint(WorkspaceTheme.accent(scheme))
         .background(WorkspaceTheme.background(scheme))
         .preferredColorScheme(appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
-        .task { if uiTesting { await sessions.load() } else { resume() } }
-        .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resume() } } else { sessions.suspend() } }
+        .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load() } else { resume() } }
+        .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resume() } } else { sessions.suspend(); logs.suspend() } }
         .onChange(of: section) { _, value in if value != "Sessions" { Task { await app.refresh() } } }
-        .onDisappear { sessions.suspend() }
+        .onDisappear { sessions.suspend(); logs.suspend() }
         .confirmationDialog("Discard unsaved changes and sign out?", isPresented: $signOutConfirmation, titleVisibility: .visible) {
             Button("Discard and sign out", role: .destructive) { app.signOut() }
             Button("Keep editing", role: .cancel) {}
         }
     }
-    private func resume() { if let token = app.token { sessions.resume(client: app.api, token: token) } }
+    private func resume() { if let token = app.token { sessions.resume(client: app.api, token: token); logs.resume(); Task { await labels.load() } } }
 }
