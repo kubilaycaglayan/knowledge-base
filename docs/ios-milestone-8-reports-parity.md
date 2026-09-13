@@ -180,6 +180,8 @@ Native Reports work is split into semantic commits:
   Sankey content remains reachable through its horizontal scroll container.
 - `efbd0f4` adds a deterministic 60-day dense fixture with 12+ paths and
   labels, model collection assertions, and iPhone 13 Pro rendering coverage.
+- `0a8ac57` gives each chart bucket a stable accessibility identifier and
+  verifies its combined date, total, and category detail on iPhone.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -603,7 +605,7 @@ only on a happy-path screenshot.
 - [x] **AC-088 — Long ranges:** Ranges with more than 31 daily values remain
   navigable/readable through native scrolling or range navigation without
   compressing labels and targets into unusable sizes.
-- [ ] **AC-089 — Chart detail:** Selecting/focusing a bucket exposes its date,
+- [x] **AC-089 — Chart detail:** Selecting/focusing a bucket exposes its date,
   total, category durations, and percentages in a native accessible detail
   presentation equivalent to the web tooltip.
 - [ ] **AC-090 — Safe generated content:** User-controlled path names, label
