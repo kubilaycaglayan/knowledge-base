@@ -34,6 +34,14 @@ struct CalendarDayAssignment: Codable, Equatable {
 struct CalendarDayRequest: Codable, Equatable {
     let note: String?
     let labels: [CalendarDayAssignment]
+
+    enum CodingKeys: String, CodingKey { case note, labels }
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(note, forKey: .note)
+        if note == nil { try container.encodeNil(forKey: .note) }
+        try container.encode(labels, forKey: .labels)
+    }
 }
 
 struct CalendarRangeRequest: Codable, Equatable {
@@ -41,6 +49,14 @@ struct CalendarRangeRequest: Codable, Equatable {
     let endDate: String
     let note: String?
     let labels: [CalendarDayAssignment]
+
+    enum CodingKeys: String, CodingKey { case startDate, endDate, note, labels }
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(startDate, forKey: .startDate); try container.encode(endDate, forKey: .endDate)
+        try container.encodeIfPresent(note, forKey: .note); if note == nil { try container.encodeNil(forKey: .note) }
+        try container.encode(labels, forKey: .labels)
+    }
 }
 
 enum CalendarDate {
@@ -84,7 +100,7 @@ enum CalendarGrid {
     }
 }
 
-enum CalendarPortion: CaseIterable, Identifiable {
+enum CalendarPortion: CaseIterable, Identifiable, Equatable {
     case marker, quarter, half, threeQuarter, full
     var id: String { title }
     var value: Decimal? { switch self { case .marker: nil; case .quarter: 0.25; case .half: 0.50; case .threeQuarter: 0.75; case .full: 1.00 } }
