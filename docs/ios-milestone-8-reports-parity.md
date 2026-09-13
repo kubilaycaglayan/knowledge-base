@@ -176,6 +176,8 @@ Native Reports work is split into semantic commits:
   heading.
 - `e7cab14` counts first-activation transport calls and verifies repeated model
   loads issue exactly one report, paths, and scoped-label request.
+- The Calendar/Sankey textual-detail UI test also passes on iPhone 13 Pro;
+  Sankey content remains reachable through its horizontal scroll container.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -718,7 +720,7 @@ only on a happy-path screenshot.
   bar chart.
 - [x] **AC-135 — Sankey accessibility:** VoiceOver can read a textual sequence
   of all flows and values without interpreting the diagram geometry.
-- [ ] **AC-136 — Compact Sankey:** On a small iPhone, Sankey content uses an
+- [x] **AC-136 — Compact Sankey:** On a small iPhone, Sankey content uses an
   intentional horizontal scroll or equivalent compact representation; the
   rest of the page does not gain unwanted horizontal scrolling.
 
