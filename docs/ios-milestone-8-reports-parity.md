@@ -159,6 +159,8 @@ Native Reports work is split into semantic commits:
   focused summary and Calendar/Sankey simulator tests remain green.
 - `44effba` adds a stable breakdown control and simulator coverage switching
   between path aggregates and session-label aggregates.
+- `88ce6b2` makes the breakdown summary explicitly vertical and verifies the
+  populated Reports hierarchy on an iPhone 13 Pro simulator.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -633,7 +635,7 @@ only on a happy-path screenshot.
   time description when empty.
 - [x] **AC-108 — Empty breakdown:** A grouping with no categories shows
   `No tracked time in this period.` and a zero `00:00` donut total.
-- [ ] **AC-109 — Compact stacking:** On a small iPhone, the breakdown table and
+- [x] **AC-109 — Compact stacking:** On a small iPhone, the breakdown table and
   donut stack vertically in reading order with no clipped rows or labels.
 
 ### Calendar inputs and daily-record summary
