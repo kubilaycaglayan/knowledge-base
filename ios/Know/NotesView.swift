@@ -7,16 +7,18 @@ struct NotesView: View {
     @State private var labelInput = ""
     @State private var labelIndex = 0
     @State private var saveTask: Task<Void, Never>?
+    @State private var searchTask: Task<Void, Never>?
     @State private var undoStack: [String] = []
     @State private var redoStack: [String] = []
     @State private var archiveCandidate: Note?
+    @State private var leaveConfirmation = false
     @FocusState private var focused: Field?
     enum Field: Hashable { case search, title, body, label }
 
     var body: some View {
         Group { if editorDraft != nil { editor } else { list } }
             .background(WorkspaceTheme.background(scheme))
-            .onDisappear { saveTask?.cancel() }
+            .onDisappear { saveTask?.cancel(); searchTask?.cancel() }
     }
 
     private var list: some View {
@@ -29,7 +31,7 @@ struct NotesView: View {
                 }
                 if let error = model.error { errorNotice(error) }
                 HStack(spacing: 10) {
-                    TextField("Search title, body, or label…", text: $model.query).textFieldStyle(.roundedBorder).focused($focused, equals: .search).accessibilityLabel("Search notes").accessibilityIdentifier("notes.search").onSubmit { Task { await model.load(force: true) } }
+                    TextField("Search title, body, or label…", text: $model.query).textFieldStyle(.roundedBorder).focused($focused, equals: .search).accessibilityLabel("Search notes").accessibilityIdentifier("notes.search").onSubmit { Task { await model.load(force: true) } }.onChange(of: model.query) { _, _ in searchTask?.cancel(); searchTask = Task { try? await Task.sleep(for: .milliseconds(250)); guard !Task.isCancelled else { return }; model.resetToFirstPage(); await model.load(force: true) } }
                     Menu { ForEach([20, 50, 100], id: \.self) { amount in Button("Show \(amount)") { model.setPageSize(amount); Task { await model.load() } } } } label: { Text("Show \(model.size)").frame(minWidth: 72, minHeight: 44) }.accessibilityLabel("Notes per page")
                     Button(model.archived ? "Active notes" : "Archive") { model.setArchive(!model.archived); Task { await model.load() } }.buttonStyle(WorkspaceButton()).accessibilityIdentifier("notes.archive-toggle")
                 }
@@ -43,6 +45,10 @@ struct NotesView: View {
             Button("Archive note", role: .destructive) { if let note = archiveCandidate { Task { await model.archive(note) } }; archiveCandidate = nil }
             Button("Cancel", role: .cancel) { archiveCandidate = nil }
         } message: { Text("Archived notes are permanently deleted after 30 days.") }
+        .confirmationDialog("Discard unsaved note changes?", isPresented: $leaveConfirmation, titleVisibility: .visible) {
+            Button("Discard changes", role: .destructive) { discardEditor() }
+            Button("Keep editing", role: .cancel) {}
+        }
     }
 
     @ViewBuilder private func row(_ note: Note) -> some View {
@@ -81,6 +87,7 @@ struct NotesView: View {
     private func scheduleSave() { guard editorDraft != nil else { return }; model.saveState = .saving; saveTask?.cancel(); saveTask = Task { try? await Task.sleep(for: .milliseconds(650)); guard !Task.isCancelled, let draft = editorDraft else { return }; _ = await model.save(draft) } }
     private func undo() { guard let old = undoStack.popLast(), var draft = editorDraft else { return }; redoStack.append(draft.body); draft.body = old; editorDraft = draft; scheduleSave() }
     private func redo() { guard let next = redoStack.popLast(), var draft = editorDraft else { return }; undoStack.append(draft.body); draft.body = next; editorDraft = draft; scheduleSave() }
-    private func closeEditor() { saveTask?.cancel(); editorDraft = nil; undoStack.removeAll(); redoStack.removeAll(); labelInput = ""; Task { await model.load(force: true) } }
+    private func closeEditor() { if model.hasUnsavedDraft { leaveConfirmation = true } else { discardEditor() } }
+    private func discardEditor() { saveTask?.cancel(); editorDraft = nil; undoStack.removeAll(); redoStack.removeAll(); labelInput = ""; model.saveState = .saved; Task { await model.load(force: true) } }
     private func errorNotice(_ text: String) -> some View { VStack(alignment: .leading, spacing: 8) { Text(text).foregroundStyle(WorkspaceTheme.danger(scheme)).accessibilityLabel(text); Button("Retry") { Task { await model.load(force: true) } }.buttonStyle(WorkspaceButton()) }.accessibilityIdentifier("notes.error") }
 }

@@ -91,6 +91,7 @@ import Foundation
 
     func setArchive(_ value: Bool) { archived = value; page = 0; pages.removeAll() }
     func setPageSize(_ value: Int) { size = value; page = 0; pages.removeAll() }
+    func resetToFirstPage() { page = 0; pages.removeAll() }
     func nextPage() { if canGoNext { page += 1; Task { await load() } } }
     func previousPage() { if canGoPrevious { page -= 1; Task { await load() } } }
     func clearError() { error = nil }

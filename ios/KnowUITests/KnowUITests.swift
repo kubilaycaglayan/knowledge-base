@@ -156,6 +156,46 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No network connection. Reconnect and try again."].waitForExistence(timeout: 5))
     }
 
+    func testNotesListEditorAndArchiveControlsAreReachable() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.notes"].tap()
+        XCTAssertTrue(app.staticTexts["Notes"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["notes.add"].exists)
+        XCTAssertTrue(app.buttons["Open Design notes"].exists)
+        app.buttons["Open Design notes"].tap()
+        XCTAssertTrue(app.textFields["notes.title"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textViews["notes.body"].exists)
+        XCTAssertTrue(app.buttons["Undo"].exists)
+        app.buttons["notes.back"].tap()
+        XCTAssertTrue(app.staticTexts["Notes"].waitForExistence(timeout: 5))
+        app.buttons["Archive Design notes"].tap()
+        XCTAssertTrue(app.buttons["Archive note"].waitForExistence(timeout: 3))
+        app.buttons["Archive note"].tap()
+    }
+
+    func testNotesEmptyAndOfflineFixturesOfferRecovery() {
+        app.launchArguments += ["-ui-testing-authenticated", "-notes-empty"]
+        app.launch()
+        app.buttons["workspace.notes"].tap()
+        XCTAssertTrue(app.staticTexts["Your notes will appear here."].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-notes-offline"]
+        app.launch()
+        app.buttons["workspace.notes"].tap()
+        XCTAssertTrue(app.staticTexts["No network connection. Reconnect and try again."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Retry"].exists)
+    }
+
+    func testArchivedNotesCanBeRestored() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.notes"].tap()
+        app.buttons["notes.archive-toggle"].tap()
+        XCTAssertTrue(app.buttons["Restore"].waitForExistence(timeout: 5))
+        app.buttons["Restore"].tap()
+    }
+
     func testSignOutReturnsToAuthenticationFlow() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
