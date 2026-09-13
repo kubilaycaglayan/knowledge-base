@@ -217,6 +217,8 @@ Native Reports work is split into semantic commits:
   retry affordance, and retained session recovery controls.
 - The Reports breakdown collection now uses a `LazyVStack`, keeping dense path
   and label lists lazy while preserving the deterministic dense fixture test.
+- A focused iPhone 13 Pro UI fixture rotates Reports to landscape and back,
+  confirming the summary, filter, and trendline controls remain reachable.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
