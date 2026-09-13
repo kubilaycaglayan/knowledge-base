@@ -98,8 +98,7 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   and draft preservation. Enlarged-text layouts did not overflow. Google
   traffic is blocked; this run does not verify live Google interaction.
 - Inspected the 390px light sign-in and dark registration screenshots. Evidence
-  directory: `<temporary evidence directory>`.
-  Evidence is temporary and can be regenerated with the script.
+  is temporary and can be regenerated with the script.
 - Swift package baseline: 36 tests passed on Xcode 26.6/macOS. This does not
   prove simulator, physical device, or new milestone coverage.
 - Generated `ios/Know.xcodeproj` with XcodeGen and started the aggregate iPhone
