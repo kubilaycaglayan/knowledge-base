@@ -16,7 +16,7 @@ observed source behavior separately from native requirements in Milestone 2.
 | Invalid email | Browser `type=email` validation prevents POST | Model validation matching HTML email syntax; inline error; focus email |
 | Missing / short password | Browser `required`, `minlength=9`; browser-localized validation | Model validation; inline error; focus password after email is valid; preserve whitespace in password |
 | Password over 200 characters | Web has no maxlength; server rejects with 400 | Preserve server maximum contract, document any native inline validation; count UTF-16 units like HTML/Java |
-| Submit / loading | Clears form error, POSTs email/password; currently no spinner, disabling, or duplicate protection | Milestone explicitly requires a busy state, retained button label and spinner, one request at a time, preserved draft |
+| Submit / loading | Clears form error, POSTs email/password, retains the action label beside a spinner, disables the submit while the request is pending, and ignores duplicate submissions | Native busy state must keep the same label, show progress, allow one request at a time, and preserve the draft |
 | Password success | Persists `know_token`, emits authenticated; App refreshes store and routes to safe internal redirect or `/sessions` | Validate response, persist Keychain before accepting token, route to native workspace through AppModel |
 | Invalid credentials (401) | “Could not authenticate. Use a valid email and a password of at least 9 characters.” | Same form error, editable draft, retry through submit; failed public login must not clear an existing session |
 | Duplicate email (409) | Same password-auth error; does not display backend “Email already registered” | Same form error and retry; registration draft remains intact |
@@ -82,11 +82,12 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Initial web reference run on Node 26 failed because native `localStorage`
   shadows the jsdom storage. Node 26 requires an isolated storage file for
   Vitest: `PATH=/opt/homebrew/bin:$PATH NODE_OPTIONS='--localstorage-file=/tmp/knowledge-base-vitest-localstorage' npm test -- --run src/views/AuthView.test.ts src/stores/auth.test.ts src/lib/api.test.ts src/App.test.ts`.
-- Web reference rerun with that isolated storage file: all 34 tests passed
+- Web reference rerun with that isolated storage file: all 37 focused auth/store/API/App tests passed
   across the four files above.
-- Full web Vitest suite passed under `TZ=UTC`: 31 files and 242 tests. The UTC
-  setting is required because several existing date expectations intentionally
-  use UTC boundaries.
+- Full web Vitest suite passed under `TZ=UTC` with `--maxWorkers=1`: 31 files
+  and 243 tests. The UTC setting is required because several existing date
+  expectations intentionally use UTC boundaries; a shared isolated
+  `--localstorage-file` is also required by Node 26.
 - Installed missing Playwright Chromium. The existing general UI runner timed
   out waiting for `main h1` on Sessions before reaching auth; this is not a
   passing general UI run. Added `frontend/scripts/check-auth-ui.mjs` to exercise

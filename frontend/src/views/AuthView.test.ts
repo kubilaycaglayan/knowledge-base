@@ -66,6 +66,24 @@ describe("AuthView", () => {
     expect(wrapper.get(".auth-retry").text()).toBe("Try again");
   });
 
+  it("keeps the submit label, shows busy state, and ignores duplicate submits", async () => {
+    let resolve: (value: { token: string }) => void = () => {};
+    vi.mocked(api).mockImplementation(() => new Promise((done) => { resolve = done; }));
+    const wrapper = mount(AuthView);
+    await wrapper.get('input[type="email"]').setValue("learner@example.com");
+    await wrapper.get('input[name="password"]').setValue("a-secure-password");
+    const form = wrapper.get("form");
+    await form.trigger("submit");
+    await form.trigger("submit");
+
+    expect(api).toHaveBeenCalledTimes(1);
+    expect(wrapper.get("button.primary").attributes("disabled")).toBeDefined();
+    expect(wrapper.get("button.primary").text()).toContain("Sign in");
+    resolve({ token: "test-token" });
+    await flushPromises();
+    expect(wrapper.get("button.primary").attributes("disabled")).toBeUndefined();
+  });
+
   it("requires matching confirmation when creating an account", async () => {
     const wrapper = mount(AuthView);
     await wrapper.get(".text-button").trigger("click");
