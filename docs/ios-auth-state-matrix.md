@@ -161,6 +161,11 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - The required Dockerized backend test command could not run because this host
   has no `docker` executable. Frontend build and web auth tests remain green;
   backend/API integration and smoke checks therefore remain unverified here.
+- A fresh aggregate `xcodebuild ... -only-testing:KnowUITests` attempt again
+  stalled before test cases under Xcode 26.6 with repeated
+  `DebuggerVersionStore.StoreError`/“waiting for workers to materialize” output;
+  it was interrupted after roughly two minutes. The scoped five-case auth UI
+  suite remains the reliable simulator evidence.
 
 ## Remaining acceptance evidence
 
