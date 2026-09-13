@@ -151,6 +151,9 @@ of this milestone.
 - Swift package verification on 2026-09-13: focused Paths API transport coverage
   passed, including bearer authentication, create/update/delete/restore/merge
   paths, and the merge target request body.
+- Simulator verification on 2026-09-13: the iPhone 17 Pro UI regression passed
+  for new-path draft discard confirmation; partially filled add forms cannot be
+  dismissed without an explicit destructive choice.
 - XcodeGen simulator build and focused iPhone 17 Pro UI verification on
   2026-09-13: `testAuthenticatedWorkspaceControlsAreReachable`,
   `testPathsHistoryAndEditControlsAreReachable`, and
