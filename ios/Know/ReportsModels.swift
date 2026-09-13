@@ -13,6 +13,20 @@ enum ReportTrendline: String, CaseIterable { case off = "OFF", linear = "LINEAR"
 
 enum ReportBreakdown: String, CaseIterable { case path = "Path", labels = "Labels" }
 
+enum ReportsFormatting {
+    static func duration(_ seconds: Int64, locale: Locale = .current) -> String {
+        if seconds == 0 { return "00:00" }
+        let formatter = DateComponentsFormatter()
+        var calendar = Calendar.current
+        calendar.locale = locale
+        formatter.calendar = calendar
+        formatter.allowedUnits = seconds >= 3600 ? [.hour, .minute] : [.minute]
+        formatter.unitsStyle = .abbreviated
+        formatter.zeroFormattingBehavior = .dropAll
+        return formatter.string(from: TimeInterval(seconds)) ?? "00:00"
+    }
+}
+
 struct ReportCategory: Codable, Equatable {
     let id: UUID?
     let label: String
