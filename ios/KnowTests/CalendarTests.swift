@@ -61,4 +61,15 @@ import XCTest
         model.beginRange(a); model.select(a); XCTAssertFalse(model.isRangeMode)
         stub.failure = APIError.offline; model.beginRange(a); model.select(b); model.note = "Keep me"; let failedSave = await model.save(); XCTAssertFalse(failedSave); XCTAssertEqual(model.note, "Keep me"); XCTAssertNotNil(model.error)
     }
+
+    func testLabelCreateTrimsAndColorUpdateUsesFixedPalette() async {
+        let stub = Stub(); let model = CalendarModel(transport: stub, calendar: calendar()); let created = await model.createLabel(name: "  Launch  ", color: WorkspaceTheme.palette[2])
+        XCTAssertTrue(created); XCTAssertEqual(model.labels.last?.name, "Launch"); XCTAssertEqual(model.labels.last?.color, WorkspaceTheme.palette[2])
+        let label = model.labels[0]; let recolored = await model.updateLabelColor(label, color: WorkspaceTheme.palette[4]); XCTAssertTrue(recolored); XCTAssertEqual(model.labels[0].color, WorkspaceTheme.palette[4]); let rejected = await model.updateLabelColor(label, color: "#not-a-palette-color"); XCTAssertFalse(rejected)
+    }
+
+    func testUnauthorizedLoadCallsSignOutAndMutationInvalidatesReports() async {
+        let stub = Stub(); var signedOut = false; var invalidated = 0; let model = CalendarModel(transport: stub, calendar: calendar(), unauthorized: { signedOut = true }, invalidateReports: { invalidated += 1 })
+        stub.failure = APIError.unauthorized; await model.load(); XCTAssertTrue(signedOut); stub.failure = nil; let created = await model.createLabel(name: "New"); XCTAssertTrue(created); XCTAssertEqual(invalidated, 1)
+    }
 }
