@@ -10,6 +10,14 @@ final class KnowUITests: XCTestCase {
         app.launch()
     }
 
+    override func tearDownWithError() throws {
+        // Sessions starts foreground/socket tasks; terminate explicitly so the
+        // next case gets a clean launch argument set and no stale task tree.
+        app?.terminate()
+        app = nil
+        try super.tearDownWithError()
+    }
+
     func testAuthenticationControlsAreReachable() {
         XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.secureTextFields["auth.password"].waitForExistence(timeout: 5))
