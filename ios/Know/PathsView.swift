@@ -16,8 +16,8 @@ struct PathsView: View {
     private enum Field: Hashable { case name, description }
     @State private var name = ""
     @State private var description = ""
-    @State private var color = "#3B82F6"
-    private let colors = ["#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#EC4899", "#64748B", "#84CC16", "#475569"]
+    @State private var color = WorkspaceTheme.palette[0]
+    private let colors = WorkspaceTheme.palette
 
     var body: some View {
         ScrollView {
