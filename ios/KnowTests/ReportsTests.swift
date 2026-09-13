@@ -217,6 +217,17 @@ import XCTest
         XCTAssertFalse(model.refreshing); XCTAssertNotNil(model.report); XCTAssertEqual(model.error, "Unable to load the report. Please try again.")
     }
 
+    func testFilterChangeRetainsVisibleReportDuringMatchingRefresh() async {
+        final class FilterStub: Stub {
+            var delay: Duration = .zero
+            override func report(query: ReportQuery) async throws -> Report { if delay != .zero { try await Task.sleep(for: delay) }; return try await super.report(query: query) }
+        }
+        let stub = FilterStub(); let model = ReportsModel(transport: stub); await model.load(); stub.delay = .milliseconds(50)
+        let update = Task { await model.togglePath(UUID(uuidString: "00000000-0000-0000-0000-000000000001")!) }
+        try? await Task.sleep(for: .milliseconds(8)); XCTAssertTrue(model.refreshing); XCTAssertNotNil(model.report); await update.value
+        XCTAssertFalse(model.refreshing); XCTAssertNotNil(model.report); XCTAssertEqual(model.query.pathIDs.count, 1)
+    }
+
     func testFixtureHonorsRepeatedPathAndLabelFiltersWithoutAccountAccess() async throws {
         let fixture = ReportsFixture(arguments: ["-reports-filtered"])
         let research = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!; let writing = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!; let deepWork = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!; let planning = UUID(uuidString: "00000000-0000-0000-0000-000000000012")!
