@@ -157,6 +157,15 @@ Native Reports work is split into semantic commits:
   session-label, and Calendar lookups and verifies that foreign path/label
   names cannot appear in the report response. It remains part of the backend
   gate rather than being claimed as locally executed evidence.
+- Reports controls and chart tracks now use 3:1-or-better semantic boundary
+  colors in both appearances. The selected aggregation has a separate
+  accent-outline signal, range errors use the tested semantic danger color,
+  and the contrast regression suite covers text, errors, controls, gridlines,
+  chart marks, focus indicators, and selected-state indicators.
+- `swift test --package-path ios` passes 121/121 native package tests. The
+  focused iPhone 17 `testReportsFixtureScreenshotEvidence` also passes after
+  the contrast change and its sanitized light/dark attachments were visually
+  reviewed; the Xcode result bundle remains local and uncommitted.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
@@ -891,10 +900,14 @@ only on a happy-path screenshot.
 - [x] **AC-154 — Orientation and safe areas:** Portrait and supported landscape
   layouts respect top, bottom, and horizontal safe areas and avoid unwanted
   nested scrolling.
-- [ ] **AC-155 — Light appearance:** Text, controls, chart marks, gridlines,
+- [x] **AC-155 — Light appearance:** Text, controls, chart marks, gridlines,
   focus, selected states, and errors meet contrast requirements in light mode.
-- [ ] **AC-156 — Dark appearance:** The same elements meet contrast requirements
-  in dark mode, and chart/system surfaces match `WorkspaceTheme`.
+  Native contrast assertions cover semantic text/error colors, controls,
+  gridlines/tracks, chart marks, and focus/selected indicators; a fresh
+  sanitized iPhone 17 light attachment was visually reviewed.
+- [x] **AC-156 — Dark appearance:** The same elements meet contrast requirements
+  in dark mode, and chart/system surfaces match `WorkspaceTheme`. The same
+  assertions and a freshly reviewed dark attachment verify the dark palette.
 - [x] **AC-157 — System appearance:** Changing the system appearance updates the
   report and native chart colors without requiring a reload or losing state.
 - [x] **AC-158 — Reduced motion:** Reduced Motion disables shimmer/scan/orbit

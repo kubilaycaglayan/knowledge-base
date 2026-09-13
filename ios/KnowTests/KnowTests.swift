@@ -412,6 +412,19 @@ final class KnowTests: XCTestCase {
         }
     }
 
+    func testReportsThemeNonTextControlsGridlinesFocusAndSelectedIndicatorsMeetContrast() {
+        let light = (background: "f7f8fa", surface: "ffffff", border: "7c8796", control: "7c8796", focus: "334155")
+        let dark = (background: "151a22", surface: "1c2430", border: "697789", control: "697789", focus: "c4d1e2")
+
+        for theme in [light, dark] {
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.border, theme.background), 3)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.border, theme.surface), 3)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.control, theme.background), 3)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.control, theme.surface), 3)
+            XCTAssertGreaterThanOrEqual(contrastRatio(theme.focus, theme.background), 3)
+        }
+    }
+
     private func contrastRatio(_ foreground: String, _ background: String) -> Double {
         func luminance(_ hex: String) -> Double {
             let value = UInt64(hex, radix: 16)!
