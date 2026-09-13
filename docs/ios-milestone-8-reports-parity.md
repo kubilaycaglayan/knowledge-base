@@ -213,6 +213,9 @@ Native Reports work is split into semantic commits:
   output and the iPhone summary fixture remains green.
 - A focused iPhone 13 Pro UI test switches the workspace between Dark and Light
   while Reports is open and confirms the page remains mounted without reload.
+- The repository security contract passes all 33 checks; `Config.xcconfig`
+  contains only public defaults and includes the gitignored `Local.xcconfig`
+  override, with no report credentials or private data tracked.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -840,7 +843,7 @@ only on a happy-path screenshot.
   when query parameters are identical.
 - [x] **AC-166 — Read-only behavior:** Reports performs no POST, PUT, PATCH, or
   DELETE request and never mutates tracked time or Calendar data locally.
-- [ ] **AC-167 — Secret-free configuration:** API overrides remain in ignored
+- [x] **AC-167 — Secret-free configuration:** API overrides remain in ignored
   local configuration; no host address, password, token, account detail, or
   personal report content is committed.
 
