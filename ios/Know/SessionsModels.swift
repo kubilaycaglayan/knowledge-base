@@ -61,16 +61,24 @@ struct SessionDraft: Equatable {
 }
 
 enum SessionFormatting {
-    static func date(_ value: String?) -> Date? {
-        guard let value else { return nil }
+    private static let fractionalISO8601Formatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: value) { return date }
+        return formatter
+    }()
+    private static let internetISO8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: value)
+        return formatter
+    }()
+
+    static func date(_ value: String?) -> Date? {
+        guard let value else { return nil }
+        if let date = fractionalISO8601Formatter.date(from: value) { return date }
+        return internetISO8601Formatter.date(from: value)
     }
 
-    static func iso(_ date: Date) -> String { ISO8601DateFormatter().string(from: date) }
+    static func iso(_ date: Date) -> String { internetISO8601Formatter.string(from: date) }
 
     static func duration(_ seconds: Int64) -> String {
         let seconds = max(0, seconds)
