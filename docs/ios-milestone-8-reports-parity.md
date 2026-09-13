@@ -188,6 +188,8 @@ Native Reports work is split into semantic commits:
   do not invoke the sign-out path.
 - `ee8ffd8` verifies sign-out destroys the prior report cache: the same query
   loads a changed report response after the account boundary.
+- The delayed unauthorized regression test verifies that an obsolete report
+  load cannot sign out the newer account after the model generation changes.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -197,7 +199,7 @@ Native Reports work is split into semantic commits:
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 115 native package tests, including 33
+- `swift test --package-path ios` passes 116 native package tests, including 34
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 13 Pro and iPhone 17 Pro simulator UI coverage passes for Reports navigation,
@@ -807,7 +809,7 @@ only on a happy-path screenshot.
   report state, fixtures, screenshots, or diagnostics.
 - [x] **AC-161 — Current-token 401:** A 401 belonging to the current account
   routes through the existing `AppModel` sign-out flow.
-- [ ] **AC-162 — Delayed 401 safety:** A delayed 401 from an obsolete token or
+- [x] **AC-162 — Delayed 401 safety:** A delayed 401 from an obsolete token or
   superseded account cannot sign out a newer authenticated session.
 - [x] **AC-163 — Non-auth failures:** Offline, timeout, 404, 409, and 503 errors
   retain the current credential and do not produce false sign-out.
