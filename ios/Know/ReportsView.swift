@@ -70,7 +70,7 @@ struct ReportsView: View {
             HStack {
                 Text("Breakdown").font(.headline)
                 Spacer()
-                Picker("Group by", selection: $model.breakdown) { ForEach(ReportBreakdown.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden()
+                Picker("Group by", selection: $model.breakdown) { ForEach(ReportBreakdown.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().accessibilityIdentifier("reports.breakdown")
             }
             ForEach(Array(values.enumerated()), id: \.element.identity) { index, value in
                 HStack { Circle().fill(WorkspaceTheme.color(value.color ?? WorkspaceTheme.palette[index % WorkspaceTheme.palette.count])).frame(width: 10, height: 10); Text(value.label).lineLimit(2); Spacer(); Text(duration(value.seconds)).monospacedDigit() }.padding(.vertical, 6)
