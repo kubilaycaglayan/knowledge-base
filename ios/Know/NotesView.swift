@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct NotesView: View {
-    @ObservedObject var model: NotesModel
+    @Bindable var model: NotesModel
     @Environment(\.colorScheme) private var scheme
     @State private var editorDraft: NoteDraft?
     @State private var labelInput = ""

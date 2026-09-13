@@ -1,19 +1,20 @@
 import Foundation
+import Observation
 
-@MainActor final class CalendarModel: ObservableObject {
-    @Published private(set) var labels: [KBLabel] = []
-    @Published private(set) var days: [String: CalendarDay] = [:]
-    @Published private(set) var loading = false
-    @Published private(set) var loaded = false
-    @Published private(set) var saving = false
-    @Published private(set) var addingLabel = false
-    @Published var error: String?
-    @Published var month: Date
-    @Published var selectedDate: Date
-    @Published var note = ""
-    @Published var selectedAssignments: [UUID: CalendarPortion] = [:]
-    @Published private(set) var rangeStart: Date?
-    @Published private(set) var rangeEnd: Date?
+@MainActor @Observable final class CalendarModel {
+    private(set) var labels: [KBLabel] = []
+    private(set) var days: [String: CalendarDay] = [:]
+    private(set) var loading = false
+    private(set) var loaded = false
+    private(set) var saving = false
+    private(set) var addingLabel = false
+    var error: String?
+    var month: Date
+    var selectedDate: Date
+    var note = ""
+    var selectedAssignments: [UUID: CalendarPortion] = [:]
+    private(set) var rangeStart: Date?
+    private(set) var rangeEnd: Date?
 
     let calendar: Calendar
     private let transport: CalendarTransport

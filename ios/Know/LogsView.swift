@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LogsView: View {
-    @ObservedObject var model: LogsModel
+    @Bindable var model: LogsModel
     @Environment(\.colorScheme) private var scheme
     @State private var now = Date()
     @State private var followsClock = true
