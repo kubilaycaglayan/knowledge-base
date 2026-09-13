@@ -1,0 +1,64 @@
+import XCTest
+@testable import Know
+
+@MainActor final class CalendarTests: XCTestCase {
+    final class Stub: CalendarTransport {
+        var labelsValue = [KBLabel(id: UUID(), name: "Work", color: "#2878D5", scopes: [.calendar])]
+        var daysValue: [CalendarDay] = []
+        var failure: Error?
+        var dayRequests: [(String, CalendarDayRequest)] = []
+        var rangeRequests: [CalendarRangeRequest] = []
+        var loads = 0
+        func labels() async throws -> [KBLabel] { if let failure { throw failure }; loads += 1; return labelsValue }
+        func days(startDate: String, endDate: String) async throws -> [CalendarDay] { if let failure { throw failure }; loads += 1; return daysValue }
+        func saveDay(date: String, request: CalendarDayRequest) async throws -> CalendarDay { if let failure { throw failure }; dayRequests.append((date, request)); return CalendarDay(date: date, note: request.note, labels: request.labels.map { CalendarAssignment(labelId: $0.labelId, name: "Work", color: "#2878D5", portion: $0.portion) }) }
+        func saveRange(request: CalendarRangeRequest) async throws -> [CalendarDay] { if let failure { throw failure }; rangeRequests.append(request); return [] }
+        func createLabel(name: String, color: String) async throws -> KBLabel { KBLabel(id: UUID(), name: name, color: color, scopes: [.calendar]) }
+        func updateLabel(_ label: KBLabel) async throws -> KBLabel { label }
+    }
+
+    private func calendar(_ zone: String = "Europe/Istanbul") -> Calendar { var value = Calendar(identifier: .gregorian); value.locale = Locale(identifier: "en_US_POSIX"); value.timeZone = TimeZone(identifier: zone)!; return value }
+
+    func testMondayFirstGridHasSixWeeksAndAdjacentDays() {
+        let cal = calendar(); let date = cal.date(from: DateComponents(year: 2026, month: 9, day: 13))!
+        let dates = CalendarGrid.monthDates(month: date, calendar: cal)
+        XCTAssertEqual(dates.count, 35)
+        XCTAssertEqual(CalendarDate.string(dates.first!, calendar: cal), "2026-08-31")
+        XCTAssertEqual(CalendarDate.string(dates.last!, calendar: cal), "2026-10-04")
+    }
+
+    func testLocalDateRoundTripDoesNotUseUTCInstant() {
+        let cal = calendar("America/New_York"); let date = cal.date(from: DateComponents(year: 2026, month: 3, day: 8))!
+        XCTAssertEqual(CalendarDate.string(date, calendar: cal), "2026-03-08")
+        XCTAssertEqual(CalendarDate.string(cal.date(byAdding: .day, value: 1, to: date)!, calendar: cal), "2026-03-09")
+    }
+
+    func testCodablePreservesNullableNoteColorAndPortions() throws {
+        let id = UUID(); let day = CalendarDay(date: "2026-09-03", note: nil, labels: [CalendarAssignment(labelId: id, name: "Work", color: nil, portion: 0.75)])
+        let decoded = try JSONDecoder().decode(CalendarDay.self, from: JSONEncoder().encode(day))
+        XCTAssertEqual(decoded, day); XCTAssertEqual(decoded.labels[0].portionTitle, "¾ day")
+        let request = CalendarDayRequest(note: nil, labels: [CalendarDayAssignment(labelId: id, portion: nil)])
+        let encoded = String(data: try! JSONEncoder().encode(request), encoding: .utf8)!
+        XCTAssertTrue(encoded.contains("\"note\":null"))
+    }
+
+    func testLoadHydratesDraftAndReusesCachedRange() async {
+        let stub = Stub(); let id = stub.labelsValue[0].id
+        stub.daysValue = [CalendarDay(date: "2026-09-03", note: "Saved", labels: [CalendarAssignment(labelId: id, name: "Work", color: nil, portion: 0.25)])]
+        let cal = calendar(); let now = cal.date(from: DateComponents(year: 2026, month: 9, day: 3))!
+        let model = CalendarModel(transport: stub, now: now, calendar: cal); await model.load(); XCTAssertEqual(model.note, "Saved"); XCTAssertEqual(model.selectedAssignments[id], .quarter)
+        let count = stub.loads; await model.load(); XCTAssertEqual(stub.loads, count)
+    }
+
+    func testBlankNoteTrimsToNullAndPortionToggleSaves() async {
+        let stub = Stub(); let model = CalendarModel(transport: stub, now: Date(), calendar: calendar()); model.note = "  \n "; let label = stub.labelsValue[0]; model.toggle(label); model.setPortion(.half, for: label)
+        let saved = await model.save(); XCTAssertTrue(saved); XCTAssertEqual(stub.dayRequests[0].1.note, nil); XCTAssertEqual(stub.dayRequests[0].1.labels[0].portion, 0.50)
+    }
+
+    func testRangeNormalizesSameDayFallsBackAndRetainsDraftOnFailure() async {
+        let stub = Stub(); let cal = calendar(); let a = cal.date(from: DateComponents(year: 2026, month: 9, day: 3))!; let b = cal.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        let model = CalendarModel(transport: stub, now: a, calendar: cal); model.beginRange(a); model.select(b); model.note = "Range note"; let firstSave = await model.save(); XCTAssertTrue(firstSave); XCTAssertEqual(stub.rangeRequests[0].startDate, "2026-09-01"); XCTAssertEqual(stub.rangeRequests[0].endDate, "2026-09-03")
+        model.beginRange(a); model.select(a); XCTAssertFalse(model.isRangeMode)
+        stub.failure = APIError.offline; model.beginRange(a); model.select(b); model.note = "Keep me"; let failedSave = await model.save(); XCTAssertFalse(failedSave); XCTAssertEqual(model.note, "Keep me"); XCTAssertNotNil(model.error)
+    }
+}
