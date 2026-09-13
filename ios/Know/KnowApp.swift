@@ -374,7 +374,8 @@ struct APIClient {
             if (error as NSError).domain == kGIDSignInErrorDomain,
                (error as NSError).code == GIDSignInError.canceled.rawValue { return }
             if generation == authGeneration {
-                authError = authenticationMessage(error)
+                authError = (error as? SessionError)?.localizedDescription
+                    ?? "Google sign-in could not be completed. Try again."
                 authPhase = .failed
             }
         }
