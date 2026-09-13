@@ -200,6 +200,11 @@ Native Reports work is split into semantic commits:
   identifiers, and selected traits; focused iPhone 13 Pro UI tests cover those
   semantics, non-color Calendar/filter cues, and accessibility text-size
   reflow.
+- Aggregation now uses explicit 44-point SwiftUI buttons, breakdown uses an
+  explicit 44-point Menu, and selected/removal controls expose measurable hit
+  areas; targeted iPhone 13 Pro tests verify those frames. Native DatePicker
+  accessibility frames remain platform-owned and are not used to claim the
+  broad touch-target gate.
 
 Current evidence is deliberately narrower than the completion gate:
 
