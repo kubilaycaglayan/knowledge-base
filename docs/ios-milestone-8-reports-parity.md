@@ -186,6 +186,8 @@ Native Reports work is split into semantic commits:
   content and verifies they remain plain text in iPhone accessibility output.
 - `978fdca` verifies 404, 409, and 503 report failures remain recoverable and
   do not invoke the sign-out path.
+- `ee8ffd8` verifies sign-out destroys the prior report cache: the same query
+  loads a changed report response after the account boundary.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -808,7 +810,7 @@ only on a happy-path screenshot.
   retain the current credential and do not produce false sign-out.
 - [ ] **AC-164 — Owner isolation:** All displayed paths, labels, time totals,
   Calendar records, and Sankey data come only from owner-scoped API responses.
-- [ ] **AC-165 — Account cache isolation:** Cache keys include account identity
+- [x] **AC-165 — Account cache isolation:** Cache keys include account identity
   or caches are destroyed on account change; data cannot cross accounts even
   when query parameters are identical.
 - [x] **AC-166 — Read-only behavior:** Reports performs no POST, PUT, PATCH, or
