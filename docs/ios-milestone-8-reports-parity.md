@@ -145,6 +145,8 @@ Native Reports work is split into semantic commits:
 - `a64d878` verifies unchanged-range load suppression, shift preservation of
   filters and presentation state, and presentation-only changes without new
   report requests.
+- `ea2d754` adds a simulator assertion for the loaded Reports hierarchy:
+  `SUMMARY`, `Tracked time`, and the aggregation controls.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -534,7 +536,7 @@ only on a happy-path screenshot.
 
 ### Summary chart and bucket calculations
 
-- [ ] **AC-075 — Summary hierarchy:** A loaded report exposes `SUMMARY`,
+- [x] **AC-075 — Summary hierarchy:** A loaded report exposes `SUMMARY`,
   `Tracked time`, and the filtered total as the first report data section.
 - [x] **AC-076 — Authoritative days:** Every day returned by the API is retained
   in interval order, including zero-duration days.
@@ -593,7 +595,7 @@ only on a happy-path screenshot.
 - [x] **AC-097 — Insufficient trend data:** A trendline is omitted when there
   are too few non-empty points for its calculation; the app does not crash or
   draw misleading zero data.
-- [ ] **AC-098 — Trendline extent:** Trend data starts at the first non-empty
+- [x] **AC-098 — Trendline extent:** Trend data starts at the first non-empty
   bucket and stops at the last non-empty bucket.
 - [ ] **AC-099 — Trendline accessibility:** Bucket detail identifies the active
   trendline type and value without using line style/color as the only cue.
