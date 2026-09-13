@@ -26,6 +26,9 @@
 - [ ] Milestone 6: bring the iOS `/paths` page to parity with the current web
   behavior, path management, history, merge/remove recovery, accessibility,
   and regression coverage (see `docs/ios-milestone-6-paths-parity.md`).
+- [ ] Milestone 7: bring the iOS `/calendar` page to parity with the current web
+  behavior, date grid, day/range editing, labels, accessibility, and regression
+  coverage (see `docs/ios-milestone-7-calendar-parity.md`).
 - [ ] Complete live Google consent smoke verification with the owner's iOS OAuth client.
 
 - [x] Preserve sign-in across deployment outages and API recreation, keep error

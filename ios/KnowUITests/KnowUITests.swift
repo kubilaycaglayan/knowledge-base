@@ -155,6 +155,39 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
     }
 
+    func testCalendarNavigationGridAndEditorAreReachable() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        let calendar = app.buttons["workspace.calendar"]
+        XCTAssertTrue(calendar.waitForExistence(timeout: 5))
+        calendar.tap()
+        XCTAssertTrue(calendar.isSelected)
+        XCTAssertTrue(app.otherElements["calendar.grid"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["calendar.editor"].exists)
+        XCTAssertTrue(app.buttons["Previous month"].exists)
+        XCTAssertTrue(app.buttons["Next month"].exists)
+        XCTAssertTrue(app.buttons["Select range"].exists)
+    }
+
+    func testCalendarSavedFixtureShowsAccessibleDayAndRangeControls() {
+        app.launchArguments += ["-ui-testing-authenticated", "-calendar-saved-day"]
+        app.launch()
+        app.buttons["workspace.calendar"].tap()
+        XCTAssertTrue(app.buttons["calendar.day.2026-09-03"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["calendar.day.2026-09-03"].label.contains("Thursday, September 3, 2026"))
+        app.buttons["Select range"].tap()
+        XCTAssertTrue(app.buttons["Cancel range"].waitForExistence(timeout: 5))
+    }
+
+    func testCalendarOfflineFixtureOffersRetryWithoutSigningOut() {
+        app.launchArguments += ["-ui-testing-authenticated", "-calendar-offline"]
+        app.launch()
+        app.buttons["workspace.calendar"].tap()
+        XCTAssertTrue(app.staticTexts["Unable to load calendar records."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Retry"].exists)
+        XCTAssertTrue(app.buttons["workspace.signOut"].exists)
+    }
+
     func testNewPathDraftRequiresDiscardConfirmation() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
