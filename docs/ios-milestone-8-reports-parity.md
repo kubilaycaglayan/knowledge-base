@@ -142,6 +142,9 @@ Native Reports work is split into semantic commits:
   while retaining marker-sized chips and accessible text for all inputs.
 - `16388d3` verifies that a filter change retains the previous report during
   the matching refresh and replaces it only after the response completes.
+- `a64d878` verifies unchanged-range load suppression, shift preservation of
+  filters and presentation state, and presentation-only changes without new
+  report requests.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -387,7 +390,7 @@ only on a happy-path screenshot.
   accessible summary.
 - [x] **AC-013 — Complete-range requirement:** An incomplete date selection
   does not replace the current range or start a request.
-- [ ] **AC-014 — Unchanged-range behavior:** Re-selecting the exact current
+- [x] **AC-014 — Unchanged-range behavior:** Re-selecting the exact current
   range does not add redundant navigation history or start a duplicate load.
 - [x] **AC-015 — Reversed-range prevention:** The UI prevents or rejects an end
   date before the start date and leaves the previous valid report usable.
@@ -419,7 +422,7 @@ only on a happy-path screenshot.
   boundaries backward by the current interval’s exact inclusive day count.
 - [x] **AC-029 — Next interval:** Next-range navigation shifts both boundaries
   forward by the current interval’s exact inclusive day count.
-- [ ] **AC-030 — Shift stability:** Previous/next navigation preserves
+- [x] **AC-030 — Shift stability:** Previous/next navigation preserves
   aggregation, path filters, label filters, trendline mode, Sankey mode, and
   Calendar-input visibility.
 - [x] **AC-031 — Date edge cases:** Presets and interval shifts remain correct
@@ -453,7 +456,7 @@ only on a happy-path screenshot.
 - [x] **AC-043 — Server response boundaries:** If the API returns normalized
   `from`/`to` boundaries, those values become the displayed authoritative
   range for that completed query.
-- [ ] **AC-044 — Presentation-only state:** Trendline, bar/Sankey choice, and
+- [x] **AC-044 — Presentation-only state:** Trendline, bar/Sankey choice, and
   Calendar-input visibility do not alter `/reports` query parameters or cause
   report requests.
 
