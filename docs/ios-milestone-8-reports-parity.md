@@ -101,19 +101,25 @@ Native Reports work is split into semantic commits:
 - `53c64ea`, `cc43213`, and `8807579` add accessible filters, custom date
   controls, breakdown/donut summaries, filtered active-day semantics, and
   timeout/trend detail tests.
+- `6ba02b3` corrects the native Reports test-count evidence, and `6b7ccc9`
+  makes the initial asynchronous Reports render crash-safe.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 91 native package tests, including 10
+- `swift test --package-path ios` passes 91 native package tests, including 9
   Reports tests.
 - The forwarded Ubuntu web reference suite passes 1 file and 17 tests.
 - Docker is unavailable in the local environment, so the documented
   containerized Gradle command could not run. The local `backend/gradlew`
   fallback fails during Gradle task configuration with `Type T not present`;
   backend gates remain unchecked.
-- Simulator UI execution, generated Xcode project verification, physical
-  iPhone API flow, and sanitized web/native comparison screenshots have not
-  been run in this session and remain unchecked below.
+- `xcodegen generate --spec project.yml` succeeds, the generated Xcode project
+  builds with `CODE_SIGNING_ALLOWED=NO`, and the focused iPhone 17 Pro
+  simulator test `testReportsDestinationAndAccessibleSummaryAreReachable`
+  passes. The broader simulator suite still has unrelated pre-existing
+  failures in keychain/UI coverage; physical iPhone API flow and sanitized
+  web/native comparison screenshots have not been run and remain unchecked
+  below.
 
 This section records progress only; it does not waive the completion rule or
 mark unverified acceptance criteria complete.
