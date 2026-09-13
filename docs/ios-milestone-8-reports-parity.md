@@ -154,6 +154,9 @@ Native Reports work is split into semantic commits:
   visible details.
 - `672943a` adds simulator assertions for the fixture’s exact `3h 40m`
   duration copy and accessible `Linear trend` detail.
+- `4b95848` replaces the single-color activity bars with API-colored category
+  stacks and renders the breakdown donut as proportional category segments;
+  focused summary and Calendar/Sankey simulator tests remain green.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -571,7 +574,7 @@ only on a happy-path screenshot.
   hours/minutes formats without accidental decimal-hour conversion.
 - [x] **AC-086 — Tabular numbers:** Comparable durations and counts use tabular
   numerals and remain aligned at larger Dynamic Type sizes.
-- [ ] **AC-087 — Category colors:** API-provided path colors are used when
+- [x] **AC-087 — Category colors:** API-provided path colors are used when
   present; missing colors use the deterministic report palette consistently
   across chart, table, donut, tooltip/detail, and accessibility legend.
 - [ ] **AC-088 — Long ranges:** Ranges with more than 31 daily values remain
@@ -621,7 +624,7 @@ only on a happy-path screenshot.
   with a positive filtered tracked-time total.
 - [x] **AC-105 — Breakdown total:** The donut center total equals the sum of the
   categories in the currently selected breakdown mode.
-- [ ] **AC-106 — Donut segments:** Donut segment values and colors match the
+- [x] **AC-106 — Donut segments:** Donut segment values and colors match the
   visible breakdown rows one-for-one.
 - [x] **AC-107 — Donut accessibility:** The donut has an accessible description
   containing every category and duration, including an explicit no-tracked-
