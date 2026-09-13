@@ -213,6 +213,8 @@ Native Reports work is split into semantic commits:
   output and the iPhone summary fixture remains green.
 - A focused iPhone 13 Pro UI test switches the workspace between Dark and Light
   while Reports is open and confirms the page remains mounted without reload.
+- The native UI fixture set also explicitly covers the offline Reports response,
+  retry affordance, and retained session recovery controls.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
