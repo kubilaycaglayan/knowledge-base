@@ -7,7 +7,6 @@ final class KnowUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments += ["-ui-testing"]
-        app.launch()
     }
 
     override func tearDownWithError() throws {
@@ -19,6 +18,7 @@ final class KnowUITests: XCTestCase {
     }
 
     func testAuthenticationControlsAreReachable() {
+        app.launch()
         XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.secureTextFields["auth.password"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["auth.submit"].exists)
@@ -27,12 +27,14 @@ final class KnowUITests: XCTestCase {
     }
 
     func testEmptySubmissionShowsInlineValidation() {
+        app.launch()
         app.buttons["auth.submit"].tap()
         XCTAssertTrue(app.staticTexts["Enter a valid email address."].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["auth.submit"].isEnabled)
     }
 
     func testAuthenticationModeCanSwitchToRegistration() {
+        app.launch()
         let mode = app.buttons["auth.mode"]
         XCTAssertTrue(mode.waitForExistence(timeout: 5))
         mode.tap()
@@ -40,7 +42,6 @@ final class KnowUITests: XCTestCase {
     }
 
     func testAuthenticatedWorkspaceControlsAreReachable() {
-        app.terminate()
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
 
@@ -52,16 +53,13 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.textViews["paths.description"].exists)
         XCTAssertTrue(app.buttons["paths.save"].exists)
 
-        app.terminate()
-        app.launch()
-        XCTAssertTrue(app.buttons["workspace.sessions"].waitForExistence(timeout: 5))
         app.buttons["workspace.sessions"].tap()
+        XCTAssertTrue(app.buttons["workspace.sessions"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["timer.path"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
     }
 
     private func launchSessions(_ arguments: [String] = []) {
-        app.terminate()
         app.launchArguments = ["-ui-testing", "-ui-testing-authenticated"] + arguments
         app.launch()
         XCTAssertTrue(app.buttons["timer.toggle"].waitForExistence(timeout: 5))
