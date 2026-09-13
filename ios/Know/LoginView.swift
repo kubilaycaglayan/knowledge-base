@@ -115,7 +115,7 @@ struct LoginView: View {
                         .accessibilityValue(model.isAuthenticating ? "Working…" : "")
                         if GoogleAuthentication.isConfigured {
                             HStack { Rectangle().frame(height: 1); Text("or continue with").font(.caption).fixedSize(); Rectangle().frame(height: 1) }.foregroundStyle(.secondary)
-                            NativeGoogleButton(isEnabled: !model.isAuthenticating) {
+                            NativeGoogleButton(isEnabled: !model.isAuthenticating, dark: dark) {
                                 focus = nil
                                 Task { await model.authenticateWithGoogle(idToken: GoogleAuthentication.idToken) }
                             }.frame(height: 48).accessibilityIdentifier("auth.google")

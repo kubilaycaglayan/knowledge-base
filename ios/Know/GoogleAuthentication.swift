@@ -6,12 +6,13 @@ import GoogleSignInSwift
 #if os(iOS)
 struct NativeGoogleButton: UIViewRepresentable {
     let isEnabled: Bool
+    let dark: Bool
     let action: () -> Void
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
     func makeUIView(context: Context) -> GIDSignInButton {
         let button = GIDSignInButton()
         button.style = .wide
-        button.colorScheme = .light
+        button.colorScheme = dark ? .dark : .light
         button.accessibilityIdentifier = "auth.google"
         button.accessibilityLabel = "Continue with Google"
         button.addTarget(context.coordinator, action: #selector(Coordinator.signIn), for: .touchUpInside)
@@ -19,6 +20,7 @@ struct NativeGoogleButton: UIViewRepresentable {
     }
     func updateUIView(_ button: GIDSignInButton, context: Context) {
         button.isEnabled = isEnabled
+        button.colorScheme = dark ? .dark : .light
         context.coordinator.action = action
     }
     final class Coordinator: NSObject {
@@ -30,9 +32,10 @@ struct NativeGoogleButton: UIViewRepresentable {
 #else
 struct NativeGoogleButton: View {
     let isEnabled: Bool
+    let dark: Bool
     let action: () -> Void
     var body: some View {
-        GoogleSignInButton(scheme: .light, style: .wide, state: isEnabled ? .normal : .disabled, action: action)
+        GoogleSignInButton(scheme: dark ? .dark : .light, style: .wide, state: isEnabled ? .normal : .disabled, action: action)
     }
 }
 #endif
