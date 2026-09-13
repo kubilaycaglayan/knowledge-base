@@ -243,6 +243,17 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].isHittable)
     }
 
+    func testReportsZeroAndLongRangeFixturesRemainNavigable() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-zero"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["0 active days"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No tracked time in this period."].exists)
+        app.terminate(); app = XCUIApplication(); app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-reports-long-range"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["Activity"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["SUMMARY"].exists)
+    }
+
     func testReportsLoadingSkeletonAndEmptySankeyRemainRecoverable() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-loading"]
         app.launch(); app.buttons["workspace.reports"].tap()

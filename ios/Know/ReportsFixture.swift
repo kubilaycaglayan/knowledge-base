@@ -41,11 +41,14 @@ struct ReportsFixture: ReportsTransport {
         let calendar = Self.fixtureCalendar
         let start = ReportDateMath.date(query.startDate, calendar: calendar) ?? calendar.date(from: DateComponents(year: 2026, month: 9, day: 7))!
         let names = arguments.contains("-reports-long") ? String(repeating: "Deep work label with a long accessible name ", count: 3) : "Deep work"
-        let days = (0..<7).map { offset -> ReportDay in
+        let dayCount = (arguments.contains("-reports-long-range") || arguments.contains("-reports-sparse") || arguments.contains("-reports-dense")) ? 60 : 7
+        let days = (0..<dayCount).map { offset -> ReportDay in
             let date = calendar.date(byAdding: .day, value: offset, to: start)!
             let iso = ReportDateMath.iso(date, calendar: calendar)
-            let researchSeconds: Int64 = offset.isMultiple(of: 2) ? Int64(1_800 + offset * 300) : 0
-            let writingSeconds: Int64 = offset == 3 ? 2_400 : 0
+            let zeroDays = arguments.contains("-reports-zero")
+            let sparse = arguments.contains("-reports-sparse")
+            let researchSeconds: Int64 = zeroDays ? 0 : sparse ? (offset == dayCount / 2 ? 1_800 : 0) : offset.isMultiple(of: 2) ? Int64(1_800 + offset * 300) : 0
+            let writingSeconds: Int64 = zeroDays ? 0 : sparse ? 0 : offset == 3 ? 2_400 : 0
             let pathFilterAllowsResearch = query.pathIDs.isEmpty || query.pathIDs.contains(Self.researchID)
             let pathFilterAllowsWriting = query.pathIDs.isEmpty || query.pathIDs.contains(Self.writingID)
             let labelFilterAllowsEntry = query.labelIDs.isEmpty || query.labelIDs.contains(Self.deepWorkID)
@@ -72,7 +75,7 @@ struct ReportsFixture: ReportsTransport {
         let total = paths.reduce(0) { $0 + $1.seconds }
         let totals = arguments.contains("-reports-calendar") ? [ReportCalendarTotal(id: Self.calendarID, label: "Planning", color: "#F2994A", days: Decimal(string: "0.5")!, markers: 1)] : []
         let normalizedFrom = arguments.contains("-reports-normalized") ? ReportDateMath.iso(start, calendar: calendar) : query.startDate
-        let normalizedTo = arguments.contains("-reports-normalized") ? ReportDateMath.iso(calendar.date(byAdding: .day, value: 6, to: start)!, calendar: calendar) : query.endDate
+        let normalizedTo = arguments.contains("-reports-normalized") ? ReportDateMath.iso(calendar.date(byAdding: .day, value: dayCount - 1, to: start)!, calendar: calendar) : query.endDate
         return Report(period: "CUSTOM", from: normalizedFrom, to: normalizedTo, totalSeconds: total, days: days, paths: paths, sessionLabels: sessionLabels, calendarLabels: totals, sankey: arguments.contains("-reports-sankey") ? sankey(empty: false) : nil)
     }
 
