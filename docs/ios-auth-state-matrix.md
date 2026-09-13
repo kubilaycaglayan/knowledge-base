@@ -80,9 +80,10 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 ## Verification log
 
 - Initial web reference run on Node 26 failed because native `localStorage`
-  shadows the jsdom storage. Rerun with
-  `NODE_OPTIONS=--no-experimental-webstorage npm test -- src/views/AuthView.test.ts src/stores/auth.test.ts src/lib/api.test.ts src/App.test.ts`.
-- Web reference rerun: all 34 tests passed across the four files above.
+  shadows the jsdom storage. Node 26 requires an isolated storage file for
+  Vitest: `PATH=/opt/homebrew/bin:$PATH NODE_OPTIONS='--localstorage-file=/tmp/knowledge-base-vitest-localstorage' npm test -- --run src/views/AuthView.test.ts src/stores/auth.test.ts src/lib/api.test.ts src/App.test.ts`.
+- Web reference rerun with that isolated storage file: all 34 tests passed
+  across the four files above.
 - Installed missing Playwright Chromium. The existing general UI runner timed
   out waiting for `main h1` on Sessions before reaching auth; this is not a
   passing general UI run. Added `frontend/scripts/check-auth-ui.mjs` to exercise
