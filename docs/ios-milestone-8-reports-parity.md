@@ -124,6 +124,9 @@ Native Reports work is split into semantic commits:
   native chart, including colored label chips and note/marker symbols, and
   verifies that the Calendar toggle hides and restores those annotations in
   the iPhone 17 Pro UI test.
+- `5b0bcd5` extends simulator coverage to multiple path and session-label
+  selections, stable chip identifiers, and clearing labels without clearing
+  the selected paths.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -448,13 +451,13 @@ only on a happy-path screenshot.
   label categories with IDs from the current report remain available.
 - [ ] **AC-049 — Scope isolation:** `LOG`, `NOTE`, and Calendar-only labels are
   never offered in the report session-label filter.
-- [ ] **AC-050 — Multiple paths:** The user can select more than one path and
+- [x] **AC-050 — Multiple paths:** The user can select more than one path and
   every selected value remains visibly identifiable.
-- [ ] **AC-051 — Multiple labels:** The user can select more than one session
+- [x] **AC-051 — Multiple labels:** The user can select more than one session
   label and every selected value remains visibly identifiable.
 - [ ] **AC-052 — Individual removal:** Each selected path or label can be
   removed independently with an accessible control.
-- [ ] **AC-053 — Clear filters:** Path and label filters can each be cleared
+- [x] **AC-053 — Clear filters:** Path and label filters can each be cleared
   without resetting the date range, aggregation, or the other filter group.
 - [ ] **AC-054 — Filter semantics:** The resulting data demonstrates OR within
   selected paths, OR within selected labels, and AND between the two groups.
