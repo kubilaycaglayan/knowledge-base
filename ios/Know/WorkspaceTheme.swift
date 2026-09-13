@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 // Semantic values from frontend/src/theme.css; keep this mapping explicit.
@@ -21,6 +22,40 @@ enum WorkspaceTheme {
     static func accent(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "c4d1e2" : "334155") }
     static func onAccent(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "18212e" : "ffffff") }
     static func danger(_ scheme: ColorScheme) -> Color { color(scheme == .dark ? "ffaaaa" : "a12727") }
+    static func chartColor(_ hex: String, _ scheme: ColorScheme) -> Color { color(accessibleChartHex(hex, scheme)) }
+
+    static func accessibleChartHex(_ hex: String, _ scheme: ColorScheme) -> String { accessibleChartHex(hex, dark: scheme == .dark) }
+
+    static func accessibleChartHex(_ hex: String, dark: Bool) -> String {
+        let base = components(hex)
+        let background = components(dark ? "151a22" : "f7f8fa")
+        guard contrastRatio(base, background) < 3.1 else { return normalizedHex(base) }
+
+        if !dark {
+            var low = 0.0, high = 1.0
+            for _ in 0..<24 {
+                let factor = (low + high) / 2
+                if contrastRatio(base.map { $0 * factor }, background) >= 3.1 { low = factor } else { high = factor }
+            }
+            return normalizedHex(base.map { $0 * low })
+        }
+
+        var low = 0.0, high = 1.0
+        for _ in 0..<24 {
+            let factor = (low + high) / 2
+            let adjusted = base.map { $0 + (1 - $0) * factor }
+            if contrastRatio(adjusted, background) >= 3.1 { high = factor } else { low = factor }
+        }
+        return normalizedHex(base.map { $0 + (1 - $0) * high })
+    }
+
+    private static func components(_ hex: String) -> [Double] {
+        let value = UInt64(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0x64748B
+        return [Double(value >> 16 & 255) / 255, Double(value >> 8 & 255) / 255, Double(value & 255) / 255]
+    }
+    private static func luminance(_ components: [Double]) -> Double { let linear = components.map { $0 <= 0.03928 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }; return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2] }
+    private static func contrastRatio(_ foreground: [Double], _ background: [Double]) -> Double { let a = luminance(foreground), b = luminance(background); return (max(a, b) + 0.05) / (min(a, b) + 0.05) }
+    private static func normalizedHex(_ components: [Double]) -> String { components.map { String(format: "%02X", Int(($0 * 255).rounded())).padding(toLength: 2, withPad: "0", startingAt: 0) }.joined() }
 }
 
 struct WorkspaceControl: ViewModifier {
