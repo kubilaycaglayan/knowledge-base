@@ -12,6 +12,7 @@ struct PathsView: View {
     @State private var editingSession: TrackedSession?
     @State private var mergeConfirmation: MergeSelection?
     @State private var discardEdit = false
+    @State private var discardAdd = false
     @FocusState private var focused: Field?
     private enum Field: Hashable { case name, description }
     @State private var name = ""
@@ -51,6 +52,12 @@ struct PathsView: View {
             Button("Discard changes", role: .destructive) { editPath = nil }
             Button("Keep editing", role: .cancel) {}
         }
+        .confirmationDialog("Discard new path?", isPresented: $discardAdd, titleVisibility: .visible) {
+            Button("Discard changes", role: .destructive) { addOpen = false; resetDraft() }
+            Button("Keep editing", role: .cancel) {}
+        } message: {
+            Text("Your unsaved path details will be lost.")
+        }
         .confirmationDialog("Merge paths?", isPresented: Binding(get: { mergeConfirmation != nil }, set: { if !$0 { mergeConfirmation = nil } })) {
             Button("Merge", role: .destructive) { if let selection = mergeConfirmation { Task { if await model.merge(source: selection.source, into: selection.target) { mergeConfirmation = nil } } } }
             Button("Cancel", role: .cancel) {}
@@ -79,7 +86,7 @@ struct PathsView: View {
     }
 
     @ViewBuilder private func pathEditor(title: String, path: Path?, submit: @escaping () async -> Void, cancel: @escaping () -> Void) -> some View {
-        NavigationStack { Form { Section { TextField("Path name", text: $name).focused($focused, equals: .name).onSubmit { Task { await submit() } }.accessibilityIdentifier("paths.name"); TextEditor(text: $description).focused($focused, equals: .description).frame(minHeight: 100).accessibilityLabel("Path description").accessibilityIdentifier("paths.description") }; Section("Color") { LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)) { ForEach(colors, id: \.self) { value in Button { color = value } label: { Circle().fill(WorkspaceTheme.color(value)).frame(width: 34, height: 34).overlay(color == value ? Circle().stroke(WorkspaceTheme.text(scheme), lineWidth: 3) : nil) }.frame(minWidth: 44, minHeight: 44).accessibilityLabel("Choose \(value) color").accessibilityAddTraits(color == value ? .isSelected : []) } } }; if let path { Section { Button("Merge into another path…") { editPath = nil; mergeSource = path }.accessibilityIdentifier("paths.merge") } }; if let error = model.error { Text(error).foregroundStyle(WorkspaceTheme.danger(scheme)).accessibilityIdentifier("paths.error") } }.navigationTitle(title).toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { cancelEditor(cancel) } }; ToolbarItem(placement: .confirmationAction) { Button { Task { await submit() } } label: { HStack { if model.busy { ProgressView().controlSize(.small) }; Text(title == "Add a path" ? "Add path" : "Save path") } }.disabled(model.busy).accessibilityIdentifier("paths.save") } }.interactiveDismissDisabled(model.busy) }
+        NavigationStack { Form { Section { TextField("Path name", text: $name).focused($focused, equals: .name).onSubmit { Task { await submit() } }.accessibilityIdentifier("paths.name"); TextEditor(text: $description).focused($focused, equals: .description).frame(minHeight: 100).accessibilityLabel("Path description").accessibilityIdentifier("paths.description") }; Section("Color") { LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)) { ForEach(colors, id: \.self) { value in Button { color = value } label: { Circle().fill(WorkspaceTheme.color(value)).frame(width: 34, height: 34).overlay(color == value ? Circle().stroke(WorkspaceTheme.text(scheme), lineWidth: 3) : nil) }.frame(minWidth: 44, minHeight: 44).accessibilityLabel("Choose \(value) color").accessibilityAddTraits(color == value ? .isSelected : []) } } }; if let path { Section { Button("Merge into another path…") { editPath = nil; mergeSource = path }.accessibilityIdentifier("paths.merge") } }; if let error = model.error { Text(error).foregroundStyle(WorkspaceTheme.danger(scheme)).accessibilityIdentifier("paths.error") } }.navigationTitle(title).toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { cancelEditor(cancel) } }; ToolbarItem(placement: .confirmationAction) { Button { Task { await submit() } } label: { HStack { if model.busy { ProgressView().controlSize(.small) }; Text(title == "Add a path" ? "Add path" : "Save path") } }.disabled(model.busy).accessibilityIdentifier("paths.save") } }.interactiveDismissDisabled(model.busy || (path == nil && addDirty)) }
         .presentationDetents([.medium, .large]).onAppear { model.error = nil; focused = .name }
     }
 
@@ -100,7 +107,12 @@ struct PathsView: View {
     private func resetDraft() { name = ""; description = ""; color = colors[0]; model.error = nil }
     private func beginEdit(_ path: Path) { name = path.name; description = path.description ?? ""; color = path.color ?? colors[0]; model.error = nil; editPath = path }
     private var editDirty: Bool { guard let path = editPath else { return false }; return name != path.name || description != (path.description ?? "") || color != (path.color ?? colors[0]) }
-    private func cancelEditor(_ cancel: () -> Void) { if editPath != nil && editDirty { discardEdit = true } else { cancel() } }
+    private func cancelEditor(_ cancel: () -> Void) {
+        if editPath != nil && editDirty { discardEdit = true }
+        else if addOpen && addDirty { discardAdd = true }
+        else { cancel() }
+    }
+    private var addDirty: Bool { !name.isEmpty || !description.isEmpty || color != colors[0] }
     private func saveNew() async { if await model.create(name: name, description: description, color: color) { addOpen = false; resetDraft() } }
     private func saveEdit(_ path: Path) async { if await model.update(path, name: name, description: description, color: color) { editPath = nil } }
     private func merge(source: Path, target: Path) { Task { if await model.merge(source: source, into: target) { mergeSource = nil } } }
