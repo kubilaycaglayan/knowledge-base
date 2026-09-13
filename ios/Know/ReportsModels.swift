@@ -184,7 +184,7 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     @Published var showSankey = false
     @Published var showCalendarInputs = true
     @Published var breakdown: ReportBreakdown = .path
-    private let transport: ReportsTransport; private let unauthorized: () -> Void; private var generation = 0; private var cache: [String: Report] = [:]; private var loadedReferences = false; private var inflightKey: String?
+    private let transport: ReportsTransport; private let unauthorized: () -> Void; private var generation = 0; private var cache: [String: Report] = [:]; private var bucketCache: [String: [ReportBucket]] = [:]; private(set) var bucketCalculationCount = 0; private var loadedReferences = false; private var inflightKey: String?
     init(transport: ReportsTransport, query: ReportQuery? = nil, calendar: Calendar = .current, unauthorized: @escaping () -> Void = {}) { self.transport = transport; self.query = query ?? ReportDateMath.defaultQuery(calendar: calendar); self.unauthorized = unauthorized }
     var pathOptions: [Path] { paths.isEmpty ? (report?.paths.compactMap { guard let id = $0.id else { return nil }; return Path(id: id, name: $0.label, description: nil, status: "ACTIVE", color: $0.color) } ?? []) : paths }
     var labelOptions: [KBLabel] { labels.isEmpty ? (report?.sessionLabels.compactMap { guard let id = $0.id else { return nil }; return KBLabel(id: id, name: $0.label, color: $0.color, scopes: [.timeEntry]) } ?? []) : labels.filter { $0.scopes.contains(.timeEntry) } }
@@ -193,6 +193,7 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
         let key = requestedQuery.cacheKey
         if !force, let cached = cache[key] { report = cached; loaded = true; return }
         if !force, inflightKey == key { return }
+        if force { bucketCache.removeAll() }
         generation += 1
         let current = generation
         inflightKey = key
@@ -228,6 +229,14 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
             refreshing = false
         }
     }
+    func buckets(for report: Report, query: ReportQuery) -> [ReportBucket] {
+        let key = query.cacheKey
+        if let cached = bucketCache[key] { return cached }
+        bucketCalculationCount += 1
+        let buckets = ReportCalculations.buckets(report, query: query)
+        bucketCache[key] = buckets
+        return buckets
+    }
     private func timedReport(_ query: ReportQuery) async throws -> Report { try await withThrowingTaskGroup(of: Report.self) { group in group.addTask { try await self.transport.report(query: query) }; group.addTask { try await Task.sleep(for: .seconds(15)); throw ReportLoadError.timeout }; defer { group.cancelAll() }; return try await group.next()! } }
     private func loadReferences() async { guard !loadedReferences else { return }; async let p = try? transport.paths(); async let l = try? transport.labels(); if let p = await p { paths = p }; if let l = await l { labels = l }; loadedReferences = true }
     func retry() async { await load(force: true) }
@@ -245,5 +254,5 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     func togglePath(_ id: UUID) async { query.pathIDs = query.pathIDs.contains(id) ? query.pathIDs.filter { $0 != id } : query.pathIDs + [id]; query = ReportQuery(startDate: query.startDate, endDate: query.endDate, aggregation: query.aggregation, pathIDs: query.pathIDs, labelIDs: query.labelIDs); await load() }
     func toggleLabel(_ id: UUID) async { query.labelIDs = query.labelIDs.contains(id) ? query.labelIDs.filter { $0 != id } : query.labelIDs + [id]; query = ReportQuery(startDate: query.startDate, endDate: query.endDate, aggregation: query.aggregation, pathIDs: query.pathIDs, labelIDs: query.labelIDs); await load() }
     func clearPaths() async { query.pathIDs = []; await load() }; func clearLabels() async { query.labelIDs = []; await load() }
-    func signOut() { generation += 1; inflightKey = nil; loadedReferences = false; loaded = false; cache.removeAll(); report = nil; paths = []; labels = [] }
+    func signOut() { generation += 1; inflightKey = nil; loadedReferences = false; loaded = false; cache.removeAll(); bucketCache.removeAll(); report = nil; paths = []; labels = [] }
 }

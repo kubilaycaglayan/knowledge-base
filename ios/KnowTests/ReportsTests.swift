@@ -296,6 +296,14 @@ private final class ReportsURLProtocolStub: URLProtocol {
         XCTAssertEqual(report.days.count, 60); XCTAssertGreaterThanOrEqual(report.paths.count, 12); XCTAssertGreaterThanOrEqual(report.sessionLabels.count, 12); XCTAssertGreaterThanOrEqual(report.days.flatMap(\.paths).count, 720)
     }
 
+    func testBucketCollectionsAreCachedForUnchangedPresentationQuery() {
+        let stub = Stub()
+        let model = ReportsModel(transport: stub)
+        _ = model.buckets(for: stub.reportValue, query: model.query)
+        _ = model.buckets(for: stub.reportValue, query: model.query)
+        XCTAssertEqual(model.bucketCalculationCount, 1)
+    }
+
     func testNormalizedServerBoundariesBecomeTheDisplayedQuery() async {
         let stub = Stub(); stub.reportValue = Report(period: "CUSTOM", from: "2026-09-08", to: "2026-09-12", totalSeconds: 60, days: stub.reportValue.days, paths: stub.reportValue.paths, sessionLabels: [], calendarLabels: [], sankey: nil)
         let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load()
