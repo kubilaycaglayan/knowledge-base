@@ -300,6 +300,9 @@ are exercised.
 - 2026-09-13: LOG label chooser now renders the server-provided color swatch
   alongside its checkbox/name state; model coverage verifies color and scope
   fields are retained.
+- 2026-09-13: device-following log timestamps are normalized to the local
+  minute (seconds zeroed), while manual DatePicker overrides remain unchanged;
+  the focused Logs suite passes 8 tests.
 
 ## Prompt for a fresh session
 
