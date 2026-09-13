@@ -184,6 +184,8 @@ Native Reports work is split into semantic commits:
   verifies its combined date, total, and category detail on iPhone.
 - `b4201f9` adds literal-markup fixtures for path, label, and Calendar-note
   content and verifies they remain plain text in iPhone accessibility output.
+- `978fdca` verifies 404, 409, and 503 report failures remain recoverable and
+  do not invoke the sign-out path.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -802,7 +804,7 @@ only on a happy-path screenshot.
   routes through the existing `AppModel` sign-out flow.
 - [ ] **AC-162 — Delayed 401 safety:** A delayed 401 from an obsolete token or
   superseded account cannot sign out a newer authenticated session.
-- [ ] **AC-163 — Non-auth failures:** Offline, timeout, 404, 409, and 503 errors
+- [x] **AC-163 — Non-auth failures:** Offline, timeout, 404, 409, and 503 errors
   retain the current credential and do not produce false sign-out.
 - [ ] **AC-164 — Owner isolation:** All displayed paths, labels, time totals,
   Calendar records, and Sankey data come only from owner-scoped API responses.
