@@ -127,10 +127,13 @@ Native Reports work is split into semantic commits:
 - `5b0bcd5` extends simulator coverage to multiple path and session-label
   selections, stable chip identifiers, and clearing labels without clearing
   the selected paths.
+- `dc22fe3` adds direct Reports model coverage for aggregation range resets,
+  TIME_ENTRY reference scoping and report-category fallback, malformed payload
+  rejection, and suppression of an older range completion.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 99 native package tests, including 17
+- `swift test --package-path ios` passes 99 native package tests, including 21
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 17 Pro simulator UI coverage passes for Reports navigation,
@@ -411,17 +414,17 @@ only on a happy-path screenshot.
 
 - [x] **AC-032 — Aggregation choices:** The control offers exactly **Daily**,
   **Weekly**, **Monthly**, **Quarterly**, and **Yearly**.
-- [ ] **AC-033 — Daily range reset:** Choosing Daily selects the current local
+- [x] **AC-033 — Daily range reset:** Choosing Daily selects the current local
   Monday–Sunday week before loading.
-- [ ] **AC-034 — Weekly range reset:** Choosing Weekly selects the past 30
+- [x] **AC-034 — Weekly range reset:** Choosing Weekly selects the past 30
   inclusive local dates ending today.
-- [ ] **AC-035 — Monthly range reset:** Choosing Monthly selects the one-year
+- [x] **AC-035 — Monthly range reset:** Choosing Monthly selects the one-year
   rolling interval ending today, matching the web date calculation.
-- [ ] **AC-036 — Quarterly range reset:** Choosing Quarterly selects the
+- [x] **AC-036 — Quarterly range reset:** Choosing Quarterly selects the
   two-year rolling interval ending today, matching the web date calculation.
-- [ ] **AC-037 — Yearly range behavior:** Choosing Yearly keeps the current
+- [x] **AC-037 — Yearly range behavior:** Choosing Yearly keeps the current
   selected date interval rather than silently selecting another preset.
-- [ ] **AC-038 — Range/aggregation independence:** Selecting a custom range
+- [x] **AC-038 — Range/aggregation independence:** Selecting a custom range
   after choosing an aggregation preserves that aggregation.
 - [x] **AC-039 — Required report parameters:** Every custom request sends
   `startDate`, `endDate`, and uppercase `aggregation` exactly once.
@@ -447,9 +450,9 @@ only on a happy-path screenshot.
   with IDs from the current report remain available as path filter options.
 - [x] **AC-047 — Label option source:** Label choices come only from
   `/labels?scope=TIME_ENTRY` when reference data is available.
-- [ ] **AC-048 — Label fallback:** If label reference loading fails, session
+- [x] **AC-048 — Label fallback:** If label reference loading fails, session
   label categories with IDs from the current report remain available.
-- [ ] **AC-049 — Scope isolation:** `LOG`, `NOTE`, and Calendar-only labels are
+- [x] **AC-049 — Scope isolation:** `LOG`, `NOTE`, and Calendar-only labels are
   never offered in the report session-label filter.
 - [x] **AC-050 — Multiple paths:** The user can select more than one path and
   every selected value remains visibly identifiable.
@@ -487,7 +490,7 @@ only on a happy-path screenshot.
   submit duplicate equivalent loads while the same query is active.
 - [ ] **AC-064 — Matching completion:** Only the response belonging to the
   current query may replace the visible report.
-- [ ] **AC-065 — Stale completion:** A slower response for an older range,
+- [x] **AC-065 — Stale completion:** A slower response for an older range,
   aggregation, filter, account, or app lifecycle cannot overwrite newer state.
 - [x] **AC-066 — Successful cache reuse:** Revisiting a successfully cached
   query restores its report without a duplicate network request.
@@ -507,7 +510,7 @@ only on a happy-path screenshot.
 - [x] **AC-073 — Reference failure tolerance:** Failure of `/paths` or
   `/labels?scope=TIME_ENTRY` does not hide an otherwise valid report or replace
   it with the report-load error.
-- [ ] **AC-074 — Malformed response:** Missing required report arrays or an
+- [x] **AC-074 — Malformed response:** Missing required report arrays or an
   otherwise invalid payload produces a recoverable load error and never a
   partially trusted chart.
 
