@@ -56,6 +56,12 @@ import XCTest
         XCTAssertEqual(ReportCalculations.buckets(report, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-08", aggregation: .week), calendar: calendar()).count, 1)
     }
 
+    func testDisplayedActiveDaysUseFilteredPathDurationsNotCalendarOrRawDayTotal() {
+        let report = Report(period: "CUSTOM", from: "2026-09-07", to: "2026-09-08", totalSeconds: 0, days: [ReportDay(date: "2026-09-07", totalSeconds: 120, paths: [], sessionLabels: [], calendarNote: "Note", calendarLabels: []), ReportDay(date: "2026-09-08", totalSeconds: 120, paths: [ReportCategory(id: nil, label: "A", seconds: 60, color: nil)], sessionLabels: [], calendarNote: nil, calendarLabels: [])], paths: [], sessionLabels: [], calendarLabels: [], sankey: nil)
+        let displayed = report.days.filter { $0.paths.reduce(Int64(0), { $0 + $1.seconds }) > 0 }
+        XCTAssertEqual(displayed.map { $0.date }, ["2026-09-08"])
+    }
+
     func testModelCachesSuccessRetainsQueryOnFailureAndSignsOutClearsCache() async {
         let stub = Stub(); let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load(); await model.load(); XCTAssertEqual(stub.reportQueries.count, 1)
         stub.failure = APIError.offline; await model.retry(); XCTAssertNotNil(model.report); XCTAssertEqual(model.query.startDate, "2026-09-07"); model.signOut(); XCTAssertNil(model.report)
