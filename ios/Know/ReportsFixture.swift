@@ -52,11 +52,12 @@ struct ReportsFixture: ReportsTransport {
             let pathFilterAllowsResearch = query.pathIDs.isEmpty || query.pathIDs.contains(Self.researchID)
             let pathFilterAllowsWriting = query.pathIDs.isEmpty || query.pathIDs.contains(Self.writingID)
             let labelFilterAllowsEntry = query.labelIDs.isEmpty || query.labelIDs.contains(Self.deepWorkID)
+            let densePaths: [ReportCategory] = arguments.contains("-reports-dense") ? (0..<12).map { index in category(deterministicID(100 + index), label: "Dense path \(index + 1)", seconds: Int64(60 + index * 30), color: ["#2878D5", "#9B51E0", "#F2994A", "#22C55E"][index % 4]) } : []
             let paths = [
                 researchSeconds > 0 && pathFilterAllowsResearch && labelFilterAllowsEntry ? category(Self.researchID, label: "Research", seconds: researchSeconds, color: "#2878D5") : nil,
                 writingSeconds > 0 && pathFilterAllowsWriting && labelFilterAllowsEntry ? category(Self.writingID, label: "Writing", seconds: writingSeconds, color: "#9B51E0") : nil
-            ].compactMap { $0 }
-            let labels = paths.isEmpty ? [] : [category(Self.deepWorkID, label: names, seconds: paths.reduce(0) { $0 + $1.seconds }, color: "#2878D5")]
+            ].compactMap { $0 } + densePaths
+            let labels = paths.isEmpty ? [] : [category(Self.deepWorkID, label: names, seconds: paths.reduce(0) { $0 + $1.seconds }, color: "#2878D5")] + (arguments.contains("-reports-dense") ? (0..<12).map { index in category(deterministicID(200 + index), label: "Dense label \(index + 1)", seconds: Int64(60 + index * 30), color: ["#2878D5", "#9B51E0", "#F2994A", "#22C55E"][index % 4]) } : [])
             let calendarEnabled = arguments.contains("-reports-calendar") || arguments.contains("-reports-calendar-note-only") || arguments.contains("-reports-calendar-fractions")
             let calendarLabels: [ReportCalendarLabel] = calendarEnabled && offset == 2 ? (arguments.contains("-reports-calendar-note-only") ? [] : arguments.contains("-reports-calendar-fractions") ? [
                 ReportCalendarLabel(id: Self.calendarID, label: "Planning", color: "#F2994A", portion: Decimal(string: "0.25")),
@@ -86,6 +87,7 @@ struct ReportsFixture: ReportsTransport {
         return calendar
     }()
 
+    private func deterministicID(_ value: Int) -> UUID { UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", value))! }
     private func category(_ id: UUID, label: String, seconds: Int64, color: String?) -> ReportCategory { ReportCategory(id: id, label: label, seconds: seconds, color: color) }
 
     private func aggregate(_ values: [ReportCategory]) -> [ReportCategory] {
