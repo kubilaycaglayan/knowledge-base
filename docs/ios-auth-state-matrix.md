@@ -110,6 +110,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Added and passed `testAuthenticationModeSwitchPreservesDraftFields` on the
   same simulator, verifying email and secure-password draft retention (the
   latter through XCTest's masked value representation).
+- `testAuthenticationControlsRemainReachableAtAccessibilityTextSize` passes on
+  iPhone 17 Pro using `UICTContentSizeCategoryAccessibilityXXXL`; the form
+  remains scrollable and all auth controls remain discoverable.
 - The added model regression `testMalformedAuthResponsePreservesExistingSession`
   passes, proving malformed login data leaves an existing token intact.
 - `testGoogleCancellationReturnsToIdleWithoutError` also passes, covering the
