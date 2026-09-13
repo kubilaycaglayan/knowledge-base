@@ -39,6 +39,15 @@ private actor LogsStub: LogsTransport {
         XCTAssertEqual(model.logs.first?.body, "Original")
     }
 
+    func testDeviceTimestampFollowsLocalMinute() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 3 * 3600)!
+        let input = LogFormatting.date("2026-09-14T12:34:56+03:00")!
+        let minute = LogFormatting.deviceMinute(input, calendar: calendar)
+        XCTAssertEqual(calendar.component(.minute, from: minute), 34)
+        XCTAssertEqual(calendar.component(.second, from: minute), 0)
+    }
+
     func testLogLabelsRetainColorAndScope() async {
         let stub = LogsStub(); let model = LogsModel(transport: stub); await model.load()
         XCTAssertEqual(model.labels.first?.color, "#2878D5")
