@@ -52,6 +52,7 @@ import XCTest
         XCTAssertEqual(ReportCalculations.trend(buckets, mode: .linear).first?.0, "0")
         XCTAssertEqual(ReportCalculations.trend(buckets, mode: .parabolic).count, 3)
         XCTAssertTrue(ReportCalculations.trend(Array(buckets.prefix(2)), mode: .parabolic).isEmpty)
+        XCTAssertTrue(ReportCalculations.trend(buckets, mode: .off).isEmpty)
     }
 
     func testBucketsRetainZeroDaysAndGroupMondayWeeks() {
