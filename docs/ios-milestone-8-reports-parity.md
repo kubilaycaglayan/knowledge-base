@@ -232,6 +232,9 @@ Native Reports work is split into semantic commits:
 - `eeff7a5` adds a polite VoiceOver announcement path for loading, successful
   refresh, errors/retry state, and Sankey, trendline, and breakdown changes;
   iPhone 17 UI fixtures assert the loading, success, and error status surfaces.
+- `f6548af` extends the landscape Reports UI test with page-to-window bounds
+  assertions; the iPhone 17 simulator passed the orientation transition with
+  summary, filters, trendline, and safe visible bounds intact.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
@@ -828,7 +831,7 @@ only on a happy-path screenshot.
   intentionally scroll horizontally.
 - [ ] **AC-153 — Large iPhone:** Available width is used without stretching
   readable content or leaving accidental alignment gaps.
-- [ ] **AC-154 — Orientation and safe areas:** Portrait and supported landscape
+- [x] **AC-154 — Orientation and safe areas:** Portrait and supported landscape
   layouts respect top, bottom, and horizontal safe areas and avoid unwanted
   nested scrolling.
 - [ ] **AC-155 — Light appearance:** Text, controls, chart marks, gridlines,
