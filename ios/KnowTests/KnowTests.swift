@@ -206,6 +206,22 @@ final class KnowTests: XCTestCase {
         }
         return try JSONDecoder().decode([String: String].self, from: data)
     }
+
+    private func requestJSONObject() throws -> [String: Any] {
+        let request = try XCTUnwrap(URLProtocolStub.lastRequest)
+        if let data = request.httpBody { return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any]) }
+        let stream = try XCTUnwrap(request.httpBodyStream)
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var bytes = [UInt8](repeating: 0, count: 1024)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&bytes, maxLength: bytes.count)
+            guard count > 0 else { break }
+            data.append(contentsOf: bytes.prefix(count))
+        }
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
     override func tearDown() {
         URLProtocolStub.statusCode = 200
         URLProtocolStub.responseData = Data()
@@ -239,6 +255,42 @@ final class KnowTests: XCTestCase {
 
         XCTAssertEqual(json["name"] as? String, "Algorithms")
         XCTAssertEqual(json["color"] as? String, "#2878D5")
+    }
+
+    func testLogsAPIUsesAuthenticatedContractAndFullLabelReplacement() async throws {
+        let id = UUID()
+        let labelIDs = [UUID(), UUID()]
+        let response = "{\"id\":\"\(id.uuidString)\",\"body\":\"Read\",\"occurredAt\":\"2026-09-13T10:00:00Z\",\"labelIds\":[],\"createdAt\":\"2026-09-13T10:00:00Z\",\"updatedAt\":\"2026-09-13T10:00:00Z\",\"version\":3}"
+        URLProtocolStub.responseData = Data(response.utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        let api = LogsAPI(client: APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration)), token: "test-token")
+        var draft = LogDraft()
+        draft.body = "Read"
+
+        let created = try await api.create(draft)
+        XCTAssertEqual(created.id, id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "POST")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/logs")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
+        let createBody = try requestJSONObject()
+        XCTAssertEqual(createBody["body"] as? String, "Read")
+        XCTAssertNotNil(createBody["occurredAt"] as? String)
+
+        _ = try await api.update(id: id, draft: draft, version: 3)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "PUT")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/logs/\(id.uuidString)")
+        XCTAssertEqual(try requestJSONObject()["version"] as? Int, 3)
+
+        _ = try await api.updateLabels(id: id, ids: labelIDs)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/logs/\(id.uuidString)/labels")
+        XCTAssertEqual(try requestJSONObject()["labelIds"] as? [String], labelIDs.map(\.uuidString))
+
+        URLProtocolStub.statusCode = 204
+        URLProtocolStub.responseData = Data()
+        try await api.remove(id: id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "DELETE")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/logs/\(id.uuidString)")
     }
 
     func testNativeColorPaletteMatchesWebSharedPalette() {
