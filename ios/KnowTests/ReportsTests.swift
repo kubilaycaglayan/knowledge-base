@@ -194,6 +194,11 @@ private final class ReportsURLProtocolStub: URLProtocol {
         XCTAssertEqual(model.error, "The report took too long to load."); XCTAssertFalse(signedOut); XCTAssertNil(model.report)
     }
 
+    func testCurrentReportUnauthorizedResponseUsesRecoveryCallback() async {
+        var signedOut = false; let stub = Stub(); stub.failure = APIError.unauthorized; let model = ReportsModel(transport: stub, unauthorized: { signedOut = true }); await model.load()
+        XCTAssertTrue(signedOut); XCTAssertNil(model.report); XCTAssertNil(model.error)
+    }
+
     func testAllNamedPresetsReturnCompleteExpectedRanges() {
         let c = calendar(); let now = c.date(from: DateComponents(year: 2026, month: 9, day: 13))!
         let expected: [(String, String, String)] = [
