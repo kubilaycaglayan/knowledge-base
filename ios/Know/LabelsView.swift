@@ -6,7 +6,7 @@ struct LabelsView: View {
     @State private var createOpen = false
     @FocusState private var focused: Field?
     enum Field: Hashable { case createName, editName }
-    private let colors = ["#2878D5", "#16A085", "#D97706", "#DC4C64", "#8B5CF6", "#64748B", "#0891B2", "#65A30D", "#DB2777", "#475569"]
+    private let colors = WorkspaceTheme.palette
     var body: some View {
         ScrollView { VStack(alignment: .leading, spacing: 18) {
             HStack { VStack(alignment: .leading, spacing: 4) { Text("WORKSPACE").font(.caption.weight(.semibold)); Text("Labels").font(.largeTitle.bold()) }; Spacer(); Button { model.beginCreate(); createOpen = true } label: { Image(systemName: "plus").frame(width: 44, height: 44) }.buttonStyle(WorkspaceButton(primary: true)).accessibilityLabel("Add label").accessibilityIdentifier("labels.add") }

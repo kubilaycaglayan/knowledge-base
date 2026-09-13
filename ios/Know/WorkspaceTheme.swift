@@ -2,6 +2,11 @@ import SwiftUI
 
 // Semantic values from frontend/src/theme.css; keep this mapping explicit.
 enum WorkspaceTheme {
+    static let palette = [
+        "#F8FAFC", "#64748B", "#0F172A", "#EAB308", "#F59E0B",
+        "#F97316", "#EF4444", "#EC4899", "#A855F7", "#6366F1",
+        "#3B82F6", "#06B6D4", "#14B8A6", "#22C55E", "#84CC16",
+    ]
     static func color(_ hex: String) -> Color {
         let value = UInt64(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0x64748B
         return Color(red: Double(value >> 16 & 255) / 255, green: Double(value >> 8 & 255) / 255, blue: Double(value & 255) / 255)
