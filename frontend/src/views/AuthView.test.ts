@@ -42,6 +42,7 @@ describe("AuthView", () => {
     await wrapper.find(".text-button").trigger("click");
     await wrapper.get('input[type="email"]').setValue("learner@example.com");
     await wrapper.get('input[type="password"]').setValue("a-secure-password");
+    await wrapper.get('input[name="passwordConfirmation"]').setValue("a-secure-password");
     await wrapper.get("form").trigger("submit");
 
     expect(api).toHaveBeenCalledWith(
@@ -62,16 +63,41 @@ describe("AuthView", () => {
 
     expect(wrapper.get('[role="alert"]').text()).toContain("valid email");
     expect(wrapper.emitted("authenticated")).toBeUndefined();
+    expect(wrapper.get(".auth-retry").text()).toBe("Try again");
+  });
+
+  it("requires matching confirmation when creating an account", async () => {
+    const wrapper = mount(AuthView);
+    await wrapper.get(".text-button").trigger("click");
+    await wrapper.get('input[type="email"]').setValue("learner@example.com");
+    await wrapper.get('input[name="password"]').setValue("a-secure-password");
+    await wrapper.get('input[name="passwordConfirmation"]').setValue("different-password");
+    await wrapper.get("form").trigger("submit");
+
+    expect(wrapper.get(".field-error").text()).toBe("Passwords do not match.");
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it("toggles password visibility without losing the value", async () => {
+    const wrapper = mount(AuthView);
+    const password = wrapper.get('input[name="password"]');
+    await password.setValue("a-secure-password");
+    const visibility = wrapper.get('button[aria-label="Show password"]');
+    await visibility.trigger("click");
+
+    expect(wrapper.get('input[name="password"]').attributes("type")).toBe("text");
+    expect((wrapper.get('input[name="password"]').element as HTMLInputElement).value).toBe("a-secure-password");
+    expect(wrapper.find('button[aria-label="Hide password"]').exists()).toBe(true);
   });
 
   it("toggles cleanly between sign-in and registration modes", async () => {
     const wrapper = mount(AuthView);
-    expect(wrapper.get("h1").text()).toBe("Welcome back");
+    expect(wrapper.get("h1").text()).toBe("Sign in");
     await wrapper.get("button.text-button").trigger("click");
     expect(wrapper.get("h1").text()).toBe("Create account");
     expect(wrapper.get("button.primary").text()).toContain("Create account");
     await wrapper.get("button.text-button").trigger("click");
-    expect(wrapper.get("h1").text()).toBe("Welcome back");
+    expect(wrapper.get("h1").text()).toBe("Sign in");
     expect(wrapper.get("button.primary").text()).toContain("Sign in");
   });
 
