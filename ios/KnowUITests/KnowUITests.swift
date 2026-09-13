@@ -53,6 +53,17 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["auth.submit"].isEnabled)
     }
 
+    func testMalformedEmailShowsInlineValidationWithoutSubmitting() {
+        app.launch()
+        let email = app.textFields["auth.email"]
+        XCTAssertTrue(email.waitForExistence(timeout: 5))
+        email.tap()
+        email.typeText("person@@example.com")
+        app.buttons["auth.submit"].tap()
+        XCTAssertTrue(app.staticTexts["Enter a valid email address."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["auth.submit"].isEnabled)
+    }
+
     func testAuthenticationModeCanSwitchToRegistration() {
         app.launch()
         let mode = app.buttons["auth.mode"]
