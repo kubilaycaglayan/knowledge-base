@@ -86,13 +86,14 @@ struct WorkspaceView: View {
                             Text("Dark").tag("dark")
                         }
                     } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44) }
+                        .buttonStyle(.plain).foregroundStyle(WorkspaceTheme.muted(scheme))
                         .accessibilityLabel("Appearance settings").accessibilityIdentifier("workspace.appearance")
                     Button("Sign out") {
                         if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft || labels.hasUnsavedDraft || notes.hasUnsavedDraft || calendar.hasUnsavedDraft { signOutConfirmation = true } else { reports.signOut(); app.signOut() }
                     }.font(.caption).frame(minHeight: 44).accessibilityIdentifier("workspace.signOut")
                 }
                 ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 2) {
-                    ForEach(["Sessions", "Logs", "Labels", "Notes", "Paths", "Calendar", "Reports", "Timeline"], id: \.self) { name in
+                    ForEach(["Sessions", "Logs", "Labels", "Notes", "Paths", "Calendar", "Reports"], id: \.self) { name in
                         Button { section = name } label: {
                             Text(name).font(.subheadline.weight(section == name ? .semibold : .regular))
                                 .padding(.horizontal, 10).frame(minHeight: 44)
