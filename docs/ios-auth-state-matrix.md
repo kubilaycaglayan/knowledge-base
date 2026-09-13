@@ -116,6 +116,12 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   480-point maximum card width, and 16-point compact-width side/card padding.
   Swift package tests and the simulator control test still pass after this
   change.
+- Built and launched the native app on the iPhone 17 Pro simulator and captured
+  light and dark auth screenshots at `/tmp/knowledge-base-evidence/ios-auth-
+  {light,dark}.png`. Visual inspection confirms the complete hierarchy, Google
+  control, keyboard-safe scrolling surface, and theme surfaces render without
+  clipping at the simulator's compact width. These are local evidence files,
+  not committed artifacts.
 - The required Dockerized backend test command could not run because this host
   has no `docker` executable. Frontend build and web auth tests remain green;
   backend/API integration and smoke checks therefore remain unverified here.
