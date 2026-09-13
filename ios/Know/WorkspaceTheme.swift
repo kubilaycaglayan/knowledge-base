@@ -80,6 +80,29 @@ struct WorkspaceButton: ButtonStyle {
     }
 }
 
+struct WorkspaceFocusRing: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.isFocused) private var isFocused
+
+    func body(content: Content) -> some View {
+        content
+            .focusable()
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(WorkspaceTheme.accent(scheme), lineWidth: 3)
+                    .padding(-3)
+                    .opacity(isFocused ? 1 : 0)
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
+extension View {
+    func workspaceFocusRing() -> some View {
+        modifier(WorkspaceFocusRing())
+    }
+}
+
 struct WorkspaceChip: View {
     @Environment(\.colorScheme) private var scheme
     let text: String
