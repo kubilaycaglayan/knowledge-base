@@ -146,6 +146,17 @@ Native Reports work is split into semantic commits:
   covered hierarchy, spacing, chart colors, responsive ordering, and state
   copy; platform-specific navigation and semantic presentation differences are
   intentional rather than pixel-match claims.
+- A live forwarded-development API probe created two disposable synthetic
+  accounts with distinct paths, time-entry labels, Calendar labels, Calendar
+  notes, and one-hour entries. Each owner’s weekly report contained only its
+  own path, session-label, Calendar, total, and Sankey values; assigning the
+  other owner’s path and label was rejected with HTTP 400. No account identity,
+  token, password, or fixture identifier was retained in this document.
+- `ReportServiceTest.reportUsesTheRequestedOwnerForPathsLabelsAndCalendarData`
+  is a durable regression test for the owner IDs supplied to entry, path,
+  session-label, and Calendar lookups and verifies that foreign path/label
+  names cannot appear in the report response. It remains part of the backend
+  gate rather than being claimed as locally executed evidence.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
@@ -904,8 +915,11 @@ only on a happy-path screenshot.
   superseded account cannot sign out a newer authenticated session.
 - [x] **AC-163 — Non-auth failures:** Offline, timeout, 404, 409, and 503 errors
   retain the current credential and do not produce false sign-out.
-- [ ] **AC-164 — Owner isolation:** All displayed paths, labels, time totals,
+- [x] **AC-164 — Owner isolation:** All displayed paths, labels, time totals,
   Calendar records, and Sankey data come only from owner-scoped API responses.
+  A two-account forwarded-development probe verified distinct complete report
+  responses and rejected a foreign path/label assignment; the service
+  regression test protects the owner IDs used for each underlying lookup.
 - [x] **AC-165 — Account cache isolation:** Cache keys include account identity
   or caches are destroyed on account change; data cannot cross accounts even
   when query parameters are identical.
