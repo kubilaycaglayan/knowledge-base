@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Observation
 
 enum ReportAggregation: String, Codable, CaseIterable, Identifiable {
     case day = "DAY", week = "WEEK", month = "MONTH", quarter = "QUARTER", year = "YEAR"
@@ -170,20 +171,20 @@ struct ReportsAPI: ReportsTransport { let client: APIClient; let token: String
     func labels() async throws -> [KBLabel] { try await client.request("/labels?scope=TIME_ENTRY", token: token) }
 }
 
-@MainActor final class ReportsModel: ObservableObject {
-    @Published private(set) var query: ReportQuery
-    @Published private(set) var report: Report?
-    @Published private(set) var loaded = false
-    @Published private(set) var paths: [Path] = []
-    @Published private(set) var labels: [KBLabel] = []
-    @Published private(set) var loading = false
-    @Published private(set) var refreshing = false
-    @Published var error: String?
-    @Published var rangeError: String?
-    @Published var trendline: ReportTrendline = .off
-    @Published var showSankey = false
-    @Published var showCalendarInputs = true
-    @Published var breakdown: ReportBreakdown = .path
+@MainActor @Observable final class ReportsModel {
+    private(set) var query: ReportQuery
+    private(set) var report: Report?
+    private(set) var loaded = false
+    private(set) var paths: [Path] = []
+    private(set) var labels: [KBLabel] = []
+    private(set) var loading = false
+    private(set) var refreshing = false
+    var error: String?
+    var rangeError: String?
+    var trendline: ReportTrendline = .off
+    var showSankey = false
+    var showCalendarInputs = true
+    var breakdown: ReportBreakdown = .path
     private let transport: ReportsTransport; private let unauthorized: () -> Void; private var generation = 0; private var cache: [String: Report] = [:]; private var bucketCache: [String: [ReportBucket]] = [:]; private(set) var bucketCalculationCount = 0; private var loadedReferences = false; private var inflightKey: String?
     init(transport: ReportsTransport, query: ReportQuery? = nil, calendar: Calendar = .current, unauthorized: @escaping () -> Void = {}) { self.transport = transport; self.query = query ?? ReportDateMath.defaultQuery(calendar: calendar); self.unauthorized = unauthorized }
     var pathOptions: [Path] { paths.isEmpty ? (report?.paths.compactMap { guard let id = $0.id else { return nil }; return Path(id: id, name: $0.label, description: nil, status: "ACTIVE", color: $0.color) } ?? []) : paths }

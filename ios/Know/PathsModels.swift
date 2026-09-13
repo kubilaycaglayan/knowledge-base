@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 struct PathSummary: Codable {
     let path: Path
@@ -51,13 +52,13 @@ struct PathsAPI: PathsTransport {
     }
 }
 
-@MainActor final class PathsModel: ObservableObject {
-    @Published private(set) var paths: [Path] = []
-    @Published private(set) var summaries: [UUID: PathSummary] = [:]
-    @Published private(set) var pendingRemoval: Path?
-    @Published private(set) var isLoading = false
-    @Published private(set) var busy = false
-    @Published var error: String?
+@MainActor @Observable final class PathsModel {
+    private(set) var paths: [Path] = []
+    private(set) var summaries: [UUID: PathSummary] = [:]
+    private(set) var pendingRemoval: Path?
+    private(set) var isLoading = false
+    private(set) var busy = false
+    var error: String?
 
     private let transport: PathsTransport
     private let unauthorized: () -> Void
@@ -71,8 +72,6 @@ struct PathsAPI: PathsTransport {
         self.unauthorized = unauthorized
         self.invalidateReports = invalidateReports
     }
-
-    deinit { removalTask?.cancel() }
 
     func load(force: Bool = false) async {
         guard !isLoading || force else { return }

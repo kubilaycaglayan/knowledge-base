@@ -2,13 +2,13 @@ import SwiftUI
 
 struct WorkspaceView: View {
     @ObservedObject var app: AppModel
-    @StateObject private var sessions: SessionsModel
-    @StateObject private var logs: LogsModel
-    @StateObject private var labels: LabelsModel
-    @StateObject private var notes: NotesModel
-    @StateObject private var paths: PathsModel
-    @StateObject private var calendar: CalendarModel
-    @StateObject private var reports: ReportsModel
+    @State private var sessions: SessionsModel
+    @State private var logs: LogsModel
+    @State private var labels: LabelsModel
+    @State private var notes: NotesModel
+    @State private var paths: PathsModel
+    @State private var calendar: CalendarModel
+    @State private var reports: ReportsModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     @AppStorage("knowledge-base.appearance") private var appearance = "system"
@@ -22,42 +22,42 @@ struct WorkspaceView: View {
         let uiTesting = isUITesting(arguments: arguments)
         self.uiTesting = uiTesting
         let api = SessionsAPI(client: app.api, token: app.token ?? "")
-        self._sessions = StateObject(wrappedValue: SessionsModel(
+        self._sessions = State(initialValue: SessionsModel(
             transport: uiTesting ? SessionsFixture(arguments: arguments) : api,
             defaults: uiTesting ? nil : .standard,
             account: Self.accountID(app.token),
             unauthorized: { [weak app] in app?.signOut() }
         ))
         let logAPI = LogsAPI(client: app.api, token: app.token ?? "")
-        self._logs = StateObject(wrappedValue: LogsModel(
+        self._logs = State(initialValue: LogsModel(
             transport: uiTesting ? LogsFixture(arguments: arguments) : logAPI,
             unauthorized: { [weak app] in app?.signOut() }
         ))
         let labelsAPI = LabelsAPI(client: app.api, token: app.token ?? "")
-        self._labels = StateObject(wrappedValue: LabelsModel(
+        self._labels = State(initialValue: LabelsModel(
             transport: uiTesting ? LabelsFixture(arguments: arguments) : labelsAPI,
             unauthorized: { [weak app] in app?.signOut() },
             invalidateReports: { [weak app] in Task { await app?.refresh() } }
         ))
         let notesAPI = NotesAPI(client: app.api, token: app.token ?? "")
-        self._notes = StateObject(wrappedValue: NotesModel(
+        self._notes = State(initialValue: NotesModel(
             transport: uiTesting ? NotesFixture(arguments: arguments) : notesAPI,
             unauthorized: { [weak app] in app?.signOut() }
         ))
         let pathsAPI = PathsAPI(client: app.api, token: app.token ?? "")
-        self._paths = StateObject(wrappedValue: PathsModel(
+        self._paths = State(initialValue: PathsModel(
             transport: uiTesting ? PathsFixture(arguments: arguments) : pathsAPI,
             unauthorized: { [weak app] in app?.signOut() },
             invalidateReports: { [weak app] in Task { await app?.refresh() } }
         ))
         let calendarAPI = CalendarAPI(client: app.api, token: app.token ?? "")
-        self._calendar = StateObject(wrappedValue: CalendarModel(
+        self._calendar = State(initialValue: CalendarModel(
             transport: uiTesting ? CalendarFixture(arguments: arguments) : calendarAPI,
             unauthorized: { [weak app] in app?.signOut() },
             invalidateReports: { [weak app] in Task { await app?.refresh() } }
         ))
         let reportsAPI = ReportsAPI(client: app.api, token: app.token ?? "")
-        self._reports = StateObject(wrappedValue: ReportsModel(
+        self._reports = State(initialValue: ReportsModel(
             transport: uiTesting ? ReportsFixture(arguments: arguments) : reportsAPI,
             unauthorized: { [weak app] in app?.signOut() }
         ))

@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct PathsView: View {
-    @ObservedObject var model: PathsModel
-    @ObservedObject var sessions: SessionsModel
+    @Bindable var model: PathsModel
+    @Bindable var sessions: SessionsModel
     @Environment(\.colorScheme) private var scheme
     @State private var addOpen = false
     @State private var editPath: Path?
