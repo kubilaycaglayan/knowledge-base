@@ -169,6 +169,8 @@ Native Reports work is split into semantic commits:
 - `5fc9ddf` adds URLProtocol-backed ReportsAPI coverage for Bearer headers,
   repeated report filters, owner-scoped paths, `scope=TIME_ENTRY` labels, and
   GET-only read behavior.
+- `b2aefd0` verifies a current-account report 401 invokes the existing recovery
+  callback without presenting a false generic report error.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -783,7 +785,7 @@ only on a happy-path screenshot.
 - [x] **AC-160 — Bearer authentication:** `/reports`, `/paths`, and scoped-label
   requests include the current bearer token and never log or persist it in
   report state, fixtures, screenshots, or diagnostics.
-- [ ] **AC-161 — Current-token 401:** A 401 belonging to the current account
+- [x] **AC-161 — Current-token 401:** A 401 belonging to the current account
   routes through the existing `AppModel` sign-out flow.
 - [ ] **AC-162 — Delayed 401 safety:** A delayed 401 from an obsolete token or
   superseded account cannot sign out a newer authenticated session.
