@@ -403,6 +403,15 @@ final class KnowTests: XCTestCase {
         }
     }
 
+    func testReportsChartPaletteAdaptsToThreeToOneContrastInBothAppearances() {
+        for (dark, background) in [(false, "f7f8fa"), (true, "151a22")] {
+            for swatch in WorkspaceTheme.palette {
+                let chartHex = WorkspaceTheme.accessibleChartHex(swatch, dark: dark)
+                XCTAssertGreaterThanOrEqual(contrastRatio(chartHex, background), 3, "\(swatch) in \(dark ? "dark" : "light")")
+            }
+        }
+    }
+
     private func contrastRatio(_ foreground: String, _ background: String) -> Double {
         func luminance(_ hex: String) -> Double {
             let value = UInt64(hex, radix: 16)!
