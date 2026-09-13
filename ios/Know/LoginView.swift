@@ -55,7 +55,7 @@ struct LoginView: View {
                             }.frame(maxWidth: .infinity).frame(minHeight: 48)
                         }
                         .buttonStyle(.plain).foregroundStyle(dark ? .black : .white)
-                        .background(accent, in: RoundedRectangle(cornerRadius: 6))
+                        .background(accent, in: RoundedRectangle(cornerRadius: 4))
                         .accessibilityIdentifier("auth.submit")
                         HStack { Rectangle().frame(height: 1); Text("or continue with").font(.caption).fixedSize(); Rectangle().frame(height: 1) }.foregroundStyle(.secondary)
                         NativeGoogleButton(isEnabled: !model.isAuthenticating) {
@@ -76,12 +76,12 @@ struct LoginView: View {
                             .accessibilityIdentifier("auth.mode")
                     }
                     .disabled(model.isAuthenticating)
-                    .padding(24)
-                    .background(dark ? Color(red: 0.11, green: 0.14, blue: 0.19) : .white, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.25)))
+                    .padding(geometry.size.width < 480 ? 16 : 24)
+                    .background(dark ? Color(red: 0.11, green: 0.14, blue: 0.19) : .white, in: RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(.secondary.opacity(0.25)))
                 }
-                .frame(maxWidth: 440)
-                .padding(24)
+                .frame(maxWidth: 480)
+                .padding(.horizontal, geometry.size.width < 480 ? 16 : 24)
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }.scrollDismissesKeyboard(.interactively)
         }
@@ -110,6 +110,6 @@ private struct AuthInput: ViewModifier {
     var focused: Bool
     func body(content: Content) -> some View {
         content.font(.body).textFieldStyle(.plain).padding(12).frame(minHeight: 48)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(focused ? Color.accentColor : .secondary, lineWidth: focused ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(focused ? Color.accentColor : .secondary, lineWidth: focused ? 2 : 1))
     }
 }
