@@ -51,7 +51,7 @@ In the same Google Cloud project used by the web app, create an OAuth client of 
 
 Configure Google Auth Platform branding/audience and add your account as a test user if your project requires test users. Sign-in only requests identity/profile/email; no Drive or Calendar permission is needed. No Firebase project is required. Rebuild after changing settings.
 
-The app handles Google's callback URL and sends `{ "idToken": "…" }` to `POST /api/v1/auth/google`. Cancellation returns to login. If OAuth settings are absent, the Google button explains that email/password is available. Passwords are preserved exactly; email whitespace is trimmed.
+The app handles Google's callback URL and sends `{ "idToken": "…" }` to `POST /api/v1/auth/google`. Cancellation returns to login. If OAuth settings are absent, the Google separator and button are omitted, matching the web; email/password remains available. Passwords are preserved exactly; email whitespace is trimmed.
 
 References: [Google configuration](https://developers.google.com/identity/sign-in/ios/start-integrating), [native integration](https://developers.google.com/identity/sign-in/ios/sign-in), [backend verification](https://developers.google.com/identity/sign-in/ios/backend-auth).
 
