@@ -107,6 +107,9 @@ Native Reports work is split into semantic commits:
   labels, Calendar notes/portions, Sankey nodes/links, malformed responses,
   long content, and reference failures; it also adds model and simulator UI
   coverage for those states.
+- `e327686` corrects Off trendline semantics, preserves empty Sankey
+  switchability, and removes shared-date-formatter mutation from report date
+  calculations.
 
 Current evidence is deliberately narrower than the completion gate:
 
