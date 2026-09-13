@@ -1,5 +1,6 @@
 import XCTest
 import Foundation
+import GoogleSignIn
 @testable import Know
 
 private final class URLProtocolStub: URLProtocol {
@@ -133,6 +134,17 @@ final class KnowTests: XCTestCase {
         XCTAssertEqual(URLProtocolStub.requestCount, 0)
         XCTAssertFalse(model.signedIn)
         XCTAssertNotNil(model.authError)
+        XCTAssertFalse(model.isAuthenticating)
+    }
+
+    @MainActor
+    func testGoogleCancellationReturnsToIdleWithoutError() async {
+        let model = authenticationModel()
+        await model.authenticateWithGoogle {
+            throw NSError(domain: kGIDSignInErrorDomain, code: GIDSignInError.canceled.rawValue)
+        }
+        XCTAssertNil(model.authError)
+        XCTAssertFalse(model.signedIn)
         XCTAssertFalse(model.isAuthenticating)
     }
 
