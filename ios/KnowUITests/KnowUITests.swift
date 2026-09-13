@@ -156,6 +156,36 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No network connection. Reconnect and try again."].waitForExistence(timeout: 5))
     }
 
+    func testPathsMergeRequiresConfirmationAndRemoveOffersUndo() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.paths"].tap()
+        app.buttons["paths.edit.00000000-0000-4000-8000-000000000001"].tap()
+        XCTAssertTrue(app.buttons["paths.merge"].waitForExistence(timeout: 5))
+        app.buttons["paths.merge"].tap()
+        XCTAssertTrue(app.buttons["paths.merge.target.00000000-0000-4000-8000-000000000003"].waitForExistence(timeout: 5))
+        app.buttons["paths.merge.target.00000000-0000-4000-8000-000000000003"].tap()
+        XCTAssertTrue(app.buttons["Merge"].waitForExistence(timeout: 5))
+        app.buttons["Merge"].tap()
+        XCTAssertTrue(app.staticTexts["Writing"].waitForExistence(timeout: 5))
+
+        app.buttons["paths.remove.00000000-0000-4000-8000-000000000003"].tap()
+        XCTAssertTrue(app.buttons["Remove"].waitForExistence(timeout: 5))
+        app.buttons.matching(identifier: "Remove").element(boundBy: 1).tap()
+        XCTAssertTrue(app.buttons["paths.undo"].waitForExistence(timeout: 5))
+        app.buttons["paths.undo"].tap()
+    }
+
+    func testPathsControlsRemainReachableAtAccessibilityTextSize() {
+        app.launchArguments += ["-ui-testing-authenticated", "-UIPreferredContentSizeCategory", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        app.buttons["workspace.paths"].tap()
+        XCTAssertTrue(app.buttons["paths.add"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["paths.history.00000000-0000-4000-8000-000000000001"].exists)
+        app.buttons["paths.history.00000000-0000-4000-8000-000000000001"].tap()
+        XCTAssertTrue(app.buttons["paths.history.close"].waitForExistence(timeout: 5))
+    }
+
     func testLabelsListAndCreateControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
