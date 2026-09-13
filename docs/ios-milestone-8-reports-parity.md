@@ -121,8 +121,9 @@ Native Reports work is split into semantic commits:
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
-  native chart and verifies that the Calendar toggle hides and restores those
-  annotations in the iPhone 17 Pro UI test.
+  native chart, including colored label chips and note/marker symbols, and
+  verifies that the Calendar toggle hides and restores those annotations in
+  the iPhone 17 Pro UI test.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -602,7 +603,7 @@ only on a happy-path screenshot.
 - [x] **AC-110 — Calendar data separation:** Calendar notes, markers, and day
   portions never change tracked seconds, bucket totals, breakdown totals,
   active-day counts, trendline inputs, or Sankey values.
-- [ ] **AC-111 — Daily-only overlay:** Calendar overlays appear in the summary
+- [x] **AC-111 — Daily-only overlay:** Calendar overlays appear in the summary
   chart only while aggregation is DAY.
 - [x] **AC-112 — Toggle availability:** The Calendar-input toggle appears only
   when at least one returned day contains a Calendar note or label assignment.
