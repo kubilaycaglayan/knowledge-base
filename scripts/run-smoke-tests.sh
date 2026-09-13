@@ -298,12 +298,21 @@ if api "${other_header[@]}" "http://localhost:8080/api/v1/paths/$path_id" >/dev/
   echo "cross-user path access was allowed" >&2
   exit 1
 fi
-note="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"pathId\":\"$path_id\",\"title\":\"Smoke note\",\"content\":\"Persisted knowledge\"}" http://localhost:8080/api/v1/notes)"
+note_payload="$(printf '{"pathId":"%s","title":"Smoke note","content":"{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Persisted knowledge\"}]}]}","contentText":"Persisted knowledge","tags":["Smoke"]}' "$path_id")"
+note="$(api "${header[@]}" "${content_json[@]}" --post-data="$note_payload" http://localhost:8080/api/v1/notes)"
 note_id="$(printf '%s' "$note" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+[[ -n "$note_id" ]]
+api "${header[@]}" http://localhost:8080/api/v1/notes?page=0\&size=20\&q=Smoke | grep -q 'Smoke note'
 api "${header[@]}" "${content_json[@]}" --method=PUT \
-  --body-data='{"title":"Edited smoke note","content":"Updated knowledge"}' \
+  --body-data='{"title":"Edited smoke note","content":"{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Updated knowledge\"}]}]}","contentText":"Updated knowledge","tags":["Smoke"]}' \
   "http://localhost:8080/api/v1/notes/$note_id" \
   | grep -q 'Updated knowledge'
+api "${header[@]}" --method=DELETE "http://localhost:8080/api/v1/notes/$note_id" >/dev/null
+api "${header[@]}" --post-data='' "${content_json[@]}" "http://localhost:8080/api/v1/notes/$note_id/restore" >/dev/null
+if api "${other_header[@]}" "http://localhost:8080/api/v1/notes/$note_id" >/dev/null; then
+  echo "cross-user note access was allowed" >&2
+  exit 1
+fi
 log_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 log="$(api "${header[@]}" "${content_json[@]}" --post-data="{\"body\":\"Smoke log\",\"occurredAt\":\"$log_time\"}" http://localhost:8080/api/v1/logs)"
 log_id="$(printf '%s' "$log" | sed -n 's/.*"id":"\([^\"]*\)".*/\1/p')"
