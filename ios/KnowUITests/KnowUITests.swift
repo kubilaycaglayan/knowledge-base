@@ -250,6 +250,14 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Save day"].exists)
     }
 
+    func testCalendarLightSystemAndReducedMotionAppearances() {
+        for arguments in [["-ui-testing", "-ui-testing-authenticated", "-AppleInterfaceStyle", "Light"], ["-ui-testing", "-ui-testing-authenticated"], ["-ui-testing", "-ui-testing-authenticated", "-UIAccessibilityReduceMotionEnabled", "YES"]] {
+            app.launchArguments = arguments; app.launch(); app.buttons["workspace.calendar"].tap()
+            XCTAssertTrue(app.descendants(matching: .any)["calendar.grid"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["Previous month"].exists); app.terminate(); app = XCUIApplication()
+        }
+    }
+
     func testNewPathDraftRequiresDiscardConfirmation() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
