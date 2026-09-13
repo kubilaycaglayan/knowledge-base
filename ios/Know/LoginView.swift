@@ -49,13 +49,14 @@ struct LoginView: View {
                         }
                         Button(action: submit) {
                             HStack {
-                                if model.isAuthenticating { ProgressView().tint(dark ? .black : .white) }
+                                if model.isAuthenticating { ProgressView().tint(dark ? .black : .white).accessibilityHidden(true) }
                                 Text(register ? "Create account" : "Sign in").fontWeight(.semibold)
                             }.frame(maxWidth: .infinity).frame(minHeight: 48)
                         }
                         .buttonStyle(.plain).foregroundStyle(dark ? .black : .white)
                         .background(accent, in: RoundedRectangle(cornerRadius: 4))
                         .accessibilityIdentifier("auth.submit")
+                        .accessibilityValue(model.isAuthenticating ? "Working…" : "")
                         if GoogleAuthentication.isConfigured {
                             HStack { Rectangle().frame(height: 1); Text("or continue with").font(.caption).fixedSize(); Rectangle().frame(height: 1) }.foregroundStyle(.secondary)
                             NativeGoogleButton(isEnabled: !model.isAuthenticating) {
