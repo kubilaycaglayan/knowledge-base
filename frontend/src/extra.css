@@ -4,6 +4,13 @@
 .auth form { margin: 24px 0; }
 .auth label, .edit-dialog label, .session-edit label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; }
 .auth input { width: 100%; }
+.auth .password-control { position: relative; display: flex; align-items: center; }
+.auth .password-control input { padding-right: 48px; }
+.auth .password-visibility { position: absolute; right: 4px; width: 40px; min-height: 40px; padding: 6px; }
+.auth .field-error { color: var(--workspace-danger); font-size: 12px; font-weight: 400; }
+.auth .auth-retry { margin-top: 8px; }
+.auth-spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: auth-spin .8s linear infinite; }
+@keyframes auth-spin { to { transform: rotate(360deg); } }
 /* GIS uses a light document color scheme even for its dark button theme.
    Match the iframe's scheme so browsers keep its canvas transparent, including
    the bottom padding and rounded corners. Let Google size its own control. */
