@@ -58,6 +58,19 @@ final class KnowUITests: XCTestCase {
         XCTAssertEqual(app.buttons["auth.submit"].label, "Create account")
     }
 
+    func testAuthenticationControlsRemainReachableAtAccessibilityTextSize() {
+        app.launchArguments += [
+            "-UIPreferredContentSizeCategory",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+        XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.secureTextFields["auth.password"].exists)
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["auth.submit"].exists)
+        XCTAssertTrue(app.buttons["auth.mode"].exists)
+    }
+
     func testAuthenticatedWorkspaceControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
