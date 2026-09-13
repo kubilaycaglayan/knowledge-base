@@ -46,6 +46,14 @@ private final class ReportsURLProtocolStub: URLProtocol {
     }
     private func calendar() -> Calendar { var c = Calendar(identifier: .gregorian); c.locale = Locale(identifier: "en_US_POSIX"); c.timeZone = TimeZone(identifier: "Europe/Istanbul")!; return c }
 
+    func testDurationFormattingUsesTheRequestedLocale() {
+        XCTAssertEqual(ReportsFormatting.duration(0, locale: Locale(identifier: "en_US")), "00:00")
+        let english = ReportsFormatting.duration(3 * 3600 + 40 * 60, locale: Locale(identifier: "en_US"))
+        let french = ReportsFormatting.duration(3 * 3600 + 40 * 60, locale: Locale(identifier: "fr_FR"))
+        XCTAssertEqual(english, "3h 40m")
+        XCTAssertNotEqual(english, french)
+    }
+
     func testDefaultAndAllPresetsUseInclusiveLocalDates() {
         let c = calendar(); let now = c.date(from: DateComponents(year: 2026, month: 9, day: 13))!
         let defaultQuery = ReportDateMath.defaultQuery(now: now, calendar: c); XCTAssertEqual(defaultQuery.aggregation, .day); XCTAssertEqual(defaultQuery.startDate, "2026-09-07"); XCTAssertEqual(defaultQuery.endDate, "2026-09-13")
