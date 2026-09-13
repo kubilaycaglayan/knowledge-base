@@ -5,6 +5,7 @@ struct WorkspaceView: View {
     @StateObject private var sessions: SessionsModel
     @StateObject private var logs: LogsModel
     @StateObject private var labels: LabelsModel
+    @StateObject private var notes: NotesModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     @AppStorage("knowledge-base.appearance") private var appearance = "system"
@@ -35,6 +36,11 @@ struct WorkspaceView: View {
             unauthorized: { [weak app] in app?.signOut() },
             invalidateReports: { [weak app] in Task { await app?.refresh() } }
         ))
+        let notesAPI = NotesAPI(client: app.api, token: app.token ?? "")
+        self._notes = StateObject(wrappedValue: NotesModel(
+            transport: uiTesting ? NotesFixture(arguments: arguments) : notesAPI,
+            unauthorized: { [weak app] in app?.signOut() }
+        ))
     }
 
     // The public JWT subject scopes recent IDs by account without persisting the JWT.
@@ -62,11 +68,11 @@ struct WorkspaceView: View {
                     } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44) }
                         .accessibilityLabel("Appearance settings").accessibilityIdentifier("workspace.appearance")
                     Button("Sign out") {
-                        if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft || labels.hasUnsavedDraft { signOutConfirmation = true } else { app.signOut() }
+                        if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft || labels.hasUnsavedDraft || notes.hasUnsavedDraft { signOutConfirmation = true } else { app.signOut() }
                     }.font(.caption).frame(minHeight: 44).accessibilityIdentifier("workspace.signOut")
                 }
                 HStack(spacing: 2) {
-                    ForEach(["Sessions", "Logs", "Labels", "Paths", "Timeline"], id: \.self) { name in
+                    ForEach(["Sessions", "Logs", "Labels", "Notes", "Paths", "Timeline"], id: \.self) { name in
                         Button { section = name } label: {
                             Text(name).font(.subheadline.weight(section == name ? .semibold : .regular))
                                 .padding(.horizontal, 10).frame(minHeight: 44)
@@ -81,6 +87,7 @@ struct WorkspaceView: View {
                 SessionsView(model: sessions).opacity(section == "Sessions" ? 1 : 0).allowsHitTesting(section == "Sessions").accessibilityHidden(section != "Sessions")
                 LogsView(model: logs).opacity(section == "Logs" ? 1 : 0).allowsHitTesting(section == "Logs").accessibilityHidden(section != "Logs")
                 LabelsView(model: labels).opacity(section == "Labels" ? 1 : 0).allowsHitTesting(section == "Labels").accessibilityHidden(section != "Labels")
+                NotesView(model: notes).opacity(section == "Notes" ? 1 : 0).allowsHitTesting(section == "Notes").accessibilityHidden(section != "Notes")
                 if section == "Paths" { PathsView() }
                 if section == "Timeline" { TimelineView() }
             }
@@ -89,7 +96,7 @@ struct WorkspaceView: View {
         .tint(WorkspaceTheme.accent(scheme))
         .background(WorkspaceTheme.background(scheme))
         .preferredColorScheme(appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
-        .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load() } else { resume() } }
+        .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load(); await notes.load(); await notes.loadLabels() } else { resume() } }
         .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resume() } } else { sessions.suspend(); logs.suspend() } }
         .onChange(of: section) { _, value in if value != "Sessions" { Task { await app.refresh() } } }
         .onDisappear { sessions.suspend(); logs.suspend() }
@@ -98,5 +105,5 @@ struct WorkspaceView: View {
             Button("Keep editing", role: .cancel) {}
         }
     }
-    private func resume() { if let token = app.token { sessions.resume(client: app.api, token: token); logs.resume(); Task { await labels.load() } } }
+    private func resume() { if let token = app.token { sessions.resume(client: app.api, token: token); logs.resume(); Task { await labels.load(); await notes.load(); await notes.loadLabels() } } }
 }
