@@ -4,6 +4,7 @@ struct ReportsView: View {
     @ObservedObject var model: ReportsModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let duration: (Int64) -> String = { seconds in
         let hours = seconds / 3600; let minutes = (seconds % 3600) / 60
         if seconds == 0 { return "00:00" }
@@ -29,6 +30,7 @@ struct ReportsView: View {
         }.refreshable { await model.retry() }
         .task { await model.load() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.load() } } }
+        .transaction { transaction in if reduceMotion { transaction.animation = nil } }
         .overlay(alignment: .top) { if let error = model.error { HStack { Label(error, systemImage: "exclamationmark.triangle"); Spacer(); Button("Try again") { Task { await model.retry() } }.frame(minWidth: 44, minHeight: 44).accessibilityHint("Retries loading the current report.").accessibilityIdentifier("reports.retry") }.padding(12).background(.thinMaterial).accessibilityElement(children: .contain) } }
         .accessibilityIdentifier("reports.page")
     }
