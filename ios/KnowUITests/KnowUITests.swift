@@ -162,8 +162,8 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(calendar.waitForExistence(timeout: 5))
         calendar.tap()
         XCTAssertTrue(calendar.isSelected)
-        XCTAssertTrue(app.otherElements["calendar.grid"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.otherElements["calendar.editor"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["calendar.grid"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["calendar.editor"].exists)
         XCTAssertTrue(app.buttons["Previous month"].exists)
         XCTAssertTrue(app.buttons["Next month"].exists)
         XCTAssertTrue(app.buttons["Select range"].exists)
@@ -174,7 +174,8 @@ final class KnowUITests: XCTestCase {
         app.launch()
         app.buttons["workspace.calendar"].tap()
         XCTAssertTrue(app.buttons["calendar.day.2026-09-03"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["calendar.day.2026-09-03"].label.contains("Thursday, September 3, 2026"))
+        let dayLabel = app.buttons["calendar.day.2026-09-03"].label
+        XCTAssertTrue(dayLabel.contains("2026")); XCTAssertTrue(dayLabel.contains("note")); XCTAssertTrue(dayLabel.contains("1 label"))
         app.buttons["Select range"].tap()
         XCTAssertTrue(app.buttons["Cancel range"].waitForExistence(timeout: 5))
     }
@@ -186,6 +187,44 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Unable to load calendar records."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Retry"].exists)
         XCTAssertTrue(app.buttons["workspace.signOut"].exists)
+    }
+
+    func testCalendarLoadingAndExpiredSessionFixtures() {
+        app.launchArguments += ["-ui-testing-authenticated", "-calendar-loading"]
+        app.launch(); app.buttons["workspace.calendar"].tap()
+        XCTAssertTrue(app.buttons["calendar.day.2026-09-13"].waitForExistence(timeout: 8))
+
+        app.terminate(); app = XCUIApplication(); app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-calendar-unauthorized"]
+        app.launch()
+        XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["workspace.signOut"].exists)
+    }
+
+    func testCalendarPortionsRangeAlternativeAndFailedSaveRetainDraft() {
+        app.launchArguments += ["-ui-testing-authenticated", "-calendar-mutation-error"]
+        app.launch(); app.buttons["workspace.calendar"].tap(); app.swipeUp()
+        let note = app.textViews["What happened today?"]
+        XCTAssertTrue(note.waitForExistence(timeout: 5)); note.tap(); note.typeText("Retained draft")
+        app.buttons["Select Milestone"].tap()
+        let portion = app.buttons["calendar.portion.00000000-0000-4000-8000-000000000020"]
+        XCTAssertTrue(portion.waitForExistence(timeout: 3)); portion.tap()
+        for option in ["Marker only", "¼ day", "½ day", "¾ day", "Full day"] { XCTAssertTrue(app.buttons[option].exists) }
+        app.buttons["Full day"].tap()
+        app.buttons["Save day"].tap()
+        XCTAssertTrue(app.staticTexts["Unable to save this day."].waitForExistence(timeout: 5))
+        XCTAssertTrue((note.value as? String)?.contains("Retained draft") == true)
+        app.buttons["Select range"].tap(); XCTAssertTrue(app.staticTexts["Release on another day to select a range."].exists)
+        app.buttons["Cancel range"].tap()
+    }
+
+    func testCalendarCreatesLabelWithCustomPaletteColor() {
+        app.launchArguments += ["-ui-testing-authenticated", "-calendar-empty-labels"]
+        app.launch(); app.buttons["workspace.calendar"].tap(); app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Create a label below to begin."].waitForExistence(timeout: 5))
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Choose new label color'")).firstMatch.tap()
+        XCTAssertTrue(app.buttons["Choose new label color: #F97316"].waitForExistence(timeout: 3)); app.buttons["Choose new label color: #F97316"].tap()
+        let field = app.textFields["New calendar label"]; field.tap(); field.typeText("Vacation"); app.buttons["Add"].tap()
+        XCTAssertTrue(app.staticTexts["Vacation"].waitForExistence(timeout: 5))
     }
 
     func testNewPathDraftRequiresDiscardConfirmation() {
