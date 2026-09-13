@@ -179,7 +179,7 @@ struct LoginView: View {
     private func submit() {
         guard !model.isAuthenticating else { return }
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        emailError = trimmed.contains("@") && !trimmed.hasSuffix("@") && !trimmed.hasPrefix("@") ? nil : "Enter a valid email address."
+        emailError = Self.isValidEmail(trimmed) ? nil : "Enter a valid email address."
         passwordError = (9...200).contains(password.count) ? nil : "Use a password of 9 to 200 characters."
         passwordConfirmationError = register && passwordConfirmation != password ? "Passwords do not match." : nil
         if emailError != nil { focus = .email; return }
@@ -187,6 +187,20 @@ struct LoginView: View {
         if passwordConfirmationError != nil { focus = .passwordConfirmation; return }
         focus = nil
         Task { await model.authenticate(email: trimmed, password: password, register: register) }
+    }
+
+    private static func isValidEmail(_ value: String) -> Bool {
+        let parts = value.split(separator: "@", omittingEmptySubsequences: false)
+        guard parts.count == 2 else { return false }
+        let local = String(parts[0])
+        let domain = String(parts[1])
+        guard !local.isEmpty, !domain.isEmpty,
+              !local.contains(where: { $0.isWhitespace }),
+              !domain.contains(where: { $0.isWhitespace }),
+              !local.hasPrefix("."), !local.hasSuffix("."),
+              !local.contains(".."), !domain.hasPrefix("."),
+              !domain.hasSuffix("."), !domain.contains("..") else { return false }
+        return true
     }
 }
 
