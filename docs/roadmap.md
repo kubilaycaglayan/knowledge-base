@@ -2,6 +2,11 @@
 
 - [x] Rebuild native iOS authentication from the web design with password login,
   registration, Google SDK token exchange, and Keychain session persistence.
+- [x] Implement the first mobile-web-derived iOS workspace milestone: Sessions,
+  server-owned timer controls, scoped labels, paginated history, session editing,
+  deletion confirmation, light/dark theme parity, and WebSocket/REST reconciliation.
+- [ ] Finish the simulator UI-test pass for the new Sessions editor on the local
+  Xcode 26.5 runner; model and Swift package tests are green.
 - [ ] Complete live Google consent smoke verification with the owner's iOS OAuth client.
 
 - [x] Preserve sign-in across deployment outages and API recreation, keep error
