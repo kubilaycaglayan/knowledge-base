@@ -191,13 +191,16 @@ Native Reports work is split into semantic commits:
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
+- The current slice adds explicit report hit-area treatment for retry, date
+  navigation, preset, aggregation, date-range, and breakdown controls, plus
+  simulator assertions that Previous and Next expose at least 44 points.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 113 native package tests, including 31
+- `swift test --package-path ios` passes 115 native package tests, including 33
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
-- Focused iPhone 17 Pro simulator UI coverage passes for Reports navigation,
+- Focused iPhone 13 Pro and iPhone 17 Pro simulator UI coverage passes for Reports navigation,
   empty/error recovery, Calendar/Sankey textual details, owner-reference
   fallback, and Calendar annotation visibility. The Reports page no longer
   crashes before its initial async load.
