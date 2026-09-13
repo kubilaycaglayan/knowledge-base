@@ -257,6 +257,14 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["SUMMARY"].exists)
     }
 
+    func testReportsDenseFixtureKeepsLargeCategoryCollectionsReadable() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-dense"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.staticTexts["Dense path 12"].waitForExistence(timeout: 5))
+        app.buttons["reports.breakdown"].tap(); let choices = app.buttons.matching(NSPredicate(format: "label == 'Labels'")); XCTAssertTrue(choices.count > 1); choices.element(boundBy: choices.count - 1).tap()
+        XCTAssertTrue(app.staticTexts["Dense label 12"].waitForExistence(timeout: 5))
+    }
+
     func testReportsLoadingSkeletonAndEmptySankeyRemainRecoverable() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-loading"]
         app.launch(); app.buttons["workspace.reports"].tap()
