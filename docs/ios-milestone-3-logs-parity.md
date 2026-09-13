@@ -297,6 +297,9 @@ are exercised.
 - 2026-09-13: Logs light/dark appearance screenshot regression passed on the
   iPhone 17 Pro simulator. This records rendered artifacts for review; full
   VoiceOver, contrast, reduced-motion, and physical-device checks remain open.
+- 2026-09-13: LOG label chooser now renders the server-provided color swatch
+  alongside its checkbox/name state; model coverage verifies color and scope
+  fields are retained.
 
 ## Prompt for a fresh session
 
