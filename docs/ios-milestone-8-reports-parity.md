@@ -138,6 +138,10 @@ Native Reports work is split into semantic commits:
 - `d9fcf41` localizes Calendar summary dates, renders API-colored assignment
   rows with marker/note symbols, and exposes aggregate day/marker totals;
   simulator assertions cover both assignments and the aggregate copy.
+- `1742152` renders positive Calendar portions with proportional visual widths
+  while retaining marker-sized chips and accessible text for all inputs.
+- `16388d3` verifies that a filter change retains the previous report during
+  the matching refresh and replaces it only after the response completes.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -475,7 +479,7 @@ only on a happy-path screenshot.
   without resetting the date range, aggregation, or the other filter group.
 - [x] **AC-054 — Filter semantics:** The resulting data demonstrates OR within
   selected paths, OR within selected labels, and AND between the two groups.
-- [ ] **AC-055 — Filtering refresh:** Changing filters keeps the previous
+- [x] **AC-055 — Filtering refresh:** Changing filters keeps the previous
   report visible until the matching filtered response succeeds.
 - [x] **AC-056 — No category leakage:** Daily chart categories not present in
   the report’s filtered aggregate categories are not included in displayed
