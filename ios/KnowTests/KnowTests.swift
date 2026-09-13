@@ -115,7 +115,6 @@ final class KnowTests: XCTestCase {
         XCTAssertTrue(model.signedIn)
         XCTAssertNil(model.authError)
     }
-
     @MainActor
     func testMissingGoogleConfigurationDoesNotContactBackend() async {
         let model = authenticationModel()
