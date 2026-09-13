@@ -303,6 +303,9 @@ are exercised.
 - 2026-09-13: device-following log timestamps are normalized to the local
   minute (seconds zeroed), while manual DatePicker overrides remain unchanged;
   the focused Logs suite passes 8 tests.
+- 2026-09-13: added deterministic coverage for all LogFormatting calendar
+  groups, including Last hour, Monday-based week boundaries, both month
+  groups, and localized month fallback.
 
 ## Prompt for a fresh session
 
