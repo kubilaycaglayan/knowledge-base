@@ -13,6 +13,7 @@ struct NativeGoogleButton: UIViewRepresentable {
         button.style = .wide
         button.colorScheme = .light
         button.accessibilityIdentifier = "auth.google"
+        button.accessibilityLabel = "Continue with Google"
         button.addTarget(context.coordinator, action: #selector(Coordinator.signIn), for: .touchUpInside)
         return button
     }

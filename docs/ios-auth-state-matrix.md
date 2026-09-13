@@ -140,6 +140,8 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   the public default build.
 - `GoogleAuthentication.configurationIsValid` has pure unit coverage for valid
   IDs, missing server audience, and missing callback scheme.
+- The UIKit Google button wrapper now supplies the stable VoiceOver label
+  “Continue with Google” alongside its existing `auth.google` identifier.
 - Auth layout tokens were aligned in `LoginView`: 4-point card/control radii,
   480-point maximum card width, and 16-point compact-width side/card padding.
   Swift package tests and the simulator control test still pass after this
