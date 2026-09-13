@@ -103,11 +103,19 @@ Native Reports work is split into semantic commits:
   timeout/trend detail tests.
 - `6ba02b3` corrects the native Reports test-count evidence, and `6b7ccc9`
   makes the initial asynchronous Reports render crash-safe.
+- `8a615c1` expands deterministic fixtures for zero days, multiple paths and
+  labels, Calendar notes/portions, Sankey nodes/links, malformed responses,
+  long content, and reference failures; it also adds model and simulator UI
+  coverage for those states.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 91 native package tests, including 9
-  Reports tests.
+- `swift test --package-path ios` passes 95 native package tests, including 13
+  Reports tests. The focused Reports model suite and Codable/fixture coverage
+  also pass independently.
+- Focused iPhone 17 Pro simulator UI coverage passes for Reports navigation,
+  empty/error recovery, Calendar/Sankey textual details, and owner-reference
+  fallback. The Reports page no longer crashes before its initial async load.
 - The forwarded Ubuntu web reference suite passes 1 file and 17 tests.
 - Docker is unavailable in the local environment, so the documented
   containerized Gradle command could not run. The local `backend/gradlew`
