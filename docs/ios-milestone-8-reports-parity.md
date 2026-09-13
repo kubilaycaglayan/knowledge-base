@@ -171,6 +171,9 @@ Native Reports work is split into semantic commits:
   GET-only read behavior.
 - `b2aefd0` verifies a current-account report 401 invokes the existing recovery
   callback without presenting a false generic report error.
+- `5781af9` validates the cached Reports query when the scene returns active,
+  while `387981d` adds a simulator assertion for the semantic `Reports` page
+  heading.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -396,7 +399,7 @@ only on a happy-path screenshot.
 - [x] **AC-006 — Later activation:** Returning to an unchanged, successfully
   cached query reuses the report and reference data instead of immediately
   issuing identical requests.
-- [ ] **AC-007 — App resume:** Returning from background refreshes or validates
+- [x] **AC-007 — App resume:** Returning from background refreshes or validates
   Reports according to the model’s cache policy without clearing the visible
   report or resetting query state.
 - [x] **AC-008 — Sign-out lifecycle:** Sign-out cancels/invalidate in-flight
@@ -740,7 +743,7 @@ only on a happy-path screenshot.
 
 ### Accessibility, layout, and theming
 
-- [ ] **AC-144 — Semantic hierarchy:** Reports has a clear page heading and
+- [x] **AC-144 — Semantic hierarchy:** Reports has a clear page heading and
   correctly ordered section headings; decorative chart elements are hidden
   from accessibility.
 - [ ] **AC-145 — Accessible controls:** Every date, filter, aggregation,
