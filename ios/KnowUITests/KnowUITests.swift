@@ -207,6 +207,18 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No logs yet. Capture a thought above."].waitForExistence(timeout: 3))
     }
 
+    func testLogsCreateAnnouncesSuccess() {
+        app.launchArguments += ["-ui-testing-authenticated", "-logs-empty"]
+        app.launch()
+        app.buttons["workspace.logs"].tap()
+        let composer = app.textViews["logs.composer"]
+        XCTAssertTrue(composer.waitForExistence(timeout: 5))
+        composer.tap()
+        composer.typeText("A captured thought")
+        app.buttons["logs.save"].tap()
+        XCTAssertTrue(app.staticTexts["Log saved."].waitForExistence(timeout: 5))
+    }
+
     func testLogsEmptyAndOfflineFixturesOfferRecovery() {
         app.launchArguments += ["-ui-testing-authenticated", "-logs-empty"]
         app.launch()
