@@ -219,6 +219,19 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reports.trendline"].label.contains("Linear"))
     }
 
+    func testReportsFollowLiveAppearanceChangesWithoutReloading() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        let page = app.descendants(matching: .any)["reports.page"]
+        XCTAssertTrue(page.waitForExistence(timeout: 5))
+        app.buttons["workspace.appearance"].tap()
+        XCTAssertTrue(app.buttons["Dark"].waitForExistence(timeout: 3)); app.buttons["Dark"].tap()
+        XCTAssertTrue(page.exists)
+        app.buttons["workspace.appearance"].tap()
+        XCTAssertTrue(app.buttons["Light"].waitForExistence(timeout: 3)); app.buttons["Light"].tap()
+        XCTAssertTrue(page.exists)
+    }
+
     func testReportsEmptyStateAndRecoverableErrorFixtures() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-empty"]
         app.launch(); app.buttons["workspace.reports"].tap()
