@@ -242,6 +242,21 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Remove log"].firstMatch.exists)
     }
 
+    func testLogsAppearanceScreenshots() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.logs"].tap()
+        XCTAssertTrue(app.staticTexts["Logs"].waitForExistence(timeout: 5))
+        for mode in ["Light", "Dark"] {
+            app.buttons["workspace.appearance"].tap()
+            app.buttons[mode].tap()
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Logs-\(mode)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
     func testLabelsListAndCreateControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
