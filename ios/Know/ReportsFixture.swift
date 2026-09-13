@@ -14,7 +14,7 @@ struct ReportsFixture: ReportsTransport {
     func paths() async throws -> [Path] {
         if arguments.contains("-reports-paths-error") { throw APIError.offline }
         return [
-            Path(id: Self.researchID, name: arguments.contains("-reports-long") ? String(repeating: "Research and planning with a very long path name ", count: 3) : "Research", description: nil, status: "ACTIVE", color: "#2878D5"),
+            Path(id: Self.researchID, name: arguments.contains("-reports-unsafe") ? "<script>alert(1)</script>" : arguments.contains("-reports-long") ? String(repeating: "Research and planning with a very long path name ", count: 3) : "Research", description: nil, status: "ACTIVE", color: "#2878D5"),
             Path(id: Self.writingID, name: "Writing", description: nil, status: "ACTIVE", color: "#9B51E0")
         ]
     }
@@ -40,7 +40,7 @@ struct ReportsFixture: ReportsTransport {
 
         let calendar = Self.fixtureCalendar
         let start = ReportDateMath.date(query.startDate, calendar: calendar) ?? calendar.date(from: DateComponents(year: 2026, month: 9, day: 7))!
-        let names = arguments.contains("-reports-long") ? String(repeating: "Deep work label with a long accessible name ", count: 3) : "Deep work"
+        let names = arguments.contains("-reports-unsafe") ? "<b>Deep work</b>" : arguments.contains("-reports-long") ? String(repeating: "Deep work label with a long accessible name ", count: 3) : "Deep work"
         let dayCount = (arguments.contains("-reports-long-range") || arguments.contains("-reports-sparse") || arguments.contains("-reports-dense")) ? 60 : 7
         let days = (0..<dayCount).map { offset -> ReportDay in
             let date = calendar.date(byAdding: .day, value: offset, to: start)!
@@ -68,7 +68,7 @@ struct ReportsFixture: ReportsTransport {
                 ReportCalendarLabel(id: Self.calendarID, label: "Planning", color: "#F2994A", portion: Decimal(string: "0.50")),
                 ReportCalendarLabel(id: Self.planningID, label: "Deep focus", color: "#2878D5", portion: nil)
             ]) : []
-            let note = (arguments.contains("-reports-calendar") || arguments.contains("-reports-calendar-note-only")) && offset == 2 ? "Planning day\nReview the weekly priorities." : nil
+            let note = (arguments.contains("-reports-calendar") || arguments.contains("-reports-calendar-note-only")) && offset == 2 ? (arguments.contains("-reports-unsafe") ? "<em>Planning</em>" : "Planning day\nReview the weekly priorities.") : nil
             return ReportDay(date: iso, totalSeconds: paths.reduce(0) { $0 + $1.seconds }, paths: paths, sessionLabels: labels, calendarNote: note, calendarLabels: calendarLabels)
         }
         let paths = aggregate(days.flatMap(\.paths))
