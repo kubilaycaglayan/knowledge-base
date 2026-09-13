@@ -20,6 +20,10 @@ import XCTest
         XCTAssertEqual(try! JSONDecoder().decode(KBLabel.self, from: data), stub.values[0])
     }
 
+    func testNewLabelUsesFirstSharedPaletteColor() {
+        XCTAssertEqual(LabelDraft().color, WorkspaceTheme.palette[0])
+    }
+
     func testCreateTrimsAndRetainsDraftOnFailure() async {
         let stub = Stub(); stub.failure = APIError.offline; let model = LabelsModel(transport: stub)
         model.draft.name = "  Deep work  "; model.draft.scopes = [.timeEntry]
