@@ -61,5 +61,16 @@ import Foundation
     func resume() { guard !active else { return }; active = true; refreshTask = Task { [weak self] in guard let self else { return }; await load(); while !Task.isCancelled { try? await Task.sleep(for: .seconds(15)); if !Task.isCancelled, editing == nil { await load() } } } }
     func suspend() { active = false; loadRevision += 1; refreshTask?.cancel(); refreshTask = nil }
     private static func newestFirst(_ a: Log, _ b: Log) -> Bool { (LogFormatting.date(a.occurredAt) ?? .distantPast) > (LogFormatting.date(b.occurredAt) ?? .distantPast) || (a.occurredAt == b.occurredAt && a.id.uuidString > b.id.uuidString) }
-    private func fail(_ failure: Error, _ message: String) { if failure is CancellationError { return }; if case APIError.unauthorized = failure { suspend(); unauthorized() } else if case APIError.offline = failure { error = "No network connection. Reconnect and try again." } else { error = message } }
+    private func fail(_ failure: Error, _ message: String) {
+        if failure is CancellationError { return }
+        if case APIError.unauthorized = failure {
+            loading = false
+            suspend()
+            unauthorized()
+        } else if case APIError.offline = failure {
+            error = "No network connection. Reconnect and try again."
+        } else {
+            error = message
+        }
+    }
 }
