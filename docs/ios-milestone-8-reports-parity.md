@@ -120,6 +120,9 @@ Native Reports work is split into semantic commits:
   daylight-saving calendar-day shift regression test.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
+- The current working slice adds day-only Calendar input annotations to the
+  native chart and verifies that the Calendar toggle hides and restores those
+  annotations in the iPhone 17 Pro UI test.
 
 Current evidence is deliberately narrower than the completion gate:
 
@@ -127,8 +130,9 @@ Current evidence is deliberately narrower than the completion gate:
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 17 Pro simulator UI coverage passes for Reports navigation,
-  empty/error recovery, Calendar/Sankey textual details, and owner-reference
-  fallback. The Reports page no longer crashes before its initial async load.
+  empty/error recovery, Calendar/Sankey textual details, owner-reference
+  fallback, and Calendar annotation visibility. The Reports page no longer
+  crashes before its initial async load.
 - The forwarded Ubuntu web reference suite passes 1 file and 17 tests.
 - Docker is unavailable in the local environment, so the documented
   containerized Gradle command could not run. The local `backend/gradlew`
@@ -604,7 +608,7 @@ only on a happy-path screenshot.
   when at least one returned day contains a Calendar note or label assignment.
 - [x] **AC-113 — Toggle copy:** The enabled state says `Hide calendar inputs`;
   the disabled state says `Show calendar inputs`.
-- [ ] **AC-114 — Toggle scope:** Hiding Calendar inputs removes both chart
+- [x] **AC-114 — Toggle scope:** Hiding Calendar inputs removes both chart
   overlays and the separate Calendar log/summary without changing API/query
   state or tracked-time content.
 - [ ] **AC-115 — Note-only overlay:** A day with only a Calendar note receives
