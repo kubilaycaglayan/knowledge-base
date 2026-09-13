@@ -25,24 +25,28 @@ struct LogDraft: Equatable {
 }
 
 enum LogFormatting {
+    private static let fractionalISO8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+    private static let internetISO8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
     static func deviceMinute(_ value: Date, calendar: Calendar = .current) -> Date {
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: value)
         return calendar.date(from: components) ?? value
     }
     static func date(_ value: String?) -> Date? {
         guard let value else { return nil }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.date(from: value) ?? {
-            formatter.formatOptions = [.withInternetDateTime]
-            return formatter.date(from: value)
-        }()
+        return fractionalISO8601Formatter.date(from: value) ?? internetISO8601Formatter.date(from: value)
     }
     static func iso(_ value: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: value)
+        fractionalISO8601Formatter.string(from: value)
     }
     static func localInput(_ value: Date, calendar: Calendar = .current) -> Date { value }
     static func display(_ value: String, group: String, calendar: Calendar = .current) -> String {

@@ -21,7 +21,11 @@ import Observation
         guard !loading else { return }; loadRevision += 1; let revision = loadRevision; loading = true; error = nil
         async let logResult = transport.logs(); async let labelResult = transport.labels()
         do {
-            let loaded = try await logResult.sorted(by: Self.newestFirst)
+            let fetched = try await logResult
+            let dated = fetched.map { log in (log, LogFormatting.date(log.occurredAt) ?? .distantPast) }
+            let loaded = dated.sorted { left, right in
+                left.1 > right.1 || (left.1 == right.1 && left.0.id.uuidString > right.0.id.uuidString)
+            }.map(\.0)
             if revision == loadRevision {
                 let editingID = editing?.id
                 logs = loaded.map { item in
