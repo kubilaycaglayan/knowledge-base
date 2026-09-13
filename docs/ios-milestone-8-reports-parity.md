@@ -131,6 +131,14 @@ Native Reports work is split into semantic commits:
   `check-accessibility.mjs` passed 38 checks, `check-security.mjs` passed 33,
   `check-smoke-cleanup.mjs` passed 13, and all required shell scripts passed
   `bash -n`.
+- With the forwarded Ubuntu development web/API stack available, a disposable
+  `example.test` account and synthetic Reports Evidence path, time entry, and
+  Calendar record were used to exercise the web screenshot matrix. Playwright
+  captured temporary, uncommitted PNGs for populated/empty/loading/error,
+  filter, trendline, Sankey, and Calendar-input states at light/dark desktop
+  and 390×844 phone sizes. Representative light/dark desktop, light phone,
+  empty, Sankey, and Calendar captures were visually inspected; no token,
+  password, personal account, or production data appeared in the evidence.
 - `06ec6b1` verifies refresh-state retention: the last valid report remains
   visible while a refresh is pending and after a recoverable failure.
 - The current working slice adds day-only Calendar input annotations to the
@@ -918,10 +926,12 @@ only on a happy-path screenshot.
 - [x] **AC-172 — Existing regression tests:** Existing authentication,
   Sessions, Logs, Labels, Notes, Paths, Calendar, and workspace tests remain
   green.
-- [ ] **AC-173 — Web screenshots:** Sanitized reference screenshots are
+- [x] **AC-173 — Web screenshots:** Sanitized reference screenshots are
   captured from forwarded `http://localhost:3000/reports` at desktop and
   390×844 phone widths for light/dark, populated/empty, refresh/error,
-  filters, trendline, Sankey, and Calendar-input states.
+  filters, trendline, Sankey, and Calendar-input states. The complete
+  temporary matrix was exercised with Playwright against the forwarded stack;
+  screenshots were intentionally not committed.
 - [ ] **AC-174 — Native comparison screenshots:** Matching iOS fixture/device
   screenshots are captured and reviewed beside the web references for visual
   hierarchy, spacing, wrapping, responsive order, colors, and state copy.
@@ -929,9 +939,11 @@ only on a happy-path screenshot.
   loads the disposable Ubuntu-backed account through
   `http://<ubuntu-host>:8080/api/v1` and verifies range, aggregation, filters,
   retry, Calendar, and Sankey flows without using `localhost`.
-- [ ] **AC-176 — Screenshot/data hygiene:** Reference evidence contains no
+- [x] **AC-176 — Screenshot/data hygiene:** Reference evidence contains no
   token, password, personal account, production data, or unsanitized private
-  content and is not committed unless explicitly approved and sanitized.
+  content and is not committed unless explicitly approved and sanitized. The
+  captured matrix used only disposable synthetic fixture values and was kept
+  in temporary storage.
 - [x] **AC-177 — No frontend changes:** The milestone diff contains no frontend
   implementation change; any web discrepancy discovered during comparison is
   documented separately rather than fixed as part of iOS Reports work.
