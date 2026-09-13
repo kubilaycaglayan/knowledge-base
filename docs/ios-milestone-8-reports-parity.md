@@ -116,10 +116,12 @@ Native Reports work is split into semantic commits:
 - `6db20dd` adds stable path/label filter identifiers and verifies chip
   persistence, trendline presentation restoration, and clear-filter behavior
   across workspace section changes in the simulator.
+- `f32c111` adds natural month/quarter/year bucket assertions and a
+  daylight-saving calendar-day shift regression test.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 95 native package tests, including 13
+- `swift test --package-path ios` passes 98 native package tests, including 16
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 17 Pro simulator UI coverage passes for Reports navigation,
