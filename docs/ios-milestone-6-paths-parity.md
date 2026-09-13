@@ -145,7 +145,7 @@ of this milestone.
 - Baseline API inspection on 2026-09-13: path list, CRUD, soft-delete/restore,
   merge, and summary endpoints are owner-scoped in `PathController`; merge is
   transactional in `PathManagementService`.
-- Swift package verification on 2026-09-13: 53 tests passed, including the
+- Swift package verification on 2026-09-13: 66 tests passed, including the
   Paths model tests for load/create/update, remove/undo/merge, validation, and
   offline recovery.
 - Swift package verification on 2026-09-13: focused Paths API transport coverage
