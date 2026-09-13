@@ -112,6 +112,10 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   latter through XCTest's masked value representation).
 - The added model regression `testMalformedAuthResponsePreservesExistingSession`
   passes, proving malformed login data leaves an existing token intact.
+- Auth layout tokens were aligned in `LoginView`: 4-point card/control radii,
+  480-point maximum card width, and 16-point compact-width side/card padding.
+  Swift package tests and the simulator control test still pass after this
+  change.
 - The required Dockerized backend test command could not run because this host
   has no `docker` executable. Frontend build and web auth tests remain green;
   backend/API integration and smoke checks therefore remain unverified here.
