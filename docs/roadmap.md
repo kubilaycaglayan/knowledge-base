@@ -23,6 +23,9 @@
   behavior, rich-text editing, autosave/conflict recovery, labels,
   archive/restore, accessibility, and regression coverage (see
   `docs/ios-milestone-5-notes-parity.md`).
+- [ ] Milestone 6: bring the iOS `/paths` page to parity with the current web
+  behavior, path management, history, merge/remove recovery, accessibility,
+  and regression coverage (see `docs/ios-milestone-6-paths-parity.md`).
 - [ ] Complete live Google consent smoke verification with the owner's iOS OAuth client.
 
 - [x] Preserve sign-in across deployment outages and API recreation, keep error
