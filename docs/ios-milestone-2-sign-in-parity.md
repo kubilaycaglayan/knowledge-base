@@ -159,6 +159,10 @@ styling now follows the active light/dark appearance.
 The malformed-email UI regression also passes on the iPhone 17 Pro simulator;
 `person@@example.com` is rejected locally and does not submit credentials.
 
+Additional verification (2026-09-13): authentication light and dark simulator
+screenshots were captured successfully on the iPhone 17 Pro. These artifacts
+support visual review; exact comparison against the web remains open.
+
 ## Prompt for a fresh session
 
 > Implement `docs/ios-milestone-2-sign-in-parity.md`. Start by reading the
