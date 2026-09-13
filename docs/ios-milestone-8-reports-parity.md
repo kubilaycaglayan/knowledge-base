@@ -113,6 +113,9 @@ Native Reports work is split into semantic commits:
 - `6647003` adds loaded-state reporting, loading/offline/filtered fixture
   flags, zero-duration copy, and simulator coverage for loading skeletons and
   empty Sankey recovery.
+- `6db20dd` adds stable path/label filter identifiers and verifies chip
+  persistence, trendline presentation restoration, and clear-filter behavior
+  across workspace section changes in the simulator.
 
 Current evidence is deliberately narrower than the completion gate:
 
