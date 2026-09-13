@@ -137,6 +137,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Form-level failures now expose an explicit `auth.retry` “Try again” button
   with a 44-point hit target; it invokes the same validated submit action and
   retains the entered draft.
+- The submit control exposes the retained action label plus an accessibility
+  value of “Working…” while `AuthPhase` is `.authenticating`; its visual
+  `ProgressView` is hidden from VoiceOver to avoid duplicate announcements.
 - Native Google controls now follow the web configuration rule: the separator
   and button are omitted unless valid `GIDClientID`/`GIDServerClientID` values
   and the matching reversed URL scheme are present, avoiding a dead button in
