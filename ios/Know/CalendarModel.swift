@@ -102,6 +102,20 @@ import Foundation
 
     func retry() async { await load(force: true) }
 
+    func createLabel(name: String, color: String = WorkspaceTheme.palette[0]) async -> Bool {
+        let value = name.trimmingCharacters(in: .whitespacesAndNewlines); guard !value.isEmpty, !addingLabel else { return false }
+        addingLabel = true; error = nil
+        do { let label = try await transport.createLabel(name: value, color: color); if !labels.contains(where: { $0.name.caseInsensitiveCompare(label.name) == .orderedSame }) { labels.append(label) }; addingLabel = false; invalidateReports(); return true }
+        catch { addingLabel = false; fail(error, "Unable to add that label. Label names must be unique."); return false }
+    }
+
+    func updateLabelColor(_ label: KBLabel, color: String) async -> Bool {
+        guard WorkspaceTheme.palette.contains(color) else { return false }
+        var updated = label; updated.color = color
+        do { let saved = try await transport.updateLabel(updated); labels = labels.map { $0.id == saved.id ? saved : $0 }; return true }
+        catch { fail(error, "Unable to update that label color."); return false }
+    }
+
     private func hydrate(date: Date) {
         let key = CalendarDate.string(date, calendar: calendar); let day = days[key]
         note = day?.note ?? ""; selectedAssignments = Dictionary(uniqueKeysWithValues: (day?.labels ?? []).map { ($0.labelId, CalendarPortion(portion: $0.portion)) })
