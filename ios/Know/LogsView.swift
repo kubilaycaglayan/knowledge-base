@@ -17,6 +17,13 @@ struct LogsView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Logs").font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
                     composer
+                    if model.savedAnnouncement {
+                        Text("Log saved.")
+                            .font(.footnote)
+                            .foregroundStyle(WorkspaceTheme.muted(scheme))
+                            .accessibilityAddTraits(.updatesFrequently)
+                            .accessibilityIdentifier("logs.saved")
+                    }
                     if let error = model.error { errorNotice(error) }
                     if model.logs.isEmpty && !model.loading && model.error == nil { Text("No logs yet. Capture a thought above.").foregroundStyle(WorkspaceTheme.muted(scheme)).padding(.vertical, 24).accessibilityIdentifier("logs.empty") }
                     LazyVStack(alignment: .leading, spacing: 0) {
