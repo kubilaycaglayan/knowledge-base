@@ -324,4 +324,19 @@ final class KnowTests: XCTestCase {
         XCTAssertEqual(model.error, "No network connection. Reconnect and try again.")
         XCTAssertFalse(model.isLoading)
     }
+
+    @MainActor
+    func testRefreshUnauthorizedExpiresCurrentSession() async {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        let model = AppModel(
+            api: APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration)),
+            arguments: ["Know"]
+        )
+        model.token = "expired-session"
+        URLProtocolStub.statusCode = 401
+        await model.refresh()
+        XCTAssertNil(model.token)
+        XCTAssertFalse(model.signedIn)
+    }
 }
