@@ -241,6 +241,8 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(labelOption.waitForExistence(timeout: 5)); labelOption.tap()
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].isHittable)
+        app.buttons["reports.breakdown"].tap(); let labelChoices = app.buttons.matching(NSPredicate(format: "label == 'Labels'")); XCTAssertTrue(labelChoices.count > 1); labelChoices.element(boundBy: labelChoices.count - 1).tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Deep work label with a long accessible name'")).firstMatch.exists)
     }
 
     func testReportsZeroAndLongRangeFixturesRemainNavigable() {
