@@ -118,10 +118,12 @@ Native Reports work is split into semantic commits:
   across workspace section changes in the simulator.
 - `f32c111` adds natural month/quarter/year bucket assertions and a
   daylight-saving calendar-day shift regression test.
+- `06ec6b1` verifies refresh-state retention: the last valid report remains
+  visible while a refresh is pending and after a recoverable failure.
 
 Current evidence is deliberately narrower than the completion gate:
 
-- `swift test --package-path ios` passes 98 native package tests, including 16
+- `swift test --package-path ios` passes 99 native package tests, including 17
   Reports tests. The focused Reports model suite and Codable/fixture coverage
   also pass independently.
 - Focused iPhone 17 Pro simulator UI coverage passes for Reports navigation,
