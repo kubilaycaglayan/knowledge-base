@@ -118,8 +118,10 @@ struct SessionsView: View {
                 Spacer(minLength: 0)
                 Button { Task {
                     if model.timer != nil {
-                        await model.saveTimer()
-                        guard model.error == nil else { return }
+                        if model.hasUnsavedDraft {
+                            await model.saveTimer()
+                            guard model.error == nil else { return }
+                        }
                     }
                     await model.toggleTimer()
                     descriptionFocused = false
