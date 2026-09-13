@@ -184,6 +184,7 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["paths.history.00000000-0000-4000-8000-000000000001"].exists)
         app.buttons["paths.history.00000000-0000-4000-8000-000000000001"].tap()
         XCTAssertTrue(app.buttons["paths.history.close"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["1h"].waitForExistence(timeout: 5))
     }
 
     func testLabelsListAndCreateControlsAreReachable() {
