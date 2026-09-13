@@ -144,6 +144,8 @@ preserves existing sessions on rejected/malformed responses, handles Google
 cancellation, and now uses the web-matching Google recovery message for
 configuration and verification failures. Focused Swift tests for registration,
 Google exchange/cancellation/failure, malformed responses, and retry pass.
+Google authentication also retains its native button label while showing a
+loading indicator during the request.
 
 Visual, VoiceOver, full web/API integration, and physical-iPhone gates remain
 open until those environments are exercised.
