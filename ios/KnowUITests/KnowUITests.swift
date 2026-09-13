@@ -214,6 +214,19 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Research"].exists)
     }
 
+    func testReportsLongFilterOptionsKeepAccessibleRemovalControls() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-long"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        app.buttons["reports.paths.filter"].tap(); let pathOption = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Research and planning with a very long path name'")).firstMatch
+        XCTAssertTrue(pathOption.waitForExistence(timeout: 5)); pathOption.tap()
+        XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reports.paths.remove.00000000-0000-0000-0000-000000000001"].isHittable)
+        app.buttons["reports.labels.filter"].tap(); let labelOption = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Deep work label with a long accessible name'")).firstMatch
+        XCTAssertTrue(labelOption.waitForExistence(timeout: 5)); labelOption.tap()
+        XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reports.labels.remove.00000000-0000-0000-0000-000000000011"].isHittable)
+    }
+
     func testReportsLoadingSkeletonAndEmptySankeyRemainRecoverable() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-loading"]
         app.launch(); app.buttons["workspace.reports"].tap()

@@ -22,7 +22,7 @@ struct ReportsFixture: ReportsTransport {
     func labels() async throws -> [KBLabel] {
         if arguments.contains("-reports-labels-error") { throw APIError.offline }
         return [
-            KBLabel(id: Self.deepWorkID, name: "Deep work", color: "#2878D5", scopes: [.timeEntry]),
+            KBLabel(id: Self.deepWorkID, name: arguments.contains("-reports-long") ? String(repeating: "Deep work label with a long accessible name ", count: 3) : "Deep work", color: "#2878D5", scopes: [.timeEntry]),
             KBLabel(id: Self.planningID, name: "Planning", color: "#F2994A", scopes: [.timeEntry]),
             KBLabel(id: Self.calendarID, name: "Calendar only", color: "#22C55E", scopes: [.calendar])
         ]
