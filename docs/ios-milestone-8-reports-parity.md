@@ -229,6 +229,9 @@ Native Reports work is split into semantic commits:
   live appearance switching, Calendar/Sankey, filters, and literal-content
   fixtures. AC-171 remains open for the unavailable small-phone/device
   dimensions.
+- `eeff7a5` adds a polite VoiceOver announcement path for loading, successful
+  refresh, errors/retry state, and Sankey, trendline, and breakdown changes;
+  iPhone 17 UI fixtures assert the loading, success, and error status surfaces.
 - The repository security contract passes all 33 checks; `Config.xcconfig`
   contains only public defaults and includes the gitignored `Local.xcconfig`
   override, with no report credentials or private data tracked.
@@ -813,7 +816,7 @@ only on a happy-path screenshot.
   activate every control in logical order without a focus trap.
 - [ ] **AC-148 — Visible focus:** Focus is visibly indicated and is not covered
   by the workspace header, refresh presentation, sheets, or safe-area insets.
-- [ ] **AC-149 — VoiceOver updates:** Initial loading, refresh, errors, retry
+- [x] **AC-149 — VoiceOver updates:** Initial loading, refresh, errors, retry
   results, and major presentation-mode changes are announced politely without
   repeatedly reading the entire page.
 - [x] **AC-150 — Non-color status:** Category identity, Calendar input, selected
