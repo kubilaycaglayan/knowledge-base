@@ -110,6 +110,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
 - Added and passed `testAuthenticationModeSwitchPreservesDraftFields` on the
   same simulator, verifying email and secure-password draft retention (the
   latter through XCTest's masked value representation).
+- The required Dockerized backend test command could not run because this host
+  has no `docker` executable. Frontend build and web auth tests remain green;
+  backend/API integration and smoke checks therefore remain unverified here.
 
 ## Remaining acceptance evidence
 
