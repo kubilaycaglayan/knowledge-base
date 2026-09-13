@@ -293,6 +293,44 @@ final class KnowTests: XCTestCase {
         XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/logs/\(id.uuidString)")
     }
 
+    func testPathsAPIUsesAuthenticatedMutationContract() async throws {
+        let id = UUID()
+        let response = "{\"id\":\"\(id.uuidString)\",\"name\":\"Algorithms\",\"description\":\"Study\",\"status\":\"ACTIVE\",\"color\":\"#3B82F6\",\"activityLabel\":\"today\"}"
+        URLProtocolStub.responseData = Data(response.utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        let api = PathsAPI(client: APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration)), token: "test-token")
+
+        let created = try await api.create(name: "Algorithms", description: "Study", color: "#3B82F6")
+        XCTAssertEqual(created.id, id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "POST")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/paths")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
+        let createBody = try requestJSONObject()
+        XCTAssertEqual(createBody["name"] as? String, "Algorithms")
+        XCTAssertEqual(createBody["description"] as? String, "Study")
+        XCTAssertEqual(createBody["color"] as? String, "#3B82F6")
+
+        _ = try await api.update(id: id, name: "Algorithms", description: nil, color: "#EF4444")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "PUT")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/paths/\(id.uuidString)")
+
+        URLProtocolStub.statusCode = 204
+        URLProtocolStub.responseData = Data()
+        try await api.remove(id: id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "DELETE")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/paths/\(id.uuidString)")
+
+        try await api.restore(id: id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "POST")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/paths/\(id.uuidString)/restore")
+
+        let targetID = UUID()
+        try await api.merge(source: id, target: targetID)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/paths/\(id.uuidString)/merge")
+        XCTAssertEqual(try requestJSONObject()["targetPathId"] as? String, targetID.uuidString)
+    }
+
     func testNativeColorPaletteMatchesWebSharedPalette() {
         XCTAssertEqual(WorkspaceTheme.palette, [
             "#F8FAFC", "#64748B", "#0F172A", "#EAB308", "#F59E0B",
