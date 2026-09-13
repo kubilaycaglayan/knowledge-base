@@ -331,6 +331,56 @@ final class KnowTests: XCTestCase {
         XCTAssertEqual(try requestJSONObject()["targetPathId"] as? String, targetID.uuidString)
     }
 
+    func testNotesAPIUsesAuthenticatedPaginationAndMutationContract() async throws {
+        let id = UUID()
+        let response = "{\"id\":\"\(id.uuidString)\",\"pathId\":null,\"activityId\":null,\"timeEntryId\":null,\"title\":\"Untitled note\",\"content\":\"{\\\"type\\\":\\\"doc\\\",\\\"content\\\":[{\\\"type\\\":\\\"paragraph\\\"}]}\",\"contentText\":\"\",\"createdAt\":\"2026-09-13T10:00:00Z\",\"updatedAt\":\"2026-09-13T10:00:00Z\",\"deletedAt\":null,\"version\":2,\"tags\":[\"swift\"]}"
+        URLProtocolStub.responseData = Data("{\"items\":[\(response)],\"page\":2,\"size\":50,\"totalItems\":51,\"totalPages\":2}".utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        let api = NotesAPI(client: APIClient(base: URL(string: "https://example.test/api/v1")!, session: URLSession(configuration: configuration)), token: "test-token")
+
+        let page = try await api.page(page: 2, size: 50, query: "focus notes", archived: false)
+        XCTAssertEqual(page.items.first?.id, id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "GET")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/notes")
+        XCTAssertTrue(URLProtocolStub.lastRequest?.url?.query?.contains("page=2") == true)
+        XCTAssertTrue(URLProtocolStub.lastRequest?.url?.query?.contains("size=50") == true)
+        XCTAssertTrue(URLProtocolStub.lastRequest?.url?.query?.contains("q=focus%20notes") == true)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
+
+        URLProtocolStub.responseData = Data("[{\"id\":\"\(id.uuidString)\",\"name\":\"Swift\"}]".utf8)
+        let labels = try await api.labels()
+        XCTAssertEqual(labels.first?.name, "Swift")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/notes/labels")
+
+        URLProtocolStub.responseData = Data(response.utf8)
+        let created = try await api.create(NoteDraft())
+        XCTAssertEqual(created.id, id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "POST")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/notes")
+        let createBody = try requestJSONObject()
+        XCTAssertEqual(createBody["title"] as? String, "Untitled note")
+        XCTAssertNotNil(createBody["content"] as? String)
+        XCTAssertEqual(createBody["contentText"] as? String, "")
+
+        var draft = NoteDraft()
+        draft.title = "Updated"
+        draft.body = "New body"
+        _ = try await api.update(id: id, draft: draft, version: 2)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "PUT")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/notes/\(id.uuidString)")
+        XCTAssertEqual(try requestJSONObject()["version"] as? Int, 2)
+
+        URLProtocolStub.statusCode = 204
+        URLProtocolStub.responseData = Data()
+        try await api.archive(id: id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "DELETE")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/notes/\(id.uuidString)")
+        try await api.restore(id: id)
+        XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "POST")
+        XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/notes/\(id.uuidString)/restore")
+    }
+
     func testNativeColorPaletteMatchesWebSharedPalette() {
         XCTAssertEqual(WorkspaceTheme.palette, [
             "#F8FAFC", "#64748B", "#0F172A", "#EAB308", "#F59E0B",
