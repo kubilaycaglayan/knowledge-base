@@ -191,6 +191,14 @@ import XCTest
         XCTAssertEqual(decoded.sankey?.nodes.map(\.id), ["research", "deep-work"]); XCTAssertEqual(decoded.sankey?.nodes.map(\.depth), [0, 1]); XCTAssertEqual(decoded.sankey?.nodes.map(\.value), [3_600, 3_600]); XCTAssertEqual(decoded.sankey?.links.first?.source, "research"); XCTAssertEqual(decoded.sankey?.links.first?.target, "deep-work"); XCTAssertEqual(decoded.sankey?.links.first?.value, 3_600)
     }
 
+    func testFixtureCalendarNoteOnlyAndFractionalPortionsRemainDistinct() async throws {
+        let query = ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")
+        let noteOnly = try await ReportsFixture(arguments: ["-reports-calendar-note-only"]).report(query: query)
+        XCTAssertEqual(noteOnly.days[2].calendarNote, "Planning day\nReview the weekly priorities."); XCTAssertTrue(noteOnly.days[2].calendarLabels.isEmpty)
+        let fractions = try await ReportsFixture(arguments: ["-reports-calendar-fractions"]).report(query: query)
+        XCTAssertEqual(fractions.days[2].calendarLabels.compactMap(\.portion), [Decimal(string: "0.25")!, Decimal(string: "0.50")!, Decimal(string: "0.75")!, Decimal(string: "1.00")!]); XCTAssertEqual(Set(fractions.days[2].calendarLabels.map(\.label)).count, 4)
+    }
+
     func testNormalizedServerBoundariesBecomeTheDisplayedQuery() async {
         let stub = Stub(); stub.reportValue = Report(period: "CUSTOM", from: "2026-09-08", to: "2026-09-12", totalSeconds: 60, days: stub.reportValue.days, paths: stub.reportValue.paths, sessionLabels: [], calendarLabels: [], sankey: nil)
         let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load()

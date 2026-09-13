@@ -204,6 +204,16 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Show bar chart"].exists)
     }
 
+    func testReportsCalendarNoteOnlyAndFractionFixturesExposeDistinctDetails() {
+        app.launchArguments += ["-ui-testing-authenticated", "-reports-calendar-fractions"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.buttons["reports.calendar.toggle"].waitForExistence(timeout: 5))
+        for portion in ["0.25 days", "0.5 days", "0.75 days", "1 day"] { XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", portion)).firstMatch.exists) }
+        app.terminate(); app = XCUIApplication(); app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-reports-calendar-note-only"]
+        app.launch(); app.buttons["workspace.reports"].tap()
+        XCTAssertTrue(app.buttons["reports.calendar.toggle"].waitForExistence(timeout: 5)); XCTAssertTrue(app.staticTexts["Planning day\nReview the weekly priorities."].exists); XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Calendar input'")).firstMatch.exists)
+    }
+
     func testReportsReferenceFailureFallsBackToReportCategories() {
         app.launchArguments += ["-ui-testing-authenticated", "-reports-paths-error", "-reports-labels-error"]
         app.launch(); app.buttons["workspace.reports"].tap()
