@@ -140,6 +140,22 @@ final class KnowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["timer.label.00000000-0000-4000-8000-000000000002"].exists)
     }
 
+    func testNewPathDraftRequiresDiscardConfirmation() {
+        app.launchArguments += ["-ui-testing-authenticated"]
+        app.launch()
+        app.buttons["workspace.paths"].tap()
+        app.buttons["paths.add"].tap()
+
+        let name = app.textFields["paths.name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Draft path")
+        app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Discard new path?"].waitForExistence(timeout: 3))
+        app.buttons["Discard changes"].tap()
+        XCTAssertFalse(name.waitForExistence(timeout: 1))
+    }
+
     func testPathsHistoryAndEditControlsAreReachable() {
         app.launchArguments += ["-ui-testing-authenticated"]
         app.launch()
