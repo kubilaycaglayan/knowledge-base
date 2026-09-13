@@ -85,7 +85,7 @@ struct WorkspaceView: View {
                         if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft || labels.hasUnsavedDraft || notes.hasUnsavedDraft || calendar.hasUnsavedDraft { signOutConfirmation = true } else { app.signOut() }
                     }.font(.caption).frame(minHeight: 44).accessibilityIdentifier("workspace.signOut")
                 }
-                HStack(spacing: 2) {
+                ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 2) {
                     ForEach(["Sessions", "Logs", "Labels", "Notes", "Paths", "Calendar", "Timeline"], id: \.self) { name in
                         Button { section = name } label: {
                             Text(name).font(.subheadline.weight(section == name ? .semibold : .regular))
@@ -94,7 +94,7 @@ struct WorkspaceView: View {
                         }.buttonStyle(.plain).accessibilityAddTraits(section == name ? .isSelected : [])
                             .accessibilityIdentifier("workspace.\(name.lowercased())")
                     }
-                }
+                } }
             }.padding(.horizontal, 16).padding(.vertical, 12).frame(maxWidth: 1200)
             Rectangle().fill(WorkspaceTheme.border(scheme)).frame(height: 1).padding(.horizontal, 16)
             ZStack {
