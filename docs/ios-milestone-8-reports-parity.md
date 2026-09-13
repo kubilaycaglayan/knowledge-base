@@ -161,6 +161,9 @@ Native Reports work is split into semantic commits:
   between path aggregates and session-label aggregates.
 - `88ce6b2` makes the breakdown summary explicitly vertical and verifies the
   populated Reports hierarchy on an iPhone 13 Pro simulator.
+- `be98db7` adds 60-day, all-zero, and sparse report fixtures with native model
+  assertions and iPhone 13 Pro UI coverage for zero-state copy and long-range
+  navigability.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -581,7 +584,7 @@ only on a happy-path screenshot.
 - [x] **AC-087 — Category colors:** API-provided path colors are used when
   present; missing colors use the deterministic report palette consistently
   across chart, table, donut, tooltip/detail, and accessibility legend.
-- [ ] **AC-088 — Long ranges:** Ranges with more than 31 daily values remain
+- [x] **AC-088 — Long ranges:** Ranges with more than 31 daily values remain
   navigable/readable through native scrolling or range navigation without
   compressing labels and targets into unusable sizes.
 - [ ] **AC-089 — Chart detail:** Selecting/focusing a bucket exposes its date,
@@ -714,10 +717,10 @@ only on a happy-path screenshot.
   state or a recoverable validation error according to the web behavior.
 - [x] **AC-138 — Report empty copy:** A valid settled state with no report data
   shows `No report data for this period.`.
-- [ ] **AC-139 — Zero-day stability:** A valid report containing only zero
+- [x] **AC-139 — Zero-day stability:** A valid report containing only zero
   duration days keeps those dates visible and shows zero totals without NaN,
   division-by-zero percentages, or missing axes.
-- [ ] **AC-140 — Sparse report:** One active date among many zero dates renders
+- [x] **AC-140 — Sparse report:** One active date among many zero dates renders
   the full interval and reports exactly one active day.
 - [ ] **AC-141 — Dense report:** Many paths, labels, daily records, buckets, and
   Sankey links remain scrollable and responsive without overlapping controls.
