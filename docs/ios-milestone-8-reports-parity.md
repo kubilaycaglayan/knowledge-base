@@ -166,6 +166,9 @@ Native Reports work is split into semantic commits:
   navigability.
 - `989f2c6` verifies long path/label content remains exposed in the loaded
   breakdown as well as in filter menus and retains accessible removal controls.
+- `5fc9ddf` adds URLProtocol-backed ReportsAPI coverage for Bearer headers,
+  repeated report filters, owner-scoped paths, `scope=TIME_ENTRY` labels, and
+  GET-only read behavior.
 - `4815ca6` asserts Sankey node IDs, depths, values, link endpoints, and link
   values in the native Codable/fixture test; the simulator separately exposes
   the named flow detail.
@@ -777,7 +780,7 @@ only on a happy-path screenshot.
 
 ### Authentication, ownership, and data safety
 
-- [ ] **AC-160 — Bearer authentication:** `/reports`, `/paths`, and scoped-label
+- [x] **AC-160 — Bearer authentication:** `/reports`, `/paths`, and scoped-label
   requests include the current bearer token and never log or persist it in
   report state, fixtures, screenshots, or diagnostics.
 - [ ] **AC-161 — Current-token 401:** A 401 belonging to the current account
@@ -791,7 +794,7 @@ only on a happy-path screenshot.
 - [ ] **AC-165 — Account cache isolation:** Cache keys include account identity
   or caches are destroyed on account change; data cannot cross accounts even
   when query parameters are identical.
-- [ ] **AC-166 — Read-only behavior:** Reports performs no POST, PUT, PATCH, or
+- [x] **AC-166 — Read-only behavior:** Reports performs no POST, PUT, PATCH, or
   DELETE request and never mutates tracked time or Calendar data locally.
 - [ ] **AC-167 — Secret-free configuration:** API overrides remain in ignored
   local configuration; no host address, password, token, account detail, or
