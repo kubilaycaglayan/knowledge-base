@@ -92,7 +92,7 @@ final class KnowUITests: XCTestCase {
         app.buttons["session.save"].tap()
         XCTAssertTrue(app.buttons["session.edit.00000000-0000-4000-8000-000000000003"].waitForExistence(timeout: 5))
         app.buttons["session.remove.00000000-0000-4000-8000-000000000003"].tap()
-        let confirmation = app.buttons["Remove session"]
+        let confirmation = app.buttons["session.remove.confirm"]
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
         confirmation.tap()
         XCTAssertTrue(app.staticTexts["No sessions recorded yet."].waitForExistence(timeout: 5))
