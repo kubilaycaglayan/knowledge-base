@@ -199,6 +199,16 @@ import XCTest
         XCTAssertEqual(fractions.days[2].calendarLabels.compactMap(\.portion), [Decimal(string: "0.25")!, Decimal(string: "0.50")!, Decimal(string: "0.75")!, Decimal(string: "1.00")!]); XCTAssertEqual(Set(fractions.days[2].calendarLabels.map(\.label)).count, 4)
     }
 
+    func testFixtureLongZeroAndSparseIntervalsRemainStructurallyValid() async throws {
+        let query = ReportQuery(startDate: "2026-09-07", endDate: "2026-11-05")
+        let long = try await ReportsFixture(arguments: ["-reports-long-range"]).report(query: query)
+        XCTAssertEqual(long.days.count, 60); XCTAssertEqual(long.days.first?.date, "2026-09-07"); XCTAssertEqual(long.days.last?.date, "2026-11-05")
+        let zero = try await ReportsFixture(arguments: ["-reports-zero"]).report(query: query)
+        XCTAssertEqual(zero.days.count, 7); XCTAssertTrue(zero.days.allSatisfy { $0.paths.isEmpty }); XCTAssertEqual(zero.totalSeconds, 0)
+        let sparse = try await ReportsFixture(arguments: ["-reports-sparse"]).report(query: query)
+        XCTAssertEqual(sparse.days.filter { !$0.paths.isEmpty }.count, 1); XCTAssertGreaterThan(sparse.totalSeconds, 0)
+    }
+
     func testNormalizedServerBoundariesBecomeTheDisplayedQuery() async {
         let stub = Stub(); stub.reportValue = Report(period: "CUSTOM", from: "2026-09-08", to: "2026-09-12", totalSeconds: 60, days: stub.reportValue.days, paths: stub.reportValue.paths, sessionLabels: [], calendarLabels: [], sankey: nil)
         let model = ReportsModel(transport: stub, query: ReportQuery(startDate: "2026-09-07", endDate: "2026-09-13")); await model.load()
