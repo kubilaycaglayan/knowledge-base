@@ -79,9 +79,36 @@ import XCTest
         XCTAssertEqual(model.note, "Unsaved"); XCTAssertNil(model.days["2026-09-03"]); XCTAssertTrue(model.hasUnsavedDraft)
     }
 
+    func testLoadFailureOffersRetryAndDoesNotLoseCredentialsState() async {
+        let stub = Stub(); stub.failure = APIError.offline
+        let model = CalendarModel(transport: stub, calendar: calendar())
+        await model.load()
+        XCTAssertEqual(model.error, "Unable to load calendar records.")
+        XCTAssertFalse(model.loaded)
+        stub.failure = nil
+        await model.retry()
+        XCTAssertNil(model.error)
+        XCTAssertTrue(model.loaded)
+    }
+
     func testBlankNoteTrimsToNullAndPortionToggleSaves() async {
         let stub = Stub(); let model = CalendarModel(transport: stub, now: Date(), calendar: calendar()); model.note = "  \n "; let label = stub.labelsValue[0]; model.toggle(label); model.setPortion(.half, for: label)
         let saved = await model.save(); XCTAssertTrue(saved); XCTAssertEqual(stub.dayRequests[0].1.note, nil); XCTAssertEqual(stub.dayRequests[0].1.labels[0].portion, 0.50)
+    }
+
+    func testSaveCapsLongNoteAndCreateLabelRejectsInvalidColorAndDuplicates() async {
+        let stub = Stub(); let model = CalendarModel(transport: stub, calendar: calendar())
+        model.note = String(repeating: "x", count: 20_001)
+        let saved = await model.save()
+        XCTAssertTrue(saved)
+        XCTAssertEqual(stub.dayRequests[0].1.note?.count, 20_000)
+        let invalidColor = await model.createLabel(name: "Invalid", color: "#123456")
+        XCTAssertFalse(invalidColor)
+        let firstCreate = await model.createLabel(name: "  Launch  ", color: WorkspaceTheme.palette[2])
+        XCTAssertTrue(firstCreate)
+        let duplicateCreate = await model.createLabel(name: "launch", color: WorkspaceTheme.palette[2])
+        XCTAssertTrue(duplicateCreate)
+        XCTAssertEqual(model.labels.filter { $0.name.caseInsensitiveCompare("Launch") == .orderedSame }.count, 1)
     }
 
     func testRangeNormalizesSameDayFallsBackAndRetainsDraftOnFailure() async {
