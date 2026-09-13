@@ -6,6 +6,7 @@ struct WorkspaceView: View {
     @StateObject private var logs: LogsModel
     @StateObject private var labels: LabelsModel
     @StateObject private var notes: NotesModel
+    @StateObject private var paths: PathsModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     @AppStorage("knowledge-base.appearance") private var appearance = "system"
@@ -39,6 +40,11 @@ struct WorkspaceView: View {
         let notesAPI = NotesAPI(client: app.api, token: app.token ?? "")
         self._notes = StateObject(wrappedValue: NotesModel(
             transport: uiTesting ? NotesFixture(arguments: arguments) : notesAPI,
+            unauthorized: { [weak app] in app?.signOut() }
+        ))
+        let pathsAPI = PathsAPI(client: app.api, token: app.token ?? "")
+        self._paths = StateObject(wrappedValue: PathsModel(
+            transport: uiTesting ? PathsFixture(arguments: arguments) : pathsAPI,
             unauthorized: { [weak app] in app?.signOut() }
         ))
     }
@@ -88,7 +94,7 @@ struct WorkspaceView: View {
                 LogsView(model: logs).opacity(section == "Logs" ? 1 : 0).allowsHitTesting(section == "Logs").accessibilityHidden(section != "Logs")
                 LabelsView(model: labels).opacity(section == "Labels" ? 1 : 0).allowsHitTesting(section == "Labels").accessibilityHidden(section != "Labels")
                 NotesView(model: notes).opacity(section == "Notes" ? 1 : 0).allowsHitTesting(section == "Notes").accessibilityHidden(section != "Notes")
-                if section == "Paths" { PathsView() }
+                if section == "Paths" { PathsView(model: paths, sessions: sessions) }
                 if section == "Timeline" { TimelineView() }
             }
         }
@@ -96,7 +102,7 @@ struct WorkspaceView: View {
         .tint(WorkspaceTheme.accent(scheme))
         .background(WorkspaceTheme.background(scheme))
         .preferredColorScheme(appearance == "system" ? nil : appearance == "dark" ? .dark : .light)
-        .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load(); await notes.load(); await notes.loadLabels() } else { resume() } }
+        .task { if uiTesting { await sessions.load(); await logs.load(); await labels.load(); await notes.load(); await notes.loadLabels(); await paths.load() } else { resume() } }
         .onChange(of: phase) { _, phase in if phase == .active { if !uiTesting { resume() } } else { sessions.suspend(); logs.suspend() } }
         .onChange(of: section) { _, value in if value != "Sessions" { Task { await app.refresh() } } }
         .onDisappear { sessions.suspend(); logs.suspend() }
