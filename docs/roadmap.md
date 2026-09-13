@@ -2,6 +2,9 @@
 
 - [x] Rebuild native iOS authentication from the web design with password login,
   registration, Google SDK token exchange, and Keychain session persistence.
+- [ ] Milestone 2: bring the iOS sign-in and unauthenticated flows to one-to-one
+  parity with the current web behavior, states, accessibility, and regression
+  coverage (see `docs/ios-milestone-2-sign-in-parity.md`).
 - [x] Implement the first mobile-web-derived iOS workspace milestone: Sessions,
   server-owned timer controls, scoped labels, paginated history, session editing,
   deletion confirmation, light/dark theme parity, and WebSocket/REST reconciliation.
