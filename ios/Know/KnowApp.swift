@@ -246,6 +246,10 @@ struct APIClient {
 
     let api: APIClient
     private let uiTesting: Bool
+    // Invalidates completions from requests started before sign-out or a newer
+    // authentication attempt. This prevents an old response from replacing a
+    // newly accepted session.
+    private var authGeneration = 0
 
     init(api: APIClient = APIClient(), arguments: [String] = ProcessInfo.processInfo.arguments) {
         self.api = api
@@ -271,11 +275,11 @@ struct APIClient {
 
     var signedIn: Bool { token != nil }
 
-    func handle(_ failure: Error, _ message: String) {
+    func handle(_ failure: Error, _ message: String, expectedToken: String? = nil) {
         if let failure = failure as? APIError {
             switch failure {
             case .unauthorized:
-                signOut()
+                if expectedToken == nil || expectedToken == token { signOut() }
             case .offline:
                 error = "No network connection. Reconnect and try again."
             }
@@ -286,6 +290,8 @@ struct APIClient {
 
     func authenticate(email: String, password: String, register: Bool) async {
         guard !isAuthenticating else { return }
+        authGeneration += 1
+        let generation = authGeneration
         isAuthenticating = true
         authError = nil
         defer { isAuthenticating = false }
@@ -296,14 +302,17 @@ struct APIClient {
                 method: "POST",
                 body: body
             )
+            guard generation == authGeneration else { return }
             try acceptSession(result)
         } catch {
-            authError = authenticationMessage(error)
+            if generation == authGeneration { authError = authenticationMessage(error) }
         }
     }
 
     func authenticateWithGoogle(idToken: () async throws -> String) async {
         guard !isAuthenticating else { return }
+        authGeneration += 1
+        let generation = authGeneration
         isAuthenticating = true
         authError = nil
         defer { isAuthenticating = false }
@@ -312,11 +321,12 @@ struct APIClient {
             guard !credential.isEmpty else { throw SessionError.google }
             let result: AuthResponse = try await api.request("/auth/google", method: "POST",
                 body: JSONEncoder().encode(["idToken": credential]))
+            guard generation == authGeneration else { return }
             try acceptSession(result)
         } catch {
             if (error as NSError).domain == kGIDSignInErrorDomain,
                (error as NSError).code == GIDSignInError.canceled.rawValue { return }
-            authError = authenticationMessage(error)
+            if generation == authGeneration { authError = authenticationMessage(error) }
         }
     }
 
@@ -330,7 +340,9 @@ struct APIClient {
         if case APIError.offline = error { return "No network connection. Reconnect and try again." }
         if case SessionError.storage = error { return "Could not securely save your session. Please try again." }
         if let error = error as? SessionError { return error.localizedDescription }
-        return "Could not sign in. Check your details and try again."
+        // Keep public password auth aligned with the web's intentionally
+        // non-disclosing error (including invalid credentials and duplicates).
+        return "Could not authenticate. Use a valid email and a password of at least 9 characters."
     }
 
     func refresh() async {
@@ -351,7 +363,7 @@ struct APIClient {
             stats = try await s
             timer = try await api.optional("/timers/current", token: token)
         } catch {
-            handle(error, "Could not refresh your workspace.")
+            handle(error, "Could not refresh your workspace.", expectedToken: token)
         }
     }
 
@@ -442,7 +454,9 @@ struct APIClient {
     }
 
     func signOut() {
+        authGeneration += 1
         token = nil
+        authError = nil
         if !uiTesting {
             KeychainTokenStore.delete()
             GIDSignIn.sharedInstance.signOut()
