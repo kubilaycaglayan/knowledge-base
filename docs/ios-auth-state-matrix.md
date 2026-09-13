@@ -84,6 +84,9 @@ No bundle, Keychain, OAuth, database, or API identifiers should change.
   Vitest: `PATH=/opt/homebrew/bin:$PATH NODE_OPTIONS='--localstorage-file=/tmp/knowledge-base-vitest-localstorage' npm test -- --run src/views/AuthView.test.ts src/stores/auth.test.ts src/lib/api.test.ts src/App.test.ts`.
 - Web reference rerun with that isolated storage file: all 34 tests passed
   across the four files above.
+- Full web Vitest suite passed under `TZ=UTC`: 31 files and 242 tests. The UTC
+  setting is required because several existing date expectations intentionally
+  use UTC boundaries.
 - Installed missing Playwright Chromium. The existing general UI runner timed
   out waiting for `main h1` on Sessions before reaching auth; this is not a
   passing general UI run. Added `frontend/scripts/check-auth-ui.mjs` to exercise
