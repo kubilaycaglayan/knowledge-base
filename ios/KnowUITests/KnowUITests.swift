@@ -122,8 +122,10 @@ final class KnowUITests: XCTestCase {
     }
 
     func testAuthenticationAppearanceScreenshots() {
-        for mode in ["Light", "Dark"] {
-            app.launchArguments = ["-ui-testing", "-AppleInterfaceStyle", mode]
+        for mode in ["Light", "Dark", "System"] {
+            app.launchArguments = mode == "System"
+                ? ["-ui-testing"]
+                : ["-ui-testing", "-AppleInterfaceStyle", mode]
             app.launch()
             XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout: 5))
             let screenshot = XCTAttachment(screenshot: app.screenshot())
