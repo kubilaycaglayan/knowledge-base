@@ -71,7 +71,7 @@ enum CalendarDate {
 
     static func date(_ value: String) -> Date? { iso.date(from: value) }
     static func string(_ value: Date, calendar: Calendar = .current) -> String {
-        var formatter = iso
+        let formatter = iso
         formatter.calendar = calendar
         formatter.timeZone = calendar.timeZone
         return formatter.string(from: value)
@@ -80,7 +80,7 @@ enum CalendarDate {
 
 enum CalendarGrid {
     static func monthDates(month: Date, calendar input: Calendar = .current) -> [Date] {
-        var calendar = input
+        let calendar = input
         let start = calendar.date(from: calendar.dateComponents([.year, .month], from: month))!
         let weekday = calendar.component(.weekday, from: start)
         let leading = (weekday + 5) % 7 // Monday = 0

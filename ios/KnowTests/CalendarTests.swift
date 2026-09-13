@@ -18,6 +18,27 @@ import XCTest
         func updateLabel(_ label: KBLabel) async throws -> KBLabel { label }
     }
 
+    final class DelayedStub: CalendarTransport, @unchecked Sendable {
+        private let lock = NSLock(); private var dayCall = 0; private var saveCall = 0
+        let label = KBLabel(id: UUID(), name: "Work", color: "#2878D5", scopes: [.calendar])
+        func labels() async throws -> [KBLabel] { [label] }
+        func days(startDate: String, endDate: String) async throws -> [CalendarDay] {
+            let call = nextDayCall()
+            try await Task.sleep(nanoseconds: call == 1 ? 80_000_000 : 5_000_000)
+            return [CalendarDay(date: startDate, note: call == 1 ? "Stale" : "Current", labels: [])]
+        }
+        func saveDay(date: String, request: CalendarDayRequest) async throws -> CalendarDay {
+            incrementSaveCall(); try await Task.sleep(nanoseconds: 50_000_000)
+            return CalendarDay(date: date, note: request.note, labels: [])
+        }
+        func saveRange(request: CalendarRangeRequest) async throws -> [CalendarDay] { [] }
+        func createLabel(name: String, color: String) async throws -> KBLabel { label }
+        func updateLabel(_ label: KBLabel) async throws -> KBLabel { label }
+        var saves: Int { lock.lock(); defer { lock.unlock() }; return saveCall }
+        private func nextDayCall() -> Int { lock.lock(); defer { lock.unlock() }; dayCall += 1; return dayCall }
+        private func incrementSaveCall() { lock.lock(); defer { lock.unlock() }; saveCall += 1 }
+    }
+
     private func calendar(_ zone: String = "Europe/Istanbul") -> Calendar { var value = Calendar(identifier: .gregorian); value.locale = Locale(identifier: "en_US_POSIX"); value.timeZone = TimeZone(identifier: zone)!; return value }
 
     func testMondayFirstGridHasSixWeeksAndAdjacentDays() {
@@ -86,5 +107,14 @@ import XCTest
         stub.daysValue = [CalendarDay(date: "2026-08-01", note: "Month start", labels: [])]
         let model = CalendarModel(transport: stub, now: september, calendar: cal); await model.setMonth(augustFirst); XCTAssertEqual(model.note, "Month start")
         await model.setMonth(september); await model.setMonth(augustFirst); XCTAssertEqual(CalendarDate.string(model.selectedDate, calendar: cal), "2026-08-01"); XCTAssertEqual(model.note, "Month start")
+    }
+
+    func testNewerMonthSuppressesStaleLoadAndConcurrentSaveIsRejected() async {
+        let stub = DelayedStub(); let cal = calendar(); let august = cal.date(from: DateComponents(year: 2026, month: 8, day: 1))!; let september = cal.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        let model = CalendarModel(transport: stub, now: august, calendar: cal)
+        let oldLoad = Task { await model.load() }; try? await Task.sleep(nanoseconds: 10_000_000); await model.setMonth(september); await oldLoad.value
+        XCTAssertNil(model.days["2026-08-01"]); XCTAssertEqual(model.days["2026-09-01"]?.note, "Current"); XCTAssertEqual(model.note, "Current")
+        model.note = "One"; async let first = model.save(); try? await Task.sleep(nanoseconds: 2_000_000); let second = await model.save(); let firstResult = await first
+        XCTAssertTrue(firstResult); XCTAssertFalse(second); XCTAssertEqual(stub.saves, 1)
     }
 }

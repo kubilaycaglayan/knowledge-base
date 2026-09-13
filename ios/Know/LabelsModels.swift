@@ -18,6 +18,15 @@ struct KBLabel: Codable, Identifiable, Equatable {
     var color: String?
     var scopes: [LabelScope]
     var system: Bool = false
+
+    enum CodingKeys: String, CodingKey { case id, name, color, scopes, system }
+    init(id: UUID, name: String, color: String?, scopes: [LabelScope], system: Bool = false) { self.id = id; self.name = name; self.color = color; self.scopes = scopes; self.system = system }
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id); name = try container.decode(String.self, forKey: .name)
+        color = try container.decodeIfPresent(String.self, forKey: .color); scopes = try container.decode([LabelScope].self, forKey: .scopes)
+        system = try container.decodeIfPresent(Bool.self, forKey: .system) ?? false
+    }
 }
 
 struct LabelDraft: Equatable {
