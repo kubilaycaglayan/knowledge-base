@@ -32,6 +32,15 @@ const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 let ticker: number | undefined, syncTicker: number | undefined, reconnectTicker: number | undefined;
 let syncInFlight = false, timerStateVersion = 0, socket: WebSocket | undefined;
 const socketConnected = ref(false);
+let saveQueued = false;
+function formState() {
+  return { pathId: pathId.value, labelIds: [...selectedLabelIds.value], description: description.value, startedAt: timerStartedAt.value };
+}
+function localStartedAt(value: string) {
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 const activePaths = computed(() => paths.value.filter((path) => path.status === "ACTIVE"));
 const recentPaths = computed(() => recentPathIds.value.map((id) => paths.value.find((path) => path.id === id)).filter((path): path is Path => Boolean(path && path.status === "ACTIVE")).slice(0, 5));
@@ -48,8 +57,14 @@ function rememberPath(id: string) {
   recentPathIds.value = [id, ...recentPathIds.value.filter((value) => value !== id)].slice(0, 5);
   localStorage.setItem("know_recent_timer_paths", JSON.stringify(recentPathIds.value));
 }
-function applyTimer(value: Timer | null, notifyHistory = false) {
+function applyTimer(value: Timer | null, notifyHistory = false, submitted?: ReturnType<typeof formState>) {
   const previous = timer.value;
+  const baseline = submitted || {
+    pathId: previous?.pathId || "", labelIds: previous?.labelIds || [],
+    description: previous?.description || "", startedAt: previous ? localStartedAt(previous.startedAt) : "",
+  };
+  const draft = formState();
+  const preserveDraft = !previous || previous.id === value?.id;
   if (value && previous?.id === value.id) {
     // Live snapshots may omit fields that did not change. Preserve the
     // existing timer form instead of erasing it with undefined values.
@@ -61,6 +76,7 @@ function applyTimer(value: Timer | null, notifyHistory = false) {
   timerStore.setCurrent(value);
   now.value = Date.now();
   if (!value) {
+    if (!previous) return;
     pathId.value = "";
     selectedLabelIds.value = [];
     description.value = "";
@@ -68,12 +84,10 @@ function applyTimer(value: Timer | null, notifyHistory = false) {
     if (notifyHistory && previous?.running) emit("changed");
     return;
   }
-  pathId.value = value.pathId || "";
-  selectedLabelIds.value = value.labelIds || [];
-  description.value = value.description || "";
-  const date = new Date(value.startedAt);
-  const pad = (part: number) => String(part).padStart(2, "0");
-  timerStartedAt.value = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  if (!preserveDraft || draft.pathId === baseline.pathId) pathId.value = value.pathId || "";
+  if (!preserveDraft || JSON.stringify(draft.labelIds) === JSON.stringify(baseline.labelIds)) selectedLabelIds.value = [...(value.labelIds || [])];
+  if (!preserveDraft || draft.description === baseline.description) description.value = value.description || "";
+  if (!preserveDraft || draft.startedAt === baseline.startedAt) timerStartedAt.value = localStartedAt(value.startedAt);
   rememberPath(value.pathId || "");
 }
 async function load() {
@@ -106,20 +120,30 @@ async function toggleRun() {
     }
     emit("changed");
   } catch { error.value = "Could not update the timer. Only one timer can run at a time."; }
-  finally { busy.value = false; }
+  finally { busy.value = false; if (saveQueued) { saveQueued = false; void updateTimer(); } }
 }
 async function updateTimer(alreadyBusy = false) {
-  if (!timer.value || (busy.value && !alreadyBusy)) return;
+  // Vue event handlers can pass an Event; only the explicit internal flag
+  // may reuse createLabel's busy state.
+  alreadyBusy = alreadyBusy === true;
+  if (!timer.value) return;
+  if (busy.value && !alreadyBusy) { saveQueued = true; return; }
   if (!alreadyBusy) busy.value = true;
+  const submitted = formState();
   const versionAtRequest = ++timerStateVersion; error.value = "";
   try {
     const startedAt = timerStartedAt.value ? new Date(timerStartedAt.value).toISOString() : timer.value.startedAt;
     const updated = await api<Timer>(`/timers/${timer.value.id}`, { method: "PUT", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, startedAt, description: description.value.trim() || null }) });
-    if (versionAtRequest === timerStateVersion) applyTimer(updated);
+    if (versionAtRequest === timerStateVersion) applyTimer(updated, false, submitted);
     rememberPath(pathId.value);
     emit("changed");
   } catch { error.value = "Could not save the active timer settings."; }
-  finally { if (!alreadyBusy) busy.value = false; }
+  finally {
+    if (!alreadyBusy) {
+      busy.value = false;
+      if (saveQueued) { saveQueued = false; void updateTimer(); }
+    }
+  }
 }
 async function choosePath(id: string) {
   if (id === "__add_new_path__") {
@@ -147,7 +171,7 @@ async function createLabel() {
     labelsStore.add({ ...created, scopes: created.scopes || ["TIME_ENTRY"] }); selectedLabelIds.value = [...new Set([...selectedLabelIds.value, created.id])]; newLabel.value = "";
     if (timer.value) await updateTimer(true);
   } catch { error.value = "Could not create the session label."; }
-  finally { busy.value = false; }
+  finally { busy.value = false; if (saveQueued) { saveQueued = false; void updateTimer(); } }
 }
 async function editStartedAt() {
   if (!timer.value) return;
@@ -161,11 +185,11 @@ async function editStartedAt() {
   await updateTimer();
 }
 async function sync() {
-  if (syncInFlight) return; syncInFlight = true;
+  if (syncInFlight || busy.value) return; syncInFlight = true;
   const versionAtRequest = timerStateVersion;
   try {
     const current = await api<Timer | null>("/timers/current");
-    if (versionAtRequest === timerStateVersion) applyTimer(current, true);
+    if (!busy.value && versionAtRequest === timerStateVersion) applyTimer(current, true);
   } catch { /* Best-effort polling. */ }
   finally { syncInFlight = false; }
 }
@@ -232,7 +256,7 @@ onUnmounted(() => {
   if (ticker) window.clearInterval(ticker);
   stopPolling();
   if (reconnectTicker) window.clearTimeout(reconnectTicker);
-  socket?.close(); socket = undefined;
+  if (socket) { socket.onclose = null; socket.close(); socket = undefined; }
 });
 </script>
 

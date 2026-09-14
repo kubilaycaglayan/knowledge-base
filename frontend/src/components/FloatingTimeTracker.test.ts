@@ -215,8 +215,38 @@ describe("FloatingTimeTracker", () => {
 
     expect(wrapper.get('textarea[aria-label="Timer description"]').element).toHaveProperty("value", "Read chapter");
     expect(wrapper.get(".floating-tracker-path").text()).toBe("Study");
+    const description = wrapper.get('textarea[aria-label="Timer description"]');
+    (description.element as HTMLTextAreaElement).value = "Unfinished local typing";
+    await description.trigger("input");
+    sockets[0].onmessage?.({ data: JSON.stringify({ type: "TIMER_STATE", timer: { id: "timer-1", pathId: "path-1", description: "Read chapter", startedAt: new Date().toISOString(), running: true } }) });
+    await flushPromises();
+    expect(description.element).toHaveProperty("value", "Unfinished local typing");
     wrapper.unmount();
     localStorage.removeItem("know_token");
     globalThis.WebSocket = originalWebSocket;
+  });
+
+  it("queues edits made during a save and preserves typing beyond the submitted snapshot", async () => {
+    const current = { id: "timer-1", description: "Original", labelIds: [], startedAt: "2026-09-11T10:00:00Z", running: true };
+    const pending: { resolve: (value: unknown) => void; body: any }[] = [];
+    vi.mocked(api).mockImplementation((path: string, options: RequestInit = {}) => {
+      if (path === "/timers/current") return Promise.resolve(current);
+      if (options.method === "PUT") return new Promise(resolve => pending.push({ resolve, body: JSON.parse(options.body as string) }));
+      return Promise.resolve([]);
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    const description = wrapper.get("textarea");
+    await description.setValue("First edit");
+    await description.setValue("Second edit");
+    expect(pending).toHaveLength(1);
+    pending[0].resolve({ ...current, ...pending[0].body });
+    await flushPromises();
+    expect(description.element).toHaveProperty("value", "Second edit");
+    expect(pending).toHaveLength(2);
+    expect(pending[1].body.description).toBe("Second edit");
+    pending[1].resolve({ ...current, ...pending[1].body });
+    await flushPromises();
+    wrapper.unmount();
   });
 });

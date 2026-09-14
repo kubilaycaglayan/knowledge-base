@@ -35,3 +35,9 @@ Release acceptance criteria for the September 2026 QA report.
 
 - [x] Browser titles begin with `Knowledge Base`, followed by the current page title.
 - [x] Automated coverage: `frontend/src/App.test.ts`.
+# Timer draft reconciliation regression
+
+- With a running timer, type a description without blurring; a complete live snapshot must preserve the draft.
+- Change the description twice while the first save is pending; both saves must serialize and the last edit must remain visible and persisted.
+- With no timer running, refresh current timer state; preserve the planned path, labels, and description.
+- Stop the timer remotely; the running state must clear. Start a different timer remotely; its fields must replace the previous timer's fields.
