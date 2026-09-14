@@ -87,11 +87,11 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("shows the running status and label names without repeating the path in the collapsed dock", async () => {
+  it("shows the running status and label names without showing the timer description", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
       if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }, { id: "label-2", name: "Review", scopes: ["TIME_ENTRY"] }];
-      if (path === "/timers/current") return { id: "timer-1", pathId: "path-1", labelIds: ["label-1", "label-2"], startedAt: new Date().toISOString(), running: true };
+      if (path === "/timers/current") return { id: "timer-1", pathId: "path-1", labelIds: ["label-1", "label-2"], description: "Read chapter", startedAt: new Date().toISOString(), running: true };
       return [];
     });
     const wrapper = mount(FloatingTimeTracker, { global: { plugins: [vuetify] } });
@@ -102,6 +102,7 @@ describe("FloatingTimeTracker", () => {
     expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
     expect(wrapper.get(".floating-tracker-context").text()).toContain("Focus, Review");
     expect(wrapper.get(".floating-tracker-context").text()).not.toContain("Knowledge Base");
+    expect(wrapper.find(".floating-tracker-summary").exists()).toBe(false);
     wrapper.unmount();
   });
 
