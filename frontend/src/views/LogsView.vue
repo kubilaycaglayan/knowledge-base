@@ -21,6 +21,7 @@ const logLabels = ref<LogLabel[]>([]);
 const openLabelMenuId = ref("");
 const savingLabelsId = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
+const composerTextarea = ref<HTMLTextAreaElement | null>(null);
 const now = ref(new Date());
 const followsBrowserClock = ref(true);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -35,6 +36,9 @@ function resizeComposer(event: Event) {
   const textarea = event.target as HTMLTextAreaElement;
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
+}
+function resetComposer() {
+  composerTextarea.value?.style.removeProperty("height");
 }
 function syncBrowserClock() {
   now.value = new Date();
@@ -144,7 +148,7 @@ async function saveNew() {
   try {
     const created = await api<Log>("/logs", { method: "POST", body: JSON.stringify({ body: snapshot.body, occurredAt: isoDateTime(snapshot.occurredAt) }) });
     logsStore.upsert(created);
-    if (body.value === snapshot.body && occurredAt.value === snapshot.occurredAt) { body.value = ""; followsBrowserClock.value = true; occurredAt.value = localDateTime(new Date()); }
+    if (body.value === snapshot.body && occurredAt.value === snapshot.occurredAt) { body.value = ""; resetComposer(); followsBrowserClock.value = true; occurredAt.value = localDateTime(new Date()); }
     status.value = "saved";
   } catch { status.value = "idle"; error.value = "Unable to save log. Please try again."; }
 }
@@ -189,7 +193,7 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
     <PromptDialog ref="promptDialog" />
     <form class="log-composer" autocomplete="off" @submit.prevent="saveNew">
       <label class="sr-only" for="new-log-body">Log text</label>
-      <textarea id="new-log-body" v-model="body" name="body" rows="1" placeholder="Write a log…" @input="resizeComposer" @keydown.enter.prevent="saveNew"></textarea>
+      <textarea id="new-log-body" ref="composerTextarea" v-model="body" name="body" rows="1" placeholder="Write a log…" @input="resizeComposer" @keydown.enter.prevent="saveNew"></textarea>
       <label class="sr-only" for="new-log-time">Log timestamp</label>
       <div class="timestamp-control">
         <input id="new-log-time" v-model="occurredAt" name="occurredAt" type="datetime-local" aria-label="Log timestamp" :class="{ 'timestamp-input-drift': timestampParts.isDrifting }" @input="stopFollowingBrowserClock" />
