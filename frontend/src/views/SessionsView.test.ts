@@ -130,7 +130,7 @@ describe("SessionsView", () => {
         sessions: [
           "2026-09-11T09:00:00Z", "2026-09-10T09:00:00Z", "2026-09-09T09:00:00Z",
           "2026-09-03T09:00:00Z", "2026-08-30T09:00:00Z", "2026-07-31T09:00:00Z",
-        ].map((startedAt, index) => ({ id: `${index}`, startedAt, endedAt: startedAt, source: "WEB" })),
+        ].map((startedAt, index) => ({ id: `${index}`, startedAt, endedAt: startedAt, durationSeconds: index === 0 ? 3660 : index === 1 ? 1800 : 0, source: "WEB" })),
       };
       if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
       return undefined;
@@ -139,8 +139,11 @@ describe("SessionsView", () => {
     try {
       const wrapper = mount(SessionsView);
       await flushPromises();
-      expect(wrapper.findAll(".session-group-heading").map((heading) => heading.text())).toEqual([
+      expect(wrapper.findAll(".session-group-heading").map((heading) => heading.findAll("span")[0].text())).toEqual([
         "Today", "Yesterday", "This week", "Last week", "Last month", "July 2026",
+      ]);
+      expect(wrapper.findAll(".session-group-duration").map((duration) => duration.text())).toEqual([
+        "01:01", "00:30", "00:00", "00:00", "00:00", "00:00",
       ]);
     } finally {
       vi.useRealTimers();

@@ -1,6 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { activePaths, timerLabels, timerStartPayload, timerIsRunning, timerElapsedSeconds, timerStatus } = require('./core.js')
+const { activePaths, timerLabels, timerStartPayload, timerIsRunning, timerElapsedSeconds, timerStatus, formatGroupDuration } = require('./core.js')
 
 test('only active paths are offered to the timer', () => {
   assert.deepEqual(activePaths([{ id: 'active', status: 'ACTIVE' }, { id: 'archived', status: 'ARCHIVED' }]).map(path => path.id), ['active'])
@@ -32,4 +32,9 @@ test('current timer status does not display the server description', () => {
 test('server timer state is authoritative for stop decisions', () => {
   assert.equal(timerIsRunning({ running: true }), true)
   assert.equal(timerIsRunning(null), false)
+})
+
+test('formats session group totals as HH:MM', () => {
+  assert.equal(formatGroupDuration([{ durationSeconds: 3600 }, { durationSeconds: 1800 }]), '01:30')
+  assert.equal(formatGroupDuration([{ durationSeconds: 45 }]), '00:00')
 })

@@ -95,6 +95,11 @@ enum SessionFormatting {
         return String(format: "%02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
     }
 
+    static func groupDuration(_ sessions: [TrackedSession]) -> String {
+        let minutes = max(0, sessions.reduce(0) { $0 + ($1.durationSeconds ?? 0) }) / 60
+        return String(format: "%02lld:%02lld", minutes / 60, minutes % 60)
+    }
+
     static func group(_ timestamp: String, now: Date = Date(), calendar: Calendar = .current) -> String {
         guard let date = date(timestamp) else { return "Unknown date" }
         let today = calendar.startOfDay(for: now)

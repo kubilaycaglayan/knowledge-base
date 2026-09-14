@@ -35,7 +35,11 @@ struct SessionsView: View {
                     Text("Start a session above to record your time.").font(.footnote).foregroundStyle(WorkspaceTheme.muted(scheme))
                 }
                 ForEach(groups, id: \.id) { group in
-                    Text(group.label.uppercased()).font(.subheadline.bold()).tracking(0.3)
+                    HStack {
+                        Text(group.label.uppercased()).font(.subheadline.bold()).tracking(0.3)
+                        Spacer(minLength: 12)
+                        Text(SessionFormatting.groupDuration(group.sessions)).monospacedDigit().foregroundStyle(WorkspaceTheme.muted(scheme))
+                    }
                         .accessibilityAddTraits(.isHeader)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 8)
                         .overlay(alignment: .bottom) { Rectangle().fill(WorkspaceTheme.border(scheme)).frame(height: 1) }
