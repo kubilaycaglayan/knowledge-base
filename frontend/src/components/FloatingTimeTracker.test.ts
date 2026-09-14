@@ -226,6 +226,34 @@ describe("FloatingTimeTracker", () => {
     globalThis.WebSocket = originalWebSocket;
   });
 
+  it("rehydrates the timer form after the tracker is remounted", async () => {
+    const current = {
+      id: "timer-1",
+      pathId: "path-1",
+      labelIds: ["label-1"],
+      description: "Read chapter",
+      startedAt: "2026-09-12T10:00:00Z",
+      running: true,
+    };
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Study", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current") return current;
+      return undefined;
+    });
+    const first = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    first.unmount();
+
+    const second = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    expect(second.get("select[aria-label=\"Timer path\"]").element).toHaveProperty("value", "path-1");
+    expect(second.get(".label-picker button").classes()).toContain("selected");
+    expect(second.get("textarea[aria-label=\"Timer description\"]").element).toHaveProperty("value", "Read chapter");
+    second.unmount();
+  });
+
   it("queues edits made during a save and preserves typing beyond the submitted snapshot", async () => {
     const current = { id: "timer-1", description: "Original", labelIds: [], startedAt: "2026-09-11T10:00:00Z", running: true };
     const pending: { resolve: (value: unknown) => void; body: any }[] = [];
