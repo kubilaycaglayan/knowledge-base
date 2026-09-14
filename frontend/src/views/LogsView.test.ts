@@ -42,6 +42,22 @@ describe("LogsView", () => {
     expect(wrapper.text()).toContain("New capture");
   });
 
+  it("resets the composer height after saving a multiline log", async () => {
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    const composer = wrapper.get("#new-log-body");
+    const created = log("created", "First line\nSecond line", "2026-09-11T12:00:00Z", 0);
+    vi.mocked(api).mockResolvedValueOnce(created);
+
+    await composer.setValue("First line\nSecond line");
+    (composer.element as HTMLTextAreaElement).style.height = "120px";
+    await composer.trigger("keydown.enter");
+    await flushPromises();
+
+    expect(composer.element).toHaveProperty("value", "");
+    expect((composer.element as HTMLTextAreaElement).style.height).toBe("");
+  });
+
   it("edits text and timestamp in place without dropping the draft", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
