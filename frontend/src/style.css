@@ -56,6 +56,12 @@ button:disabled, input:disabled, select:disabled, textarea:disabled { background
 .v-overlay__content { overscroll-behavior: contain; }
 @media (max-width: 700px) {
   input, select, textarea, .v-field { font-size: 16px; }
+  /* Chrome zooms the page when a focused editable control is smaller than
+     16px. Keep this rule last and specific enough to cover scoped component
+     styles and Vuetify's internal input/contenteditable elements. */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea,
+  .v-field, .v-field__input, .v-field__input > input,
+  [contenteditable="true"] { font-size: 16px !important; }
   .primary, .text-button, .progress-button, .page-number, .flat-button, .ghost { min-height: 44px; }
   .add { align-items: stretch; }
   .card { padding: 16px; }
