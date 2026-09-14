@@ -64,3 +64,5 @@
 Continue applying these foundations to future web features. Native iOS and
 extension design work remains outside this web redesign; their API contracts,
 compatibility identifiers, and server-owned timer rules remain unchanged.
+
+- [x] Resolve the September 2026 timer, session, notes, mobile layout, and page-title regressions; acceptance criteria are recorded in `docs/bug-acceptance-checklists.md`.

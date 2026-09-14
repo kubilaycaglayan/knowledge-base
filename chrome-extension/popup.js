@@ -340,7 +340,7 @@ async function load() {
       renderTimerLabels();
       try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
     };
-    if (timer) { showTimer(timer); $("toggle").textContent = "Stop timer"; await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
+    if (timer) { showTimer(timer); await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
     else {
       showTimer(null); await chrome.storage.local.remove("activeTimer");
       if (activeTimer) await resetTimerForm();

@@ -187,6 +187,19 @@ describe("SessionsView", () => {
     }));
   });
 
+  it("starts a new server timer from a completed session", async () => {
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+
+    const startAgain = wrapper.findAll("button").find((button) => button.text() === "Start again");
+    expect(startAgain).toBeDefined();
+    await startAgain!.trigger("click");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ pathId: "path-1", labelIds: ["label-1"], description: "Most recent" }),
+    }));
+  });
+
   it("confirms and soft-deletes a completed session", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();

@@ -68,6 +68,15 @@ describe("App", () => {
     expect(wrapper.find('[data-test="authenticate"]').exists()).toBe(true);
   });
 
+  it("puts the product name first in the browser title", async () => {
+    localStorage.setItem("know_token", "token");
+    mount(App, {
+      global: { stubs, provide: { [routeLocationKey as symbol]: { path: "/sessions", query: {} } } },
+    });
+    await Promise.resolve();
+    expect(document.title).toBe("Knowledge Base · Sessions");
+  });
+
   it("switches to the authenticated shell after login", async () => {
     const wrapper = mount(App, { global: { stubs } });
 
