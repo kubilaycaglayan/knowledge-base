@@ -48,7 +48,13 @@ function rememberPath(id: string) {
   recentPathIds.value = [id, ...recentPathIds.value.filter((value) => value !== id)].slice(0, 5);
   localStorage.setItem("know_recent_timer_paths", JSON.stringify(recentPathIds.value));
 }
-function applyTimer(value: Timer | null) {
+function applyTimer(value: Timer | null, notifyHistory = false) {
+  const previous = timer.value;
+  if (value && previous?.id === value.id) {
+    // Live snapshots may omit fields that did not change. Preserve the
+    // existing timer form instead of erasing it with undefined values.
+    value = { ...previous, ...value };
+  }
   // A completed snapshot is history, not the current running timer. Keep
   // older servers or delayed messages from making the counter appear active.
   if (value?.running === false) value = null;
@@ -59,6 +65,7 @@ function applyTimer(value: Timer | null) {
     selectedLabelIds.value = [];
     description.value = "";
     timerStartedAt.value = "";
+    if (notifyHistory && previous?.running) emit("changed");
     return;
   }
   pathId.value = value.pathId || "";
@@ -158,7 +165,7 @@ async function sync() {
   const versionAtRequest = timerStateVersion;
   try {
     const current = await api<Timer | null>("/timers/current");
-    if (versionAtRequest === timerStateVersion) applyTimer(current);
+    if (versionAtRequest === timerStateVersion) applyTimer(current, true);
   } catch { /* Best-effort polling. */ }
   finally { syncInFlight = false; }
 }
@@ -199,7 +206,7 @@ function connectWebSocket() {
         stopPolling();
       } else if (message.type === "TIMER_STATE") {
         timerStateVersion++;
-        applyTimer(message.timer || null);
+        applyTimer(message.timer || null, true);
       }
     };
     candidate.onclose = () => {
@@ -285,6 +292,6 @@ onUnmounted(() => {
 .tracker-test-select { display: none; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { width: 44px; min-width: 44px; min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; } }
+@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { width: 44px; min-width: 44px; min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; } }
 @media (prefers-reduced-motion: reduce) { .floating-tracker, .floating-tracker * { transition: none !important; animation: none !important; } }
 </style>

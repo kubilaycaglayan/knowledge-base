@@ -12,7 +12,7 @@ const showFloatingTracker = () => auth.isAuthenticated && route?.path !== "/" &&
 watchEffect(() => {
   const path = route?.path || "/";
   const page = !auth.isAuthenticated ? "Sign in" : path.startsWith("/notes/") ? "Note" : path === "/" ? "Sessions" : path.slice(1);
-  document.title = `${page.charAt(0).toUpperCase()}${page.slice(1)} · Knowledge Base`;
+  document.title = `Knowledge Base · ${page.charAt(0).toUpperCase()}${page.slice(1)}`;
 });
 function logout() {
   auth.clearToken();
