@@ -1,7 +1,7 @@
 {
   "name": "know-chrome-extension",
   "private": true,
-  "version": "0.1.18",
+  "version": "0.1.20",
   "scripts": {
     "dev": "wxt -b chrome",
     "build": "wxt build -b chrome",
