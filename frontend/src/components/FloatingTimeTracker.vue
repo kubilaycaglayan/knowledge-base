@@ -33,6 +33,10 @@ let ticker: number | undefined, syncTicker: number | undefined, reconnectTicker:
 let syncInFlight = false, timerStateVersion = 0, socket: WebSocket | undefined;
 const socketConnected = ref(false);
 let saveQueued = false;
+// The tracker form is local to each mounted tracker, while the running timer
+// itself lives in Pinia. Track which timer the local form has been hydrated
+// from so a route change does not make a fresh form look like a dirty draft.
+let formTimerId = "";
 function formState() {
   return { pathId: pathId.value, labelIds: [...selectedLabelIds.value], description: description.value, startedAt: timerStartedAt.value };
 }
@@ -77,6 +81,7 @@ function applyTimer(value: Timer | null, notifyHistory = false, submitted?: Retu
   now.value = Date.now();
   if (!value) {
     if (!previous) return;
+    formTimerId = "";
     pathId.value = "";
     selectedLabelIds.value = [];
     description.value = "";
@@ -84,10 +89,12 @@ function applyTimer(value: Timer | null, notifyHistory = false, submitted?: Retu
     if (notifyHistory && previous?.running) emit("changed");
     return;
   }
-  if (!preserveDraft || draft.pathId === baseline.pathId) pathId.value = value.pathId || "";
-  if (!preserveDraft || JSON.stringify(draft.labelIds) === JSON.stringify(baseline.labelIds)) selectedLabelIds.value = [...(value.labelIds || [])];
-  if (!preserveDraft || draft.description === baseline.description) description.value = value.description || "";
-  if (!preserveDraft || draft.startedAt === baseline.startedAt) timerStartedAt.value = localStartedAt(value.startedAt);
+  const newLocalForm = formTimerId !== value.id;
+  if (newLocalForm || !preserveDraft || draft.pathId === baseline.pathId) pathId.value = value.pathId || "";
+  if (newLocalForm || !preserveDraft || JSON.stringify(draft.labelIds) === JSON.stringify(baseline.labelIds)) selectedLabelIds.value = [...(value.labelIds || [])];
+  if (newLocalForm || !preserveDraft || draft.description === baseline.description) description.value = value.description || "";
+  if (newLocalForm || !preserveDraft || draft.startedAt === baseline.startedAt) timerStartedAt.value = localStartedAt(value.startedAt);
+  formTimerId = value.id;
   rememberPath(value.pathId || "");
 }
 async function load() {
