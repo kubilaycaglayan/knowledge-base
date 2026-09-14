@@ -28,6 +28,7 @@ const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref("")
 const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
 const busy = ref(false), error = ref("");
 const timerStartedAt = ref("");
+const trackerViewportHeight = ref(0);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 let ticker: number | undefined, syncTicker: number | undefined, reconnectTicker: number | undefined;
 let syncInFlight = false, timerStateVersion = 0, socket: WebSocket | undefined;
@@ -60,6 +61,14 @@ function rememberPath(id: string) {
   if (!id) return;
   recentPathIds.value = [id, ...recentPathIds.value.filter((value) => value !== id)].slice(0, 5);
   localStorage.setItem("know_recent_timer_paths", JSON.stringify(recentPathIds.value));
+}
+function updateTrackerViewportHeight() {
+  trackerViewportHeight.value = Math.round(window.visualViewport?.height || window.innerHeight);
+}
+function keepFocusedControlVisible(event: FocusEvent) {
+  const control = event.currentTarget;
+  if (!(control instanceof HTMLElement)) return;
+  window.requestAnimationFrame(() => control.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" }));
 }
 function applyTimer(value: Timer | null, notifyHistory = false, submitted?: ReturnType<typeof formState>) {
   const previous = timer.value;
@@ -256,10 +265,13 @@ function connectWebSocket() {
 }
 onMounted(() => {
   try { recentPathIds.value = JSON.parse(localStorage.getItem("know_recent_timer_paths") || "[]"); } catch { recentPathIds.value = []; }
+  updateTrackerViewportHeight();
+  window.visualViewport?.addEventListener("resize", updateTrackerViewportHeight);
   void load(); ticker = window.setInterval(() => { now.value = Date.now(); }, 1000);
   connectWebSocket();
 });
 onUnmounted(() => {
+  window.visualViewport?.removeEventListener("resize", updateTrackerViewportHeight);
   if (ticker) window.clearInterval(ticker);
   stopPolling();
   if (reconnectTicker) window.clearTimeout(reconnectTicker);
@@ -269,7 +281,7 @@ onUnmounted(() => {
 
 <template>
   <PromptDialog ref="promptDialog" />
-  <div class="floating-tracker-host" :class="{ inline: props.inline }">
+  <div class="floating-tracker-host" :class="{ inline: props.inline }" :style="{ '--tracker-viewport-height': `${trackerViewportHeight}px` }">
     <section class="floating-tracker session-grid" aria-label="Focus today">
       <div class="floating-tracker-bar focus">
         <button class="floating-tracker-action primary" :class="{ 'is-running': timer }" type="button" :disabled="busy" :aria-busy="busy" :aria-label="timer ? 'Stop timer' : 'Start timer'" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span class="sr-only">{{ timer ? "Stop session" : "Start a session" }}</span></button>
@@ -289,9 +301,9 @@ onUnmounted(() => {
           <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ sessionLabels.length }} available</span></div>
           <v-select class="tracker-test-select" :items="sessionLabels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
           <div id="tt-labels" class="label-picker" role="group" aria-label="Session labels"><button v-for="label in sessionLabels" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button></div>
-          <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create label</button></div>
+          <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" @focus="keepFocusedControlVisible" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create label</button></div>
         </div>
-        <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" aria-label="Timer description" rows="2" autocomplete="off" placeholder="What are you working on…" @change="updateTimer"></textarea></div>
+        <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" aria-label="Timer description" rows="2" autocomplete="off" placeholder="What are you working on…" @focus="keepFocusedControlVisible" @change="updateTimer"></textarea></div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">{{ error }}</p>
       </div>
     </section>
@@ -323,6 +335,6 @@ onUnmounted(() => {
 .tracker-test-select { display: none; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { width: 44px; min-width: 44px; min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; } }
+@media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { width: 44px; min-width: 44px; min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; max-height: calc(var(--tracker-viewport-height, 100dvh) - 24px); min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; } }
 @media (prefers-reduced-motion: reduce) { .floating-tracker, .floating-tracker * { transition: none !important; animation: none !important; } }
 </style>
