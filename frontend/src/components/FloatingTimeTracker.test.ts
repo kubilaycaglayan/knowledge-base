@@ -73,6 +73,20 @@ describe("FloatingTimeTracker", () => {
     floating.unmount();
   });
 
+  it("keeps the inline tracker in the page scroll flow on mobile", async () => {
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    const trackerStyles = [...document.head.querySelectorAll("style")]
+      .map((style) => style.textContent || "")
+      .join("\n");
+    expect(wrapper.get(".floating-tracker-host").classes()).toContain("inline");
+    expect(trackerStyles).toContain(".floating-tracker-host.inline .floating-tracker-panel");
+    expect(trackerStyles).toContain("max-height: none");
+    expect(trackerStyles).toContain("overflow: visible");
+    wrapper.unmount();
+  });
+
   it("shows the running status and label names without repeating the path in the collapsed dock", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
