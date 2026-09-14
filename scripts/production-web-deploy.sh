@@ -41,7 +41,12 @@ fi
 docker compose "${compose_args[@]}" build "${build_args[@]}"
 
 echo 'Updating the production stack (persistent volumes are preserved)...'
-docker compose "${compose_args[@]}" up -d --force-recreate
+# Keep the database and backup containers stable across application
+# deployments. Compose still creates them when missing, while --no-recreate
+# preserves existing (or stopped) containers.
+docker compose "${compose_args[@]}" up -d --no-recreate db
+docker compose "${compose_args[@]}" up -d --no-recreate backup
+docker compose "${compose_args[@]}" up -d --force-recreate --no-deps api web proxy cloudflared
 
 api_container="$(docker compose "${compose_args[@]}" ps -q api)"
 proxy_container="$(docker compose "${compose_args[@]}" ps -q proxy)"
