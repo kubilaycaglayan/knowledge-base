@@ -26,8 +26,7 @@
   }
   function timerStatus(timer, now = Date.now()) {
     if (!timerIsRunning(timer)) return '00:00:00'
-    const clock = formatTimer(timerElapsedSeconds(timer, now))
-    return timer.description ? clock + ' · ' + timer.description : clock
+    return formatTimer(timerElapsedSeconds(timer, now))
   }
   return { activePaths, timerLabels, timerStartPayload, timerIsRunning, timerElapsedSeconds, formatTimer, timerStatus }
 })

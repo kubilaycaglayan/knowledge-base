@@ -55,7 +55,7 @@ const pathName = computed(() => paths.value.find((path) => path.id === (timer.va
 const selectedLabelNames = computed(() => selectedLabelIds.value
   .map((id) => sessionLabels.value.find((label) => label.id === id)?.name)
   .filter((name): name is string => Boolean(name)));
-const timerSummary = computed(() => timer.value ? timer.value.description || "Session running" : selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin.");
+const timerSummary = computed(() => selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin.");
 
 function rememberPath(id: string) {
   if (!id) return;
@@ -287,7 +287,7 @@ onUnmounted(() => {
         <button class="floating-tracker-action primary" :class="{ 'is-running': timer }" type="button" :disabled="busy" :aria-busy="busy" :aria-label="timer ? 'Stop timer' : 'Start timer'" @click="toggleRun"><span class="timer-action-icon" :class="{ stop: timer }" aria-hidden="true"></span><span class="sr-only">{{ timer ? "Stop session" : "Start a session" }}</span></button>
         <button class="floating-tracker-clock" type="button" :disabled="!timer" aria-label="Edit timer start time; elapsed session time" @click="editStartedAt"><strong role="timer" aria-live="off">{{ clock(elapsed) }}</strong></button>
         <span v-if="pathName" class="floating-tracker-path">{{ pathName }}</span>
-        <span class="floating-tracker-summary">{{ timerSummary }}</span>
+        <span v-if="!timer" class="floating-tracker-summary">{{ timerSummary }}</span>
         <span v-if="selectedLabelNames.length" class="floating-tracker-context">{{ selectedLabelNames.join(', ') }}</span>
         <button v-if="!props.inline" class="floating-tracker-toggle" type="button" :aria-expanded="open" aria-controls="floating-tracker-panel" @click="open = !open"><span class="sr-only">{{ open ? "Collapse tracker" : "Expand tracker" }}</span><span aria-hidden="true" class="chevron" :class="{ up: !open }"></span></button>
       </div>
