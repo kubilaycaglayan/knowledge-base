@@ -279,5 +279,6 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 700px) { .log-composer { grid-template-columns: minmax(0, 1fr) auto; } .log-composer .timestamp-control { grid-column: 1; width: 100%; } .log-composer .timestamp-control input { width: 100%; } .log-composer > button.primary { grid-column: 2; grid-row: 2; } .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; } .log-entry > .log-time, .log-entry > .log-time-input { grid-column: 1; } .log-entry > .log-body { grid-column: 2; } .log-entry > .text-button, .log-entry > .row-actions, .log-entry > .log-actions { grid-column: 2; justify-self: start; } .log-time-input { width: 100%; } .log-entry > .row-actions { margin-top: 4px; } }
+@media (max-width: 700px) { .log-label-menu { right: auto; left: 0; max-width: calc(100vw - 32px); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 </style>
