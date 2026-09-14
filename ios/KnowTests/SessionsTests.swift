@@ -203,6 +203,11 @@ private actor SessionsStub: SessionsTransport {
         XCTAssertEqual(SessionFormatting.duration(3660), "1h 1 minute")
         XCTAssertEqual(SessionFormatting.duration(360060), "100h")
         XCTAssertEqual(SessionFormatting.clock(start: "2026-09-12T10:00:00.000Z", now: SessionFormatting.date("2026-09-12T11:02:03Z")!), "01:02:03")
+        let sessions = [
+            TrackedSession(id: UUID(), pathId: nil, labelIds: nil, startedAt: "2026-09-12T10:00:00Z", endedAt: nil, durationSeconds: 3600, description: nil, source: "WEB", running: false),
+            TrackedSession(id: UUID(), pathId: nil, labelIds: nil, startedAt: "2026-09-12T11:00:00Z", endedAt: nil, durationSeconds: 1800, description: nil, source: "WEB", running: false),
+        ]
+        XCTAssertEqual(SessionFormatting.groupDuration(sessions), "01:30")
     }
 
     func testDateGroupsUseLocalDayAndMondayWeek() {

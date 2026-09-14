@@ -24,9 +24,13 @@
       .map(value => String(value).padStart(2, '0'))
       .join(':')
   }
+  function formatGroupDuration(sessions) {
+    const totalMinutes = Math.floor((sessions || []).reduce((total, session) => total + (session.durationSeconds || 0), 0) / 60)
+    return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`
+  }
   function timerStatus(timer, now = Date.now()) {
     if (!timerIsRunning(timer)) return '00:00:00'
     return formatTimer(timerElapsedSeconds(timer, now))
   }
-  return { activePaths, timerLabels, timerStartPayload, timerIsRunning, timerElapsedSeconds, formatTimer, timerStatus }
+  return { activePaths, timerLabels, timerStartPayload, timerIsRunning, timerElapsedSeconds, formatTimer, formatGroupDuration, timerStatus }
 })

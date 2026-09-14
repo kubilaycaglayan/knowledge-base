@@ -18,6 +18,7 @@ class Element {
     this.children = [];
     this.onclick = null;
     this.onchange = null;
+    this.insertedHTML = [];
   }
   get selectedOptions() { return this.options.filter((option) => option.selected); }
   append(...items) {
@@ -28,11 +29,11 @@ class Element {
   getAttribute(name) { return this[name] ?? null; }
   focus() { this.focused = true; }
   replaceChildren() { this.options = []; this.children = []; }
-  insertAdjacentHTML() {}
+  insertAdjacentHTML(position, html) { this.insertedHTML.push({ position, html }); }
   querySelector() { return null; }
 }
 
-function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false } = {}) {
+function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false, history = [] } = {}) {
   const elements = Object.fromEntries([
     "status", "timer-details", "timer-start-editor", "timer-started-date", "timer-started-time", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
     "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options", "settings-menu-toggle", "settings-menu", "clockify-import-toggle",
@@ -53,7 +54,7 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
     ["/labels?scope=TIME_ENTRY", [{ id: "label-1", name: "Algorithms", color: "#2878D5" }]],
     ["/calendar/labels", [{ id: "calendar-only", name: "Calendar only", color: "#999999" }]],
     ["/timers/current", currentTimer],
-    ["/time-entries?page=0&size=20", []],
+    ["/time-entries?page=0&size=20", history],
     ["/timers", { id: "timer-1", pathId: "path-1", startedAt: "2026-09-01T10:00:00Z", running: true }],
   ]);
   const context = {
@@ -72,6 +73,10 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
       timerIsRunning: (timer) => Boolean(timer?.running),
       timerStartPayload: (pathId, labelIds, description) => ({ pathId: pathId || null, labelIds, description: description || null, source: "CHROME_EXTENSION" }),
       formatTimer: () => "00:00:00",
+      formatGroupDuration: (sessions) => {
+        const minutes = Math.floor(sessions.reduce((total, session) => total + (session.durationSeconds || 0), 0) / 60);
+        return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+      },
     },
     KnowGoogleAuth: {},
     KnowClockifySettings: { KEY: "clockifyImportEnabled", isEnabled: (value) => value !== false },
@@ -168,6 +173,10 @@ test("loads only labels scoped for time-entry sessions", async () => {
   assert.ok(popup.state.calls.some(({ path }) => path === "/labels?scope=TIME_ENTRY"));
   assert.equal(popup.state.calls.some(({ path }) => path === "/calendar/labels"), false);
   assert.deepEqual(popup.elements.label.options.map((option) => option.value), ["", "label-1"]);
+});
+
+test("shows each session group total as an HH:MM separator value", async () => {
+  assert.match(source, /session-group-duration.*KnowCore\.formatGroupDuration\(group\.sessions\)/);
 });
 
 test("starts a server timer with selected path, labels, description, and extension source", async () => {

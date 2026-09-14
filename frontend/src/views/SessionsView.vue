@@ -67,6 +67,10 @@ const isoDateTime = (value: string) => new Date(value).toISOString();
 const sessionDate = (iso: string) => formatDateTime(iso);
 const duration = (session: Session) =>
   session.running ? "Running" : formatTrackedDuration(session.durationSeconds || 0);
+const groupDuration = (group: SessionGroup) => {
+  const totalMinutes = Math.floor(group.sessions.reduce((total, session) => total + (session.durationSeconds || 0), 0) / 60);
+  return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
+};
 
 const startOfDay = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -227,7 +231,7 @@ onMounted(load);
     <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
     <div class="session-list" role="region" aria-label="Sessions">
       <section v-for="group in sessionGroups" :key="group.key" class="session-group" :aria-labelledby="`session-group-${group.key}`">
-        <h2 :id="`session-group-${group.key}`" class="session-group-heading">{{ group.label }}</h2>
+        <h2 :id="`session-group-${group.key}`" class="session-group-heading"><span>{{ group.label }}</span><span class="session-group-duration">{{ groupDuration(group) }}</span></h2>
         <div class="session-group-list">
       <article v-for="session in group.sessions" :key="session.id" class="card session-card">
         <div v-if="editingId !== session.id" class="session-heading">

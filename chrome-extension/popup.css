@@ -403,6 +403,9 @@ small {
 }
 
 .session-group-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--workspace-border);
@@ -411,6 +414,13 @@ small {
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase
+}
+
+.session-group-duration {
+  flex: 0 0 auto;
+  color: var(--workspace-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0
 }
 
 .session-card {

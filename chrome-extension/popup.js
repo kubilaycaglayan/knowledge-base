@@ -290,7 +290,7 @@ function renderSessions(history) {
   });
   groups.forEach((group) => {
     const section = document.createElement("section"); section.className = "session-group";
-    section.insertAdjacentHTML("beforeend", `<h3 class="session-group-heading">${escapeHtml(group.label)}</h3>`);
+    section.insertAdjacentHTML("beforeend", `<h3 class="session-group-heading"><span>${escapeHtml(group.label)}</span><span class="session-group-duration">${KnowCore.formatGroupDuration(group.sessions)}</span></h3>`);
     const list = document.createElement("div"); list.className = "session-group-list";
     group.sessions.forEach((session) => {
       const article = document.createElement("article"); article.className = "session-card"; article.dataset.id = session.id;

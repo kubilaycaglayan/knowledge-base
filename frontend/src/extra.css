@@ -50,7 +50,8 @@
 .activity-description { min-width: 0; overflow-wrap: anywhere; }
 .session-list { display: grid; gap: 20px; }
 .session-group, .session-group-list { display: grid; gap: 10px; }
-.session-group-heading { margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-text); font-size: 14px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.session-group-heading { display: flex; justify-content: space-between; gap: 12px; margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--workspace-border); color: var(--workspace-text); font-size: 14px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.session-group-duration { flex: 0 0 auto; color: var(--workspace-muted); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .session-group + .session-group .session-group-heading { margin-top: 12px; }
 .session-card {
   padding: 14px 16px;
