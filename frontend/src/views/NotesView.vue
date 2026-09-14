@@ -237,6 +237,13 @@ async function save() {
     if (saveQueued) { saveQueued = false; scheduleSave(); }
   }
 }
+function keepEditorVisible() {
+  void nextTick(() => {
+    if (document.activeElement?.closest(".rich-editor")) {
+      editorHost.value?.querySelector(".ProseMirror")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  });
+}
 async function loadEditor() {
   const id = route.params.id;
   if (!id || typeof id !== "string") return;
@@ -257,6 +264,7 @@ async function loadEditor() {
       content: parseContent(fromList.content),
       editorProps: { attributes: { role: 'textbox', 'aria-label': 'Note content', 'aria-multiline': 'true' } },
       onUpdate: scheduleSave,
+      onFocus: keepEditorVisible,
     });
   } catch { error.value = "Unable to open this note."; }
 }
@@ -270,6 +278,7 @@ function refreshVisibleList() {
   if (!isEditor.value && document.visibilityState === "visible") void loadNotes(true);
 }
 onMounted(async () => {
+  window.visualViewport?.addEventListener("resize", keepEditorVisible);
   if (isEditor.value) { await nextTick(); await loadEditor(); }
   else {
     await loadNotes();
@@ -278,6 +287,7 @@ onMounted(async () => {
   }
 });
 onBeforeUnmount(() => {
+  window.visualViewport?.removeEventListener("resize", keepEditorVisible);
   if (saveTimer) clearTimeout(saveTimer);
   if (searchTimer) clearTimeout(searchTimer);
   if (refreshTimer) clearInterval(refreshTimer);
@@ -319,8 +329,7 @@ onBeforeUnmount(() => {
         <span class="toolbar-spacer"></span>
         <button class="flat-button" :disabled="!editor?.can().undo()" aria-label="Undo" @click="editor?.commands.undo()">↶</button><button class="flat-button" :disabled="!editor?.can().redo()" aria-label="Redo" @click="editor?.commands.redo()">↷</button>
       </div>
-      <input v-model="title" class="note-title-input" name="note-title" autocomplete="off" aria-label="Note title" maxlength="240" @input="scheduleSave" />
-      <div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" name="note-label" aria-label="Add label" placeholder="Add label and press Enter…" autocomplete="off" enterkeyhint="done" role="combobox" aria-autocomplete="list" :aria-expanded="matchingLabels.length > 0" aria-controls="note-label-suggestions" :aria-activedescendant="matchingLabels.length ? `note-label-suggestion-${matchingLabels[highlightedLabelIndex].id}` : undefined" @beforeinput="handleLabelBeforeInput" @keydown="handleLabelKeydown" /><div v-if="matchingLabels.length" id="note-label-suggestions" class="label-suggestions" role="listbox" aria-label="Matching existing labels"><button v-for="(label, index) in matchingLabels" :id="`note-label-suggestion-${label.id}`" :key="label.id" type="button" role="option" class="label-suggestion" :class="{ active: index === highlightedLabelIndex }" :aria-selected="index === highlightedLabelIndex" @click="chooseLabel(label)">{{ label.name }}</button></div></div>
+      <div class="note-title-row"><input v-model="title" class="note-title-input" name="note-title" autocomplete="off" aria-label="Note title" maxlength="240" @input="scheduleSave" /><div class="tag-editor"><span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span><input v-model="tagInput" name="note-label" aria-label="Add label" placeholder="Add label and press Enter…" autocomplete="off" enterkeyhint="done" role="combobox" aria-autocomplete="list" :aria-expanded="matchingLabels.length > 0" aria-controls="note-label-suggestions" :aria-activedescendant="matchingLabels.length ? `note-label-suggestion-${matchingLabels[highlightedLabelIndex].id}` : undefined" @beforeinput="handleLabelBeforeInput" @keydown="handleLabelKeydown" /><div v-if="matchingLabels.length" id="note-label-suggestions" class="label-suggestions" role="listbox" aria-label="Matching existing labels"><button v-for="(label, index) in matchingLabels" :id="`note-label-suggestion-${label.id}`" :key="label.id" type="button" role="option" class="label-suggestion" :class="{ active: index === highlightedLabelIndex }" :aria-selected="index === highlightedLabelIndex" @click="chooseLabel(label)">{{ label.name }}</button></div></div></div>
       <div ref="editorHost" class="rich-editor"><EditorContent v-if="editor" :editor="editor" /></div>
       <p v-if="selected" class="note-dates">Created {{ formatDate(selected.createdAt) }} · Updated {{ formatDate(selected.updatedAt) }}</p>
     </template>
@@ -362,6 +371,12 @@ onBeforeUnmount(() => {
 .icon-button:hover { background: var(--workspace-accent-hover); }
 .rich-editor :deep(pre) { overflow-x: auto; padding: 12px; background: var(--workspace-selected); border-radius: var(--workspace-radius); }
 .rich-editor :deep(blockquote) { border-left: 2px solid var(--workspace-control-border); margin-inline: 0; padding-left: 16px; color: var(--workspace-muted); }
+.note-title-row { display:flex; align-items:center; gap:18px; border-bottom:1px solid var(--workspace-border); }
+.note-title-row .note-title-input { min-width:0; flex:1; padding-bottom:14px; }
+.note-title-row .tag-editor { flex:0 1 42%; border-bottom:0; padding-bottom:0; }
+.rich-editor :deep(.ProseMirror) { scroll-margin-bottom:180px; }
+.rich-editor :deep(.ProseMirror p) { margin:0 0 8px; }
 @media(max-width:700px) { .note-tag button { min-width:44px; min-height:44px; } .note-row-meta { max-width:100%; } .note-row { min-height: 168px; padding: 16px; } }
+@media(max-width:700px) { .note-title-row { align-items:stretch; flex-direction:column; gap:0; }.note-title-row .tag-editor { flex-basis:auto; padding-bottom:10px; }.floating-tracker-panel { max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; } }
 @media(prefers-reduced-motion: reduce) { .note-row { transition: none; } }
 </style>

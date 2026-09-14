@@ -184,6 +184,23 @@ async function save(session: Session) {
     saving.value = false;
   }
 }
+async function startFromSession(session: Session) {
+  if (session.running) return;
+  try {
+    await api("/timers", {
+      method: "POST",
+      body: JSON.stringify({
+        pathId: session.pathId || null,
+        labelIds: session.labelIds || [],
+        description: session.description || null,
+      }),
+    });
+    sessionsStore.clearPages();
+    await load(page.value, true);
+  } catch {
+    error.value = "Could not start a session from this session. Stop the active timer first.";
+  }
+}
 async function remove(session: Session) {
   const confirmation = await promptDialog.value!.open(
     "Remove this session? This cannot be undone.",
@@ -224,6 +241,7 @@ onMounted(load);
           <button class="text-button" :disabled="session.running" @click="beginEdit(session)">
             {{ session.running ? "Stop to edit" : "Edit session" }}
           </button>
+          <button v-if="!session.running" class="text-button" @click="startFromSession(session)">Start again</button>
           <button v-if="!session.running" class="text-button danger" @click="remove(session)">
             Remove session
           </button>

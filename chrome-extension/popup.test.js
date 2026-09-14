@@ -189,6 +189,19 @@ test("starts a server timer with selected path, labels, description, and extensi
   assert.equal(popup.elements.toggle["aria-label"], "Stop timer");
 });
 
+test("renders the running stop control as an icon, not text", async () => {
+  const popup = createPopup({
+    token: "token",
+    currentTimer: { id: "timer-1", startedAt: "2026-09-01T10:00:00Z", running: true },
+  });
+  await flush();
+  await flush();
+  await flush();
+
+  assert.equal(popup.elements.toggle.textContent, "■");
+  assert.equal(popup.elements.toggle["aria-label"], "Stop timer");
+});
+
 test("updates a running timer start through the native date and time picker", async () => {
   const popup = createPopup({
     token: "token",

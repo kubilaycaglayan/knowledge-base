@@ -181,6 +181,40 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     expect(wrapper.get("button.floating-tracker-action").text()).toContain("Start a session");
     expect(wrapper.get("button.floating-tracker-action").classes()).not.toContain("is-running");
+    expect(wrapper.emitted("changed")).toHaveLength(1);
+    wrapper.unmount();
+    localStorage.removeItem("know_token");
+    globalThis.WebSocket = originalWebSocket;
+  });
+
+  it("keeps local timer fields when a live snapshot omits unchanged values", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    const sockets: MockSocket[] = [];
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() { sockets.push(this); }
+      send() {}
+      close() { this.onclose?.(); }
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Study", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return { id: "timer-1", pathId: "path-1", description: "Read chapter", startedAt: new Date().toISOString(), running: true };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    sockets[0].onopen?.();
+    sockets[0].onmessage?.({ data: JSON.stringify({ type: "TIMER_STATE", timer: { id: "timer-1", startedAt: new Date().toISOString(), running: true } }) });
+    await flushPromises();
+
+    expect(wrapper.get('textarea[aria-label="Timer description"]').element).toHaveProperty("value", "Read chapter");
+    expect(wrapper.get(".floating-tracker-path").text()).toBe("Study");
     wrapper.unmount();
     localStorage.removeItem("know_token");
     globalThis.WebSocket = originalWebSocket;
