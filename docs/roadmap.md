@@ -1,5 +1,8 @@
 # Knowledge Base UI roadmap
 
+- [x] Expand timer and session descriptions to a 5,000-character limit with
+  actionable validation errors.
+
 - [x] Preserve unfinished timer drafts across live snapshots and queue edits made during active saves.
 
 - [x] Rebuild native iOS authentication from the web design with password login,

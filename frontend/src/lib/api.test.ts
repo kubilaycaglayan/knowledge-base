@@ -83,6 +83,16 @@ describe("api", () => {
     expect(localStorage.getItem("know_token")).toBe("valid-token");
   });
 
+  it("uses the API error envelope for actionable client errors", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 400,
+      ok: false,
+      statusText: "Bad Request",
+      text: async () => JSON.stringify({ error: "description: size must be between 0 and 5000" }),
+    }));
+    await expect(api("/timers")).rejects.toThrow("description: size must be between 0 and 5000");
+  });
+
   it.each([502, 503, 504])("preserves sign-in on HTTP %s", async (status) => {
     localStorage.setItem("know_token", "valid-token");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status, ok: false, text: async () => "Unavailable" }));

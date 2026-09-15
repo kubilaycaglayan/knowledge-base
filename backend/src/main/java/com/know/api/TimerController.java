@@ -21,21 +21,21 @@ public class TimerController {
   }
 
   record StartRequest(
-      UUID pathId, @NotNull List<UUID> labelIds, @Size(max = 500) String description, TimeSource source) {}
+      UUID pathId, @NotNull List<UUID> labelIds, @Size(max = 5000) String description, TimeSource source) {}
 
   record RunningUpdateRequest(
       UUID pathId,
       @NotNull List<UUID> labelIds,
       @NotNull Instant startedAt,
       Instant endedAt,
-      @Size(max = 500) String description) {}
+      @Size(max = 5000) String description) {}
 
   record ManualRequest(
       UUID pathId,
       @NotNull List<UUID> labelIds,
       @NotNull Instant startedAt,
       @NotNull Instant endedAt,
-      @Size(max = 500) String description,
+      @Size(max = 5000) String description,
       TimeSource source) {}
 
   private UUID user(Authentication a) {

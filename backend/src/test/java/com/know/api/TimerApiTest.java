@@ -76,7 +76,7 @@ class TimerApiTest {
             post("/api/v1/timers")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"labelIds\":[],\"description\":\"" + "x".repeat(501) + "\"}"))
+                .content("{\"labelIds\":[],\"description\":\"" + "x".repeat(5001) + "\"}"))
         .andExpect(status().isBadRequest());
     verifyNoInteractions(service);
   }

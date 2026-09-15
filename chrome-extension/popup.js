@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const errorDetails = (error) => error instanceof Error ? error.message : String(error || "Unknown error");
 function userError(fallback, error) {
-  return fallback;
+  return errorDetails(error) || fallback;
 }
 
 function setButtonBusy(button, busy) {
@@ -99,8 +99,14 @@ async function request(path, options = {}) {
     throw Error("Session expired");
   }
   if (!r.ok) {
-    const error = Error("HTTP " + r.status + (responseText ? ": " + responseText.slice(0, 500) : ""));
-    throw error;
+    let message = responseText;
+    try {
+      const payload = responseText ? JSON.parse(responseText) : null;
+      message = payload?.message || payload?.error || responseText;
+    } catch (_) {
+      // Preserve plain-text server errors.
+    }
+    throw Error(message || "HTTP " + r.status + " request failed");
   }
   try {
     return responseText ? JSON.parse(responseText) : null;
