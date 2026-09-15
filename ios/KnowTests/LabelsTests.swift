@@ -40,7 +40,8 @@ import XCTest
         XCTAssertFalse(created); XCTAssertEqual(message, "Enter a name.")
 
         model.draft.name = "Private"; model.draft.scopes = []
-        XCTAssertTrue(await model.create())
+        let hiddenCreated = await model.create()
+        XCTAssertTrue(hiddenCreated)
         XCTAssertEqual(model.labels.last?.scopes, [])
     }
 
