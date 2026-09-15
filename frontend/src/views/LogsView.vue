@@ -218,7 +218,8 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
           <time class="log-time" :datetime="log.occurredAt">{{ formatLogTimestamp(log.occurredAt, group.label) }}</time>
           <p class="log-body">{{ log.body }}</p>
           <div class="log-actions">
-            <template v-if="logLabels.length">
+            <div class="log-label-slot" :class="{ 'log-label-slot-empty': !logLabels.length }" :aria-hidden="logLabels.length ? undefined : 'true'">
+              <template v-if="logLabels.length">
               <div class="log-label-control">
                 <button class="log-label-button ghost" :class="{ 'log-label-button-active': Boolean(log.labelIds?.length) }" type="button" :aria-label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`" :aria-expanded="openLabelMenuId === log.id" aria-haspopup="dialog" title="Choose log labels" @click="openLabelMenuId = openLabelMenuId === log.id ? '' : log.id">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M17.63 5.84C17.27 5.33 16.68 5 16 5H5C3.9 5 3 5.9 3 7V17C3 18.1 3.9 19 5 19H16C16.68 19 17.27 18.67 17.63 18.16L22 12L17.63 5.84M16 17H5V7H16L19.55 12L16 17M7.5 9C6.67 9 6 9.67 6 10.5C6 11.33 6.67 12 7.5 12C8.33 12 9 11.33 9 10.5C9 9.67 8.33 9 7.5 9Z" /></svg>
@@ -229,7 +230,8 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
                 </div>
               </div>
               <span class="log-actions-separator" aria-hidden="true">|</span>
-            </template>
+              </template>
+            </div>
             <button class="log-edit-button ghost" type="button" :aria-label="`Edit log from ${formatTimestamp(log.occurredAt)}`" title="Edit log" @click="startEdit(log)">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 16-.7 4.7L8 20l11.3-11.3a2.1 2.1 0 0 0-3-3L5 17Z"/><path d="m14.8 7.2 2 2"/></svg>
             </button>
@@ -258,8 +260,8 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .log-entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 20px; margin: 0; padding: 6px 0; }
 .log-entry.log-hour-break { margin-top: 12px; padding-top: 10px; }
 .log-entry.log-day-break { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--workspace-border); }
-.log-body { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.log-time { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.log-body { align-self: start; min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.log-time { align-self: start; color: var(--workspace-muted); font-size: 12px; line-height: 21px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .log-time-input { width: 135px; min-height: 34px; padding: 6px 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .log-edit-body { width: 100%; min-height: 34px; resize: vertical; }
 .log-edit-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
@@ -269,6 +271,8 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .log-label-button-active svg { color: color-mix(in srgb, var(--workspace-text) 85%, #000); }
 .log-label-button:hover, .log-label-button:focus-visible, .log-label-button[aria-expanded="true"] { color: var(--workspace-accent); opacity: 1; }
 .log-label-control { position: relative; }
+.log-label-slot { display: flex; align-items: center; gap: 2px; width: 38px; min-width: 38px; }
+.log-label-slot-empty { visibility: hidden; }
 .log-label-menu { position: absolute; z-index: 2; right: 0; top: 36px; display: grid; gap: 8px; min-width: 190px; padding: 42px 12px 12px; box-shadow: var(--workspace-shadow); }
 .log-label-menu-close { position: absolute; top: 8px; right: 8px; width: 32px; min-height: 32px; padding: 0; border-color: var(--workspace-accent); background: var(--workspace-accent); color: var(--workspace-on-accent); opacity: 1; }
 .log-label-menu-close:hover, .log-label-menu-close:focus-visible { border-color: var(--workspace-accent-hover); background: var(--workspace-accent-hover); color: var(--workspace-on-accent); }
