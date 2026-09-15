@@ -730,6 +730,24 @@ class KnowIntegrationTest {
   }
 
   @Test
+  void labelCatalogSupportsLabelsHiddenFromCalendar() {
+    String token = freshToken();
+
+    ResponseEntity<JsonNode> created =
+        post(
+            "/api/v1/labels",
+            token,
+            "{\"name\":\"Private\",\"scopes\":[\"NOTE\",\"TIME_ENTRY\",\"LOG\"]}");
+
+    assertEquals(HttpStatus.CREATED, created.getStatusCode());
+    assertEquals("Private", created.getBody().get("name").asText());
+    assertFalse(
+        get("/api/v1/labels?scope=CALENDAR", token).getBody().elements().hasNext());
+    assertEquals(
+        "Private", get("/api/v1/labels?scope=TIME_ENTRY", token).getBody().get(0).get("name").asText());
+  }
+
+  @Test
   void manualTimeEntryIsCreated() {
     String token = freshToken();
     String start = Instant.now().minus(2, ChronoUnit.HOURS).toString();

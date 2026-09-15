@@ -65,7 +65,7 @@ describe("LabelsView", () => {
     expect(wrapper.text()).not.toContain("Study");
   });
 
-  it("loads labels, creates a multi-scope label, and saves edits", async () => {
+  it("creates labels hidden from Calendar by default and saves inverted scope selections", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/labels" && !options) return [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }];
       if (path === "/labels" && options?.method === "POST") return { id: "two", name: "Focus", color: "#E05D44", scopes: ["CALENDAR", "TIME_ENTRY"] };
@@ -76,16 +76,29 @@ describe("LabelsView", () => {
     await flushPromises();
     expect(wrapper.text()).toContain("Study");
     await wrapper.get('button[aria-label="Add label"]').trigger("click");
+    expect(wrapper.get(".scope-selector legend").text()).toBe("Don’t show in");
+    expect(wrapper.get(".scope-selector label:nth-of-type(2) input").element).toHaveProperty("checked", true);
+    expect(wrapper.get(".scope-selector label:nth-of-type(1) input").element).toHaveProperty("checked", false);
     await wrapper.get('input[name="label-name"]').setValue("Focus");
     await wrapper.get("form").trigger("submit");
     await flushPromises();
     expect(wrapper.text()).toContain("Focus");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ name: "Focus", color: "#F8FAFC", scopes: ["NOTE", "TIME_ENTRY", "LOG"] }),
+    }));
     await wrapper.findAll(".label-row")[1].get("button.ghost").trigger("click");
     await wrapper.get('input[aria-label="Edit Study name"]').setValue("Study time");
+    expect(wrapper.get(".scope-editor legend").text()).toBe("Don’t show in");
+    expect(wrapper.get(".scope-editor label:nth-of-type(2) input").element).toHaveProperty("checked", true);
+    await wrapper.get(".scope-editor label:nth-of-type(1) input").setValue(true);
     await wrapper.get("button.compact").trigger("click");
     await flushPromises();
     expect(wrapper.text()).toContain("Study time");
-    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/labels/one" && options?.method === "PUT")).toBe(true);
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels/one", expect.objectContaining({
+      method: "PUT",
+      body: JSON.stringify({ name: "Study time", color: "#2878D5", scopes: [] }),
+    }));
   });
 
   it("shows Logs as an editable label scope", async () => {
