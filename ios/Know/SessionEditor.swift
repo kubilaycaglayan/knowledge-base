@@ -30,7 +30,7 @@ struct SessionEditor: View {
                     }
                     field("Description (optional)") {
                         TextField("What did you work on…", text: $draft.description, axis: .vertical)
-                            .lineLimit(2...6).padding(.vertical, 8).modifier(WorkspaceControl())
+                            .lineLimit(2...).padding(.vertical, 8).frame(maxHeight: 200).modifier(WorkspaceControl())
                             .accessibilityLabel("Edit session description").accessibilityIdentifier("session.description")
                     }
                     field("Labels") {

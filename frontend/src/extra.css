@@ -77,6 +77,7 @@
 .session-edit-path:focus-within { border-color: var(--workspace-focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--workspace-focus) 22%, transparent); }
 .session-edit-path select { background: var(--workspace-surface); }
 .session-edit-description { grid-column: 1 / -1; }
+.session-edit-description textarea { width: 100%; max-height: 200px; overflow-y: auto; resize: vertical; }
 .session-edit-description > span { color: var(--workspace-muted); font-weight: 400; }
 .session-edit-labels { display: grid; min-width: 0; margin: 0; padding: 0; border: 0; gap: 6px; }
 .session-edit-labels legend { padding: 0; font-size: 12px; font-weight: 600; }
@@ -113,6 +114,9 @@
 .edit-path-picker { margin: 0; }
 .edit-path-picker input { width: auto; }
 .path-history-dialog { width: min(680px, 100%); }
+@media (max-width: 700px) {
+  .session-edit-description textarea { max-height: min(200px, 40dvh); }
+}
 .path-history-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
 .path-history-heading h2 { margin-bottom: 4px; }
 .path-history-heading .muted { margin: 0; }
