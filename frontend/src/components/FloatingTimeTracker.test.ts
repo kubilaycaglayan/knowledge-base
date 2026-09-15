@@ -1,4 +1,4 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import FloatingTimeTracker from "./FloatingTimeTracker.vue";
 import { api } from "../lib/api";
 import vuetify from "../plugins/vuetify";
@@ -71,6 +71,22 @@ describe("FloatingTimeTracker", () => {
     expect(floating.find("#floating-tracker-panel").exists()).toBe(true);
     inline.unmount();
     floating.unmount();
+  });
+
+  it("keeps the path menu focused on adding or choosing an active path", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Study", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return null;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    const pathSelect = wrapper.findComponent(".tracker-path-select") as VueWrapper<any>;
+    expect(pathSelect.props("items").map((item: { id: string }) => item.id)).toEqual(["path-1", "__add_new_path__"]);
+    expect(pathSelect.props("placeholder")).toBe("Choose a path…");
+    wrapper.unmount();
   });
 
   it("keeps the inline tracker in the page scroll flow on mobile", async () => {

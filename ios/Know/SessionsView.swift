@@ -147,9 +147,9 @@ struct SessionsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 heading("Path")
                 Menu {
-                    Button("Choose a path…") { Task { await model.choosePath(nil) } }
-                    ForEach(model.activePaths) { path in Button(path.name) { Task { await model.choosePath(path.id) } } }
                     Button("＋ Add a new path…") { addingPath = true }
+                    Divider()
+                    ForEach(model.activePaths) { path in Button(path.name) { Task { await model.choosePath(path.id) } } }
                 } label: {
                     HStack { Text(model.draft.pathId.flatMap { model.pathsByID[$0] }?.name ?? "Choose a path…"); Spacer(); Image(systemName: "chevron.down").font(.caption) }
                         .frame(maxWidth: .infinity, alignment: .leading).modifier(WorkspaceControl())

@@ -175,6 +175,17 @@ test("loads only labels scoped for time-entry sessions", async () => {
   assert.deepEqual(popup.elements.label.options.map((option) => option.value), ["", "label-1"]);
 });
 
+test("puts add path first and separates it from active paths", async () => {
+  const popup = createPopup({ token: "token" });
+  await flush();
+  await flush();
+  await flush();
+
+  assert.deepEqual(popup.elements.path.options.map((option) => option.value), ["__add_new_path__", "", "path-1"]);
+  assert.equal(popup.elements.path.options[1].disabled, true);
+  assert.equal(popup.elements.path.selectedIndex, -1);
+});
+
 test("shows each session group total as an HH:MM separator value", async () => {
   assert.match(source, /session-group-duration.*KnowCore\.formatGroupDuration\(group\.sessions\)/);
 });
