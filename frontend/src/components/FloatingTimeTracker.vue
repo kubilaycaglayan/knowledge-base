@@ -87,6 +87,13 @@ function keepFocusedControlVisible(event: FocusEvent) {
 function closeLabelsOnOutside(event: PointerEvent) {
   if (labelsOpen.value && !labelPicker.value?.contains(event.target as Node)) labelsOpen.value = false;
 }
+function dismissLabels() {
+  labelsOpen.value = false;
+  labelPicker.value?.querySelector<HTMLButtonElement>(".label-picker-toggle")?.focus();
+}
+function closeLabelsOnFocusOut(event: FocusEvent) {
+  if (!labelPicker.value?.contains(event.relatedTarget as Node | null)) labelsOpen.value = false;
+}
 function applyTimer(value: Timer | null, notifyHistory = false, submitted?: ReturnType<typeof formState>) {
   const previous = timer.value;
   const baseline = submitted || {
@@ -334,7 +341,7 @@ onUnmounted(() => {
         <div class="tracker-field">
           <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ labelAvailabilitySummary }}</span></div>
           <v-select class="tracker-test-select" :items="sessionLabels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
-          <div id="tt-labels" ref="labelPicker" class="label-picker" :class="{ 'is-open': labelsOpen }" role="group" aria-label="Session labels">
+          <div id="tt-labels" ref="labelPicker" class="label-picker" :class="{ 'is-open': labelsOpen }" role="group" aria-label="Session labels" @keydown.esc.stop.prevent="dismissLabels" @focusout="closeLabelsOnFocusOut">
             <div id="tt-label-options" class="label-picker-options">
               <button v-for="label in visibleLabelOptions" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button>
             </div>

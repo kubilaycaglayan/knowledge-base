@@ -182,9 +182,12 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     expect(picker.classes()).toContain("is-open");
 
+    await wrapper.get(".label-picker-toggle").trigger("click");
+    expect(picker.classes()).not.toContain("is-open");
     (wrapper.get("#tt-label-options button").element as HTMLButtonElement).click();
     await flushPromises();
     expect(picker.classes()).toContain("is-open");
+    expect(wrapper.get("#tt-label-options button").attributes("aria-pressed")).toBe("false");
     wrapper.unmount();
   });
 
