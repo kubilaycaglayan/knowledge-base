@@ -303,7 +303,7 @@ onUnmounted(() => {
           <div id="tt-labels" class="label-picker" role="group" aria-label="Session labels"><button v-for="label in sessionLabels" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button></div>
           <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" @focus="keepFocusedControlVisible" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create label</button></div>
         </div>
-        <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" aria-label="Timer description" rows="2" autocomplete="off" placeholder="What are you working on…" @focus="keepFocusedControlVisible" @change="updateTimer"></textarea></div>
+        <div class="tracker-field tracker-field-wide"><label for="tt-desc">Description <span>(optional)</span></label><textarea id="tt-desc" v-model="description" name="tt-desc" aria-label="Timer description" maxlength="5000" rows="2" autocomplete="off" placeholder="What are you working on…" @focus="keepFocusedControlVisible" @change="updateTimer"></textarea></div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">{{ error }}</p>
       </div>
     </section>

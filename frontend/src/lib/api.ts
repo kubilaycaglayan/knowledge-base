@@ -14,15 +14,15 @@ export class ApiError extends Error {
 }
 
 function parseApiError(status: number, statusText: string, body: string): ApiError {
-  let payload: { message?: string } | undefined;
+  let payload: { message?: string; error?: string } | undefined;
   try {
-    payload = body ? JSON.parse(body) as { message?: string } : undefined;
+    payload = body ? JSON.parse(body) as { message?: string; error?: string } : undefined;
   } catch {
     // Keep non-JSON responses as technical details below.
   }
   const message = status >= 500
     ? "Something went wrong. Please try again."
-    : payload?.message || body || statusText;
+    : payload?.message || payload?.error || body || statusText;
   const details = body && body !== message ? body : undefined;
   return new ApiError(message, status, details);
 }

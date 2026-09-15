@@ -260,7 +260,7 @@ onMounted(load);
             <option v-for="path in paths" :key="path.id" :value="path.id">{{ path.name }}</option>
           </select></label>
           <div class="session-edit-grid">
-            <label class="session-edit-description">Description <span>(optional)</span><input v-model="draft.description" name="session-description" autocomplete="off" aria-label="Edit session description" placeholder="What did you work on…" /></label>
+            <label class="session-edit-description">Description <span>(optional)</span><input v-model="draft.description" name="session-description" autocomplete="off" aria-label="Edit session description" maxlength="5000" placeholder="What did you work on…" /></label>
             <fieldset class="session-edit-labels">
               <legend>Labels</legend>
               <div class="session-label-picker">
