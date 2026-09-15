@@ -127,13 +127,16 @@ describe("FloatingTimeTracker", () => {
     expect(wrapper.get("#tt-label-options").findAll("button")).toHaveLength(3);
 
     const labelButtons = wrapper.get("#tt-label-options").findAll("button");
-    await labelButtons[0].trigger("click");
     await labelButtons[1].trigger("click");
-    expect(wrapper.get("#tt-label-options button").classes()).toContain("selected");
+    await flushPromises();
+    expect(wrapper.get("#tt-label-options").find("button.selected").exists()).toBe(true);
     await toggle.trigger("click");
     expect(picker.classes()).not.toContain("is-open");
     expect(toggle.attributes("aria-expanded")).toBe("false");
-    expect(wrapper.get("#tt-label-options").findAll("button")).toHaveLength(2);
+    const closedLabelButtons = wrapper.get("#tt-label-options").findAll("button");
+    expect(closedLabelButtons).toHaveLength(3);
+    expect(closedLabelButtons.map((button) => button.text())).toEqual(["Review×", "Focus", "Planning"]);
+    expect(closedLabelButtons[0].classes()).toContain("selected");
 
     await toggle.trigger("click");
     document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
