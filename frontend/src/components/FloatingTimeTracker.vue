@@ -194,6 +194,7 @@ async function choosePath(id: string) {
 }
 async function toggleLabel(id: string) {
   selectedLabelIds.value = selectedLabelIds.value.includes(id) ? selectedLabelIds.value.filter((value) => value !== id) : [...selectedLabelIds.value, id];
+  labelsOpen.value = true;
   if (timer.value) await updateTimer();
 }
 async function createLabel() {

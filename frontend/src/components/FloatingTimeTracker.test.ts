@@ -1,4 +1,5 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
+import { nextTick } from "vue";
 import FloatingTimeTracker from "./FloatingTimeTracker.vue";
 import { api } from "../lib/api";
 import vuetify from "../plugins/vuetify";
@@ -159,6 +160,31 @@ describe("FloatingTimeTracker", () => {
     document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     await flushPromises();
     expect(picker.classes()).not.toContain("is-open");
+    wrapper.unmount();
+  });
+
+  it("expands the labels picker when a collapsed label is selected or unselected", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path === "/labels?scope=TIME_ENTRY") return [
+        { id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] },
+        { id: "label-2", name: "Review", scopes: ["TIME_ENTRY"] },
+      ];
+      if (path === "/timers/current") return null;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    const picker = wrapper.get(".label-picker");
+    expect(picker.classes()).not.toContain("is-open");
+    (wrapper.get("#tt-label-options button").element as HTMLButtonElement).click();
+    await flushPromises();
+    expect(picker.classes()).toContain("is-open");
+
+    (wrapper.get("#tt-label-options button").element as HTMLButtonElement).click();
+    await flushPromises();
+    expect(picker.classes()).toContain("is-open");
     wrapper.unmount();
   });
 
