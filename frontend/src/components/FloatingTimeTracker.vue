@@ -26,6 +26,7 @@ const sessionsStore = useSessionsStore();
 const { current: timer } = storeToRefs(timerStore);
 const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref(""), newLabel = ref("");
 const labelsOpen = ref(false);
+const labelPicker = ref<HTMLElement | null>(null);
 const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
 const busy = ref(false), error = ref("");
 const timerStartedAt = ref("");
@@ -56,6 +57,12 @@ const pathName = computed(() => paths.value.find((path) => path.id === (timer.va
 const selectedLabelNames = computed(() => selectedLabelIds.value
   .map((id) => sessionLabels.value.find((label) => label.id === id)?.name)
   .filter((name): name is string => Boolean(name)));
+const visibleLabelOptions = computed(() => {
+  if (labelsOpen.value || !selectedLabelIds.value.length) return sessionLabels.value;
+  return selectedLabelIds.value
+    .map((id) => sessionLabels.value.find((label) => label.id === id))
+    .filter((label): label is Label => Boolean(label));
+});
 const timerSummary = computed(() => selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin.");
 
 function rememberPath(id: string) {
@@ -70,6 +77,9 @@ function keepFocusedControlVisible(event: FocusEvent) {
   const control = event.currentTarget;
   if (!(control instanceof HTMLElement)) return;
   window.requestAnimationFrame(() => control.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" }));
+}
+function closeLabelsOnOutside(event: PointerEvent) {
+  if (labelsOpen.value && !labelPicker.value?.contains(event.target as Node)) labelsOpen.value = false;
 }
 function applyTimer(value: Timer | null, notifyHistory = false, submitted?: ReturnType<typeof formState>) {
   const previous = timer.value;
@@ -269,9 +279,11 @@ onMounted(() => {
   updateTrackerViewportHeight();
   window.visualViewport?.addEventListener("resize", updateTrackerViewportHeight);
   void load(); ticker = window.setInterval(() => { now.value = Date.now(); }, 1000);
+  document.addEventListener("pointerdown", closeLabelsOnOutside);
   connectWebSocket();
 });
 onUnmounted(() => {
+  document.removeEventListener("pointerdown", closeLabelsOnOutside);
   window.visualViewport?.removeEventListener("resize", updateTrackerViewportHeight);
   if (ticker) window.clearInterval(ticker);
   stopPolling();
@@ -301,11 +313,11 @@ onUnmounted(() => {
         <div class="tracker-field">
           <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ sessionLabels.length }} available</span></div>
           <v-select class="tracker-test-select" :items="sessionLabels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
-          <div id="tt-labels" class="label-picker" :class="{ 'is-open': labelsOpen }" role="group" aria-label="Session labels">
+          <div id="tt-labels" ref="labelPicker" class="label-picker" :class="{ 'is-open': labelsOpen, 'has-selection': selectedLabelIds.length }" role="group" aria-label="Session labels">
             <div id="tt-label-options" class="label-picker-options">
-              <button v-for="label in sessionLabels" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button>
+              <button v-for="label in visibleLabelOptions" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button>
             </div>
-            <button v-if="sessionLabels.length" class="label-picker-toggle" type="button" :aria-expanded="labelsOpen" aria-controls="tt-label-options" @click="labelsOpen = !labelsOpen"><span class="sr-only">{{ labelsOpen ? "Show fewer session labels" : "Show all session labels" }}</span><span aria-hidden="true" class="chevron" :class="{ up: labelsOpen }"></span></button>
+            <button v-if="sessionLabels.length" class="label-picker-toggle" type="button" :aria-expanded="labelsOpen" aria-haspopup="true" aria-controls="tt-label-options" @click="labelsOpen = !labelsOpen"><span class="sr-only">{{ labelsOpen ? "Close session labels" : "Open session labels" }}</span><span aria-hidden="true" class="chevron" :class="{ up: labelsOpen }"></span></button>
           </div>
           <div class="new-label-row"><input v-model="newLabel" name="tt-new-label" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" @focus="keepFocusedControlVisible" @keydown.enter.prevent="createLabel" /><button type="button" class="create-label" :disabled="!newLabel.trim() || busy" @click="createLabel"><span aria-hidden="true">＋</span> Create label</button></div>
         </div>
@@ -337,7 +349,7 @@ onUnmounted(() => {
 .tracker-field label, .tracker-field-heading { color: var(--workspace-muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }.tracker-field label span, .tracker-field-heading > span { font-weight: 400; letter-spacing: 0; text-transform: none; }.tracker-field-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .tracker-field select, .tracker-field input, .tracker-field textarea { width: 100%; min-height: 36px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-background); color: var(--workspace-text); padding: 7px 9px; font-size: 14px; }.tracker-field textarea { min-height: 56px; max-height: 200px; overflow-y: auto; resize: vertical; }
 .recent-paths { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }.recent-paths > span { color: var(--workspace-muted); font-size: 12px; }.recent-paths button, .label-picker button { border: 0; border-radius: 4px; padding: 4px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.recent-paths button:hover, .label-picker button:hover { background: var(--workspace-hover); }.recent-paths button.selected, .label-picker button.selected { background: var(--workspace-accent); color: var(--workspace-on-accent); }
-.label-picker { display: flex; min-height: 36px; min-width: 0; align-items: center; gap: 6px; border: 1px solid var(--workspace-control-border); border-radius: 6px; padding: 6px; background: var(--workspace-background); }.label-picker-options { display: flex; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px; max-height: 28px; overflow: hidden; }.label-picker.is-open .label-picker-options { max-height: none; overflow: visible; }.label-picker button { display: inline-flex; align-items: center; gap: 4px; }.label-picker button span { font-size: 15px; line-height: 1; }.label-picker-toggle { flex: 0 0 auto; width: 28px; min-height: 28px; justify-content: center; border: 0; border-radius: 4px; padding: 0; background: transparent; color: var(--workspace-muted); }.label-picker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }.label-picker-toggle .chevron { width: 8px; height: 8px; }
+.label-picker { display: flex; min-height: 36px; min-width: 0; align-items: center; gap: 6px; border: 1px solid var(--workspace-control-border); border-radius: 6px; padding: 6px; background: var(--workspace-background); }.label-picker-options { display: flex; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px; max-height: 28px; overflow: hidden; }.label-picker.is-open .label-picker-options, .label-picker.has-selection:not(.is-open) .label-picker-options { max-height: none; overflow: visible; }.label-picker button { display: inline-flex; align-items: center; gap: 4px; }.label-picker button span { font-size: 15px; line-height: 1; }.label-picker-toggle { flex: 0 0 auto; width: 28px; min-height: 28px; justify-content: center; border: 0; border-radius: 4px; padding: 0; background: transparent; color: var(--workspace-muted); }.label-picker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }.label-picker-toggle .chevron { width: 8px; height: 8px; }
 .tracker-test-select { display: none; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
