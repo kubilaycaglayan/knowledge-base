@@ -130,6 +130,48 @@ function fillOptions(select, placeholder, values, selectedIds = []) {
     option.selected = selectedIds.includes(value.id); select.append(option);
   });
 }
+function fillPathOptions(select, values) {
+  select.replaceChildren();
+  const addPath = document.createElement("option");
+  addPath.value = "__add_new_path__";
+  addPath.textContent = "＋ Add a new path…";
+  select.append(addPath);
+  const separator = document.createElement("option");
+  separator.disabled = true;
+  separator.textContent = "────────";
+  separator.setAttribute?.("aria-hidden", "true");
+  select.append(separator);
+  values.forEach((value) => {
+    const option = document.createElement("option");
+    option.value = value.id;
+    option.textContent = value.name;
+    option.selected = false;
+    select.append(option);
+  });
+  select.selectedIndex = -1;
+}
+async function chooseExtensionPath() {
+  const selectedPath = $("path").value;
+  if (selectedPath === "__add_new_path__") {
+    const name = window.prompt("New path name")?.trim();
+    if (!name) {
+      $("path").value = "";
+      return;
+    }
+    try {
+      const created = await request("/paths", { method: "POST", body: JSON.stringify({ name, description: null, color: null }) });
+      paths = [...paths, created];
+      fillPathOptions($("path"), KnowCore.activePaths(paths));
+      $("path").value = created.id;
+    } catch (error) {
+      $("path").value = "";
+      $("error").textContent = userError("Could not create path.", error);
+      return;
+    }
+  }
+  renderTimerLabels();
+  try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
+}
 function selectedLabelIds() { return [...timerLabelIds]; }
 function selectedOptionIds(select) {
   return Array.from(select.selectedOptions).map((option) => option.value).filter(Boolean);
@@ -341,11 +383,8 @@ async function load() {
     const { activeTimer, timerSelection: savedSelection } = await chrome.storage.local.get(["activeTimer", timerSelectionKey]);
     [paths, labels] = await Promise.all([request("/paths"), request("/labels?scope=TIME_ENTRY")]);
     const timer = await request("/timers/current");
-    fillOptions($("path"), "Select a path", KnowCore.activePaths(paths));
-    $("path").onchange = async () => {
-      renderTimerLabels();
-      try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
-    };
+    fillPathOptions($("path"), KnowCore.activePaths(paths));
+    $("path").onchange = chooseExtensionPath;
     if (timer) { showTimer(timer); await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
     else {
       showTimer(null); await chrome.storage.local.remove("activeTimer");
@@ -354,7 +393,9 @@ async function load() {
     }
     showWorkspace(); startLiveTimerSync(); void loadSessions();
   } catch (error) {
-    showAuth(); $("error").textContent = userError("Sign in failed or the API is unavailable.", error);
+    showAuth();
+    const fallback = "Sign in failed or the API is unavailable.";
+    $("error").textContent = errorDetails(error) === "Session expired" ? fallback : userError(fallback, error);
   }
 }
 async function login() {

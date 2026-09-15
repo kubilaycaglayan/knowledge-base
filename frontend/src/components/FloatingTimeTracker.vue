@@ -51,7 +51,6 @@ function localStartedAt(value: string) {
 
 const activePaths = computed(() => paths.value.filter((path) => path.status === "ACTIVE"));
 const pathOptions = computed(() => [
-  { id: "", name: "Choose a path…", status: "" },
   ...activePaths.value,
   { id: "__add_new_path__", name: "＋ Add a new path…", status: "" },
 ]);
@@ -323,9 +322,10 @@ onUnmounted(() => {
             aria-label="Timer path"
             autocomplete="off"
             hide-details
+            placeholder="Choose a path…"
             :menu-props="{ contentClass: 'tracker-path-menu' }"
             @update:model-value="(value) => choosePath(value || '')"
-          />
+          ><template #item="{ props, item }"><v-list-item v-bind="props" /><v-divider v-if="item.value === '__add_new_path__'" /></template></v-select>
           <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths"><span>Recent</span><button v-for="path in recentPaths" :key="path.id" type="button" class="recent-path" :class="{ selected: path.id === pathId }" @click="choosePath(path.id)">{{ path.name }}</button></div>
         </div>
         <div class="tracker-field">
