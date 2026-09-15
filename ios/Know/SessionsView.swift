@@ -176,7 +176,7 @@ struct SessionsView: View {
                 } else { HStack(spacing: 6) { newLabelField; createLabelButton.fixedSize() } }
                 heading("Description", suffix: "(optional)")
                 TextField("What are you working on…", text: $model.draft.description, axis: .vertical)
-                    .lineLimit(2...5).padding(.vertical, 8).modifier(WorkspaceControl())
+                    .lineLimit(2...).padding(.vertical, 8).frame(maxHeight: 200).modifier(WorkspaceControl())
                     .focused($descriptionFocused).accessibilityLabel("Timer description").accessibilityIdentifier("timer.description")
                     .onSubmit { Task { await model.saveTimer() } }
                 if model.timer != nil && model.hasUnsavedDraft {

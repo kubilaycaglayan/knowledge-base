@@ -566,7 +566,7 @@ onBeforeUnmount(() => {
             <option v-for="path in paths" :key="path.id" :value="path.id">{{ path.name }}</option>
           </select></label>
           <div class="session-edit-grid">
-            <label class="session-edit-description">Description <span>(optional)</span><input v-model="sessionDraft.description" name="history-session-description" aria-label="Edit session description" maxlength="5000" placeholder="What did you work on…" /></label>
+            <label class="session-edit-description">Description <span>(optional)</span><textarea v-model="sessionDraft.description" name="history-session-description" aria-label="Edit session description" maxlength="5000" rows="1" placeholder="What did you work on…"></textarea></label>
             <fieldset class="session-edit-labels"><legend>Labels</legend><div class="session-label-picker">
               <div v-if="sessionDraft.labelIds.length" class="session-label-chips" aria-label="Selected session labels"><button v-for="labelId in sessionDraft.labelIds" :key="labelId" type="button" :aria-label="`Remove ${labelFor(labelId)?.name || 'removed label'}`" @click="removeSessionLabel(labelId)">{{ labelFor(labelId)?.name || "Removed label" }} <span aria-hidden="true">×</span></button></div>
               <select name="history-session-labels" aria-label="Add session label" @change="addSessionLabel"><option value="">Add a label…</option><option v-for="label in sessionLabels.filter((label) => !sessionDraft.labelIds.includes(label.id))" :key="label.id" :value="label.id">{{ label.name }}</option></select>

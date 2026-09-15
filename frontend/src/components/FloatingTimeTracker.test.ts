@@ -87,6 +87,50 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("caps the timer description and enables internal scrolling", async () => {
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    const description = wrapper.get<HTMLTextAreaElement>('[aria-label="Timer description"]');
+    expect(description.attributes("maxlength")).toBe("5000");
+    const styles = [...document.head.querySelectorAll("style")]
+      .map((style) => style.textContent || "")
+      .join("\n");
+    expect(styles).toContain("max-height: 200px");
+    expect(styles).toContain("overflow-y: auto");
+    wrapper.unmount();
+  });
+
+  it("keeps labels in one row until the label chevron expands the chip list", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path === "/labels?scope=TIME_ENTRY") return [
+        { id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] },
+        { id: "label-2", name: "Review", scopes: ["TIME_ENTRY"] },
+        { id: "label-3", name: "Planning", scopes: ["TIME_ENTRY"] },
+      ];
+      if (path === "/timers/current") return null;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    const picker = wrapper.get(".label-picker");
+    const toggle = wrapper.get(".label-picker-toggle");
+    expect(picker.classes()).not.toContain("is-open");
+    expect(toggle.attributes("aria-expanded")).toBe("false");
+    expect(wrapper.find('input[aria-label="New session label name"]').exists()).toBe(true);
+
+    await toggle.trigger("click");
+    expect(picker.classes()).toContain("is-open");
+    expect(toggle.attributes("aria-expanded")).toBe("true");
+    expect(wrapper.get("#tt-label-options").findAll("button")).toHaveLength(3);
+
+    await wrapper.get("#tt-label-options button").trigger("click");
+    expect(wrapper.get("#tt-label-options button").classes()).toContain("selected");
+    wrapper.unmount();
+  });
+
   it("shows the running status and label names without showing the timer description", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];

@@ -190,6 +190,23 @@ describe("SessionsView", () => {
     }));
   });
 
+  it("uses a capped scrollable textarea for session descriptions", async () => {
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+
+    const description = wrapper.get<HTMLTextAreaElement>('[aria-label="Edit session description"]');
+    expect(description.element.tagName).toBe("TEXTAREA");
+    expect(description.attributes("rows")).toBe("1");
+    expect(description.attributes("maxlength")).toBe("5000");
+
+    const styles = [...document.head.querySelectorAll("style")]
+      .map((style) => style.textContent || "")
+      .join("\n");
+    expect(styles).toContain("max-height: 200px");
+    expect(styles).toContain("overflow-y: auto");
+  });
+
   it("starts a new server timer from a completed session", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
