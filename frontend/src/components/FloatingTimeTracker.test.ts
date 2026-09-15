@@ -321,7 +321,7 @@ describe("FloatingTimeTracker", () => {
     const second = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
     await flushPromises();
 
-    expect(second.get("select[aria-label=\"Timer path\"]").element).toHaveProperty("value", "path-1");
+    expect(second.get(".tracker-path-select").text()).toContain("Study");
     expect(second.get(".label-picker button").classes()).toContain("selected");
     expect(second.get("textarea[aria-label=\"Timer description\"]").element).toHaveProperty("value", "Read chapter");
     second.unmount();

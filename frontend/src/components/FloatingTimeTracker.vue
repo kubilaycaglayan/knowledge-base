@@ -50,6 +50,11 @@ function localStartedAt(value: string) {
 }
 
 const activePaths = computed(() => paths.value.filter((path) => path.status === "ACTIVE"));
+const pathOptions = computed(() => [
+  { id: "", name: "Choose a path…", status: "" },
+  ...activePaths.value,
+  { id: "__add_new_path__", name: "＋ Add a new path…", status: "" },
+]);
 const recentPaths = computed(() => recentPathIds.value.map((id) => paths.value.find((path) => path.id === id)).filter((path): path is Path => Boolean(path && path.status === "ACTIVE")).slice(0, 5));
 const elapsed = computed(() => timer.value ? Math.max(0, Math.floor((now.value - Date.parse(timer.value.startedAt)) / 1000)) : 0);
 const clock = (seconds: number) => [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60].map((value) => String(value).padStart(2, "0")).join(":");
@@ -307,7 +312,20 @@ onUnmounted(() => {
       <div v-if="open" id="floating-tracker-panel" class="floating-tracker-panel">
         <div class="tracker-field">
           <label for="tt-path">Path</label>
-          <select id="tt-path" v-model="pathId" name="tt-path" autocomplete="off" aria-label="Timer path" @change="choosePath(pathId)"><option value="">Choose a path…</option><option v-for="path in activePaths" :key="path.id" :value="path.id">{{ path.name }}</option><option value="__add_new_path__">＋ Add a new path…</option></select>
+          <v-select
+            id="tt-path"
+            class="tracker-path-select"
+            :items="pathOptions"
+            item-title="name"
+            item-value="id"
+            :model-value="pathId"
+            name="tt-path"
+            aria-label="Timer path"
+            autocomplete="off"
+            hide-details
+            :menu-props="{ contentClass: 'tracker-path-menu' }"
+            @update:model-value="(value) => choosePath(value || '')"
+          />
           <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths"><span>Recent</span><button v-for="path in recentPaths" :key="path.id" type="button" class="recent-path" :class="{ selected: path.id === pathId }" @click="choosePath(path.id)">{{ path.name }}</button></div>
         </div>
         <div class="tracker-field">
@@ -348,6 +366,8 @@ onUnmounted(() => {
 .tracker-field { display: grid; align-content: start; gap: 8px; min-width: 0; }.tracker-field-wide { grid-column: 1 / -1; }
 .tracker-field label, .tracker-field-heading { color: var(--workspace-muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }.tracker-field label span, .tracker-field-heading > span { font-weight: 400; letter-spacing: 0; text-transform: none; }.tracker-field-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .tracker-field select, .tracker-field input, .tracker-field textarea { width: 100%; min-height: 36px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-background); color: var(--workspace-text); padding: 7px 9px; font-size: 14px; }.tracker-field textarea { min-height: 56px; max-height: 200px; overflow-y: auto; resize: vertical; }
+.tracker-path-select { width: 100%; }.tracker-path-select :deep(.v-field) { min-height: 36px; border-radius: 6px; background: var(--workspace-background); color: var(--workspace-text); }.tracker-path-select :deep(.v-field__input) { min-height: 34px; padding: 7px 9px; font-size: 14px; }.tracker-path-select :deep(.v-field__input > input) { min-height: 0; padding: 0; }.tracker-path-select :deep(.v-field__append-inner) { padding-inline-end: 8px; }
+:global(.tracker-path-menu .v-list) { border: 1px solid var(--workspace-control-border); border-radius: 6px; padding: 4px; background: var(--workspace-surface); color: var(--workspace-text); }:global(.tracker-path-menu .v-list-item) { min-height: 36px; border-radius: 4px; color: var(--workspace-text); }:global(.tracker-path-menu .v-list-item:hover) { background: var(--workspace-hover); }
 .recent-paths { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }.recent-paths > span { color: var(--workspace-muted); font-size: 12px; }.recent-paths button, .label-picker button { border: 0; border-radius: 4px; padding: 4px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.recent-paths button:hover, .label-picker button:hover { background: var(--workspace-hover); }.recent-paths button.selected, .label-picker button.selected { background: var(--workspace-accent); color: var(--workspace-on-accent); }
 .label-picker { display: flex; min-height: 36px; min-width: 0; align-items: center; gap: 6px; border: 1px solid var(--workspace-control-border); border-radius: 6px; padding: 6px; background: var(--workspace-background); }.label-picker-options { display: flex; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px; max-height: 28px; overflow: hidden; }.label-picker.is-open .label-picker-options { max-height: none; overflow: visible; }.label-picker button { display: inline-flex; align-items: center; gap: 4px; }.label-picker button span { font-size: 15px; line-height: 1; }.label-picker-toggle { flex: 0 0 auto; width: 28px; min-height: 28px; justify-content: center; border: 0; border-radius: 4px; padding: 0; background: transparent; color: var(--workspace-muted); }.label-picker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }.label-picker-toggle .chevron { width: 8px; height: 8px; }
 .tracker-test-select { display: none; }
