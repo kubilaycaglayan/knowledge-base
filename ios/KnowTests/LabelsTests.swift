@@ -22,8 +22,9 @@ import XCTest
         XCTAssertFalse(legacy.system)
     }
 
-    func testNewLabelUsesFirstSharedPaletteColor() {
+    func testNewLabelUsesFirstSharedPaletteColorAndHidesCalendarByDefault() {
         XCTAssertEqual(LabelDraft().color, WorkspaceTheme.palette[0])
+        XCTAssertEqual(LabelDraft().scopes, [.note, .timeEntry, .log])
     }
 
     func testCreateTrimsAndRetainsDraftOnFailure() async {
@@ -33,10 +34,14 @@ import XCTest
         XCTAssertFalse(created); XCTAssertEqual(retained, "  Deep work  "); XCTAssertEqual(message, "No network connection. Reconnect and try again.")
     }
 
-    func testValidationRequiresNameAndScope() async {
+    func testValidationRequiresNameButAllowsAHiddenEverywhereLabel() async {
         let model = LabelsModel(transport: Stub()); model.draft.name = "  "; model.draft.scopes = []
         let created = await model.create(); let message = model.error
-        XCTAssertFalse(created); XCTAssertEqual(message, "Enter a name and choose at least one use.")
+        XCTAssertFalse(created); XCTAssertEqual(message, "Enter a name.")
+
+        model.draft.name = "Private"; model.draft.scopes = []
+        XCTAssertTrue(await model.create())
+        XCTAssertEqual(model.labels.last?.scopes, [])
     }
 
     func testEditFailureRetainsDraftAndDeleteUsesSecondConfirmationPath() async {

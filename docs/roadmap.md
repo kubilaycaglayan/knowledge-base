@@ -21,6 +21,8 @@
 - [x] Milestone 4: bring the iOS `/labels` page to parity with the current web
   behavior, scopes, colors, dialogs, destructive recovery, accessibility, and
   regression coverage (see `docs/ios-milestone-4-labels-parity.md`).
+- [x] Present label visibility as “Don’t show in” in web and iOS label editors,
+  with Calendar hidden for newly created labels and no existing-label migration.
 - [x] Milestone 5: bring the iOS `/notes` page to parity with the current web
   behavior, rich-text editing, autosave/conflict recovery, labels,
   archive/restore, accessibility, and regression coverage (see

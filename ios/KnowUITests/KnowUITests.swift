@@ -806,7 +806,9 @@ final class KnowUITests: XCTestCase {
         app.buttons["labels.add"].tap()
         XCTAssertTrue(app.textFields["labels.name"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["Add label"].exists)
+        XCTAssertTrue(app.staticTexts["Don’t show in"].exists)
         XCTAssertTrue(app.switches["Notes"].exists)
+        XCTAssertTrue(app.switches["Calendar"].value as? String == "1")
         app.buttons["Cancel"].firstMatch.tap()
     }
 

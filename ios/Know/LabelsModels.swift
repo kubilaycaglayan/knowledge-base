@@ -33,7 +33,9 @@ struct KBLabel: Codable, Identifiable, Equatable {
 struct LabelDraft: Equatable {
     var name = ""
     var color: String? = WorkspaceTheme.palette[0]
-    var scopes: Set<LabelScope> = [.note]
+    // Scopes are persisted as places where the label is available. Label
+    // management presents the inverse, so new labels are hidden from Calendar.
+    var scopes: Set<LabelScope> = Set(LabelScope.allCases.filter { $0 != .calendar })
 
     init() {}
     init(_ label: KBLabel) { name = label.name; color = label.color; scopes = Set(label.scopes) }
@@ -97,7 +99,7 @@ struct LabelsAPI: LabelsTransport {
     func beginCreate() { draft = LabelDraft(); error = nil }
     func create() async -> Bool {
         var submitted = draft; submitted.name = submitted.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !submitted.name.isEmpty, !submitted.scopes.isEmpty else { error = "Enter a name and choose at least one use."; return false }
+        guard !submitted.name.isEmpty else { error = "Enter a name."; return false }
         return await write { try await self.transport.create(submitted) } success: { label in labels.append(label); draft = LabelDraft(); invalidateReports() }
     }
     func beginEdit(_ label: KBLabel) { editingID = label.id; editingDraft = LabelDraft(label); error = nil }
@@ -105,7 +107,7 @@ struct LabelsAPI: LabelsTransport {
     func saveEdit() async -> Bool {
         guard let id = editingID, var submitted = editingDraft else { return false }
         submitted.name = submitted.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !submitted.name.isEmpty, !submitted.scopes.isEmpty else { error = "Enter a name and choose at least one use."; return false }
+        guard !submitted.name.isEmpty else { error = "Enter a name."; return false }
         return await write { try await self.transport.update(id: id, draft: submitted) } success: { label in labels = labels.map { $0.id == label.id ? label : $0 }; cancelEdit(); invalidateReports() }
     }
     func requestRemove(_ label: KBLabel) { deleteCandidate = label }
