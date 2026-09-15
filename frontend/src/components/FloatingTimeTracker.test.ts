@@ -146,6 +146,7 @@ describe("FloatingTimeTracker", () => {
     await labelButtons[1].trigger("click");
     await flushPromises();
     expect(wrapper.get("#tt-label-options").find("button.selected").exists()).toBe(true);
+    expect(wrapper.get(".tracker-field-heading > span").text()).toBe("3 available · 1 selected");
     await toggle.trigger("click");
     expect(picker.classes()).not.toContain("is-open");
     expect(toggle.attributes("aria-expanded")).toBe("false");

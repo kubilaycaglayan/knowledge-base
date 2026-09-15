@@ -61,6 +61,8 @@ const pathName = computed(() => paths.value.find((path) => path.id === (timer.va
 const selectedLabelNames = computed(() => selectedLabelIds.value
   .map((id) => sessionLabels.value.find((label) => label.id === id)?.name)
   .filter((name): name is string => Boolean(name)));
+const selectedLabelCount = computed(() => selectedLabelIds.value.filter((id) => sessionLabels.value.some((label) => label.id === id)).length);
+const labelAvailabilitySummary = computed(() => `${sessionLabels.value.length} available${selectedLabelCount.value ? ` · ${selectedLabelCount.value} selected` : ""}`);
 const visibleLabelOptions = computed(() => {
   if (labelsOpen.value || !selectedLabelIds.value.length) return sessionLabels.value;
   const selected = sessionLabels.value.filter((label) => selectedLabelIds.value.includes(label.id));
@@ -329,7 +331,7 @@ onUnmounted(() => {
           <div v-if="recentPaths.length" class="recent-paths" aria-label="Recently used paths"><span>Recent</span><button v-for="path in recentPaths" :key="path.id" type="button" class="recent-path" :class="{ selected: path.id === pathId }" @click="choosePath(path.id)">{{ path.name }}</button></div>
         </div>
         <div class="tracker-field">
-          <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ sessionLabels.length }} available</span></div>
+          <div class="tracker-field-heading"><label for="tt-labels">Labels</label><span>{{ labelAvailabilitySummary }}</span></div>
           <v-select class="tracker-test-select" :items="sessionLabels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
           <div id="tt-labels" ref="labelPicker" class="label-picker" :class="{ 'is-open': labelsOpen }" role="group" aria-label="Session labels">
             <div id="tt-label-options" class="label-picker-options">
