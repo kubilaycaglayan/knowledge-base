@@ -84,7 +84,7 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
 
     const pathSelect = wrapper.findComponent(".tracker-path-select") as VueWrapper<any>;
-    expect(pathSelect.props("items").map((item: { id: string }) => item.id)).toEqual(["path-1", "__add_new_path__"]);
+    expect(pathSelect.props("items").map((item: { id: string }) => item.id)).toEqual(["__add_new_path__", "path-1"]);
     expect(pathSelect.props("placeholder")).toBe("Choose a path…");
     wrapper.unmount();
   });
