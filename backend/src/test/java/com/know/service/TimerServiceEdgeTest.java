@@ -27,7 +27,8 @@ class TimerServiceEdgeTest {
     UUID user = UUID.randomUUID();
     UUID label = UUID.randomUUID();
     when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.empty());
-    when(labels.findByIdAndUserId(label, user)).thenReturn(Optional.of(new Label(user, "Read", null)));
+    when(labels.findByIdAndUserId(label, user))
+        .thenReturn(Optional.of(new Label(user, "Read", null)));
     when(scopes.existsByIdLabelIdAndIdScope(label, LabelScopeType.TIME_ENTRY)).thenReturn(true);
     when(entries.save(any(TimeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(entryLabels.findAllByIdTimeEntryId(any()))
@@ -57,10 +58,14 @@ class TimerServiceEdgeTest {
         () -> service.manual(user, null, List.of(), now, now.minusSeconds(1), "bad"));
     assertThrows(
         ResponseStatusException.class,
-        () -> service.configure(user, UUID.randomUUID(), null, List.of(), now.plusSeconds(1), null, "future"));
+        () ->
+            service.configure(
+                user, UUID.randomUUID(), null, List.of(), now.plusSeconds(1), null, "future"));
     assertThrows(
         ResponseStatusException.class,
-        () -> service.configure(user, UUID.randomUUID(), null, List.of(), now, now.plusSeconds(1), "future end"));
+        () ->
+            service.configure(
+                user, UUID.randomUUID(), null, List.of(), now, now.plusSeconds(1), "future end"));
     verifyNoInteractions(entries, paths, labels, entryLabels);
   }
 
@@ -68,7 +73,8 @@ class TimerServiceEdgeTest {
   void stoppingAnAlreadyStoppedEntryIsIdempotentButForeignEntriesAreHidden() {
     UUID user = UUID.randomUUID();
     UUID id = UUID.randomUUID();
-    TimeEntry stopped = new TimeEntry(user, null, Instant.now().minusSeconds(20), "done", TimeSource.MANUAL);
+    TimeEntry stopped =
+        new TimeEntry(user, null, Instant.now().minusSeconds(20), "done", TimeSource.MANUAL);
     stopped.stop(stopped.getStartedAt().plusSeconds(10));
     when(entries.findById(id)).thenReturn(Optional.of(stopped));
     when(entryLabels.findAllByIdTimeEntryId(stopped.getId())).thenReturn(List.of());
@@ -77,7 +83,10 @@ class TimerServiceEdgeTest {
 
     assertFalse(view.running());
     verify(entries, never()).save(any());
-    when(entries.findById(id)).thenReturn(Optional.of(new TimeEntry(UUID.randomUUID(), null, Instant.now(), "foreign", TimeSource.WEB)));
+    when(entries.findById(id))
+        .thenReturn(
+            Optional.of(
+                new TimeEntry(UUID.randomUUID(), null, Instant.now(), "foreign", TimeSource.WEB)));
     assertThrows(ResponseStatusException.class, () -> service().stop(user, id));
   }
 
@@ -85,7 +94,8 @@ class TimerServiceEdgeTest {
   void stoppingATimerUnderTwoSecondsDiscardsItInsteadOfSavingASession() {
     UUID user = UUID.randomUUID();
     UUID id = UUID.randomUUID();
-    TimeEntry running = new TimeEntry(user, null, Instant.now().minusMillis(250), "accidental", TimeSource.WEB);
+    TimeEntry running =
+        new TimeEntry(user, null, Instant.now().minusMillis(250), "accidental", TimeSource.WEB);
     when(entries.findById(id)).thenReturn(Optional.of(running));
     when(entryLabels.findAllByIdTimeEntryId(running.getId())).thenReturn(List.of());
 
@@ -101,7 +111,8 @@ class TimerServiceEdgeTest {
   void stoppingATimerAtTwoSecondsPersistsTheSession() {
     UUID user = UUID.randomUUID();
     UUID id = UUID.randomUUID();
-    TimeEntry running = new TimeEntry(user, null, Instant.now().minusSeconds(2), "kept", TimeSource.WEB);
+    TimeEntry running =
+        new TimeEntry(user, null, Instant.now().minusSeconds(2), "kept", TimeSource.WEB);
     when(entries.findById(id)).thenReturn(Optional.of(running));
     when(entryLabels.findAllByIdTimeEntryId(running.getId())).thenReturn(List.of());
 
@@ -125,19 +136,32 @@ class TimerServiceEdgeTest {
     assertEquals(50, page.pageSize());
     assertEquals(101, page.totalSessions());
     assertEquals(3, page.totalPages());
-    verify(entries).findAllByUserIdOrderByCompletionTimeDesc(eq(user), argThat(p -> p.getPageNumber() == 0 && p.getPageSize() == 50));
+    verify(entries)
+        .findAllByUserIdOrderByCompletionTimeDesc(
+            eq(user), argThat(p -> p.getPageNumber() == 0 && p.getPageSize() == 50));
   }
 
   @Test
   void editingOrRemovingRunningEntriesIsRejectedWithoutSaving() {
     UUID user = UUID.randomUUID();
     UUID id = UUID.randomUUID();
-    TimeEntry running = new TimeEntry(user, null, Instant.now().minusSeconds(20), "live", TimeSource.WEB);
+    TimeEntry running =
+        new TimeEntry(user, null, Instant.now().minusSeconds(20), "live", TimeSource.WEB);
     when(entries.findByIdAndUserId(id, user)).thenReturn(Optional.of(running));
 
     assertThrows(
         ResponseStatusException.class,
-        () -> service().edit(user, id, null, List.of(), running.getStartedAt(), Instant.now(), "edit", null));
+        () ->
+            service()
+                .edit(
+                    user,
+                    id,
+                    null,
+                    List.of(),
+                    running.getStartedAt(),
+                    Instant.now(),
+                    "edit",
+                    null));
     assertThrows(ResponseStatusException.class, () -> service().remove(user, id));
     verify(entries, never()).save(any());
   }

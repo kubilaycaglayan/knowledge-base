@@ -19,7 +19,9 @@ describe("reference data stores", () => {
   });
 
   it("loads labels once into shared state and updates assignments", async () => {
-    vi.mocked(api).mockResolvedValue([{ id: "l1", name: "Focus", scopes: ["TIME_ENTRY"] }]);
+    vi.mocked(api).mockResolvedValue([
+      { id: "l1", name: "Focus", scopes: ["TIME_ENTRY"] },
+    ]);
     const store = useLabelsStore();
 
     await store.load();

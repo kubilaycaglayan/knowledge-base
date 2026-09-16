@@ -1,9 +1,9 @@
 package com.know.domain;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.SQLRestriction;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "path")
@@ -54,10 +54,18 @@ public class Path {
     if (color != null && !color.isBlank()) this.color = color;
   }
 
-  public static Path imported(UUID id, UUID userId, String name, String description, String color,
-      PathStatus status, Instant createdAt, Instant updatedAt) {
+  public static Path imported(
+      UUID id,
+      UUID userId,
+      String name,
+      String description,
+      String color,
+      PathStatus status,
+      Instant createdAt,
+      Instant updatedAt) {
     Path path = new Path(userId, name, description, color);
-    path.id = id; path.status = status == null ? PathStatus.ACTIVE : status;
+    path.id = id;
+    path.status = status == null ? PathStatus.ACTIVE : status;
     path.createdAt = createdAt == null ? Instant.now() : createdAt;
     path.updatedAt = updatedAt == null ? path.createdAt : updatedAt;
     return path;

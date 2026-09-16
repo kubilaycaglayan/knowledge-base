@@ -2,16 +2,16 @@ package com.know.api;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.know.domain.User;
 import com.know.domain.UserRepository;
 import com.know.security.GoogleIdentityVerifier;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,8 +21,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.cors.CorsConfiguration;
@@ -179,7 +179,8 @@ class AuthControllerApiTest {
     var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
 
     mvc.perform(
-            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                    "/api/v1/auth/password")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"newPassword\":\"new-secure-password\"}"))
@@ -197,10 +198,12 @@ class AuthControllerApiTest {
     var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
 
     mvc.perform(
-            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                    "/api/v1/auth/password")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"currentPassword\":\"wrong-current\",\"newPassword\":\"new-secure-password\"}"))
+                .content(
+                    "{\"currentPassword\":\"wrong-current\",\"newPassword\":\"new-secure-password\"}"))
         .andExpect(status().isBadRequest());
     verify(users, never()).save(any());
   }
@@ -213,7 +216,8 @@ class AuthControllerApiTest {
     var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
 
     mvc.perform(
-            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                    "/api/v1/auth/password")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"newPassword\":\"new-secure-password\"}"))
@@ -232,10 +236,12 @@ class AuthControllerApiTest {
     var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
 
     mvc.perform(
-            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                    "/api/v1/auth/password")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"currentPassword\":\"wrong-current\",\"newPassword\":\"new-secure-password\"}"))
+                .content(
+                    "{\"currentPassword\":\"wrong-current\",\"newPassword\":\"new-secure-password\"}"))
         .andExpect(status().isBadRequest());
     verify(users, never()).save(any());
   }
@@ -251,10 +257,12 @@ class AuthControllerApiTest {
     var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
 
     mvc.perform(
-            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/auth/password")
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                    "/api/v1/auth/password")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"new-secure-password\"}"))
+                .content(
+                    "{\"currentPassword\":\"old-password\",\"newPassword\":\"new-secure-password\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.hasPassword").value(true));
     verify(encoder).matches("old-password", "old-hash");

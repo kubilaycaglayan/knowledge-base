@@ -1,9 +1,9 @@
 package com.know.domain;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.SQLRestriction;
 import java.time.*;
 import java.util.UUID;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "time_entry")
@@ -47,19 +47,25 @@ public class TimeEntry {
   protected TimeEntry() {}
 
   public TimeEntry(
-      UUID userId,
-      UUID pathId,
-      Instant startedAt,
-      String description,
-      TimeSource source) {
+      UUID userId, UUID pathId, Instant startedAt, String description, TimeSource source) {
     this(userId, pathId, startedAt, description, source, null);
   }
 
-  public static TimeEntry imported(UUID id, UUID userId, UUID pathId, Instant start,
-      Instant end, Long duration, String description, TimeSource source) {
-    TimeEntry entry = new TimeEntry(userId, pathId, start, description,
-        source == null ? TimeSource.IMPORT : source);
-    entry.id = id; entry.endedAt = end; entry.durationSeconds = duration;
+  public static TimeEntry imported(
+      UUID id,
+      UUID userId,
+      UUID pathId,
+      Instant start,
+      Instant end,
+      Long duration,
+      String description,
+      TimeSource source) {
+    TimeEntry entry =
+        new TimeEntry(
+            userId, pathId, start, description, source == null ? TimeSource.IMPORT : source);
+    entry.id = id;
+    entry.endedAt = end;
+    entry.durationSeconds = duration;
     return entry;
   }
 
@@ -150,12 +156,7 @@ public class TimeEntry {
     this.description = description;
   }
 
-  public void edit(
-      UUID pathId,
-      Instant start,
-      Instant end,
-      String description,
-      TimeSource source) {
+  public void edit(UUID pathId, Instant start, Instant end, String description, TimeSource source) {
     if (running()) throw new IllegalStateException("Running entries cannot be edited");
     this.pathId = pathId;
     this.startedAt = start;

@@ -18,19 +18,29 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(LabelController.class)
 @Import(com.know.security.SecurityConfig.class)
-@TestPropertySource(properties = {"app.jwt-secret=api-test-secret-with-at-least-32-characters", "app.cors-origins=http://localhost"})
+@TestPropertySource(
+    properties = {
+      "app.jwt-secret=api-test-secret-with-at-least-32-characters",
+      "app.cors-origins=http://localhost"
+    })
 class LabelApiTest {
   @Autowired MockMvc mvc;
   @MockBean LabelManagementService service;
 
-  @Test void unauthenticatedLabelCatalogIsRejected() throws Exception {
+  @Test
+  void unauthenticatedLabelCatalogIsRejected() throws Exception {
     mvc.perform(get("/api/v1/labels")).andExpect(status().isUnauthorized());
   }
 
-  @Test void invalidLabelPayloadIsRejected() throws Exception {
-    var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
-    mvc.perform(post("/api/v1/labels").with(authentication(auth)).contentType("application/json")
-        .content("{\"name\":\" \",\"scopes\":[\"CALENDAR\"]}"))
+  @Test
+  void invalidLabelPayloadIsRejected() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    mvc.perform(
+            post("/api/v1/labels")
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{\"name\":\" \",\"scopes\":[\"CALENDAR\"]}"))
         .andExpect(status().isBadRequest());
   }
 }

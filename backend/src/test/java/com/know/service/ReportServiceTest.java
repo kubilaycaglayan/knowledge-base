@@ -24,30 +24,46 @@ class ReportServiceTest {
     Path foreignPath = new Path(foreignOwner, "Foreign path", null, "#E05D44");
     Label ownedLabel = new Label(owner, "Owned label", "#2878D5");
     Label foreignLabel = new Label(foreignOwner, "Foreign label", "#E05D44");
-    TimeEntry entry = new TimeEntry(
-        owner, ownedPath.getId(), Instant.parse("2026-09-10T10:00:00Z"), "owned", TimeSource.WEB);
+    TimeEntry entry =
+        new TimeEntry(
+            owner,
+            ownedPath.getId(),
+            Instant.parse("2026-09-10T10:00:00Z"),
+            "owned",
+            TimeSource.WEB);
     entry.stop(Instant.parse("2026-09-10T11:00:00Z"));
     LocalDate date = LocalDate.of(2026, 9, 10);
 
     when(entries.findOverlappingByUserId(eq(owner), any(), any())).thenReturn(List.of(entry));
-    when(paths.findByUserIdAndIdIn(owner, Set.of(ownedPath.getId()))).thenReturn(List.of(ownedPath));
+    when(paths.findByUserIdAndIdIn(owner, Set.of(ownedPath.getId())))
+        .thenReturn(List.of(ownedPath));
     when(entryLabels.findAllByIdTimeEntryIdIn(List.of(entry.getId())))
-        .thenReturn(List.of(
-            new TimeEntryLabel(entry.getId(), ownedLabel.getId()),
-            new TimeEntryLabel(entry.getId(), foreignLabel.getId())));
+        .thenReturn(
+            List.of(
+                new TimeEntryLabel(entry.getId(), ownedLabel.getId()),
+                new TimeEntryLabel(entry.getId(), foreignLabel.getId())));
     when(labels.findAllByUserIdAndIdIn(owner, Set.of(ownedLabel.getId(), foreignLabel.getId())))
         .thenReturn(List.of(ownedLabel));
-    when(calendar.days(owner, date, date)).thenReturn(List.of(
-        new CalendarService.DayView(date, "Owned calendar note", List.of(
-            new CalendarService.LabelAssignmentView(UUID.randomUUID(), "Owned calendar", "#2878D5", null)))));
+    when(calendar.days(owner, date, date))
+        .thenReturn(
+            List.of(
+                new CalendarService.DayView(
+                    date,
+                    "Owned calendar note",
+                    List.of(
+                        new CalendarService.LabelAssignmentView(
+                            UUID.randomUUID(), "Owned calendar", "#2878D5", null)))));
 
-    ReportService.Report report = new ReportService(entries, paths, labels, entryLabels, calendar)
-        .report(owner, date, date);
+    ReportService.Report report =
+        new ReportService(entries, paths, labels, entryLabels, calendar).report(owner, date, date);
 
     assertEquals(3600, report.totalSeconds());
-    assertEquals(List.of("Owned path"), report.paths().stream().map(ReportService.Category::label).toList());
-    assertTrue(report.sessionLabels().stream().noneMatch(value -> value.label().equals("Foreign label")));
-    assertTrue(report.sankey().nodes().stream().allMatch(value -> value.label().contains("Owned path")));
+    assertEquals(
+        List.of("Owned path"), report.paths().stream().map(ReportService.Category::label).toList());
+    assertTrue(
+        report.sessionLabels().stream().noneMatch(value -> value.label().equals("Foreign label")));
+    assertTrue(
+        report.sankey().nodes().stream().allMatch(value -> value.label().contains("Owned path")));
     assertEquals("Owned calendar note", report.days().getFirst().calendarNote());
     assertEquals("Owned calendar", report.calendarLabels().getFirst().label());
     assertFalse(report.toString().contains(foreignPath.getName()));
@@ -65,18 +81,30 @@ class ReportServiceTest {
     UUID user = UUID.randomUUID();
     Path sourcePath = new Path(user, "Research", null, "#123456");
     Path targetPath = new Path(user, "Writing", null, "#654321");
-    TimeEntry source = new TimeEntry(
-        user, sourcePath.getId(), Instant.parse("2025-09-01T10:00:00Z"), "research", TimeSource.IMPORT);
+    TimeEntry source =
+        new TimeEntry(
+            user,
+            sourcePath.getId(),
+            Instant.parse("2025-09-01T10:00:00Z"),
+            "research",
+            TimeSource.IMPORT);
     source.stop(Instant.parse("2025-09-01T10:01:40Z"));
-    TimeEntry target = new TimeEntry(
-        user, targetPath.getId(), Instant.parse("2025-09-02T10:00:00Z"), "writing", TimeSource.IMPORT);
+    TimeEntry target =
+        new TimeEntry(
+            user,
+            targetPath.getId(),
+            Instant.parse("2025-09-02T10:00:00Z"),
+            "writing",
+            TimeSource.IMPORT);
     target.stop(Instant.parse("2025-09-02T10:01:00Z"));
-    when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(source, target));
+    when(entries.findOverlappingByUserId(eq(user), any(), any()))
+        .thenReturn(List.of(source, target));
     when(paths.findByUserIdAndIdIn(user, Set.of(sourcePath.getId(), targetPath.getId())))
         .thenReturn(List.of(sourcePath, targetPath));
 
-    ReportService.Report report = new ReportService(entries, paths, mock(LabelRepository.class))
-        .report(user, ReportService.Period.WEEK, LocalDate.of(2025, 9, 3));
+    ReportService.Report report =
+        new ReportService(entries, paths, mock(LabelRepository.class))
+            .report(user, ReportService.Period.WEEK, LocalDate.of(2025, 9, 3));
 
     assertEquals(2, report.sankey().nodes().size());
     assertEquals(100, report.sankey().nodes().getFirst().value());
@@ -99,26 +127,20 @@ class ReportServiceTest {
     Instant monthStart = LocalDate.of(2026, 7, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
     TimeEntry crossing =
         new TimeEntry(
-            user,
-            path.getId(),
-            monthStart.minusSeconds(30),
-            "crossing",
-            TimeSource.IMPORT);
+            user, path.getId(), monthStart.minusSeconds(30), "crossing", TimeSource.IMPORT);
     crossing.stop(monthStart.plusSeconds(30));
     TimeEntry later =
         new TimeEntry(
-            user,
-            path.getId(),
-            Instant.parse("2026-07-12T10:00:00Z"),
-            "later",
-            TimeSource.IMPORT);
+            user, path.getId(), Instant.parse("2026-07-12T10:00:00Z"), "later", TimeSource.IMPORT);
     later.stop(Instant.parse("2026-07-12T10:10:00Z"));
     when(entries.findOverlappingByUserId(eq(user), any(), any()))
         .thenReturn(List.of(later, crossing));
     when(paths.findByUserIdAndIdIn(user, Set.of(path.getId()))).thenReturn(List.of(path));
     when(entryLabels.findAllByIdTimeEntryIdIn(any()))
-        .thenAnswer(invocation -> ((Collection<UUID>) invocation.getArgument(0)).stream()
-            .map(id -> new TimeEntryLabel(id, label.getId())).toList());
+        .thenAnswer(
+            invocation ->
+                ((Collection<UUID>) invocation.getArgument(0))
+                    .stream().map(id -> new TimeEntryLabel(id, label.getId())).toList());
     when(labels.findAllByUserIdAndIdIn(user, Set.of(label.getId()))).thenReturn(List.of(label));
 
     ReportService.Report report =
@@ -143,7 +165,8 @@ class ReportServiceTest {
     assertEquals(1, report.sankey().nodes().getLast().depth());
     assertTrue(report.sankey().nodes().stream().allMatch(node -> node.label().contains("Wander")));
     assertTrue(report.sankey().links().stream().anyMatch(link -> link.value() == 30));
-    assertTrue(report.sankey().links().stream().allMatch(link -> !link.source().equals(link.target())));
+    assertTrue(
+        report.sankey().links().stream().allMatch(link -> !link.source().equals(link.target())));
     verify(entryLabels, times(1)).findAllByIdTimeEntryIdIn(any());
     verify(entryLabels, never()).findAllByIdTimeEntryId(any());
   }
@@ -158,11 +181,20 @@ class ReportServiceTest {
     UUID selectedPath = UUID.randomUUID();
     Path path = new Path(user, "Writing", null, "#123456");
     Label ownedLabel = new Label(user, "Focus", "#2878D5");
-    TimeEntry matching = new TimeEntry(user, selectedPath, Instant.parse("2026-08-25T10:00:00Z"), "matching", TimeSource.WEB);
+    TimeEntry matching =
+        new TimeEntry(
+            user, selectedPath, Instant.parse("2026-08-25T10:00:00Z"), "matching", TimeSource.WEB);
     matching.stop(Instant.parse("2026-08-25T11:00:00Z"));
-    TimeEntry wrongLabel = new TimeEntry(user, selectedPath, Instant.parse("2026-08-25T12:00:00Z"), "wrong label", TimeSource.WEB);
+    TimeEntry wrongLabel =
+        new TimeEntry(
+            user,
+            selectedPath,
+            Instant.parse("2026-08-25T12:00:00Z"),
+            "wrong label",
+            TimeSource.WEB);
     wrongLabel.stop(Instant.parse("2026-08-25T13:00:00Z"));
-    when(entries.findOverlappingByUserIdAndPathIdIn(eq(user), eq(Set.of(selectedPath)), any(), any()))
+    when(entries.findOverlappingByUserIdAndPathIdIn(
+            eq(user), eq(Set.of(selectedPath)), any(), any()))
         .thenReturn(List.of(wrongLabel, matching));
     when(entryLabels.findAllByIdTimeEntryIdIn(any()))
         .thenReturn(List.of(new TimeEntryLabel(matching.getId(), ownedLabel.getId())));
@@ -170,14 +202,21 @@ class ReportServiceTest {
         .thenReturn(List.of(ownedLabel));
     when(paths.findByUserIdAndIdIn(user, Set.of(selectedPath))).thenReturn(List.of(path));
 
-    ReportService.Report report = new ReportService(entries, paths, labels, entryLabels, null)
-        .report(user, LocalDate.of(2026, 8, 25), LocalDate.of(2026, 8, 25), ReportService.Aggregation.DAY,
-            Set.of(selectedPath), Set.of(ownedLabel.getId()));
+    ReportService.Report report =
+        new ReportService(entries, paths, labels, entryLabels, null)
+            .report(
+                user,
+                LocalDate.of(2026, 8, 25),
+                LocalDate.of(2026, 8, 25),
+                ReportService.Aggregation.DAY,
+                Set.of(selectedPath),
+                Set.of(ownedLabel.getId()));
 
     assertEquals(3600, report.totalSeconds());
     assertEquals(1, report.paths().size());
     assertEquals(3600, report.sessionLabels().getFirst().seconds());
-    verify(entries).findOverlappingByUserIdAndPathIdIn(eq(user), eq(Set.of(selectedPath)), any(), any());
+    verify(entries)
+        .findOverlappingByUserIdAndPathIdIn(eq(user), eq(Set.of(selectedPath)), any(), any());
   }
 
   @Test
@@ -219,18 +258,34 @@ class ReportServiceTest {
     PathRepository paths = mock(PathRepository.class);
     UUID user = UUID.randomUUID();
     Path path = new Path(user, "Writing", null, "#123456");
-    TimeEntry january = new TimeEntry(user, path.getId(), Instant.parse("2026-01-02T10:00:00Z"), "January", TimeSource.IMPORT);
+    TimeEntry january =
+        new TimeEntry(
+            user,
+            path.getId(),
+            Instant.parse("2026-01-02T10:00:00Z"),
+            "January",
+            TimeSource.IMPORT);
     january.stop(Instant.parse("2026-01-02T11:00:00Z"));
-    TimeEntry april = new TimeEntry(user, path.getId(), Instant.parse("2026-04-02T10:00:00Z"), "April", TimeSource.IMPORT);
+    TimeEntry april =
+        new TimeEntry(
+            user, path.getId(), Instant.parse("2026-04-02T10:00:00Z"), "April", TimeSource.IMPORT);
     april.stop(Instant.parse("2026-04-02T11:00:00Z"));
-    when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(january, april));
+    when(entries.findOverlappingByUserId(eq(user), any(), any()))
+        .thenReturn(List.of(january, april));
     when(paths.findByUserIdAndIdIn(user, Set.of(path.getId()))).thenReturn(List.of(path));
 
-    ReportService.Report report = new ReportService(entries, paths, mock(LabelRepository.class))
-        .report(user, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30), ReportService.Aggregation.QUARTER);
+    ReportService.Report report =
+        new ReportService(entries, paths, mock(LabelRepository.class))
+            .report(
+                user,
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 6, 30),
+                ReportService.Aggregation.QUARTER);
 
     assertEquals("QUARTER", report.sankey().granularity());
-    assertEquals(List.of("Q1 2026", "Q2 2026"), report.sankey().nodes().stream().map(ReportService.SankeyNode::bucketLabel).toList());
+    assertEquals(
+        List.of("Q1 2026", "Q2 2026"),
+        report.sankey().nodes().stream().map(ReportService.SankeyNode::bucketLabel).toList());
   }
 
   @Test
@@ -238,12 +293,7 @@ class ReportServiceTest {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     UUID user = UUID.randomUUID();
     TimeEntry running =
-        new TimeEntry(
-            user,
-            null,
-            Instant.now().minusSeconds(5),
-            "unassigned",
-            TimeSource.WEB);
+        new TimeEntry(user, null, Instant.now().minusSeconds(5), "unassigned", TimeSource.WEB);
     when(entries.findOverlappingByUserId(eq(user), any(), any())).thenReturn(List.of(running));
 
     ReportService.Report report =
@@ -288,8 +338,16 @@ class ReportServiceTest {
     assertEquals("Annual leave", report.days().getFirst().calendarNote());
     assertEquals(2, report.days().getFirst().calendarLabels().size());
     assertEquals(2, report.calendarLabels().size());
-    var vacation = report.calendarLabels().stream().filter(label -> label.label().equals("Vacation")).findFirst().orElseThrow();
-    var halfDay = report.calendarLabels().stream().filter(label -> label.label().equals("Half day")).findFirst().orElseThrow();
+    var vacation =
+        report.calendarLabels().stream()
+            .filter(label -> label.label().equals("Vacation"))
+            .findFirst()
+            .orElseThrow();
+    var halfDay =
+        report.calendarLabels().stream()
+            .filter(label -> label.label().equals("Half day"))
+            .findFirst()
+            .orElseThrow();
     assertEquals(BigDecimal.ZERO, vacation.days());
     assertEquals(1, vacation.markers());
     assertEquals(new BigDecimal("0.50"), halfDay.days());

@@ -46,5 +46,7 @@ const vuetify = createVuetify({
     },
   },
 });
-watch(theme, (value) => { void vuetify.theme.change(value); });
+watch(theme, (value) => {
+  void vuetify.theme.change(value);
+});
 export default vuetify;

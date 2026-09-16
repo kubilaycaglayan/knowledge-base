@@ -11,7 +11,11 @@ public class NoteTag {
 
   protected NoteTag() {}
 
-  public NoteTag(NoteTagId id) { this.id = id; }
+  public NoteTag(NoteTagId id) {
+    this.id = id;
+  }
 
-  public NoteTagId getId() { return id; }
+  public NoteTagId getId() {
+    return id;
+  }
 }

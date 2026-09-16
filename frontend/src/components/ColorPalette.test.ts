@@ -10,7 +10,9 @@ describe("ColorPalette", () => {
     const buttons = wrapper.findAll("button");
     expect(buttons).toHaveLength(15);
     expect(buttons[0].attributes("aria-pressed")).toBe("true");
-    expect(buttons.slice(0, 5).map((button) => button.attributes("aria-label"))).toEqual([
+    expect(
+      buttons.slice(0, 5).map((button) => button.attributes("aria-label")),
+    ).toEqual([
       expect.stringContaining("Off White"),
       expect.stringContaining("Mid Gray"),
       expect.stringContaining("Near Black"),

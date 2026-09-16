@@ -71,8 +71,14 @@ async function saveActivityNote() {
     await api("/notes", {
       method: "POST",
       body: JSON.stringify({
-        ...(activities.value.find((activity) => activity.id === noteActivityId.value)?.timeEntryId
-          ? { timeEntryId: activities.value.find((activity) => activity.id === noteActivityId.value)?.timeEntryId }
+        ...(activities.value.find(
+          (activity) => activity.id === noteActivityId.value,
+        )?.timeEntryId
+          ? {
+              timeEntryId: activities.value.find(
+                (activity) => activity.id === noteActivityId.value,
+              )?.timeEntryId,
+            }
           : { activityId: noteActivityId.value }),
         title: noteTitle.value,
         content: noteContent.value,

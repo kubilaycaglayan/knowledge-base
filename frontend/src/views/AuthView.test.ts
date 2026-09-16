@@ -42,7 +42,9 @@ describe("AuthView", () => {
     await wrapper.find(".text-button").trigger("click");
     await wrapper.get('input[type="email"]').setValue("learner@example.com");
     await wrapper.get('input[type="password"]').setValue("a-secure-password");
-    await wrapper.get('input[name="passwordConfirmation"]').setValue("a-secure-password");
+    await wrapper
+      .get('input[name="passwordConfirmation"]')
+      .setValue("a-secure-password");
     await wrapper.get("form").trigger("submit");
 
     expect(api).toHaveBeenCalledWith(
@@ -68,7 +70,12 @@ describe("AuthView", () => {
 
   it("keeps the submit label, shows busy state, and ignores duplicate submits", async () => {
     let resolve: (value: { token: string }) => void = () => {};
-    vi.mocked(api).mockImplementation(() => new Promise((done) => { resolve = done; }));
+    vi.mocked(api).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
     const wrapper = mount(AuthView);
     await wrapper.get('input[type="email"]').setValue("learner@example.com");
     await wrapper.get('input[name="password"]').setValue("a-secure-password");
@@ -81,7 +88,9 @@ describe("AuthView", () => {
     expect(wrapper.get("button.primary").text()).toContain("Sign in");
     resolve({ token: "test-token" });
     await flushPromises();
-    expect(wrapper.get("button.primary").attributes("disabled")).toBeUndefined();
+    expect(
+      wrapper.get("button.primary").attributes("disabled"),
+    ).toBeUndefined();
   });
 
   it("requires matching confirmation when creating an account", async () => {
@@ -89,7 +98,9 @@ describe("AuthView", () => {
     await wrapper.get(".text-button").trigger("click");
     await wrapper.get('input[type="email"]').setValue("learner@example.com");
     await wrapper.get('input[name="password"]').setValue("a-secure-password");
-    await wrapper.get('input[name="passwordConfirmation"]').setValue("different-password");
+    await wrapper
+      .get('input[name="passwordConfirmation"]')
+      .setValue("different-password");
     await wrapper.get("form").trigger("submit");
 
     expect(wrapper.get(".field-error").text()).toBe("Passwords do not match.");
@@ -103,9 +114,15 @@ describe("AuthView", () => {
     const visibility = wrapper.get('button[aria-label="Show password"]');
     await visibility.trigger("click");
 
-    expect(wrapper.get('input[name="password"]').attributes("type")).toBe("text");
-    expect((wrapper.get('input[name="password"]').element as HTMLInputElement).value).toBe("a-secure-password");
-    expect(wrapper.find('button[aria-label="Hide password"]').exists()).toBe(true);
+    expect(wrapper.get('input[name="password"]').attributes("type")).toBe(
+      "text",
+    );
+    expect(
+      (wrapper.get('input[name="password"]').element as HTMLInputElement).value,
+    ).toBe("a-secure-password");
+    expect(wrapper.find('button[aria-label="Hide password"]').exists()).toBe(
+      true,
+    );
   });
 
   it("toggles cleanly between sign-in and registration modes", async () => {
@@ -188,13 +205,22 @@ describe("AuthView", () => {
     testWindow.google = { accounts: { id: { initialize, renderButton } } };
     const wrapper = mount(AuthView);
     const host = wrapper.get('[aria-label="Continue with Google"]').element;
-    Object.defineProperty(host, "clientWidth", { configurable: true, value: 254 });
+    Object.defineProperty(host, "clientWidth", {
+      configurable: true,
+      value: 254,
+    });
     applyTheme("dark");
     await wrapper.vm.$nextTick();
-    expect(renderButton).toHaveBeenLastCalledWith(host, expect.objectContaining({ theme: "filled_black", width: 254 }));
+    expect(renderButton).toHaveBeenLastCalledWith(
+      host,
+      expect.objectContaining({ theme: "filled_black", width: 254 }),
+    );
     applyTheme("light");
     await wrapper.vm.$nextTick();
-    expect(renderButton).toHaveBeenLastCalledWith(host, expect.objectContaining({ theme: "outline", width: 254 }));
+    expect(renderButton).toHaveBeenLastCalledWith(
+      host,
+      expect.objectContaining({ theme: "outline", width: 254 }),
+    );
     expect(initialize).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
@@ -206,7 +232,9 @@ describe("AuthView", () => {
     testWindow.google = {
       accounts: {
         id: {
-          initialize: vi.fn((options) => { callback = options.callback; }),
+          initialize: vi.fn((options) => {
+            callback = options.callback;
+          }),
           renderButton: vi.fn(),
         },
       },
@@ -215,7 +243,9 @@ describe("AuthView", () => {
     callback?.({ credential: "bad-google-id-token" });
     await flushPromises();
 
-    expect(wrapper.get('[role="alert"]').text()).toBe("Google sign-in could not be completed. Try again.");
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "Google sign-in could not be completed. Try again.",
+    );
     expect(wrapper.emitted("authenticated")).toBeUndefined();
   });
 });

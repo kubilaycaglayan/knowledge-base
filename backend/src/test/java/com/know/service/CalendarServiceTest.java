@@ -19,7 +19,10 @@ class CalendarServiceTest {
   private final TimeEntryLabelRepository timeAssignments = mock(TimeEntryLabelRepository.class);
   private final NoteTagRepository noteAssignments = mock(NoteTagRepository.class);
 
-  private CalendarService service() { return new CalendarService(records, labels, assignments, scopes, timeAssignments, noteAssignments); }
+  private CalendarService service() {
+    return new CalendarService(
+        records, labels, assignments, scopes, timeAssignments, noteAssignments);
+  }
 
   @Test
   void createsTrimmedLabelAndRejectsDuplicateNamesAndInvalidColors() {
@@ -34,11 +37,11 @@ class CalendarServiceTest {
     assertEquals("Focus", created.name());
     assertEquals("#2878d5", created.color());
     verify(labels).save(argThat((Label label) -> label.getName().equals("Focus")));
-    when(labels.findByUserIdAndNameIgnoreCase(user, "Focus")).thenReturn(Optional.of(new Label(user, "Focus", null)));
+    when(labels.findByUserIdAndNameIgnoreCase(user, "Focus"))
+        .thenReturn(Optional.of(new Label(user, "Focus", null)));
     when(scopes.existsByIdLabelIdAndIdScope(any(), eq(LabelScopeType.CALENDAR))).thenReturn(true);
     assertThrows(
-        ResponseStatusException.class,
-        () -> service.createLabel(user, "Focus", "#2878D5"));
+        ResponseStatusException.class, () -> service.createLabel(user, "Focus", "#2878D5"));
     assertThrows(
         ResponseStatusException.class,
         () -> service.createLabel(user, "Other", "not-a-palette-color"));
@@ -117,7 +120,8 @@ class CalendarServiceTest {
     Label requestedLabel = new Label(user, "New", "#2878D5");
     UUID requestedLabelId = requestedLabel.getId();
     when(labels.findByIdAndUserId(requestedLabelId, user)).thenReturn(Optional.of(requestedLabel));
-    when(scopes.existsByIdLabelIdAndIdScope(requestedLabelId, LabelScopeType.CALENDAR)).thenReturn(true);
+    when(scopes.existsByIdLabelIdAndIdScope(requestedLabelId, LabelScopeType.CALENDAR))
+        .thenReturn(true);
     when(records.findByUserIdAndRecordDate(user, date)).thenReturn(Optional.of(record));
     when(assignments.findAllByIdDailyRecordId(record.getId()))
         .thenReturn(

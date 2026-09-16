@@ -1,47 +1,200 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync } from "node:fs";
 
 const required = [
-  ['chrome-extension/entrypoints/popup/index.html', 'for="email"', 'extension email label'],
-  ['chrome-extension/entrypoints/popup/index.html', 'role="status"', 'extension timer status'],
-  ['chrome-extension/entrypoints/popup/index.html', 'role="alert"', 'extension error announcement'],
-  ['chrome-extension/entrypoints/options/index.html', 'for="api"', 'extension API label'],
-  ['chrome-extension/entrypoints/options/index.html', 'role="status"', 'extension settings status'],
-  ['frontend/src/views/AuthView.vue', 'aria-label="Email"', 'web authentication email label'],
-  ['frontend/src/views/AuthView.vue', 'aria-label="Password"', 'web authentication password label'],
-  ['frontend/src/views/PathsView.vue', 'Choose path color', 'path color picker labels'],
-  ['frontend/src/components/FloatingTimeTracker.vue', 'aria-label="Edit timer start time; elapsed session time"', 'active timer start editor label'],
-  ['frontend/src/components/FloatingTimeTracker.vue', 'aria-label="New session label name"', 'session label creation name'],
-  ['frontend/src/views/ImportsView.vue', 'aria-label="Clockify JSON"', 'Clockify import input label'],
-  ['frontend/src/views/ImportsView.vue', 'Import Clockify sessions', 'Clockify import action label'],
-  ['frontend/src/views/TimelineView.vue', 'aria-label="Activity type"', 'timeline activity filter label'],
-  ['frontend/src/views/TimelineView.vue', 'aria-label="From date"', 'timeline start date label'],
-  ['frontend/src/views/TimelineView.vue', 'aria-label="To date"', 'timeline end date label'],
-  ['ios/Know/LoginView.swift', 'accessibilityIdentifier("auth.submit")', 'native authentication control identifier'],
-  ['ios/Know/LoginView.swift', 'accessibilityIdentifier("auth.email")', 'native authentication email identifier'],
-  ['ios/Know/LoginView.swift', 'accessibilityIdentifier("auth.password")', 'native authentication password identifier'],
-  ['ios/Know/LoginView.swift', 'accessibilityIdentifier("auth.mode")', 'native authentication mode identifier'],
-  ['ios/Know/LoginView.swift', 'accessibilityIdentifier("auth.google")', 'native Google authentication identifier'],
-  ['ios/Know/WorkspaceView.swift', 'accessibilityIdentifier("workspace.', 'native workspace navigation identifiers'],
-  ['ios/Know/PathsView.swift', 'accessibilityIdentifier("paths.name")', 'native path name identifier'],
-  ['ios/Know/PathsView.swift', 'accessibilityIdentifier("paths.description")', 'native path description identifier'],
-  ['ios/Know/PathsView.swift', 'accessibilityIdentifier("paths.save")', 'native path save identifier'],
-  ['ios/Know/SessionsView.swift', 'accessibilityIdentifier("timer.path")', 'native timer path selector identifier'],
-  ['ios/Know/SessionsView.swift', 'accessibilityIdentifier("timer.label.', 'native timer label toggle identifiers'],
-  ['ios/Know/SessionsView.swift', 'accessibilityIdentifier("timer.toggle")', 'native timer control identifier'],
-  ['ios/Know/SessionsView.swift', 'accessibilityIdentifier("timer.clock")', 'native active timer start editor identifier'],
-  ['ios/Know/SessionEditor.swift', 'accessibilityIdentifier("session.save")', 'native session save identifier'],
-  ['ios/KnowUITests/KnowUITests.swift', 'app.textFields["auth.email"]', 'native UI test email target'],
-  ['ios/KnowUITests/KnowUITests.swift', 'app.secureTextFields["auth.password"]', 'native UI test password target'],
-  ['ios/KnowUITests/KnowUITests.swift', 'app.buttons["auth.submit"]', 'native UI test submit target'],
-  ['ios/KnowUITests/KnowUITests.swift', 'app.buttons["auth.mode"]', 'native UI test mode target'],
-  ['ios/KnowUITests/KnowUITests.swift', '-ui-testing-authenticated', 'native authenticated UI-test fixture'],
-  ['ios/KnowUITests/KnowUITests.swift', 'app.textFields["paths.name"]', 'native UI test path form target'],
-  ['ios/KnowUITests/KnowUITests.swift', 'app.buttons["timer.label.', 'native UI test label toggle target'],
-  ['ios/project.yml', 'type: bundle.ui-testing', 'declarative native UI-test target'],
-  ['ios/project.yml', 'TEST_TARGET_NAME: Know', 'native UI-test host application']
-]
+  [
+    "chrome-extension/entrypoints/popup/index.html",
+    'for="email"',
+    "extension email label",
+  ],
+  [
+    "chrome-extension/entrypoints/popup/index.html",
+    'role="status"',
+    "extension timer status",
+  ],
+  [
+    "chrome-extension/entrypoints/popup/index.html",
+    'role="alert"',
+    "extension error announcement",
+  ],
+  [
+    "chrome-extension/entrypoints/options/index.html",
+    'for="api"',
+    "extension API label",
+  ],
+  [
+    "chrome-extension/entrypoints/options/index.html",
+    'role="status"',
+    "extension settings status",
+  ],
+  [
+    "frontend/src/views/AuthView.vue",
+    'aria-label="Email"',
+    "web authentication email label",
+  ],
+  [
+    "frontend/src/views/AuthView.vue",
+    'aria-label="Password"',
+    "web authentication password label",
+  ],
+  [
+    "frontend/src/views/PathsView.vue",
+    "Choose path color",
+    "path color picker labels",
+  ],
+  [
+    "frontend/src/components/FloatingTimeTracker.vue",
+    'aria-label="Edit timer start time; elapsed session time"',
+    "active timer start editor label",
+  ],
+  [
+    "frontend/src/components/FloatingTimeTracker.vue",
+    'aria-label="New session label name"',
+    "session label creation name",
+  ],
+  [
+    "frontend/src/views/ImportsView.vue",
+    'aria-label="Clockify JSON"',
+    "Clockify import input label",
+  ],
+  [
+    "frontend/src/views/ImportsView.vue",
+    "Import Clockify sessions",
+    "Clockify import action label",
+  ],
+  [
+    "frontend/src/views/TimelineView.vue",
+    'aria-label="Activity type"',
+    "timeline activity filter label",
+  ],
+  [
+    "frontend/src/views/TimelineView.vue",
+    'aria-label="From date"',
+    "timeline start date label",
+  ],
+  [
+    "frontend/src/views/TimelineView.vue",
+    'aria-label="To date"',
+    "timeline end date label",
+  ],
+  [
+    "ios/Know/LoginView.swift",
+    'accessibilityIdentifier("auth.submit")',
+    "native authentication control identifier",
+  ],
+  [
+    "ios/Know/LoginView.swift",
+    'accessibilityIdentifier("auth.email")',
+    "native authentication email identifier",
+  ],
+  [
+    "ios/Know/LoginView.swift",
+    'accessibilityIdentifier("auth.password")',
+    "native authentication password identifier",
+  ],
+  [
+    "ios/Know/LoginView.swift",
+    'accessibilityIdentifier("auth.mode")',
+    "native authentication mode identifier",
+  ],
+  [
+    "ios/Know/LoginView.swift",
+    'accessibilityIdentifier("auth.google")',
+    "native Google authentication identifier",
+  ],
+  [
+    "ios/Know/WorkspaceView.swift",
+    'accessibilityIdentifier("workspace.',
+    "native workspace navigation identifiers",
+  ],
+  [
+    "ios/Know/PathsView.swift",
+    'accessibilityIdentifier("paths.name")',
+    "native path name identifier",
+  ],
+  [
+    "ios/Know/PathsView.swift",
+    'accessibilityIdentifier("paths.description")',
+    "native path description identifier",
+  ],
+  [
+    "ios/Know/PathsView.swift",
+    'accessibilityIdentifier("paths.save")',
+    "native path save identifier",
+  ],
+  [
+    "ios/Know/SessionsView.swift",
+    'accessibilityIdentifier("timer.path")',
+    "native timer path selector identifier",
+  ],
+  [
+    "ios/Know/SessionsView.swift",
+    'accessibilityIdentifier("timer.label.',
+    "native timer label toggle identifiers",
+  ],
+  [
+    "ios/Know/SessionsView.swift",
+    'accessibilityIdentifier("timer.toggle")',
+    "native timer control identifier",
+  ],
+  [
+    "ios/Know/SessionsView.swift",
+    'accessibilityIdentifier("timer.clock")',
+    "native active timer start editor identifier",
+  ],
+  [
+    "ios/Know/SessionEditor.swift",
+    '"session.save"',
+    "native session save identifier",
+  ],
+  [
+    "ios/KnowUITests/KnowUITests.swift",
+    'app.textFields["auth.email"]',
+    "native UI test email target",
+  ],
+  [
+    "ios/KnowUITests/KnowUITests.swift",
+    'app.secureTextFields["auth.password"]',
+    "native UI test password target",
+  ],
+  [
+    "ios/KnowUITests/KnowUITests.swift",
+    'app.buttons["auth.submit"]',
+    "native UI test submit target",
+  ],
+  [
+    "ios/KnowUITests/KnowUITests.swift",
+    'app.buttons["auth.mode"]',
+    "native UI test mode target",
+  ],
+  [
+    "ios/KnowUITests/KnowUITests.swift",
+    "-ui-testing-authenticated",
+    "native authenticated UI-test fixture",
+  ],
+  [
+    "ios/KnowUITests/KnowUITests.swift",
+    'app.textFields["paths.name"]',
+    "native UI test path form target",
+  ],
+  [
+    "ios/KnowUITests/KnowUITests.swift",
+    'app.buttons["timer.label.',
+    "native UI test label toggle target",
+  ],
+  [
+    "ios/project.yml",
+    "type: bundle.ui-testing",
+    "declarative native UI-test target",
+  ],
+  [
+    "ios/project.yml",
+    "TEST_TARGET_NAME: Know",
+    "native UI-test host application",
+  ],
+];
 
 for (const [file, fragment, description] of required) {
-  if (!readFileSync(file, 'utf8').includes(fragment)) throw new Error(`Missing ${description}: ${fragment}`)
+  if (!readFileSync(file, "utf8").includes(fragment))
+    throw new Error(`Missing ${description}: ${fragment}`);
 }
-console.log(`Accessibility contract passed (${required.length} checks)`)
+console.log(`Accessibility contract passed (${required.length} checks)`);

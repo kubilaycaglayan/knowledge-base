@@ -12,8 +12,8 @@ import java.util.*;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -47,8 +47,8 @@ public class AuthController {
 
   record GoogleConfig(String clientId) {}
 
-  record AccountView(UUID userId, String email, String displayName, boolean hasPassword,
-      boolean hasGoogle) {}
+  record AccountView(
+      UUID userId, String email, String displayName, boolean hasPassword, boolean hasGoogle) {}
 
   record SetPasswordRequest(
       @Size(max = 200) String currentPassword,
@@ -68,8 +68,9 @@ public class AuthController {
     checkRate(request, email);
     if (users.findByEmailIgnoreCase(email).isPresent())
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
-    User u = users.save(
-        new User(email, encoder.encode(c.password()), email.substring(0, email.indexOf('@'))));
+    User u =
+        users.save(
+            new User(email, encoder.encode(c.password()), email.substring(0, email.indexOf('@'))));
     return response(u);
   }
 
@@ -143,12 +144,17 @@ public class AuthController {
   private User currentUser(Authentication authentication) {
     return users
         .findById(UUID.fromString(authentication.getName()))
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found"));
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found"));
   }
 
   private AccountView accountView(User user) {
-    return new AccountView(user.getId(), user.getEmail(), user.getDisplayName(),
-        user.hasPassword(), user.getGoogleSubject() != null);
+    return new AccountView(
+        user.getId(),
+        user.getEmail(),
+        user.getDisplayName(),
+        user.hasPassword(),
+        user.getGoogleSubject() != null);
   }
 
   private void checkRate(jakarta.servlet.http.HttpServletRequest request, String email) {

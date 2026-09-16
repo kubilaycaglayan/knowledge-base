@@ -45,7 +45,8 @@ public class NoteController {
       @RequestParam(required = false) String q,
       @RequestParam(defaultValue = "false") boolean archived) {
     if (page == null && size == null && q == null && !archived) return service.listNotes(user(a));
-    return service.pageNotes(user(a), page == null ? 0 : page, size == null ? 20 : size, q, archived);
+    return service.pageNotes(
+        user(a), page == null ? 0 : page, size == null ? 20 : size, q, archived);
   }
 
   @GetMapping("/labels")
@@ -61,14 +62,21 @@ public class NoteController {
   @PostMapping
   public KnowledgeService.NoteView create(Authentication a, @Valid @RequestBody NoteRequest r) {
     return service.createNote(
-        user(a), r.pathId(), r.activityId(), r.timeEntryId(), r.title(), r.content(),
-        r.contentText(), r.tags());
+        user(a),
+        r.pathId(),
+        r.activityId(),
+        r.timeEntryId(),
+        r.title(),
+        r.content(),
+        r.contentText(),
+        r.tags());
   }
 
   @PutMapping("/{id}")
   public KnowledgeService.NoteView update(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody EditNoteRequest r) {
-    return service.updateNote(user(a), id, r.title(), r.content(), r.contentText(), r.tags(), r.version());
+    return service.updateNote(
+        user(a), id, r.title(), r.content(), r.contentText(), r.tags(), r.version());
   }
 
   @DeleteMapping("/{id}")

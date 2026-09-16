@@ -4,16 +4,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,8 +32,8 @@ import org.springframework.test.context.DynamicPropertySource;
 /**
  * Full integration test suite.
  *
- * <p>Each test registers a fresh user so tests are independent and can run in any order. Covers
- * the product behaviors covered by this integration suite.
+ * <p>Each test registers a fresh user so tests are independent and can run in any order. Covers the
+ * product behaviors covered by this integration suite.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class KnowIntegrationTest {
@@ -145,13 +145,19 @@ class KnowIntegrationTest {
   ResponseEntity<JsonNode> importCsv(String token, String csv) {
     HttpHeaders headers = bearer(token);
     headers.setContentType(MediaType.parseMediaType("text/csv"));
-    return rest.exchange(base + "/api/v1/imports/knowledge-base", HttpMethod.POST,
-        new HttpEntity<>(csv, headers), JsonNode.class);
+    return rest.exchange(
+        base + "/api/v1/imports/knowledge-base",
+        HttpMethod.POST,
+        new HttpEntity<>(csv, headers),
+        JsonNode.class);
   }
 
   ResponseEntity<String> exportCsv(String token) {
-    return rest.exchange(base + "/api/v1/imports/knowledge-base/export", HttpMethod.GET,
-        new HttpEntity<>(bearer(token)), String.class);
+    return rest.exchange(
+        base + "/api/v1/imports/knowledge-base/export",
+        HttpMethod.GET,
+        new HttpEntity<>(bearer(token)),
+        String.class);
   }
 
   // Criteria: password-hashed registration / login and JWT auth
@@ -305,20 +311,93 @@ class KnowIntegrationTest {
   void knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo() {
     String token = freshToken();
     UUID pathId = UUID.randomUUID(), labelId = UUID.randomUUID(), sessionId = UUID.randomUUID();
-    UUID activityId = UUID.randomUUID(), dayId = UUID.randomUUID(), noteId = UUID.randomUUID(), logId = UUID.randomUUID();
+    UUID activityId = UUID.randomUUID(),
+        dayId = UUID.randomUUID(),
+        noteId = UUID.randomUUID(),
+        logId = UUID.randomUUID();
     String started = "2026-09-10T10:00:00Z";
     String ended = "2026-09-10T11:00:00Z";
     String created = "2026-09-10T09:00:00Z";
     String updated = "2026-09-10T12:00:00Z";
     String content = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
-    String csv = "entity,id,payload\n"
-        + csvRow("path", pathId, "{\"name\":\"Imported path\",\"description\":\"All fields\",\"color\":\"#123456\",\"status\":\"ARCHIVED\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\"}")
-        + csvRow("label", labelId, "{\"name\":\"Imported label\",\"color\":\"#ABCDEF\",\"createdAt\":\"" + created + "\",\"scopes\":[\"NOTE\",\"CALENDAR\",\"TIME_ENTRY\"]}")
-        + csvRow("session", sessionId, "{\"pathId\":\"" + pathId + "\",\"startedAt\":\"" + started + "\",\"endedAt\":\"" + ended + "\",\"durationSeconds\":3600,\"description\":\"Imported session\",\"source\":\"MANUAL\",\"labelIds\":[\"" + labelId + "\"]}")
-        + csvRow("timeline", activityId, "{\"pathId\":\"" + pathId + "\",\"timeEntryId\":\"" + sessionId + "\",\"type\":\"TIME_TRACKED\",\"title\":\"Imported activity\",\"detail\":\"Activity detail\",\"occurredAt\":\"" + updated + "\"}")
-        + csvRow("calendar", dayId, "{\"recordDate\":\"2026-09-10\",\"note\":\"Day note\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":\"0.50\"}]}")
-        + csvRow("note", noteId, "{\"pathId\":\"" + pathId + "\",\"activityId\":null,\"timeEntryId\":null,\"title\":\"Imported note\",\"content\":" + quote(content) + ",\"contentText\":\"Plain content\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"tagIds\":[\"" + labelId + "\"]}")
-        + csvRow("log", logId, "{\"body\":\"Imported log\",\"occurredAt\":\"" + updated + "\",\"createdAt\":\"" + created + "\",\"updatedAt\":\"" + updated + "\",\"labelIds\":[\"" + labelId + "\"]}");
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                pathId,
+                "{\"name\":\"Imported path\",\"description\":\"All"
+                    + " fields\",\"color\":\"#123456\",\"status\":\"ARCHIVED\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + updated
+                    + "\"}")
+            + csvRow(
+                "label",
+                labelId,
+                "{\"name\":\"Imported label\",\"color\":\"#ABCDEF\",\"createdAt\":\""
+                    + created
+                    + "\",\"scopes\":[\"NOTE\",\"CALENDAR\",\"TIME_ENTRY\"]}")
+            + csvRow(
+                "session",
+                sessionId,
+                "{\"pathId\":\""
+                    + pathId
+                    + "\",\"startedAt\":\""
+                    + started
+                    + "\",\"endedAt\":\""
+                    + ended
+                    + "\",\"durationSeconds\":3600,\"description\":\"Imported"
+                    + " session\",\"source\":\"MANUAL\",\"labelIds\":[\""
+                    + labelId
+                    + "\"]}")
+            + csvRow(
+                "timeline",
+                activityId,
+                "{\"pathId\":\""
+                    + pathId
+                    + "\",\"timeEntryId\":\""
+                    + sessionId
+                    + "\",\"type\":\"TIME_TRACKED\",\"title\":\"Imported"
+                    + " activity\",\"detail\":\"Activity detail\",\"occurredAt\":\""
+                    + updated
+                    + "\"}")
+            + csvRow(
+                "calendar",
+                dayId,
+                "{\"recordDate\":\"2026-09-10\",\"note\":\"Day note\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + updated
+                    + "\",\"labels\":[{\"labelId\":\""
+                    + labelId
+                    + "\",\"portion\":\"0.50\"}]}")
+            + csvRow(
+                "note",
+                noteId,
+                "{\"pathId\":\""
+                    + pathId
+                    + "\",\"activityId\":null,\"timeEntryId\":null,\"title\":\"Imported"
+                    + " note\",\"content\":"
+                    + quote(content)
+                    + ",\"contentText\":\"Plain content\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + updated
+                    + "\",\"tagIds\":[\""
+                    + labelId
+                    + "\"]}")
+            + csvRow(
+                "log",
+                logId,
+                "{\"body\":\"Imported log\",\"occurredAt\":\""
+                    + updated
+                    + "\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + updated
+                    + "\",\"labelIds\":[\""
+                    + labelId
+                    + "\"]}");
 
     ResponseEntity<JsonNode> imported = importCsv(token, csv);
     assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
@@ -327,20 +406,45 @@ class KnowIntegrationTest {
 
     String exported = exportCsv(token).getBody();
     assertNotNull(exported);
-    assertTrue(exported.contains("Imported path") && exported.contains("#123456") && exported.contains("ARCHIVED"));
-    assertTrue(exported.contains("Imported label") && exported.contains("#ABCDEF") && exported.contains("NOTE") && exported.contains("CALENDAR") && exported.contains("TIME_ENTRY"));
-    assertTrue(exported.contains("Imported session") && exported.contains("3600") && exported.contains("MANUAL") && exported.contains(labelId.toString()));
-    assertTrue(exported.contains("Imported activity") && exported.contains("Activity detail") && exported.contains(sessionId.toString()));
-    assertTrue(exported.contains("2026-09-10") && exported.contains("Day note") && exported.contains("0.50"));
-    assertTrue(exported.contains("Imported note") && exported.contains("Plain content") && exported.contains("paragraph"));
-    assertTrue(exported.contains("Imported log") && exported.contains(logId.toString()) && exported.contains(labelId.toString()));
+    assertTrue(
+        exported.contains("Imported path")
+            && exported.contains("#123456")
+            && exported.contains("ARCHIVED"));
+    assertTrue(
+        exported.contains("Imported label")
+            && exported.contains("#ABCDEF")
+            && exported.contains("NOTE")
+            && exported.contains("CALENDAR")
+            && exported.contains("TIME_ENTRY"));
+    assertTrue(
+        exported.contains("Imported session")
+            && exported.contains("3600")
+            && exported.contains("MANUAL")
+            && exported.contains(labelId.toString()));
+    assertTrue(
+        exported.contains("Imported activity")
+            && exported.contains("Activity detail")
+            && exported.contains(sessionId.toString()));
+    assertTrue(
+        exported.contains("2026-09-10")
+            && exported.contains("Day note")
+            && exported.contains("0.50"));
+    assertTrue(
+        exported.contains("Imported note")
+            && exported.contains("Plain content")
+            && exported.contains("paragraph"));
+    assertTrue(
+        exported.contains("Imported log")
+            && exported.contains(logId.toString())
+            && exported.contains(labelId.toString()));
 
     JsonNode batches = get("/api/v1/imports/knowledge-base/batches", token).getBody();
     assertEquals(1, batches.size());
     String batchId = batches.get(0).get("id").asText();
     assertEquals(7, batches.get(0).get("imported").asInt());
 
-    ResponseEntity<JsonNode> undone = delete("/api/v1/imports/knowledge-base/batches/" + batchId, token);
+    ResponseEntity<JsonNode> undone =
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, token);
     assertEquals(HttpStatus.OK, undone.getStatusCode());
     assertEquals(1, undone.getBody().get("deletedEntries").asInt());
     assertEquals(1, undone.getBody().get("deletedActivities").asInt());
@@ -352,32 +456,64 @@ class KnowIntegrationTest {
     assertTrue(get("/api/v1/activities", token).getBody().isEmpty());
     assertTrue(get("/api/v1/notes", token).getBody().isEmpty());
     assertTrue(get("/api/v1/logs", token).getBody().isEmpty());
-    assertTrue(get("/api/v1/calendar/days?startDate=2026-09-10&endDate=2026-09-10", token).getBody().isEmpty());
+    assertTrue(
+        get("/api/v1/calendar/days?startDate=2026-09-10&endDate=2026-09-10", token)
+            .getBody()
+            .isEmpty());
   }
 
   @Test
   void knowledgeBaseImportRestoresSoftDeletedRecordsAndUndoRemovesRestoredRecords() {
     String token = freshToken();
-    String pathId = post("/api/v1/paths", token, "{\"name\":\"Restore path\"}")
-        .getBody().get("id").asText();
+    String pathId =
+        post("/api/v1/paths", token, "{\"name\":\"Restore path\"}").getBody().get("id").asText();
     assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/paths/" + pathId, token).getStatusCode());
 
-    String noteId = post("/api/v1/notes", token, "{\"title\":\"Restore note\",\"content\":\"body\"}")
-        .getBody().get("id").asText();
+    String noteId =
+        post("/api/v1/notes", token, "{\"title\":\"Restore note\",\"content\":\"body\"}")
+            .getBody()
+            .get("id")
+            .asText();
     assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/notes/" + noteId, token).getStatusCode());
 
     String start = "2026-09-11T10:00:00Z";
     String end = "2026-09-11T11:00:00Z";
-    String sessionId = post("/api/v1/time-entries", token,
-        "{\"pathId\":null,\"labelIds\":[],\"startedAt\":\"" + start
-            + "\",\"endedAt\":\"" + end + "\",\"description\":\"Restore session\"}")
-        .getBody().get("id").asText();
-    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/time-entries/" + sessionId, token).getStatusCode());
+    String sessionId =
+        post(
+                "/api/v1/time-entries",
+                token,
+                "{\"pathId\":null,\"labelIds\":[],\"startedAt\":\""
+                    + start
+                    + "\",\"endedAt\":\""
+                    + end
+                    + "\",\"description\":\"Restore session\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    assertEquals(
+        HttpStatus.NO_CONTENT, delete("/api/v1/time-entries/" + sessionId, token).getStatusCode());
 
-    String csv = "entity,id,payload\n"
-        + csvRow("path", UUID.fromString(pathId), "{\"name\":\"Restore path\",\"description\":null,\"color\":\"#E8754E\",\"status\":\"ACTIVE\"}")
-        + csvRow("session", UUID.fromString(sessionId), "{\"pathId\":null,\"startedAt\":\"" + start + "\",\"endedAt\":\"" + end + "\",\"durationSeconds\":3600,\"description\":\"Restore session\",\"source\":\"MANUAL\",\"labelIds\":[]}")
-        + csvRow("note", UUID.fromString(noteId), "{\"pathId\":null,\"activityId\":null,\"timeEntryId\":null,\"title\":\"Restore note\",\"content\":\"body\",\"contentText\":\"body\",\"tagIds\":[]}");
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                UUID.fromString(pathId),
+                "{\"name\":\"Restore"
+                    + " path\",\"description\":null,\"color\":\"#E8754E\",\"status\":\"ACTIVE\"}")
+            + csvRow(
+                "session",
+                UUID.fromString(sessionId),
+                "{\"pathId\":null,\"startedAt\":\""
+                    + start
+                    + "\",\"endedAt\":\""
+                    + end
+                    + "\",\"durationSeconds\":3600,\"description\":\"Restore"
+                    + " session\",\"source\":\"MANUAL\",\"labelIds\":[]}")
+            + csvRow(
+                "note",
+                UUID.fromString(noteId),
+                "{\"pathId\":null,\"activityId\":null,\"timeEntryId\":null,\"title\":\"Restore"
+                    + " note\",\"content\":\"body\",\"contentText\":\"body\",\"tagIds\":[]}");
 
     ResponseEntity<JsonNode> imported = importCsv(token, csv);
     assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
@@ -387,8 +523,10 @@ class KnowIntegrationTest {
     assertFalse(get("/api/v1/time-entries", token).getBody().isEmpty());
     assertFalse(get("/api/v1/notes", token).getBody().isEmpty());
 
-    String batchId = get("/api/v1/imports/knowledge-base/batches", token).getBody().get(0).get("id").asText();
-    ResponseEntity<JsonNode> undone = delete("/api/v1/imports/knowledge-base/batches/" + batchId, token);
+    String batchId =
+        get("/api/v1/imports/knowledge-base/batches", token).getBody().get(0).get("id").asText();
+    ResponseEntity<JsonNode> undone =
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, token);
     assertEquals(HttpStatus.OK, undone.getStatusCode());
     assertEquals(1, undone.getBody().get("deletedEntries").asInt());
     assertEquals(1, undone.getBody().get("deletedPaths").asInt());
@@ -401,21 +539,41 @@ class KnowIntegrationTest {
   void knowledgeBaseImportSkipsDuplicatesWithinFileAndPreservesOtherUsersData() {
     String ownerToken = freshToken();
     String importingToken = freshToken();
-    String foreignPathId = post("/api/v1/paths", ownerToken, "{\"name\":\"Foreign path\"}")
-        .getBody().get("id").asText();
+    String foreignPathId =
+        post("/api/v1/paths", ownerToken, "{\"name\":\"Foreign path\"}")
+            .getBody()
+            .get("id")
+            .asText();
     UUID duplicatePathId = UUID.randomUUID();
-    String csv = "entity,id,payload\n"
-        + csvRow("path", duplicatePathId, "{\"name\":\"First\",\"description\":null,\"color\":\"#123456\",\"status\":\"ACTIVE\"}")
-        + csvRow("path", duplicatePathId, "{\"name\":\"Second\",\"description\":null,\"color\":\"#654321\",\"status\":\"ARCHIVED\"}")
-        + csvRow("path", UUID.fromString(foreignPathId), "{\"name\":\"Should not cross ownership\",\"description\":null,\"color\":\"#ABCDEF\",\"status\":\"ACTIVE\"}");
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                duplicatePathId,
+                "{\"name\":\"First\",\"description\":null,\"color\":\"#123456\",\"status\":\"ACTIVE\"}")
+            + csvRow(
+                "path",
+                duplicatePathId,
+                "{\"name\":\"Second\",\"description\":null,\"color\":\"#654321\",\"status\":\"ARCHIVED\"}")
+            + csvRow(
+                "path",
+                UUID.fromString(foreignPathId),
+                "{\"name\":\"Should not cross"
+                    + " ownership\",\"description\":null,\"color\":\"#ABCDEF\",\"status\":\"ACTIVE\"}");
 
     ResponseEntity<JsonNode> imported = importCsv(importingToken, csv);
     assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
     assertEquals(1, imported.getBody().get("imported").asInt());
     assertEquals(2, imported.getBody().get("skipped").asInt());
-    assertEquals("First", get("/api/v1/paths/" + duplicatePathId, importingToken).getBody().get("name").asText());
-    assertEquals("Foreign path", get("/api/v1/paths/" + foreignPathId, ownerToken).getBody().get("name").asText());
-    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + foreignPathId, importingToken).getStatusCode());
+    assertEquals(
+        "First",
+        get("/api/v1/paths/" + duplicatePathId, importingToken).getBody().get("name").asText());
+    assertEquals(
+        "Foreign path",
+        get("/api/v1/paths/" + foreignPathId, ownerToken).getBody().get("name").asText());
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        get("/api/v1/paths/" + foreignPathId, importingToken).getStatusCode());
   }
 
   @Test
@@ -439,7 +597,10 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.OK, session.getStatusCode());
 
     ResponseEntity<JsonNode> merged =
-        post("/api/v1/paths/" + sourceId + "/merge", token, "{\"targetPathId\":\"" + targetId + "\"}");
+        post(
+            "/api/v1/paths/" + sourceId + "/merge",
+            token,
+            "{\"targetPathId\":\"" + targetId + "\"}");
     assertEquals(HttpStatus.NO_CONTENT, merged.getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + sourceId, token).getStatusCode());
 
@@ -471,13 +632,19 @@ class KnowIntegrationTest {
 
   // Criteria: notes, tags, and path membership
 
-    @Test
+  @Test
   void richNotesSupportLabelsSearchPaginationAndOptimisticUpdates() {
     String token = freshToken();
-    String content = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Rich body search\"}]}]}";
-    ResponseEntity<JsonNode> created = post("/api/v1/notes", token,
-        "{\"title\":\"Rich note\",\"content\":" + quote(content)
-            + ",\"contentText\":\"Rich body search\",\"tags\":[\"Study\",\"Ideas\"]}");
+    String content =
+        "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Rich"
+            + " body search\"}]}]}";
+    ResponseEntity<JsonNode> created =
+        post(
+            "/api/v1/notes",
+            token,
+            "{\"title\":\"Rich note\",\"content\":"
+                + quote(content)
+                + ",\"contentText\":\"Rich body search\",\"tags\":[\"Study\",\"Ideas\"]}");
     assertEquals(HttpStatus.OK, created.getStatusCode());
     String noteId = created.getBody().get("id").asText();
     assertEquals(2, created.getBody().get("tags").size());
@@ -488,14 +655,24 @@ class KnowIntegrationTest {
     assertEquals(noteId, page.getBody().get("items").get(0).get("id").asText());
 
     long version = created.getBody().get("version").asLong();
-    ResponseEntity<JsonNode> edited = put("/api/v1/notes/" + noteId, token,
-        "{\"title\":\"Rich note updated\",\"content\":" + quote(content)
-            + ",\"contentText\":\"Updated searchable body\",\"tags\":[\"New label\"],\"version\":" + version + "}");
+    ResponseEntity<JsonNode> edited =
+        put(
+            "/api/v1/notes/" + noteId,
+            token,
+            "{\"title\":\"Rich note updated\",\"content\":"
+                + quote(content)
+                + ",\"contentText\":\"Updated searchable body\",\"tags\":[\"New"
+                + " label\"],\"version\":"
+                + version
+                + "}");
     assertEquals(HttpStatus.OK, edited.getStatusCode());
     assertEquals("New label", edited.getBody().get("tags").get(0).asText());
 
-    ResponseEntity<JsonNode> stale = put("/api/v1/notes/" + noteId, token,
-        "{\"title\":\"Stale\",\"content\":" + quote(content) + ",\"version\":" + version + "}");
+    ResponseEntity<JsonNode> stale =
+        put(
+            "/api/v1/notes/" + noteId,
+            token,
+            "{\"title\":\"Stale\",\"content\":" + quote(content) + ",\"version\":" + version + "}");
     assertEquals(HttpStatus.CONFLICT, stale.getStatusCode());
   }
 
@@ -528,14 +705,20 @@ class KnowIntegrationTest {
 
     // Start a timer
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Study session\",\"source\":\"WEB\"}");
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Study session\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     String timerId = started.getBody().get("id").asText();
     assertTrue(started.getBody().get("running").asBoolean());
 
     // Second start is rejected (one-running-timer invariant)
     ResponseEntity<JsonNode> dup =
-        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Another session\",\"source\":\"WEB\"}");
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Another session\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CONFLICT, dup.getStatusCode());
 
     // Current timer is visible
@@ -554,7 +737,10 @@ class KnowIntegrationTest {
   void timerCanBeCancelled() {
     String token = freshToken();
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"To be cancelled\",\"source\":\"WEB\"}");
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"To be cancelled\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     String timerId = started.getBody().get("id").asText();
 
@@ -570,8 +756,11 @@ class KnowIntegrationTest {
   @Test
   void trackerDraftIsSharedOwnedAndClearedOnStart() {
     String token = freshToken(), other = freshToken();
-    String label = post("/api/v1/labels", token,
-        "{\"name\":\"Shared focus\",\"scopes\":[\"TIME_ENTRY\"]}").getBody().get("id").asText();
+    String label =
+        post("/api/v1/labels", token, "{\"name\":\"Shared focus\",\"scopes\":[\"TIME_ENTRY\"]}")
+            .getBody()
+            .get("id")
+            .asText();
     String body = "{\"labelIds\":[\"" + label + "\"],\"description\":\" Shared draft \"}";
     assertEquals(HttpStatus.OK, put("/api/v1/timers/draft", token, body).getStatusCode());
     JsonNode draft = get("/api/v1/timers/draft", token).getBody();
@@ -579,14 +768,21 @@ class KnowIntegrationTest {
     assertEquals(label, draft.get("labelIds").get(0).asText());
     assertEquals(0, get("/api/v1/timers/draft", other).getBody().get("labelIds").size());
     assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/timers/draft", other, body).getStatusCode());
-    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/timers/draft", token,
-        "{\"labelIds\":[],\"description\":\"" + "x".repeat(5001) + "\"}").getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        put(
+                "/api/v1/timers/draft",
+                token,
+                "{\"labelIds\":[],\"description\":\"" + "x".repeat(5001) + "\"}")
+            .getStatusCode());
     assertEquals(HttpStatus.CREATED, post("/api/v1/timers", token, body).getStatusCode());
     assertEquals(0, get("/api/v1/timers/draft", token).getBody().get("labelIds").size());
     assertEquals(HttpStatus.CONFLICT, put("/api/v1/timers/draft", token, body).getStatusCode());
     post("/api/v1/timers/stop", token, "{}");
-    assertEquals(HttpStatus.OK, put("/api/v1/timers/draft", token,
-        "{\"labelIds\":[],\"description\":null}").getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        put("/api/v1/timers/draft", token, "{\"labelIds\":[],\"description\":null}")
+            .getStatusCode());
     assertEquals(0, get("/api/v1/timers/draft", token).getBody().get("labelIds").size());
   }
 
@@ -594,7 +790,10 @@ class KnowIntegrationTest {
   void timerPreservesIosSource() {
     String token = freshToken();
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"iOS session\",\"source\":\"IOS\"}");
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"iOS session\",\"source\":\"IOS\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     assertEquals("IOS", started.getBody().get("source").asText());
 
@@ -611,7 +810,10 @@ class KnowIntegrationTest {
     String pathId = path.getBody().get("id").asText();
 
     ResponseEntity<JsonNode> started =
-        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Config test\",\"source\":\"WEB\"}");
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Config test\",\"source\":\"WEB\"}");
     assertEquals(HttpStatus.CREATED, started.getStatusCode());
     String timerId = started.getBody().get("id").asText();
 
@@ -734,7 +936,10 @@ class KnowIntegrationTest {
     String pathId = path.getBody().get("id").asText();
 
     ResponseEntity<JsonNode> label =
-        post("/api/v1/labels", token, "{\"name\":\"Focused work\",\"scopes\":[\"CALENDAR\",\"TIME_ENTRY\"]}");
+        post(
+            "/api/v1/labels",
+            token,
+            "{\"name\":\"Focused work\",\"scopes\":[\"CALENDAR\",\"TIME_ENTRY\"]}");
     String labelId = label.getBody().get("id").asText();
 
     ResponseEntity<JsonNode> timerStart =
@@ -764,10 +969,10 @@ class KnowIntegrationTest {
 
     assertEquals(HttpStatus.CREATED, created.getStatusCode());
     assertEquals("Private", created.getBody().get("name").asText());
-    assertFalse(
-        get("/api/v1/labels?scope=CALENDAR", token).getBody().elements().hasNext());
+    assertFalse(get("/api/v1/labels?scope=CALENDAR", token).getBody().elements().hasNext());
     assertEquals(
-        "Private", get("/api/v1/labels?scope=TIME_ENTRY", token).getBody().get(0).get("name").asText());
+        "Private",
+        get("/api/v1/labels?scope=TIME_ENTRY", token).getBody().get(0).get("name").asText());
   }
 
   @Test
@@ -817,7 +1022,10 @@ class KnowIntegrationTest {
 
     // Start timer; sessions are now read from time_entry rather than persisted as activity rows.
     ResponseEntity<JsonNode> timerRes =
-        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"Activity timer\",\"source\":\"WEB\"}");
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Activity timer\",\"source\":\"WEB\"}");
     String timerId = timerRes.getBody().get("id").asText();
     post("/api/v1/timers/" + timerId + "/stop", token, "{}");
 
@@ -833,7 +1041,7 @@ class KnowIntegrationTest {
     assertFalse(hasTimerStarted, "timer transition activity should not be persisted");
   }
 
-   @Test
+  @Test
   void searchQueryTooLongIsRejected() {
     String token = freshToken();
     ResponseEntity<JsonNode> result = get("/api/v1/search?q=" + "x".repeat(201), token);
@@ -1113,7 +1321,7 @@ class KnowIntegrationTest {
 
   // Criteria: API size validation
 
-   @Test
+  @Test
   void oversizedNoteContentIsAcceptedUpToLimit() {
     String token = freshToken();
     // title max 240; content is text (no max in schema), so test a large but valid note
@@ -1126,7 +1334,7 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.OK, note.getStatusCode());
   }
 
-   @Test
+  @Test
   void calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave() {
     String token = freshToken();
     ResponseEntity<JsonNode> sickLeave =
@@ -1150,7 +1358,8 @@ class KnowIntegrationTest {
     assertEquals("Doctor advised rest", saved.getBody().get("note").asText());
     assertEquals(2, saved.getBody().get("labels").size());
 
-    JsonNode listed = get("/api/v1/calendar/days?startDate=2026-09-01&endDate=2026-09-30", token).getBody();
+    JsonNode listed =
+        get("/api/v1/calendar/days?startDate=2026-09-01&endDate=2026-09-30", token).getBody();
     assertEquals(1, listed.size());
     assertEquals("2026-09-04", listed.get(0).get("date").asText());
 
@@ -1158,16 +1367,19 @@ class KnowIntegrationTest {
         put(
             "/api/v1/calendar/days/2026-09-04",
             token,
-            "{\"note\":\"Recovery milestone\",\"labels\":[{\"labelId\":\""
-                + milestoneId
-                + "\"}]}");
+            "{\"note\":\"Recovery milestone\",\"labels\":[{\"labelId\":\"" + milestoneId + "\"}]}");
     assertEquals(HttpStatus.OK, replacement.getStatusCode());
     assertEquals(1, replacement.getBody().get("labels").size());
     assertEquals("Milestone", replacement.getBody().get("labels").get(0).get("name").asText());
     assertTrue(replacement.getBody().get("labels").get(0).get("portion").isNull());
 
-    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/calendar/days/2026-09-04", token).getStatusCode());
-    assertEquals(0, get("/api/v1/calendar/days?startDate=2026-09-04&endDate=2026-09-04", token).getBody().size());
+    assertEquals(
+        HttpStatus.NO_CONTENT, delete("/api/v1/calendar/days/2026-09-04", token).getStatusCode());
+    assertEquals(
+        0,
+        get("/api/v1/calendar/days?startDate=2026-09-04&endDate=2026-09-04", token)
+            .getBody()
+            .size());
   }
 
   @Test
@@ -1190,9 +1402,12 @@ class KnowIntegrationTest {
         put(
                 "/api/v1/calendar/days/2026-09-05",
                 owner,
-                "{\"note\":\"Annual leave\",\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.5}]}")
+                "{\"note\":\"Annual leave\",\"labels\":[{\"labelId\":\""
+                    + labelId
+                    + "\",\"portion\":0.5}]}")
             .getStatusCode());
-    assertEquals(HttpStatus.CONFLICT, delete("/api/v1/calendar/labels/" + labelId, owner).getStatusCode());
+    assertEquals(
+        HttpStatus.CONFLICT, delete("/api/v1/calendar/labels/" + labelId, owner).getStatusCode());
 
     JsonNode report = get("/api/v1/reports?period=MONTH&anchor=2026-09-05", owner).getBody();
     assertEquals(0, report.get("totalSeconds").asLong());
@@ -1209,8 +1424,16 @@ class KnowIntegrationTest {
   @Test
   void calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels() {
     String token = freshToken();
-    String sickLeaveId = post("/api/v1/calendar/labels", token, "{\"name\":\"Sick leave\"}").getBody().get("id").asText();
-    String milestoneId = post("/api/v1/calendar/labels", token, "{\"name\":\"Milestone\"}").getBody().get("id").asText();
+    String sickLeaveId =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Sick leave\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    String milestoneId =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Milestone\"}")
+            .getBody()
+            .get("id")
+            .asText();
     assertEquals(
         HttpStatus.OK,
         put(
@@ -1230,14 +1453,18 @@ class KnowIntegrationTest {
     assertEquals(3, applied.getBody().size());
     for (JsonNode day : applied.getBody()) {
       assertTrue(day.get("labels").toString().contains("Sick leave"));
-      assertEquals(1.0, day.get("labels").get(day.get("labels").size() - 1).get("portion").asDouble(), 0.001);
+      assertEquals(
+          1.0,
+          day.get("labels").get(day.get("labels").size() - 1).get("portion").asDouble(),
+          0.001);
     }
     JsonNode middle = applied.getBody().get(1);
     assertEquals("Existing record", middle.get("note").asText());
     assertTrue(middle.get("labels").toString().contains("Milestone"));
     JsonNode report = get("/api/v1/reports?period=MONTH&anchor=2026-09-10", token).getBody();
     JsonNode sickSummary = null;
-    for (JsonNode label : report.get("calendarLabels")) if (label.get("label").asText().equals("Sick leave")) sickSummary = label;
+    for (JsonNode label : report.get("calendarLabels"))
+      if (label.get("label").asText().equals("Sick leave")) sickSummary = label;
     assertNotNull(sickSummary);
     assertEquals(3.0, sickSummary.get("days").asDouble(), 0.001);
   }
@@ -1256,7 +1483,8 @@ class KnowIntegrationTest {
         put(
                 "/api/v1/calendar/days/range",
                 token,
-                "{\"startDate\":\"2026-09-01\",\"endDate\":\"2026-09-03\",\"note\":\"Release week\",\"labels\":[{\"labelId\":\""
+                "{\"startDate\":\"2026-09-01\",\"endDate\":\"2026-09-03\",\"note\":\"Release"
+                    + " week\",\"labels\":[{\"labelId\":\""
                     + labelId
                     + "\",\"portion\":1.0}]}")
             .getStatusCode());
@@ -1296,20 +1524,14 @@ class KnowIntegrationTest {
         put(
             "/api/v1/calendar/days/2026-09-15",
             token,
-            "{\"labels\":[{\"labelId\":\""
-                + labelId
-                + "\"},{\"labelId\":\""
-                + labelId
-                + "\"}]}");
+            "{\"labels\":[{\"labelId\":\"" + labelId + "\"},{\"labelId\":\"" + labelId + "\"}]}");
     assertEquals(HttpStatus.BAD_REQUEST, duplicateLabels.getStatusCode());
 
     ResponseEntity<JsonNode> invalidPortion =
         put(
             "/api/v1/calendar/days/2026-09-15",
             token,
-            "{\"labels\":[{\"labelId\":\""
-                + labelId
-                + "\",\"portion\":0.30}]}");
+            "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.30}]}");
     assertEquals(HttpStatus.BAD_REQUEST, invalidPortion.getStatusCode());
 
     ResponseEntity<JsonNode> oversizedRange =
@@ -1329,26 +1551,46 @@ class KnowIntegrationTest {
     String labelId = created.getBody().get("id").asText();
     assertEquals(
         HttpStatus.NOT_FOUND,
-        put("/api/v1/calendar/labels/" + labelId, other, "{\"name\":\"Vacation\",\"color\":\"#E05D44\"}").getStatusCode());
+        put(
+                "/api/v1/calendar/labels/" + labelId,
+                other,
+                "{\"name\":\"Vacation\",\"color\":\"#E05D44\"}")
+            .getStatusCode());
 
     ResponseEntity<JsonNode> changed =
-        put("/api/v1/calendar/labels/" + labelId, owner, "{\"name\":\"Vacation\",\"color\":\"#E05D44\"}");
+        put(
+            "/api/v1/calendar/labels/" + labelId,
+            owner,
+            "{\"name\":\"Vacation\",\"color\":\"#E05D44\"}");
     assertEquals(HttpStatus.OK, changed.getStatusCode());
     assertEquals("#E05D44", changed.getBody().get("color").asText());
-    put("/api/v1/calendar/days/2026-09-12", owner, "{\"labels\":[{\"labelId\":\"" + labelId + "\"}]}");
-    JsonNode day = get("/api/v1/calendar/days?startDate=2026-09-12&endDate=2026-09-12", owner).getBody().get(0);
+    put(
+        "/api/v1/calendar/days/2026-09-12",
+        owner,
+        "{\"labels\":[{\"labelId\":\"" + labelId + "\"}]}");
+    JsonNode day =
+        get("/api/v1/calendar/days?startDate=2026-09-12&endDate=2026-09-12", owner)
+            .getBody()
+            .get(0);
     assertEquals("#E05D44", day.get("labels").get(0).get("color").asText());
     assertEquals(
         HttpStatus.BAD_REQUEST,
-        put("/api/v1/calendar/labels/" + labelId, owner, "{\"name\":\"Vacation\",\"color\":\"#123456\"}").getStatusCode());
+        put(
+                "/api/v1/calendar/labels/" + labelId,
+                owner,
+                "{\"name\":\"Vacation\",\"color\":\"#123456\"}")
+            .getStatusCode());
   }
 
   @Test
   void logsAreOwnedTimestampedAndOptimisticallyEditable() {
     String owner = freshToken();
     String other = freshToken();
-    ResponseEntity<JsonNode> created = post("/api/v1/logs", owner,
-        "{\"body\":\"First thought\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}");
+    ResponseEntity<JsonNode> created =
+        post(
+            "/api/v1/logs",
+            owner,
+            "{\"body\":\"First thought\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}");
     assertEquals(HttpStatus.CREATED, created.getStatusCode());
     String id = created.getBody().get("id").asText();
     long version = created.getBody().get("version").asLong();
@@ -1359,28 +1601,55 @@ class KnowIntegrationTest {
     assertEquals(HttpStatus.OK, get("/api/v1/logs/" + id, owner).getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/logs/" + id, other).getStatusCode());
     assertTrue(get("/api/v1/labels?scope=LOG", owner).getBody().isEmpty());
-    String ownerLabelId = post("/api/v1/labels", owner,
-        "{\"name\":\"Important\",\"scopes\":[\"LOG\"]}").getBody().get("id").asText();
-    String otherLabelId = post("/api/v1/labels", other,
-        "{\"name\":\"Private\",\"scopes\":[\"LOG\"]}").getBody().get("id").asText();
-    ResponseEntity<JsonNode> labeled = put("/api/v1/logs/" + id + "/labels", owner,
-        "{\"labelIds\":[\"" + ownerLabelId + "\"]}");
+    String ownerLabelId =
+        post("/api/v1/labels", owner, "{\"name\":\"Important\",\"scopes\":[\"LOG\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    String otherLabelId =
+        post("/api/v1/labels", other, "{\"name\":\"Private\",\"scopes\":[\"LOG\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    ResponseEntity<JsonNode> labeled =
+        put("/api/v1/logs/" + id + "/labels", owner, "{\"labelIds\":[\"" + ownerLabelId + "\"]}");
     assertEquals(HttpStatus.OK, labeled.getStatusCode());
     assertTrue(labeled.getBody().get("labelIds").toString().contains(ownerLabelId));
-    assertEquals(HttpStatus.NOT_FOUND, put("/api/v1/logs/" + id + "/labels", other,
-        "{\"labelIds\":[]}").getStatusCode());
-    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/logs/" + id + "/labels", owner,
-        "{\"labelIds\":[\"" + otherLabelId + "\"]}").getStatusCode());
-    assertEquals(HttpStatus.OK, put("/api/v1/logs/" + id + "/labels", owner,
-        "{\"labelIds\":[]}").getStatusCode());
-    assertEquals(HttpStatus.NOT_FOUND, put("/api/v1/logs/" + id, other,
-        "{\"body\":\"No access\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}").getStatusCode());
-    ResponseEntity<JsonNode> updated = put("/api/v1/logs/" + id, owner,
-        "{\"body\":\"Edited thought\",\"occurredAt\":\"2026-09-11T11:20:00Z\",\"version\":" + version + "}");
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        put("/api/v1/logs/" + id + "/labels", other, "{\"labelIds\":[]}").getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        put("/api/v1/logs/" + id + "/labels", owner, "{\"labelIds\":[\"" + otherLabelId + "\"]}")
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        put("/api/v1/logs/" + id + "/labels", owner, "{\"labelIds\":[]}").getStatusCode());
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        put(
+                "/api/v1/logs/" + id,
+                other,
+                "{\"body\":\"No access\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}")
+            .getStatusCode());
+    ResponseEntity<JsonNode> updated =
+        put(
+            "/api/v1/logs/" + id,
+            owner,
+            "{\"body\":\"Edited thought\",\"occurredAt\":\"2026-09-11T11:20:00Z\",\"version\":"
+                + version
+                + "}");
     assertEquals(HttpStatus.OK, updated.getStatusCode());
     assertEquals("Edited thought", updated.getBody().get("body").asText());
-    assertEquals(HttpStatus.CONFLICT, put("/api/v1/logs/" + id, owner,
-        "{\"body\":\"Stale\",\"occurredAt\":\"2026-09-11T11:20:00Z\",\"version\":" + version + "}").getStatusCode());
+    assertEquals(
+        HttpStatus.CONFLICT,
+        put(
+                "/api/v1/logs/" + id,
+                owner,
+                "{\"body\":\"Stale\",\"occurredAt\":\"2026-09-11T11:20:00Z\",\"version\":"
+                    + version
+                    + "}")
+            .getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, delete("/api/v1/logs/" + id, other).getStatusCode());
     assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/logs/" + id, owner).getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/logs/" + id, owner).getStatusCode());

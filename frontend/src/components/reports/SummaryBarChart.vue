@@ -151,13 +151,16 @@ function linearTrend(
       index < firstIndex ? null : Math.round(meanY),
     );
   }
-  const slope = points.reduce(
-    (sum, point) => sum + (point.x - meanX) * (point.y - meanY),
-    0,
-  ) / denominator;
+  const slope =
+    points.reduce(
+      (sum, point) => sum + (point.x - meanX) * (point.y - meanY),
+      0,
+    ) / denominator;
   const intercept = meanY - slope * meanX;
   return Array.from({ length: lastIndex + 1 }, (_value, index) =>
-    index < firstIndex ? null : Math.max(0, Math.round(intercept + slope * index)),
+    index < firstIndex
+      ? null
+      : Math.max(0, Math.round(intercept + slope * index)),
   );
 }
 function parabolicTrend(
@@ -179,7 +182,8 @@ function parabolicTrend(
   for (let column = 0; column < 3; column += 1) {
     let pivot = column;
     for (let row = column + 1; row < 3; row += 1) {
-      if (Math.abs(matrix[row][column]) > Math.abs(matrix[pivot][column])) pivot = row;
+      if (Math.abs(matrix[row][column]) > Math.abs(matrix[pivot][column]))
+        pivot = row;
     }
     if (Math.abs(matrix[pivot][column]) < Number.EPSILON) {
       return linearTrend(points, firstIndex, lastIndex);
@@ -188,16 +192,20 @@ function parabolicTrend(
     [rhs[column], rhs[pivot]] = [rhs[pivot], rhs[column]];
     for (let row = column + 1; row < 3; row += 1) {
       const factor = matrix[row][column] / matrix[column][column];
-      for (let item = column; item < 3; item += 1) matrix[row][item] -= factor * matrix[column][item];
+      for (let item = column; item < 3; item += 1)
+        matrix[row][item] -= factor * matrix[column][item];
       rhs[row] -= factor * rhs[column];
     }
   }
   const coefficients = [0, 0, 0];
   for (let row = 2; row >= 0; row -= 1) {
-    const remainder = coefficients.slice(row + 1).reduce(
-      (sum, coefficient, offset) => sum + coefficient * matrix[row][row + 1 + offset],
-      0,
-    );
+    const remainder = coefficients
+      .slice(row + 1)
+      .reduce(
+        (sum, coefficient, offset) =>
+          sum + coefficient * matrix[row][row + 1 + offset],
+        0,
+      );
     coefficients[row] = (rhs[row] - remainder) / matrix[row][row];
   }
   return Array.from({ length: lastIndex + 1 }, (_value, index) =>
@@ -205,7 +213,11 @@ function parabolicTrend(
       ? null
       : Math.max(
           0,
-          Math.round(coefficients[0] * index ** 2 + coefficients[1] * index + coefficients[2]),
+          Math.round(
+            coefficients[0] * index ** 2 +
+              coefficients[1] * index +
+              coefficients[2],
+          ),
         ),
   );
 }
@@ -308,10 +320,14 @@ const option = computed<EChartsOption>(() => ({
             `<div class="tooltip-row"><span><i style="background:${colorFor(item)}"></i>${escapeHtml(item.label)}</span><b>${formatDuration(item.seconds)} <small>${percentageOf(item.seconds, day.totalSeconds).toFixed(2)}%</small></b></div>`,
         )
         .join("");
-      const trend = trendlineValues.value[dayIndex >= 0 ? dayIndex : entries[0]?.dataIndex || 0];
-      const trendRow = props.trendlineMode !== "OFF" && trend !== undefined
-        ? `<div>${props.trendlineMode === "LINEAR" ? "Linear" : "Parabolic"} trend: ${formatDuration(Math.round(trend))}</div>`
-        : "";
+      const trend =
+        trendlineValues.value[
+          dayIndex >= 0 ? dayIndex : entries[0]?.dataIndex || 0
+        ];
+      const trendRow =
+        props.trendlineMode !== "OFF" && trend !== undefined
+          ? `<div>${props.trendlineMode === "LINEAR" ? "Linear" : "Parabolic"} trend: ${formatDuration(Math.round(trend))}</div>`
+          : "";
       return `<div class="tooltip-heading"><strong>${bucketLabel(day.date)}</strong><span>Total: ${formatDuration(day.totalSeconds)}</span></div>${trendRow}${rows}${props.showCalendar ? calendarRows(day) : ""}`;
     },
   },
@@ -362,14 +378,23 @@ const option = computed<EChartsOption>(() => ({
   ],
   series: [
     ...(trendlineValues.value.length
-      ? [{
-          name: props.trendlineMode === "LINEAR" ? "Linear trend" : "Parabolic trend",
-          type: "line" as const,
-          data: trendlineValues.value,
-          symbol: "none",
-          lineStyle: { color: chartTheme.value.text, width: 2, type: "dashed" as const },
-          z: 5,
-        }]
+      ? [
+          {
+            name:
+              props.trendlineMode === "LINEAR"
+                ? "Linear trend"
+                : "Parabolic trend",
+            type: "line" as const,
+            data: trendlineValues.value,
+            symbol: "none",
+            lineStyle: {
+              color: chartTheme.value.text,
+              width: 2,
+              type: "dashed" as const,
+            },
+            z: 5,
+          },
+        ]
       : []),
     ...(props.showCalendar && calendarBars.value.length
       ? [
@@ -421,7 +446,15 @@ const option = computed<EChartsOption>(() => ({
   <div
     class="chart-frame"
     role="img"
-    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${days.filter((day) => day.totalSeconds > 0).map((day) => `${bucketLabel(day.date)}: ${aggregateDuration(day.totalSeconds)}`).join('; ') || 'No tracked time'}`"
+    :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${
+      days
+        .filter((day) => day.totalSeconds > 0)
+        .map(
+          (day) =>
+            `${bucketLabel(day.date)}: ${aggregateDuration(day.totalSeconds)}`,
+        )
+        .join('; ') || 'No tracked time'
+    }`"
   >
     <v-chart
       class="report-echart"

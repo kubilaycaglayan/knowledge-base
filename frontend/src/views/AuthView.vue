@@ -48,9 +48,10 @@ async function acceptToken(result: { token: string }) {
 async function submit() {
   if (submitting.value) return;
   error.value = "";
-  passwordConfirmationError.value = register.value && passwordConfirmation.value !== password.value
-    ? "Passwords do not match."
-    : "";
+  passwordConfirmationError.value =
+    register.value && passwordConfirmation.value !== password.value
+      ? "Passwords do not match."
+      : "";
   if (passwordConfirmationError.value) return;
   submitting.value = true;
   try {
@@ -126,7 +127,8 @@ onMounted(() => {
     return;
   }
 
-  googleScript = document.querySelector<HTMLScriptElement>("#google-gsi-client");
+  googleScript =
+    document.querySelector<HTMLScriptElement>("#google-gsi-client");
   googleScript?.addEventListener("load", renderGoogleButton);
 });
 
@@ -150,23 +152,111 @@ onUnmounted(() => {
           required
           aria-label="Email" /></label
       ><label
-        >Password<div class="password-control"><input
-          v-model="password"
-          :type="passwordVisible ? 'text' : 'password'"
-          name="password"
-          :autocomplete="register ? 'new-password' : 'current-password'"
-          minlength="9"
-          required
-          aria-label="Password" /><button class="password-visibility ghost" type="button" :aria-label="passwordVisible ? 'Hide password' : 'Show password'" :title="passwordVisible ? 'Hide password' : 'Show password'" @click="passwordVisible = !passwordVisible"><svg v-if="passwordVisible" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.7 10.7 0 0 1 12 5c5.2 0 8.9 4.1 10 7-0.4 1.1-1.1 2.3-2.2 3.4M6.2 6.2C4.5 7.4 3.4 9.1 2 12c1.1 2.9 4.8 7 10 7 1.3 0 2.5-.3 3.5-.8" /></svg><svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></svg></button></div></label
+        >Password
+        <div class="password-control">
+          <input
+            v-model="password"
+            :type="passwordVisible ? 'text' : 'password'"
+            name="password"
+            :autocomplete="register ? 'new-password' : 'current-password'"
+            minlength="9"
+            required
+            aria-label="Password"
+          /><button
+            class="password-visibility ghost"
+            type="button"
+            :aria-label="passwordVisible ? 'Hide password' : 'Show password'"
+            :title="passwordVisible ? 'Hide password' : 'Show password'"
+            @click="passwordVisible = !passwordVisible"
+          >
+            <svg
+              v-if="passwordVisible"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.7 10.7 0 0 1 12 5c5.2 0 8.9 4.1 10 7-0.4 1.1-1.1 2.3-2.2 3.4M6.2 6.2C4.5 7.4 3.4 9.1 2 12c1.1 2.9 4.8 7 10 7 1.3 0 2.5-.3 3.5-.8"
+              /></svg
+            ><svg
+              v-else
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+              <circle cx="12" cy="12" r="2.5" />
+            </svg>
+          </button></div></label
       ><label v-if="register"
-        >Confirm password<div class="password-control"><input
-          v-model="passwordConfirmation"
-          :type="passwordConfirmationVisible ? 'text' : 'password'"
-          name="passwordConfirmation"
-          autocomplete="new-password"
-          required
-          aria-label="Confirm password" /><button class="password-visibility ghost" type="button" :aria-label="passwordConfirmationVisible ? 'Hide password confirmation' : 'Show password confirmation'" :title="passwordConfirmationVisible ? 'Hide password confirmation' : 'Show password confirmation'" @click="passwordConfirmationVisible = !passwordConfirmationVisible"><svg v-if="passwordConfirmationVisible" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.7 10.7 0 0 1 12 5c5.2 0 8.9 4.1 10 7-0.4 1.1-1.1 2.3-2.2 3.4M6.2 6.2C4.5 7.4 3.4 9.1 2 12c1.1 2.9 4.8 7 10 7 1.3 0 2.5-.3 3.5-.8" /></svg><svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></svg></button></div><span v-if="passwordConfirmationError" class="field-error" role="alert">{{ passwordConfirmationError }}</span></label
-      ><button class="primary" type="submit" :disabled="submitting"><span v-if="submitting" class="auth-spinner" aria-hidden="true"></span>
+        >Confirm password
+        <div class="password-control">
+          <input
+            v-model="passwordConfirmation"
+            :type="passwordConfirmationVisible ? 'text' : 'password'"
+            name="passwordConfirmation"
+            autocomplete="new-password"
+            required
+            aria-label="Confirm password"
+          /><button
+            class="password-visibility ghost"
+            type="button"
+            :aria-label="
+              passwordConfirmationVisible
+                ? 'Hide password confirmation'
+                : 'Show password confirmation'
+            "
+            :title="
+              passwordConfirmationVisible
+                ? 'Hide password confirmation'
+                : 'Show password confirmation'
+            "
+            @click="passwordConfirmationVisible = !passwordConfirmationVisible"
+          >
+            <svg
+              v-if="passwordConfirmationVisible"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.7 10.7 0 0 1 12 5c5.2 0 8.9 4.1 10 7-0.4 1.1-1.1 2.3-2.2 3.4M6.2 6.2C4.5 7.4 3.4 9.1 2 12c1.1 2.9 4.8 7 10 7 1.3 0 2.5-.3 3.5-.8"
+              /></svg
+            ><svg
+              v-else
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+              <circle cx="12" cy="12" r="2.5" />
+            </svg>
+          </button>
+        </div>
+        <span
+          v-if="passwordConfirmationError"
+          class="field-error"
+          role="alert"
+          >{{ passwordConfirmationError }}</span
+        ></label
+      ><button class="primary" type="submit" :disabled="submitting">
+        <span v-if="submitting" class="auth-spinner" aria-hidden="true"></span>
         {{ register ? "Create account" : "Sign in" }}
       </button>
     </form>
@@ -175,7 +265,14 @@ onUnmounted(() => {
       <div ref="googleButton" aria-label="Continue with Google"></div>
     </div>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
-    <button v-if="error" class="auth-retry text-button" type="button" @click="submit">Try again</button>
+    <button
+      v-if="error"
+      class="auth-retry text-button"
+      type="button"
+      @click="submit"
+    >
+      Try again
+    </button>
     <button class="text-button" @click="register = !register">
       {{
         register

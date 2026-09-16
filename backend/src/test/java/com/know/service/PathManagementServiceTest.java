@@ -42,7 +42,8 @@ class PathManagementServiceTest {
   @Test
   void mergeRejectsAnUnownedTargetWithoutMovingOrDeletingTheSource() {
     UUID user = UUID.randomUUID(), sourceId = UUID.randomUUID(), targetId = UUID.randomUUID();
-    when(paths.findByIdAndUserId(sourceId, user)).thenReturn(Optional.of(new Path(user, "Source", null)));
+    when(paths.findByIdAndUserId(sourceId, user))
+        .thenReturn(Optional.of(new Path(user, "Source", null)));
     when(paths.findByIdAndUserId(targetId, user)).thenReturn(Optional.empty());
 
     assertThrows(ResponseStatusException.class, () -> service.merge(user, sourceId, targetId));

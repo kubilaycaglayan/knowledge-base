@@ -28,7 +28,9 @@ class LabelManagementServiceTest {
     when(labels.save(any(Label.class))).thenAnswer(invocation -> invocation.getArgument(0));
     LabelManagementService service = service();
 
-    LabelManagementService.View view = service.create(user, " Work ", "#2878D5", List.of(LabelScopeType.NOTE, LabelScopeType.TIME_ENTRY));
+    LabelManagementService.View view =
+        service.create(
+            user, " Work ", "#2878D5", List.of(LabelScopeType.NOTE, LabelScopeType.TIME_ENTRY));
 
     assertEquals("Work", view.name());
     verify(scopes, times(2)).save(any(LabelScope.class));
@@ -39,11 +41,14 @@ class LabelManagementServiceTest {
     UUID user = UUID.randomUUID();
     Label label = new Label(user, "Work", "#2878D5");
     when(labels.findByIdAndUserId(label.getId(), user)).thenReturn(Optional.of(label));
-    when(scopes.existsByIdLabelIdAndIdScope(label.getId(), LabelScopeType.TIME_ENTRY)).thenReturn(true);
+    when(scopes.existsByIdLabelIdAndIdScope(label.getId(), LabelScopeType.TIME_ENTRY))
+        .thenReturn(true);
     when(timeEntries.existsByIdLabelId(label.getId())).thenReturn(true);
     LabelManagementService service = service();
 
-    assertThrows(ResponseStatusException.class, () -> service.update(user, label.getId(), "Work", "#2878D5", List.of()));
+    assertThrows(
+        ResponseStatusException.class,
+        () -> service.update(user, label.getId(), "Work", "#2878D5", List.of()));
     verify(scopes, never()).deleteById(any());
   }
 

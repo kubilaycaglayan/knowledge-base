@@ -21,8 +21,16 @@ const router = createRouter({
     { path: "/imports", component: () => import("./views/ImportsView.vue") },
     { path: "/settings", component: () => import("./views/SettingsView.vue") },
     { path: "/labels", component: () => import("./views/LabelsView.vue") },
-    { path: "/notes", name: "notes", component: () => import("./views/NotesView.vue") },
-    { path: "/notes/:id", name: "note-editor", component: () => import("./views/NotesView.vue") },
+    {
+      path: "/notes",
+      name: "notes",
+      component: () => import("./views/NotesView.vue"),
+    },
+    {
+      path: "/notes/:id",
+      name: "note-editor",
+      component: () => import("./views/NotesView.vue"),
+    },
   ],
 });
 
@@ -33,13 +41,13 @@ router.beforeEach((to, from) => {
   if (from.path === "/reports" && window.location.search) {
     lastReportsSearch = window.location.search;
   }
-  if (to.path === "/reports" && !Object.keys(to.query).length && lastReportsSearch) {
+  if (
+    to.path === "/reports" &&
+    !Object.keys(to.query).length &&
+    lastReportsSearch
+  ) {
     return `/reports${lastReportsSearch}`;
   }
   return true;
 });
-createApp(App)
-  .use(createPinia())
-  .use(router)
-  .use(vuetify)
-  .mount("#app");
+createApp(App).use(createPinia()).use(router).use(vuetify).mount("#app");

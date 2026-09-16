@@ -7,9 +7,9 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -29,13 +29,16 @@ public class TimerWebSocketHandler extends TextWebSocketHandler {
   }
 
   @Override
-  protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
+  protected void handleTextMessage(WebSocketSession session, TextMessage message)
+      throws IOException {
     if (authenticatedUsers.containsKey(session.getId())) return;
     try {
       AuthMessage auth = mapper.readValue(message.getPayload(), AuthMessage.class);
       UUID userId = tokens.userId(auth.token());
       authenticatedUsers.put(session.getId(), userId);
-      sessions.computeIfAbsent(userId, ignored -> new ConcurrentHashMap<>()).put(session.getId(), session);
+      sessions
+          .computeIfAbsent(userId, ignored -> new ConcurrentHashMap<>())
+          .put(session.getId(), session);
       session.sendMessage(new TextMessage("{\"type\":\"READY\"}"));
     } catch (Exception ex) {
       session.close(CloseStatus.POLICY_VIOLATION);
@@ -82,11 +85,17 @@ public class TimerWebSocketHandler extends TextWebSocketHandler {
   }
 
   private void close(WebSocketSession session) {
-    try { session.close(CloseStatus.SERVER_ERROR); } catch (IOException ignored) { }
+    try {
+      session.close(CloseStatus.SERVER_ERROR);
+    } catch (IOException ignored) {
+    }
   }
 
   private record AuthMessage(String type, String token) {}
+
   private record TimerMessage(String type, com.know.service.TimerService.TimeView timer) {
-    TimerMessage(com.know.service.TimerService.TimeView timer) { this("TIMER_STATE", timer); }
+    TimerMessage(com.know.service.TimerService.TimeView timer) {
+      this("TIMER_STATE", timer);
+    }
   }
 }

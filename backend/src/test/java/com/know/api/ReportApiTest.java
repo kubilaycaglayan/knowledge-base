@@ -4,8 +4,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.know.service.ReportService;
 import java.util.List;
@@ -44,14 +44,17 @@ class ReportApiTest {
     var from = java.time.LocalDate.of(2026, 1, 1);
     var to = java.time.LocalDate.of(2026, 12, 31);
     when(service.report(user, from, to, ReportService.Aggregation.QUARTER))
-        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
+        .thenReturn(
+            new ReportService.Report(
+                "CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
-    mvc.perform(get("/api/v1/reports")
-            .param("startDate", from.toString())
-            .param("endDate", to.toString())
-            .param("aggregation", "quarter")
-            .with(authentication(auth)))
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", from.toString())
+                .param("endDate", to.toString())
+                .param("aggregation", "quarter")
+                .with(authentication(auth)))
         .andExpect(status().isOk());
 
     verify(service).report(user, from, to, ReportService.Aggregation.QUARTER);
@@ -64,29 +67,36 @@ class ReportApiTest {
     UUID labelId = UUID.randomUUID();
     var from = java.time.LocalDate.of(2026, 8, 1);
     var to = java.time.LocalDate.of(2026, 8, 31);
-    when(service.report(user, from, to, ReportService.Aggregation.DAY, List.of(pathId), List.of(labelId)))
-        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
+    when(service.report(
+            user, from, to, ReportService.Aggregation.DAY, List.of(pathId), List.of(labelId)))
+        .thenReturn(
+            new ReportService.Report(
+                "CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
-    mvc.perform(get("/api/v1/reports")
-            .param("startDate", from.toString())
-            .param("endDate", to.toString())
-            .param("pathId", pathId.toString())
-            .param("labelId", labelId.toString())
-            .with(authentication(auth)))
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", from.toString())
+                .param("endDate", to.toString())
+                .param("pathId", pathId.toString())
+                .param("labelId", labelId.toString())
+                .with(authentication(auth)))
         .andExpect(status().isOk());
 
-    verify(service).report(user, from, to, ReportService.Aggregation.DAY, List.of(pathId), List.of(labelId));
+    verify(service)
+        .report(user, from, to, ReportService.Aggregation.DAY, List.of(pathId), List.of(labelId));
   }
 
   @Test
   void invalidCustomAggregationIsRejected() throws Exception {
-    var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
-    mvc.perform(get("/api/v1/reports")
-            .param("startDate", "2026-01-01")
-            .param("endDate", "2026-12-31")
-            .param("aggregation", "decade")
-            .with(authentication(auth)))
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", "2026-01-01")
+                .param("endDate", "2026-12-31")
+                .param("aggregation", "decade")
+                .with(authentication(auth)))
         .andExpect(status().isBadRequest());
   }
 
@@ -107,8 +117,18 @@ class ReportApiTest {
                 List.of(),
                 new ReportService.Sankey(
                     "WEEK",
-                    List.of(new ReportService.SankeyNode("bucket:2026-07-01:path:walk", "Jul 1–7 · Walking", "#123456", 0, 600, "Walking", "Jul 1–7")),
-                    List.of(new ReportService.SankeyLink("bucket:2026-07-01", "path:walk", "Jul 1–7", "Walking", 600)))));
+                    List.of(
+                        new ReportService.SankeyNode(
+                            "bucket:2026-07-01:path:walk",
+                            "Jul 1–7 · Walking",
+                            "#123456",
+                            0,
+                            600,
+                            "Walking",
+                            "Jul 1–7")),
+                    List.of(
+                        new ReportService.SankeyLink(
+                            "bucket:2026-07-01", "path:walk", "Jul 1–7", "Walking", 600)))));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
     mvc.perform(
@@ -129,10 +149,16 @@ class ReportApiTest {
     var from = java.time.LocalDate.of(2026, 8, 24);
     var to = java.time.LocalDate.of(2026, 8, 30);
     when(service.report(user, from, to, ReportService.Aggregation.DAY))
-        .thenReturn(new ReportService.Report("CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
+        .thenReturn(
+            new ReportService.Report(
+                "CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
-    mvc.perform(get("/api/v1/reports").param("startDate", from.toString()).param("endDate", to.toString()).with(authentication(auth)))
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", from.toString())
+                .param("endDate", to.toString())
+                .with(authentication(auth)))
         .andExpect(status().isOk());
 
     verify(service).report(user, from, to, ReportService.Aggregation.DAY);
@@ -140,10 +166,15 @@ class ReportApiTest {
 
   @Test
   void incompleteOrReversedCustomRangeIsRejected() throws Exception {
-    var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
     mvc.perform(get("/api/v1/reports").param("startDate", "2026-08-24").with(authentication(auth)))
         .andExpect(status().isBadRequest());
-    mvc.perform(get("/api/v1/reports").param("startDate", "2026-08-30").param("endDate", "2026-08-24").with(authentication(auth)))
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", "2026-08-30")
+                .param("endDate", "2026-08-24")
+                .with(authentication(auth)))
         .andExpect(status().isBadRequest());
   }
 
@@ -154,19 +185,23 @@ class ReportApiTest {
     var from = java.time.LocalDate.of(2024, 9, 9);
     var twoYears = java.time.LocalDate.of(2026, 9, 9);
     when(service.report(user, from, twoYears, ReportService.Aggregation.QUARTER))
-        .thenReturn(new ReportService.Report("CUSTOM", from, twoYears, 0, List.of(), List.of(), List.of(), List.of(), null));
+        .thenReturn(
+            new ReportService.Report(
+                "CUSTOM", from, twoYears, 0, List.of(), List.of(), List.of(), List.of(), null));
 
-    mvc.perform(get("/api/v1/reports")
-            .param("startDate", from.toString())
-            .param("endDate", twoYears.toString())
-            .param("aggregation", "QUARTER")
-            .with(authentication(auth)))
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", from.toString())
+                .param("endDate", twoYears.toString())
+                .param("aggregation", "QUARTER")
+                .with(authentication(auth)))
         .andExpect(status().isOk());
-    mvc.perform(get("/api/v1/reports")
-            .param("startDate", from.toString())
-            .param("endDate", twoYears.plusDays(1).toString())
-            .param("aggregation", "QUARTER")
-            .with(authentication(auth)))
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", from.toString())
+                .param("endDate", twoYears.plusDays(1).toString())
+                .param("aggregation", "QUARTER")
+                .with(authentication(auth)))
         .andExpect(status().isBadRequest());
   }
 }

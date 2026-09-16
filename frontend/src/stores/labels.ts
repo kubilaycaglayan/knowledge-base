@@ -2,15 +2,28 @@ import { defineStore } from "pinia";
 import { api } from "../lib/api";
 
 export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY" | "LOG";
-export type Label = { id: string; name: string; color?: string | null; scopes: LabelScope[]; system?: boolean };
+export type Label = {
+  id: string;
+  name: string;
+  color?: string | null;
+  scopes: LabelScope[];
+  system?: boolean;
+};
 const scopeLoadPromises = new Map<LabelScope, Promise<Label[]>>();
 let catalogRevision = 0;
 
 export const useLabelsStore = defineStore("labels", {
-  state: () => ({ labels: [] as Label[], loaded: false, loadedScopes: [] as LabelScope[], loading: false }),
+  state: () => ({
+    labels: [] as Label[],
+    loaded: false,
+    loadedScopes: [] as LabelScope[],
+    loading: false,
+  }),
   getters: {
-    byId: (state) => (id?: string) => state.labels.find((label) => label.id === id),
-    forScope: (state) => (scope: LabelScope) => state.labels.filter((label) => label.scopes?.includes(scope)),
+    byId: (state) => (id?: string) =>
+      state.labels.find((label) => label.id === id),
+    forScope: (state) => (scope: LabelScope) =>
+      state.labels.filter((label) => label.scopes?.includes(scope)),
   },
   actions: {
     async load(force = false) {
@@ -29,7 +42,8 @@ export const useLabelsStore = defineStore("labels", {
       }
     },
     async loadScope(scope: LabelScope, force = false) {
-      if (this.loadedScopes.includes(scope) && !force) return this.labels.filter((label) => label.scopes.includes(scope));
+      if (this.loadedScopes.includes(scope) && !force)
+        return this.labels.filter((label) => label.scopes.includes(scope));
       const pending = scopeLoadPromises.get(scope);
       if (pending && !force) return pending;
       this.loading = true;
@@ -40,7 +54,10 @@ export const useLabelsStore = defineStore("labels", {
         const scoped = await request;
         if (revision !== catalogRevision) return this.forScope(scope);
         const ids = new Set(scoped.map((label) => label.id));
-        this.labels = [...this.labels.filter((label) => !ids.has(label.id)), ...scoped];
+        this.labels = [
+          ...this.labels.filter((label) => !ids.has(label.id)),
+          ...scoped,
+        ];
         this.loadedScopes = [...new Set([...this.loadedScopes, scope])];
         return scoped;
       } finally {
@@ -56,12 +73,30 @@ export const useLabelsStore = defineStore("labels", {
         return;
       }
       const ids = new Set(labels.map((label) => label.id));
-      this.labels = [...this.labels.filter((label) => !ids.has(label.id)), ...labels];
+      this.labels = [
+        ...this.labels.filter((label) => !ids.has(label.id)),
+        ...labels,
+      ];
       this.loadedScopes = [...new Set([...this.loadedScopes, scope])];
     },
-    replace(label: Label) { this.labels = this.labels.map((value) => value.id === label.id ? label : value); },
-    add(label: Label) { this.labels = [...this.labels, label]; },
-    remove(id: string) { this.labels = this.labels.filter((label) => label.id !== id); },
-    reset() { catalogRevision++; this.labels = []; this.loaded = false; this.loadedScopes = []; this.loading = false; scopeLoadPromises.clear(); },
+    replace(label: Label) {
+      this.labels = this.labels.map((value) =>
+        value.id === label.id ? label : value,
+      );
+    },
+    add(label: Label) {
+      this.labels = [...this.labels, label];
+    },
+    remove(id: string) {
+      this.labels = this.labels.filter((label) => label.id !== id);
+    },
+    reset() {
+      catalogRevision++;
+      this.labels = [];
+      this.loaded = false;
+      this.loadedScopes = [];
+      this.loading = false;
+      scopeLoadPromises.clear();
+    },
   },
 });

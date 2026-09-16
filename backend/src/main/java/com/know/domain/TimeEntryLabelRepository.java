@@ -7,8 +7,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TimeEntryLabelRepository extends JpaRepository<TimeEntryLabel, TimeEntryLabelId> {
   List<TimeEntryLabel> findAllByIdTimeEntryId(UUID timeEntryId);
+
   List<TimeEntryLabel> findAllByIdTimeEntryIdIn(Collection<UUID> timeEntryIds);
+
   void deleteAllByIdTimeEntryId(UUID timeEntryId);
+
   void deleteAllByIdLabelId(UUID labelId);
+
   boolean existsByIdLabelId(UUID labelId);
 }

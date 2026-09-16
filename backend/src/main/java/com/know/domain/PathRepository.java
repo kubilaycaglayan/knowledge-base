@@ -13,7 +13,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface PathRepository extends JpaRepository<Path, UUID> {
   List<Path> findAllByUserId(UUID userId);
+
   long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
+
   interface LatestSessionProjection {
     UUID getPathId();
 
@@ -42,7 +44,8 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
   Optional<Path> findByIdAndUserId(UUID id, UUID userId);
 
   @Query(value = "select * from path where id = :id and user_id = :userId", nativeQuery = true)
-  Optional<Path> findByIdAndUserIdIncludingDeleted(@Param("id") UUID id, @Param("userId") UUID userId);
+  Optional<Path> findByIdAndUserIdIncludingDeleted(
+      @Param("id") UUID id, @Param("userId") UUID userId);
 
   @Modifying
   @Query(

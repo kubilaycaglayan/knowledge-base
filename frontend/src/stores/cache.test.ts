@@ -11,7 +11,15 @@ vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 const path = { id: "path-1", name: "Study", status: "ACTIVE" };
 const label = { id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] as const };
-const note: Note = { id: "note-1", title: "A note", content: "", createdAt: "", updatedAt: "", version: 1, tags: [] };
+const note: Note = {
+  id: "note-1",
+  title: "A note",
+  content: "",
+  createdAt: "",
+  updatedAt: "",
+  version: 1,
+  tags: [],
+};
 
 describe("reactive store caches", () => {
   beforeEach(() => {
@@ -33,8 +41,12 @@ describe("reactive store caches", () => {
   });
 
   it("deduplicates concurrent path loads", async () => {
-    let resolve: ((value: typeof path[]) => void) | undefined;
-    vi.mocked(api).mockReturnValue(new Promise((done) => { resolve = done; }));
+    let resolve: ((value: (typeof path)[]) => void) | undefined;
+    vi.mocked(api).mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
     const store = usePathsStore();
     const first = store.load();
     const second = store.load();
@@ -84,7 +96,11 @@ describe("reactive store caches", () => {
   });
 
   it("loads the full label catalog after a scoped load", async () => {
-    const scoped = { id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] as const };
+    const scoped = {
+      id: "label-1",
+      name: "Focus",
+      scopes: ["TIME_ENTRY"] as const,
+    };
     const other = { id: "label-2", name: "Reading", scopes: ["NOTE"] as const };
     vi.mocked(api)
       .mockResolvedValueOnce([scoped])
@@ -111,14 +127,25 @@ describe("reactive store caches", () => {
 
   it("caches note and session pages and invalidates note pages on removal", () => {
     const notes = useNotesStore();
-    const notePage = { items: [note], page: 0, size: 20, totalItems: 1, totalPages: 1 };
+    const notePage = {
+      items: [note],
+      page: 0,
+      size: 20,
+      totalItems: 1,
+      totalPages: 1,
+    };
     notes.setPage("page=0", notePage);
     expect(notes.cachedPage("page=0")?.items).toEqual([note]);
     notes.remove(note.id);
     expect(notes.cachedPage("page=0")?.items).toEqual([]);
 
     const sessions = useSessionsStore();
-    const sessionPage = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
+    const sessionPage = {
+      sessions: [],
+      page: 0,
+      totalPages: 1,
+      totalSessions: 0,
+    };
     sessions.setPage("0:50", sessionPage);
     expect(sessions.cachedPage("0:50")).toEqual(sessionPage);
     sessions.clearPages();
@@ -128,7 +155,9 @@ describe("reactive store caches", () => {
   it("clears cached reports after a reactive state change", () => {
     const store = useReportsStore();
     store.set("report-key", { totalSeconds: 60 });
-    expect(store.get<{ totalSeconds: number }>("report-key")?.totalSeconds).toBe(60);
+    expect(
+      store.get<{ totalSeconds: number }>("report-key")?.totalSeconds,
+    ).toBe(60);
     store.clear();
     expect(store.get("report-key")).toBeUndefined();
   });

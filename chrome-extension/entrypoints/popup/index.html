@@ -3,40 +3,191 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f7f8fa" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#151a22" media="(prefers-color-scheme: dark)" />
+    <meta
+      name="theme-color"
+      content="#f7f8fa"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#151a22"
+      media="(prefers-color-scheme: dark)"
+    />
     <title>Timer · Knowledge Base</title>
   </head>
   <body>
     <main>
-      <header class="extension-header"><span class="brand" aria-label="Knowledge Base" translate="no">knowledge<span>.</span>base</span><div class="header-actions"><button id="settings-menu-toggle" class="icon-button" type="button" aria-label="Open settings menu" aria-expanded="false" aria-haspopup="menu" aria-controls="settings-menu"><span aria-hidden="true">⚙</span></button><div id="settings-menu" class="settings-menu" role="menu" hidden><button id="clockify-import-toggle" class="menu-button menu-toggle" type="button" role="menuitemcheckbox" aria-checked="true"><span>Clockify import</span><span class="menu-toggle-state">On</span></button><button id="options" class="menu-button" type="button" role="menuitem">API Settings…</button><button id="logout" class="menu-button danger" type="button" role="menuitem">Sign out</button></div></div></header>
-      <p id="loading" class="loading-state" role="status" aria-live="polite">Loading…</p>
+      <header class="extension-header">
+        <span class="brand" aria-label="Knowledge Base" translate="no"
+          >knowledge<span>.</span>base</span
+        >
+        <div class="header-actions">
+          <button
+            id="settings-menu-toggle"
+            class="icon-button"
+            type="button"
+            aria-label="Open settings menu"
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-controls="settings-menu"
+          >
+            <span aria-hidden="true">⚙</span>
+          </button>
+          <div id="settings-menu" class="settings-menu" role="menu" hidden>
+            <button
+              id="clockify-import-toggle"
+              class="menu-button menu-toggle"
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked="true"
+            >
+              <span>Clockify import</span
+              ><span class="menu-toggle-state">On</span></button
+            ><button
+              id="options"
+              class="menu-button"
+              type="button"
+              role="menuitem"
+            >
+              API Settings…</button
+            ><button
+              id="logout"
+              class="menu-button danger"
+              type="button"
+              role="menuitem"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </header>
+      <p id="loading" class="loading-state" role="status" aria-live="polite">
+        Loading…
+      </p>
       <section id="auth" hidden>
-        <h1>Sign In</h1><p class="lede">Connect the timer to your private workspace.</p>
+        <h1>Sign In</h1>
+        <p class="lede">Connect the timer to your private workspace.</p>
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" spellcheck="false" placeholder="you@example.com…" />
+        <input
+          id="email"
+          name="email"
+          type="email"
+          inputmode="email"
+          autocomplete="email"
+          spellcheck="false"
+          placeholder="you@example.com…"
+        />
         <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password…" />
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Your password…"
+        />
         <button id="login">Sign In</button>
-        <button id="google-login" class="secondary" type="button">Continue with Google</button>
+        <button id="google-login" class="secondary" type="button">
+          Continue with Google
+        </button>
       </section>
       <section id="workspace" hidden>
-        <div class="timer-bar"><button id="timer-details" class="timer-details" type="button" aria-label="Edit timer start time" aria-expanded="false" aria-controls="timer-start-editor" disabled><span id="status" role="status" aria-live="polite">00:00:00</span></button><button id="toggle" class="timer-toggle" type="button" aria-label="Start timer"><span aria-hidden="true">▶</span></button></div>
+        <div class="timer-bar">
+          <button
+            id="timer-details"
+            class="timer-details"
+            type="button"
+            aria-label="Edit timer start time"
+            aria-expanded="false"
+            aria-controls="timer-start-editor"
+            disabled
+          >
+            <span id="status" role="status" aria-live="polite"
+              >00:00:00</span
+            ></button
+          ><button
+            id="toggle"
+            class="timer-toggle"
+            type="button"
+            aria-label="Start timer"
+          >
+            <span aria-hidden="true">▶</span>
+          </button>
+        </div>
         <form id="timer-start-editor" class="timer-start-editor" hidden>
           <label for="timer-started-date">Started</label>
-          <div class="timer-start-inputs"><input id="timer-started-date" name="timerStartedDate" type="date" autocomplete="off" aria-label="Timer start date" required /><input id="timer-started-time" name="timerStartedTime" type="time" step="60" autocomplete="off" aria-label="Timer start time" required /></div>
-          <div class="timer-start-actions"><button id="save-timer-start" type="submit">Save</button><button id="cancel-timer-start" class="text-button" type="button">Cancel</button></div>
-        </form>
-        <div class="timer-field"><label for="path">Path</label><select id="path" name="path" autocomplete="off"><option value="">Select a path</option></select></div>
-        <div class="timer-field timer-label-field"><span class="timer-label-heading">Labels</span><div class="timer-label-control">
-          <div id="labels-picker" class="labels-picker" role="group" aria-label="Session labels">
-            <div id="selected-labels" class="label-chips"></div>
-            <button id="labels-toggle" type="button" aria-label="Open session labels" aria-expanded="false" aria-controls="selected-labels"><span class="chevron" aria-hidden="true"></span></button>
+          <div class="timer-start-inputs">
+            <input
+              id="timer-started-date"
+              name="timerStartedDate"
+              type="date"
+              autocomplete="off"
+              aria-label="Timer start date"
+              required
+            /><input
+              id="timer-started-time"
+              name="timerStartedTime"
+              type="time"
+              step="60"
+              autocomplete="off"
+              aria-label="Timer start time"
+              required
+            />
           </div>
-          <p id="labels-summary" aria-live="polite">0 available</p>
-          <div class="new-label-row"><input id="new-label" name="newLabel" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" /><button id="create-label" type="button">Create label</button></div>
-        </div></div>
-        <div class="timer-field"><label for="description">Description</label><textarea id="description" name="description" maxlength="5000" rows="2" autocomplete="off"></textarea></div>
+          <div class="timer-start-actions">
+            <button id="save-timer-start" type="submit">Save</button
+            ><button id="cancel-timer-start" class="text-button" type="button">
+              Cancel
+            </button>
+          </div>
+        </form>
+        <div class="timer-field">
+          <label for="path">Path</label
+          ><select id="path" name="path" autocomplete="off">
+            <option value="">Select a path</option>
+          </select>
+        </div>
+        <div class="timer-field timer-label-field">
+          <span class="timer-label-heading">Labels</span>
+          <div class="timer-label-control">
+            <div
+              id="labels-picker"
+              class="labels-picker"
+              role="group"
+              aria-label="Session labels"
+            >
+              <div id="selected-labels" class="label-chips"></div>
+              <button
+                id="labels-toggle"
+                type="button"
+                aria-label="Open session labels"
+                aria-expanded="false"
+                aria-controls="selected-labels"
+              >
+                <span class="chevron" aria-hidden="true"></span>
+              </button>
+            </div>
+            <p id="labels-summary" aria-live="polite">0 available</p>
+            <div class="new-label-row">
+              <input
+                id="new-label"
+                name="newLabel"
+                aria-label="New session label name"
+                autocomplete="off"
+                placeholder="New label for this session…"
+              /><button id="create-label" type="button">Create label</button>
+            </div>
+          </div>
+        </div>
+        <div class="timer-field">
+          <label for="description">Description</label
+          ><textarea
+            id="description"
+            name="description"
+            maxlength="5000"
+            rows="2"
+            autocomplete="off"
+          ></textarea>
+        </div>
         <section class="history" aria-label="Recent sessions">
           <div id="sessions"><p class="empty">Loading sessions…</p></div>
         </section>

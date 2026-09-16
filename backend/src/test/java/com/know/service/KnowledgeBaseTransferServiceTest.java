@@ -36,16 +36,24 @@ class KnowledgeBaseTransferServiceTest {
 
   @Test
   void exportContainsActiveDomainRecordsAndNestedAssignments() throws Exception {
-    UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), entryId = UUID.randomUUID(), labelId = UUID.randomUUID();
+    UUID user = UUID.randomUUID(),
+        pathId = UUID.randomUUID(),
+        entryId = UUID.randomUUID(),
+        labelId = UUID.randomUUID();
     Path path = new Path(user, "Research", "Description", "#123456");
-    TimeEntry entry = new TimeEntry(user, pathId, Instant.parse("2026-01-01T10:00:00Z"), "Focus", TimeSource.MANUAL);
+    TimeEntry entry =
+        new TimeEntry(
+            user, pathId, Instant.parse("2026-01-01T10:00:00Z"), "Focus", TimeSource.MANUAL);
     entry.stop(Instant.parse("2026-01-01T11:00:00Z"));
     Label label = new Label(user, "Focus", "#abcdef");
     when(paths.findAllByUserId(user)).thenReturn(List.of(path));
     when(entries.findAllByUserId(user)).thenReturn(List.of(entry));
     when(labels.findAllByUserIdOrderByName(user)).thenReturn(List.of(label));
-    when(scopes.findAllByIdLabelId(label.getId())).thenReturn(List.of(new LabelScope(new LabelScopeId(label.getId(), LabelScopeType.TIME_ENTRY))));
-    when(entryLabels.findAllByIdTimeEntryId(entry.getId())).thenReturn(List.of(new TimeEntryLabel(entry.getId(), label.getId())));
+    when(scopes.findAllByIdLabelId(label.getId()))
+        .thenReturn(
+            List.of(new LabelScope(new LabelScopeId(label.getId(), LabelScopeType.TIME_ENTRY))));
+    when(entryLabels.findAllByIdTimeEntryId(entry.getId()))
+        .thenReturn(List.of(new TimeEntryLabel(entry.getId(), label.getId())));
     when(activities.findAllByUserId(user)).thenReturn(List.of());
     when(days.findAllByUserId(user)).thenReturn(List.of());
     when(notes.findAllActiveByUserId(user)).thenReturn(List.of());
@@ -54,7 +62,8 @@ class KnowledgeBaseTransferServiceTest {
     String csv = new String(service.exportCsv(user));
 
     assertThat(csv).startsWith("entity,id,payload\n");
-    assertThat(csv).contains("path," + path.getId(), "session," + entry.getId(), "label," + label.getId());
+    assertThat(csv)
+        .contains("path," + path.getId(), "session," + entry.getId(), "label," + label.getId());
     assertThat(csv).contains("#123456");
     assertThat(csv).contains("#abcdef");
     assertThat(csv).contains("TIME_ENTRY");
@@ -73,11 +82,13 @@ class KnowledgeBaseTransferServiceTest {
     when(days.findAllByUserId(user)).thenReturn(List.of());
     when(notes.findAllActiveByUserId(user)).thenReturn(List.of());
     when(logs.findAllByUserIdOrderByOccurredAtDescIdDesc(user)).thenReturn(List.of(log));
-    when(logLabels.findAllByIdLogId(log.getId())).thenReturn(List.of(new LogLabel(new LogLabelId(log.getId(), labelId))));
+    when(logLabels.findAllByIdLogId(log.getId()))
+        .thenReturn(List.of(new LogLabel(new LogLabelId(log.getId(), labelId))));
 
     String csv = new String(service.exportCsv(user));
 
-    assertThat(csv).contains("log," + log.getId(), "A durable thought", "occurredAt", labelId.toString());
+    assertThat(csv)
+        .contains("log," + log.getId(), "A durable thought", "occurredAt", labelId.toString());
   }
 
   @Test
@@ -87,11 +98,13 @@ class KnowledgeBaseTransferServiceTest {
     when(paths.save(any(Path.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(labels.save(any(Label.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    String csv = """
-        entity,id,payload
-        path,%s,"{""name"":""Research"",""description"":null,""color"":""#123456"",""status"":""ACTIVE""}"
-        label,%s,"{""name"":""Focus"",""color"":""#ABCDEF"",""scopes"":[""TIME_ENTRY"",""NOTE""]}"
-        """.formatted(pathId, labelId);
+    String csv =
+        """
+entity,id,payload
+path,%s,"{""name"":""Research"",""description"":null,""color"":""#123456"",""status"":""ACTIVE""}"
+label,%s,"{""name"":""Focus"",""color"":""#ABCDEF"",""scopes"":[""TIME_ENTRY"",""NOTE""]}"
+"""
+            .formatted(pathId, labelId);
 
     service.importCsv(user, csv);
 
@@ -101,23 +114,33 @@ class KnowledgeBaseTransferServiceTest {
     verify(labels, atLeastOnce()).save(labelCaptor.capture());
     assertThat(pathCaptor.getAllValues().getLast().getColor()).isEqualTo("#123456");
     assertThat(labelCaptor.getAllValues().getLast().getColor()).isEqualTo("#ABCDEF");
-    verify(scopes).save(argThat(scope -> scope.getId().equals(new LabelScopeId(labelId, LabelScopeType.TIME_ENTRY))));
-    verify(scopes).save(argThat(scope -> scope.getId().equals(new LabelScopeId(labelId, LabelScopeType.NOTE))));
+    verify(scopes)
+        .save(
+            argThat(
+                scope ->
+                    scope.getId().equals(new LabelScopeId(labelId, LabelScopeType.TIME_ENTRY))));
+    verify(scopes)
+        .save(
+            argThat(scope -> scope.getId().equals(new LabelScopeId(labelId, LabelScopeType.NOTE))));
   }
 
   @Test
   void importingTheSameStableIdsSkipsExistingRecords() {
     UUID user = UUID.randomUUID(), pathId = UUID.randomUUID(), labelId = UUID.randomUUID();
     when(paths.findByIdAndUserIdIncludingDeleted(pathId, user)).thenReturn(Optional.empty());
-    when(paths.findByIdAndUserId(pathId, user)).thenReturn(Optional.of(new Path(user, "Existing", null)));
-    when(labels.findByIdAndUserId(labelId, user)).thenReturn(Optional.of(new Label(user, "Existing", null)));
+    when(paths.findByIdAndUserId(pathId, user))
+        .thenReturn(Optional.of(new Path(user, "Existing", null)));
+    when(labels.findByIdAndUserId(labelId, user))
+        .thenReturn(Optional.of(new Label(user, "Existing", null)));
     when(batches.save(any(ImportBatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    String csv = """
+    String csv =
+        """
         entity,id,payload
         path,%s,"{""name"":""Existing""}"
         label,%s,"{""name"":""Existing"",""scopes"":[]}"
-        """.formatted(pathId, labelId);
+        """
+            .formatted(pathId, labelId);
 
     var summary = service.importCsv(user, csv);
 
@@ -134,13 +157,16 @@ class KnowledgeBaseTransferServiceTest {
     when(labels.findByUserIdAndNameIgnoreCase(user, "Focus"))
         .thenReturn(Optional.of(new Label(user, "focus", "#123456")));
     when(days.findByUserIdAndRecordDate(user, java.time.LocalDate.of(2026, 9, 12)))
-        .thenReturn(Optional.of(new DailyRecord(user, java.time.LocalDate.of(2026, 9, 12), "Existing")));
+        .thenReturn(
+            Optional.of(new DailyRecord(user, java.time.LocalDate.of(2026, 9, 12), "Existing")));
 
-    String csv = """
+    String csv =
+        """
         entity,id,payload
         label,%s,"{\"\"name\"\":\"\"Focus\"\",\"\"scopes\"\":[] }"
         calendar,%s,"{\"\"recordDate\"\":\"\"2026-09-12\"\",\"\"note\"\":\"\"Imported\"\"}"
-        """.formatted(labelId, recordId);
+        """
+            .formatted(labelId, recordId);
 
     var summary = service.importCsv(user, csv);
 
@@ -158,8 +184,8 @@ class KnowledgeBaseTransferServiceTest {
     assertThatThrownBy(() -> service.importCsv(UUID.randomUUID(), "x".repeat(25_000_001)))
         .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
         .hasMessageContaining("25 MB");
-    assertThatThrownBy(() -> service.importCsv(UUID.randomUUID(),
-        "entity,id,payload\npath,not-a-uuid,{}\n"))
+    assertThatThrownBy(
+            () -> service.importCsv(UUID.randomUUID(), "entity,id,payload\npath,not-a-uuid,{}\n"))
         .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
         .hasMessageContaining("Invalid Knowledge Base CSV");
     verifyNoInteractions(batches);

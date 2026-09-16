@@ -43,10 +43,14 @@ class ClockifyImportServiceTest {
     assertEquals(1, result.imported());
     assertEquals(1, result.createdPaths());
     assertNotNull(result.batchId());
-    verify(entries).save(argThat(saved -> saved.getSource() == TimeSource.IMPORT
-        && saved.getExternalId().equals("clockify-1")
-        && saved.getDurationSeconds() == 1800
-        && result.batchId().equals(saved.getImportBatchId())));
+    verify(entries)
+        .save(
+            argThat(
+                saved ->
+                    saved.getSource() == TimeSource.IMPORT
+                        && saved.getExternalId().equals("clockify-1")
+                        && saved.getDurationSeconds() == 1800
+                        && result.batchId().equals(saved.getImportBatchId())));
     verify(activities, never()).save(any());
     var duplicate =
         service.importEntries(
@@ -100,8 +104,7 @@ class ClockifyImportServiceTest {
         () ->
             service.importEntries(
                 user,
-                new ClockifyImportService.ClockifyImportRequest(
-                    Collections.nCopies(2001, null))));
+                new ClockifyImportService.ClockifyImportRequest(Collections.nCopies(2001, null))));
     assertThrows(
         ResponseStatusException.class,
         () ->
@@ -164,16 +167,15 @@ class ClockifyImportServiceTest {
             "id",
             null,
             new ClockifyImportService.ClockifyInterval(
-                Instant.parse("2026-08-25T10:00:00Z"),
-                Instant.parse("2026-08-25T10:01:00Z"),
-                null),
+                Instant.parse("2026-08-25T10:00:00Z"), Instant.parse("2026-08-25T10:01:00Z"), null),
             "x".repeat(161));
 
     assertThrows(
         ResponseStatusException.class,
         () ->
             new ClockifyImportService(paths, entries, activities, batches, users)
-                .importEntries(user, new ClockifyImportService.ClockifyImportRequest(List.of(source))));
+                .importEntries(
+                    user, new ClockifyImportService.ClockifyImportRequest(List.of(source))));
     verify(entries, never()).save(any());
   }
 }
