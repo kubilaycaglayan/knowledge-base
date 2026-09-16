@@ -36,7 +36,9 @@ describe("PromptDialog", () => {
 
   it("supports confirmation prompts without a text field", async () => {
     const wrapper = mount(PromptDialog);
-    const prompt = wrapper.vm.open("Remove this path?", "", { confirmation: true });
+    const prompt = wrapper.vm.open("Remove this path?", "", {
+      confirmation: true,
+    });
     await nextTick();
 
     expect(wrapper.find("input, textarea").exists()).toBe(false);
@@ -50,7 +52,9 @@ describe("PromptDialog", () => {
     const prompt = wrapper.vm.open("Path name", "Mobile path");
     await nextTick();
 
-    await wrapper.get('input[aria-label="Path name"]').trigger("beforeinput", { inputType: "insertLineBreak" });
+    await wrapper
+      .get('input[aria-label="Path name"]')
+      .trigger("beforeinput", { inputType: "insertLineBreak" });
     expect(await prompt).toBe("Mobile path");
   });
 
@@ -58,12 +62,18 @@ describe("PromptDialog", () => {
     const wrapper = mount(PromptDialog);
     const submitted = wrapper.vm.open("Quick value", "draft");
     await nextTick();
-    await wrapper.get('input[aria-label="Quick value"]').trigger("keydown", { key: "Enter" });
+    await wrapper
+      .get('input[aria-label="Quick value"]')
+      .trigger("keydown", { key: "Enter" });
     expect(await submitted).toBe("draft");
 
-    const multiline = wrapper.vm.open("Long value", "draft", { multiline: true });
+    const multiline = wrapper.vm.open("Long value", "draft", {
+      multiline: true,
+    });
     await nextTick();
-    await wrapper.get('textarea[aria-label="Long value"]').trigger("keydown", { key: "Enter", ctrlKey: true });
+    await wrapper
+      .get('textarea[aria-label="Long value"]')
+      .trigger("keydown", { key: "Enter", ctrlKey: true });
     expect(await multiline).toBe("draft");
 
     const cancelled = wrapper.vm.open("Cancel me");

@@ -2,8 +2,8 @@ package com.know.api;
 
 import com.know.service.ReportService;
 import java.time.LocalDate;
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -42,8 +42,13 @@ public class ReportController {
       ReportService.Aggregation selectedAggregation = parseAggregation(aggregation);
       return (pathIds == null || pathIds.isEmpty()) && (labelIds == null || labelIds.isEmpty())
           ? service.report(userId, startDate, endDate, selectedAggregation)
-          : service.report(userId, startDate, endDate, selectedAggregation,
-              pathIds == null ? List.of() : pathIds, labelIds == null ? List.of() : labelIds);
+          : service.report(
+              userId,
+              startDate,
+              endDate,
+              selectedAggregation,
+              pathIds == null ? List.of() : pathIds,
+              labelIds == null ? List.of() : labelIds);
     }
     ReportService.Period selected;
     try {
@@ -54,8 +59,12 @@ public class ReportController {
     }
     return (pathIds == null || pathIds.isEmpty()) && (labelIds == null || labelIds.isEmpty())
         ? service.report(userId, selected, anchor)
-        : service.report(userId, selected, anchor,
-            pathIds == null ? List.of() : pathIds, labelIds == null ? List.of() : labelIds);
+        : service.report(
+            userId,
+            selected,
+            anchor,
+            pathIds == null ? List.of() : pathIds,
+            labelIds == null ? List.of() : labelIds);
   }
 
   private static ReportService.Aggregation parseAggregation(String aggregation) {
@@ -64,8 +73,7 @@ public class ReportController {
       return ReportService.Aggregation.valueOf(aggregation.trim().toUpperCase());
     } catch (IllegalArgumentException exception) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "Aggregation must be DAY, WEEK, MONTH, QUARTER, or YEAR");
+          HttpStatus.BAD_REQUEST, "Aggregation must be DAY, WEEK, MONTH, QUARTER, or YEAR");
     }
   }
 }

@@ -6,7 +6,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.know.domain.TimeSource;
 import com.know.service.KnowledgeBaseTransferService;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -20,23 +19,40 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(KnowledgeBaseTransferController.class)
 @Import(com.know.security.SecurityConfig.class)
-@TestPropertySource(properties = {"app.jwt-secret=api-test-secret-with-at-least-32-characters", "app.cors-origins=http://localhost"})
+@TestPropertySource(
+    properties = {
+      "app.jwt-secret=api-test-secret-with-at-least-32-characters",
+      "app.cors-origins=http://localhost"
+    })
 class KnowledgeBaseTransferControllerApiTest {
   @Autowired MockMvc mvc;
   @MockBean KnowledgeBaseTransferService service;
 
-  @Test void exportRequiresAuthentication() throws Exception {
+  @Test
+  void exportRequiresAuthentication() throws Exception {
     mvc.perform(get("/api/v1/imports/knowledge-base/export")).andExpect(status().isUnauthorized());
   }
 
-  @Test void authenticatedExportAndImportUseTheOwnedService() throws Exception {
-    UUID user=UUID.randomUUID(); var auth=new UsernamePasswordAuthenticationToken(user.toString(),null,List.of());
+  @Test
+  void authenticatedExportAndImportUseTheOwnedService() throws Exception {
+    UUID user = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
     when(service.exportCsv(user)).thenReturn("entity,id,payload\n".getBytes());
-    when(service.importCsv(eq(user), anyString())).thenReturn(new KnowledgeBaseTransferService.ImportSummary(UUID.randomUUID(),2,1,1));
+    when(service.importCsv(eq(user), anyString()))
+        .thenReturn(new KnowledgeBaseTransferService.ImportSummary(UUID.randomUUID(), 2, 1, 1));
     mvc.perform(get("/api/v1/imports/knowledge-base/export").with(authentication(auth)))
-        .andExpect(status().isOk()).andExpect(header().string("Content-Disposition", "attachment; filename=knowledge-base-export.csv"));
-    mvc.perform(post("/api/v1/imports/knowledge-base").with(authentication(auth)).contentType("text/csv").content("entity,id,payload\n"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.imported").value(2));
-    verify(service).exportCsv(user); verify(service).importCsv(eq(user), anyString());
+        .andExpect(status().isOk())
+        .andExpect(
+            header()
+                .string("Content-Disposition", "attachment; filename=knowledge-base-export.csv"));
+    mvc.perform(
+            post("/api/v1/imports/knowledge-base")
+                .with(authentication(auth))
+                .contentType("text/csv")
+                .content("entity,id,payload\n"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.imported").value(2));
+    verify(service).exportCsv(user);
+    verify(service).importCsv(eq(user), anyString());
   }
 }

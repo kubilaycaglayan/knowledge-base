@@ -21,7 +21,10 @@ public class TimerController {
   }
 
   record StartRequest(
-      UUID pathId, @NotNull List<UUID> labelIds, @Size(max = 5000) String description, TimeSource source) {}
+      UUID pathId,
+      @NotNull List<UUID> labelIds,
+      @Size(max = 5000) String description,
+      TimeSource source) {}
 
   record RunningUpdateRequest(
       UUID pathId,
@@ -113,7 +116,14 @@ public class TimerController {
   public TimerService.TimeView edit(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody ManualRequest r) {
     return service.edit(
-        user(a), id, r.pathId(), r.labelIds(), r.startedAt(), r.endedAt(), r.description(), r.source());
+        user(a),
+        id,
+        r.pathId(),
+        r.labelIds(),
+        r.startedAt(),
+        r.endedAt(),
+        r.description(),
+        r.source());
   }
 
   @DeleteMapping("/time-entries/{id}")
@@ -126,5 +136,4 @@ public class TimerController {
   public TimerService.Statistics statistics(Authentication a) {
     return service.statistics(user(a));
   }
-
 }

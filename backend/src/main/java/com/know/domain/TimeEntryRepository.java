@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
   List<TimeEntry> findAllByUserId(UUID userId);
+
   @Query(
       "select t from TimeEntry t where t.userId=:userId and t.startedAt < :to and (t.endedAt is"
           + " null or t.endedAt > :from) order by t.startedAt desc")
@@ -28,8 +29,11 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
 
   Optional<TimeEntry> findByIdAndUserId(UUID id, UUID userId);
 
-  @Query(value = "select * from time_entry where id = :id and user_id = :userId", nativeQuery = true)
-  Optional<TimeEntry> findByIdAndUserIdIncludingDeleted(@Param("id") UUID id, @Param("userId") UUID userId);
+  @Query(
+      value = "select * from time_entry where id = :id and user_id = :userId",
+      nativeQuery = true)
+  Optional<TimeEntry> findByIdAndUserIdIncludingDeleted(
+      @Param("id") UUID id, @Param("userId") UUID userId);
 
   Optional<TimeEntry> findByUserIdAndSourceAndExternalId(
       UUID userId, TimeSource source, String externalId);

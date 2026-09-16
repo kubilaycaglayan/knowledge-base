@@ -4,7 +4,11 @@ import { vDialogFocus } from "../lib/dialog-focus";
 
 defineProps<{ appearance?: "flat" }>();
 
-type PromptOptions = { multiline?: boolean; confirmation?: boolean; inputType?: "text" | "datetime-local" };
+type PromptOptions = {
+  multiline?: boolean;
+  confirmation?: boolean;
+  inputType?: "text" | "datetime-local";
+};
 
 const visible = ref(false);
 const message = ref("");
@@ -22,7 +26,11 @@ function finish(result: string | null) {
   resolve(result);
 }
 function handleSingleLineBeforeInput(event: InputEvent) {
-  if (event.inputType !== "insertLineBreak" && event.inputType !== "insertParagraph") return;
+  if (
+    event.inputType !== "insertLineBreak" &&
+    event.inputType !== "insertParagraph"
+  )
+    return;
   event.preventDefault();
   finish(value.value);
 }
@@ -41,7 +49,9 @@ function open(
   visible.value = true;
   void nextTick(() => {
     document
-      .querySelector<HTMLElement>(".prompt-dialog input, .prompt-dialog textarea")
+      .querySelector<HTMLElement>(
+        ".prompt-dialog input, .prompt-dialog textarea",
+      )
       ?.focus();
   });
   return new Promise((resolve) => {
@@ -59,7 +69,12 @@ defineExpose({ open });
 </script>
 
 <template>
-  <div v-if="visible" class="prompt-dialog-backdrop" :class="{ flat: appearance === 'flat' }" @click.self="finish(null)">
+  <div
+    v-if="visible"
+    class="prompt-dialog-backdrop"
+    :class="{ flat: appearance === 'flat' }"
+    @click.self="finish(null)"
+  >
     <section
       v-dialog-focus
       class="prompt-dialog card"
@@ -89,7 +104,9 @@ defineExpose({ open });
       />
       <div class="prompt-dialog-actions">
         <button class="text-button" @click="finish(null)">Cancel</button>
-        <button class="primary" @click="finish(value)">{{ confirmation ? "Confirm" : "OK" }}</button>
+        <button class="primary" @click="finish(value)">
+          {{ confirmation ? "Confirm" : "OK" }}
+        </button>
       </div>
     </section>
   </div>

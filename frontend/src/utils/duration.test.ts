@@ -1,4 +1,9 @@
-import { decimalHours, formatDuration, formatDurationHoursMinutes, percentageOf } from "./duration";
+import {
+  decimalHours,
+  formatDuration,
+  formatDurationHoursMinutes,
+  percentageOf,
+} from "./duration";
 
 describe("duration utilities", () => {
   it.each([
@@ -17,9 +22,14 @@ describe("duration utilities", () => {
     expect(decimalHours(-1)).toBe(0);
   });
 
-  it.each([[0, "00:00"], [61, "00:01"], [3661, "01:01"], [86399, "23:59"], [100 * 60 * 60 + 59 * 60, "100h"]])(
-    "formats %s seconds as report minutes %s",
-    (seconds, expected) => expect(formatDurationHoursMinutes(seconds)).toBe(expected),
+  it.each([
+    [0, "00:00"],
+    [61, "00:01"],
+    [3661, "01:01"],
+    [86399, "23:59"],
+    [100 * 60 * 60 + 59 * 60, "100h"],
+  ])("formats %s seconds as report minutes %s", (seconds, expected) =>
+    expect(formatDurationHoursMinutes(seconds)).toBe(expected),
   );
 
   it("calculates percentages and avoids division by zero", () => {

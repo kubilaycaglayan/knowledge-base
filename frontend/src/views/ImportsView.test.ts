@@ -44,7 +44,9 @@ describe("ImportsView", () => {
       "Knowledge Base",
       "Clockify",
     ]);
-    expect(wrapper.get("#imports-tab-knowledge-base").attributes("aria-selected")).toBe("true");
+    expect(
+      wrapper.get("#imports-tab-knowledge-base").attributes("aria-selected"),
+    ).toBe("true");
   });
 
   it("imports Clockify JSON and reloads the batch list", async () => {
@@ -71,13 +73,20 @@ describe("ImportsView", () => {
     const reports = useReportsStore();
     const sessions = useSessionsStore();
     reports.set("week", { totalSeconds: 60 });
-    sessions.setPage("0:50", { sessions: [], page: 0, totalPages: 1, totalSessions: 0 });
+    sessions.setPage("0:50", {
+      sessions: [],
+      page: 0,
+      totalPages: 1,
+      totalSessions: 0,
+    });
 
     const wrapper = mount(ImportsView);
     await flushPromises();
     await wrapper.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
-    await wrapper.get('textarea[aria-label="Clockify JSON"]').setValue('{"timeentries":[]}');
+    await wrapper
+      .get('textarea[aria-label="Clockify JSON"]')
+      .setValue('{"timeentries":[]}');
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
 
@@ -106,7 +115,17 @@ describe("ImportsView", () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/imports/knowledge-base/batches") return [];
       if (path === "/imports/clockify/batches") {
-        return [{ id: "batch-done", source: "IMPORT", imported: 3, skipped: 0, createdPaths: 0, createdAt: "2026-08-26T10:00:00Z", undoneAt: "2026-08-26T11:00:00Z" }];
+        return [
+          {
+            id: "batch-done",
+            source: "IMPORT",
+            imported: 3,
+            skipped: 0,
+            createdPaths: 0,
+            createdAt: "2026-08-26T10:00:00Z",
+            undoneAt: "2026-08-26T11:00:00Z",
+          },
+        ];
       }
       return undefined;
     });
@@ -142,7 +161,9 @@ describe("ImportsView", () => {
 
     expect(wrapper.findAll(".history-row")).toHaveLength(5);
     expect(wrapper.text()).toContain("Page 1 of 2");
-    await wrapper.get('[aria-label="Import history pagination"] button:last-child').trigger("click");
+    await wrapper
+      .get('[aria-label="Import history pagination"] button:last-child')
+      .trigger("click");
     expect(wrapper.findAll(".history-row")).toHaveLength(1);
     expect(wrapper.text()).toContain("Page 2 of 2");
   });
@@ -155,30 +176,52 @@ describe("ImportsView", () => {
     const input = wrapper.get('textarea[aria-label="Clockify JSON"]');
     await input.setValue("not json");
     await wrapper.get("button.primary").trigger("click");
-    expect(wrapper.get('[role="alert"]').text()).toBe("Paste valid Clockify JSON.");
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "Paste valid Clockify JSON.",
+    );
     await input.setValue('{"entries":[]}');
     await wrapper.get("button.primary").trigger("click");
-    expect(wrapper.get('[role="alert"]').text()).toBe("Clockify JSON needs a timeentries array.");
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "Clockify JSON needs a timeentries array.",
+    );
   });
 
   it("does not undo a batch when confirmation is declined", async () => {
-    vi.stubGlobal("confirm", vi.fn(() => false));
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => false),
+    );
     const wrapper = mount(ImportsView);
     await flushPromises();
     await wrapper.get("#imports-tab-clockify").trigger("click");
     await flushPromises();
     await wrapper.get("button.text-button.danger").trigger("click");
-    expect(vi.mocked(api)).not.toHaveBeenCalledWith("/imports/clockify/batches/batch-1", expect.anything());
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      "/imports/clockify/batches/batch-1",
+      expect.anything(),
+    );
   });
 
   it("shows load and undo failures", async () => {
     vi.mocked(api).mockRejectedValue(new Error("network"));
     const loadFailure = mount(ImportsView);
     await flushPromises();
-    expect(loadFailure.get('[role="alert"]').text()).toBe("Unable to load import batches.");
+    expect(loadFailure.get('[role="alert"]').text()).toBe(
+      "Unable to load import batches.",
+    );
 
     vi.mocked(api).mockImplementation(async (path: string) => {
-      if (path === "/imports/clockify/batches") return [{ id: "batch-1", source: "IMPORT", imported: 1, skipped: 0, createdPaths: 0, createdAt: "2026-08-26T10:00:00Z" }];
+      if (path === "/imports/clockify/batches")
+        return [
+          {
+            id: "batch-1",
+            source: "IMPORT",
+            imported: 1,
+            skipped: 0,
+            createdPaths: 0,
+            createdAt: "2026-08-26T10:00:00Z",
+          },
+        ];
       throw new Error("delete failed");
     });
     const undoFailure = mount(ImportsView);
@@ -187,23 +230,32 @@ describe("ImportsView", () => {
     await flushPromises();
     await undoFailure.get("button.text-button.danger").trigger("click");
     await flushPromises();
-    expect(undoFailure.get('[role="alert"]').text()).toBe("Could not undo this import batch.");
+    expect(undoFailure.get('[role="alert"]').text()).toBe(
+      "Could not undo this import batch.",
+    );
   });
 
   it("keeps server diagnostics hidden behind an expandable disclosure", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/imports/knowledge-base/batches") return [];
-      throw Object.assign(new Error("Something went wrong. Please try again."), {
-        details: '{"trace":"database details"}',
-      });
+      throw Object.assign(
+        new Error("Something went wrong. Please try again."),
+        {
+          details: '{"trace":"database details"}',
+        },
+      );
     });
     const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
     await flushPromises();
-    await wrapper.get('textarea[aria-label="Knowledge Base CSV"]').setValue("entity,id,payload\n");
+    await wrapper
+      .get('textarea[aria-label="Knowledge Base CSV"]')
+      .setValue("entity,id,payload\n");
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
 
-    expect(wrapper.get('[role="alert"]').text()).toContain("Could not import Knowledge Base data.");
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      "Could not import Knowledge Base data.",
+    );
     expect(wrapper.get("details").attributes("open")).toBeUndefined();
     expect(wrapper.get("details").text()).toContain("database details");
   });

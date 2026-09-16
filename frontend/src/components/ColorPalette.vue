@@ -31,16 +31,65 @@ const emit = defineEmits<{ "update:modelValue": [value: string] }>();
 </template>
 
 <style scoped>
-.color-palette { display: grid; grid-template-columns: repeat(5, 28px); gap: 2px; align-items: center; border: 0; padding: 0; margin: 0; }
-.color-palette legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.color-palette button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
-.color-palette button span { display: block; width: 22px; height: 22px; border: 2px solid var(--workspace-surface); border-radius: 50%; background: var(--palette-color); box-shadow: 0 0 0 1px var(--workspace-control-border); }
-.color-palette button:hover span { box-shadow: 0 0 0 2px var(--workspace-muted); }
-.color-palette button[aria-pressed="true"] span { box-shadow: 0 0 0 2px var(--workspace-text); }
-.color-palette button:focus-visible { outline: 2px solid var(--workspace-accent); outline-offset: 1px; }
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(5, 28px);
+  gap: 2px;
+  align-items: center;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.color-palette legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.color-palette button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.color-palette button span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--workspace-surface);
+  border-radius: 50%;
+  background: var(--palette-color);
+  box-shadow: 0 0 0 1px var(--workspace-control-border);
+}
+.color-palette button:hover span {
+  box-shadow: 0 0 0 2px var(--workspace-muted);
+}
+.color-palette button[aria-pressed="true"] span {
+  box-shadow: 0 0 0 2px var(--workspace-text);
+}
+.color-palette button:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: 1px;
+}
 @media (max-width: 700px) {
-  .color-palette { grid-template-columns: repeat(5, 44px); gap: 2px; }
-  .color-palette button { width: 44px; height: 44px; }
-  .color-palette button span { width: 24px; height: 24px; }
+  .color-palette {
+    grid-template-columns: repeat(5, 44px);
+    gap: 2px;
+  }
+  .color-palette button {
+    width: 44px;
+    height: 44px;
+  }
+  .color-palette button span {
+    width: 24px;
+    height: 24px;
+  }
 }
 </style>

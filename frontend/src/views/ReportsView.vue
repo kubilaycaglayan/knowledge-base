@@ -161,7 +161,10 @@ const breakdownLabel = computed(() =>
   breakdownMode.value === "Path" ? "Path" : "Label",
 );
 const breakdownTotal = computed(() =>
-  breakdownCategories.value.reduce((total, category) => total + category.seconds, 0),
+  breakdownCategories.value.reduce(
+    (total, category) => total + category.seconds,
+    0,
+  ),
 );
 const days = computed(() =>
   (report.value?.days || []).map((day) => {
@@ -302,15 +305,20 @@ function storeReportState() {
   url.searchParams.set("startDate", selectedRange.value.startDate);
   url.searchParams.set("endDate", selectedRange.value.endDate);
   url.searchParams.delete("pathId");
-  selectedPathIds.value.forEach((pathId) => url.searchParams.append("pathId", pathId));
+  selectedPathIds.value.forEach((pathId) =>
+    url.searchParams.append("pathId", pathId),
+  );
   url.searchParams.delete("labelId");
-  selectedLabelIds.value.forEach((labelId) => url.searchParams.append("labelId", labelId));
+  selectedLabelIds.value.forEach((labelId) =>
+    url.searchParams.append("labelId", labelId),
+  );
   window.history.pushState({}, "", url);
 }
 function toggleTrendline() {
-  const next = trendlineModes[
-    (trendlineModes.indexOf(trendlineMode.value) + 1) % trendlineModes.length
-  ];
+  const next =
+    trendlineModes[
+      (trendlineModes.indexOf(trendlineMode.value) + 1) % trendlineModes.length
+    ];
   const url = new URL(window.location.href);
   if (next === "OFF") url.searchParams.delete("trendline");
   else url.searchParams.set("trendline", next.toLowerCase());
@@ -340,7 +348,9 @@ async function load(preserveScroll?: { left: number; top: number }) {
       aggregation: aggregation.value,
     });
     selectedPathIds.value.forEach((pathId) => params.append("pathId", pathId));
-    selectedLabelIds.value.forEach((labelId) => params.append("labelId", labelId));
+    selectedLabelIds.value.forEach((labelId) =>
+      params.append("labelId", labelId),
+    );
     const cacheKey = params.toString();
     const cached = reportsStore.get<Report>(cacheKey);
     if (cached) {
@@ -386,12 +396,16 @@ async function load(preserveScroll?: { left: number; top: number }) {
   }
 }
 async function loadPaths() {
-  try { await pathsStore.load(); } catch {
+  try {
+    await pathsStore.load();
+  } catch {
     // The report remains usable with paths returned in its aggregate data.
   }
 }
 async function loadLabels() {
-  try { await labelsStore.loadScope("TIME_ENTRY"); } catch {
+  try {
+    await labelsStore.loadScope("TIME_ENTRY");
+  } catch {
     // The report remains usable with labels returned in its aggregate data.
   }
 }
@@ -410,10 +424,14 @@ function selectLabels(value: unknown) {
   void load({ left: window.scrollX, top: window.scrollY });
 }
 function removePath(pathId: string) {
-  selectPaths(selectedPathIds.value.filter((selectedId) => selectedId !== pathId));
+  selectPaths(
+    selectedPathIds.value.filter((selectedId) => selectedId !== pathId),
+  );
 }
 function removeLabel(labelId: string) {
-  selectLabels(selectedLabelIds.value.filter((selectedId) => selectedId !== labelId));
+  selectLabels(
+    selectedLabelIds.value.filter((selectedId) => selectedId !== labelId),
+  );
 }
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
@@ -510,15 +528,22 @@ onBeforeUnmount(() =>
         >
           {{
             showCalendarInputs ? "Hide calendar inputs" : "Show calendar inputs"
-          }}
-        </button><button
+          }}</button
+        ><button
           class="ghost trendline-toggle"
           type="button"
           :aria-pressed="trendlineMode !== 'OFF'"
           :aria-label="`Trendline mode: ${trendlineMode.toLowerCase()}. Activate to show the next mode.`"
           @click="toggleTrendline"
         >
-          Trendline: {{ trendlineMode === "OFF" ? "Off" : trendlineMode === "LINEAR" ? "Linear" : "Parabolic" }}
+          Trendline:
+          {{
+            trendlineMode === "OFF"
+              ? "Off"
+              : trendlineMode === "LINEAR"
+                ? "Linear"
+                : "Parabolic"
+          }}
         </button>
       </div>
     </div>
@@ -528,7 +553,10 @@ onBeforeUnmount(() =>
     </p>
     <div v-if="loading && !report" class="report-loading" role="status">
       <span class="visually-hidden">Loading report…</span>
-      <section class="report-card report-chart-card report-skeleton-card" aria-hidden="true">
+      <section
+        class="report-card report-chart-card report-skeleton-card"
+        aria-hidden="true"
+      >
         <div class="report-card-heading">
           <div>
             <span class="skeleton-block skeleton-kicker"></span>
@@ -540,26 +568,45 @@ onBeforeUnmount(() =>
           <span class="skeleton-chart-y skeleton-chart-y-one"></span>
           <span class="skeleton-chart-y skeleton-chart-y-two"></span>
           <div class="skeleton-chart-bars">
-            <span v-for="height in [38, 58, 46, 76, 52, 68, 42]" :key="height" class="skeleton-chart-bar" :style="{ height: `${height}%` }"></span>
+            <span
+              v-for="height in [38, 58, 46, 76, 52, 68, 42]"
+              :key="height"
+              class="skeleton-chart-bar"
+              :style="{ height: `${height}%` }"
+            ></span>
           </div>
           <div class="skeleton-chart-x">
-            <span v-for="label in 7" :key="label" class="skeleton-chart-label"></span>
+            <span
+              v-for="label in 7"
+              :key="label"
+              class="skeleton-chart-label"
+            ></span>
           </div>
         </div>
       </section>
-      <section class="report-card breakdown-card report-skeleton-card" aria-hidden="true">
+      <section
+        class="report-card breakdown-card report-skeleton-card"
+        aria-hidden="true"
+      >
         <div class="report-skeleton-toolbar">
           <span class="skeleton-block skeleton-filter-label"></span>
-          <span class="skeleton-block skeleton-select skeleton-select-wide"></span>
-          <span class="skeleton-block skeleton-select skeleton-select-medium"></span>
-          <span class="skeleton-block skeleton-select skeleton-select-small"></span>
+          <span
+            class="skeleton-block skeleton-select skeleton-select-wide"
+          ></span>
+          <span
+            class="skeleton-block skeleton-select skeleton-select-medium"
+          ></span>
+          <span
+            class="skeleton-block skeleton-select skeleton-select-small"
+          ></span>
           <span class="skeleton-block skeleton-active-days"></span>
         </div>
         <div class="breakdown-grid report-skeleton-breakdown">
           <div class="report-skeleton-table">
             <span class="skeleton-block skeleton-table-heading"></span>
             <span v-for="row in 5" :key="row" class="skeleton-table-row">
-              <i class="skeleton-block"></i><i class="skeleton-block"></i><i class="skeleton-block"></i>
+              <i class="skeleton-block"></i><i class="skeleton-block"></i
+              ><i class="skeleton-block"></i>
             </span>
           </div>
           <div class="donut-panel">
@@ -574,7 +621,12 @@ onBeforeUnmount(() =>
       :class="{ 'is-refreshing': loading }"
       :aria-busy="loading"
     >
-      <div v-if="loading" class="report-refresh-overlay" role="status" aria-live="polite">
+      <div
+        v-if="loading"
+        class="report-refresh-overlay"
+        role="status"
+        aria-live="polite"
+      >
         <span class="report-refresh-scan" aria-hidden="true"></span>
         <span class="report-refresh-badge">
           <span class="report-refresh-orbit" aria-hidden="true"></span>
@@ -709,7 +761,10 @@ onBeforeUnmount(() =>
         </div>
       </section>
       <section
-        v-if="showCalendarInputs && (calendarLogs.length || report.calendarLabels.length)"
+        v-if="
+          showCalendarInputs &&
+          (calendarLogs.length || report.calendarLabels.length)
+        "
         class="report-card calendar-report-card"
       >
         <div class="report-card-heading">

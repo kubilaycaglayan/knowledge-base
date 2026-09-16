@@ -16,6 +16,11 @@ public class TimeEntryLabel {
     id = new TimeEntryLabelId(timeEntryId, labelId);
   }
 
-  public UUID getTimeEntryId() { return id.getTimeEntryId(); }
-  public UUID getLabelId() { return id.getLabelId(); }
+  public UUID getTimeEntryId() {
+    return id.getTimeEntryId();
+  }
+
+  public UUID getLabelId() {
+    return id.getLabelId();
+  }
 }

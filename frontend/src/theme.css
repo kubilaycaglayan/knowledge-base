@@ -62,7 +62,8 @@
 }
 
 /* Menus are teleported outside the shell; theme tokens live on html. */
-:root .dp__theme_light, :root .dp__theme_dark {
+:root .dp__theme_light,
+:root .dp__theme_dark {
   --dp-background-color: var(--workspace-surface);
   --dp-text-color: var(--workspace-text);
   --dp-hover-color: var(--workspace-hover);

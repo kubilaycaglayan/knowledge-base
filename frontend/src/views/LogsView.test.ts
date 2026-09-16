@@ -5,8 +5,20 @@ import { api } from "../lib/api";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
-const log = (id: string, body: string, occurredAt: string, version = 0, labelIds: string[] = []) => ({
-  id, body, occurredAt, version, labelIds, createdAt: occurredAt, updatedAt: occurredAt,
+const log = (
+  id: string,
+  body: string,
+  occurredAt: string,
+  version = 0,
+  labelIds: string[] = [],
+) => ({
+  id,
+  body,
+  occurredAt,
+  version,
+  labelIds,
+  createdAt: occurredAt,
+  updatedAt: occurredAt,
 });
 
 describe("LogsView", () => {
@@ -15,17 +27,33 @@ describe("LogsView", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
-    vi.mocked(api).mockImplementation(async (path) => path === "/labels?scope=LOG" ? [{ id: "important", name: "Important", color: "#2878D5" }] : [log("new", "Recent thought", "2026-09-11T11:30:00Z"), log("same-hour", "Another thought", "2026-09-11T11:20:00Z"), log("old", "Older thought", "2026-09-10T11:00:00Z")]);
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/labels?scope=LOG"
+        ? [{ id: "important", name: "Important", color: "#2878D5" }]
+        : [
+            log("new", "Recent thought", "2026-09-11T11:30:00Z"),
+            log("same-hour", "Another thought", "2026-09-11T11:20:00Z"),
+            log("old", "Older thought", "2026-09-10T11:00:00Z"),
+          ],
+    );
   });
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); config.global.stubs = {}; });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    config.global.stubs = {};
+  });
 
   it("groups newest logs and shows the requested timestamp format", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
-    expect(wrapper.findAll(".log-group-heading").map((item) => item.text())).toEqual(["Last hour", "Yesterday"]);
+    expect(
+      wrapper.findAll(".log-group-heading").map((item) => item.text()),
+    ).toEqual(["Last hour", "Yesterday"]);
     expect(wrapper.find("time.log-time").text()).toBe("11:30");
     expect(wrapper.find(".log-body").text()).toBe("Recent thought");
-    expect(wrapper.findAll(".log-entry")[1].classes()).not.toContain("log-hour-break");
+    expect(wrapper.findAll(".log-entry")[1].classes()).not.toContain(
+      "log-hour-break",
+    );
     expect(wrapper.find(".log-group-day-break").exists()).toBe(true);
     expect(wrapper.findAll("time.log-time")[2].text()).toBe("Sept 10 11:00");
   });
@@ -38,7 +66,13 @@ describe("LogsView", () => {
     await wrapper.get("#new-log-body").setValue("New capture");
     await wrapper.get("#new-log-body").trigger("keydown.enter");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs", expect.objectContaining({ method: "POST", body: expect.stringContaining('"body":"New capture"') }));
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/logs",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"body":"New capture"'),
+      }),
+    );
     expect(wrapper.text()).toContain("New capture");
   });
 
@@ -46,7 +80,12 @@ describe("LogsView", () => {
     const wrapper = mount(LogsView);
     await flushPromises();
     const composer = wrapper.get("#new-log-body");
-    const created = log("created", "First line\nSecond line", "2026-09-11T12:00:00Z", 0);
+    const created = log(
+      "created",
+      "First line\nSecond line",
+      "2026-09-11T12:00:00Z",
+      0,
+    );
     vi.mocked(api).mockResolvedValueOnce(created);
 
     await composer.setValue("First line\nSecond line");
@@ -62,12 +101,24 @@ describe("LogsView", () => {
     const wrapper = mount(LogsView);
     await flushPromises();
     await wrapper.get('button[aria-label^="Edit log"]').trigger("click");
-    await wrapper.get('textarea[aria-label^="Edit log"]').setValue("Changed thought");
-    await wrapper.get('input[aria-label="Edit log timestamp"]').setValue("2026-09-11T10:15");
-    vi.mocked(api).mockResolvedValueOnce(log("new", "Changed thought", "2026-09-11T10:15:00Z", 1));
+    await wrapper
+      .get('textarea[aria-label^="Edit log"]')
+      .setValue("Changed thought");
+    await wrapper
+      .get('input[aria-label="Edit log timestamp"]')
+      .setValue("2026-09-11T10:15");
+    vi.mocked(api).mockResolvedValueOnce(
+      log("new", "Changed thought", "2026-09-11T10:15:00Z", 1),
+    );
     await wrapper.get(".log-entry .primary").trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new", expect.objectContaining({ method: "PUT", body: expect.stringContaining('"body":"Changed thought"') }));
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/logs/new",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining('"body":"Changed thought"'),
+      }),
+    );
     expect(wrapper.text()).toContain("Changed thought");
   });
 
@@ -81,14 +132,20 @@ describe("LogsView", () => {
     expect(timestamp.value).toBe("2026-09-11T12:01");
 
     await wrapper.get("#new-log-time").setValue("2026-09-11T12:00");
-    expect(wrapper.find("#new-log-time").classes()).toContain("timestamp-input-drift");
-    expect(wrapper.get(".timestamp-reset").classes()).toContain("timestamp-reset-visible");
+    expect(wrapper.find("#new-log-time").classes()).toContain(
+      "timestamp-input-drift",
+    );
+    expect(wrapper.get(".timestamp-reset").classes()).toContain(
+      "timestamp-reset-visible",
+    );
     vi.advanceTimersByTime(61_000);
     await wrapper.vm.$nextTick();
     expect(timestamp.value).toBe("2026-09-11T12:00");
     await wrapper.get(".timestamp-reset").trigger("click");
     expect(timestamp.value).toBe("2026-09-11T12:02");
-    expect(wrapper.get(".timestamp-reset").classes()).not.toContain("timestamp-reset-visible");
+    expect(wrapper.get(".timestamp-reset").classes()).not.toContain(
+      "timestamp-reset-visible",
+    );
   });
 
   it("confirms removal and removes the record after the API succeeds", async () => {
@@ -99,14 +156,19 @@ describe("LogsView", () => {
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
     expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new", { method: "DELETE" });
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new", {
+      method: "DELETE",
+    });
     expect(wrapper.text()).not.toContain("Recent thought");
   });
 
   it("opens log labels and toggles a selected label", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
-    vi.mocked(api).mockResolvedValueOnce({ ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds: ["important"] });
+    vi.mocked(api).mockResolvedValueOnce({
+      ...log("new", "Recent thought", "2026-09-11T11:30:00Z"),
+      labelIds: ["important"],
+    });
     await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
     expect(wrapper.get('[role="dialog"]').text()).toContain("Important");
     expect(wrapper.find('[role="dialog"] strong').exists()).toBe(false);
@@ -116,8 +178,16 @@ describe("LogsView", () => {
     await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
     await wrapper.get('[role="dialog"] input[type="checkbox"]').setValue(true);
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/logs/new/labels", expect.objectContaining({ method: "PUT", body: '{"labelIds":["important"]}' }));
-    expect(wrapper.get('button[aria-label^="Choose labels"]').classes()).toContain("log-label-button-active");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/logs/new/labels",
+      expect.objectContaining({
+        method: "PUT",
+        body: '{"labelIds":["important"]}',
+      }),
+    );
+    expect(
+      wrapper.get('button[aria-label^="Choose labels"]').classes(),
+    ).toContain("log-label-button-active");
   });
 
   it("closes log labels when the user clicks elsewhere", async () => {
@@ -130,9 +200,15 @@ describe("LogsView", () => {
   });
 
   it("does not render a label button when the user has no log labels", async () => {
-    vi.mocked(api).mockImplementation(async (path) => path === "/labels?scope=LOG" ? [] : [log("new", "Recent thought", "2026-09-11T11:30:00Z")]);
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/labels?scope=LOG"
+        ? []
+        : [log("new", "Recent thought", "2026-09-11T11:30:00Z")],
+    );
     const wrapper = mount(LogsView);
     await flushPromises();
-    expect(wrapper.find('button[aria-label^="Choose labels"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label^="Choose labels"]').exists()).toBe(
+      false,
+    );
   });
 });

@@ -1,14 +1,14 @@
 package com.know.service;
 
 import com.know.domain.*;
-import java.time.*;
 import java.math.BigDecimal;
-import java.time.temporal.TemporalAdjusters;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ReportService {
@@ -18,7 +18,8 @@ public class ReportService {
   private final TimeEntryLabelRepository entryLabels;
   private final CalendarService calendar;
 
-  public ReportService(TimeEntryRepository entries, PathRepository paths, LabelRepository sessionLabels) {
+  public ReportService(
+      TimeEntryRepository entries, PathRepository paths, LabelRepository sessionLabels) {
     this(entries, paths, sessionLabels, null, null);
   }
 
@@ -39,11 +40,30 @@ public class ReportService {
   public record Category(UUID id, String label, long seconds, String color) {}
 
   public record CalendarLabel(UUID id, String label, String color, BigDecimal portion) {}
-  public record CalendarLabelTotal(UUID id, String label, String color, BigDecimal days, long markers) {}
+
+  public record CalendarLabelTotal(
+      UUID id, String label, String color, BigDecimal days, long markers) {}
+
   public record Day(
-      LocalDate date, long totalSeconds, List<Category> paths, List<Category> sessionLabels, String calendarNote, List<CalendarLabel> calendarLabels) {}
-  public record SankeyNode(String id, String label, String color, int depth, long value, String pathLabel, String bucketLabel) {}
-  public record SankeyLink(String source, String target, String sourceLabel, String targetLabel, long value) {}
+      LocalDate date,
+      long totalSeconds,
+      List<Category> paths,
+      List<Category> sessionLabels,
+      String calendarNote,
+      List<CalendarLabel> calendarLabels) {}
+
+  public record SankeyNode(
+      String id,
+      String label,
+      String color,
+      int depth,
+      long value,
+      String pathLabel,
+      String bucketLabel) {}
+
+  public record SankeyLink(
+      String source, String target, String sourceLabel, String targetLabel, long value) {}
+
   public record Sankey(String granularity, List<SankeyNode> nodes, List<SankeyLink> links) {}
 
   public record Report(
@@ -75,15 +95,15 @@ public class ReportService {
     LocalDate selected = anchor == null ? LocalDate.now(ZoneOffset.UTC) : anchor;
     LocalDate fromDate = period.start(selected);
     LocalDate toDateExclusive = period.next(fromDate);
-    return report(userId, period.name(), fromDate, toDateExclusive, selectedPathIds, selectedLabelIds);
+    return report(
+        userId, period.name(), fromDate, toDateExclusive, selectedPathIds, selectedLabelIds);
   }
 
   public Report report(UUID userId, LocalDate fromDate, LocalDate toDate) {
     return report(userId, fromDate, toDate, Aggregation.DAY);
   }
 
-  public Report report(
-      UUID userId, LocalDate fromDate, LocalDate toDate, Aggregation aggregation) {
+  public Report report(UUID userId, LocalDate fromDate, LocalDate toDate, Aggregation aggregation) {
     return report(userId, fromDate, toDate, aggregation, Set.of());
   }
 
@@ -103,18 +123,25 @@ public class ReportService {
       Aggregation aggregation,
       Collection<UUID> selectedPathIds,
       Collection<UUID> selectedLabelIds) {
-    return report(userId, "CUSTOM", fromDate, toDate.plusDays(1), aggregation, selectedPathIds, selectedLabelIds);
+    return report(
+        userId,
+        "CUSTOM",
+        fromDate,
+        toDate.plusDays(1),
+        aggregation,
+        selectedPathIds,
+        selectedLabelIds);
   }
 
-  private Report report(
-      UUID userId, String period, LocalDate fromDate, LocalDate toDateExclusive) {
+  private Report report(UUID userId, String period, LocalDate fromDate, LocalDate toDateExclusive) {
     return report(
         userId,
         period,
         fromDate,
         toDateExclusive,
         SankeyGranularity.forRange(period, fromDate, toDateExclusive),
-        Set.of(), Set.of());
+        Set.of(),
+        Set.of());
   }
 
   private Report report(
@@ -155,12 +182,18 @@ public class ReportService {
     Instant reportEnd = toDateExclusive.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant now = Instant.now();
     Instant to = reportEnd.isBefore(now) ? reportEnd : now;
-    Set<UUID> pathFilter = selectedPathIds == null
-        ? Set.of()
-        : selectedPathIds.stream().filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
-    Set<UUID> labelFilter = selectedLabelIds == null
-        ? Set.of()
-        : selectedLabelIds.stream().filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
+    Set<UUID> pathFilter =
+        selectedPathIds == null
+            ? Set.of()
+            : selectedPathIds.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toUnmodifiableSet());
+    Set<UUID> labelFilter =
+        selectedLabelIds == null
+            ? Set.of()
+            : selectedLabelIds.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toUnmodifiableSet());
     List<TimeEntry> window =
         to.isAfter(from)
             ? pathFilter.isEmpty()
@@ -169,30 +202,51 @@ public class ReportService {
             : List.of();
     Map<UUID, List<UUID>> labelsByEntry = new HashMap<>();
     if (entryLabels != null && !window.isEmpty()) {
-      entryLabels.findAllByIdTimeEntryIdIn(window.stream().map(TimeEntry::getId).toList())
-          .forEach(assignment -> labelsByEntry
-              .computeIfAbsent(assignment.getTimeEntryId(), ignored -> new ArrayList<>())
-              .add(assignment.getLabelId()));
+      entryLabels
+          .findAllByIdTimeEntryIdIn(window.stream().map(TimeEntry::getId).toList())
+          .forEach(
+              assignment ->
+                  labelsByEntry
+                      .computeIfAbsent(assignment.getTimeEntryId(), ignored -> new ArrayList<>())
+                      .add(assignment.getLabelId()));
     }
     if (!labelFilter.isEmpty()) {
-      Set<UUID> ownedLabelIds = sessionLabels.findAllByUserIdAndIdIn(userId, labelFilter).stream()
-          .map(Label::getId)
-          .collect(Collectors.toSet());
-      window = window.stream()
-          .filter(entry -> labelsByEntry.getOrDefault(entry.getId(), List.of()).stream()
-              .anyMatch(ownedLabelIds::contains))
-          .toList();
+      Set<UUID> ownedLabelIds =
+          sessionLabels.findAllByUserIdAndIdIn(userId, labelFilter).stream()
+              .map(Label::getId)
+              .collect(Collectors.toSet());
+      window =
+          window.stream()
+              .filter(
+                  entry ->
+                      labelsByEntry.getOrDefault(entry.getId(), List.of()).stream()
+                          .anyMatch(ownedLabelIds::contains))
+              .toList();
     }
     Map<LocalDate, List<CalendarLabel>> calendarByDate = new HashMap<>();
     Map<LocalDate, String> calendarNotesByDate = new HashMap<>();
     Map<UUID, CalendarLabelTotalAccumulator> calendarTotals = new HashMap<>();
     if (calendar != null) {
-      calendar.days(userId, fromDate, toDateExclusive.minusDays(1)).forEach(day -> {
-        List<CalendarLabel> labels = day.labels().stream().map(label -> new CalendarLabel(label.labelId(), label.name(), label.color(), label.portion())).toList();
-        calendarByDate.put(day.date(), labels);
-        if (day.note() != null) calendarNotesByDate.put(day.date(), day.note());
-        labels.forEach(label -> calendarTotals.computeIfAbsent(label.id(), ignored -> new CalendarLabelTotalAccumulator(label)).add(label.portion()));
-      });
+      calendar
+          .days(userId, fromDate, toDateExclusive.minusDays(1))
+          .forEach(
+              day -> {
+                List<CalendarLabel> labels =
+                    day.labels().stream()
+                        .map(
+                            label ->
+                                new CalendarLabel(
+                                    label.labelId(), label.name(), label.color(), label.portion()))
+                        .toList();
+                calendarByDate.put(day.date(), labels);
+                if (day.note() != null) calendarNotesByDate.put(day.date(), day.note());
+                labels.forEach(
+                    label ->
+                        calendarTotals
+                            .computeIfAbsent(
+                                label.id(), ignored -> new CalendarLabelTotalAccumulator(label))
+                            .add(label.portion()));
+              });
     }
 
     Set<UUID> pathIds =
@@ -202,9 +256,10 @@ public class ReportService {
             .collect(Collectors.toSet());
     Set<UUID> labelIds =
         window.stream()
-        .flatMap(entry -> labelsByEntry.getOrDefault(entry.getId(), List.of()).stream())
+            .flatMap(entry -> labelsByEntry.getOrDefault(entry.getId(), List.of()).stream())
             .collect(Collectors.toSet());
-    List<Path> pathViews = pathIds.isEmpty() ? List.of() : paths.findByUserIdAndIdIn(userId, pathIds);
+    List<Path> pathViews =
+        pathIds.isEmpty() ? List.of() : paths.findByUserIdAndIdIn(userId, pathIds);
     Map<UUID, String> pathNames =
         pathViews.stream().collect(Collectors.toMap(Path::getId, Path::getName));
     Map<UUID, String> pathColors =
@@ -229,19 +284,30 @@ public class ReportService {
       labelsByDate.put(date, new HashMap<>());
     }
     for (TimeEntry entry : window) {
-      LocalDate firstDate = LocalDate.ofInstant(entry.getStartedAt().isAfter(from) ? entry.getStartedAt() : from, ZoneOffset.UTC);
+      LocalDate firstDate =
+          LocalDate.ofInstant(
+              entry.getStartedAt().isAfter(from) ? entry.getStartedAt() : from, ZoneOffset.UTC);
       Instant actualEnd = entry.getEndedAt() == null ? now : entry.getEndedAt();
       Instant end = actualEnd.isBefore(to) ? actualEnd : to;
       LocalDate lastDate = LocalDate.ofInstant(end.minusNanos(1), ZoneOffset.UTC);
       for (LocalDate date = firstDate; !date.isAfter(lastDate); date = date.plusDays(1)) {
-        long seconds = secondsIn(entry, date.atStartOfDay(ZoneOffset.UTC).toInstant(), date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant(), now);
+        long seconds =
+            secondsIn(
+                entry,
+                date.atStartOfDay(ZoneOffset.UTC).toInstant(),
+                date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
+                now);
         if (seconds == 0) continue;
         Map<UUID, Long> dayLabels = labelsByDate.get(date);
         totalsByDate.merge(date, seconds, Long::sum);
         merge(pathsByDate.get(date), entry.getPathId(), seconds);
-        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(dayLabels, labelId, seconds));
+        labelsByEntry
+            .getOrDefault(entry.getId(), List.of())
+            .forEach(labelId -> merge(dayLabels, labelId, seconds));
         merge(allPaths, entry.getPathId(), seconds);
-        labelsByEntry.getOrDefault(entry.getId(), List.of()).forEach(labelId -> merge(allLabels, labelId, seconds));
+        labelsByEntry
+            .getOrDefault(entry.getId(), List.of())
+            .forEach(labelId -> merge(allLabels, labelId, seconds));
       }
     }
     List<Day> days = new ArrayList<>();
@@ -264,41 +330,76 @@ public class ReportService {
         List.copyOf(days),
         categories(allPaths, pathNames, pathColors, "Unassigned path"),
         categories(allLabels, labelNames, labelColors, "Unassigned label"),
-        calendarTotals.values().stream().map(CalendarLabelTotalAccumulator::view)
-            .sorted(Comparator.comparing(CalendarLabelTotal::label)).toList(),
+        calendarTotals.values().stream()
+            .map(CalendarLabelTotalAccumulator::view)
+            .sorted(Comparator.comparing(CalendarLabelTotal::label))
+            .toList(),
         sankey(aggregation, fromDate, toDateExclusive, days));
   }
 
-  private static Sankey sankey(Aggregation granularity, LocalDate from, LocalDate toExclusive, List<Day> days) {
+  private static Sankey sankey(
+      Aggregation granularity, LocalDate from, LocalDate toExclusive, List<Day> days) {
     List<SankeyNode> nodes = new ArrayList<>();
     List<SankeyLink> links = new ArrayList<>();
     List<SankeyBucket> buckets = new ArrayList<>();
     int depth = 0;
-    for (LocalDate bucketStart = granularity.start(from); bucketStart.isBefore(toExclusive); bucketStart = granularity.next(bucketStart)) {
+    for (LocalDate bucketStart = granularity.start(from);
+        bucketStart.isBefore(toExclusive);
+        bucketStart = granularity.next(bucketStart)) {
       LocalDate bucketEnd = granularity.end(bucketStart, toExclusive);
       String bucketLabel = granularity.label(bucketStart, bucketEnd);
       Map<String, Category> bucketPaths = new HashMap<>();
       for (Day day : days) {
         if (day.date().isBefore(bucketStart) || !day.date().isBefore(bucketEnd)) continue;
-        day.paths().forEach(path -> {
-          String pathKey = path.id() == null ? "unassigned" : path.id().toString();
-          bucketPaths.merge(pathKey, path, (existing, added) ->
-              new Category(existing.id(), existing.label(), existing.seconds() + added.seconds(), existing.color()));
-        });
+        day.paths()
+            .forEach(
+                path -> {
+                  String pathKey = path.id() == null ? "unassigned" : path.id().toString();
+                  bucketPaths.merge(
+                      pathKey,
+                      path,
+                      (existing, added) ->
+                          new Category(
+                              existing.id(),
+                              existing.label(),
+                              existing.seconds() + added.seconds(),
+                              existing.color()));
+                });
       }
       LocalDate bucketDate = bucketStart;
-      List<SankeyPath> bucketNodes = bucketPaths.entrySet().stream()
-          .map(entry -> {
-            Category path = entry.getValue();
-            String nodeId = "bucket:" + bucketDate + ":path:" + entry.getKey();
-            String nodeLabel = bucketLabel + " · " + path.label();
-            return new SankeyPath(entry.getKey(), nodeId, nodeLabel, path.color(), path.seconds(), path.label(), bucketLabel);
-          })
-          .sorted(Comparator.comparingLong(SankeyPath::seconds).reversed().thenComparing(SankeyPath::label))
-          .toList();
+      List<SankeyPath> bucketNodes =
+          bucketPaths.entrySet().stream()
+              .map(
+                  entry -> {
+                    Category path = entry.getValue();
+                    String nodeId = "bucket:" + bucketDate + ":path:" + entry.getKey();
+                    String nodeLabel = bucketLabel + " · " + path.label();
+                    return new SankeyPath(
+                        entry.getKey(),
+                        nodeId,
+                        nodeLabel,
+                        path.color(),
+                        path.seconds(),
+                        path.label(),
+                        bucketLabel);
+                  })
+              .sorted(
+                  Comparator.comparingLong(SankeyPath::seconds)
+                      .reversed()
+                      .thenComparing(SankeyPath::label))
+              .toList();
       int bucketDepth = depth++;
-      bucketNodes.forEach(path -> nodes.add(
-          new SankeyNode(path.nodeId(), path.label(), path.color(), bucketDepth, path.seconds(), path.pathLabel(), path.bucketLabel())));
+      bucketNodes.forEach(
+          path ->
+              nodes.add(
+                  new SankeyNode(
+                      path.nodeId(),
+                      path.label(),
+                      path.color(),
+                      bucketDepth,
+                      path.seconds(),
+                      path.pathLabel(),
+                      path.bucketLabel())));
       buckets.add(new SankeyBucket(bucketNodes));
     }
     for (int index = 0; index + 1 < buckets.size(); index++) {
@@ -307,13 +408,14 @@ public class ReportService {
     return new Sankey(granularity.name(), List.copyOf(nodes), List.copyOf(links));
   }
 
-  private static void connectBuckets(SankeyBucket source, SankeyBucket target, List<SankeyLink> links) {
-    Map<String, Long> sourceRemaining = source.paths().stream()
-        .collect(Collectors.toMap(SankeyPath::key, SankeyPath::seconds));
-    Map<String, Long> targetRemaining = target.paths().stream()
-        .collect(Collectors.toMap(SankeyPath::key, SankeyPath::seconds));
-    Map<String, SankeyPath> targetsByKey = target.paths().stream()
-        .collect(Collectors.toMap(SankeyPath::key, path -> path));
+  private static void connectBuckets(
+      SankeyBucket source, SankeyBucket target, List<SankeyLink> links) {
+    Map<String, Long> sourceRemaining =
+        source.paths().stream().collect(Collectors.toMap(SankeyPath::key, SankeyPath::seconds));
+    Map<String, Long> targetRemaining =
+        target.paths().stream().collect(Collectors.toMap(SankeyPath::key, SankeyPath::seconds));
+    Map<String, SankeyPath> targetsByKey =
+        target.paths().stream().collect(Collectors.toMap(SankeyPath::key, path -> path));
 
     for (SankeyPath sourcePath : source.paths()) {
       SankeyPath targetPath = targetsByKey.get(sourcePath.key());
@@ -334,55 +436,129 @@ public class ReportService {
       Map<String, Long> sourceRemaining,
       Map<String, Long> targetRemaining,
       List<SankeyLink> links) {
-    long value = Math.min(
-        sourceRemaining.getOrDefault(source.key(), 0L),
-        targetRemaining.getOrDefault(target.key(), 0L));
+    long value =
+        Math.min(
+            sourceRemaining.getOrDefault(source.key(), 0L),
+            targetRemaining.getOrDefault(target.key(), 0L));
     if (value <= 0) return;
-    links.add(new SankeyLink(source.nodeId(), target.nodeId(), source.label(), target.label(), value));
+    links.add(
+        new SankeyLink(source.nodeId(), target.nodeId(), source.label(), target.label(), value));
     sourceRemaining.put(source.key(), sourceRemaining.get(source.key()) - value);
     targetRemaining.put(target.key(), targetRemaining.get(target.key()) - value);
   }
 
   private record SankeyBucket(List<SankeyPath> paths) {}
-  private record SankeyPath(String key, String nodeId, String label, String color, long seconds, String pathLabel, String bucketLabel) {}
+
+  private record SankeyPath(
+      String key,
+      String nodeId,
+      String label,
+      String color,
+      long seconds,
+      String pathLabel,
+      String bucketLabel) {}
 
   public enum Aggregation {
     DAY {
-      LocalDate start(LocalDate date) { return date; }
-      LocalDate next(LocalDate date) { return date.plusDays(1); }
-      LocalDate end(LocalDate start, LocalDate toExclusive) { return start.plusDays(1); }
-      String label(LocalDate start, LocalDate end) { return start.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US)); }
+      LocalDate start(LocalDate date) {
+        return date;
+      }
+
+      LocalDate next(LocalDate date) {
+        return date.plusDays(1);
+      }
+
+      LocalDate end(LocalDate start, LocalDate toExclusive) {
+        return start.plusDays(1);
+      }
+
+      String label(LocalDate start, LocalDate end) {
+        return start.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US));
+      }
     },
     WEEK {
-      LocalDate start(LocalDate date) { return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)); }
-      LocalDate next(LocalDate date) { return date.plusWeeks(1); }
-      LocalDate end(LocalDate start, LocalDate toExclusive) { return start.plusWeeks(1).isAfter(toExclusive) ? toExclusive : start.plusWeeks(1); }
-      String label(LocalDate start, LocalDate end) { return start.equals(end.minusDays(1)) ? start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)) : start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US)) + "–" + end.minusDays(1).format(DateTimeFormatter.ofPattern("MMM d", Locale.US)); }
+      LocalDate start(LocalDate date) {
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+      }
+
+      LocalDate next(LocalDate date) {
+        return date.plusWeeks(1);
+      }
+
+      LocalDate end(LocalDate start, LocalDate toExclusive) {
+        return start.plusWeeks(1).isAfter(toExclusive) ? toExclusive : start.plusWeeks(1);
+      }
+
+      String label(LocalDate start, LocalDate end) {
+        return start.equals(end.minusDays(1))
+            ? start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US))
+            : start.format(DateTimeFormatter.ofPattern("MMM d", Locale.US))
+                + "–"
+                + end.minusDays(1).format(DateTimeFormatter.ofPattern("MMM d", Locale.US));
+      }
     },
     MONTH {
-      LocalDate start(LocalDate date) { return date.withDayOfMonth(1); }
-      LocalDate next(LocalDate date) { return date.plusMonths(1).withDayOfMonth(1); }
-      LocalDate end(LocalDate start, LocalDate toExclusive) { LocalDate end = start.plusMonths(1).withDayOfMonth(1); return end.isAfter(toExclusive) ? toExclusive : end; }
-      String label(LocalDate start, LocalDate end) { return start.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.US)); }
+      LocalDate start(LocalDate date) {
+        return date.withDayOfMonth(1);
+      }
+
+      LocalDate next(LocalDate date) {
+        return date.plusMonths(1).withDayOfMonth(1);
+      }
+
+      LocalDate end(LocalDate start, LocalDate toExclusive) {
+        LocalDate end = start.plusMonths(1).withDayOfMonth(1);
+        return end.isAfter(toExclusive) ? toExclusive : end;
+      }
+
+      String label(LocalDate start, LocalDate end) {
+        return start.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.US));
+      }
     },
     QUARTER {
-      LocalDate start(LocalDate date) { return date.withMonth(((date.getMonthValue() - 1) / 3) * 3 + 1).withDayOfMonth(1); }
-      LocalDate next(LocalDate date) { return date.plusMonths(3).withDayOfMonth(1); }
-      LocalDate end(LocalDate start, LocalDate toExclusive) { LocalDate end = start.plusMonths(3).withDayOfMonth(1); return end.isAfter(toExclusive) ? toExclusive : end; }
-      String label(LocalDate start, LocalDate end) { return "Q" + (((start.getMonthValue() - 1) / 3) + 1) + " " + start.getYear(); }
+      LocalDate start(LocalDate date) {
+        return date.withMonth(((date.getMonthValue() - 1) / 3) * 3 + 1).withDayOfMonth(1);
+      }
+
+      LocalDate next(LocalDate date) {
+        return date.plusMonths(3).withDayOfMonth(1);
+      }
+
+      LocalDate end(LocalDate start, LocalDate toExclusive) {
+        LocalDate end = start.plusMonths(3).withDayOfMonth(1);
+        return end.isAfter(toExclusive) ? toExclusive : end;
+      }
+
+      String label(LocalDate start, LocalDate end) {
+        return "Q" + (((start.getMonthValue() - 1) / 3) + 1) + " " + start.getYear();
+      }
     },
     YEAR {
-      LocalDate start(LocalDate date) { return date.withDayOfYear(1); }
-      LocalDate next(LocalDate date) { return date.plusYears(1).withDayOfYear(1); }
-      LocalDate end(LocalDate start, LocalDate toExclusive) { LocalDate end = start.plusYears(1).withDayOfYear(1); return end.isAfter(toExclusive) ? toExclusive : end; }
-      String label(LocalDate start, LocalDate end) { return Integer.toString(start.getYear()); }
+      LocalDate start(LocalDate date) {
+        return date.withDayOfYear(1);
+      }
+
+      LocalDate next(LocalDate date) {
+        return date.plusYears(1).withDayOfYear(1);
+      }
+
+      LocalDate end(LocalDate start, LocalDate toExclusive) {
+        LocalDate end = start.plusYears(1).withDayOfYear(1);
+        return end.isAfter(toExclusive) ? toExclusive : end;
+      }
+
+      String label(LocalDate start, LocalDate end) {
+        return Integer.toString(start.getYear());
+      }
     };
 
     abstract LocalDate start(LocalDate date);
-    abstract LocalDate next(LocalDate date);
-    abstract LocalDate end(LocalDate start, LocalDate toExclusive);
-    abstract String label(LocalDate start, LocalDate end);
 
+    abstract LocalDate next(LocalDate date);
+
+    abstract LocalDate end(LocalDate start, LocalDate toExclusive);
+
+    abstract String label(LocalDate start, LocalDate end);
   }
 
   private static final class SankeyGranularity {
@@ -401,9 +577,19 @@ public class ReportService {
     private final CalendarLabel label;
     private BigDecimal days = BigDecimal.ZERO;
     private long markers;
-    CalendarLabelTotalAccumulator(CalendarLabel label) { this.label = label; }
-    void add(BigDecimal portion) { if (portion == null) markers++; else days = days.add(portion); }
-    CalendarLabelTotal view() { return new CalendarLabelTotal(label.id(), label.label(), label.color(), days, markers); }
+
+    CalendarLabelTotalAccumulator(CalendarLabel label) {
+      this.label = label;
+    }
+
+    void add(BigDecimal portion) {
+      if (portion == null) markers++;
+      else days = days.add(portion);
+    }
+
+    CalendarLabelTotal view() {
+      return new CalendarLabelTotal(label.id(), label.label(), label.color(), days, markers);
+    }
   }
 
   private static void merge(Map<UUID, Long> totals, UUID id, long seconds) {
@@ -411,7 +597,10 @@ public class ReportService {
   }
 
   private static List<Category> categories(
-      Map<UUID, Long> totals, Map<UUID, String> names, Map<UUID, String> colors, String unassigned) {
+      Map<UUID, Long> totals,
+      Map<UUID, String> names,
+      Map<UUID, String> colors,
+      String unassigned) {
     return totals.entrySet().stream()
         .map(
             entry ->

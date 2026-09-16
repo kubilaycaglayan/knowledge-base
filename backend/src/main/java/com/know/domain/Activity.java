@@ -39,14 +39,12 @@ public class Activity {
 
   protected Activity() {}
 
-  public Activity(
-      UUID userId, UUID pathId, ActivityType type, String title, String detail) {
+  public Activity(UUID userId, UUID pathId, ActivityType type, String title, String detail) {
     this(userId, pathId, type, title, detail, Instant.now());
   }
 
   public Activity(
-      UUID userId, UUID pathId, UUID timeEntryId, ActivityType type,
-      String title, String detail) {
+      UUID userId, UUID pathId, UUID timeEntryId, ActivityType type, String title, String detail) {
     this(userId, pathId, type, title, detail, Instant.now());
     this.timeEntryId = timeEntryId;
   }
@@ -67,21 +65,32 @@ public class Activity {
   }
 
   public Activity(
-      UUID userId, UUID pathId, UUID timeEntryId, ActivityType type,
-      String title, String detail, Instant occurredAt) {
+      UUID userId,
+      UUID pathId,
+      UUID timeEntryId,
+      ActivityType type,
+      String title,
+      String detail,
+      Instant occurredAt) {
     this(userId, pathId, type, title, detail, occurredAt);
     this.timeEntryId = timeEntryId;
   }
 
   public static Activity session(
-      UUID userId, UUID pathId, UUID timeEntryId, String title, String detail,
-      Instant occurredAt) {
+      UUID userId, UUID pathId, UUID timeEntryId, String title, String detail, Instant occurredAt) {
     return new Activity(
         userId, pathId, timeEntryId, ActivityType.TIME_TRACKED, title, detail, occurredAt);
   }
 
-  public static Activity imported(UUID id, UUID userId, UUID pathId, UUID timeEntryId,
-      ActivityType type, String title, String detail, Instant occurredAt) {
+  public static Activity imported(
+      UUID id,
+      UUID userId,
+      UUID pathId,
+      UUID timeEntryId,
+      ActivityType type,
+      String title,
+      String detail,
+      Instant occurredAt) {
     Activity activity = new Activity(userId, pathId, timeEntryId, type, title, detail, occurredAt);
     activity.id = id;
     return activity;
@@ -131,8 +140,7 @@ public class Activity {
     this.importBatchId = importBatchId;
   }
 
-  public void updateForTimeEntry(
-      UUID pathId, String title, String detail, Instant occurredAt) {
+  public void updateForTimeEntry(UUID pathId, String title, String detail, Instant occurredAt) {
     this.pathId = pathId;
     this.title = title;
     this.detail = detail;

@@ -42,12 +42,13 @@ public class Note {
 
   @Column(name = "deleted_at")
   private Instant deletedAt;
-  @Column(name = "import_batch_id") private UUID importBatchId;
+
+  @Column(name = "import_batch_id")
+  private UUID importBatchId;
 
   protected Note() {}
 
-  public Note(
-      UUID userId, UUID pathId, UUID activityId, String title, String content) {
+  public Note(UUID userId, UUID pathId, UUID activityId, String title, String content) {
     this.userId = userId;
     this.pathId = pathId;
     this.activityId = activityId;
@@ -56,18 +57,27 @@ public class Note {
     this.contentText = content;
   }
 
-  public static Note imported(UUID id, UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
-      String title, String content, String contentText, Instant createdAt, Instant updatedAt) {
+  public static Note imported(
+      UUID id,
+      UUID userId,
+      UUID pathId,
+      UUID activityId,
+      UUID timeEntryId,
+      String title,
+      String content,
+      String contentText,
+      Instant createdAt,
+      Instant updatedAt) {
     Note note = new Note(userId, pathId, activityId, timeEntryId, title, content);
-    note.id = id; note.contentText = contentText == null ? content : contentText;
+    note.id = id;
+    note.contentText = contentText == null ? content : contentText;
     note.createdAt = createdAt == null ? Instant.now() : createdAt;
     note.updatedAt = updatedAt == null ? note.createdAt : updatedAt;
     return note;
   }
 
   public Note(
-      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
-      String title, String content) {
+      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId, String title, String content) {
     this(userId, pathId, activityId, title, content);
     this.timeEntryId = timeEntryId;
   }
@@ -115,8 +125,14 @@ public class Note {
   public Instant getDeletedAt() {
     return deletedAt;
   }
-  public UUID getImportBatchId() { return importBatchId; }
-  public void assignImportBatch(UUID id) { importBatchId = id; }
+
+  public UUID getImportBatchId() {
+    return importBatchId;
+  }
+
+  public void assignImportBatch(UUID id) {
+    importBatchId = id;
+  }
 
   public void delete() {
     deletedAt = Instant.now();

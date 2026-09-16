@@ -77,7 +77,8 @@ const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
   return match ? formatTrackedDuration(Number(match[1])) : "";
 };
-const labelFor = (id?: string) => sessionLabels.value.find((label) => label.id === id);
+const labelFor = (id?: string) =>
+  sessionLabels.value.find((label) => label.id === id);
 const activityLabelIds = (activity: Activity) => activity.labelIds || [];
 const linkPattern = /https?:\/\/[^\s<>]+/g;
 function linkParts(text?: string): DescriptionPart[] {
@@ -143,8 +144,15 @@ function activityGroupLabel(occurredAt: string) {
   if (sameDay(date, yesterday)) return "Yesterday";
   if (date >= thisWeekStart) return "This week";
   if (date >= lastWeekStart) return "Last week";
-  if (date.getFullYear() === lastMonth.getFullYear() && date.getMonth() === lastMonth.getMonth()) return "Last month";
-  return new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(date);
+  if (
+    date.getFullYear() === lastMonth.getFullYear() &&
+    date.getMonth() === lastMonth.getMonth()
+  )
+    return "Last month";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    year: "numeric",
+  }).format(date);
 }
 function historyActivityGroups(pathId: string): ActivityGroup[] {
   const groups: ActivityGroup[] = [];
@@ -154,14 +162,21 @@ function historyActivityGroups(pathId: string): ActivityGroup[] {
     if (group?.label === label) {
       group.activities.push(activity);
     } else {
-      groups.push({ key: `${label}-${activity.id}`, label, activities: [activity] });
+      groups.push({
+        key: `${label}-${activity.id}`,
+        label,
+        activities: [activity],
+      });
     }
   }
   return groups;
 }
 async function load(force = false) {
   try {
-    await Promise.all([pathsStore.load(force), labelsStore.loadScope("TIME_ENTRY", force)]);
+    await Promise.all([
+      pathsStore.load(force),
+      labelsStore.loadScope("TIME_ENTRY", force),
+    ]);
   } catch {
     error.value = "Unable to load paths.";
   }
@@ -204,9 +219,7 @@ function closeAddDialog() {
 }
 async function loadSummary(path: Path) {
   try {
-    summaries.value[path.id] = await api<Summary>(
-      `/paths/${path.id}/summary`,
-    );
+    summaries.value[path.id] = await api<Summary>(`/paths/${path.id}/summary`);
   } catch {
     error.value = "Could not load path history.";
   }
@@ -215,7 +228,9 @@ async function inspect(path: Path) {
   if (!summaries.value[path.id]) await loadSummary(path);
   if (!summaries.value[path.id]) return;
   historyPath.value = path;
-  void nextTick(() => document.querySelector<HTMLElement>(".path-history-dialog")?.focus());
+  void nextTick(() =>
+    document.querySelector<HTMLElement>(".path-history-dialog")?.focus(),
+  );
 }
 function closeHistory() {
   historyPath.value = null;
@@ -230,7 +245,14 @@ const isoDateTime = (value: string) => new Date(value).toISOString();
 async function editSession(event: Activity) {
   if (!event.timeEntryId) return;
   try {
-    const session = await api<{ pathId?: string; labelIds?: string[]; startedAt: string; endedAt?: string; description?: string; source: string }>(`/time-entries/${event.timeEntryId}`);
+    const session = await api<{
+      pathId?: string;
+      labelIds?: string[];
+      startedAt: string;
+      endedAt?: string;
+      description?: string;
+      source: string;
+    }>(`/time-entries/${event.timeEntryId}`);
     editingSession.value = event;
     sessionDraft.value = {
       pathId: session.pathId || historyPath.value?.id || "",
@@ -251,13 +273,23 @@ function closeSessionEdit() {
 }
 function addSessionLabel(event: Event) {
   const select = event.target as HTMLSelectElement;
-  if (sessionDraft.value && select.value && !sessionDraft.value.labelIds.includes(select.value)) {
-    sessionDraft.value.labelIds = [...sessionDraft.value.labelIds, select.value];
+  if (
+    sessionDraft.value &&
+    select.value &&
+    !sessionDraft.value.labelIds.includes(select.value)
+  ) {
+    sessionDraft.value.labelIds = [
+      ...sessionDraft.value.labelIds,
+      select.value,
+    ];
   }
   select.value = "";
 }
 function removeSessionLabel(labelId: string) {
-  if (sessionDraft.value) sessionDraft.value.labelIds = sessionDraft.value.labelIds.filter((id) => id !== labelId);
+  if (sessionDraft.value)
+    sessionDraft.value.labelIds = sessionDraft.value.labelIds.filter(
+      (id) => id !== labelId,
+    );
 }
 async function saveSession() {
   const event = editingSession.value;
@@ -284,7 +316,8 @@ async function saveSession() {
     if (historyPath.value) await loadSummary(historyPath.value);
     reportsStore.clear();
   } catch {
-    error.value = "Could not update this session. Check its time range and selections.";
+    error.value =
+      "Could not update this session. Check its time range and selections.";
   } finally {
     savingSession.value = false;
   }
@@ -410,14 +443,48 @@ onBeforeUnmount(() => {
 
 <template>
   <PromptDialog ref="promptDialog" />
-  <MergePathDialog :source="mergeSource" :paths="paths" @cancel="cancelMerge" @confirm="merge" />
+  <MergePathDialog
+    :source="mergeSource"
+    :paths="paths"
+    @cancel="cancelMerge"
+    @confirm="merge"
+  />
   <section class="paths-page">
     <header class="paths-heading">
-      <div><p class="eyebrow">ORGANIZE</p><h1>Your paths</h1></div>
-      <button class="icon-button" type="button" aria-label="Add path" title="Add path" aria-haspopup="dialog" @click="openAddDialog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+      <div>
+        <p class="eyebrow">ORGANIZE</p>
+        <h1>Your paths</h1>
+      </div>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label="Add path"
+        title="Add path"
+        aria-haspopup="dialog"
+        @click="openAddDialog"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
     </header>
     <p class="lede">Long-lived areas that give your work a place to belong.</p>
-    <p v-if="error && !addDialogOpen" class="notice" role="alert" aria-live="polite">{{ error }}</p>
+    <p
+      v-if="error && !addDialogOpen"
+      class="notice"
+      role="alert"
+      aria-live="polite"
+    >
+      {{ error }}
+    </p>
     <p
       v-if="pendingDelete"
       class="snackbar undo-snackbar"
@@ -425,14 +492,12 @@ onBeforeUnmount(() => {
       aria-live="polite"
     >
       Removed “{{ pendingDelete.name }}”.
-      <button class="text-button" type="button" @click="undoRemove">Undo</button>
+      <button class="text-button" type="button" @click="undoRemove">
+        Undo
+      </button>
     </p>
     <div class="path-list">
-      <article
-        v-for="path in paths"
-        :key="path.id"
-        class="path card"
-      >
+      <article v-for="path in paths" :key="path.id" class="path card">
         <form
           v-if="editingId === path.id"
           class="path-edit"
@@ -443,12 +508,42 @@ onBeforeUnmount(() => {
             rows="3"
             aria-label="Edit path description"
           ></textarea>
-          <span class="color-popover-anchor path-color-control"><button class="color-swatch-button" type="button" :style="{ backgroundColor: editColor }" aria-label="Choose edit path color" :aria-expanded="editColorOpen" aria-controls="edit-path-color-palette" @click="editColorOpen = !editColorOpen; selectedColorOpen = false"></button><ColorPalette v-if="editColorOpen" id="edit-path-color-palette" class="path-color-palette" :model-value="editColor" legend="Edit path color" option-label="Set edit path color" @update:model-value="chooseEditColor" /></span>
+          <span class="color-popover-anchor path-color-control"
+            ><button
+              class="color-swatch-button"
+              type="button"
+              :style="{ backgroundColor: editColor }"
+              aria-label="Choose edit path color"
+              :aria-expanded="editColorOpen"
+              aria-controls="edit-path-color-palette"
+              @click="
+                editColorOpen = !editColorOpen;
+                selectedColorOpen = false;
+              "
+            ></button
+            ><ColorPalette
+              v-if="editColorOpen"
+              id="edit-path-color-palette"
+              class="path-color-palette"
+              :model-value="editColor"
+              legend="Edit path color"
+              option-label="Set edit path color"
+              @update:model-value="chooseEditColor"
+          /></span>
           <div class="row-actions">
             <button class="primary">Save path</button
-            ><button type="button" class="text-button" :disabled="merging" @click="openMerge(path)">
-              <span v-if="merging" class="loading-spinner" aria-hidden="true"></span>Merge
-            </button
+            ><button
+              type="button"
+              class="text-button"
+              :disabled="merging"
+              @click="openMerge(path)"
+            >
+              <span
+                v-if="merging"
+                class="loading-spinner"
+                aria-hidden="true"
+              ></span
+              >Merge</button
             ><button type="button" class="text-button" @click="cancelEdit">
               Cancel
             </button>
@@ -461,10 +556,21 @@ onBeforeUnmount(() => {
               :style="{ backgroundColor: path.color || colors[0] }"
             ></span>
             <h2>{{ path.name }}</h2>
-            <span v-if="path.activityLabel" class="activity-pill">{{ path.activityLabel }}</span>
+            <span v-if="path.activityLabel" class="activity-pill">{{
+              path.activityLabel
+            }}</span>
             <p v-if="path.description">
-              <template v-for="(part, index) in linkParts(path.description)" :key="index">
-                <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
+              <template
+                v-for="(part, index) in linkParts(path.description)"
+                :key="index"
+              >
+                <a
+                  v-if="part.url"
+                  :href="part.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >{{ part.text }}</a
+                >
                 <template v-else>{{ part.text }}</template>
               </template>
             </p>
@@ -492,8 +598,20 @@ onBeforeUnmount(() => {
         Your first path is waiting to be named.
       </p>
     </div>
-    <div v-if="addDialogOpen" class="prompt-dialog-backdrop" @click.self="closeAddDialog">
-      <section v-dialog-focus class="prompt-dialog card path-create-dialog" role="dialog" aria-modal="true" aria-labelledby="path-create-heading" tabindex="-1" @keydown.esc.prevent="closeAddDialog">
+    <div
+      v-if="addDialogOpen"
+      class="prompt-dialog-backdrop"
+      @click.self="closeAddDialog"
+    >
+      <section
+        v-dialog-focus
+        class="prompt-dialog card path-create-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="path-create-heading"
+        tabindex="-1"
+        @keydown.esc.prevent="closeAddDialog"
+      >
         <div class="path-dialog-heading">
           <div>
             <p class="eyebrow">NEW PATH</p>
@@ -501,18 +619,51 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <form class="path-create-form" @submit.prevent="add">
-          <label>Path name<input v-model="name" name="path-name" aria-label="New path name" placeholder="e.g. Reading…" autocomplete="off" required /></label>
-          <label>Description <span class="muted">Optional</span><textarea v-model="description" name="path-description" aria-label="Path description" rows="3" placeholder="What belongs here…" autocomplete="off"></textarea></label>
-          <div class="path-create-color"><ColorPalette :model-value="selectedColor" legend="Path color" option-label="Choose path color" @update:model-value="chooseSelectedColor" /></div>
-          <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
+          <label
+            >Path name<input
+              v-model="name"
+              name="path-name"
+              aria-label="New path name"
+              placeholder="e.g. Reading…"
+              autocomplete="off"
+              required
+          /></label>
+          <label
+            >Description <span class="muted">Optional</span
+            ><textarea
+              v-model="description"
+              name="path-description"
+              aria-label="Path description"
+              rows="3"
+              placeholder="What belongs here…"
+              autocomplete="off"
+            ></textarea>
+          </label>
+          <div class="path-create-color">
+            <ColorPalette
+              :model-value="selectedColor"
+              legend="Path color"
+              option-label="Choose path color"
+              @update:model-value="chooseSelectedColor"
+            />
+          </div>
+          <p v-if="error" class="notice" role="alert" aria-live="polite">
+            {{ error }}
+          </p>
           <div class="prompt-dialog-actions">
-            <button type="button" class="text-button" @click="closeAddDialog">Cancel</button>
+            <button type="button" class="text-button" @click="closeAddDialog">
+              Cancel
+            </button>
             <button class="primary" type="submit">Add path</button>
           </div>
         </form>
       </section>
     </div>
-    <div v-if="historyPath && summaries[historyPath.id]" class="prompt-dialog-backdrop" @click.self="closeHistory">
+    <div
+      v-if="historyPath && summaries[historyPath.id]"
+      class="prompt-dialog-backdrop"
+      @click.self="closeHistory"
+    >
       <section
         v-dialog-focus
         class="prompt-dialog card path-history-dialog"
@@ -526,56 +677,206 @@ onBeforeUnmount(() => {
           <div>
             <p class="eyebrow">PATH HISTORY</p>
             <h2 id="path-history-heading">{{ historyPath.name }}</h2>
-            <p class="muted">{{ formatTrackedDuration(summaries[historyPath.id].trackedSeconds) }} tracked</p>
+            <p class="muted">
+              {{
+                formatTrackedDuration(summaries[historyPath.id].trackedSeconds)
+              }}
+              tracked
+            </p>
           </div>
-          <button type="button" class="text-button" @click="closeHistory">Close</button>
+          <button type="button" class="text-button" @click="closeHistory">
+            Close
+          </button>
         </div>
         <div class="path-history-list" aria-label="Recent activity">
-          <section v-for="group in historyActivityGroups(historyPath.id)" :key="group.key" class="path-history-group" :aria-labelledby="`path-history-group-${group.key}`">
-            <h3 :id="`path-history-group-${group.key}`" class="path-history-group-heading">{{ group.label }}</h3>
-          <article v-for="event in group.activities" :key="event.id" class="path-history-entry">
-            <div class="path-history-meta">
-              <time :datetime="event.occurredAt">{{ formatDate(event.occurredAt) }}</time>
-              <div v-if="activityLabelIds(event).length" class="activity-labels" aria-label="Session labels">
-                <span v-for="labelId in activityLabelIds(event)" :key="labelId" class="activity-label-chip">
-                  {{ labelFor(labelId)?.name || "Removed label" }}
-                </span>
+          <section
+            v-for="group in historyActivityGroups(historyPath.id)"
+            :key="group.key"
+            class="path-history-group"
+            :aria-labelledby="`path-history-group-${group.key}`"
+          >
+            <h3
+              :id="`path-history-group-${group.key}`"
+              class="path-history-group-heading"
+            >
+              {{ group.label }}
+            </h3>
+            <article
+              v-for="event in group.activities"
+              :key="event.id"
+              class="path-history-entry"
+            >
+              <div class="path-history-meta">
+                <time :datetime="event.occurredAt">{{
+                  formatDate(event.occurredAt)
+                }}</time>
+                <div
+                  v-if="activityLabelIds(event).length"
+                  class="activity-labels"
+                  aria-label="Session labels"
+                >
+                  <span
+                    v-for="labelId in activityLabelIds(event)"
+                    :key="labelId"
+                    class="activity-label-chip"
+                  >
+                    {{ labelFor(labelId)?.name || "Removed label" }}
+                  </span>
+                </div>
               </div>
-            </div>
-            <span v-if="activityDuration(event.title)" class="activity-duration">{{ activityDuration(event.title) }}</span>
-            <p class="activity-description">
-              <template v-for="(part, index) in activityDescriptionParts(event)" :key="index">
-                <a v-if="part.url" :href="part.url" target="_blank" rel="noopener noreferrer">{{ part.text }}</a>
-                <template v-else>{{ part.text }}</template>
-              </template>
-            </p>
-            <button v-if="event.timeEntryId" type="button" class="text-button path-history-edit" @click="editSession(event)">Edit session</button>
-          </article>
+              <span
+                v-if="activityDuration(event.title)"
+                class="activity-duration"
+                >{{ activityDuration(event.title) }}</span
+              >
+              <p class="activity-description">
+                <template
+                  v-for="(part, index) in activityDescriptionParts(event)"
+                  :key="index"
+                >
+                  <a
+                    v-if="part.url"
+                    :href="part.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >{{ part.text }}</a
+                  >
+                  <template v-else>{{ part.text }}</template>
+                </template>
+              </p>
+              <button
+                v-if="event.timeEntryId"
+                type="button"
+                class="text-button path-history-edit"
+                @click="editSession(event)"
+              >
+                Edit session
+              </button>
+            </article>
           </section>
-          <p v-if="!recentActivity(historyPath.id).length" class="muted">No recent activity yet.</p>
+          <p v-if="!recentActivity(historyPath.id).length" class="muted">
+            No recent activity yet.
+          </p>
         </div>
       </section>
     </div>
-    <div v-if="editingSession && sessionDraft" class="prompt-dialog-backdrop" @click.self="closeSessionEdit">
-      <section v-dialog-focus class="prompt-dialog card session-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="session-edit-heading" tabindex="-1" @keydown.esc.prevent="closeSessionEdit">
+    <div
+      v-if="editingSession && sessionDraft"
+      class="prompt-dialog-backdrop"
+      @click.self="closeSessionEdit"
+    >
+      <section
+        v-dialog-focus
+        class="prompt-dialog card session-edit-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="session-edit-heading"
+        tabindex="-1"
+        @keydown.esc.prevent="closeSessionEdit"
+      >
         <p class="eyebrow">EDIT SESSION</p>
         <h2 id="session-edit-heading">Edit session</h2>
         <form class="session-edit" @submit.prevent="saveSession">
-          <label class="session-edit-path">Path<select v-model="sessionDraft.pathId" name="history-session-path" aria-label="Edit session path">
-            <option value="">Unassigned</option>
-            <option v-for="path in paths" :key="path.id" :value="path.id">{{ path.name }}</option>
-          </select></label>
+          <label class="session-edit-path"
+            >Path<select
+              v-model="sessionDraft.pathId"
+              name="history-session-path"
+              aria-label="Edit session path"
+            >
+              <option value="">Unassigned</option>
+              <option v-for="path in paths" :key="path.id" :value="path.id">
+                {{ path.name }}
+              </option>
+            </select></label
+          >
           <div class="session-edit-grid">
-            <label class="session-edit-description">Description <span>(optional)</span><textarea v-model="sessionDraft.description" name="history-session-description" aria-label="Edit session description" maxlength="5000" rows="1" placeholder="What did you work on…"></textarea></label>
-            <fieldset class="session-edit-labels"><legend>Labels</legend><div class="session-label-picker">
-              <div v-if="sessionDraft.labelIds.length" class="session-label-chips" aria-label="Selected session labels"><button v-for="labelId in sessionDraft.labelIds" :key="labelId" type="button" :aria-label="`Remove ${labelFor(labelId)?.name || 'removed label'}`" @click="removeSessionLabel(labelId)">{{ labelFor(labelId)?.name || "Removed label" }} <span aria-hidden="true">×</span></button></div>
-              <select name="history-session-labels" aria-label="Add session label" @change="addSessionLabel"><option value="">Add a label…</option><option v-for="label in sessionLabels.filter((label) => !sessionDraft.labelIds.includes(label.id))" :key="label.id" :value="label.id">{{ label.name }}</option></select>
-            </div></fieldset>
-            <label>Source<select v-model="sessionDraft.source" name="history-session-source" aria-label="Edit session source"><option v-for="source in sessionSources" :key="source">{{ source }}</option></select></label>
-            <label>Started<input v-model="sessionDraft.startedAt" type="datetime-local" name="history-session-started-at" aria-label="Edit session start" required /></label>
-            <label>Ended<input v-model="sessionDraft.endedAt" type="datetime-local" name="history-session-ended-at" aria-label="Edit session end" required /></label>
+            <label class="session-edit-description"
+              >Description <span>(optional)</span
+              ><textarea
+                v-model="sessionDraft.description"
+                name="history-session-description"
+                aria-label="Edit session description"
+                maxlength="5000"
+                rows="1"
+                placeholder="What did you work on…"
+              ></textarea>
+            </label>
+            <fieldset class="session-edit-labels">
+              <legend>Labels</legend>
+              <div class="session-label-picker">
+                <div
+                  v-if="sessionDraft.labelIds.length"
+                  class="session-label-chips"
+                  aria-label="Selected session labels"
+                >
+                  <button
+                    v-for="labelId in sessionDraft.labelIds"
+                    :key="labelId"
+                    type="button"
+                    :aria-label="`Remove ${labelFor(labelId)?.name || 'removed label'}`"
+                    @click="removeSessionLabel(labelId)"
+                  >
+                    {{ labelFor(labelId)?.name || "Removed label" }}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+                <select
+                  name="history-session-labels"
+                  aria-label="Add session label"
+                  @change="addSessionLabel"
+                >
+                  <option value="">Add a label…</option>
+                  <option
+                    v-for="label in sessionLabels.filter(
+                      (label) => !sessionDraft.labelIds.includes(label.id),
+                    )"
+                    :key="label.id"
+                    :value="label.id"
+                  >
+                    {{ label.name }}
+                  </option>
+                </select>
+              </div>
+            </fieldset>
+            <label
+              >Source<select
+                v-model="sessionDraft.source"
+                name="history-session-source"
+                aria-label="Edit session source"
+              >
+                <option v-for="source in sessionSources" :key="source">
+                  {{ source }}
+                </option>
+              </select></label
+            >
+            <label
+              >Started<input
+                v-model="sessionDraft.startedAt"
+                type="datetime-local"
+                name="history-session-started-at"
+                aria-label="Edit session start"
+                required
+            /></label>
+            <label
+              >Ended<input
+                v-model="sessionDraft.endedAt"
+                type="datetime-local"
+                name="history-session-ended-at"
+                aria-label="Edit session end"
+                required
+            /></label>
           </div>
-          <div class="session-actions"><button class="primary" :disabled="savingSession">{{ savingSession ? "Saving…" : "Save session" }}</button><button type="button" class="text-button" @click="closeSessionEdit">Cancel</button></div>
+          <div class="session-actions">
+            <button class="primary" :disabled="savingSession">
+              {{ savingSession ? "Saving…" : "Save session" }}</button
+            ><button
+              type="button"
+              class="text-button"
+              @click="closeSessionEdit"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       </section>
     </div>
@@ -583,17 +884,72 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.paths-page { max-width: 1200px; margin: 0 auto; }
-.paths-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
-.paths-heading h1 { margin: 8px 0 0; }
-.icon-button { display: inline-flex; width: 46px; height: 46px; align-items: center; justify-content: center; border: 0; border-radius: var(--workspace-radius); background: var(--workspace-accent); color: var(--workspace-on-accent); cursor: pointer; }
-.icon-button:hover { background: var(--workspace-accent-hover); }
-.path-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.path-dialog-heading h2 { margin: 3px 0 0; font-size: 20px; }
-.path-create-form { display: grid; gap: 14px; margin-top: 4px; }
-.path-create-form label { display: grid; gap: 6px; font-size: 12px; font-weight: 650; }
-.path-create-form input, .path-create-form textarea { width: 100%; }
-.path-create-color { padding-top: 2px; }
-.path-create-color :deep(.color-palette) { display: grid; grid-template-columns: repeat(5, 28px); gap: 2px; width: max-content; }
-@media (max-width: 560px) { .paths-heading { align-items: flex-start; } }
+.paths-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.paths-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.paths-heading h1 {
+  margin: 8px 0 0;
+}
+.icon-button {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--workspace-radius);
+  background: var(--workspace-accent);
+  color: var(--workspace-on-accent);
+  cursor: pointer;
+}
+.icon-button:hover {
+  background: var(--workspace-accent-hover);
+}
+.path-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.path-dialog-heading h2 {
+  margin: 3px 0 0;
+  font-size: 20px;
+}
+.path-create-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 4px;
+}
+.path-create-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.path-create-form input,
+.path-create-form textarea {
+  width: 100%;
+}
+.path-create-color {
+  padding-top: 2px;
+}
+.path-create-color :deep(.color-palette) {
+  display: grid;
+  grid-template-columns: repeat(5, 28px);
+  gap: 2px;
+  width: max-content;
+}
+@media (max-width: 560px) {
+  .paths-heading {
+    align-items: flex-start;
+  }
+}
 </style>

@@ -18,13 +18,16 @@ describe("timer store", () => {
     vi.mocked(api).mockImplementation(async (path, options = {}) => {
       if (path === "/timers/current") return null;
       if (path === "/timers/draft") {
-        if (options.method === "PUT") serverDraft = JSON.parse(options.body as string);
+        if (options.method === "PUT")
+          serverDraft = JSON.parse(options.body as string);
         return structuredClone(serverDraft);
       }
       return [];
     });
     const inline = useTimerStore();
-    inline.pathId = "path-1"; inline.selectedLabelIds = ["label-1"]; inline.description = "Read chapter";
+    inline.pathId = "path-1";
+    inline.selectedLabelIds = ["label-1"];
+    inline.description = "Read chapter";
     await inline.updateTimer();
     const floating = useTimerStore();
     expect(floating).toBe(inline);
@@ -44,7 +47,10 @@ describe("timer store", () => {
   it("shares pending saves across consumers and keeps edits made during a request", async () => {
     const pending: { body: any; resolve: (value: any) => void }[] = [];
     vi.mocked(api).mockImplementation((path, options = {}) => {
-      if (options.method === "PUT") return new Promise(resolve => pending.push({ body: JSON.parse(options.body as string), resolve }));
+      if (options.method === "PUT")
+        return new Promise((resolve) =>
+          pending.push({ body: JSON.parse(options.body as string), resolve }),
+        );
       return Promise.resolve([]);
     });
     const store = useTimerStore();
@@ -55,7 +61,8 @@ describe("timer store", () => {
     await floating.updateTimer();
     expect(pending).toHaveLength(1);
     pending[0].resolve(pending[0].body);
-    await first; await flushPromises();
+    await first;
+    await flushPromises();
     expect(store.description).toBe("Second");
     expect(pending).toHaveLength(2);
     expect(pending[1].body.description).toBe("Second");
@@ -66,18 +73,42 @@ describe("timer store", () => {
 
   it("preserves exact server start seconds when only labels change", async () => {
     const store = useTimerStore();
-    store.setCurrent({ id: "timer", startedAt: "2026-09-12T10:00:47.123Z", labelIds: [], running: true });
-    vi.mocked(api).mockImplementation(async (_path, options = {}) => ({ id: "timer", running: true, ...JSON.parse(options.body as string) }));
+    store.setCurrent({
+      id: "timer",
+      startedAt: "2026-09-12T10:00:47.123Z",
+      labelIds: [],
+      running: true,
+    });
+    vi.mocked(api).mockImplementation(async (_path, options = {}) => ({
+      id: "timer",
+      running: true,
+      ...JSON.parse(options.body as string),
+    }));
     store.selectedLabelIds = ["label"];
     await store.updateTimer();
-    expect(JSON.parse(vi.mocked(api).mock.calls[0][1]!.body as string).startedAt).toBe("2026-09-12T10:00:47.123Z");
+    expect(
+      JSON.parse(vi.mocked(api).mock.calls[0][1]!.body as string).startedAt,
+    ).toBe("2026-09-12T10:00:47.123Z");
   });
 
   it("invalidates history and applies remote changes, including stop", async () => {
     const store = useTimerStore();
-    store.setCurrent({ id: "timer", startedAt: "2026-09-12T10:00:00Z", description: "First", running: true });
-    useSessionsStore().setPage("0:50", { sessions: [], page: 0, totalPages: 1, totalSessions: 0 });
-    vi.mocked(api).mockResolvedValueOnce({ ...store.current, description: "Remote" });
+    store.setCurrent({
+      id: "timer",
+      startedAt: "2026-09-12T10:00:00Z",
+      description: "First",
+      running: true,
+    });
+    useSessionsStore().setPage("0:50", {
+      sessions: [],
+      page: 0,
+      totalPages: 1,
+      totalSessions: 0,
+    });
+    vi.mocked(api).mockResolvedValueOnce({
+      ...store.current,
+      description: "Remote",
+    });
     await store.sync();
     expect(store.description).toBe("Remote");
     expect(useSessionsStore().cachedPage("0:50")).toBeUndefined();
@@ -90,11 +121,20 @@ describe("timer store", () => {
 
   it("does not restore another account's fields from a delayed response", async () => {
     let resolve: (value: unknown) => void = () => {};
-    vi.mocked(api).mockImplementation(() => new Promise(done => { resolve = done; }));
+    vi.mocked(api).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
     const store = useTimerStore();
     const request = store.sync();
     store.clear();
-    resolve({ id: "old-account", startedAt: "2026-09-12T10:00:00Z", description: "Private" });
+    resolve({
+      id: "old-account",
+      startedAt: "2026-09-12T10:00:00Z",
+      description: "Private",
+    });
     await request;
     expect(store.current).toBeNull();
     expect(store.description).toBe("");
@@ -105,8 +145,14 @@ describe("timer store", () => {
     textarea.id = "tt-desc";
     document.body.append(textarea);
     textarea.focus();
-    let draft = { pathId: "", labelIds: [] as string[], description: "Existing" };
-    vi.mocked(api).mockImplementation(async path => path === "/timers/current" ? null : structuredClone(draft));
+    let draft = {
+      pathId: "",
+      labelIds: [] as string[],
+      description: "Existing",
+    };
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/timers/current" ? null : structuredClone(draft),
+    );
     const store = useTimerStore();
     await store.sync();
     expect(store.description).toBe("Existing");

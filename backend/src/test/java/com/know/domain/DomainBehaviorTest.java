@@ -10,8 +10,7 @@ class DomainBehaviorTest {
   @Test
   void stoppedTimeEntryStoresDurationAndCannotRemainRunning() {
     Instant start = Instant.parse("2026-08-25T10:00:00Z");
-    TimeEntry entry =
-        new TimeEntry(UUID.randomUUID(), null, start, "Reading", TimeSource.MANUAL);
+    TimeEntry entry = new TimeEntry(UUID.randomUUID(), null, start, "Reading", TimeSource.MANUAL);
     assertTrue(entry.running());
     entry.stop(start.plusSeconds(3300));
     assertFalse(entry.running());
@@ -76,8 +75,7 @@ class DomainBehaviorTest {
     UUID timeEntry = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-25T10:00:00Z");
 
-    Activity activity =
-        Activity.session(user, path, timeEntry, "Session", "Reading", occurredAt);
+    Activity activity = Activity.session(user, path, timeEntry, "Session", "Reading", occurredAt);
 
     assertEquals(ActivityType.TIME_TRACKED, activity.getType());
     assertEquals(timeEntry, activity.getTimeEntryId());

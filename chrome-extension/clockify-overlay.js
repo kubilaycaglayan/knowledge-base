@@ -6,8 +6,13 @@ import "./clockify-settings.js";
   const detailedRoute = () => {
     try {
       const url = new URL(window.location.href);
-      return url.origin === "https://app.clockify.me" && /^\/reports\/detailed(?:\/|$)/.test(url.pathname);
-    } catch { return false; }
+      return (
+        url.origin === "https://app.clockify.me" &&
+        /^\/reports\/detailed(?:\/|$)/.test(url.pathname)
+      );
+    } catch {
+      return false;
+    }
   };
   let root;
   let shadow;
@@ -25,7 +30,8 @@ import "./clockify-settings.js";
     @media (max-width: 700px) { button { min-height: 44px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
     </style><section class="panel" aria-live="polite"><h2 translate="no">knowledge<span>.</span>base · Clockify</h2><p class="message">Watching detailed reports…</p><div class="counts" hidden><div class="count"><strong class="imported">0</strong><small>imported</small></div><div class="count"><strong class="skipped">0</strong><small>duplicates skipped</small></div><div class="count"><strong class="paths">0</strong><small>new paths</small></div></div><button class="login" hidden>Open Extension</button></section>`;
-    $(".login").onclick = () => chrome.runtime.sendMessage({ type: "KNOW_OPEN_POPUP" });
+    $(".login").onclick = () =>
+      chrome.runtime.sendMessage({ type: "KNOW_OPEN_POPUP" });
   };
   const $ = (selector) => shadow?.querySelector(selector);
   const updateRoute = () => {
@@ -41,10 +47,13 @@ import "./clockify-settings.js";
   const hash = async (payload) => {
     const bytes = new TextEncoder().encode(JSON.stringify(payload));
     const digest = await crypto.subtle.digest("SHA-256", bytes);
-    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    return [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
   };
   const show = (summary) => {
-    $(".message").textContent = `Imported ${summary.imported} sessions from this report.`;
+    $(".message").textContent =
+      `Imported ${summary.imported} sessions from this report.`;
     $(".imported").textContent = summary.imported;
     $(".skipped").textContent = summary.skipped;
     $(".paths").textContent = summary.createdPaths;
@@ -56,17 +65,33 @@ import "./clockify-settings.js";
   });
   chrome.storage.onChanged?.addListener((changes, areaName) => {
     if (areaName !== "local" || !changes[KnowClockifySettings.KEY]) return;
-    enabled = KnowClockifySettings.isEnabled(changes[KnowClockifySettings.KEY].newValue);
+    enabled = KnowClockifySettings.isEnabled(
+      changes[KnowClockifySettings.KEY].newValue,
+    );
     updateRoute();
   });
   window.addEventListener("popstate", updateRoute);
   window.addEventListener("hashchange", updateRoute);
-  if (typeof window.setInterval === "function") window.setInterval(updateRoute, 250);
+  if (typeof window.setInterval === "function")
+    window.setInterval(updateRoute, 250);
   window.addEventListener("message", async (event) => {
-    if (!KnowClockifySettings.isEnabled(enabled) || !detailedRoute() || event.source !== window || event.origin !== "https://app.clockify.me" || event.data?.source !== "know-clockify" || event.data.type !== "detailed-report" || importing) return;
+    if (
+      !KnowClockifySettings.isEnabled(enabled) ||
+      !detailedRoute() ||
+      event.source !== window ||
+      event.origin !== "https://app.clockify.me" ||
+      event.data?.source !== "know-clockify" ||
+      event.data.type !== "detailed-report" ||
+      importing
+    )
+      return;
     const payload = event.data.payload;
     const validation = KnowClockifyValidation.validate(payload);
-    if (!validation.ok) { $(".message").textContent = validation.error; $(".message").className = "message error"; return; }
+    if (!validation.ok) {
+      $(".message").textContent = validation.error;
+      $(".message").className = "message error";
+      return;
+    }
     if (!payload.timeentries.length) {
       $(".message").textContent = "No completed entries in this report.";
       return;
@@ -74,18 +99,23 @@ import "./clockify-settings.js";
     const key = await hash(payload);
     if (seen.has(key)) return;
     importing = true;
-    $(".message").textContent = `Importing ${payload.timeentries.length} sessions…`;
-    chrome.runtime.sendMessage({ type: "KNOW_CLOCKIFY_IMPORT", payload }, (result) => {
-      importing = false;
-      if (chrome.runtime.lastError || !result?.ok) {
-        $(".message").textContent = result?.error || "Could not import this report.";
-        $(".message").className = "message error";
-        $(".login").hidden = !result?.needsLogin;
-        return;
-      }
-      $(".message").className = "message";
-      seen.add(key);
-      show(result.summary);
-    });
+    $(".message").textContent =
+      `Importing ${payload.timeentries.length} sessions…`;
+    chrome.runtime.sendMessage(
+      { type: "KNOW_CLOCKIFY_IMPORT", payload },
+      (result) => {
+        importing = false;
+        if (chrome.runtime.lastError || !result?.ok) {
+          $(".message").textContent =
+            result?.error || "Could not import this report.";
+          $(".message").className = "message error";
+          $(".login").hidden = !result?.needsLogin;
+          return;
+        }
+        $(".message").className = "message";
+        seen.add(key);
+        show(result.summary);
+      },
+    );
   });
 })();

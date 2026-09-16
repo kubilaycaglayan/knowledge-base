@@ -27,7 +27,12 @@ function createOptions({ apiBase = undefined, granted = true } = {}) {
     document: { getElementById: (id) => elements[id] },
     chrome: {
       storage: { local: storage },
-      permissions: { request: async (details) => { storage.permissionRequest = details; return granted; } },
+      permissions: {
+        request: async (details) => {
+          storage.permissionRequest = details;
+          return granted;
+        },
+      },
     },
     KnowApiConfig: {
       apiBase: (value) => value || "http://localhost:8080/api/v1",
@@ -54,8 +59,14 @@ test("requests origin permission and saves a normalized API URL", async () => {
   elements.api.value = "https://know.example/api/v1/";
   await elements.save.onclick();
 
-  assert.equal(JSON.stringify(storage.permissionRequest), JSON.stringify({ origins: ["https://know.example/*"] }));
-  assert.equal(JSON.stringify(storage.saved), JSON.stringify({ apiBase: "https://know.example/api/v1" }));
+  assert.equal(
+    JSON.stringify(storage.permissionRequest),
+    JSON.stringify({ origins: ["https://know.example/*"] }),
+  );
+  assert.equal(
+    JSON.stringify(storage.saved),
+    JSON.stringify({ apiBase: "https://know.example/api/v1" }),
+  );
   assert.equal(elements.status.textContent, "Saved.");
 });
 

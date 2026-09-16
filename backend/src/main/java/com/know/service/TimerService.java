@@ -3,10 +3,10 @@ package com.know.service;
 import com.know.domain.*;
 import java.time.*;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,7 +26,8 @@ public class TimerService {
 
   @Transactional(readOnly = true)
   public DraftView draft(UUID userId) {
-    return drafts.findById(userId)
+    return drafts
+        .findById(userId)
         .map(draft -> new DraftView(draft.getPathId(), draft.getLabelIds(), draft.getDescription()))
         .orElse(new DraftView(null, List.of(), null));
   }
@@ -35,7 +36,8 @@ public class TimerService {
   public DraftView saveDraft(UUID userId, UUID pathId, List<UUID> labelIds, String description) {
     lockUser(userId);
     if (current(userId) != null)
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running; update it instead");
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "A timer is already running; update it instead");
     validateTargets(userId, pathId, labelIds);
     TrackerDraft draft = drafts.findById(userId).orElseGet(() -> new TrackerDraft(userId));
     draft.configure(pathId, labelIds, description);
@@ -44,8 +46,10 @@ public class TimerService {
   }
 
   private void lockUser(UUID userId) {
-    if (users != null) users.findForUpdateById(userId).orElseThrow(
-        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    if (users != null)
+      users
+          .findForUpdateById(userId)
+          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
   }
 
   private void rememberDraft(UUID userId, TimeEntry entry) {
@@ -117,16 +121,21 @@ public class TimerService {
   private Map<UUID, List<UUID>> labelIdsByEntry(List<TimeEntry> entriesToView) {
     if (entriesToView.isEmpty()) return Map.of();
     Map<UUID, List<UUID>> result = new HashMap<>();
-    entryLabels.findAllByIdTimeEntryIdIn(entriesToView.stream().map(TimeEntry::getId).toList())
-        .forEach(assignment -> result.computeIfAbsent(assignment.getTimeEntryId(), ignored -> new ArrayList<>())
-            .add(assignment.getLabelId()));
+    entryLabels
+        .findAllByIdTimeEntryIdIn(entriesToView.stream().map(TimeEntry::getId).toList())
+        .forEach(
+            assignment ->
+                result
+                    .computeIfAbsent(assignment.getTimeEntryId(), ignored -> new ArrayList<>())
+                    .add(assignment.getLabelId()));
     return result;
   }
 
   private List<TimeView> views(List<TimeEntry> entriesToView) {
     Map<UUID, List<UUID>> labelsByEntry = labelIdsByEntry(entriesToView);
-    return entriesToView.stream().map(entry -> TimeView.of(entry,
-        labelsByEntry.getOrDefault(entry.getId(), List.of()))).toList();
+    return entriesToView.stream()
+        .map(entry -> TimeView.of(entry, labelsByEntry.getOrDefault(entry.getId(), List.of())))
+        .toList();
   }
 
   static String formatTrackedDuration(Long durationSeconds) {
@@ -140,10 +149,7 @@ public class TimerService {
     long remainingMinutes = minutes % 60;
     if (hours >= 24) return hours + "h";
     if (remainingMinutes == 0) return hours + "h";
-    return hours
-        + "h "
-        + remainingMinutes
-        + (remainingMinutes == 1 ? " minute" : " minutes");
+    return hours + "h " + remainingMinutes + (remainingMinutes == 1 ? " minute" : " minutes");
   }
 
   @Transactional
@@ -260,14 +266,18 @@ public class TimerService {
   }
 
   public TimeView get(UUID userId, UUID id) {
-    TimeEntry entry = entries.findByIdAndUserId(id, userId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
+    TimeEntry entry =
+        entries
+            .findByIdAndUserId(id, userId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
     return view(entry);
   }
 
   public List<TimeView> history(UUID userId) {
-    return views(entries.findAllByUserIdOrderByCompletionTimeDesc(
-        userId, org.springframework.data.domain.PageRequest.of(0, 100)));
+    return views(
+        entries.findAllByUserIdOrderByCompletionTimeDesc(
+            userId, org.springframework.data.domain.PageRequest.of(0, 100)));
   }
 
   public record HistoryPage(
@@ -278,8 +288,9 @@ public class TimerService {
     int safePageSize = Math.min(50, Math.max(1, pageSize));
     long total = entries.countByUserId(userId);
     long totalPages = Math.max(1, (total + safePageSize - 1) / safePageSize);
-    List<TimeEntry> pageEntries = entries.findAllByUserIdOrderByCompletionTimeDesc(
-        userId, org.springframework.data.domain.PageRequest.of(safePage, safePageSize));
+    List<TimeEntry> pageEntries =
+        entries.findAllByUserIdOrderByCompletionTimeDesc(
+            userId, org.springframework.data.domain.PageRequest.of(safePage, safePageSize));
     List<TimeView> result = views(pageEntries);
     return new HistoryPage(result, safePage, safePageSize, total, totalPages);
   }
@@ -396,13 +407,14 @@ public class TimerService {
     return out;
   }
 
-  private Map<UUID, Long> groupLabels(List<TimeEntry> list, Instant from, Instant to,
-      Map<UUID, List<UUID>> labelsByEntry) {
+  private Map<UUID, Long> groupLabels(
+      List<TimeEntry> list, Instant from, Instant to, Map<UUID, List<UUID>> labelsByEntry) {
     Map<UUID, Long> out = new LinkedHashMap<>();
     for (TimeEntry entry : list) {
       long seconds = secondsIn(entry, from, to);
       if (seconds == 0) continue;
-      for (UUID labelId : labelsByEntry.getOrDefault(entry.getId(), List.of())) out.merge(labelId, seconds, Long::sum);
+      for (UUID labelId : labelsByEntry.getOrDefault(entry.getId(), List.of()))
+        out.merge(labelId, seconds, Long::sum);
     }
     return out;
   }

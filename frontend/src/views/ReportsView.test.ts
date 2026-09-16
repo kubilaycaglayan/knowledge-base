@@ -83,7 +83,12 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Monthly");
     expect(wrapper.text()).toContain("Quarterly");
     expect(wrapper.text()).toContain("Yearly");
-    expect((wrapper.get('[aria-label="Report aggregation"]').element as HTMLSelectElement).value).toBe("DAY");
+    expect(
+      (
+        wrapper.get('[aria-label="Report aggregation"]')
+          .element as HTMLSelectElement
+      ).value,
+    ).toBe("DAY");
     const initialQuery = new URL(
       vi.mocked(api).mock.calls[0][0] as string,
       "https://knowledge-base.test",
@@ -104,9 +109,14 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Planning session");
     expect(wrapper.text()).toContain("Milestone");
     expect(wrapper.text()).toContain("Hide calendar inputs");
-    expect(wrapper.getComponent({ name: "SummaryBarChart" }).props("days")).toEqual(
-      [expect.objectContaining({ calendarNote: "Planning session", calendarLabels: expect.any(Array) })],
-    );
+    expect(
+      wrapper.getComponent({ name: "SummaryBarChart" }).props("days"),
+    ).toEqual([
+      expect.objectContaining({
+        calendarNote: "Planning session",
+        calendarLabels: expect.any(Array),
+      }),
+    ]);
     expect(wrapper.text()).toContain("Show Sankey");
     expect(wrapper.find(".chart-frame").exists()).toBe(true);
     expect(wrapper.find("#sankey-flow").exists()).toBe(false);
@@ -131,7 +141,9 @@ describe("ReportsView", () => {
 
     await wrapper.find(".test-range").trigger("click");
     expect(wrapper.find(".report-refresh-overlay").exists()).toBe(true);
-    expect(wrapper.find(".report-refresh-badge").text()).toContain("Updating report");
+    expect(wrapper.find(".report-refresh-badge").text()).toContain(
+      "Updating report",
+    );
     expect(wrapper.text()).toContain("Tracked time");
     expect(wrapper.text()).toContain("Wander");
 
@@ -166,24 +178,47 @@ describe("ReportsView", () => {
     });
     const first = mount(ReportsView, { global });
     await flushPromises();
-    const initialReportCalls = vi.mocked(api).mock.calls.filter(([path]) => String(path).startsWith("/reports?")).length;
-    const initialPathCalls = vi.mocked(api).mock.calls.filter(([path]) => path === "/paths").length;
-    const initialLabelCalls = vi.mocked(api).mock.calls.filter(([path]) => path === "/labels?scope=TIME_ENTRY").length;
+    const initialReportCalls = vi
+      .mocked(api)
+      .mock.calls.filter(([path]) =>
+        String(path).startsWith("/reports?"),
+      ).length;
+    const initialPathCalls = vi
+      .mocked(api)
+      .mock.calls.filter(([path]) => path === "/paths").length;
+    const initialLabelCalls = vi
+      .mocked(api)
+      .mock.calls.filter(
+        ([path]) => path === "/labels?scope=TIME_ENTRY",
+      ).length;
     first.unmount();
 
     mount(ReportsView, { global });
     await flushPromises();
 
-    expect(vi.mocked(api).mock.calls.filter(([path]) => String(path).startsWith("/reports?")).length).toBe(initialReportCalls);
-    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/paths").length).toBe(initialPathCalls);
-    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/labels?scope=TIME_ENTRY").length).toBe(initialLabelCalls);
+    expect(
+      vi
+        .mocked(api)
+        .mock.calls.filter(([path]) => String(path).startsWith("/reports?"))
+        .length,
+    ).toBe(initialReportCalls);
+    expect(
+      vi.mocked(api).mock.calls.filter(([path]) => path === "/paths").length,
+    ).toBe(initialPathCalls);
+    expect(
+      vi
+        .mocked(api)
+        .mock.calls.filter(([path]) => path === "/labels?scope=TIME_ENTRY")
+        .length,
+    ).toBe(initialLabelCalls);
   });
 
   it("sends multiple selected paths as repeated report filters", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    await (wrapper.vm as unknown as { selectPaths: (ids: string[]) => Promise<void> })
-      .selectPaths(["path-1", "path-2"]);
+    await (
+      wrapper.vm as unknown as { selectPaths: (ids: string[]) => Promise<void> }
+    ).selectPaths(["path-1", "path-2"]);
     await flushPromises();
     const query = new URL(
       vi.mocked(api).mock.calls.at(-1)?.[0] as string,
@@ -211,10 +246,9 @@ describe("ReportsView", () => {
     ).searchParams;
     expect(query.getAll("pathId")).toEqual(["path-1"]);
     expect(query.getAll("labelId")).toEqual(["label-1", "label-2"]);
-    expect(new URL(window.location.href).searchParams.getAll("labelId")).toEqual([
-      "label-1",
-      "label-2",
-    ]);
+    expect(
+      new URL(window.location.href).searchParams.getAll("labelId"),
+    ).toEqual(["label-1", "label-2"]);
   });
 
   it("keeps the selected aggregation when the date interval changes", async () => {
@@ -236,7 +270,12 @@ describe("ReportsView", () => {
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
       "/reports?startDate=2026-08-10&endDate=2026-08-20&aggregation=MONTH",
     );
-    expect((wrapper.get('[aria-label="Report aggregation"]').element as HTMLSelectElement).value).toBe("MONTH");
+    expect(
+      (
+        wrapper.get('[aria-label="Report aggregation"]')
+          .element as HTMLSelectElement
+      ).value,
+    ).toBe("MONTH");
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toBe(
@@ -252,16 +291,24 @@ describe("ReportsView", () => {
     expect(toggle.text()).toContain("Off");
     await toggle.trigger("click");
     expect(toggle.text()).toContain("Linear");
-    expect(new URL(window.location.href).searchParams.get("trendline")).toBe("linear");
-    expect(wrapper.getComponent({ name: "SummaryBarChart" }).props("trendlineMode")).toBe("LINEAR");
+    expect(new URL(window.location.href).searchParams.get("trendline")).toBe(
+      "linear",
+    );
+    expect(
+      wrapper.getComponent({ name: "SummaryBarChart" }).props("trendlineMode"),
+    ).toBe("LINEAR");
 
     await toggle.trigger("click");
     expect(toggle.text()).toContain("Parabolic");
-    expect(new URL(window.location.href).searchParams.get("trendline")).toBe("parabolic");
+    expect(new URL(window.location.href).searchParams.get("trendline")).toBe(
+      "parabolic",
+    );
 
     await toggle.trigger("click");
     expect(toggle.text()).toContain("Off");
-    expect(new URL(window.location.href).searchParams.has("trendline")).toBe(false);
+    expect(new URL(window.location.href).searchParams.has("trendline")).toBe(
+      false,
+    );
   });
 
   it("selects ranges suited to daily, weekly, monthly, and quarterly aggregation", async () => {
@@ -279,18 +326,30 @@ describe("ReportsView", () => {
       ["Monthly", "MONTH", format(subYears(new Date(), 1), "yyyy-MM-dd")],
       ["Quarterly", "QUARTER", format(subYears(new Date(), 2), "yyyy-MM-dd")],
     ] as const) {
-      const reportRequestCount = vi.mocked(api).mock.calls.filter(([path]) => typeof path === "string" && path.startsWith("/reports?")).length;
-      await wrapper.get('[aria-label="Report aggregation"]').setValue(aggregation);
+      const reportRequestCount = vi
+        .mocked(api)
+        .mock.calls.filter(
+          ([path]) => typeof path === "string" && path.startsWith("/reports?"),
+        ).length;
+      await wrapper
+        .get('[aria-label="Report aggregation"]')
+        .setValue(aggregation);
       await flushPromises();
       const expectedRangeEnd =
         aggregation === "DAY"
           ? format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd")
           : expectedEnd;
-      const reportRequests = vi.mocked(api).mock.calls.filter(([path]) => typeof path === "string" && path.startsWith("/reports?"));
+      const reportRequests = vi
+        .mocked(api)
+        .mock.calls.filter(
+          ([path]) => typeof path === "string" && path.startsWith("/reports?"),
+        );
       expect(reportRequests.at(-1)?.[0]).toBe(
         `/reports?startDate=${expectedStart}&endDate=${expectedRangeEnd}&aggregation=${aggregation}`,
       );
-      expect(reportRequests.length).toBe(reportRequestCount + (aggregation === "DAY" ? 0 : 1));
+      expect(reportRequests.length).toBe(
+        reportRequestCount + (aggregation === "DAY" ? 0 : 1),
+      );
     }
   });
 

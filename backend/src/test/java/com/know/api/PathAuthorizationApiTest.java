@@ -116,10 +116,8 @@ class PathAuthorizationApiTest {
           .thenReturn(now.minus(java.time.Duration.ofDays(i == 0 ? 0 : i == 1 ? 1 : 8)));
       latestSessions.add(latest);
     }
-    when(paths.findAllByUserIdOrderByUpdatedAtDesc(eq(owner), any()))
-        .thenReturn(pathsInOrder);
-    when(paths.findLatestSessionsByUserIdAndPathIdIn(eq(owner), any()))
-        .thenReturn(latestSessions);
+    when(paths.findAllByUserIdOrderByUpdatedAtDesc(eq(owner), any())).thenReturn(pathsInOrder);
+    when(paths.findLatestSessionsByUserIdAndPathIdIn(eq(owner), any())).thenReturn(latestSessions);
 
     mvc.perform(get("/api/v1/paths").with(authentication(auth)))
         .andExpect(status().isOk())
@@ -180,25 +178,15 @@ class PathAuthorizationApiTest {
 
   @Test
   void pathSummaryOnlyIncludesTimeTrackedOnThePath() throws Exception {
-    UUID owner = UUID.randomUUID(),
-        pathId = UUID.randomUUID(),
-        otherPathId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID(), otherPathId = UUID.randomUUID();
     Path path = new Path(owner, "Learning", null);
     TimeEntry selected =
         new TimeEntry(
-            owner,
-            pathId,
-            java.time.Instant.now().minusSeconds(300),
-            "selected",
-            TimeSource.WEB);
+            owner, pathId, java.time.Instant.now().minusSeconds(300), "selected", TimeSource.WEB);
     selected.stop(selected.getStartedAt().plusSeconds(120));
     TimeEntry other =
         new TimeEntry(
-            owner,
-            otherPathId,
-            java.time.Instant.now().minusSeconds(300),
-            "other",
-            TimeSource.WEB);
+            owner, otherPathId, java.time.Instant.now().minusSeconds(300), "other", TimeSource.WEB);
     other.stop(other.getStartedAt().plusSeconds(900));
     when(paths.findByIdAndUserId(pathId, owner)).thenReturn(Optional.of(path));
     when(timeEntries.findAllByUserIdAndPathIdOrderByStartedAtDesc(owner, pathId))

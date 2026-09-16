@@ -5,9 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -15,9 +15,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 @ExtendWith(OutputCaptureExtension.class)
 class HttpRequestLoggingFilterTest {
-  private MockMvc mvc = MockMvcBuilders.standaloneSetup(new ProbeController())
-      .addFilters(new HttpRequestLoggingFilter())
-      .build();
+  private MockMvc mvc =
+      MockMvcBuilders.standaloneSetup(new ProbeController())
+          .addFilters(new HttpRequestLoggingFilter())
+          .build();
 
   @Test
   void logsRequestMethodPathStatusAndDuration(CapturedOutput output) throws Exception {

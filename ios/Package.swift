@@ -4,15 +4,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "Know",
-    platforms: [.iOS(.v17), .macOS(.v14)],
-    products: [.executable(name: "Know", targets: ["Know"])],
-    dependencies: [.package(url: "https://github.com/google/GoogleSignIn-iOS", exact: "9.2.0")],
-    targets: [
-        .executableTarget(name: "Know", dependencies: [
-            .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
-            .product(name: "GoogleSignInSwift", package: "GoogleSignIn-iOS")
-        ], path: "Know", exclude: ["Info.plist"]),
-        .testTarget(name: "KnowTests", dependencies: ["Know"], path: "KnowTests")
-    ]
+  name: "Know",
+  platforms: [.iOS(.v17), .macOS(.v14)],
+  products: [.executable(name: "Know", targets: ["Know"])],
+  dependencies: [.package(url: "https://github.com/google/GoogleSignIn-iOS", exact: "9.2.0")],
+  targets: [
+    .executableTarget(
+      name: "Know",
+      dependencies: [
+        .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
+        .product(name: "GoogleSignInSwift", package: "GoogleSignIn-iOS"),
+      ], path: "Know", exclude: ["Info.plist"]),
+    .testTarget(name: "KnowTests", dependencies: ["Know"], path: "KnowTests"),
+  ]
 )

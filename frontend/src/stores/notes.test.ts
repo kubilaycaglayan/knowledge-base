@@ -6,7 +6,15 @@ describe("notes store", () => {
 
   it("keeps list and selected note changes reactive", () => {
     const store = useNotesStore();
-    const note = { id: "n1", title: "First", content: "", createdAt: "", updatedAt: "", version: 1, tags: [] };
+    const note = {
+      id: "n1",
+      title: "First",
+      content: "",
+      createdAt: "",
+      updatedAt: "",
+      version: 1,
+      tags: [],
+    };
     store.setPage([note]);
     store.setSelected(note);
     expect(store.notes).toHaveLength(1);

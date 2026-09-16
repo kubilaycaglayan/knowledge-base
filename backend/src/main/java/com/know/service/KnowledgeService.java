@@ -3,32 +3,30 @@ package com.know.service;
 import com.know.domain.Activity;
 import com.know.domain.ActivityRepository;
 import com.know.domain.ActivityType;
-import com.know.domain.Note;
-import com.know.domain.NoteRepository;
-import com.know.domain.NoteTag;
-import com.know.domain.NoteTagId;
-import com.know.domain.NoteTagRepository;
-import com.know.domain.Path;
-import com.know.domain.PathRepository;
 import com.know.domain.Label;
 import com.know.domain.LabelRepository;
 import com.know.domain.LabelScope;
 import com.know.domain.LabelScopeId;
 import com.know.domain.LabelScopeRepository;
 import com.know.domain.LabelScopeType;
+import com.know.domain.Note;
+import com.know.domain.NoteRepository;
+import com.know.domain.NoteTag;
+import com.know.domain.NoteTagId;
+import com.know.domain.NoteTagRepository;
+import com.know.domain.PathRepository;
 import com.know.domain.TimeEntry;
 import com.know.domain.TimeEntryRepository;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,7 +78,6 @@ public class KnowledgeService {
 
   public record TagView(UUID id, String name) {}
 
-
   @Transactional
   public NoteView createNote(
       UUID userId, UUID pathId, UUID activityId, String title, String content) {
@@ -89,19 +86,22 @@ public class KnowledgeService {
 
   @Transactional
   public NoteView createNote(
-      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
-      String title, String content) {
+      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId, String title, String content) {
     return createNote(userId, pathId, activityId, timeEntryId, title, content, null, null);
   }
 
   @Transactional
   public NoteView createNote(
-      UUID userId, UUID pathId, UUID activityId, UUID timeEntryId,
-      String title, String content, String contentText, List<String> tagNames) {
+      UUID userId,
+      UUID pathId,
+      UUID activityId,
+      UUID timeEntryId,
+      String title,
+      String content,
+      String contentText,
+      List<String> tagNames) {
     int targets =
-        (pathId != null ? 1 : 0)
-            + (activityId != null ? 1 : 0)
-            + (timeEntryId != null ? 1 : 0);
+        (pathId != null ? 1 : 0) + (activityId != null ? 1 : 0) + (timeEntryId != null ? 1 : 0);
     if (targets > 1) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A note can have only one target");
     }
@@ -134,7 +134,8 @@ public class KnowledgeService {
   }
 
   public List<NoteView> listNotes(UUID userId) {
-    return noteViews(userId, notes.findAllActiveByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 100)));
+    return noteViews(
+        userId, notes.findAllActiveByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 100)));
   }
 
   public NotePage pageNotes(UUID userId, int page, int size, String query) {
@@ -145,38 +146,54 @@ public class KnowledgeService {
     int safeSize = Math.min(Math.max(size, 1), 100);
     int safePage = Math.max(page, 0);
     PageRequest request = PageRequest.of(safePage, safeSize);
-    Page<Note> result = query == null || query.isBlank()
-        ? (archived ? notes.findArchivedByUserId(userId, request)
-            : notes.findAllActiveByUserIdOrderByUpdatedAtDescIdDesc(userId, request))
-        : (archived ? notes.findArchivedByUserIdAndQuery(userId, query.trim(), request)
-            : notes.findActiveByUserIdAndQuery(userId, query.trim(), request));
-    return new NotePage(noteViews(userId, result.getContent()), result.getNumber(),
-        result.getSize(), result.getTotalElements(), result.getTotalPages());
+    Page<Note> result =
+        query == null || query.isBlank()
+            ? (archived
+                ? notes.findArchivedByUserId(userId, request)
+                : notes.findAllActiveByUserIdOrderByUpdatedAtDescIdDesc(userId, request))
+            : (archived
+                ? notes.findArchivedByUserIdAndQuery(userId, query.trim(), request)
+                : notes.findActiveByUserIdAndQuery(userId, query.trim(), request));
+    return new NotePage(
+        noteViews(userId, result.getContent()),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
   }
 
   public List<TagView> noteTags(UUID userId) {
     return tags.findAllByUserIdAndScope(userId, LabelScopeType.NOTE).stream()
-        .map(tag -> new TagView(tag.getId(), tag.getName())).toList();
+        .map(tag -> new TagView(tag.getId(), tag.getName()))
+        .toList();
   }
 
   public NoteView getNote(UUID userId, UUID id) {
-    return noteView(notes.findByIdAndUserId(id, userId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found")));
+    return noteView(
+        notes
+            .findByIdAndUserId(id, userId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found")));
   }
 
   @Transactional
   public void archiveNote(UUID userId, UUID id) {
-    Note note = notes.findActiveByIdAndUserId(id, userId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found"));
+    Note note =
+        notes
+            .findActiveByIdAndUserId(id, userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found"));
     note.delete();
     notes.save(note);
   }
 
   @Transactional
   public void restoreNote(UUID userId, UUID id) {
-    Note note = notes.findByIdAndUserIdIncludingArchived(id, userId)
-        .filter(value -> value.getDeletedAt() != null)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Archived note not found"));
+    Note note =
+        notes
+            .findByIdAndUserIdIncludingArchived(id, userId)
+            .filter(value -> value.getDeletedAt() != null)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Archived note not found"));
     note.restore();
     notes.save(note);
   }
@@ -188,8 +205,13 @@ public class KnowledgeService {
 
   @Transactional
   public NoteView updateNote(
-      UUID userId, UUID id, String title, String content, String contentText,
-      List<String> tagNames, Long expectedVersion) {
+      UUID userId,
+      UUID id,
+      String title,
+      String content,
+      String contentText,
+      List<String> tagNames,
+      Long expectedVersion) {
     Note note =
         notes
             .findByIdAndUserId(id, userId)
@@ -197,34 +219,48 @@ public class KnowledgeService {
     if (expectedVersion != null && note.getVersion() != expectedVersion) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Note changed in another window");
     }
-    if (contentText == null) note.update(title, content); else note.update(title, content, contentText);
+    if (contentText == null) note.update(title, content);
+    else note.update(title, content, contentText);
     Note saved = notes.save(note);
     if (tagNames != null) replaceTags(userId, saved, tagNames);
     return noteView(saved);
   }
 
   private NoteView noteView(Note n) {
-    List<String> names = noteTags == null ? List.of() : noteTags.findTags(n.getId()).stream()
-        .map(Label::getName).sorted().toList();
+    List<String> names =
+        noteTags == null
+            ? List.of()
+            : noteTags.findTags(n.getId()).stream().map(Label::getName).sorted().toList();
     return noteView(n, names);
   }
 
   private List<NoteView> noteViews(UUID userId, List<Note> notesToView) {
     if (notesToView.isEmpty()) return List.of();
-    if (noteTags == null) return notesToView.stream().map(note -> noteView(note, List.of())).toList();
-    List<NoteTag> assignments = noteTags.findAllByIdNoteIdIn(notesToView.stream().map(Note::getId).toList());
-    Set<UUID> tagIds = assignments.stream().map(value -> value.getId().getLabelId()).collect(java.util.stream.Collectors.toSet());
+    if (noteTags == null)
+      return notesToView.stream().map(note -> noteView(note, List.of())).toList();
+    List<NoteTag> assignments =
+        noteTags.findAllByIdNoteIdIn(notesToView.stream().map(Note::getId).toList());
+    Set<UUID> tagIds =
+        assignments.stream()
+            .map(value -> value.getId().getLabelId())
+            .collect(java.util.stream.Collectors.toSet());
     Map<UUID, String> names = new HashMap<>();
     tags.findAllByUserIdAndIdIn(userId, tagIds)
         .forEach(tag -> names.put(tag.getId(), tag.getName()));
     Map<UUID, List<String>> namesByNote = new HashMap<>();
-    assignments.forEach(value -> namesByNote.computeIfAbsent(value.getId().getNoteId(), ignored -> new ArrayList<>())
-        .add(names.getOrDefault(value.getId().getLabelId(), "Removed tag")));
-    return notesToView.stream().map(note -> {
-      List<String> noteNames = namesByNote.getOrDefault(note.getId(), List.of());
-      noteNames = noteNames.stream().sorted().toList();
-      return noteView(note, noteNames);
-    }).toList();
+    assignments.forEach(
+        value ->
+            namesByNote
+                .computeIfAbsent(value.getId().getNoteId(), ignored -> new ArrayList<>())
+                .add(names.getOrDefault(value.getId().getLabelId(), "Removed tag")));
+    return notesToView.stream()
+        .map(
+            note -> {
+              List<String> noteNames = namesByNote.getOrDefault(note.getId(), List.of());
+              noteNames = noteNames.stream().sorted().toList();
+              return noteView(note, noteNames);
+            })
+        .toList();
   }
 
   private NoteView noteView(Note n, List<String> tagNames) {
@@ -247,11 +283,15 @@ public class KnowledgeService {
     if (noteTags == null || rawNames == null) return;
     noteTags.deleteAllByIdNoteId(note.getId());
     Set<String> names = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    rawNames.stream().filter(java.util.Objects::nonNull).map(String::trim)
-        .filter(value -> !value.isBlank()).forEach(names::add);
+    rawNames.stream()
+        .filter(java.util.Objects::nonNull)
+        .map(String::trim)
+        .filter(value -> !value.isBlank())
+        .forEach(names::add);
     for (String name : names) {
-      Label tag = tags.findByUserIdAndNameIgnoreCase(userId, name)
-          .orElseGet(() -> tags.save(new Label(userId, name, null)));
+      Label tag =
+          tags.findByUserIdAndNameIgnoreCase(userId, name)
+              .orElseGet(() -> tags.save(new Label(userId, name, null)));
       if (!labelScopes.existsByIdLabelIdAndIdScope(tag.getId(), LabelScopeType.NOTE))
         labelScopes.save(new LabelScope(new LabelScopeId(tag.getId(), LabelScopeType.NOTE)));
       noteTags.save(new NoteTag(new NoteTagId(note.getId(), tag.getId())));
@@ -269,17 +309,15 @@ public class KnowledgeService {
 
   private List<Activity> timeline(
       UUID userId, Instant from, Instant to, UUID pathId, ActivityType type) {
-    List<Activity> result = new ArrayList<>(
-        activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId));
+    List<Activity> result =
+        new ArrayList<>(activityRepository.findTop100ByUserIdOrderByOccurredAtDesc(userId));
     result.removeIf(
         activity ->
             activity.getType() == ActivityType.TIMER_STARTED
                 || activity.getType() == ActivityType.TIMER_STOPPED
                 || activity.getType() == ActivityType.TIME_TRACKED);
     if (timeEntries != null) {
-      timeEntries
-          .findAllByUserIdOrderByStartedAtDesc(userId, PageRequest.of(0, 100))
-          .stream()
+      timeEntries.findAllByUserIdOrderByStartedAtDesc(userId, PageRequest.of(0, 100)).stream()
           .map(this::sessionActivity)
           .forEach(result::add);
     }
@@ -294,13 +332,17 @@ public class KnowledgeService {
   }
 
   private Activity sessionActivity(TimeEntry entry) {
-    long seconds = entry.getDurationSeconds() == null
-        ? Math.max(0, java.time.Duration.between(entry.getStartedAt(), Instant.now()).toSeconds())
-        : entry.getDurationSeconds();
+    long seconds =
+        entry.getDurationSeconds() == null
+            ? Math.max(
+                0, java.time.Duration.between(entry.getStartedAt(), Instant.now()).toSeconds())
+            : entry.getDurationSeconds();
     return Activity.session(
-        entry.getUserId(), entry.getPathId(), entry.getId(),
-        "Tracked " + seconds + " seconds", entry.getDescription(),
+        entry.getUserId(),
+        entry.getPathId(),
+        entry.getId(),
+        "Tracked " + seconds + " seconds",
+        entry.getDescription(),
         entry.getEndedAt() == null ? entry.getStartedAt() : entry.getEndedAt());
   }
-
 }

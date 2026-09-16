@@ -17,9 +17,7 @@ public class SearchController {
   private final ActivityRepository activities;
 
   public SearchController(
-      PathRepository paths,
-      NoteRepository notes,
-      ActivityRepository activities) {
+      PathRepository paths, NoteRepository notes, ActivityRepository activities) {
     this.paths = paths;
     this.notes = notes;
     this.activities = activities;

@@ -11,13 +11,24 @@ export type Session = {
   source: string;
   running?: boolean;
 };
-export type SessionPage = { sessions: Session[]; page: number; totalPages: number; totalSessions: number };
+export type SessionPage = {
+  sessions: Session[];
+  page: number;
+  totalPages: number;
+  totalSessions: number;
+};
 
 export const useSessionsStore = defineStore("sessions", {
   state: () => ({ pages: {} as Record<string, SessionPage> }),
   actions: {
-    setPage(key: string, page: SessionPage) { this.pages[key] = page; },
-    cachedPage(key: string) { return this.pages[key]; },
-    clearPages() { this.pages = {}; },
+    setPage(key: string, page: SessionPage) {
+      this.pages[key] = page;
+    },
+    cachedPage(key: string) {
+      return this.pages[key];
+    },
+    clearPages() {
+      this.pages = {};
+    },
   },
 });

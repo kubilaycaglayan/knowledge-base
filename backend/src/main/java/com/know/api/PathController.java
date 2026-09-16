@@ -13,9 +13,9 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/v1/paths")
@@ -67,10 +67,7 @@ public class PathController {
     }
   }
 
-  record PathSummary(
-      PathResponse path,
-      long trackedSeconds,
-      List<Activity> recentActivity) {}
+  record PathSummary(PathResponse path, long trackedSeconds, List<Activity> recentActivity) {}
 
   record MergePathRequest(@NotNull UUID targetPathId) {}
 
@@ -117,18 +114,23 @@ public class PathController {
     activities
         .findTop50ByUserIdAndPathIdOrderByOccurredAtDesc(owner, id)
         .forEach(event -> relevantActivity.put(event.getId(), event));
-    relevantActivity.values().removeIf(
-        event ->
-            event.getType() == ActivityType.TIMER_STARTED
-                || event.getType() == ActivityType.TIMER_STOPPED
-                || event.getType() == ActivityType.TIME_TRACKED);
-    Map<UUID, List<UUID>> labelIdsByEntry = entryLabels
-        .findAllByIdTimeEntryIdIn(relevantTimes.keySet()).stream()
-        .collect(Collectors.groupingBy(
-            TimeEntryLabel::getTimeEntryId,
-            Collectors.mapping(TimeEntryLabel::getLabelId, Collectors.toList())));
+    relevantActivity
+        .values()
+        .removeIf(
+            event ->
+                event.getType() == ActivityType.TIMER_STARTED
+                    || event.getType() == ActivityType.TIMER_STOPPED
+                    || event.getType() == ActivityType.TIME_TRACKED);
+    Map<UUID, List<UUID>> labelIdsByEntry =
+        entryLabels.findAllByIdTimeEntryIdIn(relevantTimes.keySet()).stream()
+            .collect(
+                Collectors.groupingBy(
+                    TimeEntryLabel::getTimeEntryId,
+                    Collectors.mapping(TimeEntryLabel::getLabelId, Collectors.toList())));
     relevantTimes.values().stream()
-        .map(entry -> sessionActivity(id, entry, labelIdsByEntry.getOrDefault(entry.getId(), List.of())))
+        .map(
+            entry ->
+                sessionActivity(id, entry, labelIdsByEntry.getOrDefault(entry.getId(), List.of())))
         .forEach(event -> relevantActivity.put(event.getId(), event));
     List<Activity> recent =
         relevantActivity.values().stream()
@@ -182,17 +184,19 @@ public class PathController {
     Instant weekStart = now.minus(Duration.ofDays(7));
     Instant monthStart = now.minus(Duration.ofDays(28));
     Map<UUID, String> labels = new HashMap<>();
-    paths.findLatestSessionsByUserIdAndPathIdIn(owner, pathIds).forEach(
-        session ->
-            labels.put(
-                session.getPathId(),
-                session.getLatestStartedAt().compareTo(todayStart) >= 0
-                    ? "today"
-                    : session.getLatestStartedAt().compareTo(weekStart) >= 0
-                        ? "this week"
-                        : session.getLatestStartedAt().compareTo(monthStart) >= 0
-                            ? "this month"
-                            : "passive"));
+    paths
+        .findLatestSessionsByUserIdAndPathIdIn(owner, pathIds)
+        .forEach(
+            session ->
+                labels.put(
+                    session.getPathId(),
+                    session.getLatestStartedAt().compareTo(todayStart) >= 0
+                        ? "today"
+                        : session.getLatestStartedAt().compareTo(weekStart) >= 0
+                            ? "this week"
+                            : session.getLatestStartedAt().compareTo(monthStart) >= 0
+                                ? "this month"
+                                : "passive"));
     ownedPaths.forEach(path -> labels.putIfAbsent(path.getId(), "passive"));
     return labels;
   }
@@ -205,15 +209,15 @@ public class PathController {
 
   private Activity sessionActivity(UUID pathId, TimeEntry entry, List<UUID> labelIds) {
     long seconds = liveSeconds(entry);
-    Activity activity = Activity.session(
-        entry.getUserId(),
-        pathId,
-        entry.getId(),
-        "Tracked " + seconds + " seconds",
-        entry.getDescription(),
-        entry.getEndedAt() == null ? entry.getStartedAt() : entry.getEndedAt());
+    Activity activity =
+        Activity.session(
+            entry.getUserId(),
+            pathId,
+            entry.getId(),
+            "Tracked " + seconds + " seconds",
+            entry.getDescription(),
+            entry.getEndedAt() == null ? entry.getStartedAt() : entry.getEndedAt());
     activity.assignLabelIds(labelIds);
     return activity;
   }
-
 }

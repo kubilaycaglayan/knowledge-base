@@ -9,9 +9,27 @@ import { SVGRenderer } from "echarts/renderers";
 import { chartTheme } from "../../lib/theme";
 import { formatDuration } from "../../utils/duration";
 
-type SankeyNode = { id: string; label: string; color?: string | null; depth: number; value: number; pathLabel: string; bucketLabel: string };
-type SankeyLink = { source: string; target: string; sourceLabel: string; targetLabel: string; value: number };
-type Sankey = { granularity: "DAY" | "WEEK" | "MONTH"; nodes: SankeyNode[]; links: SankeyLink[] };
+type SankeyNode = {
+  id: string;
+  label: string;
+  color?: string | null;
+  depth: number;
+  value: number;
+  pathLabel: string;
+  bucketLabel: string;
+};
+type SankeyLink = {
+  source: string;
+  target: string;
+  sourceLabel: string;
+  targetLabel: string;
+  value: number;
+};
+type Sankey = {
+  granularity: "DAY" | "WEEK" | "MONTH";
+  nodes: SankeyNode[];
+  links: SankeyLink[];
+};
 
 const props = defineProps<{ sankey: Sankey }>();
 use([SankeyChart, TooltipComponent, SVGRenderer]);
@@ -25,7 +43,10 @@ const aggregateTotals = computed(() => {
       seconds: (current?.seconds || 0) + node.value,
     });
   }
-  const lastDepth = Math.max(-1, ...props.sankey.nodes.map((node) => node.depth));
+  const lastDepth = Math.max(
+    -1,
+    ...props.sankey.nodes.map((node) => node.depth),
+  );
   return Array.from({ length: lastDepth + 1 }, (_, depth) => ({
     depth,
     bucketLabel: totals.get(depth)?.bucketLabel || "",
@@ -45,7 +66,10 @@ function formatSankeyDuration(seconds: number): string {
   return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
 }
 
-const ariaLabel = computed(() => `Time flow by ${props.sankey.granularity.toLowerCase()}: ${props.sankey.links.map((link) => `${link.sourceLabel} to ${link.targetLabel}, ${formatDuration(link.value)}`).join("; ") || "No tracked time"}`);
+const ariaLabel = computed(
+  () =>
+    `Time flow by ${props.sankey.granularity.toLowerCase()}: ${props.sankey.links.map((link) => `${link.sourceLabel} to ${link.targetLabel}, ${formatDuration(link.value)}`).join("; ") || "No tracked time"}`,
+);
 const option = computed<EChartsOption>(() => ({
   animation: false,
   textStyle: { color: chartTheme.value.text },
@@ -56,7 +80,11 @@ const option = computed<EChartsOption>(() => ({
     borderColor: chartTheme.value.border,
     textStyle: { color: chartTheme.value.text },
     formatter: (params: unknown) => {
-      const item = params as { dataType?: string; data?: SankeyLink & SankeyNode; name?: string };
+      const item = params as {
+        dataType?: string;
+        data?: SankeyLink & SankeyNode;
+        name?: string;
+      };
       if (item.dataType === "edge" && item.data) {
         return `<strong>${item.data.sourceLabel}</strong> → <strong>${item.data.targetLabel}</strong><br>${formatSankeyDuration(item.data.value)}`;
       }
@@ -66,36 +94,54 @@ const option = computed<EChartsOption>(() => ({
       return item.name || "";
     },
   },
-  series: [{
-    type: "sankey",
-    left: 12,
-    right: 132,
-    top: 18,
-    bottom: 18,
-    nodeWidth: 14,
-    nodeGap: 12,
-    nodeAlign: "justify",
-    draggable: false,
-    emphasis: { focus: "adjacency" },
-    lineStyle: { color: "gradient", opacity: 0.42, curveness: 0.48 },
-    label: {
-      color: chartTheme.value.text,
-      overflow: "truncate",
-      width: 116,
-      formatter: (params: unknown) => {
-        const item = params as { data?: { pathLabel?: string }; name?: string };
-        return item.data?.pathLabel || item.name || "";
+  series: [
+    {
+      type: "sankey",
+      left: 12,
+      right: 132,
+      top: 18,
+      bottom: 18,
+      nodeWidth: 14,
+      nodeGap: 12,
+      nodeAlign: "justify",
+      draggable: false,
+      emphasis: { focus: "adjacency" },
+      lineStyle: { color: "gradient", opacity: 0.42, curveness: 0.48 },
+      label: {
+        color: chartTheme.value.text,
+        overflow: "truncate",
+        width: 116,
+        formatter: (params: unknown) => {
+          const item = params as {
+            data?: { pathLabel?: string };
+            name?: string;
+          };
+          return item.data?.pathLabel || item.name || "";
+        },
       },
+      data: props.sankey.nodes.map((node) => ({
+        name: node.id,
+        value: node.value,
+        depth: node.depth,
+        pathLabel: node.pathLabel,
+        bucketLabel: node.bucketLabel,
+        itemStyle: node.color ? { color: node.color } : undefined,
+      })),
+      links: props.sankey.links,
     },
-    data: props.sankey.nodes.map((node) => ({ name: node.id, value: node.value, depth: node.depth, pathLabel: node.pathLabel, bucketLabel: node.bucketLabel, itemStyle: node.color ? { color: node.color } : undefined })),
-    links: props.sankey.links,
-  }],
+  ],
 }));
 </script>
 
 <template>
   <div class="sankey-frame" role="img" :aria-label="ariaLabel">
-    <v-chart v-if="sankey.nodes.length" class="report-echart sankey-echart" :option="option" :init-options="{ renderer: 'svg' }" autoresize />
+    <v-chart
+      v-if="sankey.nodes.length"
+      class="report-echart sankey-echart"
+      :option="option"
+      :init-options="{ renderer: 'svg' }"
+      autoresize
+    />
     <p v-else class="sankey-empty">No tracked time to show in this flow.</p>
     <div
       v-if="aggregateTotals.length"
@@ -107,10 +153,16 @@ const option = computed<EChartsOption>(() => ({
         :key="total.depth"
         class="sankey-aggregate-total"
         :style="{ left: totalPosition(total.depth) }"
-        :aria-label="total.seconds > 0 ? `${total.bucketLabel}: ${formatSankeyDuration(total.seconds)}` : undefined"
+        :aria-label="
+          total.seconds > 0
+            ? `${total.bucketLabel}: ${formatSankeyDuration(total.seconds)}`
+            : undefined
+        "
         :class="{ 'has-total': total.seconds > 0 }"
       >
-        <b v-if="total.seconds > 0">{{ formatSankeyDuration(total.seconds) }}</b>
+        <b v-if="total.seconds > 0">{{
+          formatSankeyDuration(total.seconds)
+        }}</b>
       </span>
     </div>
   </div>

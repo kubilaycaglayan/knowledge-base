@@ -16,35 +16,57 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/logs")
 public class LogController {
   private final LogService service;
-  public LogController(LogService service) { this.service = service; }
 
-  record LogRequest(@NotBlank @Size(max = 20000) String body, @NotNull Instant occurredAt, Long version) {}
+  public LogController(LogService service) {
+    this.service = service;
+  }
+
+  record LogRequest(
+      @NotBlank @Size(max = 20000) String body, @NotNull Instant occurredAt, Long version) {}
+
   record LabelsRequest(@NotNull @Size(max = 100) List<UUID> labelIds) {}
-  private UUID user(Authentication authentication) { return UUID.fromString(authentication.getName()); }
+
+  private UUID user(Authentication authentication) {
+    return UUID.fromString(authentication.getName());
+  }
 
   @GetMapping
-  public List<LogService.LogView> list(Authentication authentication) { return service.list(user(authentication)); }
+  public List<LogService.LogView> list(Authentication authentication) {
+    return service.list(user(authentication));
+  }
 
   @GetMapping("/{id}")
-  public LogService.LogView get(Authentication authentication, @PathVariable UUID id) { return service.get(user(authentication), id); }
+  public LogService.LogView get(Authentication authentication, @PathVariable UUID id) {
+    return service.get(user(authentication), id);
+  }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  public LogService.LogView create(Authentication authentication, @Valid @RequestBody LogRequest request) {
+  public LogService.LogView create(
+      Authentication authentication, @Valid @RequestBody LogRequest request) {
     return service.create(user(authentication), request.body(), request.occurredAt());
   }
 
   @PutMapping("/{id}")
-  public LogService.LogView update(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody LogRequest request) {
-    return service.update(user(authentication), id, request.body(), request.occurredAt(), request.version());
+  public LogService.LogView update(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody LogRequest request) {
+    return service.update(
+        user(authentication), id, request.body(), request.occurredAt(), request.version());
   }
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void delete(Authentication authentication, @PathVariable UUID id) { service.delete(user(authentication), id); }
+  public void delete(Authentication authentication, @PathVariable UUID id) {
+    service.delete(user(authentication), id);
+  }
 
   @PutMapping("/{id}/labels")
-  public LogService.LogView setLabels(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody LabelsRequest request) {
+  public LogService.LogView setLabels(
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody LabelsRequest request) {
     return service.setLabels(user(authentication), id, request.labelIds());
   }
 }

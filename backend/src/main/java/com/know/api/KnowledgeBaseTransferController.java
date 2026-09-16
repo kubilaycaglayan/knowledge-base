@@ -11,24 +11,36 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/imports/knowledge-base")
 public class KnowledgeBaseTransferController {
   private final KnowledgeBaseTransferService service;
-  public KnowledgeBaseTransferController(KnowledgeBaseTransferService service) { this.service = service; }
-  private UUID user(Authentication a) { return UUID.fromString(a.getName()); }
+
+  public KnowledgeBaseTransferController(KnowledgeBaseTransferService service) {
+    this.service = service;
+  }
+
+  private UUID user(Authentication a) {
+    return UUID.fromString(a.getName());
+  }
 
   @GetMapping(value = "/export", produces = "text/csv")
   public ResponseEntity<byte[]> export(Authentication a) {
-    return ResponseEntity.ok().contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+    return ResponseEntity.ok()
+        .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=knowledge-base-export.csv")
         .body(service.exportCsv(user(a)));
   }
 
   @PostMapping(consumes = "text/csv", produces = MediaType.APPLICATION_JSON_VALUE)
-  public KnowledgeBaseTransferService.ImportSummary importCsv(Authentication a, @RequestBody String csv) {
+  public KnowledgeBaseTransferService.ImportSummary importCsv(
+      Authentication a, @RequestBody String csv) {
     return service.importCsv(user(a), csv);
   }
 
   @GetMapping("/batches")
-  public List<KnowledgeBaseTransferService.BatchView> batches(Authentication a) { return service.listBatches(user(a)); }
+  public List<KnowledgeBaseTransferService.BatchView> batches(Authentication a) {
+    return service.listBatches(user(a));
+  }
 
   @DeleteMapping("/batches/{id}")
-  public KnowledgeBaseTransferService.UndoSummary undo(Authentication a, @PathVariable UUID id) { return service.undo(user(a), id); }
+  public KnowledgeBaseTransferService.UndoSummary undo(Authentication a, @PathVariable UUID id) {
+    return service.undo(user(a), id);
+  }
 }

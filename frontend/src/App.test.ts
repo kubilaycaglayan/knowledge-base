@@ -9,7 +9,8 @@ const stubs = {
   FloatingTimeTracker: { template: "<aside data-test= floating-tracker />" },
   AuthView: {
     emits: ["authenticated"],
-    template: '<button data-test="authenticate" @click="$emit(\'authenticated\')">Authenticate</button>',
+    template:
+      '<button data-test="authenticate" @click="$emit(\'authenticated\')">Authenticate</button>',
   },
 };
 
@@ -25,7 +26,9 @@ describe("App", () => {
     expect(wrapper.find('[data-test="authenticate"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
     expect(wrapper.find("nav").exists()).toBe(false);
-    expect(wrapper.find('button.ghost:not(.theme-toggle)').exists()).toBe(false);
+    expect(wrapper.find("button.ghost:not(.theme-toggle)").exists()).toBe(
+      false,
+    );
     expect(wrapper.find(".settings-link").exists()).toBe(false);
     expect(wrapper.find(".theme-toggle svg").exists()).toBe(true);
   });
@@ -36,7 +39,9 @@ describe("App", () => {
     await wrapper.get(".theme-toggle").trigger("click");
 
     expect(localStorage.getItem("knowledge-base-theme")).not.toBeNull();
-    expect(wrapper.get(".theme-toggle").attributes("aria-label")).toContain("Switch to");
+    expect(wrapper.get(".theme-toggle").attributes("aria-label")).toContain(
+      "Switch to",
+    );
   });
 
   it("shows the authenticated navigation and signs out", async () => {
@@ -44,11 +49,18 @@ describe("App", () => {
     const wrapper = mount(App, {
       global: {
         stubs,
-        provide: { [routeLocationKey as symbol]: { path: "/paths", query: {} } },
+        provide: {
+          [routeLocationKey as symbol]: { path: "/paths", query: {} },
+        },
       },
     });
 
-    expect(wrapper.get("nav").findAll("a").map((link) => link.text())).toEqual([
+    expect(
+      wrapper
+        .get("nav")
+        .findAll("a")
+        .map((link) => link.text()),
+    ).toEqual([
       "Sessions",
       "Logs",
       "Paths",
@@ -57,7 +69,9 @@ describe("App", () => {
       "Reports",
       "Labels",
     ]);
-    expect(wrapper.get('.settings-link').attributes('aria-label')).toBe('Settings');
+    expect(wrapper.get(".settings-link").attributes("aria-label")).toBe(
+      "Settings",
+    );
     expect(wrapper.find(".theme-toggle").exists()).toBe(false);
     expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(true);
 
@@ -71,7 +85,12 @@ describe("App", () => {
   it("puts the product name first in the browser title", async () => {
     localStorage.setItem("know_token", "token");
     mount(App, {
-      global: { stubs, provide: { [routeLocationKey as symbol]: { path: "/sessions", query: {} } } },
+      global: {
+        stubs,
+        provide: {
+          [routeLocationKey as symbol]: { path: "/sessions", query: {} },
+        },
+      },
     });
     await Promise.resolve();
     expect(document.title).toBe("Knowledge Base · Sessions");
@@ -107,7 +126,10 @@ describe("App", () => {
       global: {
         stubs,
         provide: {
-          [routeLocationKey as symbol]: { path: "/auth", query: { redirect: "/settings" } },
+          [routeLocationKey as symbol]: {
+            path: "/auth",
+            query: { redirect: "/settings" },
+          },
           [routerKey as symbol]: { replace },
         },
       },
@@ -124,7 +146,10 @@ describe("App", () => {
       global: {
         stubs,
         provide: {
-          [routeLocationKey as symbol]: { path: "/auth", query: { redirect: "https://evil.example" } },
+          [routeLocationKey as symbol]: {
+            path: "/auth",
+            query: { redirect: "https://evil.example" },
+          },
           [routerKey as symbol]: { replace },
         },
       },
@@ -142,10 +167,20 @@ describe("App", () => {
     const wrapper = mount(App, { global: { stubs, mocks: { $route: route } } });
 
     expect(wrapper.classes()).toContain("dashboard-shell");
-    expect(wrapper.get(".dashboard-skip").attributes("href")).toBe("#main-content");
+    expect(wrapper.get(".dashboard-skip").attributes("href")).toBe(
+      "#main-content",
+    );
     expect(wrapper.get("#main-content").attributes("tabindex")).toBe("-1");
 
-    for (const path of ["/paths", "/sessions", "/notes", "/reports", "/timeline", "/calendar", "/imports"]) {
+    for (const path of [
+      "/paths",
+      "/sessions",
+      "/notes",
+      "/reports",
+      "/timeline",
+      "/calendar",
+      "/imports",
+    ]) {
       route.path = path;
       await wrapper.vm.$nextTick();
       expect(wrapper.classes()).toContain("dashboard-shell");
@@ -165,7 +200,9 @@ describe("App", () => {
     const { reactive } = await import("vue");
     const route = reactive({ path: "/paths", query: {} });
     localStorage.setItem("know_token", "token");
-    const wrapper = mount(App, { global: { stubs, provide: { [routeLocationKey as symbol]: route } } });
+    const wrapper = mount(App, {
+      global: { stubs, provide: { [routeLocationKey as symbol]: route } },
+    });
     const tracker = wrapper.find('[data-test="floating-tracker"]');
 
     expect(tracker.exists()).toBe(true);
@@ -179,7 +216,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     const restoredTracker = wrapper.find('[data-test="floating-tracker"]');
     expect(restoredTracker.exists()).toBe(true);
-    expect(restoredTracker.attributes("style") || "").not.toContain("display: none");
+    expect(restoredTracker.attributes("style") || "").not.toContain(
+      "display: none",
+    );
     expect(restoredTracker.element).not.toBe(tracker.element);
     wrapper.unmount();
   });
@@ -187,7 +226,9 @@ describe("App", () => {
   it("does not flash the floating tracker while the root route redirects to sessions", () => {
     const route = { path: "/", query: {} };
     localStorage.setItem("know_token", "token");
-    const wrapper = mount(App, { global: { stubs, provide: { [routeLocationKey as symbol]: route } } });
+    const wrapper = mount(App, {
+      global: { stubs, provide: { [routeLocationKey as symbol]: route } },
+    });
 
     expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
     wrapper.unmount();

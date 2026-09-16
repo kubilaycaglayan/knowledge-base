@@ -7,6 +7,8 @@ describe("date formatting", () => {
   });
 
   it("includes time components in date-time formatting", () => {
-    expect(formatDateTime("2026-08-27T12:34:56Z")).toMatch(/27\/08\/2026, 12:34:56/);
+    expect(formatDateTime("2026-08-27T12:34:56Z")).toMatch(
+      /27\/08\/2026, 12:34:56/,
+    );
   });
 });

@@ -1,8 +1,8 @@
 package com.know.realtime;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Value;
 import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
@@ -21,7 +21,9 @@ public class TimerWebSocketConfig implements WebSocketConfigurer {
 
   @Override
   public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-    registry.addHandler(handler, "/ws/timers")
-        .setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).toArray(String[]::new));
+    registry
+        .addHandler(handler, "/ws/timers")
+        .setAllowedOrigins(
+            Arrays.stream(origins.split(",")).map(String::trim).toArray(String[]::new));
   }
 }

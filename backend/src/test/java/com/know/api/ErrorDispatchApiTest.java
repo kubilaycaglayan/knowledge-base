@@ -16,23 +16,26 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(BasicErrorController.class)
 @Import(SecurityConfig.class)
-@TestPropertySource(properties = {
-    "app.jwt-secret=api-test-secret-with-at-least-32-characters",
-    "app.cors-origins=http://localhost"
-})
+@TestPropertySource(
+    properties = {
+      "app.jwt-secret=api-test-secret-with-at-least-32-characters",
+      "app.cors-origins=http://localhost"
+    })
 class ErrorDispatchApiTest {
   @Autowired MockMvc mvc;
 
   @Test
   void errorDispatchPreservesOriginalStatusWithoutReauthenticating() throws Exception {
     for (int code : new int[] {404, 500, 503}) {
-      mvc.perform(get("/error")
-              .with(request -> {
-                request.setDispatcherType(DispatcherType.ERROR);
-                return request;
-              })
-              .requestAttr(RequestDispatcher.ERROR_STATUS_CODE, code)
-              .requestAttr(RequestDispatcher.ERROR_REQUEST_URI, "/api/v1/paths"))
+      mvc.perform(
+              get("/error")
+                  .with(
+                      request -> {
+                        request.setDispatcherType(DispatcherType.ERROR);
+                        return request;
+                      })
+                  .requestAttr(RequestDispatcher.ERROR_STATUS_CODE, code)
+                  .requestAttr(RequestDispatcher.ERROR_REQUEST_URI, "/api/v1/paths"))
           .andExpect(status().is(code));
     }
   }

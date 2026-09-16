@@ -8,7 +8,14 @@ import jakarta.persistence.Table;
 @Table(name = "log_label")
 public class LogLabel {
   @EmbeddedId private LogLabelId id;
+
   protected LogLabel() {}
-  public LogLabel(LogLabelId id) { this.id = id; }
-  public LogLabelId getId() { return id; }
+
+  public LogLabel(LogLabelId id) {
+    this.id = id;
+  }
+
+  public LogLabelId getId() {
+    return id;
+  }
 }

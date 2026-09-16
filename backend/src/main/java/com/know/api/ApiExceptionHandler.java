@@ -23,16 +23,18 @@ public class ApiExceptionHandler {
   ResponseEntity<ErrorResponse> invalidRequest(Exception exception) {
     String message = "Invalid request";
     if (exception instanceof MethodArgumentNotValidException validation) {
-      message = validation.getBindingResult().getFieldErrors().stream()
-          .map(error -> error.getField() + ": " + error.getDefaultMessage())
-          .distinct()
-          .collect(Collectors.joining("; "));
+      message =
+          validation.getBindingResult().getFieldErrors().stream()
+              .map(error -> error.getField() + ": " + error.getDefaultMessage())
+              .distinct()
+              .collect(Collectors.joining("; "));
     } else if (exception instanceof ConstraintViolationException validation
         && !validation.getConstraintViolations().isEmpty()) {
-      message = validation.getConstraintViolations().stream()
-          .map(error -> error.getPropertyPath() + ": " + error.getMessage())
-          .distinct()
-          .collect(Collectors.joining("; "));
+      message =
+          validation.getConstraintViolations().stream()
+              .map(error -> error.getPropertyPath() + ": " + error.getMessage())
+              .distinct()
+              .collect(Collectors.joining("; "));
     }
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(message));
   }
