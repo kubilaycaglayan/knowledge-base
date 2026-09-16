@@ -300,7 +300,7 @@ if api "${other_header[@]}" "http://localhost:8080/api/v1/paths/$path_id" >/dev/
   echo "cross-user path access was allowed" >&2
   exit 1
 fi
-note_payload="$(printf '{"pathId":"%s","title":"Smoke note","content":"{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Persisted knowledge\"}]}]}","contentText":"Persisted knowledge","tags":["Smoke"]}' "$path_id")"
+note_payload="$(printf '{"pathId":"%s","title":"Smoke note","content":"{\\\"type\\\":\\\"doc\\\",\\\"content\\\":[{\\\"type\\\":\\\"paragraph\\\",\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"Persisted knowledge\\\"}]}]}","contentText":"Persisted knowledge","tags":["Smoke"]}' "$path_id")"
 note="$(api "${header[@]}" "${content_json[@]}" --post-data="$note_payload" http://localhost:8080/api/v1/notes)"
 note_id="$(printf '%s' "$note" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 [[ -n "$note_id" ]]
