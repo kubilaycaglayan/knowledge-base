@@ -839,10 +839,9 @@ small {
 .labels-picker { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 56px; padding: 5px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-background); }
 .labels-picker .label-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; max-height: 44px; overflow: hidden; }
 .labels-picker.is-open .label-chips { max-height: none; }
-.labels-picker .label-chip { display: inline-flex; align-items: center; gap: 4px; min-width: 44px; min-height: 44px; max-width: 100%; margin: 0; padding: 4px 8px; border: 0; border-radius: 4px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }
+.labels-picker .label-chip { display: inline-flex; flex: 0 0 auto; width: auto; align-items: center; gap: 4px; min-width: 44px; min-height: 44px; max-width: 100%; margin: 0; padding: 4px 8px; border: 0; border-radius: 4px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }
 .labels-picker .label-chip > span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .labels-picker .label-chip.selected { background: var(--workspace-accent); color: var(--workspace-on-accent); }
-.labels-picker .label-chip:hover { background: var(--workspace-hover); color: var(--workspace-text); }
 #labels-toggle { flex: 0 0 44px; width: 44px; min-height: 44px; margin: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--workspace-muted); border: 0; }
 #labels-toggle[hidden] { display: none; }
 #labels-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }
