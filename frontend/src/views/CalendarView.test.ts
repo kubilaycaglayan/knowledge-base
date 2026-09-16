@@ -244,5 +244,7 @@ describe("CalendarView", () => {
     expect(wrapper.find(".calendar-label").attributes("style")).toContain("#2878D5");
     expect(wrapper.text()).toContain("+1");
     expect(wrapper.text()).toContain("Note");
+    expect(wrapper.find(".calendar-day-details").exists()).toBe(true);
+    expect(wrapper.find(".calendar-day-details .calendar-labels").exists()).toBe(true);
   });
 });
