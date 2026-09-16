@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY" | "LOG";
 export type Label = { id: string; name: string; color?: string | null; scopes: LabelScope[]; system?: boolean };
 const scopeLoadPromises = new Map<LabelScope, Promise<Label[]>>();
+let catalogRevision = 0;
 
 export const useLabelsStore = defineStore("labels", {
   state: () => ({ labels: [] as Label[], loaded: false, loadedScopes: [] as LabelScope[], loading: false }),
@@ -15,8 +16,11 @@ export const useLabelsStore = defineStore("labels", {
     async load(force = false) {
       if (this.loaded && !force) return this.labels;
       this.loading = true;
+      const revision = catalogRevision;
       try {
-        this.labels = await api<Label[]>("/labels");
+        const labels = await api<Label[]>("/labels");
+        if (revision !== catalogRevision) return this.labels;
+        this.labels = labels;
         this.loaded = true;
         this.loadedScopes = ["NOTE", "CALENDAR", "TIME_ENTRY", "LOG"];
         return this.labels;
@@ -30,9 +34,11 @@ export const useLabelsStore = defineStore("labels", {
       if (pending && !force) return pending;
       this.loading = true;
       const request = api<Label[]>(`/labels?scope=${scope}`);
+      const revision = catalogRevision;
       scopeLoadPromises.set(scope, request);
       try {
         const scoped = await request;
+        if (revision !== catalogRevision) return this.forScope(scope);
         const ids = new Set(scoped.map((label) => label.id));
         this.labels = [...this.labels.filter((label) => !ids.has(label.id)), ...scoped];
         this.loadedScopes = [...new Set([...this.loadedScopes, scope])];
@@ -56,5 +62,6 @@ export const useLabelsStore = defineStore("labels", {
     replace(label: Label) { this.labels = this.labels.map((value) => value.id === label.id ? label : value); },
     add(label: Label) { this.labels = [...this.labels, label]; },
     remove(id: string) { this.labels = this.labels.filter((label) => label.id !== id); },
+    reset() { catalogRevision++; this.labels = []; this.loaded = false; this.loadedScopes = []; this.loading = false; scopeLoadPromises.clear(); },
   },
 });

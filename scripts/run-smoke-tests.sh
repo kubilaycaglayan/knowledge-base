@@ -327,9 +327,34 @@ if api "${other_header[@]}" "http://localhost:8080/api/v1/logs/$log_id" >/dev/nu
   echo "cross-user log access was allowed" >&2
   exit 1
 fi
+api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"description\":\"Shared tracker draft\"}" \
+  http://localhost:8080/api/v1/timers/draft | grep -q 'Shared tracker draft'
+api "${header[@]}" http://localhost:8080/api/v1/timers/draft | grep -q 'Shared tracker draft'
+if api "${other_header[@]}" http://localhost:8080/api/v1/timers/draft | grep -q 'Shared tracker draft'; then
+  echo "cross-user tracker draft access was allowed" >&2
+  exit 1
+fi
+if api "${other_header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"description\":\"Invalid foreign path\"}" \
+  http://localhost:8080/api/v1/timers/draft >/dev/null; then
+  echo "cross-user tracker draft path assignment was allowed" >&2
+  exit 1
+fi
 discarded_timer="$(api "${header[@]}" "${content_json[@]}" --post-data='{"labelIds":[],"description":"Discarded quick timer"}' http://localhost:8080/api/v1/timers)"
+if api "${header[@]}" http://localhost:8080/api/v1/timers/draft | grep -q 'Shared tracker draft'; then
+  echo "starting a timer did not clear the idle draft" >&2
+  exit 1
+fi
+if api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data='{"labelIds":[],"description":"Conflicting idle draft"}' \
+  http://localhost:8080/api/v1/timers/draft >/dev/null; then
+  echo "idle draft write accepted while timer was running" >&2
+  exit 1
+fi
 discarded_timer_id="$(printf '%s' "$discarded_timer" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 api "${header[@]}" --post-data='' "${content_json[@]}" "http://localhost:8080/api/v1/timers/$discarded_timer_id/stop" >/dev/null
+api "${header[@]}" http://localhost:8080/api/v1/timers/draft | grep -q 'Discarded quick timer'
 if api "${header[@]}" "http://localhost:8080/api/v1/time-entries?page=0&size=50" | grep -q 'Discarded quick timer'; then
   echo "timer under two seconds was recorded" >&2
   exit 1

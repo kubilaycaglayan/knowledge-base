@@ -281,7 +281,9 @@
 .calendar-day:focus-visible { outline-offset: -3px; }
 .calendar-day time { position: absolute; top: 10px; right: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .calendar-day small { display: block; margin-top: 7px; color: var(--workspace-muted); font-size: 10px; }
-.calendar-labels { display: grid; gap: 3px; margin-top: 7px; min-width: 0; }
+/* Keep labels aligned across neighboring days, regardless of note/label count. */
+.calendar-day-details { position: absolute; top: 34px; right: 10px; left: 10px; min-width: 0; }
+.calendar-labels { display: grid; gap: 3px; margin: 0; min-width: 0; }
 .calendar-label { min-width: 0; display: flex; align-items: center; gap: 4px; color: var(--workspace-muted); font-size: 10px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .calendar-label i, .calendar-report-labels i, .calendar-log-label i { width: 8px; height: 8px; background: var(--calendar-label-color, var(--workspace-accent)); border-radius: 50%; display: inline-block; flex: 0 0 auto; }
 .day-editor { border-top: 1px solid var(--workspace-border); padding: 16px 0; display: grid; gap: 16px; }
@@ -336,6 +338,7 @@
   .donut-panel { border-left: 0; border-top: 1px solid var(--workspace-border); }
   .calendar-day { min-height: 76px; padding: 7px; }
   .calendar-day time { top: 7px; right: 7px; }
+  .calendar-day-details { top: 30px; right: 7px; left: 7px; }
   .calendar-weekday { padding: 8px 4px; text-align: center; }
   .calendar-report-log li { grid-template-columns: 1fr; gap: 5px; }
 }

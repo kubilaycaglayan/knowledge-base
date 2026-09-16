@@ -2,6 +2,12 @@ import XCTest
 @testable import Know
 
 private actor SessionsStub: SessionsTransport {
+    private var trackerSelection = TrackerSelection()
+    func selection() async throws -> TrackerSelection { trackerSelection }
+    func saveSelection(_ draft: SessionDraft) async throws -> TrackerSelection {
+        trackerSelection = TrackerSelection(pathId: draft.pathId, labelIds: draft.labelIds, description: draft.description)
+        return trackerSelection
+    }
     var running: TrackedSession?
     var failWrites = false
     var stopCount = 0
@@ -43,7 +49,14 @@ private actor SessionsStub: SessionsTransport {
         return result
     }
     func updateTimer(id: UUID, draft: SessionDraft) async throws -> TrackedSession { try await start(draft) }
-    func stop(id: UUID) async throws { if failWrites { throw APIError.offline }; stopCount += 1; running = nil }
+    func stop(id: UUID) async throws {
+        if failWrites { throw APIError.offline }
+        stopCount += 1
+        if let running {
+            trackerSelection = TrackerSelection(pathId: running.pathId, labelIds: running.labelIds ?? [], description: running.description)
+        }
+        running = nil
+    }
     func save(id: UUID, draft: SessionDraft) async throws { if failWrites { throw APIError.offline }; saveCount += 1; lastDraft = draft }
     func remove(id: UUID) async throws { if failWrites { throw APIError.offline } }
     func createPath(name: String) async throws -> Path { lastPathName = name; return path }

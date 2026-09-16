@@ -7,6 +7,7 @@ Run the required checks from the repository root:
 ```bash
 docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
 (cd frontend && npm ci && npm run build)
+(cd frontend && npm run test:tracker)
 node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
 (cd chrome-extension && npm test)

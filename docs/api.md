@@ -49,4 +49,10 @@ Authenticated endpoints currently include:
 
 All resource lookups are scoped by the authenticated user. A user can have at most one running timer, enforced by both a service check and a PostgreSQL partial unique index.
 
+### Shared tracker selections
+
+`GET /timers/draft` returns `{pathId, labelIds, description}` for the signed-in user's next session, with empty selections by default. `PUT /timers/draft` saves the same fields, validating active-path ownership, label ownership and TIME_ENTRY scope, and the 5,000-character description limit. It returns 409 if a timer is running; configure that timer instead. Starting a timer clears the idle draft in the same transaction. Stopping or cancelling copies the timer's last selections back to the idle draft so every client shows the same context. Concurrent saves use the last committed selection; clients preserve typing made after a submitted snapshot and serialize queued edits.
+
+The web's inline and floating trackers share one account-scoped in-memory store and one connection across navigation. Web and iOS use timer WebSocket events plus two-second REST reconciliation; the open extension popup uses two-second REST reconciliation. Reconciliation includes idle selections and loads unfamiliar path/label names. READY only acknowledges socket authentication, so clients fetch current state on connection and resume. Local edits reach other clients after saving (description edits save when committed); unsent typing remains local.
+
 Unauthenticated or invalid bearer requests receive HTTP 401; authenticated users attempting to reference another user’s resources receive a resource-not-found response rather than cross-user data.

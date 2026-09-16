@@ -17,6 +17,7 @@ describe("session tracker acceptance", () => {
       if (path === "/labels?scope=TIME_ENTRY") return labels;
       if (path === "/labels" && options.method === "POST") return { id: "created", name: "New label", scopes: ["TIME_ENTRY"] };
       if (path === "/timers/current") return null;
+      if (path === "/timers/draft") return options.method === "PUT" ? JSON.parse(String(options.body)) : {};
       return [];
     });
   });
@@ -33,7 +34,7 @@ describe("session tracker acceptance", () => {
 
   it("P4–P8: offers add first and only active paths", async () => {
     await render();
-    const select = wrapper.findComponent(".tracker-path-select");
+    const select = wrapper.findComponent(".tracker-path-select") as VueWrapper<any>;
     expect(select.props("items")).toEqual([
       { id: "__add_new_path__", name: "＋ Add a new path…", status: "" },
       { id: "active", name: "Study", status: "ACTIVE" },

@@ -7,11 +7,13 @@ struct SessionsView: View {
     @State private var newLabel = ""
     @State private var newPath = ""
     @State private var addingPath = false
+    @State private var labelsExpanded = false
     @State private var editingStart = false
     @State private var startedAt = Date()
     @State private var editing: TrackedSession?
     @State private var removing: TrackedSession?
     @FocusState private var descriptionFocused: Bool
+    @FocusState private var labelNameFocused: Bool
 
     private var groups: [(id: UUID, label: String, sessions: [TrackedSession])] {
         var result: [(id: UUID, label: String, sessions: [TrackedSession])] = []
@@ -21,6 +23,13 @@ struct SessionsView: View {
             else { result.append((session.id, label, [session])) }
         }
         return result
+    }
+
+    private var orderedSessionLabels: [SessionLabel] {
+        guard !labelsExpanded else { return model.labels }
+        let selected = model.labels.filter { model.draft.labelIds.contains($0.id) }
+        let unselected = model.labels.filter { !model.draft.labelIds.contains($0.id) }
+        return selected + unselected
     }
 
     var body: some View {
@@ -65,8 +74,15 @@ struct SessionsView: View {
         .refreshable { await model.load() }
         .onChange(of: descriptionFocused) { _, focused in
             model.descriptionFocused = focused
-            if !focused { Task { await model.saveTimer() } }
+            if focused { labelsExpanded = false }
+            if !focused {
+                Task {
+                    if model.descriptionNeedsSave { await model.saveTimer() }
+                    else { await model.sync() }
+                }
+            }
         }
+        .onChange(of: labelNameFocused) { _, focused in if focused { labelsExpanded = false } }
         .onChange(of: model.error) { _, error in
             #if os(iOS)
             if let error { UIAccessibility.post(notification: .announcement, argument: error) }
@@ -147,9 +163,9 @@ struct SessionsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 heading("Path")
                 Menu {
-                    Button("＋ Add a new path…") { addingPath = true }
+                    Button("＋ Add a new path…") { labelsExpanded = false; addingPath = true }
                     Divider()
-                    ForEach(model.activePaths) { path in Button(path.name) { Task { await model.choosePath(path.id) } } }
+                    ForEach(model.activePaths) { path in Button(path.name) { labelsExpanded = false; Task { await model.choosePath(path.id) } } }
                 } label: {
                     HStack { Text(model.draft.pathId.flatMap { model.pathsByID[$0] }?.name ?? "Choose a path…"); Spacer(); Image(systemName: "chevron.down").font(.caption) }
                         .frame(maxWidth: .infinity, alignment: .leading).modifier(WorkspaceControl())
@@ -158,19 +174,39 @@ struct SessionsView: View {
                     WorkspaceFlow {
                         Text("Recent").font(.caption).foregroundStyle(WorkspaceTheme.muted(scheme)).frame(minHeight: 44)
                         ForEach(model.recentPaths) { path in
-                            chipButton(path.name, selected: model.draft.pathId == path.id) { Task { await model.choosePath(path.id) } }
+                            chipButton(path.name, selected: model.draft.pathId == path.id) { labelsExpanded = false; Task { await model.choosePath(path.id) } }
                         }
                     }.accessibilityLabel("Recently used paths")
                 }
-                HStack { heading("Labels"); Spacer(); Text("\(model.labels.count) available").font(.caption).foregroundStyle(WorkspaceTheme.muted(scheme)) }
+                HStack {
+                    heading("Labels")
+                    Spacer(minLength: 8)
+                    let selectedCount = model.labels.filter { model.draft.labelIds.contains($0.id) }.count
+                    Text("\(model.labels.count) available\(selectedCount == 0 ? "" : " · \(selectedCount) selected")")
+                        .font(.caption).foregroundStyle(WorkspaceTheme.muted(scheme)).accessibilityIdentifier("timer.labels.summary")
+                    if !model.labels.isEmpty {
+                        Button { labelsExpanded.toggle() } label: {
+                            Image(systemName: labelsExpanded ? "chevron.up" : "chevron.down").font(.caption).frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(labelsExpanded ? "Close session labels" : "Open session labels")
+                        .accessibilityValue(labelsExpanded ? "Expanded" : "Collapsed")
+                        .accessibilityIdentifier("timer.labels.toggle")
+                    }
+                }
                 WorkspaceFlow {
-                    ForEach(model.labels) { label in
-                        chipButton(label.name, selected: model.draft.labelIds.contains(label.id)) { Task { await model.toggleLabel(label.id) } }
+                    ForEach(orderedSessionLabels) { label in
+                        chipButton(label.name, selected: model.draft.labelIds.contains(label.id)) { Task { await model.toggleLabel(label.id); labelsExpanded = true } }
                             .accessibilityIdentifier("timer.label.\(label.id)")
                     }
                     if model.labels.isEmpty { Text("No session labels yet.").font(.caption).foregroundStyle(WorkspaceTheme.muted(scheme)).frame(minHeight: 44) }
-                }.padding(6).background(WorkspaceTheme.background(scheme), in: RoundedRectangle(cornerRadius: 6))
+                }
+                    .frame(maxHeight: labelsExpanded ? .infinity : 56, alignment: .topLeading)
+                    .clipped()
+                    .padding(6).background(WorkspaceTheme.background(scheme), in: RoundedRectangle(cornerRadius: 6))
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(WorkspaceTheme.control(scheme)))
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Session labels")
                 if typeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 6) { newLabelField; createLabelButton }
                 } else { HStack(spacing: 6) { newLabelField; createLabelButton.fixedSize() } }
@@ -196,6 +232,7 @@ struct SessionsView: View {
     private var newLabelField: some View {
         TextField("New label for this session…", text: $newLabel).modifier(WorkspaceControl())
             .accessibilityLabel("New session label name").accessibilityIdentifier("timer.newLabel")
+            .focused($labelNameFocused)
             .onSubmit(createLabel)
     }
     private var createLabelButton: some View {

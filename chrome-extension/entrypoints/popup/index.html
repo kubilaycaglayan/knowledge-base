@@ -28,7 +28,14 @@
           <div class="timer-start-actions"><button id="save-timer-start" type="submit">Save</button><button id="cancel-timer-start" class="text-button" type="button">Cancel</button></div>
         </form>
         <div class="timer-field"><label for="path">Path</label><select id="path" name="path" autocomplete="off"><option value="">Select a path</option></select></div>
-        <div class="timer-field timer-label-field"><label for="label">Labels</label><div class="timer-label-control"><select id="label" name="labelPicker" autocomplete="off"></select><div id="selected-labels" class="label-chips" aria-live="polite"></div></div></div>
+        <div class="timer-field timer-label-field"><span class="timer-label-heading">Labels</span><div class="timer-label-control">
+          <div id="labels-picker" class="labels-picker" role="group" aria-label="Session labels">
+            <div id="selected-labels" class="label-chips"></div>
+            <button id="labels-toggle" type="button" aria-label="Open session labels" aria-expanded="false" aria-controls="selected-labels"><span class="chevron" aria-hidden="true"></span></button>
+          </div>
+          <p id="labels-summary" aria-live="polite">0 available</p>
+          <div class="new-label-row"><input id="new-label" name="newLabel" aria-label="New session label name" autocomplete="off" placeholder="New label for this session…" /><button id="create-label" type="button">Create label</button></div>
+        </div></div>
         <div class="timer-field"><label for="description">Description</label><textarea id="description" name="description" maxlength="5000" rows="2" autocomplete="off"></textarea></div>
         <section class="history" aria-label="Recent sessions">
           <div id="sessions"><p class="empty">Loading sessions…</p></div>

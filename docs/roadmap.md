@@ -1,5 +1,10 @@
 # Knowledge Base UI roadmap
 
+- [x] Share tracker fields, queued saves, and synchronization across web routes;
+  persist idle selections per account and reconcile them in web, extension,
+  and iOS clients, including reconnects and labels created on another client.
+- [ ] Validate the shared idle-selection flow on an iOS simulator (requires macOS).
+
 - [x] Expand timer and session descriptions to a 5,000-character limit with
   actionable validation errors.
 

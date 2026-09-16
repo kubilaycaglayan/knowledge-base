@@ -28,6 +28,37 @@ import Observation
     private var socketTask: Task<Void, Never>?
     private var pollingTask: Task<Void, Never>?
     private var active = false
+    private var selectionBaseline = TrackerSelection()
+    private var saveQueued = false
+
+    private func applySelection(_ selection: TrackerSelection, submitted: SessionDraft? = nil) {
+        var nextBaseline = selectionBaseline
+        let pathBase = submitted == nil ? selectionBaseline.pathId : submitted!.pathId
+        if draft.pathId == pathBase { draft.pathId = selection.pathId; nextBaseline.pathId = selection.pathId }
+        let labelsBase = submitted?.labelIds ?? selectionBaseline.labelIds
+        if draft.labelIds == labelsBase { draft.labelIds = selection.labelIds; nextBaseline.labelIds = selection.labelIds }
+        let descriptionBase = submitted?.description ?? selectionBaseline.description ?? ""
+        if !descriptionFocused && draft.description == descriptionBase {
+            draft.description = selection.description ?? ""
+            nextBaseline.description = selection.description
+        }
+        selectionBaseline = nextBaseline
+    }
+
+    private func refreshTargets() async {
+        let selectedPath = timer?.pathId ?? draft.pathId
+        let selectedLabels = timer?.labelIds ?? draft.labelIds
+        do {
+            if let selectedPath, pathsByID[selectedPath] == nil {
+                paths = try await transport.paths()
+                pathsByID = Dictionary(uniqueKeysWithValues: paths.map { ($0.id, $0) })
+            }
+            if selectedLabels.contains(where: { labelsByID[$0] == nil }) {
+                labels = try await transport.labels().filter { $0.scopes.contains("TIME_ENTRY") }
+                labelsByID = Dictionary(uniqueKeysWithValues: labels.map { ($0.id, $0) })
+            }
+        } catch { fail(error, "Unable to refresh timer selections. Try again.") }
+    }
 
     init(transport: SessionsTransport, defaults: UserDefaults? = .standard, account: String = "default", unauthorized: @escaping () -> Void = {}) {
         self.transport = transport
@@ -45,7 +76,12 @@ import Observation
             return draft.pathId != baseline.pathId || draft.labelIds != baseline.labelIds
                 || draft.description != baseline.description || draft.startedAt != baseline.startedAt
         }
-        return draft.pathId != nil || !draft.labelIds.isEmpty || !draft.description.isEmpty
+        return draft.pathId != selectionBaseline.pathId || draft.labelIds != selectionBaseline.labelIds
+            || draft.description != (selectionBaseline.description ?? "")
+    }
+
+    var descriptionNeedsSave: Bool {
+        draft.description != (timer?.description ?? selectionBaseline.description ?? "")
     }
 
     func remember(_ id: UUID?) {
@@ -104,6 +140,7 @@ import Observation
             remember(current.pathId)
         } else if previous != nil {
             draft = SessionDraft()
+            selectionBaseline = TrackerSelection()
         }
         if changed { revision += 1 }
     }
@@ -118,6 +155,12 @@ import Observation
             guard version == revision, !busy else { return }
             let changed = timer != snapshot
             apply(snapshot)
+            if snapshot == nil {
+                let selection = try await transport.selection()
+                guard version == revision, !busy, timer == nil else { return }
+                applySelection(selection)
+            }
+            await refreshTargets()
             if changed { await loadHistory(page: 0) }
         } catch { fail(error, "Unable to sync the timer. Try again.") }
     }
@@ -132,7 +175,10 @@ import Observation
         do {
             if let timer {
                 try await transport.stop(id: timer.id)
-                if version == revision { apply(nil) }
+                if version == revision {
+                    apply(nil)
+                    applySelection(try await transport.selection())
+                }
             } else {
                 let result = try await transport.start(draft)
                 if version == revision { apply(result) }
@@ -142,14 +188,23 @@ import Observation
     }
 
     func saveTimer() async {
-        guard !busy, let timer else { return }
+        guard !busy else { saveQueued = true; return }
+        let timer = timer
         busy = true
         error = nil
         revision += 1
         let version = revision
         let submitted = draft
-        defer { busy = false }
+        defer {
+            busy = false
+            if saveQueued { saveQueued = false; Task { await saveTimer() } }
+        }
         do {
+            guard let timer else {
+                let selection = try await transport.saveSelection(submitted)
+                if version == revision { applySelection(selection, submitted: submitted) }
+                return
+            }
             let result = try await transport.updateTimer(id: timer.id, draft: submitted)
             if version == revision {
                 let pendingText = draft.description
@@ -249,7 +304,7 @@ import Observation
             guard let self else { return }
             await load()
             while !Task.isCancelled {
-                if !connected { await sync() }
+                await sync()
                 try? await Task.sleep(for: .seconds(2))
             }
         }
@@ -285,12 +340,12 @@ import Observation
     func receiveSnapshot(_ data: Data) {
         struct Message: Decodable { let type: String; let timer: TrackedSession? }
         guard let message = try? JSONDecoder().decode(Message.self, from: data) else { return }
-        if message.type == "READY" { revision += 1; connected = true }
+        if message.type == "READY" { revision += 1; connected = true; Task { await sync() } }
         if message.type == "TIMER_STATE" {
             revision += 1
             let changed = timer != message.timer
             apply(message.timer)
-            if changed { Task { await loadHistory(page: 0) } }
+            if changed { Task { await refreshTargets(); await loadHistory(page: 0) } }
         }
     }
 

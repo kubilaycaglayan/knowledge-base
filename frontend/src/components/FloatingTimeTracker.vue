@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import PromptDialog from "./PromptDialog.vue";
@@ -24,31 +24,14 @@ const timerStore = useTimerStore();
 const reportsStore = useReportsStore();
 const sessionsStore = useSessionsStore();
 const { current: timer } = storeToRefs(timerStore);
-const open = ref(Boolean(props.inline)), pathId = ref(""), description = ref(""), newLabel = ref("");
-const labelsOpen = ref(false);
+const { pathId, description, newLabel, selectedLabelIds, recentPathIds, now, busy, error, timerStartedAt } = storeToRefs(timerStore);
+const { toggleRun, updateTimer, createLabel, rememberPath } = timerStore;
+const open = ref(Boolean(props.inline)), labelsOpen = ref(false);
 const labelPicker = ref<HTMLElement | null>(null);
-const selectedLabelIds = ref<string[]>([]), recentPathIds = ref<string[]>([]), now = ref(Date.now());
-const busy = ref(false), error = ref("");
-const timerStartedAt = ref("");
 const trackerViewportHeight = ref(0);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
-let ticker: number | undefined, syncTicker: number | undefined, reconnectTicker: number | undefined;
-let syncInFlight = false, timerStateVersion = 0, socket: WebSocket | undefined;
-const socketConnected = ref(false);
-let saveQueued = false;
-// The tracker form is local to each mounted tracker, while the running timer
-// itself lives in Pinia. Track which timer the local form has been hydrated
-// from so a route change does not make a fresh form look like a dirty draft.
-let formTimerId = "";
-function formState() {
-  return { pathId: pathId.value, labelIds: [...selectedLabelIds.value], description: description.value, startedAt: timerStartedAt.value };
-}
-function localStartedAt(value: string) {
-  const date = new Date(value);
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
+watch(() => timerStore.historyVersion, () => emit("changed"));
+async function toggleLabel(id: string) { labelsOpen.value = true; await timerStore.toggleLabel(id); }
 const activePaths = computed(() => paths.value.filter((path) => path.status === "ACTIVE"));
 const pathOptions = computed(() => [
   { id: "__add_new_path__", name: "＋ Add a new path…", status: "" },
@@ -71,11 +54,6 @@ const visibleLabelOptions = computed(() => {
 });
 const timerSummary = computed(() => selectedLabelIds.value.length ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected` : "Choose a path or label to begin.");
 
-function rememberPath(id: string) {
-  if (!id) return;
-  recentPathIds.value = [id, ...recentPathIds.value.filter((value) => value !== id)].slice(0, 5);
-  localStorage.setItem("know_recent_timer_paths", JSON.stringify(recentPathIds.value));
-}
 function updateTrackerViewportHeight() {
   trackerViewportHeight.value = Math.round(window.visualViewport?.height || window.innerHeight);
 }
@@ -94,97 +72,6 @@ function dismissLabels() {
 function closeLabelsOnFocusOut(event: FocusEvent) {
   if (!labelPicker.value?.contains(event.relatedTarget as Node | null)) labelsOpen.value = false;
 }
-function applyTimer(value: Timer | null, notifyHistory = false, submitted?: ReturnType<typeof formState>) {
-  const previous = timer.value;
-  const baseline = submitted || {
-    pathId: previous?.pathId || "", labelIds: previous?.labelIds || [],
-    description: previous?.description || "", startedAt: previous ? localStartedAt(previous.startedAt) : "",
-  };
-  const draft = formState();
-  const preserveDraft = !previous || previous.id === value?.id;
-  if (value && previous?.id === value.id) {
-    // Live snapshots may omit fields that did not change. Preserve the
-    // existing timer form instead of erasing it with undefined values.
-    value = { ...previous, ...value };
-  }
-  // A completed snapshot is history, not the current running timer. Keep
-  // older servers or delayed messages from making the counter appear active.
-  if (value?.running === false) value = null;
-  timerStore.setCurrent(value);
-  now.value = Date.now();
-  if (!value) {
-    if (!previous) return;
-    formTimerId = "";
-    pathId.value = "";
-    selectedLabelIds.value = [];
-    description.value = "";
-    timerStartedAt.value = "";
-    if (notifyHistory && previous?.running) emit("changed");
-    return;
-  }
-  const newLocalForm = formTimerId !== value.id;
-  if (newLocalForm || !preserveDraft || draft.pathId === baseline.pathId) pathId.value = value.pathId || "";
-  if (newLocalForm || !preserveDraft || JSON.stringify(draft.labelIds) === JSON.stringify(baseline.labelIds)) selectedLabelIds.value = [...(value.labelIds || [])];
-  if (newLocalForm || !preserveDraft || draft.description === baseline.description) description.value = value.description || "";
-  if (newLocalForm || !preserveDraft || draft.startedAt === baseline.startedAt) timerStartedAt.value = localStartedAt(value.startedAt);
-  formTimerId = value.id;
-  rememberPath(value.pathId || "");
-}
-async function load() {
-  const versionAtRequest = timerStateVersion;
-  try {
-    const [loadedPaths, loadedLabels, current] = await Promise.all([
-      pathsStore.load(),
-      labelsStore.loadScope("TIME_ENTRY"),
-      api<Timer | null>("/timers/current"),
-    ]);
-    pathsStore.setAll(loadedPaths); labelsStore.setAll(loadedLabels, "TIME_ENTRY");
-    if (versionAtRequest === timerStateVersion) applyTimer(current);
-  } catch { error.value = "Unable to load the time tracker."; }
-}
-async function toggleRun() {
-  if (busy.value) return;
-  busy.value = true; error.value = "";
-  try {
-    if (timer.value) {
-      const versionAtRequest = ++timerStateVersion;
-      await api(`/timers/${timer.value.id}/stop`, { method: "POST", body: "{}" });
-      reportsStore.clear();
-      sessionsStore.clearPages();
-      if (versionAtRequest === timerStateVersion) applyTimer(null);
-    } else {
-      const versionAtRequest = ++timerStateVersion;
-      const started = await api<Timer>("/timers", { method: "POST", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, description: description.value.trim() || null }) });
-      if (versionAtRequest === timerStateVersion) applyTimer(started);
-      rememberPath(pathId.value);
-    }
-    emit("changed");
-  } catch { error.value = "Could not update the timer. Only one timer can run at a time."; }
-  finally { busy.value = false; if (saveQueued) { saveQueued = false; void updateTimer(); } }
-}
-async function updateTimer(alreadyBusy = false) {
-  // Vue event handlers can pass an Event; only the explicit internal flag
-  // may reuse createLabel's busy state.
-  alreadyBusy = alreadyBusy === true;
-  if (!timer.value) return;
-  if (busy.value && !alreadyBusy) { saveQueued = true; return; }
-  if (!alreadyBusy) busy.value = true;
-  const submitted = formState();
-  const versionAtRequest = ++timerStateVersion; error.value = "";
-  try {
-    const startedAt = timerStartedAt.value ? new Date(timerStartedAt.value).toISOString() : timer.value.startedAt;
-    const updated = await api<Timer>(`/timers/${timer.value.id}`, { method: "PUT", body: JSON.stringify({ pathId: pathId.value || null, labelIds: selectedLabelIds.value, startedAt, description: description.value.trim() || null }) });
-    if (versionAtRequest === timerStateVersion) applyTimer(updated, false, submitted);
-    rememberPath(pathId.value);
-    emit("changed");
-  } catch { error.value = "Could not save the active timer settings."; }
-  finally {
-    if (!alreadyBusy) {
-      busy.value = false;
-      if (saveQueued) { saveQueued = false; void updateTimer(); }
-    }
-  }
-}
 async function choosePath(id: string) {
   if (id === "__add_new_path__") {
     pathId.value = "";
@@ -193,26 +80,11 @@ async function choosePath(id: string) {
     try {
       const created = await api<Path>("/paths", { method: "POST", body: JSON.stringify({ name, description: null, color: paletteColors[6] }) });
       pathsStore.add(created); pathId.value = created.id; rememberPath(created.id);
-      if (timer.value) await updateTimer();
+      await updateTimer();
     } catch { error.value = "Could not create path."; }
     return;
   }
-  pathId.value = id; rememberPath(id); if (timer.value) await updateTimer();
-}
-async function toggleLabel(id: string) {
-  selectedLabelIds.value = selectedLabelIds.value.includes(id) ? selectedLabelIds.value.filter((value) => value !== id) : [...selectedLabelIds.value, id];
-  labelsOpen.value = true;
-  if (timer.value) await updateTimer();
-}
-async function createLabel() {
-  const name = newLabel.value.trim(); if (!name || busy.value) return;
-  busy.value = true; error.value = "";
-  try {
-    const created = await api<Label>("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) });
-    labelsStore.add({ ...created, scopes: created.scopes || ["TIME_ENTRY"] }); selectedLabelIds.value = [...new Set([...selectedLabelIds.value, created.id])]; newLabel.value = "";
-    if (timer.value) await updateTimer(true);
-  } catch { error.value = "Could not create the session label."; }
-  finally { busy.value = false; if (saveQueued) { saveQueued = false; void updateTimer(); } }
+  pathId.value = id; rememberPath(id); await updateTimer();
 }
 async function editStartedAt() {
   if (!timer.value) return;
@@ -225,84 +97,16 @@ async function editStartedAt() {
   timerStartedAt.value = value;
   await updateTimer();
 }
-async function sync() {
-  if (syncInFlight || busy.value) return; syncInFlight = true;
-  const versionAtRequest = timerStateVersion;
-  try {
-    const current = await api<Timer | null>("/timers/current");
-    if (!busy.value && versionAtRequest === timerStateVersion) applyTimer(current, true);
-  } catch { /* Best-effort polling. */ }
-  finally { syncInFlight = false; }
-}
-function websocketUrl() {
-  const configured = import.meta.env.VITE_API_URL as string | undefined;
-  const base = configured ? new URL(configured, window.location.origin) : new URL(window.location.href);
-  base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
-  base.pathname = "/ws/timers";
-  base.search = "";
-  return base.toString();
-}
-function startPolling() {
-  if (syncTicker) return;
-  void sync();
-  syncTicker = window.setInterval(() => { void sync(); }, 2000);
-}
-function stopPolling() {
-  if (syncTicker) window.clearInterval(syncTicker);
-  syncTicker = undefined;
-}
-function connectWebSocket() {
-  if (socket || !localStorage.getItem("know_token")) return;
-  try {
-    const candidate = new WebSocket(websocketUrl());
-    socket = candidate;
-    candidate.onopen = () => {
-      candidate.send(JSON.stringify({ type: "AUTH", token: localStorage.getItem("know_token") }));
-    };
-    candidate.onmessage = (event) => {
-      let message: { type?: string; timer?: Timer | null };
-      try { message = JSON.parse(event.data) as typeof message; } catch { return; }
-      if (message.type === "READY") {
-        // Invalidate any poll that was already in flight. The socket is now
-        // the authoritative live source; reconciliation is only needed after
-        // disconnect/reconnect or app resume.
-        timerStateVersion++;
-        socketConnected.value = true;
-        stopPolling();
-      } else if (message.type === "TIMER_STATE") {
-        timerStateVersion++;
-        applyTimer(message.timer || null, true);
-      }
-    };
-    candidate.onclose = () => {
-      if (socket === candidate) socket = undefined;
-      socketConnected.value = false;
-      startPolling();
-      if (!reconnectTicker) reconnectTicker = window.setTimeout(() => {
-        reconnectTicker = undefined;
-        connectWebSocket();
-      }, 5000);
-    };
-    candidate.onerror = () => candidate.close();
-  } catch {
-    startPolling();
-  }
-}
 onMounted(() => {
-  try { recentPathIds.value = JSON.parse(localStorage.getItem("know_recent_timer_paths") || "[]"); } catch { recentPathIds.value = []; }
+  timerStore.acquire();
   updateTrackerViewportHeight();
   window.visualViewport?.addEventListener("resize", updateTrackerViewportHeight);
-  void load(); ticker = window.setInterval(() => { now.value = Date.now(); }, 1000);
   document.addEventListener("pointerdown", closeLabelsOnOutside);
-  connectWebSocket();
 });
 onUnmounted(() => {
+  timerStore.release();
   document.removeEventListener("pointerdown", closeLabelsOnOutside);
   window.visualViewport?.removeEventListener("resize", updateTrackerViewportHeight);
-  if (ticker) window.clearInterval(ticker);
-  stopPolling();
-  if (reconnectTicker) window.clearTimeout(reconnectTicker);
-  if (socket) { socket.onclose = null; socket.close(); socket = undefined; }
 });
 </script>
 
@@ -343,7 +147,7 @@ onUnmounted(() => {
           <v-select class="tracker-test-select" :items="sessionLabels" item-title="name" item-value="id" :model-value="selectedLabelIds" multiple @update:model-value="(value) => { selectedLabelIds = value || []; updateTimer(); }" />
           <div id="tt-labels" ref="labelPicker" class="label-picker" :class="{ 'is-open': labelsOpen }" role="group" aria-label="Session labels" @keydown.esc.stop.prevent="dismissLabels" @focusout="closeLabelsOnFocusOut">
             <div id="tt-label-options" class="label-picker-options">
-              <button v-for="label in visibleLabelOptions" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)">{{ label.name }}<span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button>
+              <button v-for="label in visibleLabelOptions" :key="label.id" type="button" :class="{ selected: selectedLabelIds.includes(label.id) }" :aria-pressed="selectedLabelIds.includes(label.id)" @click="toggleLabel(label.id)"><span class="label-name">{{ label.name }}</span><span v-if="selectedLabelIds.includes(label.id)" aria-hidden="true">×</span></button>
             </div>
             <button v-if="sessionLabels.length" class="label-picker-toggle" type="button" :aria-expanded="labelsOpen" aria-haspopup="true" aria-controls="tt-label-options" @click="labelsOpen = !labelsOpen"><span class="sr-only">{{ labelsOpen ? "Close session labels" : "Open session labels" }}</span><span aria-hidden="true" class="chevron" :class="{ up: labelsOpen }"></span></button>
           </div>
@@ -376,13 +180,23 @@ onUnmounted(() => {
 .tracker-field { display: grid; align-content: start; gap: 8px; min-width: 0; }.tracker-field-wide { grid-column: 1 / -1; }
 .tracker-field label, .tracker-field-heading { color: var(--workspace-muted); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }.tracker-field label span, .tracker-field-heading > span { font-weight: 400; letter-spacing: 0; text-transform: none; }.tracker-field-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .tracker-field select, .tracker-field input, .tracker-field textarea { width: 100%; min-height: 36px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-background); color: var(--workspace-text); padding: 7px 9px; font-size: 14px; }.tracker-field textarea { min-height: 56px; max-height: 200px; overflow-y: auto; resize: vertical; }
-.tracker-path-select { width: 100%; }.tracker-path-select :deep(.v-field) { height: 42px; min-height: 42px; border-radius: 6px; background: var(--workspace-background); color: var(--workspace-text); }.tracker-path-select :deep(.v-field__input) { min-height: 0; height: 100%; align-items: center; padding: 0 9px; font-size: 14px; }.tracker-path-select :deep(.v-field__input > input) { min-height: 0; padding: 0; }.tracker-path-select :deep(.v-field__append-inner) { padding-inline-end: 8px; }
+.tracker-path-select { width: 100%; min-width: 0; max-width: 100%; }.tracker-path-select :deep(.v-input__control), .tracker-path-select :deep(.v-field), .tracker-path-select :deep(.v-field__field), .tracker-path-select :deep(.v-field__input) { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }.tracker-path-select :deep(.v-field) { height: 42px; min-height: 42px; border-radius: 6px; background: var(--workspace-background); color: var(--workspace-text); overflow: hidden; }.tracker-path-select :deep(.v-field__input) { min-height: 0; height: 100%; align-items: center; padding: 0 9px; font-size: 14px; overflow: hidden; }.tracker-path-select :deep(.v-field__input > input) { min-height: 0; min-width: 0; max-width: 100%; width: 0; flex: 1 1 auto; padding: 0; }.tracker-path-select :deep(.v-field__append-inner) { flex: 0 0 auto; padding-inline-end: 8px; }
 :global(.tracker-path-menu .v-list) { border: 1px solid var(--workspace-control-border); border-radius: 6px; padding: 4px; background: var(--workspace-surface); color: var(--workspace-text); }:global(.tracker-path-menu .v-list-item) { min-height: 36px; border-radius: 4px; color: var(--workspace-text); }:global(.tracker-path-menu .v-list-item:hover) { background: var(--workspace-hover); }:global(.tracker-path-menu .tracker-path-separator) { height: 1px; margin: 4px 8px; background: var(--workspace-border); }
-.recent-paths { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }.recent-paths > span { color: var(--workspace-muted); font-size: 12px; }.recent-paths button, .label-picker button { border: 0; border-radius: 4px; padding: 4px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.recent-paths button:hover, .label-picker button:hover { background: var(--workspace-hover); }.recent-paths button.selected, .label-picker button.selected { background: var(--workspace-accent); color: var(--workspace-on-accent); }
+.recent-paths { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; overflow: hidden; }.recent-paths > span { flex: 0 0 auto; color: var(--workspace-muted); font-size: 12px; }.recent-paths button, .label-picker button { border: 0; border-radius: 4px; padding: 4px 8px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.recent-paths button { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.recent-paths button:hover, .label-picker button:hover { background: var(--workspace-hover); }.recent-paths button.selected, .label-picker button.selected { background: var(--workspace-accent); color: var(--workspace-on-accent); }
 .label-picker { display: flex; min-height: 36px; min-width: 0; align-items: center; gap: 6px; border: 1px solid var(--workspace-control-border); border-radius: 6px; padding: 6px; background: var(--workspace-background); }.label-picker-options { display: flex; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px; max-height: 28px; overflow: hidden; }.label-picker.is-open .label-picker-options { max-height: none; overflow: visible; }.label-picker button { display: inline-flex; align-items: center; gap: 4px; }.label-picker button span { font-size: 15px; line-height: 1; }.label-picker-toggle { flex: 0 0 auto; width: 28px; min-height: 28px; justify-content: center; border: 0; border-radius: 4px; padding: 0; background: transparent; color: var(--workspace-muted); }.label-picker-toggle:hover { background: var(--workspace-hover); color: var(--workspace-text); }.label-picker-toggle .chevron { width: 8px; height: 8px; }
 .tracker-test-select { display: none; }
+.label-picker-options button { min-width: 28px; min-height: 28px; max-width: 100%; }
+.label-picker-options button .label-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.4; }
+.tracker-path-select :deep(.v-select__selection) { min-width: 0; max-width: 100%; }
+.tracker-path-select :deep(.v-select__selection-text) { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .new-label-row { display: flex; align-items: center; gap: 6px; min-width: 0; }.new-label-row input { flex: 1; min-width: 0; }.create-label { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 10px; background: var(--workspace-selected); color: var(--workspace-selected-text); font-size: 12px; }.create-label:hover { background: var(--workspace-hover); }.create-label:disabled { opacity: .45; cursor: not-allowed; }
 .tracker-error { grid-column: 1 / -1; margin: 0; color: var(--workspace-danger); font-size: 12px; }.timer-action-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }.timer-action-icon.stop { width: 8px; height: 8px; border: 0; background: currentColor; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 640px) { .floating-tracker-host { padding-inline: 12px; }.floating-tracker-bar { gap: 8px; padding-inline: 10px; }.floating-tracker-action { width: 44px; min-width: 44px; min-height: 44px; }.floating-tracker-toggle { width: 44px; height: 44px; }.floating-tracker-clock { font-size: 16px; }.floating-tracker-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; max-height: calc(var(--tracker-viewport-height, 100dvh) - 24px); min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }.floating-tracker-host.inline .floating-tracker-panel { max-height: none; min-height: auto; overflow: visible; overscroll-behavior: auto; -webkit-overflow-scrolling: auto; }.tracker-field-wide { grid-column: auto; }.floating-tracker-summary { display: none; }.floating-tracker-path, .floating-tracker-context { max-width: 110px; } .tracker-field textarea { max-height: min(200px, 40dvh); } .label-picker-toggle { width: 44px; min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .floating-tracker, .floating-tracker * { transition: none !important; animation: none !important; } }
+@media (max-width: 640px) {
+  .label-picker-options { max-height: 44px; }
+  .label-picker-options button, .create-label { min-height: 44px; min-width: 44px; }
+  .tracker-path-select :deep(.v-field) { height: 58px; min-height: 58px; }
+  .tracker-field input { min-height: 44px; font-size: 16px; }
+}
 </style>
