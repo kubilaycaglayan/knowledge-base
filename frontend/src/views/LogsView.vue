@@ -261,7 +261,7 @@ onBeforeUnmount(() => { if (refreshTimer) clearInterval(refreshTimer); if (clock
 .log-entry.log-hour-break { margin-top: 12px; padding-top: 10px; }
 .log-entry.log-day-break { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--workspace-border); }
 .log-body { align-self: start; min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.log-time { align-self: start; color: var(--workspace-muted); font-size: 12px; line-height: 21px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.log-time { position: relative; top: 1px; align-self: start; color: var(--workspace-muted); font-size: 12px; line-height: 21px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .log-time-input { width: 135px; min-height: 34px; padding: 6px 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .log-edit-body { width: 100%; min-height: 34px; resize: vertical; }
 .log-edit-button { width: 32px; min-height: 32px; padding: 6px; color: var(--workspace-muted); opacity: .55; }
