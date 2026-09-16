@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:ui": "node scripts/check-ui.mjs",
+    "test:tracker": "node --test scripts/session-tracker.acceptance.test.mjs",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview"
   },

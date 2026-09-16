@@ -31,12 +31,14 @@ class Element {
   replaceChildren() { this.options = []; this.children = []; }
   insertAdjacentHTML(position, html) { this.insertedHTML.push({ position, html }); }
   querySelector() { return null; }
+  contains(target) { return target === this || this.children.some(child => child.contains?.(target)); }
 }
 
-function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false, history = [] } = {}) {
+function createPopup({ token = null, currentTimer = null, statusByPath = {}, deferHistory = false, history = [], fixtureLabels, fixturePaths, prompt = () => null } = {}) {
   const elements = Object.fromEntries([
     "status", "timer-details", "timer-start-editor", "timer-started-date", "timer-started-time", "save-timer-start", "cancel-timer-start", "path", "label", "selected-labels", "description", "toggle", "sessions", "error",
     "loading", "auth", "workspace", "email", "password", "login", "google-login", "logout", "options", "settings-menu-toggle", "settings-menu", "clockify-import-toggle",
+    "labels-picker", "labels-toggle", "labels-summary", "new-label", "create-label",
   ].map((id) => [id, new Element(id)]));
   const state = { token, activeTimer: null, calls: [] };
   const storage = {
@@ -50,15 +52,17 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
   };
   const responses = new Map([
     ["/auth/login", { token: "signed-in-token" }],
-    ["/paths", [{ id: "path-1", name: "Learning", status: "ACTIVE" }]],
-    ["/labels?scope=TIME_ENTRY", [{ id: "label-1", name: "Algorithms", color: "#2878D5" }]],
+    ["/paths", fixturePaths || [{ id: "path-1", name: "Learning", status: "ACTIVE" }]],
+    ["/labels?scope=TIME_ENTRY", fixtureLabels || [{ id: "label-1", name: "Algorithms", color: "#2878D5" }]],
     ["/calendar/labels", [{ id: "calendar-only", name: "Calendar only", color: "#999999" }]],
     ["/timers/current", currentTimer],
     ["/time-entries?page=0&size=20", history],
     ["/timers", { id: "timer-1", pathId: "path-1", startedAt: "2026-09-01T10:00:00Z", running: true }],
   ]);
   const context = {
+    window: { prompt },
     document: {
+      addEventListener: (name, handler) => { state[name] = handler; },
       getElementById: (id) => elements[id],
       createElement: (tag) => tag === "option" ? { value: "", textContent: "", selected: false } : new Element(tag),
     },
@@ -84,7 +88,9 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
       const path = new URL(url).pathname.replace("/api/v1", "") + (new URL(url).search || "");
       state.calls.push({ path, options });
       if (deferHistory && path === "/time-entries?page=0&size=20") return new Promise(() => {});
-      const value = responses.get(path);
+      const value = options.method === "POST" && ["/paths", "/labels"].includes(path)
+        ? { ...JSON.parse(options.body), id: "created", status: "ACTIVE" }
+        : path === "/timers/draft" && options.method === "PUT" ? JSON.parse(options.body) : responses.get(path);
       const status = statusByPath[path] || 200;
       return { ok: status >= 200 && status < 300, status, url, redirected: false, headers: { get: () => "application/json" }, text: async () => value == null ? "" : JSON.stringify(value) };
     },
@@ -100,6 +106,80 @@ function createPopup({ token = null, currentTimer = null, statusByPath = {}, def
 }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+async function readyPopup(options) {
+  const popup = createPopup(options);
+  await flush(); await flush(); await flush();
+  return popup;
+}
+
+test("acceptance P4–P9: excludes archived paths, creates and selects a trimmed path", async () => {
+  const popup = await readyPopup({ token: "token", prompt: () => "  Reading  ", fixturePaths: [
+    { id: "active", name: "Active", status: "ACTIVE" }, { id: "archived", name: "Archived", status: "ARCHIVED" },
+  ] });
+  assert.deepEqual(popup.elements.path.options.map(option => option.textContent), ["＋ Add a new path…", "────────", "Active"]);
+  popup.elements.path.value = "__add_new_path__";
+  await popup.elements.path.onchange();
+  assert.equal(popup.elements.path.value, "created");
+  const request = popup.state.calls.find(call => call.path === "/paths" && call.options.method === "POST");
+  assert.equal(JSON.parse(request.options.body).name, "Reading");
+  assert.equal(popup.elements.path.options.at(-1).textContent, "Reading");
+});
+
+test("acceptance L3–L15/L19–L20: multi-selection, counts, priority, expansion and dismissal", async () => {
+  const popup = await readyPopup({ token: "token", fixtureLabels: ["First", "Second", "Third"].map((name, i) => ({ id: `label-${i}`, name })) });
+  const chips = () => popup.elements["selected-labels"].children;
+  const toggle = popup.elements["labels-toggle"];
+  const picker = popup.elements["labels-picker"];
+  const summary = () => popup.elements["labels-summary"].textContent;
+  assert.equal(summary(), "3 available");
+  assert.equal(toggle["aria-expanded"], "false");
+  await chips()[1].onclick(); await chips()[2].onclick();
+  assert.equal(toggle["aria-expanded"], "true");
+  assert.deepEqual(chips().map(chip => chip["aria-pressed"]), ["false", "true", "true"]);
+  assert.equal(summary(), "3 available · 2 selected");
+  toggle.onclick();
+  assert.deepEqual(chips().map(chip => chip.children[0].textContent), ["Second", "Third", "First"]);
+  await chips()[0].onclick();
+  assert.equal(toggle["aria-expanded"], "true");
+  assert.deepEqual(chips().map(chip => chip["aria-pressed"]), ["false", "false", "true"]);
+  assert.equal(summary(), "3 available · 1 selected");
+  picker.onkeydown({ key: "Escape", preventDefault() {} });
+  assert.equal(toggle["aria-expanded"], "false");
+  assert.equal(toggle.focused, true);
+  toggle.onclick();
+  popup.state.pointerdown({ target: picker });
+  assert.equal(toggle["aria-expanded"], "true");
+  popup.state.pointerdown({ target: popup.elements.description });
+  assert.equal(toggle["aria-expanded"], "false");
+  toggle.onclick();
+  picker.onfocusout({ relatedTarget: popup.elements.description });
+  assert.equal(toggle["aria-expanded"], "false");
+});
+
+for (const open of [false, true]) test(`acceptance L16–L17: creates a label with picker open=${open}`, async () => {
+  const popup = await readyPopup({ token: "token" });
+  await popup.elements["selected-labels"].children[0].onclick();
+  if (!open) popup.elements["labels-toggle"].onclick();
+  popup.elements["new-label"].value = "  Review  ";
+  await popup.elements["create-label"].onclick();
+  const created = popup.state.calls.find(call => call.path === "/labels" && call.options.method === "POST");
+  assert.deepEqual(JSON.parse(created.options.body), { name: "Review", scopes: ["TIME_ENTRY"], color: null });
+  assert.equal(popup.elements["new-label"].value, "");
+  assert.equal(popup.elements["labels-summary"].textContent, "2 available · 2 selected");
+  assert.ok(popup.elements["selected-labels"].children.every(chip => chip["aria-pressed"] === "true"));
+  assert.equal(popup.elements["create-label"].disabled, false);
+});
+
+test("acceptance C4: no labels retains a usable creation flow", async () => {
+  const popup = await readyPopup({ token: "token", fixtureLabels: [] });
+  assert.equal(popup.elements["labels-summary"].textContent, "0 available");
+  assert.equal(popup.elements["labels-toggle"].hidden, true);
+  popup.elements["new-label"].value = "First label";
+  await popup.elements["create-label"].onclick();
+  assert.equal(popup.elements["labels-summary"].textContent, "1 available · 1 selected");
+  assert.equal(popup.elements["labels-toggle"].hidden, false);
+});
 
 test("hides the loading state after bootstrap", () => {
   assert.match(styles, /\.loading-state\[hidden\]\s*\{\s*display:\s*none\s*\}/);
@@ -172,7 +252,7 @@ test("loads only labels scoped for time-entry sessions", async () => {
 
   assert.ok(popup.state.calls.some(({ path }) => path === "/labels?scope=TIME_ENTRY"));
   assert.equal(popup.state.calls.some(({ path }) => path === "/calendar/labels"), false);
-  assert.deepEqual(popup.elements.label.options.map((option) => option.value), ["", "label-1"]);
+  assert.deepEqual(popup.elements["selected-labels"].children.map(chip => chip.children[0].textContent), ["Algorithms"]);
 });
 
 test("puts add path first and separates it from active paths", async () => {
@@ -196,8 +276,7 @@ test("starts a server timer with selected path, labels, description, and extensi
   await flush();
   await flush();
   popup.elements.path.value = "path-1";
-  popup.elements.label.value = "label-1";
-  await popup.elements.label.onchange();
+  await popup.elements["selected-labels"].children[0].onclick();
   popup.elements.description.value = "Read algorithms";
   await popup.elements.toggle.onclick();
 
@@ -252,12 +331,12 @@ test("removes a label from the timer when its chip close button is clicked", asy
   await flush();
   await flush();
   await flush();
-  await popup.elements["selected-labels"].children[0].children[1].onclick();
+  await popup.elements["selected-labels"].children[0].onclick();
 
   const update = popup.state.calls.find(({ path, options }) => path === "/timers/timer-1" && options.method === "PUT");
   assert.ok(update);
   assert.deepEqual(JSON.parse(update.options.body).labelIds, []);
-  assert.equal(popup.elements["selected-labels"].children.length, 0);
+  assert.equal(popup.elements["selected-labels"].children[0]["aria-pressed"], "false");
 });
 
 test("stops the server timer and clears its local active state", async () => {

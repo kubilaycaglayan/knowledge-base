@@ -10,6 +10,7 @@ import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 import { useSessionsStore, type Session, type SessionPage } from "../stores/sessions";
 import { useReportsStore } from "../stores/reports";
+import { useTimerStore, type Timer } from "../stores/timer";
 
 type Path = { id: string; name: string; description?: string; status: string; color?: string | null };
 type Label = {
@@ -191,7 +192,7 @@ async function save(session: Session) {
 async function startFromSession(session: Session) {
   if (session.running) return;
   try {
-    await api("/timers", {
+    const started = await api<Timer>("/timers", {
       method: "POST",
       body: JSON.stringify({
         pathId: session.pathId || null,
@@ -199,6 +200,7 @@ async function startFromSession(session: Session) {
         description: session.description || null,
       }),
     });
+    useTimerStore().setCurrent(started);
     sessionsStore.clearPages();
     await load(page.value, true);
   } catch {

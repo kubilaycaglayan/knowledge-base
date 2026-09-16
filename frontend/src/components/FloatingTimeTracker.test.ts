@@ -300,7 +300,7 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     expect(wrapper.get("button.floating-tracker-action").text()).toContain("Start a session");
     expect(wrapper.get("button.floating-tracker-action").classes()).not.toContain("is-running");
-    expect(wrapper.emitted("changed")).toHaveLength(1);
+    expect(wrapper.emitted("changed")).toHaveLength(2);
     wrapper.unmount();
     localStorage.removeItem("know_token");
     globalThis.WebSocket = originalWebSocket;

@@ -568,6 +568,29 @@ class KnowIntegrationTest {
   }
 
   @Test
+  void trackerDraftIsSharedOwnedAndClearedOnStart() {
+    String token = freshToken(), other = freshToken();
+    String label = post("/api/v1/labels", token,
+        "{\"name\":\"Shared focus\",\"scopes\":[\"TIME_ENTRY\"]}").getBody().get("id").asText();
+    String body = "{\"labelIds\":[\"" + label + "\"],\"description\":\" Shared draft \"}";
+    assertEquals(HttpStatus.OK, put("/api/v1/timers/draft", token, body).getStatusCode());
+    JsonNode draft = get("/api/v1/timers/draft", token).getBody();
+    assertEquals("Shared draft", draft.get("description").asText());
+    assertEquals(label, draft.get("labelIds").get(0).asText());
+    assertEquals(0, get("/api/v1/timers/draft", other).getBody().get("labelIds").size());
+    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/timers/draft", other, body).getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/timers/draft", token,
+        "{\"labelIds\":[],\"description\":\"" + "x".repeat(5001) + "\"}").getStatusCode());
+    assertEquals(HttpStatus.CREATED, post("/api/v1/timers", token, body).getStatusCode());
+    assertEquals(0, get("/api/v1/timers/draft", token).getBody().get("labelIds").size());
+    assertEquals(HttpStatus.CONFLICT, put("/api/v1/timers/draft", token, body).getStatusCode());
+    post("/api/v1/timers/stop", token, "{}");
+    assertEquals(HttpStatus.OK, put("/api/v1/timers/draft", token,
+        "{\"labelIds\":[],\"description\":null}").getStatusCode());
+    assertEquals(0, get("/api/v1/timers/draft", token).getBody().get("labelIds").size());
+  }
+
+  @Test
   void timerPreservesIosSource() {
     String token = freshToken();
     ResponseEntity<JsonNode> started =

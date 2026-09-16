@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { inject, watchEffect } from "vue";
+import { inject, watch, watchEffect } from "vue";
+import { useTimerStore } from "./stores/timer";
 import { routeLocationKey, routerKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
 import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
 import { theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 const auth = useAuthStore();
+const tracker = useTimerStore();
+watch(() => auth.token, (token, previous, onCleanup) => {
+  if (token !== previous) tracker.clear();
+  if (token) {
+    tracker.acquire();
+    onCleanup(() => tracker.release());
+  }
+}, { immediate: true });
 const route = inject(routeLocationKey, undefined);
 const router = inject(routerKey, undefined);
 const showFloatingTracker = () => auth.isAuthenticated && route?.path !== "/" && route?.path !== "/sessions";

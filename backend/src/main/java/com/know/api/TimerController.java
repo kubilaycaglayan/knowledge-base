@@ -47,6 +47,16 @@ public class TimerController {
     return service.current(user(a));
   }
 
+  @GetMapping("/timers/draft")
+  public TimerService.DraftView draft(Authentication a) {
+    return service.draft(user(a));
+  }
+
+  @PutMapping("/timers/draft")
+  public TimerService.DraftView saveDraft(Authentication a, @Valid @RequestBody StartRequest r) {
+    return service.saveDraft(user(a), r.pathId(), r.labelIds(), r.description());
+  }
+
   @PostMapping("/timers")
   public ResponseEntity<TimerService.TimeView> start(
       Authentication a, @Valid @RequestBody StartRequest r) {

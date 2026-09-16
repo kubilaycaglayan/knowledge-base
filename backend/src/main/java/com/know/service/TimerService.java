@@ -19,6 +19,41 @@ public class TimerService {
   private final LabelScopeRepository scopes;
   private final TimeEntryLabelRepository entryLabels;
   private final TimerEventPublisher timerEvents;
+  @Autowired private TrackerDraftRepository drafts;
+  @Autowired private UserRepository users;
+
+  public record DraftView(UUID pathId, List<UUID> labelIds, String description) {}
+
+  @Transactional(readOnly = true)
+  public DraftView draft(UUID userId) {
+    return drafts.findById(userId)
+        .map(draft -> new DraftView(draft.getPathId(), draft.getLabelIds(), draft.getDescription()))
+        .orElse(new DraftView(null, List.of(), null));
+  }
+
+  @Transactional
+  public DraftView saveDraft(UUID userId, UUID pathId, List<UUID> labelIds, String description) {
+    lockUser(userId);
+    if (current(userId) != null)
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running; update it instead");
+    validateTargets(userId, pathId, labelIds);
+    TrackerDraft draft = drafts.findById(userId).orElseGet(() -> new TrackerDraft(userId));
+    draft.configure(pathId, labelIds, description);
+    drafts.save(draft);
+    return draft(userId);
+  }
+
+  private void lockUser(UUID userId) {
+    if (users != null) users.findForUpdateById(userId).orElseThrow(
+        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+  }
+
+  private void rememberDraft(UUID userId, TimeEntry entry) {
+    if (drafts == null) return;
+    TrackerDraft draft = drafts.findById(userId).orElseGet(() -> new TrackerDraft(userId));
+    draft.configure(entry.getPathId(), labelIds(entry), entry.getDescription());
+    drafts.save(draft);
+  }
 
   public TimerService(
       TimeEntryRepository entries,
@@ -114,6 +149,7 @@ public class TimerService {
   @Transactional
   public TimeView start(
       UUID userId, UUID pathId, Collection<UUID> labelIds, String description, TimeSource source) {
+    lockUser(userId);
     if (entries.findByUserIdAndEndedAtIsNull(userId).isPresent())
       throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running");
     validateTargets(userId, pathId, labelIds);
@@ -131,6 +167,7 @@ public class TimerService {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running");
     }
     replaceLabels(e.getId(), labelIds);
+    if (drafts != null) drafts.deleteById(userId);
     TimeView started = view(e);
     publishChanged(userId, started);
     return started;
@@ -138,6 +175,7 @@ public class TimerService {
 
   @Transactional
   public TimeView stop(UUID userId, UUID id) {
+    lockUser(userId);
     TimeEntry e =
         entries
             .findById(id)
@@ -147,6 +185,7 @@ public class TimerService {
     if (!e.running()) return view(e);
     e.stop(Instant.now());
     TimeView stopped = view(e);
+    rememberDraft(userId, e);
     if (stopped.durationSeconds() < MINIMUM_SAVED_TIMER_SECONDS) {
       entries.delete(e);
       publishChanged(userId, null);
@@ -161,6 +200,7 @@ public class TimerService {
 
   @Transactional
   public void cancel(UUID userId, UUID id) {
+    lockUser(userId);
     TimeEntry e =
         entries
             .findById(id)
@@ -170,6 +210,7 @@ public class TimerService {
     if (!e.running())
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Only running timers can be cancelled");
+    rememberDraft(userId, e);
     entries.delete(e);
     publishChanged(userId, null);
   }
@@ -184,6 +225,7 @@ public class TimerService {
       Instant endedAt,
       String description) {
     Instant now = Instant.now();
+    lockUser(userId);
     if (startedAt == null || startedAt.isAfter(now))
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Timer start cannot be in the future");
@@ -204,6 +246,7 @@ public class TimerService {
       e.stop(endedAt);
     }
     TimeView updated = view(entries.save(e));
+    if (!updated.running()) rememberDraft(userId, e);
     publishChanged(userId, updated.running() ? updated : null);
     return updated;
   }

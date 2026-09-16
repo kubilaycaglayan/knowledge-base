@@ -26,6 +26,12 @@ struct SessionPage: Codable {
     let totalSessions: Int
 }
 
+struct TrackerSelection: Codable, Equatable {
+    var pathId: UUID?
+    var labelIds: [UUID] = []
+    var description: String?
+}
+
 struct SessionDraft: Equatable {
     var pathId: UUID?
     var labelIds: [UUID] = []
@@ -125,6 +131,8 @@ protocol SessionsTransport {
     func labels() async throws -> [SessionLabel]
     func history(page: Int) async throws -> SessionPage
     func current() async throws -> TrackedSession?
+    func selection() async throws -> TrackerSelection
+    func saveSelection(_ draft: SessionDraft) async throws -> TrackerSelection
     func start(_ draft: SessionDraft) async throws -> TrackedSession
     func updateTimer(id: UUID, draft: SessionDraft) async throws -> TrackedSession
     func stop(id: UUID) async throws
@@ -141,6 +149,11 @@ struct SessionsAPI: SessionsTransport {
     func labels() async throws -> [SessionLabel] { try await client.request("/labels?scope=TIME_ENTRY", token: token) }
     func history(page: Int) async throws -> SessionPage { try await client.request("/time-entries?page=\(page)&size=50", token: token) }
     func current() async throws -> TrackedSession? { try await client.optional("/timers/current", token: token) }
+    func selection() async throws -> TrackerSelection { try await client.request("/timers/draft", token: token) }
+    func saveSelection(_ draft: SessionDraft) async throws -> TrackerSelection {
+        let selection = TrackerSelection(pathId: draft.pathId, labelIds: draft.labelIds, description: draft.description)
+        return try await client.request("/timers/draft", method: "PUT", body: JSONEncoder().encode(selection), token: token)
+    }
     func start(_ draft: SessionDraft) async throws -> TrackedSession {
         var fields = try JSONSerialization.jsonObject(with: draft.body(completed: false)) as! [String: Any]
         fields.removeValue(forKey: "startedAt")

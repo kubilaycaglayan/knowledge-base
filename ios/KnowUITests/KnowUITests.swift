@@ -928,6 +928,53 @@ final class KnowUITests: XCTestCase {
         XCTAssertEqual(app.buttons["timer.toggle"].label, "Start timer")
     }
 
+    func testSessionLabelsPickerHasSummaryCompactPriorityAndKeyboardAccessibleToggle() {
+        launchSessions(["-sessions-many-labels"])
+        let toggle = app.buttons["timer.labels.toggle"]
+        let summary = app.staticTexts["timer.labels.summary"]
+        let firstLabel = app.buttons["timer.label.00000000-0000-4000-8000-000000000002"]
+        let secondLabel = app.buttons["timer.label.00000000-0000-4000-8000-000000000010"]
+        let nextUnselectedLabel = app.buttons["timer.label.00000000-0000-4000-8000-000000000011"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "Collapsed")
+        XCTAssertEqual(summary.label, "8 available")
+        XCTAssertTrue(firstLabel.isHittable)
+        firstLabel.tap()
+        XCTAssertEqual(toggle.value as? String, "Expanded")
+        XCTAssertEqual(summary.label, "8 available · 1 selected")
+        XCTAssertTrue(firstLabel.isSelected)
+        secondLabel.tap()
+        XCTAssertTrue(secondLabel.isSelected)
+        XCTAssertEqual(summary.label, "8 available · 2 selected")
+
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "Collapsed")
+        XCTAssertTrue(firstLabel.exists)
+        XCTAssertTrue(secondLabel.exists)
+        XCTAssertLessThan(secondLabel.frame.minY, nextUnselectedLabel.frame.minY)
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "Expanded")
+        firstLabel.tap()
+        XCTAssertFalse(firstLabel.isSelected)
+        XCTAssertTrue(secondLabel.isSelected)
+        XCTAssertEqual(summary.label, "8 available · 1 selected")
+    }
+
+    func testSessionLabelsCanBeCreatedFromAnEmptyStateWithoutAChevron() {
+        launchSessions(["-sessions-empty-labels"])
+        XCTAssertTrue(app.staticTexts["timer.labels.summary"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["timer.labels.summary"].label, "0 available")
+        XCTAssertFalse(app.buttons["timer.labels.toggle"].exists)
+        let name = app.textFields["timer.newLabel"]
+        XCTAssertTrue(name.isHittable)
+        name.tap()
+        name.typeText("First label")
+        app.buttons["timer.createLabel"].tap()
+        XCTAssertTrue(app.staticTexts["timer.labels.summary"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["timer.labels.summary"].label, "1 available · 1 selected")
+        XCTAssertTrue(app.buttons.matching(identifier: "timer.labels.toggle").firstMatch.exists)
+    }
+
     func testSessionEditPersistsAndDeletionRequiresConfirmation() {
         launchSessions()
         app.swipeUp()

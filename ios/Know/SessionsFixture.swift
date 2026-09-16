@@ -3,6 +3,12 @@ import Foundation
 // In-memory transport used only for explicitly launched UI tests and previews.
 // All UI actions traverse the real model; no test launch can mutate account data.
 actor SessionsFixture: SessionsTransport {
+    private var trackerSelection = TrackerSelection()
+    func selection() async throws -> TrackerSelection { trackerSelection }
+    func saveSelection(_ draft: SessionDraft) async throws -> TrackerSelection {
+        trackerSelection = TrackerSelection(pathId: draft.pathId, labelIds: draft.labelIds, description: draft.description)
+        return trackerSelection
+    }
     static let pathID = UUID(uuidString: "00000000-0000-4000-8000-000000000001")!
     static let labelID = UUID(uuidString: "00000000-0000-4000-8000-000000000002")!
     static let sessionID = UUID(uuidString: "00000000-0000-4000-8000-000000000003")!
@@ -14,6 +20,17 @@ actor SessionsFixture: SessionsTransport {
 
     init(arguments: [String] = []) {
         fails = arguments.contains("-sessions-error")
+        if arguments.contains("-sessions-empty-labels") { allLabels = [] }
+        if arguments.contains("-sessions-many-labels") {
+            allLabels += (0..<7).map { index in
+                SessionLabel(
+                    id: UUID(uuidString: String(format: "00000000-0000-4000-8000-%012d", index + 10))!,
+                    name: index == 6 ? String(repeating: "Long label ", count: 8) : "Session label \(index + 2)",
+                    color: nil,
+                    scopes: ["TIME_ENTRY"]
+                )
+            }
+        }
         let now = Date()
         entries = arguments.contains("-sessions-empty") ? [] : [TrackedSession(id: Self.sessionID, pathId: Self.pathID, labelIds: [Self.labelID], startedAt: SessionFormatting.iso(now.addingTimeInterval(-3600)), endedAt: SessionFormatting.iso(now), durationSeconds: 3600, description: "Replication and consistency models", source: "WEB", running: false)]
     }
@@ -33,6 +50,7 @@ actor SessionsFixture: SessionsTransport {
     }
     func stop(id: UUID) async throws {
         if var session = timer {
+            trackerSelection = TrackerSelection(pathId: session.pathId, labelIds: session.labelIds ?? [], description: session.description)
             session.running = false
             session.endedAt = SessionFormatting.iso(Date())
             session.durationSeconds = Int64(Date().timeIntervalSince(SessionFormatting.date(session.startedAt)!))

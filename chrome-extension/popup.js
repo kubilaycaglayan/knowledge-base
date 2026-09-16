@@ -15,7 +15,12 @@ let liveSyncInFlight = false;
 let descriptionSaveTicker = null;
 let paths = [];
 let labels = [];
+let labelsExpanded = false;
 let timerLabelIds = [];
+let timerRevision = 0;
+let savingTimer = false;
+let timerSaveQueued = false;
+let selectionBaseline = { pathId: "", labelIds: [], description: "" };
 const timerSelectionKey = "timerSelection";
 
 function setLoading(loading) {
@@ -183,22 +188,29 @@ async function persistTimerSelection() {
   await chrome.storage.local.set({ [timerSelectionKey]: { pathId: $("path").value, labelIds: selectedLabelIds($("label")), description: $("description").value } });
 }
 async function configureCurrentTimer() {
-  if (!currentTimer) {
-    await persistTimerSelection();
-    return;
-  }
-  const updated = await request(`/timers/${currentTimer.id}`, {
+  if (savingTimer) { timerSaveQueued = true; return; }
+  savingTimer = true;
+  const revision = ++timerRevision;
+  const target = currentTimer;
+  const submitted = { pathId: $("path").value || null, labelIds: selectedLabelIds(), description: $("description").value || null };
+  try {
+  const updated = await request(target ? `/timers/${target.id}` : "/timers/draft", {
     method: "PUT",
     body: JSON.stringify({
-      pathId: $("path").value || null,
-      labelIds: selectedLabelIds($("label")),
-      startedAt: currentTimer.startedAt,
-      description: $("description").value || null,
+      ...submitted,
+      ...(target ? { startedAt: target.startedAt } : {}),
     }),
   });
-  showTimer(updated);
-  await chrome.storage.local.set({ activeTimer: updated });
-  await restoreTimerSelection(timerSelection(updated));
+  if (revision !== timerRevision) return;
+  if (target) {
+    showTimer(updated);
+    await chrome.storage.local.set({ activeTimer: updated });
+  }
+  await reconcileSelection(updated || submitted, submitted);
+  } finally {
+    savingTimer = false;
+    if (timerSaveQueued) { timerSaveQueued = false; await configureCurrentTimer(); }
+  }
 }
 async function flushDescriptionSave() {
   if (!descriptionSaveTicker) return;
@@ -207,6 +219,7 @@ async function flushDescriptionSave() {
   await configureCurrentTimer();
 }
 async function resetTimerForm() {
+  selectionBaseline = { pathId: "", labelIds: [], description: "" };
   $("path").value = "";
   timerLabelIds = [];
   renderTimerLabels();
@@ -214,20 +227,30 @@ async function resetTimerForm() {
   await persistTimerSelection();
 }
 async function syncTimerState() {
-  if (liveSyncInFlight) return;
+  if (liveSyncInFlight || savingTimer || $("toggle").disabled || descriptionSaveTicker) return;
   liveSyncInFlight = true;
+  const revision = timerRevision;
   try {
     const timer = await request("/timers/current");
+    if (revision !== timerRevision || savingTimer || descriptionSaveTicker) return;
     if (!timer && currentTimer) {
       currentTimer = null;
       await chrome.storage.local.remove("activeTimer");
-      await resetTimerForm();
       showTimer(null);
+      const selection = await request("/timers/draft");
+      await restoreTimerSelection(selection);
+      selectionBaseline = timerSelection(selection);
       await loadSessions();
     } else if (timer && timerStateChanged(currentTimer, timer)) {
       showTimer(timer);
       await chrome.storage.local.set({ activeTimer: timer });
-      await restoreTimerSelection(timerSelection(timer));
+      await reconcileSelection(timer);
+      await loadSessions();
+    } else if (timer) {
+      await reconcileSelection(timer);
+    } else if (!timer) {
+      const selection = await request("/timers/draft");
+      if (revision === timerRevision && !savingTimer && !descriptionSaveTicker) await reconcileSelection(selection);
     }
   } catch (error) {
     // The popup's normal load/request error handling remains authoritative.
@@ -245,41 +268,75 @@ function startLiveTimerSync() {
 function hasOption(select, value) { return value && Array.from(select.options).some((option) => option.value === value); }
 function renderLabelChips() {
   const container = $("selected-labels");
+  const focusedLabel = document.activeElement?.getAttribute("data-label-id");
   container.replaceChildren();
-  timerLabelIds.forEach((id) => {
-    const label = labels.find((entry) => entry.id === id);
-    if (!label) return;
-    const chip = document.createElement("span");
-    chip.className = "label-chip";
+  const available = KnowCore.timerLabels(labels, $("path").value, timerLabelIds);
+  const ordered = labelsExpanded ? available : [
+    ...available.filter(label => timerLabelIds.includes(label.id)),
+    ...available.filter(label => !timerLabelIds.includes(label.id)),
+  ];
+  ordered.forEach((label) => {
+    const selected = timerLabelIds.includes(label.id);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `label-chip${selected ? " selected" : ""}`;
+    chip.setAttribute("aria-pressed", String(selected));
+    chip.setAttribute("data-label-id", label.id);
     const text = document.createElement("span");
     text.textContent = labelText(label);
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "label-chip-remove";
-    remove.setAttribute("aria-label", `Remove label ${labelText(label)}`);
-    remove.textContent = "×";
-    remove.onclick = async () => {
-      timerLabelIds = timerLabelIds.filter((labelId) => labelId !== id);
+    chip.append(text);
+    if (selected) {
+      const mark = document.createElement("span");
+      mark.textContent = "×";
+      mark.setAttribute("aria-hidden", "true");
+      chip.append(mark);
+    }
+    chip.onclick = async () => {
+      timerLabelIds = selected ? timerLabelIds.filter(id => id !== label.id) : [...timerLabelIds, label.id];
+      labelsExpanded = true;
       renderTimerLabels();
       try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
     };
-    chip.append(text, remove);
     container.append(chip);
+    if (focusedLabel === label.id) chip.focus();
   });
+  $("labels-picker").className = `labels-picker${labelsExpanded ? " is-open" : ""}`;
+  $("labels-toggle").setAttribute("aria-expanded", String(labelsExpanded));
+  $("labels-toggle").setAttribute("aria-label", labelsExpanded ? "Close session labels" : "Open session labels");
+  $("labels-toggle").hidden = !available.length;
+  const selectedCount = available.filter(label => timerLabelIds.includes(label.id)).length;
+  $("labels-summary").textContent = `${available.length} available${selectedCount ? ` · ${selectedCount} selected` : ""}`;
 }
 
 function renderTimerLabels(selectedIds = timerLabelIds) {
   timerLabelIds = [...new Set(selectedIds.filter(Boolean))];
   renderLabelChips();
-  const available = KnowCore.timerLabels(labels, $("path").value, timerLabelIds)
-    .filter((label) => !timerLabelIds.includes(label.id));
-  fillOptions($("label"), "Add a label…", available);
 }
 async function restoreTimerSelection(selection) {
   const saved = selection || {};
   const labelIds = saved.labelIds || [];
   $("path").value = hasOption($("path"), saved.pathId) ? saved.pathId : "";
   renderTimerLabels(labelIds); $("description").value = saved.description || "";
+  await persistTimerSelection();
+}
+
+async function reconcileSelection(selection, baseline = selectionBaseline) {
+  const next = timerSelection(selection);
+  if ((next.pathId && !paths.some(path => path.id === next.pathId)) || next.labelIds.some(id => !labels.some(label => label.id === id))) {
+    const localPath = $("path").value;
+    [paths, labels] = await Promise.all([request("/paths"), request("/labels?scope=TIME_ENTRY")]);
+    fillPathOptions($("path"), KnowCore.activePaths(paths));
+    $("path").value = localPath;
+  }
+  const resolved = {};
+  if (document.activeElement !== $("path") && $("path").value === (baseline.pathId || "")) { $("path").value = next.pathId; resolved.pathId = next.pathId; }
+  else resolved.pathId = baseline.pathId;
+  if (!$("labels-picker").contains(document.activeElement) && JSON.stringify(timerLabelIds) === JSON.stringify(baseline.labelIds || [])) { timerLabelIds = [...next.labelIds]; resolved.labelIds = next.labelIds; }
+  else resolved.labelIds = baseline.labelIds;
+  if (document.activeElement !== $("description") && $("description").value === (baseline.description || "")) { $("description").value = next.description; resolved.description = next.description; }
+  else resolved.description = baseline.description;
+  renderTimerLabels();
+  selectionBaseline = resolved;
   await persistTimerSelection();
 }
 
@@ -380,16 +437,16 @@ function renderSessionEditor(article, session) {
 async function load() {
   setLoading(true);
   try {
-    const { activeTimer, timerSelection: savedSelection } = await chrome.storage.local.get(["activeTimer", timerSelectionKey]);
     [paths, labels] = await Promise.all([request("/paths"), request("/labels?scope=TIME_ENTRY")]);
     const timer = await request("/timers/current");
     fillPathOptions($("path"), KnowCore.activePaths(paths));
     $("path").onchange = chooseExtensionPath;
-    if (timer) { showTimer(timer); await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); }
+    if (timer) { showTimer(timer); await chrome.storage.local.set({ activeTimer: timer }); await restoreTimerSelection(timerSelection(timer)); selectionBaseline = timerSelection(timer); }
     else {
       showTimer(null); await chrome.storage.local.remove("activeTimer");
-      if (activeTimer) await resetTimerForm();
-      else await restoreTimerSelection(savedSelection || timerSelection(activeTimer));
+      const selection = await request("/timers/draft");
+      await restoreTimerSelection(timerSelection(selection));
+      selectionBaseline = timerSelection(selection);
     }
     showWorkspace(); startLiveTimerSync(); void loadSessions();
   } catch (error) {
@@ -402,6 +459,7 @@ async function login() {
   const button = $("login");
   const email = $("email").value;
   setButtonBusy(button, true);
+  timerRevision++;
   try { const result = await request("/auth/login", { method: "POST", body: JSON.stringify({ email, password: $("password").value }) }); await chrome.storage.local.set({ token: result.token }); $("error").textContent = ""; await load(); }
   catch (error) { $("error").textContent = userError("Check your credentials and API connection, then try again.", error); }
   finally { setButtonBusy(button, false); }
@@ -466,6 +524,7 @@ $("timer-start-editor").onsubmit = async (event) => {
   }
 };
 $("toggle").onclick = async () => {
+  timerRevision++;
   const button = $("toggle");
   setButtonBusy(button, true);
   try {
@@ -475,17 +534,51 @@ $("toggle").onclick = async () => {
   } catch (error) { $("error").textContent = userError("Could not update the timer. Check the API connection and try again.", error); }
   finally { setButtonBusy(button, false); }
 };
-$("label").onchange = async () => {
-  const labelId = $("label").value;
-  if (!labelId || timerLabelIds.includes(labelId)) return;
-  timerLabelIds = [...timerLabelIds, labelId];
+$("labels-toggle").onclick = () => {
+  labelsExpanded = !labelsExpanded;
   renderTimerLabels();
-  try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
 };
+$("labels-picker").onkeydown = event => {
+  if (event.key !== "Escape") return;
+  event.preventDefault();
+  labelsExpanded = false;
+  renderTimerLabels();
+  $("labels-toggle").focus();
+};
+$("labels-picker").onfocusout = event => {
+  if (event.relatedTarget && !$("labels-picker").contains(event.relatedTarget)) {
+    labelsExpanded = false;
+    renderTimerLabels();
+  }
+};
+document.addEventListener("pointerdown", event => {
+  if (labelsExpanded && !$("labels-picker").contains(event.target)) {
+    labelsExpanded = false;
+    renderTimerLabels();
+  }
+});
+async function createSessionLabel() {
+  const name = $("new-label").value.trim();
+  if (!name || $("create-label").disabled) return;
+  setButtonBusy($("create-label"), true);
+  try {
+    const created = await request("/labels", { method: "POST", body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }) });
+    labels = [...labels.filter(label => label.id !== created.id), created];
+    timerLabelIds = [...new Set([...timerLabelIds, created.id])];
+    $("new-label").value = "";
+    renderTimerLabels();
+    await configureCurrentTimer();
+  } catch (error) { $("error").textContent = userError("Could not create the session label.", error); }
+  finally { setButtonBusy($("create-label"), false); }
+}
+$("create-label").onclick = createSessionLabel;
+$("new-label").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); void createSessionLabel(); } };
 $("description").oninput = () => {
+  timerRevision++;
   void persistTimerSelection();
   if (descriptionSaveTicker) clearTimeout(descriptionSaveTicker);
   descriptionSaveTicker = setTimeout(async () => {
+    descriptionSaveTicker = null;
     try { await configureCurrentTimer(); } catch (error) { $("error").textContent = userError("Could not update the timer.", error); }
   }, 300);
 };
