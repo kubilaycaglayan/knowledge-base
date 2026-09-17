@@ -7,6 +7,8 @@ export type Path = {
   description?: string | null;
   color?: string | null;
   status: string;
+  pinned?: boolean;
+  sortOrder?: number;
 };
 let loadPromise: Promise<Path[]> | null = null;
 let loadRevision = 0;
@@ -50,7 +52,7 @@ export const usePathsStore = defineStore("paths", {
       loadPromise = null;
     },
     add(path: Path) {
-      this.paths = [path, ...this.paths];
+      this.paths = [...this.paths, path];
     },
     replace(path: Path) {
       this.paths = this.paths.map((value) =>
@@ -61,10 +63,13 @@ export const usePathsStore = defineStore("paths", {
       this.paths = this.paths.filter((path) => path.id !== id);
     },
     restore(path: Path) {
-      this.paths = [
-        path,
-        ...this.paths.filter((value) => value.id !== path.id),
-      ];
+      this.paths = [...this.paths.filter((value) => value.id !== path.id), path];
+    },
+    setPinned(path: Path) {
+      this.paths = this.paths.map((value) => value.id === path.id ? path : value);
+    },
+    setOrder(paths: Path[]) {
+      this.paths = paths;
     },
   },
 });

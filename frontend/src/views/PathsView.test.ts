@@ -346,6 +346,34 @@ describe("PathsView", () => {
     );
   });
 
+  it("pins paths and persists keyboard-accessible ordering", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths")
+        return [
+          { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: false },
+          { id: "path-2", name: "Writing", status: "ACTIVE", pinned: false },
+        ];
+      if (path === "/paths/path-1/pin")
+        return { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: true };
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    await wrapper.get(".path-order-button").trigger("click");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/path-1/pin",
+      expect.objectContaining({ body: '{"pinned":true}' }),
+    );
+    expect(wrapper.find(".path-order-button").text()).toBe("Unpin");
+
+    await wrapper.findAll(".path-order-button")[2].trigger("click");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/order",
+      expect.objectContaining({ method: "PUT" }),
+    );
+  });
+
   it("edits path name description and color inline", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();

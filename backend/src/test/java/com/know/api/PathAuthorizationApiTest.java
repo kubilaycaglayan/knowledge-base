@@ -1,6 +1,7 @@
 package com.know.api;
 
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -125,6 +126,41 @@ class PathAuthorizationApiTest {
         .andExpect(jsonPath("$[1].activityLabel").value("this week"))
         .andExpect(jsonPath("$[2].activityLabel").value("this month"))
         .andExpect(jsonPath("$[3].activityLabel").value("passive"));
+  }
+
+  @Test
+  void pinningRequiresOwnershipAndPersistsTheRequestedState() throws Exception {
+    UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID();
+    Path path = new Path(owner, "Pinned", null);
+    when(paths.findByIdAndUserId(pathId, owner)).thenReturn(Optional.of(path));
+    when(paths.save(path)).thenReturn(path);
+    when(paths.findLatestSessionsByUserIdAndPathIdIn(eq(owner), any())).thenReturn(List.of());
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+
+    mvc.perform(
+            post("/api/v1/paths/" + pathId + "/pin")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pinned\":true}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.pinned").value(true));
+    assertTrue(path.isPinned());
+    verify(paths).save(path);
+  }
+
+  @Test
+  void pathOrderingRejectsForeignIds() throws Exception {
+    UUID owner = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+    when(paths.findByUserIdAndIdIn(eq(owner), any())).thenReturn(List.of());
+
+    mvc.perform(
+            put("/api/v1/paths/order")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pathIds\":[\"" + UUID.randomUUID() + "\"]}"))
+        .andExpect(status().isBadRequest());
+    verify(paths, never()).saveAll(any());
   }
 
   @Test

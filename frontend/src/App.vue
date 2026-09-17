@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, watch, watchEffect } from "vue";
+import { inject, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 import { useTimerStore } from "./stores/timer";
 import { routeLocationKey, routerKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
@@ -21,8 +21,32 @@ watch(
 );
 const route = inject(routeLocationKey, undefined);
 const router = inject(routerKey, undefined);
+const focusedTextInput = ref(false);
+const handleFocusOut = () => requestAnimationFrame(() => updateFocusedTextInput());
+const isMobileViewport = () =>
+  window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+function updateFocusedTextInput(event?: FocusEvent) {
+  const target = (event?.target || document.activeElement) as HTMLElement | null;
+  focusedTextInput.value = Boolean(
+    isMobileViewport() &&
+      target &&
+      ((target instanceof HTMLInputElement && target.type !== "button") ||
+        target instanceof HTMLTextAreaElement),
+  );
+}
 const showFloatingTracker = () =>
-  auth.isAuthenticated && route?.path !== "/" && route?.path !== "/sessions";
+  auth.isAuthenticated &&
+  route?.path !== "/" &&
+  route?.path !== "/sessions" &&
+  !(focusedTextInput.value && route?.path !== "/sessions");
+onMounted(() => {
+  document.addEventListener("focusin", updateFocusedTextInput);
+  document.addEventListener("focusout", handleFocusOut);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("focusin", updateFocusedTextInput);
+  document.removeEventListener("focusout", handleFocusOut);
+});
 watchEffect(() => {
   const path = route?.path || "/";
   const page = !auth.isAuthenticated

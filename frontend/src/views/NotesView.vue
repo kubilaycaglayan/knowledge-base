@@ -337,12 +337,18 @@ async function save() {
 }
 function keepEditorVisible() {
   void nextTick(() => {
-    if (document.activeElement?.closest(".rich-editor")) {
-      editorHost.value
-        ?.querySelector(".ProseMirror")
-        ?.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
+    const active = document.activeElement;
+    if (!active?.closest(".rich-editor")) return;
+    const selection = window.getSelection();
+    const anchor = selection?.anchorNode;
+    const target =
+      (anchor instanceof Element ? anchor : anchor?.parentElement) ||
+      editorHost.value?.querySelector(".ProseMirror");
+    target?.scrollIntoView({ block: "nearest", behavior: "auto" });
   });
+}
+function keepActiveEditorSelectionVisible() {
+  if (document.activeElement?.closest(".rich-editor")) keepEditorVisible();
 }
 async function loadEditor() {
   const id = route.params.id;
@@ -368,6 +374,8 @@ async function loadEditor() {
           "aria-label": "Note content",
           "aria-multiline": "true",
         },
+        clipboardTextSerializer: (slice) =>
+          slice.content.textBetween(0, slice.content.size, "\n", "\n"),
       },
       onUpdate: scheduleSave,
       onFocus: keepEditorVisible,
@@ -415,7 +423,7 @@ function refreshVisibleList() {
     void loadNotes(true);
 }
 onMounted(async () => {
-  window.visualViewport?.addEventListener("resize", keepEditorVisible);
+  window.visualViewport?.addEventListener("resize", keepActiveEditorSelectionVisible);
   if (isEditor.value) {
     await nextTick();
     await loadEditor();
@@ -426,7 +434,7 @@ onMounted(async () => {
   }
 });
 onBeforeUnmount(() => {
-  window.visualViewport?.removeEventListener("resize", keepEditorVisible);
+  window.visualViewport?.removeEventListener("resize", keepActiveEditorSelectionVisible);
   if (saveTimer) clearTimeout(saveTimer);
   if (searchTimer) clearTimeout(searchTimer);
   if (refreshTimer) clearInterval(refreshTimer);
@@ -731,15 +739,15 @@ onBeforeUnmount(() => {
 }
 .note-row {
   width: 100%;
-  min-height: 184px;
+  min-height: 142px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px;
   text-align: left;
   border: 1px solid var(--workspace-border);
   border-radius: 10px;
-  padding: 18px;
+  padding: 14px;
   background: var(--workspace-surface);
   transition:
     background-color 160ms ease,
@@ -772,7 +780,7 @@ onBeforeUnmount(() => {
   color: var(--workspace-muted);
   line-height: 1.5;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 1;
 }
 .note-row-meta {
   display: grid;
@@ -785,9 +793,11 @@ onBeforeUnmount(() => {
 }
 .note-tags {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 5px;
+  max-width: 100%;
+  overflow: hidden;
 }
 .note-row-meta > .note-tags {
   grid-column: 1 / -1;
@@ -796,6 +806,7 @@ onBeforeUnmount(() => {
   grid-column: 1;
   align-self: center;
   justify-self: start;
+  white-space: nowrap;
 }
 .note-row-meta > span:last-child {
   grid-column: 2;
@@ -808,6 +819,11 @@ onBeforeUnmount(() => {
   background: var(--workspace-selected);
   padding: 4px 8px;
   font-size: 11px;
+}
+.note-tags i {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .notes-pagination {
   justify-content: space-between;
@@ -984,7 +1000,7 @@ onBeforeUnmount(() => {
 }
 .note-row-meta {
   min-width: 0;
-  max-width: 45%;
+  max-width: none;
   white-space: normal;
 }
 .note-tags i {

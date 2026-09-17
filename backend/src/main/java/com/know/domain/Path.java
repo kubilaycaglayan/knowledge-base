@@ -32,6 +32,12 @@ public class Path {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt = Instant.now();
 
+  @Column(nullable = false)
+  private boolean pinned;
+
+  @Column(name = "sort_order")
+  private Long sortOrder;
+
   @Column(name = "archived_at")
   private Instant archivedAt;
 
@@ -101,6 +107,24 @@ public class Path {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public boolean isPinned() {
+    return pinned;
+  }
+
+  public Long getSortOrder() {
+    return sortOrder;
+  }
+
+  public void setPinned(boolean pinned) {
+    this.pinned = pinned;
+    this.updatedAt = Instant.now();
+  }
+
+  public void setSortOrder(long sortOrder) {
+    this.sortOrder = sortOrder;
+    this.updatedAt = Instant.now();
   }
 
   public UUID getImportBatchId() {

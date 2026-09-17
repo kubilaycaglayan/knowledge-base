@@ -51,6 +51,8 @@ public class PathController {
       String description,
       String color,
       PathStatus status,
+      boolean pinned,
+      Long sortOrder,
       String activityLabel,
       java.time.Instant createdAt,
       java.time.Instant updatedAt) {
@@ -61,6 +63,8 @@ public class PathController {
           p.getDescription(),
           p.getColor(),
           p.getStatus(),
+          p.isPinned(),
+          p.getSortOrder(),
           activityLabel,
           p.getCreatedAt(),
           p.getUpdatedAt());
@@ -70,6 +74,10 @@ public class PathController {
   record PathSummary(PathResponse path, long trackedSeconds, List<Activity> recentActivity) {}
 
   record MergePathRequest(@NotNull UUID targetPathId) {}
+
+  record PinRequest(boolean pinned) {}
+
+  record OrderRequest(List<UUID> pathIds) {}
 
   private UUID user(Authentication a) {
     return UUID.fromString(a.getName());
@@ -88,10 +96,9 @@ public class PathController {
 
   @PostMapping
   public ResponseEntity<PathResponse> create(Authentication a, @Valid @RequestBody PathRequest r) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(
-            PathResponse.of(
-                paths.save(new Path(user(a), r.name(), r.description(), r.color())), null));
+    UUID owner = user(a);
+    Path path = new Path(owner, r.name(), r.description(), r.color());
+    return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.of(paths.save(path), null));
   }
 
   @GetMapping("/{id}")
@@ -168,6 +175,27 @@ public class PathController {
   public void restore(Authentication a, @PathVariable UUID id) {
     if (paths.restoreByIdAndUserId(id, user(a)) == 0)
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Path not found");
+  }
+
+  @PostMapping("/{id}/pin")
+  public PathResponse pin(Authentication a, @PathVariable UUID id, @RequestBody PinRequest request) {
+    Path path = find(a, id);
+    path.setPinned(request.pinned());
+    return PathResponse.of(paths.save(path), activityLabels(user(a), List.of(path)).get(path.getId()));
+  }
+
+  @PutMapping("/order")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Transactional
+  public void order(Authentication a, @RequestBody OrderRequest request) {
+    UUID owner = user(a);
+    List<Path> owned = paths.findByUserIdAndIdIn(owner, request.pathIds());
+    if (owned.size() != request.pathIds().stream().distinct().count())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every path must belong to the user");
+    Map<UUID, Path> byId = owned.stream().collect(Collectors.toMap(Path::getId, path -> path));
+    for (int index = 0; index < request.pathIds().size(); index++)
+      byId.get(request.pathIds().get(index)).setSortOrder(index);
+    paths.saveAll(owned);
   }
 
   private Path find(Authentication a, UUID id) {
