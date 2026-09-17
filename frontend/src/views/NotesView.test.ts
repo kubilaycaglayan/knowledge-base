@@ -109,7 +109,7 @@ describe("NotesView", () => {
   });
 
   it("creates a note from the icon action and opens the editor", async () => {
-    const created = { ...note, id: "new-note", title: "Untitled note" };
+    const created = { ...note, id: "new-note", title: "" };
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
         if (path === "/notes" && options?.method === "POST") return created;

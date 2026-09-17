@@ -21,13 +21,13 @@ public class NoteController {
       UUID pathId,
       UUID activityId,
       UUID timeEntryId,
-      @NotBlank @Size(max = 240) String title,
+      @Size(max = 240) String title,
       @NotBlank @Size(max = 200000) String content,
       @Size(max = 200000) String contentText,
       List<String> tags) {}
 
   record EditNoteRequest(
-      @NotBlank @Size(max = 240) String title,
+      @Size(max = 240) String title,
       @NotBlank @Size(max = 200000) String content,
       @Size(max = 200000) String contentText,
       List<String> tags,

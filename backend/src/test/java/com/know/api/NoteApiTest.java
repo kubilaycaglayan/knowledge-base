@@ -38,7 +38,7 @@ class NoteApiTest {
   }
 
   @Test
-  void blankNoteFieldsAreRejectedBeforeServiceCall() throws Exception {
+  void blankNoteTitleIsAccepted() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
     mvc.perform(
@@ -46,7 +46,7 @@ class NoteApiTest {
                 .with(authentication(auth))
                 .contentType("application/json")
                 .content("{\"title\":\" \",\"content\":\"Useful\"}"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isOk());
   }
 
   @Test
