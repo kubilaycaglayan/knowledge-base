@@ -244,32 +244,25 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("expands the desktop floating tracker when its non-clickable bar area is clicked", async () => {
-    const wrapper = mount(FloatingTimeTracker, {
-      attachTo: document.body,
-      global: { plugins: [vuetify] },
-    });
-    await flushPromises();
+  it.each([
+    { viewport: "desktop", isDesktop: true, expands: true },
+    { viewport: "mobile", isDesktop: false, expands: false },
+  ])(
+    "expands from the bar background only in the $viewport view",
+    async ({ isDesktop, expands }) => {
+      stubViewport(isDesktop);
+      const wrapper = mount(FloatingTimeTracker, {
+        attachTo: document.body,
+        global: { plugins: [vuetify] },
+      });
+      await flushPromises();
 
-    await wrapper.get(".floating-tracker-bar").trigger("click");
+      await wrapper.get(".floating-tracker-bar").trigger("click");
 
-    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
-    wrapper.unmount();
-  });
-
-  it("does not expand from the bar background on mobile", async () => {
-    stubViewport(false);
-    const wrapper = mount(FloatingTimeTracker, {
-      attachTo: document.body,
-      global: { plugins: [vuetify] },
-    });
-    await flushPromises();
-
-    await wrapper.get(".floating-tracker-bar").trigger("click");
-
-    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(false);
-    wrapper.unmount();
-  });
+      expect(wrapper.find("#floating-tracker-panel").exists()).toBe(expands);
+      wrapper.unmount();
+    },
+  );
 
   it("does not expand from clicks on floating tracker controls", async () => {
     const wrapper = mount(FloatingTimeTracker, {
