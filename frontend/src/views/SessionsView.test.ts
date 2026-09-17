@@ -191,7 +191,7 @@ describe("SessionsView", () => {
           ].map((startedAt, index) => ({
             id: `${index}`,
             startedAt,
-            endedAt: startedAt,
+            endedAt: index === 1 ? "2026-09-11T10:00:00Z" : startedAt,
             durationSeconds: index === 0 ? 3660 : index === 1 ? 1800 : 0,
             source: "WEB",
           })),
