@@ -291,7 +291,11 @@ onMounted(load);
             class="card session-card"
           >
             <button
-              v-if="!session.running && editingId !== session.id"
+              v-if="
+                !session.running &&
+                editingId !== session.id &&
+                (pathFor(session.pathId) || sessionLabelIds(session).length)
+              "
               class="session-restart-button"
               type="button"
               aria-label="Start again"
