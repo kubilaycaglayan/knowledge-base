@@ -68,6 +68,8 @@
 - [x] Include logs, timestamps, and label assignments in Knowledge Base imports and exports, including batch undo.
 - [x] Add user-scoped native WebSocket timer snapshots with REST polling fallback for web and legacy clients.
 - [x] Edit individual sessions directly from a path’s history dialog.
+- [x] Compact rich-note cards, preserve clean rich-text clipboard output, keep
+  mobile editing controls visible, and add pinned/custom-ordered paths.
 - [x] Add timestamped, owner-scoped text logs with chronological groups and in-place editing.
 - [x] Let users assign one or more reusable `LOG`-scoped labels to logs from the log timeline.
 - [x] Add a persistent Clockify import toggle to the extension settings, gating
