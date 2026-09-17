@@ -290,6 +290,29 @@ onMounted(load);
             :key="session.id"
             class="card session-card"
           >
+            <button
+              v-if="!session.running && editingId !== session.id"
+              class="session-restart-button"
+              type="button"
+              aria-label="Start again"
+              title="Start again"
+              @click="startFromSession(session)"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 12a9 9 0 1 0 3-6.7" />
+                <path d="M3 4v6h6" />
+              </svg>
+            </button>
             <div v-if="editingId !== session.id" class="session-heading">
               <div>
                 <h3 v-if="pathFor(session.pathId)">
@@ -317,13 +340,6 @@ onMounted(load);
                 @click="beginEdit(session)"
               >
                 {{ session.running ? "Stop to edit" : "Edit session" }}
-              </button>
-              <button
-                v-if="!session.running"
-                class="text-button"
-                @click="startFromSession(session)"
-              >
-                Start again
               </button>
               <button
                 v-if="!session.running"
