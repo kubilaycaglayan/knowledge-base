@@ -989,6 +989,7 @@ onBeforeUnmount(() => {
 .note-tag button {
   min-width: 24px;
   min-height: 24px;
+  max-width: none;
   border: 0;
   background: transparent;
   color: inherit;
@@ -1163,6 +1164,7 @@ onBeforeUnmount(() => {
   .note-tag button {
     min-width: 44px;
     min-height: 44px;
+    max-width: none;
   }
   .note-row-meta {
     max-width: 100%;
