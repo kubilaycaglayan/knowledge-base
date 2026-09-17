@@ -67,6 +67,18 @@ describe("NotesView", () => {
     ).toBe(true);
   });
 
+  it("starts note tags at the beginning of the metadata line", async () => {
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    await flushPromises();
+
+    expect(getComputedStyle(wrapper.get(".note-tags").element).justifyContent).toBe(
+      "flex-start",
+    );
+  });
+
   it("opens the note editor when the card body is clicked", async () => {
     const r = router();
     await r.push("/notes");
