@@ -368,7 +368,7 @@ final class KnowTests: XCTestCase {
   func testNotesAPIUsesAuthenticatedPaginationAndMutationContract() async throws {
     let id = UUID()
     let response =
-      "{\"id\":\"\(id.uuidString)\",\"pathId\":null,\"activityId\":null,\"timeEntryId\":null,\"title\":\"Untitled note\",\"content\":\"{\\\"type\\\":\\\"doc\\\",\\\"content\\\":[{\\\"type\\\":\\\"paragraph\\\"}]}\",\"contentText\":\"\",\"createdAt\":\"2026-09-13T10:00:00Z\",\"updatedAt\":\"2026-09-13T10:00:00Z\",\"deletedAt\":null,\"version\":2,\"tags\":[\"swift\"]}"
+      "{\"id\":\"\(id.uuidString)\",\"pathId\":null,\"activityId\":null,\"timeEntryId\":null,\"title\":\"\",\"content\":\"{\\\"type\\\":\\\"doc\\\",\\\"content\\\":[{\\\"type\\\":\\\"paragraph\\\"}]}\",\"contentText\":\"\",\"createdAt\":\"2026-09-13T10:00:00Z\",\"updatedAt\":\"2026-09-13T10:00:00Z\",\"deletedAt\":null,\"version\":2,\"tags\":[\"swift\"]}"
     URLProtocolStub.responseData = Data(
       "{\"items\":[\(response)],\"page\":2,\"size\":50,\"totalItems\":51,\"totalPages\":2}".utf8)
     let configuration = URLSessionConfiguration.ephemeral
@@ -399,7 +399,7 @@ final class KnowTests: XCTestCase {
     XCTAssertEqual(URLProtocolStub.lastRequest?.httpMethod, "POST")
     XCTAssertEqual(URLProtocolStub.lastRequest?.url?.path, "/api/v1/notes")
     let createBody = try requestJSONObject()
-    XCTAssertEqual(createBody["title"] as? String, "Untitled note")
+    XCTAssertEqual(createBody["title"] as? String, "")
     XCTAssertNotNil(createBody["content"] as? String)
     XCTAssertEqual(createBody["contentText"] as? String, "")
 

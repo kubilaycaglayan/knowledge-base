@@ -210,7 +210,7 @@ async function newNote() {
     const created = await api<Note>("/notes", {
       method: "POST",
       body: JSON.stringify({
-        title: "Untitled note",
+        title: "",
         content: JSON.stringify(defaultDocument),
         contentText: "",
         tags: [],
@@ -291,7 +291,7 @@ async function save() {
   saveInFlight = true;
   status.value = "saving";
   const snapshot = {
-    title: title.value.trim() || "Untitled note",
+    title: title.value.trim(),
     content: JSON.stringify(editor.value.getJSON()),
     contentText: editor.value.getText({ blockSeparator: "\n" }),
     tags: [...tags.value],

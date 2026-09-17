@@ -9,7 +9,7 @@ struct NotePage: Codable, Equatable {
 }
 
 struct NoteDraft: Equatable {
-  var title = "Untitled note"
+  var title = ""
   var body = ""
   var tags: [String] = []
 
@@ -96,8 +96,7 @@ struct NotesAPI: NotesTransport {
 
   private func body(_ draft: NoteDraft, version: Int? = nil) throws -> Data {
     var fields: [String: Any] = [
-      "title": draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        ? "Untitled note" : draft.title.trimmingCharacters(in: .whitespacesAndNewlines),
+      "title": draft.title.trimmingCharacters(in: .whitespacesAndNewlines),
       "content": NoteDocument.json(body: draft.body),
       "contentText": draft.body,
       "tags": draft.tags,
