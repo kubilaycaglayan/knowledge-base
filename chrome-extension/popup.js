@@ -35,6 +35,7 @@ let paths = [];
 let labels = [];
 let labelsExpanded = false;
 let timerLabelIds = [];
+let labelSuggestionIndex = -1;
 let timerRevision = 0;
 let savingTimer = false;
 let timerSaveQueued = false;
@@ -424,6 +425,46 @@ function renderLabelChips() {
 function renderTimerLabels(selectedIds = timerLabelIds) {
   timerLabelIds = [...new Set(selectedIds.filter(Boolean))];
   renderLabelChips();
+}
+function renderLabelSuggestions() {
+  const input = $("new-label");
+  let list = $("label-suggestions");
+  if (!list) {
+    list = document.createElement("ul");
+    list.id = "label-suggestions";
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-label", "Matching existing labels");
+    input.parentElement?.append(list);
+  }
+  const query = input.value.trim().toLocaleLowerCase();
+  const matches = query
+    ? labels.filter((label) => !timerLabelIds.includes(label.id) && label.name.toLocaleLowerCase().includes(query))
+    : [];
+  list.replaceChildren();
+  list.hidden = !matches.length;
+  input.setAttribute("aria-expanded", String(matches.length > 0));
+  if (!matches.length) { labelSuggestionIndex = -1; return; }
+  matches.forEach((label, index) => {
+    const item = document.createElement("li");
+    item.setAttribute("role", "option");
+    item.setAttribute("aria-selected", String(labelSuggestionIndex === index));
+    const start = label.name.toLocaleLowerCase().indexOf(query);
+    item.append(label.name.slice(0, start));
+    const match = document.createElement("strong");
+    match.className = "label-match";
+    match.textContent = label.name.slice(start, start + query.length);
+    item.append(match, label.name.slice(start + query.length));
+    item.onmousedown = (event) => { event.preventDefault(); chooseExistingExtensionLabel(label.id); };
+    list.append(item);
+  });
+}
+async function chooseExistingExtensionLabel(id) {
+  timerLabelIds = [...new Set([...timerLabelIds, id])];
+  $("new-label").value = "";
+  labelSuggestionIndex = -1;
+  renderTimerLabels();
+  renderLabelSuggestions();
+  await configureCurrentTimer();
 }
 async function restoreTimerSelection(selection) {
   const saved = selection || {};
@@ -892,11 +933,24 @@ async function createSessionLabel() {
   }
 }
 $("create-label").onclick = createSessionLabel;
+$("new-label").oninput = () => { labelSuggestionIndex = -1; renderLabelSuggestions(); };
 $("new-label").onkeydown = (event) => {
+  const options = Array.from($("label-suggestions")?.children || []);
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    if (options.length) {
+      labelSuggestionIndex = (labelSuggestionIndex + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+      options.forEach((option, index) => option.setAttribute("aria-selected", String(index === labelSuggestionIndex)));
+    }
+    return;
+  }
   if (event.key === "Enter") {
     event.preventDefault();
-    void createSessionLabel();
+    const options = Array.from($("label-suggestions")?.children || []);
+    if (options.length) void chooseExistingExtensionLabel(labels.filter((label) => !timerLabelIds.includes(label.id) && label.name.toLocaleLowerCase().includes($("new-label").value.trim().toLocaleLowerCase()))[labelSuggestionIndex < 0 ? 0 : labelSuggestionIndex].id);
+    else void createSessionLabel();
   }
+  if (event.key === "Escape") { $("new-label").value = ""; renderLabelSuggestions(); }
 };
 $("description").oninput = () => {
   timerRevision++;

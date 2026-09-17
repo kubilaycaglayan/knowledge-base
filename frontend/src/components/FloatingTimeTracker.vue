@@ -10,7 +10,7 @@ import { useTimerStore, type Timer as StoreTimer } from "../stores/timer";
 import { useReportsStore } from "../stores/reports";
 import { useSessionsStore } from "../stores/sessions";
 
-type Path = { id: string; name: string; status: string };
+type Path = { id: string; name: string; status: string; color?: string | null };
 type Label = {
   id: string;
   name: string;
@@ -43,6 +43,7 @@ const {
 const { toggleRun, updateTimer, createLabel, rememberPath } = timerStore;
 const open = ref(Boolean(props.inline)),
   labelsOpen = ref(false);
+const activeLabelIndex = ref(-1);
 const trackerHost = ref<HTMLElement | null>(null);
 const labelPicker = ref<HTMLElement | null>(null);
 const trackerViewportHeight = ref(0);
@@ -54,6 +55,38 @@ watch(
 async function toggleLabel(id: string) {
   labelsOpen.value = true;
   await timerStore.toggleLabel(id);
+}
+function moveLabelHighlight(direction: 1 | -1) {
+  if (!matchingLabelOptions.value.length) return;
+  const next = activeLabelIndex.value + direction;
+  activeLabelIndex.value =
+    (next + matchingLabelOptions.value.length) %
+    matchingLabelOptions.value.length;
+}
+async function selectLabelSuggestion(event: KeyboardEvent) {
+  const index = activeLabelIndex.value < 0 ? 0 : activeLabelIndex.value;
+  const label = matchingLabelOptions.value[index];
+  if (!label) return;
+  event.preventDefault();
+  await chooseExistingLabel(label.id);
+}
+async function chooseExistingLabel(id: string) {
+  newLabel.value = "";
+  activeLabelIndex.value = -1;
+  await toggleLabel(id);
+}
+function highlightLabel(name: string) {
+  const query = newLabel.value.trim();
+  const start = name.toLocaleLowerCase().indexOf(query.toLocaleLowerCase());
+  if (!query || start < 0) return { before: name, match: "", after: "" };
+  return {
+    before: name.slice(0, start),
+    match: name.slice(start, start + query.length),
+    after: name.slice(start + query.length),
+  };
+}
+function labelNameParts(name: string) {
+  return highlightLabel(name);
 }
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
@@ -86,6 +119,12 @@ const pathName = computed(
       (path) => path.id === (timer.value?.pathId || pathId.value),
     )?.name || "",
 );
+const pathColor = computed(
+  () =>
+    paths.value.find(
+      (path) => path.id === (timer.value?.pathId || pathId.value),
+    )?.color || undefined,
+);
 const selectedLabelNames = computed(() =>
   selectedLabelIds.value
     .map((id) => sessionLabels.value.find((label) => label.id === id)?.name)
@@ -111,6 +150,19 @@ const visibleLabelOptions = computed(() => {
     (label) => !selectedLabelIds.value.includes(label.id),
   );
   return [...selected, ...unselected];
+});
+const matchingLabelOptions = computed(() => {
+  const query = newLabel.value.trim().toLocaleLowerCase();
+  if (!query) return [];
+  return sessionLabels.value.filter(
+    (label) =>
+      !selectedLabelIds.value.includes(label.id) &&
+      label.name.toLocaleLowerCase().includes(query),
+  );
+});
+watch(matchingLabelOptions, (labels) => {
+  if (!labels.length) activeLabelIndex.value = -1;
+  else if (activeLabelIndex.value >= labels.length) activeLabelIndex.value = 0;
 });
 const timerSummary = computed(() =>
   selectedLabelIds.value.length
@@ -360,6 +412,7 @@ onUnmounted(() => {
             ref="labelPicker"
             class="label-picker"
             :class="{ 'is-open': labelsOpen }"
+            :style="{ '--label-match-color': pathColor }"
             role="group"
             aria-label="Session labels"
             @click="labelsOpen = true"
@@ -375,7 +428,14 @@ onUnmounted(() => {
                 :aria-pressed="selectedLabelIds.includes(label.id)"
                 @click="toggleLabel(label.id)"
               >
-                <span class="label-name">{{ label.name }}</span
+                <span class="label-name">
+                  <span>{{ labelNameParts(label.name).before }}</span
+                  ><span
+                    v-if="labelNameParts(label.name).match"
+                    class="label-name-match"
+                    >{{ labelNameParts(label.name).match }}</span
+                  ><span>{{ labelNameParts(label.name).after }}</span>
+                </span
                 ><span
                   v-if="selectedLabelIds.includes(label.id)"
                   aria-hidden="true"
@@ -403,15 +463,52 @@ onUnmounted(() => {
             </button>
           </div>
           <div class="new-label-row">
-            <input
-              v-model="newLabel"
-              name="tt-new-label"
-              aria-label="New session label name"
-              autocomplete="off"
-              placeholder="New label for this session…"
-              @focus="keepFocusedControlVisible"
-              @keydown.enter.prevent="createLabel"
-            /><button
+            <div class="new-label-combobox">
+              <input
+                v-model="newLabel"
+                name="tt-new-label"
+                aria-label="New session label name"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="tt-label-suggestions"
+                :aria-expanded="String(matchingLabelOptions.length > 0)"
+                :aria-activedescendant="
+                  activeLabelIndex >= 0
+                    ? `tt-label-suggestion-${matchingLabelOptions[activeLabelIndex]?.id}`
+                    : undefined
+                "
+                autocomplete="off"
+                placeholder="New label for this session…"
+                @focus="keepFocusedControlVisible"
+                @keydown.arrow-down.prevent="moveLabelHighlight(1)"
+                @keydown.arrow-up.prevent="moveLabelHighlight(-1)"
+                @keydown.enter="selectLabelSuggestion"
+                @keydown.escape="newLabel = ''; activeLabelIndex = -1"
+              />
+              <ul
+                v-if="matchingLabelOptions.length"
+                id="tt-label-suggestions"
+                class="label-suggestions"
+                role="listbox"
+                aria-label="Matching existing labels"
+              >
+                <li
+                  v-for="(label, index) in matchingLabelOptions"
+                  :id="`tt-label-suggestion-${label.id}`"
+                  :key="label.id"
+                  role="option"
+                  :aria-selected="activeLabelIndex === index"
+                  :class="{ active: activeLabelIndex === index }"
+                  @mousedown.prevent="chooseExistingLabel(label.id)"
+                >
+                  <span
+                    v-for="(part, partName) in highlightLabel(label.name)"
+                    :key="partName"
+                    :class="{ 'label-match': partName === 'match' }"
+                  >{{ part }}</span>
+                </li>
+              </ul>
+            </div><button
               type="button"
               class="create-label"
               :disabled="!newLabel.trim() || busy"
@@ -422,7 +519,7 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="tracker-field tracker-field-wide">
-          <label for="tt-desc">Description <span>(optional)</span></label
+          <label for="tt-desc">Description</label
           ><textarea
             id="tt-desc"
             v-model="description"
@@ -824,6 +921,10 @@ onUnmounted(() => {
   font-size: 12px;
   line-height: 1.4;
 }
+.label-name-match {
+  color: var(--label-match-color, var(--workspace-accent));
+  font-weight: 400;
+}
 .tracker-path-select :deep(.v-select__selection) {
   min-width: 0;
   max-width: 100%;
@@ -839,9 +940,46 @@ onUnmounted(() => {
   gap: 6px;
   min-width: 0;
 }
-.new-label-row input {
+.new-label-combobox {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+.new-label-row input {
+  width: 100%;
+  min-width: 0;
+}
+.label-suggestions {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  top: calc(100% + 5px);
+  left: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--workspace-control-border);
+  border-radius: 6px;
+  background: var(--workspace-surface);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--workspace-ink) 16%, transparent);
+  list-style: none;
+}
+.label-suggestions li {
+  min-height: 36px;
+  padding: 8px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.label-suggestions li.active,
+.label-suggestions li:hover {
+  background: var(--workspace-hover);
+}
+.label-match {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--workspace-accent) 28%, transparent);
+  color: var(--workspace-strong);
+  font-weight: 400;
 }
 .create-label {
   display: inline-flex;

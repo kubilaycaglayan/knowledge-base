@@ -517,6 +517,12 @@
   padding: 5px 7px;
   background: transparent;
 }
+.session-label-combobox { position: relative; min-width: 120px; flex: 1 1 120px; }
+.session-label-combobox input { width: 100%; min-width: 0; border: 0; padding: 5px 7px; background: transparent; }
+.session-label-suggestions { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; left: 0; max-height: 220px; overflow-y: auto; margin: 0; padding: 4px; border: 1px solid var(--workspace-control-border); border-radius: var(--workspace-radius); background: var(--workspace-surface); box-shadow: 0 8px 18px color-mix(in srgb, var(--workspace-ink) 16%, transparent); list-style: none; }
+.session-label-suggestions li { min-height: 36px; padding: 8px 9px; border-radius: 4px; cursor: pointer; }
+.session-label-suggestions li.active, .session-label-suggestions li:hover { background: var(--workspace-hover); }
+.session-label-match { border-radius: 2px; background: color-mix(in srgb, var(--workspace-accent) 28%, transparent); color: var(--workspace-strong); font-weight: 700; }
 .session-edit .session-actions {
   display: flex;
   justify-content: flex-end;

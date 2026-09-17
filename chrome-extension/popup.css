@@ -933,10 +933,36 @@ small {
   font-size: 12px;
 }
 .new-label-row {
+  position: relative;
   display: flex;
   gap: 6px;
   align-items: center;
 }
+.new-label-row #label-suggestions {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--workspace-control-border);
+  border-radius: var(--workspace-radius);
+  background: var(--workspace-surface);
+  box-shadow: 0 6px 14px rgb(0 0 0 / 16%);
+  list-style: none;
+}
+.new-label-row #label-suggestions li {
+  min-height: 36px;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.new-label-row #label-suggestions li[aria-selected="true"],
+.new-label-row #label-suggestions li:hover { background: var(--workspace-hover); }
+.label-match { background: var(--workspace-active); font-weight: 700; }
 .new-label-row input {
   min-width: 0;
   flex: 1;

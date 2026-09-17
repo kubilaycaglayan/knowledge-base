@@ -264,8 +264,11 @@ describe("SessionsView", () => {
     expect(wrapper.get(".session-label-chips").text()).toContain("Vue");
     await wrapper.get(".session-label-chips button").trigger("click");
     await wrapper
-      .get('select[aria-label="Add session label"]')
-      .setValue("label-1");
+      .get('input[aria-label="Add session label"]')
+      .setValue("Vue");
+    await wrapper
+      .get('input[aria-label="Add session label"]')
+      .trigger("keydown", { key: "Enter" });
     expect(wrapper.get(".session-label-chips").text()).toContain("Vue");
   });
 
@@ -279,7 +282,10 @@ describe("SessionsView", () => {
     await wrapper.get('[aria-label="Edit session source"]').setValue("IOS");
     await wrapper.get('[aria-label="Edit session path"]').setValue("path-1");
     await wrapper.get('[aria-label="Remove Vue"]').trigger("click");
-    await wrapper.get('[aria-label="Add session label"]').setValue("label-1");
+    await wrapper.get('[aria-label="Add session label"]').setValue("Vue");
+    await wrapper
+      .get('[aria-label="Add session label"]')
+      .trigger("keydown", { key: "Enter" });
     await wrapper.get("form").trigger("submit");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/time-entries/new",
