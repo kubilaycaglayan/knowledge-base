@@ -71,7 +71,9 @@ public class KnowledgeService {
       Instant deletedAt,
       long version,
       String contentText,
-      List<String> tags) {}
+      List<String> tags,
+      boolean pinned,
+      Long sortOrder) {}
 
   public record NotePage(
       List<NoteView> items, int page, int size, long totalItems, int totalPages) {}
@@ -177,6 +179,26 @@ public class KnowledgeService {
   }
 
   @Transactional
+  public NoteView pinNote(UUID userId, UUID id, boolean pinned) {
+    Note note = activeNote(userId, id);
+    note.setPinned(pinned);
+    return noteView(notes.save(note));
+  }
+
+  @Transactional
+  public void orderNotes(UUID userId, List<UUID> noteIds) {
+    if (noteIds == null || noteIds.isEmpty()) return;
+    if (noteIds.stream().distinct().count() != noteIds.size())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Note ids must be unique");
+    List<Note> owned = notes.findActiveByUserIdAndIdIn(userId, noteIds);
+    if (owned.size() != noteIds.size())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every note must belong to the user");
+    Map<UUID, Note> byId = owned.stream().collect(java.util.stream.Collectors.toMap(Note::getId, note -> note));
+    for (int index = 0; index < noteIds.size(); index++) byId.get(noteIds.get(index)).setSortOrder(index);
+    notes.saveAll(owned);
+  }
+
+  @Transactional
   public void archiveNote(UUID userId, UUID id) {
     Note note =
         notes
@@ -276,7 +298,14 @@ public class KnowledgeService {
         n.getDeletedAt(),
         n.getVersion(),
         n.getContentText(),
-        tagNames);
+        tagNames,
+        n.isPinned(),
+        n.getSortOrder());
+  }
+
+  private Note activeNote(UUID userId, UUID id) {
+    return notes.findActiveByIdAndUserId(id, userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found"));
   }
 
   private void replaceTags(UUID userId, Note note, List<String> rawNames) {

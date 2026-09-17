@@ -43,6 +43,12 @@ public class Note {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
+  @Column(nullable = false)
+  private boolean pinned;
+
+  @Column(name = "sort_order")
+  private Long sortOrder;
+
   @Column(name = "import_batch_id")
   private UUID importBatchId;
 
@@ -124,6 +130,24 @@ public class Note {
 
   public Instant getDeletedAt() {
     return deletedAt;
+  }
+
+  public boolean isPinned() {
+    return pinned;
+  }
+
+  public Long getSortOrder() {
+    return sortOrder;
+  }
+
+  public void setPinned(boolean pinned) {
+    this.pinned = pinned;
+    this.updatedAt = Instant.now();
+  }
+
+  public void setSortOrder(long sortOrder) {
+    this.sortOrder = sortOrder;
+    this.updatedAt = Instant.now();
   }
 
   public UUID getImportBatchId() {

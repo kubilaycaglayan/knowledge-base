@@ -33,6 +33,10 @@ public class NoteController {
       List<String> tags,
       Long version) {}
 
+  record PinRequest(boolean pinned) {}
+
+  record OrderRequest(List<UUID> noteIds) {}
+
   private UUID user(Authentication a) {
     return UUID.fromString(a.getName());
   }
@@ -57,6 +61,18 @@ public class NoteController {
   @GetMapping("/{id}")
   public KnowledgeService.NoteView get(Authentication a, @PathVariable UUID id) {
     return service.getNote(user(a), id);
+  }
+
+  @PostMapping("/{id}/pin")
+  public KnowledgeService.NoteView pin(
+      Authentication a, @PathVariable UUID id, @RequestBody PinRequest request) {
+    return service.pinNote(user(a), id, request.pinned());
+  }
+
+  @PutMapping("/order")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void order(Authentication a, @RequestBody OrderRequest request) {
+    service.orderNotes(user(a), request.noteIds());
   }
 
   @PostMapping

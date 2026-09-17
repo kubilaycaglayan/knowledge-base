@@ -51,6 +51,7 @@ const highlightedLabelIndex = ref(0);
 const status = ref<"saved" | "saving" | "error">("saved");
 const editorHost = ref<HTMLElement | null>(null);
 const editor = shallowRef<Editor | null>(null);
+const draggingId = ref("");
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -189,6 +190,37 @@ async function restoreNote(note: Note) {
     await loadNotes();
   } catch {
     error.value = "Unable to restore note.";
+  }
+}
+async function togglePinned(note: Note) {
+  try {
+    const saved = await api<Note>(`/notes/${note.id}/pin`, {
+      method: "POST",
+      body: JSON.stringify({ pinned: !note.pinned }),
+    });
+    notesStore.setPinned(saved);
+    notesStore.clearPages();
+    await loadNotes(true);
+  } catch {
+    error.value = "Could not update the pinned note.";
+  }
+}
+async function moveNote(note: Note, target: Note) {
+  if (note.id === target.id) return;
+  const ordered = [...notes.value];
+  const from = ordered.findIndex((value) => value.id === note.id);
+  const to = ordered.findIndex((value) => value.id === target.id);
+  ordered.splice(from, 1);
+  ordered.splice(to, 0, note);
+  try {
+    await api("/notes/order", {
+      method: "PUT",
+      body: JSON.stringify({ noteIds: ordered.map((value) => value.id) }),
+    });
+    notesStore.setOrder(ordered);
+    notesStore.clearPages();
+  } catch {
+    error.value = "Could not reorder notes.";
   }
 }
 function toggleArchive() {
@@ -510,16 +542,23 @@ onBeforeUnmount(() => {
           :key="note.id"
           class="note-row"
           :class="{ archived: showArchived }"
+          :draggable="!showArchived && !query"
+          @dragstart="draggingId = note.id"
+          @dragover.prevent
+          @drop="draggingId && moveNote(notes.find((value) => value.id === draggingId)!, note)"
         >
-          <component
-            :is="showArchived ? 'span' : 'RouterLink'"
+          <RouterLink
+            v-if="!showArchived"
+            class="note-card-link"
             :to="{ name: 'note-editor', params: { id: note.id } }"
-            class="note-row-main"
+            :aria-label="`Open ${note.title || 'untitled note'}`"
+          ></RouterLink>
+          <span class="note-row-main"
             ><strong>{{ note.title }}</strong
             ><span
               ><em v-if="isEmptyNote(note)">Empty note</em
               ><template v-else>{{ excerpt(note) }}</template></span
-            ></component
+            ></span
           >
           <span class="note-row-meta"
             ><span class="note-tags"
@@ -549,6 +588,17 @@ onBeforeUnmount(() => {
               </button></span
             ></span
           >
+          <button
+            v-if="!showArchived"
+            type="button"
+            class="note-pin-button"
+            :aria-pressed="note.pinned"
+            :aria-label="note.pinned ? `Unpin ${note.title || 'untitled note'}` : `Pin ${note.title || 'untitled note'}`"
+            :title="note.pinned ? 'Unpin note' : 'Pin note'"
+            @click.stop="togglePinned(note)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5c0 1.66-1.34 3-3 3v2h5.97v8h2v-8H20v-2c-2.21 0-4-1.79-4-4Z" /></svg>
+          </button>
         </div>
       </div>
       <footer v-if="totalPages > 1 || totalItems" class="notes-pagination">
@@ -737,7 +787,57 @@ onBeforeUnmount(() => {
   gap: 12px;
   padding-top: 8px;
 }
+.note-pin-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  color: var(--workspace-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.note-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+.note-card-link:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: -2px;
+}
+.note-row button {
+  position: relative;
+  z-index: 2;
+}
+.note-row .note-pin-button {
+  position: absolute;
+}
+.note-pin-button:hover,
+.note-pin-button[aria-pressed="true"] {
+  color: var(--workspace-accent);
+  background: var(--workspace-control-hover);
+}
+.note-pin-button[aria-pressed="true"] {
+  background: var(--workspace-accent);
+  color: var(--workspace-on-accent);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 16%);
+}
+.note-pin-button[aria-pressed="true"]:hover {
+  background: var(--workspace-accent-strong, var(--workspace-accent));
+  color: var(--workspace-on-accent);
+}
+.note-pin-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
 .note-row {
+  position: relative;
   width: 100%;
   min-height: 142px;
   display: flex;
@@ -763,6 +863,7 @@ onBeforeUnmount(() => {
 }
 .note-row-main {
   min-width: 0;
+  padding-right: 36px;
   display: grid;
   align-content: start;
   gap: 8px;

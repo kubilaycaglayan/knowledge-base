@@ -15,15 +15,18 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
   List<Note> findAllActiveByUserId(@Param("userId") UUID userId);
 
   @Query(
-      "select n from Note n where n.userId = :userId and n.deletedAt is null order by n.updatedAt"
-          + " desc")
+      "select n from Note n where n.userId = :userId and n.deletedAt is null order by n.pinned desc,"
+          + " case when n.sortOrder is null then 1 else 0 end, n.sortOrder asc, n.updatedAt desc, n.id desc")
   List<Note> findAllActiveByUserIdOrderByUpdatedAtDesc(@Param("userId") UUID userId, Pageable page);
 
   @Query(
-      "select n from Note n where n.userId = :userId and n.deletedAt is null order by n.updatedAt"
-          + " desc, n.id desc")
+      "select n from Note n where n.userId = :userId and n.deletedAt is null order by n.pinned desc,"
+          + " case when n.sortOrder is null then 1 else 0 end, n.sortOrder asc, n.updatedAt desc, n.id desc")
   Page<Note> findAllActiveByUserIdOrderByUpdatedAtDescIdDesc(
       @Param("userId") UUID userId, Pageable page);
+
+  @Query("select n from Note n where n.userId = :userId and n.deletedAt is null and n.id in :ids")
+  List<Note> findActiveByUserIdAndIdIn(@Param("userId") UUID userId, @Param("ids") Collection<UUID> ids);
 
   @Query("select n from Note n where n.id = :id and n.userId = :userId and n.deletedAt is null")
   Optional<Note> findActiveByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
@@ -47,7 +50,8 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
           + " like lower(concat('%', :query, '%')) or lower(n.contentText) like lower(concat('%',"
           + " :query, '%')) or exists (select 1 from NoteTag nt join Label t on t.id ="
           + " nt.id.labelId where nt.id.noteId = n.id and lower(t.name) like lower(concat('%',"
-          + " :query, '%')))) order by n.updatedAt desc, n.id desc")
+          + " :query, '%')))) order by n.pinned desc, case when n.sortOrder is null then 1 else 0 end,"
+          + " n.sortOrder asc, n.updatedAt desc, n.id desc")
   Page<Note> findActiveByUserIdAndQuery(
       @Param("userId") UUID userId, @Param("query") String query, Pageable page);
 
