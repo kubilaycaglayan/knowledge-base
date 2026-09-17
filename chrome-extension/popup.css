@@ -852,8 +852,8 @@ small {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 56px;
-  padding: 5px;
+  min-height: 46px;
+  padding: 3px 5px;
   border: 1px solid var(--workspace-control-border);
   border-radius: 6px;
   background: var(--workspace-background);
@@ -865,7 +865,7 @@ small {
   flex-wrap: wrap;
   gap: 6px;
   margin: 0;
-  max-height: 44px;
+  max-height: 36px;
   overflow: hidden;
 }
 .labels-picker.is-open .label-chips {
@@ -877,11 +877,11 @@ small {
   width: auto;
   align-items: center;
   gap: 4px;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 36px;
+  min-height: 36px;
   max-width: 100%;
   margin: 0;
-  padding: 4px 8px;
+  padding: 2px 8px;
   border: 0;
   border-radius: 4px;
   background: var(--workspace-selected);
@@ -898,9 +898,9 @@ small {
   color: var(--workspace-on-accent);
 }
 #labels-toggle {
-  flex: 0 0 44px;
-  width: 44px;
-  min-height: 44px;
+  flex: 0 0 36px;
+  width: 36px;
+  min-height: 36px;
   margin: 0;
   padding: 0;
   display: inline-flex;
@@ -972,9 +972,9 @@ small {
 .new-label-row button {
   width: auto;
   flex: 0 0 auto;
-  min-height: 44px;
+  min-height: 36px;
   margin: 0;
-  padding: 4px 8px;
+  padding: 2px 8px;
 }
 #create-label[aria-busy="true"]::before {
   content: "";
@@ -987,7 +987,7 @@ small {
   border-radius: 50%;
 }
 #path {
-  min-height: 56px;
+  min-height: 46px;
   border-radius: 6px;
 }
 @media (max-width: 420px) {
