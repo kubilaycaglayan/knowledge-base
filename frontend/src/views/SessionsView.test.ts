@@ -334,9 +334,12 @@ describe("SessionsView", () => {
     await flushPromises();
 
     const card = wrapper.get("article.session-card");
-    const summary = card.get(".session-summary");
+    const footer = card.get(".session-card-footer");
+    const summary = footer.get(".session-summary");
     const actions = card.get(".session-card-actions");
 
+    expect(footer.find(".session-summary").exists()).toBe(true);
+    expect(footer.find(".session-card-actions").exists()).toBe(true);
     expect(actions.findAll("button").map((button) => button.text())).toEqual([
       "Edit",
       "Remove",
