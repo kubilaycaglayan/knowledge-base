@@ -192,6 +192,8 @@ onMounted(load);
         available.
       </p>
       <form
+        @keydown.ctrl.enter.prevent="savePassword"
+        @keydown.meta.enter.prevent="savePassword"
         id="password-change-form"
         class="settings-form"
         method="post"

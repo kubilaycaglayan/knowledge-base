@@ -410,7 +410,11 @@ onMounted(load);
           >
         </button>
       </section>
-      <aside class="day-editor">
+      <aside
+        class="day-editor"
+        @keydown.ctrl.enter.prevent="save"
+        @keydown.meta.enter.prevent="save"
+      >
         <div class="day-editor-heading">
           <h2>{{ selectedRange ? rangeTitle : selectedTitle }}</h2>
           <button

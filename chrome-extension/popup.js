@@ -842,6 +842,15 @@ document.addEventListener("pointerdown", (event) => {
     renderTimerLabels();
   }
 });
+document.addEventListener("keydown", (event) => {
+  if (!(event.key === "Enter" && (event.metaKey || event.ctrlKey))) return;
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const form = target.closest("form");
+  if (!form) return;
+  event.preventDefault();
+  form.requestSubmit();
+});
 async function createSessionLabel() {
   const name = $("new-label").value.trim();
   if (!name || $("create-label").disabled) return;

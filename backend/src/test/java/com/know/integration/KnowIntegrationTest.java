@@ -761,10 +761,10 @@ class KnowIntegrationTest {
             .getBody()
             .get("id")
             .asText();
-    String body = "{\"labelIds\":[\"" + label + "\"],\"description\":\" Shared draft \"}";
+    String body = "{\"labelIds\":[\"" + label + "\"],\"description\":\"\\n  Shared draft  \\n\"}";
     assertEquals(HttpStatus.OK, put("/api/v1/timers/draft", token, body).getStatusCode());
     JsonNode draft = get("/api/v1/timers/draft", token).getBody();
-    assertEquals("Shared draft", draft.get("description").asText());
+    assertEquals("\n  Shared draft  \n", draft.get("description").asText());
     assertEquals(label, draft.get("labelIds").get(0).asText());
     assertEquals(0, get("/api/v1/timers/draft", other).getBody().get("labelIds").size());
     assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/timers/draft", other, body).getStatusCode());

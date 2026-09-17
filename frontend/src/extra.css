@@ -353,6 +353,7 @@
   color: var(--workspace-muted);
   font-size: 13px;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .session-summary {
   flex-wrap: wrap;

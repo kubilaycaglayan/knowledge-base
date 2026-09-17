@@ -41,7 +41,7 @@ public class TrackerDraft {
 
   public void configure(UUID pathId, Collection<UUID> labels, String description) {
     this.pathId = pathId;
-    this.description = description == null ? null : description.trim();
+    this.description = description;
     labelIds.clear();
     labels.stream().filter(Objects::nonNull).forEach(labelIds::add);
   }

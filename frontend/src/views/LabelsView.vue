@@ -217,6 +217,8 @@ onMounted(load);
         v-else
         :key="label.id"
         class="label-row"
+        @keydown.ctrl.enter.prevent="editingId === label.id && save(label)"
+        @keydown.meta.enter.prevent="editingId === label.id && save(label)"
       >
         <template v-if="editingId !== label.id"
           ><span
@@ -294,7 +296,12 @@ onMounted(load);
             <h2 id="new-label-title">Add a label</h2>
           </div>
         </div>
-        <form class="label-create-form" @submit.prevent="add">
+        <form
+          class="label-create-form"
+          @keydown.ctrl.enter.prevent="add"
+          @keydown.meta.enter.prevent="add"
+          @submit.prevent="add"
+        >
           <label
             >Name<input
               v-model="name"

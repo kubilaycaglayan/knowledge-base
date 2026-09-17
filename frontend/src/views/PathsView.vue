@@ -501,6 +501,8 @@ onBeforeUnmount(() => {
         <form
           v-if="editingId === path.id"
           class="path-edit"
+          @keydown.ctrl.enter.prevent="saveEdit(path)"
+          @keydown.meta.enter.prevent="saveEdit(path)"
           @submit.prevent="saveEdit(path)"
         >
           <input v-model="editName" aria-label="Edit path name" /><textarea
@@ -776,7 +778,12 @@ onBeforeUnmount(() => {
       >
         <p class="eyebrow">EDIT SESSION</p>
         <h2 id="session-edit-heading">Edit session</h2>
-        <form class="session-edit" @submit.prevent="saveSession">
+        <form
+          class="session-edit"
+          @keydown.ctrl.enter.prevent="saveSession"
+          @keydown.meta.enter.prevent="saveSession"
+          @submit.prevent="saveSession"
+        >
           <label class="session-edit-path"
             >Path<select
               v-model="sessionDraft.pathId"
