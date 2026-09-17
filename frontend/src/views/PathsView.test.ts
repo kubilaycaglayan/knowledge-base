@@ -363,18 +363,15 @@ describe("PathsView", () => {
     const wrapper = mount(PathsView);
     await flushPromises();
 
-    await wrapper.get(".path-order-button").trigger("click");
+    await wrapper.get(".path-pin-button").trigger("click");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/paths/path-1/pin",
       expect.objectContaining({ body: '{"pinned":true}' }),
     );
-    expect(wrapper.find(".path-order-button").text()).toBe("Unpin");
-
-    await wrapper.findAll(".path-order-button")[2].trigger("click");
-    expect(vi.mocked(api)).toHaveBeenCalledWith(
-      "/paths/order",
-      expect.objectContaining({ method: "PUT" }),
+    expect(wrapper.get(".path-pin-button").attributes("aria-label")).toBe(
+      "Unpin Algorithms",
     );
+    expect(wrapper.findAll(".path-order-button")).toHaveLength(0);
   });
 
   it("edits path name description and color inline", async () => {
