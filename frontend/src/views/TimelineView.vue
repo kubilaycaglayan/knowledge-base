@@ -160,7 +160,12 @@ onMounted(async () => {
           >
             {{ noteActivityId === activity.id ? "Close note" : "Add note" }}
           </button>
-          <div v-if="noteActivityId === activity.id" class="note-editor">
+          <div
+            v-if="noteActivityId === activity.id"
+            class="note-editor"
+            @keydown.ctrl.enter.prevent="saveActivityNote"
+            @keydown.meta.enter.prevent="saveActivityNote"
+          >
             <input
               v-model="noteTitle"
               placeholder="Note title"

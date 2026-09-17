@@ -489,6 +489,7 @@ small {
   color: var(--workspace-muted);
   font-size: 12px;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .session-actions {

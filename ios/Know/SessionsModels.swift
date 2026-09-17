@@ -54,8 +54,7 @@ struct SessionDraft: Equatable {
     var fields: [String: Any] = [
       "pathId": pathId?.uuidString as Any? ?? NSNull(),
       "labelIds": labelIds.map(\.uuidString),
-      "description": description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        ? NSNull() : description.trimmingCharacters(in: .whitespacesAndNewlines) as Any,
+      "description": description.isEmpty ? NSNull() : description as Any,
       "startedAt": SessionFormatting.iso(startedAt),
     ]
     if completed {

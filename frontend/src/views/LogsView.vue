@@ -326,7 +326,13 @@ onBeforeUnmount(() => {
   <section class="logs-page">
     <h1 class="sr-only">Logs</h1>
     <PromptDialog ref="promptDialog" />
-    <form class="log-composer" autocomplete="off" @submit.prevent="saveNew">
+    <form
+      class="log-composer"
+      autocomplete="off"
+      @keydown.ctrl.enter.prevent="saveNew"
+      @keydown.meta.enter.prevent="saveNew"
+      @submit.prevent="saveNew"
+    >
       <label class="sr-only" for="new-log-body">Log text</label>
       <textarea
         id="new-log-body"
@@ -412,6 +418,8 @@ onBeforeUnmount(() => {
             class="log-body log-edit-body"
             :aria-label="`Edit log text from ${formatTimestamp(log.occurredAt)}`"
             rows="1"
+            @keydown.ctrl.enter.prevent="saveEdit(log)"
+            @keydown.meta.enter.prevent="saveEdit(log)"
           ></textarea>
           <div class="row-actions">
             <button

@@ -43,6 +43,7 @@ const {
 const { toggleRun, updateTimer, createLabel, rememberPath } = timerStore;
 const open = ref(Boolean(props.inline)),
   labelsOpen = ref(false);
+const trackerHost = ref<HTMLElement | null>(null);
 const labelPicker = ref<HTMLElement | null>(null);
 const trackerViewportHeight = ref(0);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
@@ -147,6 +148,10 @@ function closeLabelsOnFocusOut(event: FocusEvent) {
   if (!labelPicker.value?.contains(event.relatedTarget as Node | null))
     labelsOpen.value = false;
 }
+function closeFloatingOnOutside(event: PointerEvent) {
+  if (!props.inline && open.value && !trackerHost.value?.contains(event.target as Node))
+    open.value = false;
+}
 async function choosePath(id: string) {
   if (id === "__add_new_path__") {
     pathId.value = "";
@@ -197,10 +202,12 @@ onMounted(() => {
     updateTrackerViewportHeight,
   );
   document.addEventListener("pointerdown", closeLabelsOnOutside);
+  document.addEventListener("pointerdown", closeFloatingOnOutside);
 });
 onUnmounted(() => {
   timerStore.release();
   document.removeEventListener("pointerdown", closeLabelsOnOutside);
+  document.removeEventListener("pointerdown", closeFloatingOnOutside);
   window.visualViewport?.removeEventListener(
     "resize",
     updateTrackerViewportHeight,
@@ -211,6 +218,7 @@ onUnmounted(() => {
 <template>
   <PromptDialog ref="promptDialog" />
   <div
+    ref="trackerHost"
     class="floating-tracker-host"
     :class="{ inline: props.inline }"
     :style="{ '--tracker-viewport-height': `${trackerViewportHeight}px` }"
@@ -346,6 +354,7 @@ onUnmounted(() => {
             :class="{ 'is-open': labelsOpen }"
             role="group"
             aria-label="Session labels"
+            @click="labelsOpen = true"
             @keydown.esc.stop.prevent="dismissLabels"
             @focusout="closeLabelsOnFocusOut"
           >
@@ -373,7 +382,7 @@ onUnmounted(() => {
               :aria-expanded="labelsOpen"
               aria-haspopup="true"
               aria-controls="tt-label-options"
-              @click="labelsOpen = !labelsOpen"
+              @click.stop="labelsOpen = !labelsOpen"
             >
               <span class="sr-only">{{
                 labelsOpen ? "Close session labels" : "Open session labels"

@@ -121,6 +121,21 @@ describe("FloatingTimeTracker", () => {
     floating.unmount();
   });
 
+  it("collapses the floating tracker when the page is clicked outside it", async () => {
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get(".floating-tracker-toggle").trigger("click");
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await nextTick();
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("keeps the path menu focused on adding or choosing an active path", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
@@ -279,6 +294,26 @@ describe("FloatingTimeTracker", () => {
     expect(
       wrapper.get("#tt-label-options button").attributes("aria-pressed"),
     ).toBe("false");
+    wrapper.unmount();
+  });
+
+  it("opens labels when the empty area inside the picker is clicked", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current") return null;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+    const picker = wrapper.get(".label-picker");
+    expect(picker.classes()).not.toContain("is-open");
+    await picker.trigger("click");
+    expect(picker.classes()).toContain("is-open");
     wrapper.unmount();
   });
 

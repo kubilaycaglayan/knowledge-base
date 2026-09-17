@@ -284,7 +284,7 @@ export const useTimerStore = defineStore("timer", () => {
           body: JSON.stringify({
             pathId: pathId.value || null,
             labelIds: selectedLabelIds.value,
-            description: description.value.trim() || null,
+            description: description.value || null,
           }),
         });
         if (versionAtRequest === timerStateVersion)
@@ -332,7 +332,7 @@ export const useTimerStore = defineStore("timer", () => {
             pathId: pathId.value || null,
             labelIds: selectedLabelIds.value,
             startedAt,
-            description: description.value.trim() || null,
+            description: description.value || null,
           }),
         },
       );

@@ -340,6 +340,8 @@ onMounted(load);
             <form
               v-else-if="draft"
               class="session-edit"
+              @keydown.ctrl.enter.prevent="save(session)"
+              @keydown.meta.enter.prevent="save(session)"
               @submit.prevent="save(session)"
             >
               <label class="session-edit-path"
