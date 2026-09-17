@@ -20,6 +20,7 @@ const note = {
   updatedAt: "2026-09-02T10:00:00Z",
   version: 0,
   tags: ["study"],
+  pinned: false,
   deletedAt: undefined as string | undefined,
 };
 function router() {
@@ -64,6 +65,52 @@ describe("NotesView", () => {
         .mocked(api)
         .mock.calls.some(([path]) => String(path).includes("q=graph")),
     ).toBe(true);
+  });
+
+  it("opens the note editor when the card body is clicked", async () => {
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    await flushPromises();
+
+    await wrapper.get(".note-card-link").trigger("click");
+    await flushPromises();
+
+    expect(r.currentRoute.value.name).toBe("note-editor");
+    expect(r.currentRoute.value.params.id).toBe("note-1");
+  });
+
+  it("pins notes and persists card ordering", async () => {
+    const second = { ...note, id: "note-2", title: "Writing" };
+    let pinned = false;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path.startsWith("/notes?") || path === "/notes")
+        return page(pinned ? [{ ...note, pinned: true }, second] : [note, second]);
+      if (path === "/notes/note-1/pin")
+        return { ...note, pinned: (pinned = true) };
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    await flushPromises();
+    await wrapper.get(".note-pin-button").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/notes/note-1/pin",
+      expect.objectContaining({ body: '{"pinned":true}' }),
+    );
+    expect(wrapper.get(".note-pin-button").attributes("aria-label")).toBe(
+      "Unpin Learning",
+    );
+    await wrapper.findAll(".note-row")[0].trigger("dragstart");
+    await wrapper.findAll(".note-row")[1].trigger("drop");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/notes/order",
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 
   it("reuses the cached notes page when returning to the list", async () => {

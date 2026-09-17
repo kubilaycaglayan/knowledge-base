@@ -10,6 +10,8 @@ export type Note = {
   deletedAt?: string;
   version: number;
   tags: string[];
+  pinned?: boolean;
+  sortOrder?: number;
 };
 export type NoteLabel = { id: string; name: string };
 
@@ -76,6 +78,12 @@ export const useNotesStore = defineStore("notes", {
     },
     setLabels(labels: NoteLabel[]) {
       this.existingLabels = labels;
+    },
+    setPinned(note: Note) {
+      this.notes = this.notes.map((value) => value.id === note.id ? note : value);
+    },
+    setOrder(notes: Note[]) {
+      this.notes = notes;
     },
   },
 });
