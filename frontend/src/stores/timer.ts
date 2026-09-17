@@ -273,8 +273,12 @@ export const useTimerStore = defineStore("timer", () => {
         sessionsStore.clearPages();
         if (versionAtRequest === timerStateVersion) {
           applyTimer(null);
-          await resetAfterStop();
         }
+        // The WebSocket stop event can clear the current timer and advance
+        // the version before the stop request resolves. In that case the
+        // guarded branch above is skipped, but the completed form still must
+        // be cleared.
+        if (!timer.value) await resetAfterStop();
       } else {
         const versionAtRequest = ++timerStateVersion;
         const submitted = formState();

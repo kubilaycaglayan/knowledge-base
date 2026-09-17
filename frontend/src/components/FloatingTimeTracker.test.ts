@@ -6,6 +6,7 @@ import vuetify from "../plugins/vuetify";
 import { createPinia, setActivePinia } from "pinia";
 import { useReportsStore } from "../stores/reports";
 import { useSessionsStore } from "../stores/sessions";
+import { useTimerStore } from "../stores/timer";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -87,6 +88,89 @@ describe("FloatingTimeTracker", () => {
     expect(sessions.cachedPage("0:50")).toBeUndefined();
     expect(wrapper.emitted("changed")).toHaveLength(1);
     wrapper.unmount();
+  });
+
+  it("clears the form when the WebSocket stop event wins the stop request race", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    const sockets: MockSocket[] = [];
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        sockets.push(this);
+      }
+      send() {}
+      close() {
+        this.onclose?.();
+      }
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+
+    const current = {
+      id: "timer-1",
+      pathId: "path-1",
+      labelIds: ["label-1"],
+      description: "Read chapter",
+      startedAt: "2026-09-12T10:00:00Z",
+      running: true,
+    };
+    let resolveStop: ((value: unknown) => void) | undefined;
+    vi.mocked(api).mockImplementation(async (path, options = {}) => {
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Study", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current") return current;
+      if (path === "/timers/timer-1/stop" && options.method === "POST")
+        return new Promise((resolve) => {
+          resolveStop = resolve;
+        });
+      if (path === "/timers/draft" && options.method === "PUT")
+        return JSON.parse(options.body as string);
+      return undefined;
+    });
+
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+
+    try {
+      await flushPromises();
+      expect(sockets).toHaveLength(1);
+      expect(useTimerStore().description).toBe("Read chapter");
+
+      await wrapper.get("button.floating-tracker-action").trigger("click");
+      await nextTick();
+      expect(resolveStop).toBeDefined();
+
+      sockets[0].onmessage?.({
+        data: JSON.stringify({ type: "TIMER_STATE", timer: null }),
+      });
+      resolveStop?.(undefined);
+      await flushPromises();
+
+      const timerStore = useTimerStore();
+      expect(timerStore.pathId).toBe("");
+      expect(timerStore.selectedLabelIds).toEqual([]);
+      expect(timerStore.description).toBe("");
+      expect(wrapper.get('textarea[aria-label="Timer description"]').element)
+        .toHaveProperty("value", "");
+      expect(vi.mocked(api)).toHaveBeenCalledWith(
+        "/timers/draft",
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({ pathId: null, labelIds: [], description: null }),
+        }),
+      );
+    } finally {
+      wrapper.unmount();
+      localStorage.removeItem("know_token");
+      globalThis.WebSocket = originalWebSocket;
+    }
   });
 
   it("expands inline on Sessions and starts collapsed as a dock elsewhere", async () => {
