@@ -462,6 +462,7 @@ export const useTimerStore = defineStore("timer", () => {
         }
         if (message.type === "READY") {
           // READY is not a snapshot; fetch anything missed before authentication.
+          stopPolling();
           timerStateVersion++;
           socketConnected.value = true;
           void sync();
@@ -502,10 +503,6 @@ export const useTimerStore = defineStore("timer", () => {
     ticker = window.setInterval(() => {
       now.value = Date.now();
     }, 1000);
-    // One reconciliation loop also catches draft changes and missed socket events.
-    syncTicker = window.setInterval(() => {
-      void sync();
-    }, 2000);
     window.addEventListener("focus", resume);
     document.addEventListener("visibilitychange", resume);
     connectWebSocket();

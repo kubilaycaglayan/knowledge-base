@@ -13,6 +13,88 @@ describe("timer store", () => {
     vi.mocked(api).mockResolvedValue(null);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.removeItem("know_token");
+  });
+
+  it("uses the WebSocket without starting the HTTP polling loop", async () => {
+    vi.useFakeTimers();
+    const originalWebSocket = globalThis.WebSocket;
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        queueMicrotask(() => this.onopen?.());
+      }
+      send() {
+        this.onmessage?.({ data: '{"type":"READY"}' });
+      }
+      close() {}
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft") return {};
+      return [];
+    });
+
+    const store = useTimerStore();
+    store.acquire();
+    await flushPromises();
+    const requestCount = vi.mocked(api).mock.calls.length;
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(vi.mocked(api).mock.calls.length).toBe(requestCount);
+    store.release();
+    globalThis.WebSocket = originalWebSocket;
+  });
+
+  it("starts HTTP polling after the WebSocket closes", async () => {
+    vi.useFakeTimers();
+    const originalWebSocket = globalThis.WebSocket;
+    let socket: MockSocket;
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        socket = this;
+        queueMicrotask(() => this.onopen?.());
+      }
+      send() {
+        this.onmessage?.({ data: '{"type":"READY"}' });
+      }
+      close() {}
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft") return {};
+      return [];
+    });
+
+    const store = useTimerStore();
+    store.acquire();
+    await flushPromises();
+    const connectedRequestCount = vi.mocked(api).mock.calls.length;
+
+    socket!.onclose?.();
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.length).toBeGreaterThan(
+      connectedRequestCount,
+    );
+    store.release();
+    globalThis.WebSocket = originalWebSocket;
+  });
+
   it("shares idle selections between consumers and persists them for another tab", async () => {
     let serverDraft = { pathId: "", labelIds: [] as string[], description: "" };
     vi.mocked(api).mockImplementation(async (path, options = {}) => {
