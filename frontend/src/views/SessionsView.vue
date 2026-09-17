@@ -98,6 +98,9 @@ const sameDay = (left: Date, right: Date) =>
   left.getMonth() === right.getMonth() &&
   left.getDate() === right.getDate();
 const sessionGroupLabel = (startedAt: string) => {
+  // Group ownership is based on the start instant. A session crossing a
+  // boundary therefore stays with the earlier group and keeps its full
+  // server-calculated duration there.
   const date = startOfDay(new Date(startedAt));
   const today = startOfDay(new Date());
   const yesterday = new Date(today);
