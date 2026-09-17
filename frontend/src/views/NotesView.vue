@@ -895,7 +895,7 @@ onBeforeUnmount(() => {
 .note-tags {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 5px;
   max-width: 100%;
   overflow: hidden;
