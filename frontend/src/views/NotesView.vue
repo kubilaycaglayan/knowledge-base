@@ -1163,7 +1163,6 @@ onBeforeUnmount(() => {
 @media (max-width: 700px) {
   .note-tag button {
     min-width: 44px;
-    min-height: 44px;
     max-width: none;
   }
   .note-row-meta {
