@@ -223,6 +223,47 @@ describe("App", () => {
     wrapper.unmount();
   });
 
+  it("hides the floating tracker while the mobile note editor has focus", async () => {
+    const originalMatchMedia = Object.getOwnPropertyDescriptor(window, "matchMedia");
+    const originalWebSocket = globalThis.WebSocket;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+    globalThis.WebSocket = undefined as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "token");
+    const route = { path: "/notes/note-1", query: {} };
+    const editorStubs = {
+      ...stubs,
+      RouterView: {
+        template:
+          '<div data-test="router-view"><div class="rich-editor" contenteditable="true" tabindex="0"></div></div>',
+      },
+    };
+    const wrapper = mount(App, {
+      attachTo: document.body,
+      global: { stubs: editorStubs, provide: { [routeLocationKey as symbol]: route } },
+    });
+
+    const seenFocus = vi.fn();
+    document.addEventListener("focusin", seenFocus);
+    wrapper.get(".rich-editor").element.dispatchEvent(
+      new window.Event("focusin", { bubbles: true }),
+    );
+    expect(seenFocus).toHaveBeenCalled();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
+    document.removeEventListener("focusin", seenFocus);
+    wrapper.unmount();
+    if (originalMatchMedia) {
+      Object.defineProperty(window, "matchMedia", originalMatchMedia);
+    } else {
+      Reflect.deleteProperty(window, "matchMedia");
+    }
+    globalThis.WebSocket = originalWebSocket;
+  });
+
   it("does not flash the floating tracker while the root route redirects to sessions", () => {
     const route = { path: "/", query: {} };
     localStorage.setItem("know_token", "token");
