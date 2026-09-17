@@ -197,6 +197,78 @@ describe("FloatingTimeTracker", () => {
     }
   });
 
+  it("applies an extension description update when the web field is focused but untouched", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    const sockets: MockSocket[] = [];
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        sockets.push(this);
+      }
+      send() {}
+      close() {}
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    const current = {
+      id: "timer-1",
+      pathId: "path-1",
+      labelIds: [],
+      description: "Original description",
+      startedAt: "2026-09-12T10:00:00Z",
+      running: true,
+    };
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Study", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return current;
+      return undefined;
+    });
+
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    try {
+      await flushPromises();
+      expect(sockets).toHaveLength(1);
+      const description = wrapper.get(
+        'textarea[aria-label="Timer description"]',
+      );
+      HTMLElement.prototype.scrollIntoView = vi.fn();
+      (description.element as HTMLTextAreaElement).focus();
+      expect(document.activeElement).toBe(description.element);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      sockets[0].onmessage?.({
+        data: JSON.stringify({
+          type: "TIMER_STATE",
+          timer: {
+            ...current,
+            description: "Changed from extension",
+          },
+        }),
+      });
+      await flushPromises();
+
+      expect(description.element).toHaveProperty(
+        "value",
+        "Changed from extension",
+      );
+    } finally {
+      wrapper.unmount();
+      HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+      localStorage.removeItem("know_token");
+      globalThis.WebSocket = originalWebSocket;
+    }
+  });
+
   it("expands inline on Sessions and starts collapsed as a dock elsewhere", async () => {
     const inline = mount(FloatingTimeTracker, {
       props: { inline: true },
