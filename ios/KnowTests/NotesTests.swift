@@ -47,6 +47,21 @@ final class NotesTests: XCTestCase {
     XCTAssertEqual(model.selected?.title, "Local title")
     XCTAssertEqual(model.selected?.version, 2)
   }
+
+  func testPinAndReorderUseTheWebNoteContracts() async {
+    let stub = NotesStub()
+    let model = NotesModel(transport: stub)
+    await model.load()
+
+    let pinned = await model.pin(model.notes[0])
+    XCTAssertTrue(pinned)
+    XCTAssertEqual(stub.pinCalls, 1)
+    XCTAssertTrue(model.notes[0].pinned)
+
+    XCTAssertTrue(await model.reorder(from: model.notes[1], before: model.notes[0]))
+    XCTAssertEqual(stub.orderCalls, 1)
+    XCTAssertEqual(model.notes[0].id, stub.otherID)
+  }
 }
 
 private final class NotesStub: NotesTransport {
@@ -54,19 +69,31 @@ private final class NotesStub: NotesTransport {
   var createCalls = 0
   var archiveCalls = 0
   var updateCalls = 0
+  var pinCalls = 0
+  var orderCalls = 0
+  var pinnedState = false
   var conflict = true
   let id = UUID(uuidString: "00000000-0000-4000-8000-000000000030")!
+  let otherID = UUID(uuidString: "00000000-0000-4000-8000-000000000031")!
 
   var note: Note {
-    Note(
+    var value = Note(
       id: id, pathId: nil, activityId: nil, timeEntryId: nil, title: "Original",
       content: NoteDocument.json(body: "Body"), contentText: "Body",
       createdAt: "2026-09-01T10:00:00Z", updatedAt: "2026-09-01T10:00:00Z", deletedAt: nil,
       version: 1, tags: [])
+    value.pinned = pinnedState
+    return value
+  }
+  var other: Note {
+    Note(
+      id: otherID, pathId: nil, activityId: nil, timeEntryId: nil, title: "Other",
+      content: NoteDocument.json(body: "Other body"), contentText: "Other body",
+      createdAt: note.createdAt, updatedAt: note.updatedAt, deletedAt: nil, version: 1, tags: [])
   }
   func page(page: Int, size: Int, query: String, archived: Bool) async throws -> NotePage {
     pageCalls += 1
-    return NotePage(items: [note], page: page, size: size, totalItems: 1, totalPages: 1)
+    return NotePage(items: [note, other], page: page, size: size, totalItems: 2, totalPages: 1)
   }
   func labels() async throws -> [NoteLabel] { [] }
   func fetch(id: UUID) async throws -> Note {
@@ -93,4 +120,12 @@ private final class NotesStub: NotesTransport {
   }
   func archive(id: UUID) async throws { archiveCalls += 1 }
   func restore(id: UUID) async throws {}
+  func pin(id: UUID, pinned: Bool) async throws -> Note {
+    pinCalls += 1
+    pinnedState = pinned
+    var updated = id == otherID ? other : note
+    updated.pinned = pinned
+    return updated
+  }
+  func order(ids: [UUID]) async throws { orderCalls += 1 }
 }

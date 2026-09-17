@@ -61,6 +61,8 @@ protocol NotesTransport {
   func update(id: UUID, draft: NoteDraft, version: Int) async throws -> Note
   func archive(id: UUID) async throws
   func restore(id: UUID) async throws
+  func pin(id: UUID, pinned: Bool) async throws -> Note
+  func order(ids: [UUID]) async throws
 }
 
 struct NotesAPI: NotesTransport {
@@ -92,6 +94,14 @@ struct NotesAPI: NotesTransport {
   }
   func restore(id: UUID) async throws {
     try await client.empty("/notes/\(id)/restore", method: "POST", token: token)
+  }
+  func pin(id: UUID, pinned: Bool) async throws -> Note {
+    let body = try JSONSerialization.data(withJSONObject: ["pinned": pinned])
+    return try await client.request("/notes/\(id)/pin", method: "POST", body: body, token: token)
+  }
+  func order(ids: [UUID]) async throws {
+    let body = try JSONSerialization.data(withJSONObject: ["noteIds": ids.map(\.uuidString)])
+    try await client.empty("/notes/order", method: "PUT", body: body, token: token)
   }
 
   private func body(_ draft: NoteDraft, version: Int? = nil) throws -> Data {

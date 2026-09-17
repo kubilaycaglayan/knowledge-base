@@ -130,6 +130,43 @@ import Observation
   func restore(_ note: Note) async -> Bool {
     await mutate { try await self.transport.restore(id: note.id) }
   }
+  func pin(_ note: Note) async -> Bool {
+    guard !archived else { return false }
+    busy = true
+    error = nil
+    defer { busy = false }
+    do {
+      let saved = try await transport.pin(id: note.id, pinned: !note.pinned)
+      notes = notes.map { $0.id == saved.id ? saved : $0 }
+      pages.removeAll()
+      await load(force: true)
+      return true
+    } catch {
+      fail(error, "Unable to update the pinned note. Please try again.")
+      return false
+    }
+  }
+  func reorder(from note: Note, before target: Note) async -> Bool {
+    guard !archived, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      note.id != target.id,
+      let from = notes.firstIndex(where: { $0.id == note.id }),
+      let to = notes.firstIndex(where: { $0.id == target.id })
+    else { return false }
+    let original = notes
+    var ordered = notes
+    ordered.remove(at: from)
+    ordered.insert(note, at: to)
+    notes = ordered
+    do {
+      try await transport.order(ids: ordered.map(\.id))
+      pages.removeAll()
+      return true
+    } catch {
+      notes = original
+      fail(error, "Unable to reorder notes. Please try again.")
+      return false
+    }
+  }
 
   func setArchive(_ value: Bool) {
     archived = value

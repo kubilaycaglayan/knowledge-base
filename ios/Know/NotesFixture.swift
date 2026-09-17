@@ -47,4 +47,10 @@ struct NotesFixture: NotesTransport {
   }
   func archive(id: UUID) async throws {}
   func restore(id: UUID) async throws {}
+  func pin(id: UUID, pinned: Bool) async throws -> Note {
+    var updated = value
+    updated.pinned = pinned
+    return updated
+  }
+  func order(ids: [UUID]) async throws {}
 }
