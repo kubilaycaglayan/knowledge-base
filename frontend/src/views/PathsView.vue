@@ -537,6 +537,7 @@ onBeforeUnmount(() => {
         @drop="draggingId && movePath(paths.find((value) => value.id === draggingId)!, path)"
       >
         <button
+          v-if="editingId !== path.id"
           type="button"
           class="path-pin-button"
           :aria-pressed="path.pinned"
@@ -609,7 +610,7 @@ onBeforeUnmount(() => {
               class="dot"
               :style="{ backgroundColor: path.color || colors[0] }"
             ></span>
-            <h2>{{ path.name }}</h2>
+            <h2 class="path-title">{{ path.name }}</h2>
             <span v-if="path.activityLabel" class="activity-pill">{{
               path.activityLabel
             }}</span>
@@ -982,6 +983,12 @@ onBeforeUnmount(() => {
   border-color: var(--workspace-control-border);
   background: var(--workspace-hover);
   color: var(--workspace-text);
+}
+.path-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .paths-heading {
   display: flex;

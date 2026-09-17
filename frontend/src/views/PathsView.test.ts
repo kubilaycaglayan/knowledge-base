@@ -374,6 +374,38 @@ describe("PathsView", () => {
     expect(wrapper.findAll(".path-order-button")).toHaveLength(0);
   });
 
+  it("keeps long path titles on one truncated line", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          {
+            id: "long-path",
+            name: "A very long path title that should stay on one line",
+            status: "ACTIVE",
+          },
+        ];
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.get(".path-title").text()).toContain("A very long path");
+    expect(wrapper.get(".path-title").classes()).toContain("path-title");
+  });
+
+  it("hides the pin control while editing a path", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    expect(wrapper.find(".path-pin-button").exists()).toBe(true);
+
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Edit")!
+      .trigger("click");
+
+    expect(wrapper.find(".path-pin-button").exists()).toBe(false);
+  });
+
   it("edits path name description and color inline", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
