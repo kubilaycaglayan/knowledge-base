@@ -185,24 +185,15 @@ export const useTimerStore = defineStore("timer", () => {
       return;
     }
     const newLocalForm = formTimerId !== value.id && !submitted;
-    if (
-      !fieldFocused("path") &&
-      (newLocalForm || !preserveDraft || draft.pathId === baseline.pathId)
-    )
+    if (newLocalForm || !preserveDraft || draft.pathId === baseline.pathId)
       pathId.value = value.pathId || "";
     if (
-      !fieldFocused("labels") &&
-      (newLocalForm ||
-        !preserveDraft ||
-        JSON.stringify(draft.labelIds) === JSON.stringify(baseline.labelIds))
+      newLocalForm ||
+      !preserveDraft ||
+      JSON.stringify(draft.labelIds) === JSON.stringify(baseline.labelIds)
     )
       selectedLabelIds.value = [...(value.labelIds || [])];
-    if (
-      !fieldFocused("description") &&
-      (newLocalForm ||
-        !preserveDraft ||
-        draft.description === baseline.description)
-    )
+    if (newLocalForm || !preserveDraft || draft.description === baseline.description)
       description.value = value.description || "";
     if (
       newLocalForm ||
