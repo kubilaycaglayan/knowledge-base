@@ -47,6 +47,7 @@ struct Note: Codable, Identifiable, Equatable {
   let deletedAt: String?
   let version: Int
   var tags: [String]
+  var pinned: Bool = false
 }
 
 struct Activity: Codable, Identifiable {

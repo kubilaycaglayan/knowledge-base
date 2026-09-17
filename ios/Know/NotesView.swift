@@ -12,6 +12,7 @@ struct NotesView: View {
   @State private var redoStack: [String] = []
   @State private var archiveCandidate: Note?
   @State private var leaveConfirmation = false
+  @State private var draggingNoteID: UUID?
   @FocusState private var focused: Field?
   enum Field: Hashable { case search, title, body, label }
 
@@ -165,6 +166,16 @@ struct NotesView: View {
           Button("Restore") { Task { await model.restore(note) } }.buttonStyle(WorkspaceButton())
         } else {
           Button {
+            Task { await model.pin(note) }
+          } label: {
+            Image(systemName: note.pinned ? "pin.fill" : "pin")
+              .frame(width: 44, height: 44)
+          }.buttonStyle(.plain)
+            .accessibilityLabel(note.pinned ? "Unpin \(note.title)" : "Pin \(note.title)")
+            .accessibilityValue(note.pinned ? "Pinned" : "Not pinned")
+            .accessibilityIdentifier("notes.pin.\(note.id)")
+            .foregroundStyle(note.pinned ? WorkspaceTheme.accent(scheme) : WorkspaceTheme.muted(scheme))
+          Button {
             archiveCandidate = note
           } label: {
             Image(systemName: "archivebox").frame(width: 44, height: 44)
@@ -175,6 +186,17 @@ struct NotesView: View {
     }.padding(16).frame(maxWidth: .infinity, minHeight: 184, alignment: .topLeading).background(
       WorkspaceTheme.surface(scheme), in: RoundedRectangle(cornerRadius: 10)
     ).overlay(RoundedRectangle(cornerRadius: 10).stroke(WorkspaceTheme.border(scheme)))
+      .onDrag {
+        draggingNoteID = note.id
+        return NSItemProvider(object: note.id.uuidString as NSString)
+      }
+      .onDrop(
+        of: [.text],
+        delegate: NoteDropDelegate(targetID: note.id, draggingID: $draggingNoteID) { sourceID, targetID in
+          guard let source = model.notes.first(where: { $0.id == sourceID }),
+            let target = model.notes.first(where: { $0.id == targetID }) else { return }
+          Task { await model.reorder(from: source, before: target) }
+        })
       .accessibilityIdentifier("notes.row.\(note.id)")
   }
 
@@ -333,5 +355,18 @@ struct NotesView: View {
       Text(text).foregroundStyle(WorkspaceTheme.danger(scheme)).accessibilityLabel(text)
       Button("Retry") { Task { await model.load(force: true) } }.buttonStyle(WorkspaceButton())
     }.accessibilityIdentifier("notes.error")
+  }
+}
+
+private struct NoteDropDelegate: DropDelegate {
+  let targetID: UUID
+  @Binding var draggingID: UUID?
+  let reorder: (UUID, UUID) -> Void
+
+  func performDrop(info: DropInfo) -> Bool {
+    guard let draggingID, draggingID != targetID else { return false }
+    reorder(draggingID, targetID)
+    self.draggingID = nil
+    return true
   }
 }
