@@ -351,14 +351,14 @@ onMounted(load);
                 :disabled="session.running"
                 @click="beginEdit(session)"
               >
-                {{ session.running ? "Stop to edit" : "Edit session" }}
+                {{ session.running ? "Stop to edit" : "Edit" }}
               </button>
               <button
                 v-if="!session.running"
                 class="text-button danger"
                 @click="remove(session)"
               >
-                Remove session
+                Remove
               </button>
             </div>
             <form

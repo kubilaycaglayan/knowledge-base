@@ -338,8 +338,8 @@ describe("SessionsView", () => {
     const actions = card.get(".session-card-actions");
 
     expect(actions.findAll("button").map((button) => button.text())).toEqual([
-      "Edit session",
-      "Remove session",
+      "Edit",
+      "Remove",
     ]);
     expect(
       summary.element.compareDocumentPosition(actions.element) &
