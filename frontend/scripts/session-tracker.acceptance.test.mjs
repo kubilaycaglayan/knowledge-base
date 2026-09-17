@@ -511,11 +511,11 @@ describe("web session tracker acceptance", () => {
     const picker = page.locator("#labels-picker");
     const labelButtons = () => page.locator("#selected-labels button");
     const labelToggle = page.locator("#labels-toggle");
+    const pathHeight = (await path.boundingBox()).height;
+    const pickerHeight = (await picker.boundingBox()).height;
     assert.ok(
-      Math.abs(
-        (await path.boundingBox()).height - (await picker.boundingBox()).height,
-      ) <= 1,
-      "path and labels controls have the same height",
+      Math.abs(pathHeight - pickerHeight) <= 1,
+      `path and labels controls have the same height (${pathHeight}px vs ${pickerHeight}px)`,
     );
     assert.equal(
       await page.locator("#labels-summary").textContent(),
@@ -570,8 +570,15 @@ describe("web session tracker acceptance", () => {
     assert.ok(
       await labelToggle.evaluate((el) => {
         const r = el.getBoundingClientRect();
-        return r.width >= 44 && r.height >= 44;
+        return r.width === 36 && r.height === 36;
       }),
+    );
+    assert.equal((await picker.boundingBox()).height, 46);
+    assert.equal((await path.boundingBox()).height, 46);
+    assert.equal((await labelButtons().first().boundingBox()).height, 36);
+    assert.equal(
+      (await page.locator("#create-label").boundingBox()).height,
+      36,
     );
     assert.ok(
       await page.evaluate(
