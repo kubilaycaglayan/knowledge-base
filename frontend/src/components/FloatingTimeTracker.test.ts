@@ -441,7 +441,6 @@ describe("FloatingTimeTracker", () => {
       global: { plugins: [vuetify] },
     });
     await flushPromises();
-
     const picker = wrapper.get(".label-picker");
     const toggle = wrapper.get(".label-picker-toggle");
     expect(picker.classes()).not.toContain("is-open");
@@ -482,6 +481,54 @@ describe("FloatingTimeTracker", () => {
     document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     await flushPromises();
     expect(picker.classes()).not.toContain("is-open");
+    wrapper.unmount();
+  });
+
+  it("suggests matching existing labels and selects them from the new-label input", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Focus path", status: "ACTIVE", color: "#e85d75" }];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [
+          { id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] },
+          { id: "label-2", name: "Review", scopes: ["TIME_ENTRY"] },
+        ];
+      if (path === "/timers/current") return null;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+    useTimerStore().pathId = "path-1";
+    await nextTick();
+
+    const input = wrapper.get<HTMLInputElement>(
+      'input[aria-label="New session label name"]',
+    );
+    await input.setValue("vie");
+    expect(wrapper.find('[role="listbox"]').exists()).toBe(true);
+    expect(wrapper.get('[role="option"]').text()).toContain("Review");
+    expect(wrapper.get(".label-match").text()).toBe("vie");
+    expect(wrapper.get("#tt-label-options .label-name-match").text()).toBe(
+      "vie",
+    );
+    expect(wrapper.get(".label-picker").attributes("style")).toContain(
+      "--label-match-color: #e85d75",
+    );
+    const styles = [...document.head.querySelectorAll("style")]
+      .map((style) => style.textContent || "")
+      .join("\n");
+    expect(styles).toContain("font-weight: 400");
+
+    await input.trigger("keydown", { key: "ArrowDown" });
+    await input.trigger("keydown", { key: "Enter" });
+    await flushPromises();
+
+    expect(wrapper.get("#tt-label-options").text()).toContain("Review");
+    expect(input.element.value).toBe("");
+    expect(wrapper.find('[role="listbox"]').exists()).toBe(false);
     wrapper.unmount();
   });
 

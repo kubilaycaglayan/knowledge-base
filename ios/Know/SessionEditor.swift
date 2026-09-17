@@ -8,6 +8,7 @@ struct SessionEditor: View {
   @State private var draft: SessionDraft
   @State private var discard = false
   @State private var timeError: String?
+  @State private var labelInput = ""
   @FocusState private var invalidTime: Bool
   private let original: SessionDraft
 
@@ -46,11 +47,14 @@ struct SessionEditor: View {
             .buttonStyle(WorkspaceButton()).accessibilityLabel("Remove \(name)")
           }
         }
-        Menu("Add a label…") {
-          ForEach(model.labels.filter { !draft.labelIds.contains($0.id) }) { label in
-            Button(label.name) { draft.labelIds.append(label.id) }
-          }
-        }.frame(maxWidth: .infinity, alignment: .leading).modifier(WorkspaceControl())
+        TextField("Add a label…", text: $labelInput).modifier(WorkspaceControl())
+          .accessibilityLabel("Add session label")
+          .onSubmit { addMatchingLabel() }
+        ForEach(matchingLabels) { label in
+          Button { draft.labelIds.append(label.id); labelInput = "" } label: {
+            highlightedLabel(label.name).frame(maxWidth: .infinity, alignment: .leading)
+          }.buttonStyle(.plain).frame(minHeight: 44)
+        }
       }
       field("Source") {
         Picker("Edit session source", selection: $draft.source) {
@@ -100,6 +104,23 @@ struct SessionEditor: View {
     }
   }
   private func cancel() { if draft != original { discard = true } else { close() } }
+  private var matchingLabels: [SessionLabel] {
+    let query = labelInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !query.isEmpty else { return [] }
+    return model.labels.filter {
+      !draft.labelIds.contains($0.id) && $0.name.localizedCaseInsensitiveContains(query)
+    }
+  }
+  private func highlightedLabel(_ name: String) -> Text {
+    let query = labelInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let range = name.range(of: query, options: .caseInsensitive) else { return Text(name) }
+    return Text(name[..<range.lowerBound]) + Text(name[range]).bold() + Text(name[range.upperBound...])
+  }
+  private func addMatchingLabel() {
+    guard let label = matchingLabels.first else { return }
+    draft.labelIds.append(label.id)
+    labelInput = ""
+  }
   private func save() {
     guard draft.endedAt > draft.startedAt else {
       timeError = "End time must be after start time."

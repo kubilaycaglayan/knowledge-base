@@ -5,6 +5,13 @@ struct SessionsView: View {
   @Environment(\.colorScheme) private var scheme
   @Environment(\.dynamicTypeSize) private var typeSize
   @State private var newLabel = ""
+  private var matchingNewLabels: [SessionLabel] {
+    let query = newLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !query.isEmpty else { return [] }
+    return model.labels.filter {
+      !model.draft.labelIds.contains($0.id) && $0.name.localizedCaseInsensitiveContains(query)
+    }
+  }
   @State private var newPath = ""
   @State private var addingPath = false
   @State private var labelsExpanded = false
@@ -316,10 +323,22 @@ struct SessionsView: View {
   }
 
   private var newLabelField: some View {
-    TextField("New label for this session…", text: $newLabel).modifier(WorkspaceControl())
+    VStack(alignment: .leading, spacing: 4) {
+      TextField("New label for this session…", text: $newLabel).modifier(WorkspaceControl())
       .accessibilityLabel("New session label name").accessibilityIdentifier("timer.newLabel")
       .focused($labelNameFocused)
-      .onSubmit(createLabel)
+      .onSubmit { if let label = matchingNewLabels.first { Task { await model.toggleLabel(label.id); newLabel = "" } } else { createLabel() } }
+      ForEach(matchingNewLabels.prefix(8)) { label in
+        Button { Task { await model.toggleLabel(label.id); newLabel = "" } } label: {
+          highlightedLabel(label.name).frame(maxWidth: .infinity, alignment: .leading)
+        }.buttonStyle(.plain).frame(minHeight: 44)
+      }
+    }
+  }
+  private func highlightedLabel(_ name: String) -> Text {
+    let query = newLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let range = name.range(of: query, options: .caseInsensitive) else { return Text(name) }
+    return Text(name[..<range.lowerBound]) + Text(name[range]).bold() + Text(name[range.upperBound...])
   }
   private var createLabelButton: some View {
     Button(action: createLabel) { busyLabel("＋ Create label") }.buttonStyle(WorkspaceButton())
