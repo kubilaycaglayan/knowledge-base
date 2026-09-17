@@ -297,7 +297,8 @@
   background: var(--workspace-active);
 }
 .session-heading,
-.session-summary {
+.session-summary,
+.session-card-footer {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -380,12 +381,17 @@
   white-space: pre-wrap;
 }
 .session-summary {
-  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
   color: var(--workspace-muted);
-  margin-top: 8px;
   gap: 6px;
 }
 .session-summary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: var(--workspace-selected);
   border-radius: var(--workspace-radius);
   padding: 2px 6px;
@@ -393,16 +399,22 @@
   font-variant-numeric: tabular-nums;
 }
 .session-summary span {
+  flex: 0 1 auto;
+}
+.session-summary span:first-child {
+  flex: 0 0 auto;
+}
+.session-card-footer {
   min-width: 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
+  gap: 8px;
+  margin-top: 8px;
 }
 .session-card-actions {
   display: flex;
   flex-wrap: wrap;
+  flex: 0 0 auto;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 12px;
 }
 .session-edit-grid,
 .edit-dialog-grid {
