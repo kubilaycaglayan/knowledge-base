@@ -16,6 +16,9 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
 
   long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
 
+  @Query("select coalesce(max(p.sortOrder), -1) from Path p where p.userId = :userId")
+  long maxSortOrder(@Param("userId") UUID userId);
+
   interface LatestSessionProjection {
     UUID getPathId();
 
@@ -29,8 +32,8 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
               + " where p.user_id=:userId"
               + " and p.deleted_at is null"
               + " group by p.id"
-              + " order by case when max(t.started_at) is null then 1 else 0 end,"
-              + " coalesce(max(t.started_at), p.updated_at) desc",
+              + " order by p.pinned desc, case when p.sort_order is null then 1 else 0 end,"
+              + " p.sort_order asc, coalesce(max(t.started_at), p.updated_at) desc",
       nativeQuery = true)
   List<Path> findAllByUserIdOrderByUpdatedAtDesc(@Param("userId") UUID userId, Pageable page);
 

@@ -72,6 +72,7 @@ const sessionDraft = ref<SessionDraft | null>(null);
 const savingSession = ref(false);
 const sessionSources = ["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"];
 const merging = ref(false);
+const draggingId = ref("");
 let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 const activityDuration = (title: string) => {
   const match = title.match(/^Tracked (\d+) seconds$/);
@@ -206,6 +207,40 @@ async function add() {
   } catch {
     error.value = "Could not create path.";
   }
+}
+async function togglePinned(path: Path) {
+  try {
+    const saved = await api<Path>(`/paths/${path.id}/pin`, {
+      method: "POST",
+      body: JSON.stringify({ pinned: !path.pinned }),
+    });
+    pathsStore.setPinned(saved);
+    await load(true);
+  } catch {
+    error.value = "Could not update the pinned path.";
+  }
+}
+async function movePath(path: Path, target: Path) {
+  if (path.id === target.id) return;
+  const ordered = [...paths.value];
+  const from = ordered.findIndex((value) => value.id === path.id);
+  const to = ordered.findIndex((value) => value.id === target.id);
+  ordered.splice(from, 1);
+  ordered.splice(to, 0, path);
+  try {
+    await api("/paths/order", {
+      method: "PUT",
+      body: JSON.stringify({ pathIds: ordered.map((value) => value.id) }),
+    });
+    pathsStore.setOrder(ordered);
+  } catch {
+    error.value = "Could not reorder paths.";
+  }
+}
+function movePathBy(path: Path, direction: -1 | 1) {
+  const index = paths.value.findIndex((value) => value.id === path.id);
+  const target = paths.value[index + direction];
+  if (target) void movePath(path, target);
 }
 function openAddDialog() {
   error.value = "";
@@ -497,7 +532,15 @@ onBeforeUnmount(() => {
       </button>
     </p>
     <div class="path-list">
-      <article v-for="path in paths" :key="path.id" class="path card">
+      <article
+        v-for="path in paths"
+        :key="path.id"
+        class="path card"
+        draggable="true"
+        @dragstart="draggingId = path.id"
+        @dragover.prevent
+        @drop="draggingId && movePath(paths.find((value) => value.id === draggingId)!, path)"
+      >
         <form
           v-if="editingId === path.id"
           class="path-edit"
@@ -577,6 +620,16 @@ onBeforeUnmount(() => {
               </template>
             </p>
             <p v-else>No description yet</p>
+            <div class="path-order-actions">
+              <button
+                type="button"
+                class="path-order-button"
+                :aria-pressed="path.pinned"
+                @click="togglePinned(path)"
+              >{{ path.pinned ? "Unpin" : "Pin" }}</button>
+              <button type="button" class="path-order-button" @click="movePathBy(path, -1)">Move up</button>
+              <button type="button" class="path-order-button" @click="movePathBy(path, 1)">Move down</button>
+            </div>
           </div>
           <div class="row-actions">
             <button
@@ -953,6 +1006,28 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(5, 28px);
   gap: 2px;
   width: max-content;
+}
+.path-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.path-order-button {
+  min-height: 30px;
+  border: 1px solid var(--workspace-border);
+  border-radius: var(--workspace-radius);
+  padding: 4px 8px;
+  background: transparent;
+  color: var(--workspace-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.path-order-button:hover,
+.path-order-button:focus-visible {
+  color: var(--workspace-text);
+  background: var(--workspace-hover);
 }
 @media (max-width: 560px) {
   .paths-heading {

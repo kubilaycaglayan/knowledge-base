@@ -9,6 +9,23 @@ function setButtonBusy(button, busy) {
   button.disabled = busy;
   if (button.setAttribute) button.setAttribute("aria-busy", String(busy));
 }
+function keepFocusedControlVisible(event) {
+  const candidate = event?.target;
+  const control = candidate instanceof HTMLElement ? candidate : document.activeElement;
+  if (!(control instanceof HTMLElement)) return;
+  requestAnimationFrame(() => {
+    control.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+    if (control instanceof HTMLTextAreaElement && control.selectionEnd !== null) {
+      control.setSelectionRange(control.selectionStart, control.selectionEnd);
+    }
+  });
+}
+document.addEventListener("focusin", keepFocusedControlVisible);
+document.addEventListener("input", (event) => {
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+    keepFocusedControlVisible(event);
+});
+window.visualViewport?.addEventListener("resize", keepFocusedControlVisible);
 let currentTimer = null;
 let timerTicker = null;
 let liveSyncTicker = null;
