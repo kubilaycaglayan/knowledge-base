@@ -237,11 +237,6 @@ async function movePath(path: Path, target: Path) {
     error.value = "Could not reorder paths.";
   }
 }
-function movePathBy(path: Path, direction: -1 | 1) {
-  const index = paths.value.findIndex((value) => value.id === path.id);
-  const target = paths.value[index + direction];
-  if (target) void movePath(path, target);
-}
 function openAddDialog() {
   error.value = "";
   selectedColorOpen.value = false;
@@ -541,6 +536,20 @@ onBeforeUnmount(() => {
         @dragover.prevent
         @drop="draggingId && movePath(paths.find((value) => value.id === draggingId)!, path)"
       >
+        <button
+          type="button"
+          class="path-pin-button"
+          :aria-pressed="path.pinned"
+          :aria-label="path.pinned ? `Unpin ${path.name}` : `Pin ${path.name}`"
+          :title="path.pinned ? 'Unpin path' : 'Pin path'"
+          @click="togglePinned(path)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M16 9V4h1V2H7v2h1v5c0 1.66-1.34 3-3 3v2h5.97v8h2v-8H20v-2c-2.21 0-4-1.79-4-4Z"
+            />
+          </svg>
+        </button>
         <form
           v-if="editingId === path.id"
           class="path-edit"
@@ -620,16 +629,6 @@ onBeforeUnmount(() => {
               </template>
             </p>
             <p v-else>No description yet</p>
-            <div class="path-order-actions">
-              <button
-                type="button"
-                class="path-order-button"
-                :aria-pressed="path.pinned"
-                @click="togglePinned(path)"
-              >{{ path.pinned ? "Unpin" : "Pin" }}</button>
-              <button type="button" class="path-order-button" @click="movePathBy(path, -1)">Move up</button>
-              <button type="button" class="path-order-button" @click="movePathBy(path, 1)">Move down</button>
-            </div>
           </div>
           <div class="row-actions">
             <button
@@ -948,6 +947,42 @@ onBeforeUnmount(() => {
   max-width: 1200px;
   margin: 0 auto;
 }
+.path-pin-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  padding: 6px;
+  background: transparent;
+  color: var(--workspace-muted);
+  cursor: pointer;
+}
+.path-list > .card {
+  position: relative;
+}
+.path-pin-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+.path-pin-button[aria-pressed="true"] {
+  color: var(--workspace-accent);
+  background: var(--workspace-selected);
+}
+.path-pin-button:hover,
+.path-pin-button:focus-visible {
+  border-color: var(--workspace-control-border);
+  background: var(--workspace-hover);
+  color: var(--workspace-text);
+}
 .paths-heading {
   display: flex;
   align-items: center;
@@ -1006,28 +1041,6 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(5, 28px);
   gap: 2px;
   width: max-content;
-}
-.path-order-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 8px;
-}
-.path-order-button {
-  min-height: 30px;
-  border: 1px solid var(--workspace-border);
-  border-radius: var(--workspace-radius);
-  padding: 4px 8px;
-  background: transparent;
-  color: var(--workspace-muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-}
-.path-order-button:hover,
-.path-order-button:focus-visible {
-  color: var(--workspace-text);
-  background: var(--workspace-hover);
 }
 @media (max-width: 560px) {
   .paths-heading {
