@@ -284,6 +284,19 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("keeps the inline Sessions tracker expanded when its bar is clicked", async () => {
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get(".floating-tracker-bar").trigger("click");
+
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it("keeps the path menu focused on adding or choosing an active path", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
