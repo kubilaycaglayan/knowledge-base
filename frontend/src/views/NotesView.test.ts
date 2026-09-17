@@ -4,6 +4,19 @@ import NotesView from "./NotesView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
 
+vi.mock("../components/NotesPageSizeSelect.vue", () => ({
+  default: {
+    props: { modelValue: Number, items: Array },
+    emits: ["update:modelValue"],
+    template: `<select
+      name="notes-per-page"
+      aria-label="Notes per page"
+      :value="modelValue"
+      @change="$emit('update:modelValue', Number($event.target.value))"
+    ><option v-for="item in items" :key="item" :value="item">{{ item }}</option></select>`,
+  },
+}));
+
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 const note = {
@@ -35,6 +48,11 @@ function router() {
 function page(items = [note]) {
   return { items, page: 0, size: 20, totalItems: items.length, totalPages: 1 };
 }
+function mountNotes(r: ReturnType<typeof router>) {
+  return mount(NotesView, {
+    global: { plugins: [r] },
+  });
+}
 
 describe("NotesView", () => {
   beforeEach(() => setActivePinia(createPinia()));
@@ -52,7 +70,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     expect(wrapper.get(".note-row").text()).toContain("Learning");
     expect(wrapper.get(".note-row").text()).toContain("Graph theory");
@@ -71,7 +89,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
 
     expect(getComputedStyle(wrapper.get(".note-tags").element).justifyContent).toBe(
@@ -83,7 +101,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
 
     await wrapper.get(".note-card-link").trigger("click");
@@ -106,7 +124,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get(".note-pin-button").trigger("click");
     await flushPromises();
@@ -155,7 +173,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('input[aria-label="Search notes"]').setValue("study");
     await new Promise((resolve) => setTimeout(resolve, 280));
@@ -180,7 +198,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('button[aria-label="Create new note"]').trigger("click");
     await flushPromises();
@@ -203,7 +221,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes/note-1");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     const title = wrapper.get('input[aria-label="Note title"]');
     await title.setValue("Updated");
@@ -241,7 +259,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes/note-1");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     const input = wrapper.get('input[aria-label="Add label"]');
     await input.setValue("e");
@@ -275,7 +293,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes/note-1");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     const input = wrapper.get('input[aria-label="Add label"]');
     await input.setValue("mobile");
@@ -303,7 +321,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes/note-1");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     const input = wrapper.get('input[aria-label="Add label"]');
     await input.setValue("mobile");
@@ -335,7 +353,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes/note-1");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Updated");
     await new Promise((resolve) => setTimeout(resolve, 700));
@@ -356,7 +374,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     expect(wrapper.get(".note-row").text()).toContain("Graph theory");
     expect(wrapper.get(".note-row").text()).not.toContain('"type":"doc"');
@@ -376,7 +394,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     expect(wrapper.get(".note-row em").text()).toBe("Empty note");
   });
@@ -397,7 +415,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get(".note-row button").trigger("click");
     await flushPromises();
@@ -421,7 +439,7 @@ describe("NotesView", () => {
     const r = router();
     await r.push("/notes");
     await r.isReady();
-    const wrapper = mount(NotesView, { global: { plugins: [r] } });
+    const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get(".notes-pagination-summary button").trigger("click");
     await flushPromises();

@@ -15,6 +15,7 @@ import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { api } from "../lib/api";
+import NotesPageSizeSelect from "../components/NotesPageSizeSelect.vue";
 import { storeToRefs } from "pinia";
 import {
   useNotesStore,
@@ -40,6 +41,7 @@ const query = ref("");
 const showArchived = ref(false);
 const page = ref(0);
 const size = ref(20);
+const pageSizes = [20, 50, 100];
 const totalPages = ref(0);
 const totalItems = ref(0);
 const loading = ref(false);
@@ -595,15 +597,10 @@ onBeforeUnmount(() => {
             Previous</button
           ><label class="size-field"
             ><span>Show</span
-            ><select
+            ><NotesPageSizeSelect
               v-model="size"
-              name="notes-per-page"
-              aria-label="Notes per page"
-            >
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select></label
+              :items="pageSizes"
+            /></label
           ><span>Page {{ page + 1 }} of {{ Math.max(totalPages, 1) }}</span
           ><button
             class="flat-button"
@@ -751,7 +748,6 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 .search-field input,
-.size-field select,
 .tag-editor input {
   width: 100%;
   border: 1px solid var(--workspace-control-border);
@@ -767,8 +763,8 @@ onBeforeUnmount(() => {
   color: var(--workspace-muted);
   white-space: nowrap;
 }
-.size-field select {
-  width: auto;
+.size-field .v-select {
+  width: 82px;
 }
 .note-list {
   display: grid;
@@ -1090,6 +1086,13 @@ onBeforeUnmount(() => {
     justify-content: space-between;
     gap: 8px;
   }
+  .notes-pagination-controls .size-field {
+    position: relative;
+    z-index: 16;
+  }
+  .notes-pagination-controls .size-field .v-select {
+    min-width: 82px;
+  }
   .notes-pagination-controls .size-field > span {
     display: none;
   }
@@ -1189,5 +1192,28 @@ onBeforeUnmount(() => {
   .note-row {
     transition: none;
   }
+}
+</style>
+
+<style>
+.notes-page-size-menu .v-list {
+  min-width: 82px;
+  padding: 4px;
+  border: 1px solid var(--workspace-control-border);
+  border-radius: var(--workspace-radius);
+  background: var(--workspace-surface);
+  color: var(--workspace-text);
+}
+.notes-pagination .size-field .v-field {
+  min-height: 44px;
+}
+.notes-page-size-menu .v-list-item {
+  min-height: 44px;
+  border-radius: var(--workspace-radius);
+  color: var(--workspace-text);
+}
+.notes-page-size-menu .v-list-item:hover,
+.notes-page-size-menu .v-list-item--active {
+  background: var(--workspace-hover);
 }
 </style>
