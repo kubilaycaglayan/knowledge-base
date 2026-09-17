@@ -310,11 +310,12 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
 
-    const startAgain = wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Start again");
-    expect(startAgain).toBeDefined();
-    await startAgain!.trigger("click");
+    const startAgain = wrapper.get(
+      'button.session-restart-button[aria-label="Start again"]',
+    );
+    expect(startAgain.attributes("title")).toBe("Start again");
+    expect(startAgain.find("svg").exists()).toBe(true);
+    await startAgain.trigger("click");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/timers",
       expect.objectContaining({
