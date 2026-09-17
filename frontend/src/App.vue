@@ -31,7 +31,9 @@ function updateFocusedTextInput(event?: FocusEvent) {
     isMobileViewport() &&
       target &&
       ((target instanceof HTMLInputElement && target.type !== "button") ||
-        target instanceof HTMLTextAreaElement),
+        target instanceof HTMLTextAreaElement ||
+        target.isContentEditable ||
+        Boolean(target.closest("[contenteditable='true']"))),
   );
 }
 const showFloatingTracker = () =>
