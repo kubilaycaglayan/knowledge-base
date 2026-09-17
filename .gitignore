@@ -6,7 +6,7 @@ backups/*
 secrets
 node_modules/
 .wxt/
-.agents/skills/
+.agents/*
 skills-lock.json
 chrome-extension/.output/
 chrome-extension/.wxt-dev.log
