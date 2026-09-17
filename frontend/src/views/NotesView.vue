@@ -656,6 +656,7 @@ onBeforeUnmount(() => {
           name="note-title"
           autocomplete="off"
           aria-label="Note title"
+          placeholder="Title"
           maxlength="240"
           @input="scheduleSave"
         />
@@ -957,7 +958,16 @@ onBeforeUnmount(() => {
   font-size: 26px;
   font-weight: 650;
   letter-spacing: -1px;
-  padding: 22px 0 14px;
+  padding: 0;
+}
+.note-title-input::placeholder {
+  color: var(--workspace-muted);
+  font-weight: 400;
+  opacity: 0.65;
+}
+.note-title-input:focus {
+  outline: none;
+  box-shadow: none;
 }
 .tag-editor {
   position: relative;
@@ -974,6 +984,11 @@ onBeforeUnmount(() => {
   width: 180px;
   flex: 1;
   min-width: 150px;
+}
+.tag-editor input:focus,
+.tag-editor input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 .note-tag button {
   min-width: 24px;
@@ -1129,7 +1144,6 @@ onBeforeUnmount(() => {
 .note-title-row .note-title-input {
   min-width: 0;
   flex: 1;
-  padding-bottom: 14px;
 }
 .note-title-row .tag-editor {
   flex: 0 1 42%;
