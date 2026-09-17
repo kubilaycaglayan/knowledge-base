@@ -329,6 +329,15 @@ describe("SessionsView", () => {
     );
   });
 
+  it("hides restart for sessions without a path or labels", async () => {
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+
+    const cards = wrapper.findAll("article.session-card");
+    expect(cards[0].find(".session-restart-button").exists()).toBe(true);
+    expect(cards[1].find(".session-restart-button").exists()).toBe(false);
+  });
+
   it("keeps session actions in a bottom row after the summary", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
