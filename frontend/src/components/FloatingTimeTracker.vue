@@ -152,6 +152,14 @@ function closeFloatingOnOutside(event: PointerEvent) {
   if (!props.inline && open.value && !trackerHost.value?.contains(event.target as Node))
     open.value = false;
 }
+function expandFromBar(event: MouseEvent) {
+  if (props.inline || !window.matchMedia("(min-width: 641px)").matches)
+    return;
+  const target = event.target;
+  if (target instanceof Element && target.closest("button, a, input, select, textarea, [role='button']"))
+    return;
+  open.value = true;
+}
 async function choosePath(id: string) {
   if (id === "__add_new_path__") {
     pathId.value = "";
@@ -224,7 +232,7 @@ onUnmounted(() => {
     :style="{ '--tracker-viewport-height': `${trackerViewportHeight}px` }"
   >
     <section class="floating-tracker session-grid" aria-label="Focus today">
-      <div class="floating-tracker-bar focus">
+      <div class="floating-tracker-bar focus" @click="expandFromBar">
         <button
           class="floating-tracker-action primary"
           :class="{ 'is-running': timer }"

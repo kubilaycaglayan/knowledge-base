@@ -10,9 +10,27 @@ import { useTimerStore } from "../stores/timer";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
+const originalMatchMedia = Object.getOwnPropertyDescriptor(window, "matchMedia");
+function stubViewport(isDesktop: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: vi.fn((query: string) => ({
+      matches: isDesktop && query === "(min-width: 641px)",
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 describe("FloatingTimeTracker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    stubViewport(true);
     setActivePinia(createPinia());
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
@@ -32,6 +50,12 @@ describe("FloatingTimeTracker", () => {
         return undefined;
       },
     );
+  });
+
+  afterEach(() => {
+    if (originalMatchMedia)
+      Object.defineProperty(window, "matchMedia", originalMatchMedia);
+    else Reflect.deleteProperty(window, "matchMedia");
   });
 
   it("preserves Sessions' ability to start without a path or label", async () => {
@@ -216,6 +240,46 @@ describe("FloatingTimeTracker", () => {
     expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     await nextTick();
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("expands the desktop floating tracker when its non-clickable bar area is clicked", async () => {
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get(".floating-tracker-bar").trigger("click");
+
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("does not expand from the bar background on mobile", async () => {
+    stubViewport(false);
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get(".floating-tracker-bar").trigger("click");
+
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("does not expand from clicks on floating tracker controls", async () => {
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get(".floating-tracker-action").trigger("click");
+
     expect(wrapper.find("#floating-tracker-panel").exists()).toBe(false);
     wrapper.unmount();
   });
