@@ -285,6 +285,10 @@ async function resetTimerForm() {
   renderTimerLabels();
   $("description").value = "";
   await persistTimerSelection();
+  await request("/timers/draft", {
+    method: "PUT",
+    body: JSON.stringify({ pathId: null, labelIds: [], description: null }),
+  });
 }
 async function syncTimerState() {
   if (
@@ -304,9 +308,7 @@ async function syncTimerState() {
       currentTimer = null;
       await chrome.storage.local.remove("activeTimer");
       showTimer(null);
-      const selection = await request("/timers/draft");
-      await restoreTimerSelection(selection);
-      selectionBaseline = timerSelection(selection);
+      await resetTimerForm();
       await loadSessions();
     } else if (timer && timerStateChanged(currentTimer, timer)) {
       showTimer(timer);

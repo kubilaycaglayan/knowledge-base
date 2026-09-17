@@ -119,6 +119,40 @@ describe("timer store", () => {
     expect(store.historyVersion).toBe(2);
   });
 
+  it("clears the completed timer form and server draft after stopping", async () => {
+    const store = useTimerStore();
+    store.setCurrent({
+      id: "timer",
+      pathId: "path-1",
+      labelIds: ["label-1"],
+      startedAt: "2026-09-12T10:00:00Z",
+      description: "Read chapter",
+      running: true,
+    });
+    store.pathId = "path-1";
+    store.selectedLabelIds = ["label-1"];
+    store.description = "Read chapter";
+    vi.mocked(api).mockImplementation(async (path, options = {}) => {
+      if (path.endsWith("/stop")) return null;
+      if (path === "/timers/draft" && options.method === "PUT")
+        return JSON.parse(options.body as string);
+      return null;
+    });
+
+    await store.toggleRun();
+
+    expect(store.pathId).toBe("");
+    expect(store.selectedLabelIds).toEqual([]);
+    expect(store.description).toBe("");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/timers/draft",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ pathId: null, labelIds: [], description: null }),
+      }),
+    );
+  });
+
   it("does not restore another account's fields from a delayed response", async () => {
     let resolve: (value: unknown) => void = () => {};
     vi.mocked(api).mockImplementation(

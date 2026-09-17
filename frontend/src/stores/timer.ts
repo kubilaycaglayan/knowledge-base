@@ -220,6 +220,26 @@ export const useTimerStore = defineStore("timer", () => {
     if (notifyHistory && changed) historyVersion.value++;
     refreshTargets(value);
   }
+  function resetForm() {
+    pathId.value = "";
+    selectedLabelIds.value = [];
+    description.value = "";
+    timerStartedAt.value = "";
+    labelsOpen.value = false;
+    draftBaseline = {};
+    draftHydrated = true;
+    formTimerId = "";
+  }
+  async function resetAfterStop() {
+    // Clear the local controls immediately after a successful stop. The
+    // server draft is cleared as well so another client cannot rehydrate the
+    // completed session into a fresh timer form.
+    resetForm();
+    await api("/timers/draft", {
+      method: "PUT",
+      body: JSON.stringify({ pathId: null, labelIds: [], description: null }),
+    });
+  }
   async function load() {
     const versionAtRequest = timerStateVersion;
     try {
@@ -242,11 +262,10 @@ export const useTimerStore = defineStore("timer", () => {
     if (busy.value) return;
     busy.value = true;
     error.value = "";
-    const submitted = formState();
     try {
       if (timer.value) {
         const versionAtRequest = ++timerStateVersion;
-        const stopped = await api<Timer>(`/timers/${timer.value.id}/stop`, {
+        await api<Timer>(`/timers/${timer.value.id}/stop`, {
           method: "POST",
           body: "{}",
         });
@@ -254,15 +273,7 @@ export const useTimerStore = defineStore("timer", () => {
         sessionsStore.clearPages();
         if (versionAtRequest === timerStateVersion) {
           applyTimer(null);
-          if (stopped)
-            applyDraft(
-              {
-                pathId: stopped.pathId,
-                labelIds: stopped.labelIds,
-                description: stopped.description,
-              },
-              submitted,
-            );
+          await resetAfterStop();
         }
       } else {
         const versionAtRequest = ++timerStateVersion;
@@ -393,8 +404,10 @@ export const useTimerStore = defineStore("timer", () => {
     try {
       const current = await api<Timer | null>("/timers/current");
       if (!busy.value && versionAtRequest === timerStateVersion) {
+        const stoppedExternally = Boolean(timer.value && !current);
         applyTimer(current, true);
-        if (!current) await syncDraft();
+        if (stoppedExternally) await resetAfterStop();
+        else if (!current) await syncDraft();
       }
     } catch {
       /* Best-effort polling. */

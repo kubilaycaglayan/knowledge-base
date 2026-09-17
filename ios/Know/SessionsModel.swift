@@ -192,7 +192,14 @@ import SwiftUI
         try await transport.stop(id: timer.id)
         if version == revision {
           apply(nil)
-          applySelection(try await transport.selection())
+          // A completed session must not become the next timer's draft.
+          // Clear both local controls and the server-owned selection so a
+          // later sync or another client cannot restore the old values.
+          let empty = SessionDraft()
+          let selection = try await transport.saveSelection(empty)
+          draft = SessionDraft()
+          selectionBaseline = TrackerSelection()
+          applySelection(selection)
         }
       } else {
         let result = try await transport.start(draft)

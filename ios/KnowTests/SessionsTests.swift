@@ -116,7 +116,10 @@ private actor SessionsStub: SessionsTransport {
   func testStartStopUsesAllSelectionsAndServerSnapshot() async {
     let stub = SessionsStub()
     let model = SessionsModel(transport: stub, defaults: nil)
-    model.draft.labelIds = [UUID(), UUID()]
+    let path = await stub.path
+    let label = await stub.label
+    model.draft.pathId = path.id
+    model.draft.labelIds = [label.id]
     model.draft.description = "Reading"
     let selected = model.draft.labelIds
     await model.toggleTimer()
@@ -124,6 +127,8 @@ private actor SessionsStub: SessionsTransport {
     XCTAssertEqual(model.timer?.description, "Reading")
     await model.toggleTimer()
     XCTAssertNil(model.timer)
+    XCTAssertNil(model.draft.pathId)
+    XCTAssertEqual(model.draft.labelIds, [])
     XCTAssertEqual(model.draft.description, "")
     let count = await stub.stopCount
     XCTAssertEqual(count, 1)
