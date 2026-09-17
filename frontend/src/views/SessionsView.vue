@@ -319,21 +319,27 @@ onMounted(load);
             </button>
             <div v-if="editingId !== session.id" class="session-heading">
               <div>
-                <h3 v-if="pathFor(session.pathId)">
+                <h3
+                  v-if="
+                    pathFor(session.pathId) || sessionLabelIds(session).length
+                  "
+                  class="session-card-title"
+                >
                   <span
+                    v-if="pathFor(session.pathId)"
                     class="session-title-chip"
                     :style="sessionTitleStyle(session)"
                     >{{ pathFor(session.pathId)?.name }}</span
                   >
+                  <div class="session-card-labels" aria-label="Session labels">
+                    <span
+                      v-for="labelId in sessionLabelIds(session)"
+                      :key="labelId"
+                      :style="sessionLabelStyle(labelId)"
+                      >{{ labelFor(labelId)?.name || "Removed label" }}</span
+                    >
+                  </div>
                 </h3>
-                <div class="session-card-labels" aria-label="Session labels">
-                  <span
-                    v-for="labelId in sessionLabelIds(session)"
-                    :key="labelId"
-                    :style="sessionLabelStyle(labelId)"
-                    >{{ labelFor(labelId)?.name || "Removed label" }}</span
-                  >
-                </div>
                 <p v-if="session.description" class="session-description">
                   {{ session.description }}
                 </p>

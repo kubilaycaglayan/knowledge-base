@@ -311,6 +311,12 @@
   margin: 0;
   font-size: 16px;
 }
+.session-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
 .session-title-chip {
   display: inline-block;
   max-width: 100%;
@@ -330,10 +336,7 @@
   );
 }
 .session-card-labels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 5px;
+  display: contents;
 }
 .session-card-labels span {
   min-width: 0;
@@ -374,7 +377,7 @@
   line-height: 1.2;
 }
 .session-description {
-  margin: 3px 0 0;
+  margin: 8px 0 0;
   color: var(--workspace-muted);
   font-size: 13px;
   overflow-wrap: anywhere;
