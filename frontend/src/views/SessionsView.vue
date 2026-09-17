@@ -334,6 +334,18 @@ onMounted(load);
                   {{ session.description }}
                 </p>
               </div>
+            </div>
+            <div v-if="editingId !== session.id" class="session-summary">
+              <span>{{ duration(session) }}</span>
+              <span
+                >{{ session.source }} ·
+                {{ sessionDate(session.startedAt) }}</span
+              >
+            </div>
+            <div
+              v-if="editingId !== session.id"
+              class="session-card-actions"
+            >
               <button
                 class="text-button"
                 :disabled="session.running"
@@ -348,13 +360,6 @@ onMounted(load);
               >
                 Remove session
               </button>
-            </div>
-            <div v-if="editingId !== session.id" class="session-summary">
-              <span>{{ duration(session) }}</span>
-              <span
-                >{{ session.source }} ·
-                {{ sessionDate(session.startedAt) }}</span
-              >
             </div>
             <form
               v-else-if="draft"

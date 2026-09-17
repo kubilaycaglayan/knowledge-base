@@ -329,6 +329,24 @@ describe("SessionsView", () => {
     );
   });
 
+  it("keeps session actions in a bottom row after the summary", async () => {
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+
+    const card = wrapper.get("article.session-card");
+    const summary = card.get(".session-summary");
+    const actions = card.get(".session-card-actions");
+
+    expect(actions.findAll("button").map((button) => button.text())).toEqual([
+      "Edit session",
+      "Remove session",
+    ]);
+    expect(
+      summary.element.compareDocumentPosition(actions.element) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("confirms and soft-deletes a completed session", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();

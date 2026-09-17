@@ -397,6 +397,13 @@
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+.session-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
 .session-edit-grid,
 .edit-dialog-grid {
   display: grid;
