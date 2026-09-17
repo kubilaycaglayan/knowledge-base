@@ -347,14 +347,17 @@ describe("PathsView", () => {
   });
 
   it("pins paths and persists keyboard-accessible ordering", async () => {
+    let pinned = false;
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths")
         return [
-          { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: false },
+          { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned },
           { id: "path-2", name: "Writing", status: "ACTIVE", pinned: false },
         ];
-      if (path === "/paths/path-1/pin")
-        return { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: true };
+      if (path === "/paths/path-1/pin") {
+        pinned = true;
+        return { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned };
+      }
       return undefined;
     });
     const wrapper = mount(PathsView);
