@@ -477,32 +477,6 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="notes-page">
-    <header class="notes-heading">
-      <div>
-        <p class="eyebrow">KNOWLEDGE BASE</p>
-        <h1>{{ showArchived ? "Archived notes" : "Notes" }}</h1>
-      </div>
-      <button
-        v-if="!showArchived"
-        class="icon-button"
-        aria-label="Create new note"
-        title="Create new note"
-        @click="newNote"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
-    </header>
-
     <p v-if="error" class="notes-error" role="alert">{{ error }}</p>
     <template v-if="!isEditor">
       <div class="notes-toolbar">
@@ -515,20 +489,24 @@ onBeforeUnmount(() => {
             aria-label="Search notes"
             placeholder="Search title, body, or label…"
         /></label>
-        <label class="size-field"
-          ><span>Show</span
-          ><select
-            v-model="size"
-            name="notes-per-page"
-            aria-label="Notes per page"
-          >
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select></label
+        <button
+          v-if="!showArchived"
+          class="icon-button"
+          aria-label="Create new note"
+          title="Create new note"
+          @click="newNote"
         >
-        <button class="flat-button" @click="toggleArchive">
-          {{ showArchived ? "Active notes" : "Archive" }}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
         </button>
       </div>
       <p v-if="!loading && !notes.length" class="notes-empty">
@@ -602,14 +580,30 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <footer v-if="totalPages > 1 || totalItems" class="notes-pagination">
-        <span>{{ totalItems }} note{{ totalItems === 1 ? "" : "s" }}</span>
-        <div>
+        <div class="notes-pagination-summary">
+          <span>{{ totalItems }} note{{ totalItems === 1 ? "" : "s" }}</span>
+          <button class="flat-button" @click="toggleArchive">
+            {{ showArchived ? "Active notes" : "Archive" }}
+          </button>
+        </div>
+        <div class="notes-pagination-controls">
           <button
             class="flat-button"
             :disabled="page === 0"
             @click="previousPage"
           >
             Previous</button
+          ><label class="size-field"
+            ><span>Show</span
+            ><select
+              v-model="size"
+              name="notes-per-page"
+              aria-label="Notes per page"
+            >
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select></label
           ><span>Page {{ page + 1 }} of {{ Math.max(totalPages, 1) }}</span
           ><button
             class="flat-button"
@@ -727,21 +721,12 @@ onBeforeUnmount(() => {
   margin: 0 auto;
   color: var(--workspace-text);
 }
-.notes-heading,
 .notes-toolbar,
 .editor-toolbar,
 .notes-pagination {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-.notes-heading {
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-.notes-heading h1 {
-  margin: 8px 0 0;
-  font-size: 26px;
 }
 .icon-button {
   width: 46px;
@@ -756,6 +741,10 @@ onBeforeUnmount(() => {
 }
 .notes-toolbar {
   margin-bottom: 16px;
+}
+.notes-toolbar .icon-button {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 .search-field {
   flex: 1;
@@ -932,7 +921,8 @@ onBeforeUnmount(() => {
   color: var(--workspace-muted);
   font-size: 13px;
 }
-.notes-pagination div {
+.notes-pagination-summary,
+.notes-pagination-controls {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1062,8 +1052,15 @@ onBeforeUnmount(() => {
 }
 @media (max-width: 650px) {
   .notes-toolbar {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-direction: row;
+  }
+  .notes-toolbar .icon-button {
+    margin-left: 0;
+  }
+  .search-field {
+    min-width: 0;
   }
   .note-row-meta {
     display: grid;
@@ -1073,12 +1070,13 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     flex-direction: column;
   }
-  .notes-pagination div {
+  .notes-pagination-controls {
     width: 100%;
     justify-content: space-between;
+    gap: 8px;
   }
-  .notes-heading {
-    margin-bottom: 22px;
+  .notes-pagination-controls .size-field > span {
+    display: none;
   }
 }
 .note-row-main {

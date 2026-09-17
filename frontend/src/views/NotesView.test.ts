@@ -423,7 +423,7 @@ describe("NotesView", () => {
     await r.isReady();
     const wrapper = mount(NotesView, { global: { plugins: [r] } });
     await flushPromises();
-    await wrapper.get(".notes-toolbar button").trigger("click");
+    await wrapper.get(".notes-pagination-summary button").trigger("click");
     await flushPromises();
     await wrapper.get(".note-row button").trigger("click");
     await flushPromises();
