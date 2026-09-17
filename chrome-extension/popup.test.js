@@ -613,6 +613,24 @@ test("stops the server timer and clears its local active state", async () => {
   );
   assert.equal(popup.state.activeTimer, undefined);
   assert.equal(popup.elements.toggle.textContent, "▶");
+  assert.equal(popup.elements.path.value, "");
+  assert.equal(
+    popup.elements["selected-labels"].children.every(
+      (chip) => chip["aria-pressed"] === "false",
+    ),
+    true,
+  );
+  assert.equal(popup.elements.description.value, "");
+  assert.ok(
+    popup.state.calls.some(
+      ({ path, options }) =>
+        path === "/timers/draft" &&
+        options.method === "PUT" &&
+        JSON.parse(options.body).pathId === null &&
+        JSON.parse(options.body).labelIds.length === 0 &&
+        JSON.parse(options.body).description === null,
+    ),
+  );
 });
 
 test("logs out by clearing extension storage and reloading", async () => {
