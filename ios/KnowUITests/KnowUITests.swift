@@ -1013,6 +1013,9 @@ final class KnowUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Notes"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["notes.add"].exists)
     XCTAssertTrue(app.buttons["Open Design notes"].exists)
+    XCTAssertTrue(
+      app.buttons["notes.pin.00000000-0000-4000-8000-000000000020"].waitForExistence(
+        timeout: 5))
     app.buttons["Open Design notes"].tap()
     XCTAssertTrue(app.textFields["notes.title"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.textViews["notes.body"].exists)
