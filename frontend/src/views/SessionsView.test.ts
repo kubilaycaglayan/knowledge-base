@@ -159,7 +159,10 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     const latestSession = wrapper.findAll("article.session-card")[0];
-    expect(latestSession.get("h3").text()).toBe("Learning");
+    expect(latestSession.get(".session-title-chip").text()).toBe("Learning");
+    expect(latestSession.get("h3").find(".session-card-labels").text()).toBe(
+      "Vue",
+    );
     expect(latestSession.get(".session-card-labels").text()).toBe("Vue");
     expect(latestSession.get(".session-description").text()).toBe(
       "Most recent",
