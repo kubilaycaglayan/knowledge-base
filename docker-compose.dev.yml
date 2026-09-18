@@ -43,6 +43,22 @@ services:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
     expose: ["5177"]
+  extension:
+    cpuset: "0-3,6-9"
+    cpus: 0.5
+    mem_limit: 768m
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 43127"
+    environment:
+      KNOW_API_BASE: ${KNOW_API_BASE:-}
+      CHROME_EXTENSION_KEY: ${CHROME_EXTENSION_KEY:-}
+    ports: !override ["127.0.0.1:${EXTENSION_DEV_PORT:-43127}:43127"]
+    volumes:
+      - ./chrome-extension:/app
+      - extension-node-modules:/app/node_modules
+      - ./chrome-extension/.output:/app/.output
+    restart: unless-stopped
   proxy:
     cpuset: "0-3,6-9"
     cpus: 0.1
@@ -57,3 +73,4 @@ volumes:
     external: true
   gradle-cache: {}
   frontend-node-modules: {}
+  extension-node-modules: {}
