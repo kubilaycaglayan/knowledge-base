@@ -47,10 +47,11 @@ if ! docker volume inspect "$dev_db_volume" >/dev/null 2>&1; then
 fi
 
 # Recreate the API when its environment changes (especially CORS_ORIGINS), and
-# the web container so npm ci runs when package.json/package-lock.json changes.
+# the web and extension containers so npm ci runs when package.json/package-lock.json
+# changes.
 # The named frontend node_modules volume is disposable; the protected
 # development database volume is never recreated here.
-docker compose "${compose_args[@]}" up -d --force-recreate api web proxy
+docker compose "${compose_args[@]}" up -d --force-recreate api web extension proxy
 docker compose "${compose_args[@]}" ps
 echo
 echo "Development API CORS origins: ${CORS_ORIGINS:-http://localhost:5177}"
@@ -65,6 +66,7 @@ echo
 echo "Useful logs:"
 echo "  docker compose --project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 api"
 echo "  docker compose --project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 web"
+echo "  docker compose --project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 extension"
 echo "  docker compose --project-name knowledge-base-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 1000 proxy"
 
 cat <<'EOF'
@@ -82,65 +84,4 @@ if [[ "${IOS_LAN_API:-0}" == "1" ]]; then
 
 Physical iPhone API: ${IOS_LAN_API_URL:-set IOS_LAN_API_URL in .env.development}/api/v1
 EOF
-fi
-
-if [[ ! -d "$repo_root/chrome-extension/node_modules" ]]; then
-  (cd "$repo_root/chrome-extension" && npm ci)
-fi
-
-wxt_log="$repo_root/chrome-extension/.wxt-dev.log"
-wxt_pid_file="$repo_root/chrome-extension/.wxt-dev.pid"
-wxt_port=43127
-is_wxt_process() {
-  local pid="$1"
-  local command
-
-  command="$(ps -p "$pid" -o args= 2>/dev/null || true)"
-  [[ "$command" == *"npm run dev"* || "$command" == *"/node_modules/.bin/wxt"* ]]
-}
-
-if [[ -f "$wxt_pid_file" ]]; then
-  wxt_pid="$(<"$wxt_pid_file")"
-
-  # Older versions stored the development-all-start.sh wrapper PID. If it is still
-  # alive, adopt its npm child so status output and future checks use the
-  # actual WXT process tree.
-  if ! is_wxt_process "$wxt_pid"; then
-    child_pid="$(pgrep -P "$wxt_pid" -f 'npm run dev' | head -n 1 || true)"
-    if [[ -n "$child_pid" ]]; then
-      wxt_pid="$child_pid"
-      printf '%s\n' "$wxt_pid" >"$wxt_pid_file"
-    fi
-  fi
-
-  if is_wxt_process "$wxt_pid"; then
-    printf 'WXT: status=running port=%s pid=%s log=%s\n' "$wxt_port" "$wxt_pid" "$wxt_log"
-  else
-    wxt_pid=""
-  fi
-fi
-
-if [[ -z "${wxt_pid:-}" ]]; then
-  : > "$wxt_log"
-  (
-    cd "$repo_root/chrome-extension"
-    nohup npm run dev -- --host 0.0.0.0 --port "$wxt_port" >"$wxt_log" 2>&1 < /dev/null &
-    printf '%s\n' "$!" >"$wxt_pid_file"
-  )
-  wxt_status=starting
-  for _ in {1..20}; do
-    wxt_pid="$(<"$wxt_pid_file")"
-    if ! kill -0 "$wxt_pid" 2>/dev/null; then
-      wxt_status=failed
-      break
-    fi
-    if rg -q 'Started dev server @' "$wxt_log"; then
-      wxt_status=running
-      break
-    fi
-    sleep 0.25
-  done
-  printf 'WXT: status=%s port=%s pid=%s log=%s\n' "$wxt_status" "$wxt_port" "$wxt_pid" "$wxt_log"
-else
-  :
 fi
