@@ -75,6 +75,7 @@ Knowledge Base development stack is available at:
   Web: http://localhost:3000 (Vite hot reload)
   API via proxy: http://localhost:3000/api/v1
   API health: http://localhost:8080/actuator/health
+  Extension WXT: http://localhost:43127 (Compose-managed hot reload)
 
 Backend changes are picked up automatically by Spring DevTools.
 EOF

@@ -118,6 +118,16 @@ const checks = [
       startDevelopment.includes("docker-compose.ios-dev.yml"),
     "iPhone LAN API exposure is opt-in during development startup",
   ],
+  [
+    developmentCompose.includes("  extension:") &&
+      developmentCompose.includes(
+        '127.0.0.1:${EXTENSION_DEV_PORT:-43127}:43127',
+      ) &&
+      developmentCompose.includes("./chrome-extension/.output:/app/.output") &&
+      developmentCompose.includes("restart: unless-stopped") &&
+      startDevelopment.includes("up -d --force-recreate api web extension proxy"),
+    "extension development server is Compose-managed with a stable port, output mount, and restart policy",
+  ],
   [proxy.includes("Content-Security-Policy"), "proxy emits CSP"],
   [
     proxy.includes("ws://localhost:* ws://127.0.0.1:*"),
