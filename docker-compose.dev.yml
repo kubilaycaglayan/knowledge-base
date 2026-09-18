@@ -53,6 +53,7 @@ services:
     environment:
       KNOW_API_BASE: ${KNOW_API_BASE:-}
       CHROME_EXTENSION_KEY: ${CHROME_EXTENSION_KEY:-}
+      WXT_USE_POLLING: "1"
     ports: !override ["127.0.0.1:${EXTENSION_DEV_PORT:-43127}:43127"]
     volumes:
       - ./chrome-extension:/app

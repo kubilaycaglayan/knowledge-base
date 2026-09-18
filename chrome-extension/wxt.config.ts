@@ -23,6 +23,10 @@ if (process.env.KNOW_EXTENSION_ENV === "production") {
 
 export default defineConfig({
   manifestVersion: 3,
+  watchOptions: {
+    usePolling: process.env.WXT_USE_POLLING === "1",
+    interval: 300,
+  },
   manifest: {
     name: "Knowledge Base",
     version: "0.1.22",
