@@ -384,7 +384,7 @@ onMounted(load);
 }
 .label-list {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 .label-create-dialog {
   width: min(560px, calc(100vw - 32px));
@@ -448,23 +448,25 @@ onMounted(load);
 .label-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 .label-list-heading {
   justify-content: space-between;
+  grid-column: 1 / -1;
 }
 .label-row {
   border-top: 1px solid var(--workspace-border);
-  padding: 14px 0;
+  min-height: 48px;
+  padding: 8px 0;
   min-width: 0;
 }
 .label-row strong {
-  min-width: 120px;
+  min-width: 96px;
   overflow-wrap: anywhere;
 }
 .label-swatch {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   flex: none;
 }
@@ -472,6 +474,13 @@ onMounted(load);
   color: var(--workspace-muted);
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.label-row > .ghost {
+  min-height: 32px;
+  padding: 5px 8px;
 }
 .system-label {
   color: var(--workspace-muted);
@@ -511,6 +520,13 @@ onMounted(load);
 .compact {
   padding: 8px 12px;
 }
+@media (min-width: 900px) {
+  .label-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    row-gap: 0;
+  }
+}
 @media (max-width: 760px) {
   .label-row {
     flex-wrap: wrap;
@@ -518,6 +534,7 @@ onMounted(load);
   .scope-list {
     order: 4;
     flex-basis: 100%;
+    padding-left: 20px;
   }
 }
 @media (max-width: 700px) {
