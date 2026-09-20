@@ -152,7 +152,17 @@ function createPopup({
       getElementById: (id) => elements[id],
       createElement: (tag) =>
         tag === "option"
-          ? { value: "", textContent: "", selected: false }
+          ? {
+              value: "",
+              textContent: "",
+              selected: false,
+              setAttribute(name, value) {
+                this[name] = value;
+              },
+              getAttribute(name) {
+                return this[name] ?? null;
+              },
+            }
           : new Element(tag),
     },
     chrome: {
@@ -476,6 +486,7 @@ test("puts add path first and separates it from active paths", async () => {
     ["__add_new_path__", "", "path-1"],
   );
   assert.equal(popup.elements.path.options[1].disabled, true);
+  assert.equal(popup.elements.path.options[1].getAttribute("aria-hidden"), null);
   assert.equal(popup.elements.path.selectedIndex, -1);
 });
 

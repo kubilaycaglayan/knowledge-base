@@ -188,7 +188,6 @@ function fillPathOptions(select, values) {
   const separator = document.createElement("option");
   separator.disabled = true;
   separator.textContent = "────────";
-  separator.setAttribute?.("aria-hidden", "true");
   select.append(separator);
   values.forEach((value) => {
     const option = document.createElement("option");
