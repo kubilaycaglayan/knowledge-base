@@ -6,7 +6,7 @@ fail() { printf 'Deployment preflight failed: %s\n' "$1" >&2; exit 1; }
 [[ "${COMPOSE_PROJECT_NAME:-}" == 'knowledge-base-production' ]] || fail 'COMPOSE_PROJECT_NAME must be knowledge-base-production'
 
 missing_env=0
-for env_name in DOMAIN JWT_SECRET POSTGRES_PASSWORD CLOUDFLARE_TUNNEL_TOKEN KNOW_API_BASE; do
+for env_name in DOMAIN JWT_SECRET POSTGRES_PASSWORD CLOUDFLARE_TUNNEL_TOKEN KNOW_API_BASE NEON_DATABASE_URL NEON_BACKUP_DATABASE_CONFIRM; do
   if [[ -z "${!env_name:-}" ]]; then
     printf '⚠️ Missing required production environment value: %s\n' "$env_name" >&2
     missing_env=1
@@ -20,6 +20,16 @@ done
 (( ${#JWT_SECRET} >= 32 )) || fail 'JWT_SECRET must be at least 32 characters'
 [[ "$POSTGRES_PASSWORD" != replace-with-* && -n "$POSTGRES_PASSWORD" ]] || fail 'POSTGRES_PASSWORD must be replaced with a real value'
 [[ "$CLOUDFLARE_TUNNEL_TOKEN" != replace-with-* && -n "$CLOUDFLARE_TUNNEL_TOKEN" ]] || fail 'CLOUDFLARE_TUNNEL_TOKEN must be replaced with the real tunnel token'
+for neon_url_name in NEON_DATABASE_URL; do
+  neon_url="${!neon_url_name}"
+  [[ "$neon_url" == postgresql://* || "$neon_url" == postgres://* ]] || fail "$neon_url_name must be a PostgreSQL URL"
+  [[ "$neon_url" != *[[:space:]]* && "$neon_url" != *$'\n'* && "$neon_url" != *$'\r'* ]] || fail "$neon_url_name must not contain whitespace or line breaks"
+done
+[[ "$NEON_BACKUP_DATABASE_CONFIRM" == 1 ]] || fail 'NEON_BACKUP_DATABASE_CONFIRM must be 1 to authorize the confirmed Neon backup target'
+case "$NEON_DATABASE_URL" in
+  */[A-Za-z0-9_-]*|*/[A-Za-z0-9_-]*\?*) ;;
+  *) fail 'NEON_DATABASE_URL must include a database name in its path' ;;
+esac
 case ",${CORS_ORIGINS:-}," in
   *,"https://${DOMAIN}",*) ;;
   *) fail "CORS_ORIGINS must include https://${DOMAIN}" ;;

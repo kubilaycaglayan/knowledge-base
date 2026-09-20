@@ -1,6 +1,6 @@
 # Architecture
 
-The backend is a modular monolith. PostgreSQL is the system of record; Vue, SwiftUI, and the Chrome extension are API clients and do not own domain state. UUID ownership columns and authenticated repository lookups prevent cross-user access. Flyway migrations are the schema contract.
+The backend is a modular monolith. Docker PostgreSQL is the only live system of record; Vue, SwiftUI, and the Chrome extension are API clients and do not own domain state. Neon is an hourly, explicitly designated backup target refreshed by scheduled `pg_dump`/`pg_restore`; it is not an application datasource, read replica, or automatic failover target. UUID ownership columns and authenticated repository lookups prevent cross-user access. Flyway migrations are the schema contract.
 
 The first vertical slice is authentication and paths. Reusable session labels, notes, activities, timers, and statistics build on the same user boundary and versioned `/api/v1` API.
 

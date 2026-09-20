@@ -4,6 +4,7 @@ set -eu
 backup_dir="${BACKUP_DIR:-/backups}"
 interval_seconds="${BACKUP_INTERVAL_SECONDS:-3600}"
 retention_count="${BACKUP_RETENTION_COUNT:-168}"
+neon_enabled="${NEON_BACKUP_ENABLED:-1}"
 
 mkdir -p "$backup_dir"
 umask 077
@@ -18,6 +19,14 @@ while :; do
   chmod 600 "$temporary"
   mv "$temporary" "$output"
   echo "Wrote backup to $output"
+
+  if [ "$neon_enabled" = "1" ]; then
+    if ! /usr/local/bin/knowledge-base-neon-backup; then
+      # Neon is a remote backup copy. A failed refresh must not stop local
+      # snapshots or affect application writes.
+      echo 'Neon backup failed; retaining the completed local snapshot.' >&2
+    fi
+  fi
 
   # Keep the newest completed dumps and remove older local snapshots.
   old_backups="$(ls -1t "$backup_dir"/knowledge-base-*.sql 2>/dev/null | tail -n +$((retention_count + 1)) || true)"

@@ -21,9 +21,15 @@ services:
       BACKUP_DIR: /backups
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-3600}
       BACKUP_RETENTION_COUNT: ${BACKUP_RETENTION_COUNT:-168}
+      NEON_BACKUP_ENABLED: ${NEON_BACKUP_ENABLED:-1}
+      NEON_DATABASE_URL: ${NEON_DATABASE_URL:-}
+      NEON_DATABASE_URL_POOLED: ${NEON_DATABASE_URL_POOLED:-}
+      NEON_BACKUP_DATABASE_CONFIRM: ${NEON_BACKUP_DATABASE_CONFIRM:-}
+      NEON_STATUS_FILE: /backups/neon-backup-status.env
     volumes:
       - ./backups:/backups
       - ./deployment/backup-loop.sh:/usr/local/bin/knowledge-base-backup-loop:ro
+      - ./deployment/neon-backup.sh:/usr/local/bin/knowledge-base-neon-backup:ro
     entrypoint: ["/usr/local/bin/knowledge-base-backup-loop"]
     depends_on:
       db:
