@@ -41,6 +41,7 @@ export const useTimerStore = defineStore("timer", () => {
     recentPathIds = ref<string[]>([]);
   const now = ref(Date.now()),
     busy = ref(false),
+    actionBusy = ref(false),
     error = ref(""),
     socketConnected = ref(false);
   let ticker: number | undefined,
@@ -49,7 +50,9 @@ export const useTimerStore = defineStore("timer", () => {
   let syncInFlight = false,
     timerStateVersion = 0,
     socket: WebSocket | undefined,
-    saveQueued = false;
+    saveQueued = false,
+    saveInFlight = false,
+    runQueued = false;
   let formTimerId = "",
     consumers = 0;
   let draftBaseline: Draft = {};
@@ -250,7 +253,12 @@ export const useTimerStore = defineStore("timer", () => {
     }
   }
   async function toggleRun() {
-    if (busy.value) return;
+    if (actionBusy.value) return;
+    if (busy.value) {
+      if (saveInFlight) runQueued = true;
+      return;
+    }
+    actionBusy.value = true;
     busy.value = true;
     error.value = "";
     try {
@@ -293,6 +301,7 @@ export const useTimerStore = defineStore("timer", () => {
     } finally {
       pendingSubmission = undefined;
       busy.value = false;
+      actionBusy.value = false;
       if (saveQueued) {
         saveQueued = false;
         void updateTimer();
@@ -308,6 +317,7 @@ export const useTimerStore = defineStore("timer", () => {
       return;
     }
     if (!alreadyBusy) busy.value = true;
+    saveInFlight = !alreadyBusy;
     const submitted = formState();
     pendingSubmission = submitted;
     const versionAtRequest = ++timerStateVersion;
@@ -352,9 +362,13 @@ export const useTimerStore = defineStore("timer", () => {
       pendingSubmission = undefined;
       if (!alreadyBusy) {
         busy.value = false;
+        saveInFlight = false;
         if (saveQueued) {
           saveQueued = false;
           void updateTimer();
+        } else if (runQueued) {
+          runQueued = false;
+          void toggleRun();
         }
       }
     }
@@ -561,6 +575,7 @@ export const useTimerStore = defineStore("timer", () => {
     recentPathIds,
     now,
     busy,
+    actionBusy,
     error,
     acquire,
     release,

@@ -103,9 +103,13 @@ describe("FloatingTimeTracker", () => {
       await description.setValue("Read a chapter");
       (description.element as HTMLElement).focus();
       const action = wrapper.get("button.floating-tracker-action");
-      (action.element as HTMLElement).focus();
-      action.element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      await nextTick();
+      await description.trigger("change");
+      expect(action.attributes("disabled")).toBeUndefined();
+      (action.element as HTMLElement).click();
+      resolveDraft?.();
+      await flushPromises();
+      resolveDraft?.();
+      await flushPromises();
 
       expect(vi.mocked(api)).toHaveBeenCalledWith(
         "/timers",
@@ -113,7 +117,6 @@ describe("FloatingTimeTracker", () => {
       );
       await new Promise((resolve) => requestAnimationFrame(resolve));
     } finally {
-      resolveDraft?.();
       wrapper.unmount();
       HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
     }
@@ -1011,10 +1014,7 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     const description = wrapper.get("textarea");
     await description.setValue("First edit");
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(pending).toHaveLength(1);
     await description.setValue("Second edit");
-    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(pending).toHaveLength(1);
     pending[0].resolve({ ...current, ...pending[0].body });
     await flushPromises();

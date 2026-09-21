@@ -37,6 +37,7 @@ const {
   recentPathIds,
   now,
   busy,
+  actionBusy,
   error,
   timerStartedAt,
 } = storeToRefs(timerStore);
@@ -48,7 +49,6 @@ const trackerHost = ref<HTMLElement | null>(null);
 const labelPicker = ref<HTMLElement | null>(null);
 const trackerViewportHeight = ref(0);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
-let timerUpdateHandle: number | undefined;
 watch(
   () => timerStore.historyVersion,
   () => emit("changed"),
@@ -187,13 +187,6 @@ function keepFocusedControlVisible(event: FocusEvent) {
     }),
   );
 }
-function scheduleTimerUpdate() {
-  if (timerUpdateHandle) window.clearTimeout(timerUpdateHandle);
-  timerUpdateHandle = window.setTimeout(() => {
-    timerUpdateHandle = undefined;
-    void updateTimer();
-  }, 0);
-}
 function closeLabelsOnOutside(event: PointerEvent) {
   if (labelsOpen.value && !labelPicker.value?.contains(event.target as Node))
     labelsOpen.value = false;
@@ -297,8 +290,8 @@ onUnmounted(() => {
           class="floating-tracker-action primary"
           :class="{ 'is-running': timer }"
           type="button"
-          :disabled="busy"
-          :aria-busy="busy"
+            :disabled="actionBusy"
+            :aria-busy="actionBusy"
           :aria-label="timer ? 'Stop timer' : 'Start timer'"
           @click="toggleRun"
         >
@@ -538,7 +531,7 @@ onUnmounted(() => {
             autocomplete="off"
             placeholder="What are you working on…"
             @focus="keepFocusedControlVisible"
-            @change="scheduleTimerUpdate"
+            @change="updateTimer"
           ></textarea>
         </div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">
