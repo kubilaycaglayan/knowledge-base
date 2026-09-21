@@ -90,27 +90,28 @@ describe("FloatingTimeTracker", () => {
       if (path === "/timers/current") return null;
       return undefined;
     });
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = vi.fn();
     const wrapper = mount(FloatingTimeTracker, {
       attachTo: document.body,
       props: { inline: true },
       global: { plugins: [vuetify] },
     });
-    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
     try {
       await flushPromises();
       const description = wrapper.get('textarea[aria-label="Timer description"]');
       await description.setValue("Read a chapter");
-      HTMLElement.prototype.scrollIntoView = vi.fn();
-      description.element.focus();
+      (description.element as HTMLElement).focus();
       const action = wrapper.get("button.floating-tracker-action");
-      action.element.focus();
-      await action.trigger("click");
+      (action.element as HTMLElement).focus();
+      action.element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await nextTick();
 
       expect(vi.mocked(api)).toHaveBeenCalledWith(
         "/timers",
         expect.objectContaining({ method: "POST" }),
       );
+      await new Promise((resolve) => requestAnimationFrame(resolve));
     } finally {
       resolveDraft?.();
       wrapper.unmount();
@@ -1010,7 +1011,10 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     const description = wrapper.get("textarea");
     await description.setValue("First edit");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(pending).toHaveLength(1);
     await description.setValue("Second edit");
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(pending).toHaveLength(1);
     pending[0].resolve({ ...current, ...pending[0].body });
     await flushPromises();

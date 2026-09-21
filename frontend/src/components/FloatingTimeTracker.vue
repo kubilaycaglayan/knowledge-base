@@ -48,6 +48,7 @@ const trackerHost = ref<HTMLElement | null>(null);
 const labelPicker = ref<HTMLElement | null>(null);
 const trackerViewportHeight = ref(0);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
+let timerUpdateHandle: number | undefined;
 watch(
   () => timerStore.historyVersion,
   () => emit("changed"),
@@ -185,6 +186,13 @@ function keepFocusedControlVisible(event: FocusEvent) {
       behavior: "auto",
     }),
   );
+}
+function scheduleTimerUpdate() {
+  if (timerUpdateHandle) window.clearTimeout(timerUpdateHandle);
+  timerUpdateHandle = window.setTimeout(() => {
+    timerUpdateHandle = undefined;
+    void updateTimer();
+  }, 0);
 }
 function closeLabelsOnOutside(event: PointerEvent) {
   if (labelsOpen.value && !labelPicker.value?.contains(event.target as Node))
@@ -530,7 +538,7 @@ onUnmounted(() => {
             autocomplete="off"
             placeholder="What are you working on…"
             @focus="keepFocusedControlVisible"
-            @change="updateTimer"
+            @change="scheduleTimerUpdate"
           ></textarea>
         </div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">
