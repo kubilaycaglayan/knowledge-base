@@ -75,6 +75,49 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("starts immediately when the description is edited before clicking start", async () => {
+    let resolveDraft: (() => void) | undefined;
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/timers/draft" && options.method === "PUT") {
+        await new Promise<void>((resolve) => {
+          resolveDraft = resolve;
+        });
+        return JSON.parse(options.body as string);
+      }
+      if (path === "/timers" && options.method === "POST")
+        return { id: "timer-1", startedAt: new Date().toISOString(), running: true };
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return null;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    try {
+      await flushPromises();
+      const description = wrapper.get('textarea[aria-label="Timer description"]');
+      await description.setValue("Read a chapter");
+      HTMLElement.prototype.scrollIntoView = vi.fn();
+      description.element.focus();
+      const action = wrapper.get("button.floating-tracker-action");
+      action.element.focus();
+      await action.trigger("click");
+      await nextTick();
+
+      expect(vi.mocked(api)).toHaveBeenCalledWith(
+        "/timers",
+        expect.objectContaining({ method: "POST" }),
+      );
+    } finally {
+      resolveDraft?.();
+      wrapper.unmount();
+      HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
+
   it("invalidates reports and emits a change when a session is stopped", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
