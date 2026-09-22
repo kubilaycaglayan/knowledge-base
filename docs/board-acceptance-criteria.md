@@ -95,7 +95,7 @@ not be described as complete.
 ## Do not delete the following. Implement the following.
 ## 11. Views and UI
 - [] Prefer no texts, no explanations, no titles unless it is the necessary.
-- [] Be compact whenever possible, smaller margins and paddings, but still within the standards.
+- [] Be compact whenever possible, smaller margins and paddings, but still within the standards. Example: archived listings.
 - [] Do not show JSON objects "{}" in the UI.
 - [] Prefer icon buttons over text buttons.
 - [] Cover error management with proper error messages.
@@ -103,6 +103,10 @@ not be described as complete.
 - [] To add a board, we should use a plus button.
 - [] Kanban/Gantt selection is closer to the card's view: top right.
 - [] Archive buttons should be at the end of the page end should take to a different page.
-- []
-- []
+- [] Error messages should disappear afer a proper action or should have close sign.
+- [] Date selection: users should be able to select a range within a calendar view.
+- [] Users can add cards by selecting a range on/in the kanban view by selecting a range in the kanban.
+- [] Cards shouldn't disappear, wtf?
+- [] Load more cards button shouldn't exist, why do we need it? We should lazy load the cards if more than 20.
+- [] Instead of rename button, clicking on the names should make them editable. Apply all the board infrastructure.
 - []
