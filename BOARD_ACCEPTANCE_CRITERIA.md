@@ -132,6 +132,7 @@ Unchecked items are intentionally incomplete.
 
 - [x] Native controls, visible focus, names, mobile-sized targets, contrast,
   reduced motion, and intentional overflow are present.
+- [x] Axe covers mobile and desktop Kanban layouts.
 - [ ] Axe covers mobile and desktop Kanban and Gantt states.
 - [ ] Existing authentication, Sessions/timer, Paths, Labels, Notes, Calendar,
   Reports, imports/exports, extension, security, and iOS checks remain green.
