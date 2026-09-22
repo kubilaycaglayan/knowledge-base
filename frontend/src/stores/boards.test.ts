@@ -162,6 +162,38 @@ describe("boards store concurrency", () => {
     expect(store.ganttCards).toEqual([restored]);
   });
 
+  it("adds a newly created dated card to the active Gantt window", async () => {
+    const created = { id: "created", statusId: "backlog", title: "Created", body: "{}", priority: "MEDIUM" as const, startDate: "2026-09-10", dueDate: "2026-09-12", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    apiMock.mockResolvedValue(created);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.ganttFrom = "2026-09-01";
+    store.ganttTo = "2026-09-30";
+
+    await store.createCard({ title: created.title, body: created.body, priority: created.priority, startDate: created.startDate, dueDate: created.dueDate });
+
+    expect(store.cards).toEqual([created]);
+    expect(store.ganttCards).toEqual([created]);
+  });
+
+  it("removes an archived card from the active Gantt window", async () => {
+    const active = { id: "card", statusId: "backlog", title: "Archived", body: "{}", priority: "MEDIUM" as const, startDate: "2026-09-10", dueDate: "2026-09-12", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    apiMock.mockResolvedValue({ ...active, archived: true });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.cards = [active];
+    store.ganttFrom = "2026-09-01";
+    store.ganttTo = "2026-09-30";
+    store.ganttCards = [active];
+
+    await store.archiveCard(active);
+
+    expect(store.cards).toEqual([]);
+    expect(store.ganttCards).toEqual([]);
+  });
+
   it("clears the previous board timeline while the next board loads", async () => {
     apiMock.mockImplementation((path: string) => path.endsWith("/statuses")
       ? Promise.resolve([{ id: "next-status", name: "Backlog", position: 0, archived: false }])
