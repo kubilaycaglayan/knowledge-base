@@ -2,6 +2,8 @@ package com.know.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.know.domain.BoardCardRepository;
+import com.know.domain.BoardStatusRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -69,6 +71,10 @@ class KnowIntegrationTest {
   @Autowired TestRestTemplate rest;
 
   @Autowired ObjectMapper mapper;
+
+  @Autowired BoardCardRepository boardCards;
+
+  @Autowired BoardStatusRepository boardStatuses;
 
   String base;
 
@@ -174,6 +180,28 @@ class KnowIntegrationTest {
     ResponseEntity<JsonNode> gantt = get("/api/v1/boards/" + boardId + "/gantt?from=2026-09-22&to=2026-09-24", token);
     assertEquals(HttpStatus.OK, gantt.getStatusCode());
     assertEquals("Timeline card", gantt.getBody().get(0).get("title").asText());
+  }
+
+  @Test
+  void ganttExcludesCardsInArchivedStatuses() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> board = post("/api/v1/boards", token, json("name", "Archived status Gantt"));
+    String boardId = board.getBody().get("id").asText();
+    ResponseEntity<JsonNode> card = post("/api/v1/boards/" + boardId + "/cards", token,
+        "{\"title\":\"Hidden timeline card\",\"body\":\"{}\",\"priority\":\"MEDIUM\",\"startDate\":\"2026-09-22\",\"dueDate\":\"2026-09-24\"}");
+    UUID cardId = UUID.fromString(card.getBody().get("id").asText());
+    UUID statusId = UUID.fromString(card.getBody().get("statusId").asText());
+    var archivedStatus = boardStatuses.findById(statusId).orElseThrow();
+    archivedStatus.archive();
+    boardStatuses.save(archivedStatus);
+    boardStatuses.flush();
+    boardCards.findById(cardId).orElseThrow().move(statusId, 0);
+    boardCards.flush();
+
+    ResponseEntity<JsonNode> gantt = get("/api/v1/boards/" + boardId + "/gantt?from=2026-09-22&to=2026-09-24", token);
+
+    assertEquals(HttpStatus.OK, gantt.getStatusCode());
+    assertTrue(gantt.getBody().isEmpty());
   }
 
   @Test

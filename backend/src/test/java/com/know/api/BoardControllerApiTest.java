@@ -151,9 +151,12 @@ class BoardControllerApiTest {
   @Test void ganttAcceptsSingleDayAndOpenEndedCardsThatOverlapTheWindow() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
-    BoardCard oneDay = new BoardCard(boardId, UUID.randomUUID(), 0);
+    BoardStatus oneStatus = new BoardStatus(boardId, "One", 0);
+    BoardStatus openStatus = new BoardStatus(boardId, "Open", 1);
+    when(statuses.findAllByBoardIdOrderByPosition(boardId)).thenReturn(List.of(oneStatus, openStatus));
+    BoardCard oneDay = new BoardCard(boardId, oneStatus.getId(), 0);
     oneDay.update("One day", "{}", BoardPriority.HIGH, LocalDate.of(2026, 4, 5), LocalDate.of(2026, 4, 5));
-    BoardCard openEnd = new BoardCard(boardId, UUID.randomUUID(), 1);
+    BoardCard openEnd = new BoardCard(boardId, openStatus.getId(), 1);
     openEnd.update("Open end", "{}", BoardPriority.MEDIUM, LocalDate.of(2026, 4, 1), null);
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
     when(cards.findGanttCards(boardId, LocalDate.of(2026, 4, 5), LocalDate.of(2026, 4, 5))).thenReturn(List.of(oneDay, openEnd));

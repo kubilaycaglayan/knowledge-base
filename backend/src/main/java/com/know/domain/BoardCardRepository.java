@@ -13,6 +13,6 @@ public interface BoardCardRepository extends JpaRepository<BoardCard, UUID> {
   List<BoardCard> findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(UUID boardId, UUID statusId, int position, Pageable pageable);
   List<BoardCard> findAllByBoardIdAndArchivedAtNotNullOrderByUpdatedAtDesc(UUID boardId);
   Optional<BoardCard> findByIdAndBoardId(UUID id, UUID boardId);
-  @Query("select c from BoardCard c where c.boardId = :boardId and c.archivedAt is null and (c.startDate is not null or c.dueDate is not null) and coalesce(c.startDate, c.dueDate) <= :to and coalesce(c.dueDate, c.startDate) >= :from order by coalesce(c.startDate, c.dueDate), c.position")
+  @Query("select c from BoardCard c where c.boardId = :boardId and c.archivedAt is null and (c.startDate is not null or c.dueDate is not null) and coalesce(c.startDate, c.dueDate) <= :to and coalesce(c.dueDate, c.startDate) >= :from and not exists (select s.id from BoardStatus s where s.id = c.statusId and s.archivedAt is not null) order by coalesce(c.startDate, c.dueDate), c.position")
   List<BoardCard> findGanttCards(@Param("boardId") UUID boardId, @Param("from") LocalDate from, @Param("to") LocalDate to);
 }
