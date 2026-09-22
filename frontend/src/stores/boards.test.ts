@@ -196,4 +196,16 @@ describe("boards store concurrency", () => {
     await stale;
     expect(store.ganttCards.map((card) => card.id)).toEqual(["current"]);
   });
+
+  it("surfaces a recoverable Gantt loading error", async () => {
+    apiMock.mockRejectedValue(new Error("offline"));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+
+    await store.loadGantt("2026-09-01", "2026-09-14");
+
+    expect(store.error).toBe("Unable to load the timeline. Try again.");
+    expect(store.ganttCards).toEqual([]);
+  });
 });
