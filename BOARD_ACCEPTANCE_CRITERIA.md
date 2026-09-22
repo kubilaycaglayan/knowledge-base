@@ -27,6 +27,8 @@ Unchecked items are intentionally incomplete.
   submits are guarded.
 - [x] Board-list, board-content, Gantt, pagination, and rapid-move store
   requests reject stale responses with revision checks.
+- [x] Card edit responses use per-card revisions so stale saves cannot
+  overwrite Kanban or Gantt state.
 - [ ] Concurrent board loads and writes reject stale responses deterministically.
 - [x] Gantt responses are revision-checked so an older board/window cannot
   overwrite the current timeline.
