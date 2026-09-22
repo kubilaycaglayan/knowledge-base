@@ -121,6 +121,27 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
+  it("reconciles moved, archived, and restored cards between Kanban and Gantt", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("button", { name: "Kanban" }).click();
+    await page.getByRole("button", { name: "Move card to next status" }).click();
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.locator(".timeline-row small").filter({ hasText: "Pending" }).waitFor();
+
+    await page.getByRole("button", { name: "Kanban" }).click();
+    await page.getByRole("button", { name: "Archive Ship timeline" }).click();
+    await page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }).click();
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.locator(".board-empty").filter({ hasText: "No dated active cards" }).waitFor();
+
+    await page.getByRole("button", { name: "Kanban" }).click();
+    await page.getByRole("button", { name: "Show archived cards" }).click();
+    await page.getByRole("button", { name: "Restore" }).click();
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor();
+  });
+
   it("keeps Kanban usable on mobile and passes axe checks", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".kanban-column").first().waitFor();
