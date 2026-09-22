@@ -36,6 +36,7 @@ not be described as complete.
 
 - [x] Cards support blank titles, Tiptap-compatible body JSON, four priorities,
   optional inclusive dates, multiple paths, and `BOARD` labels at the API.
+- [ ] Let's update the latest acceptance as: a card can have one single path. Not multiple paths.
 - [x] Cards can be created and edited from the web UI.
 - [ ] The editor exposes paths and `BOARD` labels, validates date ranges
   inline, warns about unsaved changes, and restores focus on close.
