@@ -2,6 +2,7 @@ package com.know.api;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -77,6 +78,27 @@ class BoardControllerApiTest {
     mvc.perform(post("/api/v1/boards/" + boardId + "/statuses/" + statusId + "/archive").with(authentication(auth())))
         .andExpect(status().isConflict());
     verify(statuses, never()).save(any(BoardStatus.class));
+  }
+
+  @Test void restoringCardFallsBackWhenItsStatusWasArchived() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), archivedStatusId = UUID.randomUUID(), activeStatusId = UUID.randomUUID(), cardId = UUID.randomUUID();
+    BoardStatus archived = new BoardStatus(boardId, "Archived status", 0);
+    archived.archive();
+    BoardStatus active = new BoardStatus(boardId, "Backlog", 1);
+    BoardCard card = new BoardCard(boardId, archivedStatusId, 0);
+    card.archive();
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    cardId = card.getId();
+    when(cards.findByIdAndBoardId(cardId, boardId)).thenReturn(Optional.of(card));
+    when(statuses.findByIdAndBoardId(archivedStatusId, boardId)).thenReturn(Optional.of(archived));
+    when(statuses.findAllByBoardIdOrderByPosition(boardId)).thenReturn(List.of(archived, active));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(boardId, active.getId())).thenReturn(List.of());
+    when(cards.save(card)).thenReturn(card);
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards/" + cardId + "/restore").with(authentication(auth())))
+        .andExpect(status().isOk());
+    assertEquals(active.getId(), card.getStatusId());
+    assertEquals(false, card.isArchived());
   }
 
   @Test void invalidCardDateRangeIsRejectedBeforePersistence() throws Exception {
