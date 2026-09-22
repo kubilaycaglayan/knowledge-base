@@ -71,6 +71,8 @@ Unchecked items are intentionally incomplete.
   are rejected.
 - [x] Rapid card moves use per-card revisions so stale responses cannot
   overwrite newer Kanban/Gantt positions.
+- [x] Store movement rejects archived/unknown destinations and negative
+  positions before optimistic mutation or network I/O.
 - [ ] Position ordering, invalid drops, and dense-column reconciliation are
   covered end to end.
 - [ ] Cards never silently disappear after create, move, edit, archive, or
