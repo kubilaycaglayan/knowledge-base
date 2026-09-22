@@ -7,7 +7,8 @@ import AxeBuilder from "@axe-core/playwright";
 let server, browser;
 const board = { id: "board-1", name: "Product", archived: false };
 const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false }));
-const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: "2026-04-05", dueDate: "2026-04-07", position: 0, archived: false, pathIds: ["path-1"], labelIds: [] }];
+const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0, 10); };
+const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: [] }];
 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
@@ -104,6 +105,20 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("button", { name: "Ship timeline" }).count(), 1);
     assert.match(await page.locator(".timeline-bar").innerText(), /Ship timeline/);
     assert.equal(new URL(page.url()).searchParams.get("view"), "gantt");
+  });
+
+  it("removes an edited out-of-window card from Gantt but keeps it in Kanban", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.locator(".timeline-bar", { hasText: "Ship timeline" }).click();
+    await page.locator("input[name='startDate']").fill(dateOnly(40));
+    await page.locator("input[name='dueDate']").fill(dateOnly(42));
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor({ state: "detached" });
+    assert.equal(await page.locator(".timeline-bar", { hasText: "Ship timeline" }).count(), 0);
+    await page.getByRole("button", { name: "Kanban" }).click();
+    await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
   it("keeps Kanban usable on mobile and passes axe checks", async (t) => {
