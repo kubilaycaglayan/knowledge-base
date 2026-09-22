@@ -76,8 +76,8 @@ Unchecked items are intentionally incomplete.
   active status when the previous status is archived; counts remain.
 - [x] API archive/restore is idempotent; repeated requests preserve the same
   retained board state.
-- [x] Destructive board archival provides an accessible confirmation dialog;
-  cancellation sends no request.
+- [x] Destructive board and card archival provide accessible confirmation
+  dialogs; cancellation sends no request.
 
 ## G. Pagination and resilience
 
