@@ -147,6 +147,18 @@ describe("board browser acceptance", () => {
     assert.equal(await page.locator(".kanban-column").nth(1).locator("h2").innerText(), "Backlog");
   });
 
+  it("moves an existing card with pointer drag and drop", async (t) => {
+    const { page } = await fixture(t);
+    await page.locator(".board-card").first().evaluate((card, target) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData("text/plain", card.getAttribute("data-card-id") || "card-1");
+      card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+    }, await page.locator(".kanban-column").nth(1).elementHandle());
+    await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
   it("reveals and restores archived statuses", async (t) => {
     const { page } = await fixture(t, 390, false, false, true);
     await page.getByRole("button", { name: "Show archived statuses" }).click();
