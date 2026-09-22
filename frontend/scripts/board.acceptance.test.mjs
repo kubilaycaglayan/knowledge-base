@@ -121,7 +121,8 @@ describe("board browser acceptance", () => {
   it("loads a dense column in a 20-card page and exposes the next page", async (t) => {
     const { page } = await fixture(t, 800, true);
     assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 20);
-    await page.getByRole("button", { name: "Load more cards in Backlog" }).click();
+    assert.equal(await page.getByRole("button", { name: /Load more cards/ }).count(), 0);
+    await page.locator(".load-more-sentinel").first().evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.getByRole("heading", { name: "Dense card 21" }).waitFor();
     assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 21);
   });
