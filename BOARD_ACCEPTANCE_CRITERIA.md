@@ -47,8 +47,8 @@ Unchecked items are intentionally incomplete.
 - [x] Cards support reusable `BOARD` labels without changing existing scopes.
 - [x] The editor uses the existing Tiptap UI and does not display raw `{}` JSON;
   long-content handling and focus restoration remain.
-- [ ] Date-range selection uses a calendar control and rejects reversed ranges
-  inline.
+- [x] Native date calendar controls reject reversed card ranges inline and
+  preserve the editor without sending an invalid save.
 - [ ] Duplicate submits, failed saves, conflict recovery, retry, and unsaved
   changes are safe.
 
