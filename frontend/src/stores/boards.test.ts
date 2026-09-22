@@ -208,4 +208,26 @@ describe("boards store concurrency", () => {
     expect(store.error).toBe("Unable to load the timeline. Try again.");
     expect(store.ganttCards).toEqual([]);
   });
+
+  it("keeps the newest rapid card move when responses arrive out of order", async () => {
+    const firstMove = deferred<{ id: string; statusId: string; title: string; body: string; priority: "MEDIUM"; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string }>();
+    const secondMove = deferred<Awaited<typeof firstMove.promise>>();
+    let moveCalls = 0;
+    apiMock.mockImplementation((path: string) => path.includes("/move") ? (++moveCalls === 1 ? firstMove.promise : secondMove.promise) : Promise.resolve([]));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    const card = { id: "card", statusId: "backlog", title: "Rapid", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.cards = [card];
+    store.ganttCards = [{ ...card }];
+    const first = store.moveCard(card, "pending", 0);
+    const second = store.moveCard(card, "done", 0);
+    secondMove.resolve({ ...card, statusId: "done", position: 0 });
+    await second;
+    firstMove.resolve({ ...card, statusId: "pending", position: 0 });
+    await first;
+
+    expect(store.cards[0].statusId).toBe("done");
+    expect(store.ganttCards[0].statusId).toBe("done");
+  });
 });
