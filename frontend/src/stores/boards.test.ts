@@ -326,6 +326,20 @@ describe("boards store concurrency", () => {
     expect(store.ganttCards[0].title).toBe("Newest");
   });
 
+  it("keeps the current card intact when an edit times out", async () => {
+    apiMock.mockRejectedValue(new DOMException("The operation was aborted.", "AbortError"));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    const card = { id: "card", statusId: "backlog", title: "Still here", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.cards = [card];
+
+    await expect(store.updateCard(card, { title: "Timed out", body: "{}", priority: "MEDIUM" })).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(store.cards).toEqual([card]);
+    expect(card.title).toBe("Still here");
+  });
+
   it("does not append a lazy page after the board changes", async () => {
     const pendingPage = deferred<{ items: Array<{ id: string; statusId: string; title: string; body: string; priority: "MEDIUM"; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string }>; nextCursor: number | null }>();
     apiMock.mockImplementation((path: string) => path.includes("/cards/page") ? pendingPage.promise : Promise.resolve([]));
