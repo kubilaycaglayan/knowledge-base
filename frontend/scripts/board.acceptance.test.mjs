@@ -142,6 +142,19 @@ describe("board browser acceptance", () => {
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor();
   });
 
+  it("shows a newly created dated card after switching to Gantt", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("textbox", { name: "New card title" }).fill("Timeline from Kanban");
+    await page.getByRole("button", { name: "Add card" }).click();
+    await page.getByRole("heading", { name: "Timeline from Kanban" }).waitFor();
+    await page.locator(".board-card", { hasText: "Timeline from Kanban" }).click();
+    await page.locator("input[name='startDate']").fill(dateOnly(1));
+    await page.locator("input[name='dueDate']").fill(dateOnly(3));
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.locator(".timeline-bar", { hasText: "Timeline from Kanban" }).waitFor();
+  });
+
   it("keeps Kanban usable on mobile and passes axe checks", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".kanban-column").first().waitFor();
