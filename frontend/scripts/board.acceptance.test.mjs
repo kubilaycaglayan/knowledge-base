@@ -12,7 +12,7 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
@@ -20,6 +20,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   if (archivedStatus) fixtureStatuses[3].archived = true;
   let boardArchiveRequests = 0;
   let cardUpdateRequests = 0;
+  let cardUpdateFailures = 0;
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
@@ -57,6 +58,10 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     }
     if (method === "PUT" && path === "/boards/board-1/cards/card-1") {
       cardUpdateRequests += 1;
+      if (failCardUpdateOnce && cardUpdateFailures++ === 0) {
+        await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "Card changed elsewhere" }) });
+        return;
+      }
       await new Promise((resolve) => setTimeout(resolve, 100));
       Object.assign(fixtureCards[0], request.postDataJSON());
       body = fixtureCards[0];
@@ -183,6 +188,17 @@ describe("board browser acceptance", () => {
     await firstSave;
     await page.getByRole("heading", { name: "Saved once" }).waitFor();
     assert.equal(getCardUpdateRequests(), 1);
+  });
+
+  it("keeps a conflicted card editor open and allows a retry", async (t) => {
+    const { page } = await fixture(t, 390, false, false, false, false, true);
+    await page.locator(".board-card").first().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry this save");
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("alert").filter({ hasText: "changed elsewhere" }).waitFor();
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).count(), 1);
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("heading", { name: "Retry this save" }).waitFor();
   });
 
   it("archives a card and restores it from the archived-card list", async (t) => {

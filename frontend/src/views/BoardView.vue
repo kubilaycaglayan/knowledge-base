@@ -9,6 +9,7 @@ import { useBoardsStore, type BoardCard, type BoardStatus } from "../stores/boar
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
 import { addCalendarDays, barPosition, timelineDays } from "../lib/board-gantt";
+import { ApiError } from "../lib/api";
 
 const store = useBoardsStore();
 const pathsStore = usePathsStore();
@@ -46,7 +47,7 @@ function destroyCardEditor() { cardEditor.value?.destroy(); cardEditor.value = n
 function editCard(card: BoardCard) { destroyCardEditor(); editing.value = card; cardDateError.value = ""; draft.value = { title: card.title, body: card.body, priority: card.priority, startDate: card.startDate || "", dueDate: card.dueDate || "", pathIds: [...card.pathIds], labelIds: [...card.labelIds] }; originalDraft.value = JSON.stringify(draft.value); discardOpen.value = false; cardEditor.value = new Editor({ extensions: [StarterKit], content: parseBoardBody(card.body), editorProps: { attributes: { role: "textbox", "aria-label": "Card body", "aria-multiline": "true" } }, onUpdate: ({ editor }) => { draft.value.body = JSON.stringify(editor.getJSON()); } }); }
 function requestCloseEditor() { if (editing.value && JSON.stringify(draft.value) !== originalDraft.value) discardOpen.value = true; else { destroyCardEditor(); editing.value = null; } }
 function discardChanges() { discardOpen.value = false; destroyCardEditor(); editing.value = null; cardDateError.value = ""; }
-async function saveCard() { if (!editing.value || savingCard.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; savingCard.value = true; try { await store.updateCard(editing.value, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); destroyCardEditor(); editing.value = null; discardOpen.value = false; } catch { error.value = "Could not save card."; } finally { savingCard.value = false; } }
+async function saveCard() { if (!editing.value || savingCard.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; savingCard.value = true; try { await store.updateCard(editing.value, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); destroyCardEditor(); editing.value = null; discardOpen.value = false; } catch (saveError) { error.value = saveError instanceof ApiError && saveError.status === 409 ? "This card changed elsewhere. Try saving again." : "Could not save card."; } finally { savingCard.value = false; } }
 async function addStatus() { if (!newStatus.value.trim()) return; try { await store.createStatus(newStatus.value); newStatus.value = ""; } catch { error.value = "Could not create status."; } }
 async function restoreStatus(status: BoardStatus) { try { await store.archiveStatus(status, true); } catch { error.value = "Could not restore status."; } }
 function editStatus(status: BoardStatus) { editingStatusId.value = status.id; statusDraft.value = status.name; }
