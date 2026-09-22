@@ -102,8 +102,10 @@ Unchecked items are intentionally incomplete.
 - [x] Month/year boundaries, leap days, and daylight-saving transitions use
   date-only arithmetic.
 - [x] Cards without dates are omitted with a clear explanation.
-- [ ] Editing, moving, archiving, restoring, and creating a dated card while
-  viewing Gantt immediately reconciles with the Kanban card.
+- [x] Editing a timeline card to an out-of-window date immediately removes its
+  bar while retaining the same card in Kanban.
+- [ ] Moving, archiving, restoring, and creating a dated card while viewing
+  Gantt immediately reconciles with Kanban.
 - [ ] Archived statuses/cards and out-of-window cards are excluded correctly.
 - [x] Mobile timeline scrolling is intentional; desktop layout is supported.
 
