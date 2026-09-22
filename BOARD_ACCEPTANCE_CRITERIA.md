@@ -53,7 +53,9 @@ Unchecked items are intentionally incomplete.
   preserve the editor without sending an invalid save.
 - [x] Duplicate card saves are coalesced and show a Saving… state; unsaved
   changes remain protected.
-- [ ] Failed saves, conflict recovery, and retry behavior are covered.
+- [x] HTTP 409 card-save conflicts keep the editor open, show a retry message,
+  and allow a successful retry.
+- [ ] Other failed-save and timeout recovery behavior is covered.
 
 ## E. Kanban behavior
 
