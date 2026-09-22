@@ -7,8 +7,8 @@ Unchecked items are intentionally incomplete.
 
 ## A. Authentication, navigation, and URL state
 
-- [ ] Unauthenticated `/board` requests redirect or return the existing auth
-  response and never expose board data.
+- [x] Unauthenticated `/board` requests show the existing sign-in surface and
+  never expose board data.
 - [x] Sign-out clears selected board, cards, statuses, archive data, and URL
   state.
 - [x] Board navigation appears immediately after Sessions.
