@@ -176,6 +176,25 @@ class KnowIntegrationTest {
     assertEquals("Timeline card", gantt.getBody().get(0).get("title").asText());
   }
 
+  @Test
+  void archivedBoardsAreRetainedReadOnlyAndArchiveRestoreIsIdempotent() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> created = post("/api/v1/boards", token, json("name", "Retained board"));
+    assertEquals(HttpStatus.CREATED, created.getStatusCode());
+    String boardId = created.getBody().get("id").asText();
+
+    assertEquals(HttpStatus.OK, post("/api/v1/boards/" + boardId + "/archive", token, "{}").getStatusCode());
+    assertEquals(HttpStatus.OK, post("/api/v1/boards/" + boardId + "/archive", token, "{}").getStatusCode());
+    assertEquals(HttpStatus.CONFLICT, post("/api/v1/boards/" + boardId + "/cards", token, "{\"title\":\"blocked\"}").getStatusCode());
+
+    ResponseEntity<JsonNode> archived = get("/api/v1/boards?archived=true", token);
+    assertEquals(HttpStatus.OK, archived.getStatusCode());
+    assertTrue(archived.getBody().findValuesAsText("id").contains(boardId));
+
+    assertEquals(HttpStatus.OK, post("/api/v1/boards/" + boardId + "/restore", token, "{}").getStatusCode());
+    assertEquals(HttpStatus.OK, post("/api/v1/boards/" + boardId + "/restore", token, "{}").getStatusCode());
+  }
+
   // Criteria: password-hashed registration / login and JWT auth
 
   @Test
