@@ -61,7 +61,8 @@ Unchecked items are intentionally incomplete.
   and allow a successful retry.
 - [x] Other failed card saves keep the editor open, preserve the draft, and
   allow a successful retry in browser acceptance coverage.
-- [ ] Timeout-specific save recovery is covered.
+- [x] API abort timeouts leave the current card intact in store tests.
+- [ ] Timeout-specific editor feedback and retry are covered end to end.
 
 ## E. Kanban behavior
 
