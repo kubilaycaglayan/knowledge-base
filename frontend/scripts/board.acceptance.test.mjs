@@ -12,7 +12,7 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
@@ -27,7 +27,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     const request = route.request();
     const method = request.method();
     if (failBoard && path === "/boards/board-1/statuses") { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "offline" }) }); return; }
-    if (path === "/boards") body = [board];
+    if (path === "/boards") body = archivedBoard ? [] : [board];
     else if (path === "/boards/board-1/statuses") body = fixtureStatuses;
     else if (path === "/boards/board-1/cards") body = fixtureCards;
     else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
@@ -124,6 +124,13 @@ describe("board browser acceptance", () => {
     await page.getByRole("combobox", { name: "Current board" }).waitFor();
     assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), "board-1");
     assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
+  });
+
+  it("shows an explicit empty state for an archived board query with no active boards", async (t) => {
+    const { page } = await fixture(t, 390, false, false, false, true);
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=archived-board&view=kanban`);
+    await page.getByRole("heading", { name: "Create your first board" }).waitFor();
+    assert.equal(await page.locator(".board-card").count(), 0);
   });
 
   it("provides a compact add-board plus action", async (t) => {
