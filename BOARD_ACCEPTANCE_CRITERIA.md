@@ -109,8 +109,9 @@ Unchecked items are intentionally incomplete.
 - [x] Cards without dates are omitted with a clear explanation.
 - [x] Editing a timeline card to an out-of-window date immediately removes its
   bar while retaining the same card in Kanban.
-- [ ] Moving, archiving, restoring, and creating a dated card while viewing
-  Gantt immediately reconciles with Kanban.
+- [x] Moving, archiving, restoring, and creating a dated card while viewing
+  Gantt immediately reconciles with Kanban in the store contract tests.
+- [ ] The same Gantt mutation reconciliation is covered end to end.
 - [x] Archived statuses/cards and out-of-window cards are excluded correctly
   by the API and shared Gantt reconciliation.
 - [x] Mobile timeline scrolling is intentional; desktop layout is supported.
