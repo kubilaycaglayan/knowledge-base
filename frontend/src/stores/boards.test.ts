@@ -98,6 +98,26 @@ describe("boards store concurrency", () => {
     expect(store.ganttCards[0].position).toBe(3);
   });
 
+  it("rejects archived or unknown move destinations before mutating the card", async () => {
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.statuses = [
+      { id: "backlog", name: "Backlog", position: 0, archived: false },
+      { id: "archived", name: "Archived", position: 1, archived: true },
+    ];
+    const card = { id: "card", statusId: "backlog", title: "Safe", body: "{}", priority: "MEDIUM" as const, position: 2, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.cards = [card];
+
+    await expect(store.moveCard(card, "archived", 0)).rejects.toThrow("Invalid card destination");
+    await expect(store.moveCard(card, "missing", 0)).rejects.toThrow("Invalid card destination");
+    await expect(store.moveCard(card, "backlog", -1)).rejects.toThrow("Invalid card destination");
+
+    expect(card.statusId).toBe("backlog");
+    expect(card.position).toBe(2);
+    expect(apiMock).not.toHaveBeenCalled();
+  });
+
   it("persists status order and replaces the local order from the server", async () => {
     apiMock.mockResolvedValue([
       { id: "done", name: "Done", position: 0, archived: false },
