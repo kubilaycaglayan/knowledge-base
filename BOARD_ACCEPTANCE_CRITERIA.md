@@ -97,8 +97,10 @@ Unchecked items are intentionally incomplete.
 - [x] Duplicate boundary requests are coalesced, stale lazy-page responses
   cannot append cards after a board switch, and failed-page retry is covered
   at the store level.
-- [ ] Duplicate boundary requests, stale board responses, and failed-page
-  retry are covered end to end.
+- [x] Failed lazy-page retry is covered end to end without losing the initial
+  page.
+- [ ] Duplicate boundary requests and stale board responses are covered end to
+  end.
 - [ ] Offline, 401, 404, 409, timeout, and recoverable mutation states have
   visible, dismissible feedback.
 - [x] Gantt load failures set a visible, dismissible retry message and clear
