@@ -53,7 +53,8 @@ Unchecked items are intentionally incomplete.
 
 - [x] Active cards render in their board-owned active status columns.
 - [x] Kanban and Gantt are views of the same cards, not separate card sets.
-- [ ] Pointer, touch, and keyboard movement all provide equivalent actions.
+- [x] Pointer drag, touch tap, and keyboard Enter movement alternatives are
+  covered for card status movement.
 - [x] Optimistic movement rolls back after failure and archived-status drops
   are rejected.
 - [ ] Position ordering, rapid moves, stale writes, invalid drops, and dense
