@@ -160,6 +160,22 @@ class KnowIntegrationTest {
         String.class);
   }
 
+  @Test
+  void ganttReturnsDatedCardsWithOpenViewDisabled() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> board = post("/api/v1/boards", token, json("name", "Gantt integration"));
+    assertEquals(HttpStatus.CREATED, board.getStatusCode());
+    String boardId = board.getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> card = post("/api/v1/boards/" + boardId + "/cards", token,
+        "{\"title\":\"Timeline card\",\"body\":\"{}\",\"priority\":\"MEDIUM\",\"startDate\":\"2026-09-22\",\"dueDate\":\"2026-09-24\"}");
+    assertEquals(HttpStatus.CREATED, card.getStatusCode());
+
+    ResponseEntity<JsonNode> gantt = get("/api/v1/boards/" + boardId + "/gantt?from=2026-09-22&to=2026-09-24", token);
+    assertEquals(HttpStatus.OK, gantt.getStatusCode());
+    assertEquals("Timeline card", gantt.getBody().get(0).get("title").asText());
+  }
+
   // Criteria: password-hashed registration / login and JWT auth
 
   @Test
