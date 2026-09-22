@@ -177,6 +177,8 @@ describe("board browser acceptance", () => {
   it("archives a card and restores it from the archived-card list", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Archive Ship timeline" }).click();
+    await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
     await page.getByRole("button", { name: "Show archived cards" }).click();
     await page.getByText("Ship timeline", { exact: true }).last().waitFor();
     await page.getByRole("button", { name: "Restore" }).first().click();
