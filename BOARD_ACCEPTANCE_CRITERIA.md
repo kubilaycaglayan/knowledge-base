@@ -130,7 +130,8 @@ Unchecked items are intentionally incomplete.
 - [x] Every board, status, card, path, and label reference is scoped to the
   authenticated user and selected board.
 - [x] A card’s single active path inherits its color.
-- [ ] Archived paths and deleted labels do not leak into board UI.
+- [x] Archived paths and deleted BOARD labels do not leak into the board
+  editor or card controls.
 - [ ] Cross-user and cross-board IDs consistently return the documented error.
 - [x] Adding `BOARD` labels does not alter existing label scopes.
 
