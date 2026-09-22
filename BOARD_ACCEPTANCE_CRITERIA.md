@@ -13,8 +13,9 @@ Unchecked items are intentionally incomplete.
   state.
 - [x] Board navigation appears immediately after Sessions.
 - [x] `board`, `view`, `from`, and `to` survive reload and Back/Forward.
-- [ ] Invalid, missing, or archived board IDs resolve to a valid board or a
-  clear empty state without stale cards.
+- [x] Invalid or missing board IDs resolve to the available board without
+  stale cards; browser coverage verifies the URL is canonicalized.
+- [ ] Archived board IDs resolve to a valid board or a clear empty state.
 
 ## B. Board lifecycle
 
@@ -66,8 +67,9 @@ Unchecked items are intentionally incomplete.
   Kanban/Gantt results.
 - [x] Archived-card view provides filtering and restore with fallback to an
   active status when the previous status is archived; counts remain.
-- [ ] Archive/restore is idempotent and destructive actions provide confirmation
-  or an undo path.
+- [ ] Archive/restore is idempotent.
+- [x] Destructive board archival provides an accessible confirmation dialog;
+  cancellation sends no request.
 
 ## G. Pagination and resilience
 
