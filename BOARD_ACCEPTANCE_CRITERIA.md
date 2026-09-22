@@ -15,7 +15,8 @@ Unchecked items are intentionally incomplete.
 - [x] `board`, `view`, `from`, and `to` survive reload and Back/Forward.
 - [x] Invalid or missing board IDs resolve to the available board without
   stale cards; browser coverage verifies the URL is canonicalized.
-- [ ] Archived board IDs resolve to a valid board or a clear empty state.
+- [x] Archived board IDs with no active boards show an explicit empty state
+  without stale cards.
 
 ## B. Board lifecycle
 
