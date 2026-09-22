@@ -59,7 +59,7 @@ async function archiveCurrent() { if (!store.selectedId) return; await store.arc
 async function toggleArchived() { showArchived.value = !showArchived.value; if (showArchived.value) await store.loadBoards(true); }
 async function restoreBoard(id: string) { await store.archiveBoard(id, true); await store.loadBoards(true); }
 onMounted(async () => { await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested && boards.value.some((board) => board.id === requested)) store.selectedId = requested; await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
-watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); });
+watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 onBeforeUnmount(() => { pageObservers.forEach((observer) => observer.disconnect()); destroyCardEditor(); });
 </script>

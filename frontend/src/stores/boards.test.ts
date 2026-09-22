@@ -161,4 +161,22 @@ describe("boards store concurrency", () => {
     expect(store.cards).toEqual([restored]);
     expect(store.ganttCards).toEqual([restored]);
   });
+
+  it("clears the previous board timeline while the next board loads", async () => {
+    apiMock.mockImplementation((path: string) => path.endsWith("/statuses")
+      ? Promise.resolve([{ id: "next-status", name: "Backlog", position: 0, archived: false }])
+      : Promise.resolve({ items: [], nextCursor: null }));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "next-board";
+    store.ganttFrom = "2026-09-01";
+    store.ganttTo = "2026-09-30";
+    store.ganttCards = [{ id: "old-card", statusId: "old-status", title: "Old board", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+
+    await store.loadBoard();
+
+    expect(store.ganttCards).toEqual([]);
+    expect(store.ganttFrom).toBe("");
+    expect(store.ganttTo).toBe("");
+  });
 });
