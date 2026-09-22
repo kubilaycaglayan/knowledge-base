@@ -111,4 +111,18 @@ describe("boards store concurrency", () => {
     expect(store.ganttCards).toEqual([]);
     expect(store.archivedCards).toEqual([]);
   });
+
+  it("coalesces duplicate board creation requests", async () => {
+    const response = { id: "new-board", name: "New board", archived: false, createdAt: "", updatedAt: "" };
+    const deferredRequest = deferred<typeof response>();
+    apiMock.mockImplementation((path: string) => path === "/boards" ? deferredRequest.promise : Promise.resolve([]));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    const first = store.createBoard("New board");
+    const second = store.createBoard("New board");
+    deferredRequest.resolve(response);
+    await expect(first).resolves.toEqual(response);
+    await expect(second).resolves.toBeNull();
+    expect(apiMock.mock.calls.filter(([path]) => path === "/boards")).toHaveLength(1);
+  });
 });
