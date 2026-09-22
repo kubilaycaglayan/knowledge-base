@@ -14,7 +14,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     css: true,
-    exclude: ["node_modules", "scripts/session-tracker.acceptance.test.mjs"],
+    exclude: [
+      "node_modules",
+      "scripts/session-tracker.acceptance.test.mjs",
+      "scripts/board.acceptance.test.mjs",
+    ],
     server: { deps: { inline: ["vuetify"] } },
   },
 });
