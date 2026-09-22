@@ -2,6 +2,14 @@
 
 The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, boards, and Flyway migrations. Board checks should cover default statuses, nested ownership, invalid date ranges, status archive safeguards, card archive/restore, cursor pages, and Gantt overlap filtering for single, open-ended, and inclusive ranges.
 
+Board browser coverage has two layers: `node --test frontend/scripts/board.acceptance.test.mjs`
+uses fast isolated API fixtures for deterministic mobile, keyboard, Gantt, archive,
+and pagination feedback; `./scripts/run-board-e2e.sh` creates a uniquely named,
+disposable Compose project with generated local credentials and runs
+`frontend/scripts/board.real-stack.acceptance.test.mjs` against the real API,
+PostgreSQL, proxy, and browser. The runner cleans only its own Compose project
+and volumes.
+
 Run the required checks from the repository root:
 
 ```bash

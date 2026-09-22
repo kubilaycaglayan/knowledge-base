@@ -18,6 +18,7 @@ export default defineConfig({
       "node_modules",
       "scripts/session-tracker.acceptance.test.mjs",
       "scripts/board.acceptance.test.mjs",
+      "scripts/board.real-stack.acceptance.test.mjs",
     ],
     server: { deps: { inline: ["vuetify"] } },
   },
