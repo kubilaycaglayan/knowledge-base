@@ -126,6 +126,12 @@ describe("board browser acceptance", () => {
     assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
   });
 
+  it("provides a compact add-board plus action", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Add board" }).click();
+    assert.equal(await page.getByRole("textbox", { name: "New board name" }).evaluate((input) => document.activeElement === input), true);
+  });
+
   it("creates a blank-title card and safely protects unsaved edits", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("textbox", { name: "New card title" }).fill("");
