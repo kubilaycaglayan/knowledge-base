@@ -85,6 +85,8 @@ Unchecked items are intentionally incomplete.
   retry are covered end to end.
 - [ ] Offline, 401, 404, 409, timeout, and recoverable mutation states have
   visible, dismissible feedback.
+- [x] Gantt load failures set a visible, dismissible retry message and clear
+  stale timeline cards.
 - [ ] Concurrent tabs do not overwrite newer board/card state with stale data.
 
 ## H. Gantt timeline
