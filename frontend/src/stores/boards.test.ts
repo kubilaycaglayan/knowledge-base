@@ -125,4 +125,40 @@ describe("boards store concurrency", () => {
     await expect(second).resolves.toBeNull();
     expect(apiMock.mock.calls.filter(([path]) => path === "/boards")).toHaveLength(1);
   });
+
+  it("reconciles edited dates with the active Gantt window", async () => {
+    const saved = { id: "card", statusId: "backlog", title: "Dated", body: "{}", priority: "MEDIUM" as const, startDate: "2026-10-01", dueDate: "2026-10-02", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    apiMock.mockResolvedValue(saved);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.ganttFrom = "2026-09-01";
+    store.ganttTo = "2026-09-30";
+    const card = { ...saved, startDate: "2026-09-10", dueDate: "2026-09-11" };
+    store.cards = [card];
+    store.ganttCards = [card];
+
+    await store.updateCard(card, { title: "Dated", body: "{}", priority: "MEDIUM", startDate: "2026-10-01", dueDate: "2026-10-02" });
+
+    expect(store.cards[0].startDate).toBe("2026-10-01");
+    expect(store.ganttCards).toEqual([]);
+  });
+
+  it("re-adds a restored dated card only when it overlaps the Gantt window", async () => {
+    const restored = { id: "card", statusId: "backlog", title: "Restored", body: "{}", priority: "MEDIUM" as const, startDate: "2026-09-10", dueDate: "2026-09-12", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    apiMock.mockResolvedValue(restored);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.ganttFrom = "2026-09-01";
+    store.ganttTo = "2026-09-30";
+    const archived = { ...restored, archived: true };
+    store.archivedCards = [archived];
+    store.ganttCards = [];
+
+    await store.archiveCard(archived, true);
+
+    expect(store.cards).toEqual([restored]);
+    expect(store.ganttCards).toEqual([restored]);
+  });
 });
