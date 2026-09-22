@@ -101,6 +101,26 @@ class BoardControllerApiTest {
     assertEquals(false, card.isArchived());
   }
 
+  @Test void movingCardReordersItsDestinationColumn() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    UUID statusId = status.getId();
+    BoardCard moving = new BoardCard(boardId, statusId, 0);
+    BoardCard remaining = new BoardCard(boardId, statusId, 1);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(statusId, boardId)).thenReturn(Optional.of(status));
+    when(cards.findByIdAndBoardId(moving.getId(), boardId)).thenReturn(Optional.of(moving));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(boardId, statusId)).thenReturn(List.of(moving, remaining));
+    when(cards.save(any(BoardCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards/" + moving.getId() + "/move").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"statusId\":\"" + statusId + "\",\"position\":1}"))
+        .andExpect(status().isOk());
+    assertEquals(1, moving.getPosition());
+    assertEquals(0, remaining.getPosition());
+    verify(cards).saveAll(anyCollection());
+  }
+
   @Test void invalidCardDateRangeIsRejectedBeforePersistence() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
