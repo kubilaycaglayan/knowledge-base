@@ -56,6 +56,29 @@ class BoardControllerApiTest {
     mvc.perform(get("/api/v1/boards/" + boardId).with(authentication(auth()))).andExpect(status().isNotFound());
   }
 
+  @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
+    Board board = new Board(owner, "Archived");
+    board.archive();
+    UUID boardId = board.getId();
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    mvc.perform(get("/api/v1/boards/" + boardId).with(authentication(auth()))).andExpect(status().isOk()).andExpect(jsonPath("$.archived").value(true));
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"blocked\"}"))
+        .andExpect(status().isConflict());
+    verifyNoInteractions(statuses, cards);
+  }
+
+  @Test void finalActiveStatusCannotBeArchived() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), statusId = UUID.randomUUID();
+    BoardStatus status = new BoardStatus(boardId, "Only", 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(statusId, boardId)).thenReturn(Optional.of(status));
+    when(statuses.findAllByBoardIdOrderByPosition(boardId)).thenReturn(List.of(status));
+    mvc.perform(post("/api/v1/boards/" + boardId + "/statuses/" + statusId + "/archive").with(authentication(auth())))
+        .andExpect(status().isConflict());
+    verify(statuses, never()).save(any(BoardStatus.class));
+  }
+
   @Test void invalidCardDateRangeIsRejectedBeforePersistence() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();

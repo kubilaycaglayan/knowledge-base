@@ -38,6 +38,16 @@ async function fixture(t, width = 390) {
     if (method === "POST" && path === "/boards/board-1/cards/card-1/restore") {
       cards[0].archived = false; body = cards[0];
     }
+    if (method === "POST" && path === "/boards/board-1/cards/card-1/move") {
+      const requestBody = request.postDataJSON();
+      cards[0].statusId = requestBody.statusId;
+      cards[0].position = requestBody.position;
+      body = cards[0];
+    }
+    if (method === "PUT" && path === "/boards/board-1/statuses/status-0") {
+      statuses[0].name = request.postDataJSON().name;
+      body = statuses[0];
+    }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   const page = await context.newPage();
@@ -93,5 +103,15 @@ describe("board browser acceptance", () => {
     await page.getByText("Ship timeline", { exact: true }).last().waitFor();
     await page.getByRole("button", { name: "Restore" }).first().click();
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
+  it("renames a status and moves a card with the keyboard alternative", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Rename Backlog" }).click();
+    await page.getByRole("textbox", { name: "Rename Backlog" }).fill("Ready");
+    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("heading", { name: "Ready" }).waitFor();
+    await page.getByRole("button", { name: "Move card to next status" }).first().click();
+    await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 });

@@ -91,3 +91,17 @@ not be described as complete.
 - [ ] Axe/Playwright verifies mobile and desktop Kanban/Gantt states.
 - [ ] Existing Sessions, Paths, Labels, Notes, Calendar, Reports, import,
   extension, security, and accessibility checks remain green.
+
+## 11. Views and UI
+- [] Prefer no texts, no explanations, no titles unless it is the necessary.
+- [] Be compact whenever possible, smaller margins and paddings, but still within the standards.
+- [] Do not show JSON objects "{}" in the UI.
+- [] Prefer icon buttons over text buttons.
+- [] Cover error management with proper error messages.
+- [] Different boards can be tabs under the Board page.
+- [] To add a board, we should use a plus button.
+- [] Kanban/Gantt selection is closer to the card's view: top right.
+- [] Archive buttons should be at the end of the page end should take to a different page.
+- []
+- []
+- []
