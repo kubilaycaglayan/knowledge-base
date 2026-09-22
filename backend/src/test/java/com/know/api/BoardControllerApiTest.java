@@ -89,6 +89,22 @@ class BoardControllerApiTest {
     verifyNoInteractions(cards);
   }
 
+  @Test void cardRejectsMoreThanOnePath() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), statusId = UUID.randomUUID(), firstPath = UUID.randomUUID(), secondPath = UUID.randomUUID();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findAllByBoardIdOrderByPosition(boardId)).thenReturn(List.of(status));
+    when(paths.findByUserIdAndIdIn(owner, List.of(firstPath, secondPath))).thenReturn(List.of(
+        Path.imported(firstPath, owner, "One", null, "#111111", PathStatus.ACTIVE, null, null),
+        Path.imported(secondPath, owner, "Two", null, "#222222", PathStatus.ACTIVE, null, null)));
+    when(scopes.existsByIdLabelIdAndIdScope(any(), eq(LabelScopeType.BOARD))).thenReturn(true);
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"single path\",\"pathIds\":[\"" + firstPath + "\",\"" + secondPath + "\"]}"))
+        .andExpect(status().isBadRequest());
+    verify(cards, never()).save(any(BoardCard.class));
+  }
+
   @Test void ganttAcceptsSingleDayAndOpenEndedCardsThatOverlapTheWindow() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();

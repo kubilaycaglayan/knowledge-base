@@ -78,6 +78,7 @@ public class BoardController {
 
   private void apply(Authentication auth, Board board, BoardCard card, CardRequest request) {
     validateDates(request);
+    if (request.pathIds() != null && request.pathIds().stream().distinct().count() > 1) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A card may reference only one path");
     card.update(request.title(), request.body(), request.priority(), request.startDate(), request.dueDate());
     UUID owner = user(auth);
     List<Path> ownedPaths = request.pathIds() == null ? List.of() : paths.findByUserIdAndIdIn(owner, request.pathIds());

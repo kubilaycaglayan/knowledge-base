@@ -72,6 +72,7 @@ describe("board browser acceptance", () => {
 
   it("keeps Kanban usable on mobile and passes axe checks", async (t) => {
     const { page } = await fixture(t);
+    await page.locator(".kanban-column").first().waitFor();
     assert.equal(await page.locator(".kanban-column").count(), 4);
     assert.ok(await page.locator(".kanban").evaluate((element) => element.scrollWidth >= element.clientWidth));
     const results = await new AxeBuilder({ page }).analyze();
@@ -81,6 +82,8 @@ describe("board browser acceptance", () => {
   it("renders the first active path color as the card outliner accent", async (t) => {
     const { page } = await fixture(t);
     assert.equal(await page.locator(".board-card").first().evaluate((element) => getComputedStyle(element).borderInlineStartColor), "rgb(18, 171, 120)");
+    await page.locator(".board-card").first().click();
+    assert.equal(await page.getByRole("radio").count(), 1);
   });
 
   it("restores board route state through browser history", async (t) => {
