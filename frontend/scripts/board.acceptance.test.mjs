@@ -12,11 +12,12 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
   const fixtureStatuses = statuses.map((status) => ({ ...status }));
+  if (archivedStatus) fixtureStatuses[3].archived = true;
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
@@ -56,6 +57,10 @@ async function fixture(t, width = 390, dense = false, failBoard = false) {
       const ids = request.postDataJSON().ids;
       fixtureStatuses.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)).forEach((status, index) => { status.position = index; });
       body = fixtureStatuses;
+    }
+    if (method === "POST" && path === "/boards/board-1/statuses/status-3/restore") {
+      fixtureStatuses[3].archived = false;
+      body = fixtureStatuses[3];
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
@@ -140,6 +145,13 @@ describe("board browser acceptance", () => {
     await page.locator(".kanban-column").first().locator("h2").filter({ hasText: "Pending" }).waitFor();
     assert.equal(await page.locator(".kanban-column").nth(0).locator("h2").innerText(), "Pending");
     assert.equal(await page.locator(".kanban-column").nth(1).locator("h2").innerText(), "Backlog");
+  });
+
+  it("reveals and restores archived statuses", async (t) => {
+    const { page } = await fixture(t, 390, false, false, true);
+    await page.getByRole("button", { name: "Show archived statuses" }).click();
+    await page.getByRole("button", { name: "Restore Done status" }).click();
+    await page.locator(".kanban-column").filter({ has: page.locator("h2", { hasText: "Done" }) }).waitFor();
   });
 
   it("loads a dense column in a 20-card page and exposes the next page", async (t) => {
