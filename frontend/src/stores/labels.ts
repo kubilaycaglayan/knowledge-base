@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { api } from "../lib/api";
 
-export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY" | "LOG";
+export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY" | "LOG" | "BOARD";
 export type Label = {
   id: string;
   name: string;

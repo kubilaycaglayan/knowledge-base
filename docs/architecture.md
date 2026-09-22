@@ -4,6 +4,13 @@ The backend is a modular monolith. Docker PostgreSQL is the only live system of 
 
 The first vertical slice is authentication and paths. Reusable session labels, notes, activities, timers, and statistics build on the same user boundary and versioned `/api/v1` API.
 
+Boards are a separate user-owned aggregate. PostgreSQL stores boards, ordered
+statuses, cards, path relationships, and label relationships in the plural
+`boards`/`board_*` tables introduced by `V43__boards.sql`. The service keeps
+board ownership checks at every nested lookup, stores card bodies as the same
+Tiptap-compatible JSON used by notes, and treats date ranges as inclusive. The
+web client is the first board client; iOS parity is intentionally deferred.
+
 Timer synchronization uses a hybrid model. REST commands (`start`, `stop`, `cancel`, and
 `configure`) mutate the server-owned timer in PostgreSQL. After a successful transaction,
 the backend publishes a user-scoped full timer snapshot over the native `/ws/timers`

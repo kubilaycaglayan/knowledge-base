@@ -44,3 +44,20 @@
 - [x] Backend tests and integration tests pass.
 - [ ] Full repository accessibility, security, smoke, build, and shell checks
       pass before final handoff.
+
+## Multi-board workspace
+
+- [x] Authenticated users can create, name, select, rename, archive, restore,
+  and URL-select multiple boards; new boards seed four ordered statuses.
+- [x] Boards, statuses, cards, and linked paths/labels enforce authenticated
+  ownership and reject cross-user references.
+- [x] Cards support blank-compatible titles, Tiptap-compatible body JSON,
+  priority, optional inclusive start/due dates, multiple paths, and `BOARD`
+  labels; invalid date ranges are rejected.
+- [x] Statuses support creation, rename, ordering, archive, restore, and card
+  reassignment; the final active status cannot be archived.
+- [x] Cards support mobile Kanban creation/editing, archive/restore, and a
+  date-filtered Gantt view with intentional horizontal overflow.
+- [x] Board controls provide keyboard-operable native controls, accessible
+  names, visible focus, mobile-sized targets, sparse/error states, and reduced
+  motion behavior.

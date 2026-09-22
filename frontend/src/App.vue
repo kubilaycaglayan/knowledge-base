@@ -91,7 +91,7 @@ function authenticated() {
           to="/notes"
           :class="{ 'section-active': route?.path.startsWith('/notes/') }"
           >Notes</RouterLink
-        ><RouterLink to="/reports">Reports</RouterLink>
+        ><RouterLink to="/board">Board</RouterLink><RouterLink to="/reports">Reports</RouterLink>
         <RouterLink to="/labels">Labels</RouterLink>
       </nav>
       <div class="shell-actions">

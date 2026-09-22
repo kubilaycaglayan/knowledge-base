@@ -81,3 +81,7 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 
 - [x] Resolve the September 2026 timer, session, notes, mobile layout, and page-title regressions; acceptance criteria are recorded in `docs/bug-acceptance-checklists.md`.
 - [x] Add hourly Neon snapshot refreshes alongside seven-day local backups, with explicit target confirmation, integrity verification, and documented disposable-database recovery.
+- [x] Add the first web-first multi-board vertical slice with user-owned boards,
+  statuses, cards, archive/restore, path and `BOARD` label relationships, a
+  mobile Kanban view, and a date-filtered Gantt view. iOS parity remains a
+  later milestone.

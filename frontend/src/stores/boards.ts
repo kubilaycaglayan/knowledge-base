@@ -1,0 +1,27 @@
+import { defineStore } from "pinia";
+import { api } from "../lib/api";
+
+export type Board = { id: string; name: string; archived: boolean; createdAt: string; updatedAt: string };
+export type BoardStatus = { id: string; name: string; position: number; archived: boolean };
+export type BoardCard = { id: string; statusId: string; title: string; body: string; priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT"; startDate?: string; dueDate?: string; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string };
+type CardInput = Pick<BoardCard, "title" | "body" | "priority"> & { startDate?: string; dueDate?: string; pathIds?: string[]; labelIds?: string[] };
+
+export const useBoardsStore = defineStore("boards", {
+  state: () => ({ boards: [] as Board[], archivedBoards: [] as Board[], statuses: [] as BoardStatus[], cards: [] as BoardCard[], ganttCards: [] as BoardCard[], archivedCards: [] as BoardCard[], selectedId: "", loading: false, error: "" }),
+  getters: { selected: (state) => state.boards.find((board) => board.id === state.selectedId) },
+  actions: {
+    async loadBoards(includeArchived = false) { this.loading = true; this.error = ""; try { const items = await api<Board[]>(`/boards?archived=${includeArchived}`); if (includeArchived) this.archivedBoards = items; else { this.boards = items; if (!this.selectedId || !items.some((b) => b.id === this.selectedId)) this.selectedId = items[0]?.id || ""; } } catch { this.error = "Unable to load boards."; } finally { this.loading = false; } },
+    async createBoard(name: string) { const board = await api<Board>("/boards", { method: "POST", body: JSON.stringify({ name }) }); this.boards.unshift(board); this.selectedId = board.id; await this.loadBoard(); return board; },
+    async archiveBoard(id: string, restore = false) { const board = await api<Board>(`/boards/${id}/${restore ? "restore" : "archive"}`, { method: "POST" }); this.boards = this.boards.filter((item) => item.id !== id); this.archivedBoards = this.archivedBoards.filter((item) => item.id !== id); if (restore) this.boards.unshift(board); if (this.selectedId === id) this.selectedId = this.boards[0]?.id || ""; return board; },
+    async loadBoard() { if (!this.selectedId) { this.statuses = []; this.cards = []; this.ganttCards = []; return; } this.loading = true; try { [this.statuses, this.cards] = await Promise.all([api<BoardStatus[]>(`/boards/${this.selectedId}/statuses`), api<BoardCard[]>(`/boards/${this.selectedId}/cards`)]); } catch { this.error = "Unable to load this board."; } finally { this.loading = false; } },
+    async loadGantt(from: string, to: string) { if (!this.selectedId) { this.ganttCards = []; return; } this.ganttCards = await api<BoardCard[]>(`/boards/${this.selectedId}/gantt?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`); },
+    async loadArchivedCards() { if (!this.selectedId) return; this.archivedCards = await api<BoardCard[]>(`/boards/${this.selectedId}/cards?archived=true`); },
+    async createCard(input: CardInput) { const card = await api<BoardCard>(`/boards/${this.selectedId}/cards`, { method: "POST", body: JSON.stringify(input) }); this.cards.push(card); return card; },
+    async updateCard(card: BoardCard, input: CardInput) { const saved = await api<BoardCard>(`/boards/${this.selectedId}/cards/${card.id}`, { method: "PUT", body: JSON.stringify(input) }); const index = this.cards.findIndex((item) => item.id === card.id); if (index >= 0) this.cards[index] = saved; const ganttIndex = this.ganttCards.findIndex((item) => item.id === card.id); if (ganttIndex >= 0) this.ganttCards[ganttIndex] = saved; return saved; },
+    async moveCard(card: BoardCard, statusId: string, position: number) { const previous = { statusId: card.statusId, position: card.position }; card.statusId = statusId; card.position = position; try { const saved = await api<BoardCard>(`/boards/${this.selectedId}/cards/${card.id}/move`, { method: "POST", body: JSON.stringify({ statusId, position }) }); Object.assign(card, saved); } catch (error) { Object.assign(card, previous); throw error; } },
+    async archiveCard(card: BoardCard, restore = false) { const saved = await api<BoardCard>(`/boards/${this.selectedId}/cards/${card.id}/${restore ? "restore" : "archive"}`, { method: "POST" }); if (restore) this.cards.push(saved); else this.cards = this.cards.filter((item) => item.id !== card.id); this.ganttCards = this.ganttCards.filter((item) => item.id !== card.id); return saved; },
+    async createStatus(name: string) { const status = await api<BoardStatus>(`/boards/${this.selectedId}/statuses`, { method: "POST", body: JSON.stringify({ name }) }); this.statuses.push(status); return status; },
+    async updateStatus(status: BoardStatus, name: string) { const saved = await api<BoardStatus>(`/boards/${this.selectedId}/statuses/${status.id}`, { method: "PUT", body: JSON.stringify({ name }) }); Object.assign(status, saved); return saved; },
+    async archiveStatus(status: BoardStatus, restore = false) { await api(`/boards/${this.selectedId}/statuses/${status.id}/${restore ? "restore" : "archive"}`, { method: "POST" }); status.archived = !restore; await this.loadBoard(); },
+  },
+});

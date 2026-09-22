@@ -66,6 +66,7 @@ describe("App", () => {
       "Paths",
       "Calendar",
       "Notes",
+      "Board",
       "Reports",
       "Labels",
     ]);

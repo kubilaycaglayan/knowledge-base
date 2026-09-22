@@ -4,5 +4,6 @@ public enum LabelScopeType {
   NOTE,
   CALENDAR,
   TIME_ENTRY,
-  LOG
+  LOG,
+  BOARD
 }
