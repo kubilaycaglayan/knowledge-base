@@ -24,7 +24,8 @@ Unchecked items are intentionally incomplete.
 - [x] New boards seed Backlog, Pending, In Progress, and Done in order.
 - [ ] Add-board uses a compact plus action and duplicate submits are safe.
 - [ ] Concurrent board loads and writes reject stale responses deterministically.
-- [ ] Archived boards cannot receive mutations and remain permanently retained.
+- [x] Archived boards reject mutations, remain permanently retained, and can be
+  restored; authenticated integration coverage verifies this lifecycle.
 
 ## C. Status lifecycle
 
@@ -68,7 +69,8 @@ Unchecked items are intentionally incomplete.
   Kanban/Gantt results.
 - [x] Archived-card view provides filtering and restore with fallback to an
   active status when the previous status is archived; counts remain.
-- [ ] Archive/restore is idempotent.
+- [x] API archive/restore is idempotent; repeated requests preserve the same
+  retained board state.
 - [x] Destructive board archival provides an accessible confirmation dialog;
   cancellation sends no request.
 
