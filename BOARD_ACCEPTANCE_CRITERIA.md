@@ -30,8 +30,8 @@ Unchecked items are intentionally incomplete.
 - [x] Create, rename, archive, restore, and API reorder statuses.
 - [x] Status archive reassigns active cards and protects the final active
   status.
-- [ ] UI reorder, inline name editing, restore, safeguards, keyboard actions,
-  404/409 errors, and retry behavior are covered.
+- [x] UI reorder, inline name editing, and keyboard reorder actions are
+  covered; restore, safeguards, 404/409 errors, and retry behavior remain.
 
 ## D. Cards and editor
 
@@ -40,8 +40,8 @@ Unchecked items are intentionally incomplete.
 - [ ] Each card supports exactly one path; path ownership and color inheritance
   are enforced and tested.
 - [x] Cards support reusable `BOARD` labels without changing existing scopes.
-- [ ] The editor uses the existing Tiptap UI, does not display raw `{}` JSON,
-  supports long content, and preserves focus.
+- [x] The editor uses the existing Tiptap UI and does not display raw `{}` JSON;
+  long-content handling and focus restoration remain.
 - [ ] Date-range selection uses a calendar control and rejects reversed ranges
   inline.
 - [ ] Duplicate submits, failed saves, conflict recovery, retry, and unsaved
