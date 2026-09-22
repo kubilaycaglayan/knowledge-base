@@ -11,6 +11,14 @@ board ownership checks at every nested lookup, stores card bodies as the same
 Tiptap-compatible JSON used by notes, and treats date ranges as inclusive. The
 web client is the first board client; iOS parity is intentionally deferred.
 
+Kanban and Gantt share one Pinia card collection. Gantt is a date-window
+projection of active Kanban cards, while local create/edit/move/archive/restore
+operations reconcile both views immediately. Board-list, board-load, page,
+Gantt, move, and card-edit requests use revisions so late responses cannot
+overwrite newer selected-board state. A failed lazy page stops automatic
+retries and exposes an explicit retry action; card-save failures preserve the
+editor draft.
+
 Timer synchronization uses a hybrid model. REST commands (`start`, `stop`, `cancel`, and
 `configure`) mutate the server-owned timer in PostgreSQL. After a successful transaction,
 the backend publishes a user-scoped full timer snapshot over the native `/ws/timers`

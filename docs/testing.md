@@ -4,11 +4,22 @@ The backend suite covers authentication and ownership boundaries, paths, notes, 
 
 Board browser coverage has two layers: `node --test frontend/scripts/board.acceptance.test.mjs`
 uses fast isolated API fixtures for deterministic mobile, keyboard, Gantt, archive,
-and pagination feedback; `./scripts/run-board-e2e.sh` creates a uniquely named,
+and pagination feedback, including mobile/desktop Axe audits and disposable
+Kanban/Gantt screenshots; `./scripts/run-board-e2e.sh` creates a uniquely named,
 disposable Compose project with generated local credentials and runs
 `frontend/scripts/board.real-stack.acceptance.test.mjs` against the real API,
 PostgreSQL, proxy, and browser. The runner cleans only its own Compose project
 and volumes.
+
+The board store suite covers stale board-list/content/Gantt/page responses,
+stale moves and edits, optimistic rollback, invalid destinations, timeout
+preservation, Gantt reconciliation, and page retry. Run the focused contract
+checks with:
+
+```bash
+(cd frontend && npm test -- --run --no-file-parallelism src/stores/boards.test.ts src/lib/api.test.ts)
+(cd frontend && node --test --test-concurrency=1 scripts/board.acceptance.test.mjs)
+```
 
 Run the required checks from the repository root:
 

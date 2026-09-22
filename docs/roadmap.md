@@ -85,3 +85,7 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   statuses, cards, archive/restore, path and `BOARD` label relationships, a
   mobile Kanban view, and a date-filtered Gantt view. iOS parity remains a
   later milestone.
+- [x] Extend the board slice with shared Kanban/Gantt mutation reconciliation,
+  cursor pagination and explicit page retry, stale-response protection,
+  ownership/error tests, mobile/desktop Axe coverage, and disposable visual
+  evidence.
