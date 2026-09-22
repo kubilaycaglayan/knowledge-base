@@ -13,7 +13,7 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
@@ -22,6 +22,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   let boardArchiveRequests = 0;
   let cardUpdateRequests = 0;
   let cardUpdateFailures = 0;
+  let pageFailures = 0;
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
@@ -32,7 +33,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     if (path === "/boards") body = archivedBoard ? [] : [board];
     else if (path === "/boards/board-1/statuses") body = fixtureStatuses;
     else if (path === "/boards/board-1/cards") body = fixtureCards;
-    else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
+    else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
     else if (path === "/labels") body = [];
@@ -343,6 +344,16 @@ describe("board browser acceptance", () => {
     await page.locator(".load-more-sentinel").first().evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.getByRole("heading", { name: "Dense card 21" }).waitFor();
     assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 21);
+  });
+
+  it("retries a failed lazy page without losing the existing cards", async (t) => {
+    const { page } = await fixture(t, 800, true, false, false, false, false, 409, true);
+    await page.getByRole("heading", { name: "Dense card 20", exact: true }).waitFor();
+    await page.locator(".load-more-sentinel").first().evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await page.getByRole("button", { name: "Retry loading cards" }).waitFor();
+    assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 20);
+    await page.getByRole("button", { name: "Retry loading cards" }).click();
+    await page.getByRole("heading", { name: "Dense card 21", exact: true }).waitFor();
   });
 
   it("lets the user dismiss a recoverable board-load error", async (t) => {
