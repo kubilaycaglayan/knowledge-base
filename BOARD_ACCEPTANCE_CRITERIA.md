@@ -74,8 +74,10 @@ Unchecked items are intentionally incomplete.
 ## G. Pagination and resilience
 
 - [x] Each status loads an initial page of 20 cards and lazy-loads later pages.
-- [ ] Tests cover 0, 1–20, exactly 20, and 21+ cards, duplicate boundary
-  requests, cursor correctness, stale board responses, and failed-page retry.
+- [x] API tests cover 0, 1, exactly 20, and 21-card page boundaries with
+  stable cursor/null-cursor assertions.
+- [ ] Duplicate boundary requests, stale board responses, and failed-page
+  retry are covered end to end.
 - [ ] Offline, 401, 404, 409, timeout, and recoverable mutation states have
   visible, dismissible feedback.
 - [ ] Concurrent tabs do not overwrite newer board/card state with stale data.
