@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { existsSync, mkdtempSync } from "node:fs";
 import { after, before, describe, it } from "node:test";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { createServer } from "vite";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
 let server, browser;
+const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screenshots-"));
 const board = { id: "board-1", name: "Product", archived: false };
 const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false }));
 const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0, 10); };
@@ -187,6 +191,18 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+  });
+
+  it("captures disposable Kanban and Gantt screenshots without repository artifacts", async (t) => {
+    const { page } = await fixture(t, 390);
+    const kanbanPath = join(screenshotDir, "kanban-mobile.png");
+    const ganttPath = join(screenshotDir, "gantt-mobile.png");
+    await page.screenshot({ path: kanbanPath, fullPage: true });
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    await page.screenshot({ path: ganttPath, fullPage: true });
+    assert.equal(existsSync(kanbanPath), true);
+    assert.equal(existsSync(ganttPath), true);
   });
 
   it("renders the first active path color as the card outliner accent", async (t) => {
