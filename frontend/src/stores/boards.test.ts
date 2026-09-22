@@ -64,4 +64,18 @@ describe("boards store concurrency", () => {
     expect(store.pageCursors.status).toBeNull();
     expect(store.error).toBe("");
   });
+
+  it("reconciles a moved card in both Kanban and Gantt collections", async () => {
+    apiMock.mockResolvedValue({ id: "card", statusId: "done", position: 3, title: "Shared", body: "{}", priority: "MEDIUM", archived: false, pathIds: [], labelIds: [] });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    const kanbanCard = { id: "card", statusId: "backlog", title: "Shared", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.cards = [kanbanCard];
+    store.ganttCards = [{ ...kanbanCard }];
+    await store.moveCard(kanbanCard, "done", 3);
+    expect(store.cards[0].statusId).toBe("done");
+    expect(store.ganttCards[0].statusId).toBe("done");
+    expect(store.ganttCards[0].position).toBe(3);
+  });
 });
