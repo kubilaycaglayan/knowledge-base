@@ -101,6 +101,8 @@ describe("board browser acceptance", () => {
     await page.getByRole("button", { name: "Add card" }).click();
     await page.getByRole("heading", { name: "Untitled card" }).waitFor();
     await page.locator(".board-card").last().click();
+    assert.equal(await page.locator(".card-editor textarea[name=body]").count(), 0);
+    assert.equal(await page.locator(".card-editor .ProseMirror").count(), 1);
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Unsaved change");
     await page.getByRole("button", { name: "Cancel" }).click();
     assert.equal(await page.getByRole("heading", { name: "Discard unsaved changes?" }).count(), 1);
