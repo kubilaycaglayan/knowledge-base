@@ -49,8 +49,9 @@ Unchecked items are intentionally incomplete.
   long-content handling and focus restoration remain.
 - [x] Native date calendar controls reject reversed card ranges inline and
   preserve the editor without sending an invalid save.
-- [ ] Duplicate submits, failed saves, conflict recovery, retry, and unsaved
-  changes are safe.
+- [x] Duplicate card saves are coalesced and show a Saving… state; unsaved
+  changes remain protected.
+- [ ] Failed saves, conflict recovery, and retry behavior are covered.
 
 ## E. Kanban behavior
 
