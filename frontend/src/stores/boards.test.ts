@@ -13,6 +13,25 @@ const deferred = <T>() => {
 describe("boards store concurrency", () => {
   beforeEach(() => { setActivePinia(createPinia()); apiMock.mockReset(); });
 
+  it("does not let a stale board-list response replace a newer response", async () => {
+    const first = deferred<Array<{ id: string; name: string; archived: boolean; createdAt: string; updatedAt: string }>>();
+    const second = deferred<Awaited<typeof first.promise>>();
+    let calls = 0;
+    apiMock.mockImplementation(() => ++calls === 1 ? first.promise : second.promise);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+
+    const stale = store.loadBoards();
+    const current = store.loadBoards();
+    second.resolve([{ id: "board-b", name: "Current", archived: false, createdAt: "", updatedAt: "" }]);
+    await current;
+    first.resolve([{ id: "board-a", name: "Stale", archived: false, createdAt: "", updatedAt: "" }]);
+    await stale;
+
+    expect(store.boards.map((board) => board.id)).toEqual(["board-b"]);
+    expect(store.selectedId).toBe("board-b");
+  });
+
   it("does not let a stale board response replace the currently selected board", async () => {
     const firstStatuses = deferred<Array<{ id: string; name: string; position: number; archived: boolean }>>();
     const secondStatuses = deferred<Array<{ id: string; name: string; position: number; archived: boolean }>>();
