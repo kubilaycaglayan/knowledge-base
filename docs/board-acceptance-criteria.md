@@ -92,6 +92,7 @@ not be described as complete.
 - [ ] Existing Sessions, Paths, Labels, Notes, Calendar, Reports, import,
   extension, security, and accessibility checks remain green.
 
+## Do not delete the following. Implement the following.
 ## 11. Views and UI
 - [] Prefer no texts, no explanations, no titles unless it is the necessary.
 - [] Be compact whenever possible, smaller margins and paddings, but still within the standards.
