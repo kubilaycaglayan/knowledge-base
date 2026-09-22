@@ -30,14 +30,15 @@ Unchecked items are intentionally incomplete.
 - [x] Create, rename, archive, restore, and API reorder statuses.
 - [x] Status archive reassigns active cards and protects the final active
   status.
-- [x] UI reorder, inline name editing, and keyboard reorder actions are
-  covered; restore, safeguards, 404/409 errors, and retry behavior remain.
+- [x] UI reorder, inline name editing, keyboard reorder actions, and archived
+  status restore are covered; safeguards, 404/409 errors, and retry behavior
+  remain.
 
 ## D. Cards and editor
 
 - [x] Cards allow blank titles, empty Tiptap-compatible bodies, four priorities,
   optional single dates or inclusive date ranges.
-- [ ] Each card supports exactly one path; path ownership and color inheritance
+- [x] Each card supports exactly one path; path ownership and color inheritance
   are enforced and tested.
 - [x] Cards support reusable `BOARD` labels without changing existing scopes.
 - [x] The editor uses the existing Tiptap UI and does not display raw `{}` JSON;
@@ -50,7 +51,7 @@ Unchecked items are intentionally incomplete.
 ## E. Kanban behavior
 
 - [x] Active cards render in their board-owned active status columns.
-- [ ] Kanban and Gantt are views of the same cards, not separate card sets.
+- [x] Kanban and Gantt are views of the same cards, not separate card sets.
 - [ ] Pointer, touch, and keyboard movement all provide equivalent actions.
 - [x] Optimistic movement rolls back after failure and archived-status drops
   are rejected.
@@ -94,8 +95,8 @@ Unchecked items are intentionally incomplete.
 
 - [x] Every board, status, card, path, and label reference is scoped to the
   authenticated user and selected board.
-- [ ] A card’s single path inherits its active path color; archived paths and
-  deleted labels do not leak into board UI.
+- [x] A card’s single active path inherits its color.
+- [ ] Archived paths and deleted labels do not leak into board UI.
 - [ ] Cross-user and cross-board IDs consistently return the documented error.
 - [x] Adding `BOARD` labels does not alter existing label scopes.
 
