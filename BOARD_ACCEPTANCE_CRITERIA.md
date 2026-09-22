@@ -25,6 +25,8 @@ Unchecked items are intentionally incomplete.
 - [x] New boards seed Backlog, Pending, In Progress, and Done in order.
 - [x] Add-board exposes a compact, accessible plus action and duplicate board
   submits are guarded.
+- [x] Board-list, board-content, Gantt, pagination, and rapid-move store
+  requests reject stale responses with revision checks.
 - [ ] Concurrent board loads and writes reject stale responses deterministically.
 - [x] Gantt responses are revision-checked so an older board/window cannot
   overwrite the current timeline.
