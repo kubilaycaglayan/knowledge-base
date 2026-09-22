@@ -173,6 +173,22 @@ describe("board browser acceptance", () => {
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
   });
 
+  it("passes axe checks on the mobile Gantt layout", async (t) => {
+    const { page } = await fixture(t, 390);
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    const results = await new AxeBuilder({ page }).analyze();
+    assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+  });
+
+  it("passes axe checks on the desktop Gantt layout", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    const results = await new AxeBuilder({ page }).analyze();
+    assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+  });
+
   it("renders the first active path color as the card outliner accent", async (t) => {
     const { page } = await fixture(t);
     assert.equal(await page.locator(".board-card").first().evaluate((element) => getComputedStyle(element).borderInlineStartColor), "rgb(18, 171, 120)");
