@@ -19,12 +19,25 @@ async function fixture(t, width = 390) {
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
     let body = [];
+    const request = route.request();
+    const method = request.method();
     if (path === "/boards") body = [board];
     else if (path === "/boards/board-1/statuses") body = statuses;
     else if (path === "/boards/board-1/cards") body = cards;
-    else if (path === "/boards/board-1/gantt") body = cards;
+    else if (path === "/boards/board-1/gantt") body = cards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [];
-    else if (path === "/labels?scope=BOARD") body = [];
+    else if (path === "/labels") body = [];
+    if (method === "POST" && path === "/boards/board-1/cards") {
+      const requestBody = request.postDataJSON();
+      body = { ...requestBody, id: `card-${cards.length + 1}`, statusId: "status-0", position: cards.length, archived: false, pathIds: [], labelIds: [] };
+      cards.push(body);
+    }
+    if (method === "POST" && path === "/boards/board-1/cards/card-1/archive") {
+      cards[0].archived = true; body = cards[0];
+    }
+    if (method === "POST" && path === "/boards/board-1/cards/card-1/restore") {
+      cards[0].archived = false; body = cards[0];
+    }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   const page = await context.newPage();
@@ -58,5 +71,27 @@ describe("board browser acceptance", () => {
     assert.equal(new URL(page.url()).searchParams.get("view"), "kanban");
     await page.goForward();
     assert.equal(new URL(page.url()).searchParams.get("view"), "gantt");
+  });
+
+  it("creates a blank-title card and safely protects unsaved edits", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("textbox", { name: "New card title" }).fill("");
+    await page.getByRole("button", { name: "Add card" }).click();
+    await page.getByRole("heading", { name: "Untitled card" }).waitFor();
+    await page.locator(".board-card").last().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Unsaved change");
+    await page.getByRole("button", { name: "Cancel" }).click();
+    assert.equal(await page.getByRole("heading", { name: "Discard unsaved changes?" }).count(), 1);
+    await page.getByRole("button", { name: "Keep editing" }).click();
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Unsaved change");
+  });
+
+  it("archives a card and restores it from the archived-card list", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Archive Ship timeline" }).click();
+    await page.getByRole("button", { name: "Show archived cards" }).click();
+    await page.getByText("Ship timeline", { exact: true }).last().waitFor();
+    await page.getByRole("button", { name: "Restore" }).first().click();
+    await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 });
