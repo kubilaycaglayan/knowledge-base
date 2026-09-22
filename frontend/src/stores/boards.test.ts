@@ -179,4 +179,21 @@ describe("boards store concurrency", () => {
     expect(store.ganttFrom).toBe("");
     expect(store.ganttTo).toBe("");
   });
+
+  it("ignores a stale Gantt response after the board changes", async () => {
+    const oldTimeline = deferred<Array<{ id: string; statusId: string; title: string; body: string; priority: "MEDIUM"; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string }>>();
+    const currentTimeline = deferred<Awaited<typeof oldTimeline.promise>>();
+    apiMock.mockImplementation((path: string) => path.includes("board-a/gantt") ? oldTimeline.promise : currentTimeline.promise);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board-a";
+    const stale = store.loadGantt("2026-09-01", "2026-09-14");
+    store.selectedId = "board-b";
+    const current = store.loadGantt("2026-09-01", "2026-09-14");
+    currentTimeline.resolve([{ id: "current", statusId: "status", title: "Current", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }]);
+    await current;
+    oldTimeline.resolve([{ id: "old", statusId: "status", title: "Old", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }]);
+    await stale;
+    expect(store.ganttCards.map((card) => card.id)).toEqual(["current"]);
+  });
 });
