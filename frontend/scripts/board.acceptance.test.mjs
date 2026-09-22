@@ -83,6 +83,15 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
 }
 
 describe("board browser acceptance", () => {
+  it("does not expose board data before authentication", async (t) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
+    t.after(() => context.close());
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board`);
+    await page.getByRole("heading", { name: "Sign in" }).waitFor();
+    assert.equal(await page.getByRole("heading", { name: "Boards" }).count(), 0);
+  });
+
   it("renders the same dated card in Kanban and as a Gantt timeline bar", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Gantt" }).click();
@@ -169,7 +178,9 @@ describe("board browser acceptance", () => {
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Saved once");
     const save = page.getByRole("button", { name: "Save card" });
-    await Promise.all([save.click(), save.click()]);
+    const firstSave = save.click({ force: true });
+    await save.dispatchEvent("click");
+    await firstSave;
     await page.getByRole("heading", { name: "Saved once" }).waitFor();
     assert.equal(getCardUpdateRequests(), 1);
   });
