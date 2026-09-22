@@ -88,6 +88,9 @@ Unchecked items are intentionally incomplete.
 - [x] Each status loads an initial page of 20 cards and lazy-loads later pages.
 - [x] API tests cover 0, 1, exactly 20, and 21-card page boundaries with
   stable cursor/null-cursor assertions.
+- [x] Duplicate boundary requests are coalesced, stale lazy-page responses
+  cannot append cards after a board switch, and failed-page retry is covered
+  at the store level.
 - [ ] Duplicate boundary requests, stale board responses, and failed-page
   retry are covered end to end.
 - [ ] Offline, 401, 404, 409, timeout, and recoverable mutation states have
