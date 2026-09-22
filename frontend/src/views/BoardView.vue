@@ -16,7 +16,7 @@ const labelsStore = useLabelsStore();
 const { boards, statuses, cards, ganttCards, loading } = storeToRefs(store);
 const route = useRoute(); const router = useRouter();
 const view = computed(() => route.query.view === "gantt" ? "gantt" : "kanban");
-const showArchived = ref(false), newBoard = ref(""), newCardTitle = ref(""), newStatus = ref(""), error = ref("");
+const showArchived = ref(false), archiveConfirmOpen = ref(false), newBoard = ref(""), newCardTitle = ref(""), newStatus = ref(""), error = ref("");
 function dismissError() { error.value = ""; store.error = ""; }
 const editing = ref<BoardCard | null>(null), discardOpen = ref(false), originalDraft = ref(""), draft = ref({ title: "", body: "{}", priority: "MEDIUM" as BoardCard["priority"], startDate: "", dueDate: "", pathIds: [] as string[], labelIds: [] as string[] });
 const cardEditor = shallowRef<Editor | null>(null);
@@ -55,7 +55,8 @@ async function moveStatus(status: BoardStatus, direction: number) { const index 
 async function moveCard(card: BoardCard, direction: number) { const currentIndex = activeStatuses.value.findIndex((status) => status.id === card.statusId); const next = activeStatuses.value[currentIndex + direction]; if (!next) return; try { await store.moveCard(card, next.id, cardsFor(next.id).length); } catch { error.value = "Could not move card. The change was rolled back."; } }
 async function restoreArchivedCard(card: BoardCard) { try { await store.archiveCard(card, true); await store.loadBoard(); } catch { error.value = "Could not restore card."; } }
 function observeSentinel(statusId: string, element: Element | null) { pageObservers.get(statusId)?.disconnect(); if (!element || typeof IntersectionObserver === "undefined" || store.pageCursors[statusId] === null) return; const observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) void store.loadMore(statusId); }); observer.observe(element); pageObservers.set(statusId, observer); }
-async function archiveCurrent() { if (!store.selectedId) return; await store.archiveBoard(store.selectedId); await router.replace({ query: {} }); }
+function requestArchiveCurrent() { if (store.selectedId) archiveConfirmOpen.value = true; }
+async function archiveCurrent() { if (!store.selectedId) return; archiveConfirmOpen.value = false; try { await store.archiveBoard(store.selectedId); await router.replace({ query: {} }); } catch { error.value = "Could not archive board."; } }
 async function toggleArchived() { showArchived.value = !showArchived.value; if (showArchived.value) await store.loadBoards(true); }
 async function restoreBoard(id: string) { await store.archiveBoard(id, true); await store.loadBoards(true); }
 onMounted(async () => { await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested && boards.value.some((board) => board.id === requested)) store.selectedId = requested; await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
@@ -68,8 +69,9 @@ onBeforeUnmount(() => { pageObservers.forEach((observer) => observer.disconnect(
   <section class="board-page" aria-labelledby="board-heading">
     <header class="board-header">
       <div><p class="eyebrow">Workspace</p><h1 id="board-heading">Boards</h1></div>
-      <div class="board-actions"><button class="secondary" type="button" @click="toggleArchived">{{ showArchived ? "Active boards" : "Archived boards" }}</button><button v-if="store.selectedId" class="secondary" type="button" @click="archiveCurrent">Archive board</button></div>
+      <div class="board-actions"><button class="secondary" type="button" @click="toggleArchived">{{ showArchived ? "Active boards" : "Archived boards" }}</button><button v-if="store.selectedId" class="secondary" type="button" @click="requestArchiveCurrent">Archive board</button></div>
     </header>
+    <div v-if="archiveConfirmOpen" class="dialog-backdrop" role="presentation"><div class="confirm-dialog" role="alertdialog" aria-labelledby="archive-board-title" aria-describedby="archive-board-description"><h2 id="archive-board-title">Archive board?</h2><p id="archive-board-description">Cards and statuses stay retained and can be restored later.</p><div class="editor-actions"><button class="secondary" type="button" @click="archiveConfirmOpen = false">Cancel</button><button type="button" @click="archiveCurrent">Archive</button></div></div></div>
     <p v-if="error || store.error" class="board-error" role="alert">{{ error || store.error }}<button type="button" class="error-dismiss" aria-label="Dismiss board error" @click="dismissError">×</button></p>
     <div class="board-toolbar">
       <label class="board-select-label" for="board-select">Current board</label>

@@ -18,6 +18,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
   const fixtureStatuses = statuses.map((status) => ({ ...status }));
   if (archivedStatus) fixtureStatuses[3].archived = true;
+  let boardArchiveRequests = 0;
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
@@ -36,6 +37,10 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       const requestBody = request.postDataJSON();
       body = { ...requestBody, id: `card-${cards.length + 1}`, statusId: "status-0", position: cards.length, archived: false, pathIds: [], labelIds: [] };
       fixtureCards.push(body);
+    }
+    if (method === "POST" && path === "/boards/board-1/archive") {
+      boardArchiveRequests += 1;
+      body = { ...board, archived: true };
     }
     if (method === "POST" && path === "/boards/board-1/cards/card-1/archive") {
       fixtureCards[0].archived = true; body = fixtureCards[0];
@@ -67,7 +72,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=board-1&view=kanban`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
-  return { context, page };
+  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests };
 }
 
 describe("board browser acceptance", () => {
@@ -181,5 +186,15 @@ describe("board browser acceptance", () => {
     await page.getByRole("alert").waitFor();
     await page.getByRole("button", { name: "Dismiss board error" }).click();
     assert.equal(await page.getByRole("alert").count(), 0);
+  });
+
+  it("confirms board archival before sending the destructive request", async (t) => {
+    const { page, getBoardArchiveRequests } = await fixture(t);
+    await page.getByRole("button", { name: "Archive board" }).click();
+    await page.getByRole("alertdialog", { name: "Archive board?" }).waitFor();
+    assert.equal(getBoardArchiveRequests(), 0);
+    await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
+    assert.equal(await page.getByRole("alertdialog").count(), 0);
+    assert.equal(getBoardArchiveRequests(), 0);
   });
 });
