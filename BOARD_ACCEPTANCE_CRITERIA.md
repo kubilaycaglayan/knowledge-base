@@ -111,7 +111,10 @@ Unchecked items are intentionally incomplete.
   bar while retaining the same card in Kanban.
 - [x] Moving, archiving, restoring, and creating a dated card while viewing
   Gantt immediately reconciles with Kanban in the store contract tests.
-- [ ] The same Gantt mutation reconciliation is covered end to end.
+- [x] Moving, archiving, and restoring a dated card across the Gantt/Kanban
+  view switch is covered end to end.
+- [ ] Creating a dated card and immediately seeing it in Gantt is covered end
+  to end.
 - [x] Archived statuses/cards and out-of-window cards are excluded correctly
   by the API and shared Gantt reconciliation.
 - [x] Mobile timeline scrolling is intentional; desktop layout is supported.
