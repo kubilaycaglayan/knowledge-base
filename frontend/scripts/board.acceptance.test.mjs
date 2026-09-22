@@ -134,6 +134,16 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Unsaved change");
   });
 
+  it("rejects a reversed card date range inline and keeps the editor open", async (t) => {
+    const { page } = await fixture(t);
+    await page.locator(".board-card").first().click();
+    await page.locator("input[name='startDate']").fill("2026-04-10");
+    await page.locator("input[name='dueDate']").fill("2026-04-05");
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("alert", { name: "Date range error" }).waitFor();
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).count(), 1);
+  });
+
   it("archives a card and restores it from the archived-card list", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Archive Ship timeline" }).click();
