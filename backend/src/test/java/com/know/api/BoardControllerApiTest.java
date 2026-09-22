@@ -58,6 +58,22 @@ class BoardControllerApiTest {
     mvc.perform(get("/api/v1/boards/" + boardId).with(authentication(auth()))).andExpect(status().isNotFound());
   }
 
+  @Test void foreignCardAndStatusReferencesAreNotUsableThroughAnotherBoard() throws Exception {
+    UUID boardId = UUID.randomUUID();
+    UUID foreignCardId = UUID.randomUUID();
+    UUID foreignStatusId = UUID.randomUUID();
+    Board board = new Board(owner, "Board");
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(cards.findByIdAndBoardId(foreignCardId, boardId)).thenReturn(Optional.empty());
+    when(statuses.findByIdAndBoardId(foreignStatusId, boardId)).thenReturn(Optional.empty());
+
+    mvc.perform(get("/api/v1/boards/" + boardId + "/cards/" + foreignCardId).with(authentication(auth())))
+        .andExpect(status().isNotFound());
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards/" + UUID.randomUUID() + "/move").with(authentication(auth()))
+        .contentType(MediaType.APPLICATION_JSON).content("{\"statusId\":\"" + foreignStatusId + "\",\"position\":0}"))
+        .andExpect(status().isNotFound());
+  }
+
   @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
     Board board = new Board(owner, "Archived");
     board.archive();
