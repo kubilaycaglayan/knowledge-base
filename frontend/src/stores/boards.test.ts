@@ -302,6 +302,28 @@ describe("boards store concurrency", () => {
     expect(store.ganttCards[0].statusId).toBe("done");
   });
 
+  it("keeps the newest card edit when save responses arrive out of order", async () => {
+    const firstUpdate = deferred<{ id: string; statusId: string; title: string; body: string; priority: "MEDIUM"; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string }>();
+    const secondUpdate = deferred<Awaited<typeof firstUpdate.promise>>();
+    let updateCalls = 0;
+    apiMock.mockImplementation((path: string) => path.includes("/cards/card") ? (++updateCalls === 1 ? firstUpdate.promise : secondUpdate.promise) : Promise.resolve([]));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    const card = { id: "card", statusId: "backlog", title: "Original", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.cards = [card];
+    store.ganttCards = [{ ...card }];
+    const first = store.updateCard(card, { title: "Older", body: "{}", priority: "MEDIUM" });
+    const second = store.updateCard(card, { title: "Newest", body: "{}", priority: "MEDIUM" });
+    secondUpdate.resolve({ ...card, title: "Newest" });
+    await second;
+    firstUpdate.resolve({ ...card, title: "Older" });
+    await first;
+
+    expect(store.cards[0].title).toBe("Newest");
+    expect(store.ganttCards[0].title).toBe("Newest");
+  });
+
   it("does not append a lazy page after the board changes", async () => {
     const pendingPage = deferred<{ items: Array<{ id: string; statusId: string; title: string; body: string; priority: "MEDIUM"; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string }>; nextCursor: number | null }>();
     apiMock.mockImplementation((path: string) => path.includes("/cards/page") ? pendingPage.promise : Promise.resolve([]));
