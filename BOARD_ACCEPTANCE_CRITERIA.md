@@ -150,7 +150,8 @@ Unchecked items are intentionally incomplete.
 - [x] Axe covers mobile and desktop Kanban and Gantt states.
 - [ ] Existing authentication, Sessions/timer, Paths, Labels, Notes, Calendar,
   Reports, imports/exports, extension, security, and iOS checks remain green.
-- [ ] Key mobile and desktop screenshots are captured without secrets.
+- [x] Disposable mobile Kanban and Gantt screenshots are captured without
+  repository artifacts or secrets.
 
 ## K. Test and delivery gates
 
