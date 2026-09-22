@@ -64,6 +64,7 @@ watchEffect(() => {
 });
 function logout() {
   auth.clearToken();
+  void router?.replace("/sessions");
 }
 function authenticated() {
   auth.refresh();

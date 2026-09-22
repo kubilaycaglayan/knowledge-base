@@ -9,7 +9,7 @@ Unchecked items are intentionally incomplete.
 
 - [ ] Unauthenticated `/board` requests redirect or return the existing auth
   response and never expose board data.
-- [ ] Sign-out clears selected board, cards, statuses, archive data, and URL
+- [x] Sign-out clears selected board, cards, statuses, archive data, and URL
   state.
 - [x] Board navigation appears immediately after Sessions.
 - [x] `board`, `view`, `from`, and `to` survive reload and Back/Forward.
