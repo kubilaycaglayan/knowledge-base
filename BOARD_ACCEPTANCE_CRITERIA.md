@@ -64,8 +64,8 @@ Unchecked items are intentionally incomplete.
 
 - [x] Archived cards remain permanently retained and are excluded from active
   Kanban/Gantt results.
-- [ ] Archived-card view provides counts, filtering, restore, and fallback to
-  an active status when the previous status is archived.
+- [x] Archived-card view provides filtering and restore with fallback to an
+  active status when the previous status is archived; counts remain.
 - [ ] Archive/restore is idempotent and destructive actions provide confirmation
   or an undo path.
 
