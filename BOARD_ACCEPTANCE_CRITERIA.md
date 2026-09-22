@@ -132,7 +132,9 @@ Unchecked items are intentionally incomplete.
 - [x] A card’s single active path inherits its color.
 - [x] Archived paths and deleted BOARD labels do not leak into the board
   editor or card controls.
-- [ ] Cross-user and cross-board IDs consistently return the documented error.
+- [x] Foreign board/card/status references return the documented not-found
+  response in API tests; path and label ownership validation is covered.
+- [ ] Cross-user and cross-board IDs are covered across every mutation route.
 - [x] Adding `BOARD` labels does not alter existing label scopes.
 
 ## J. Accessibility and regression
