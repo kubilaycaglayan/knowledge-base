@@ -84,6 +84,23 @@ describe("boards store concurrency", () => {
     expect(store.error).toBe("");
   });
 
+  it("coalesces duplicate lazy-page requests at the same cursor", async () => {
+    const pending = deferred<{ items: Array<{ id: string; statusId: string; title: string; body: string; priority: "MEDIUM"; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string }>; nextCursor: number | null }>();
+    apiMock.mockImplementation((path: string) => path.includes("/cards/page") ? pending.promise : Promise.resolve([]));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.pageCursors.backlog = 20;
+    const first = store.loadMore("backlog");
+    const second = store.loadMore("backlog");
+
+    expect(apiMock.mock.calls.filter(([path]) => path.includes("/cards/page"))).toHaveLength(1);
+    pending.resolve({ items: [{ id: "page-21", statusId: "backlog", title: "Page 21", body: "{}", priority: "MEDIUM", position: 21, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }], nextCursor: null });
+    await Promise.all([first, second]);
+
+    expect(store.cards.map((card) => card.id)).toEqual(["page-21"]);
+  });
+
   it("reconciles a moved card in both Kanban and Gantt collections", async () => {
     apiMock.mockResolvedValue({ id: "card", statusId: "done", position: 3, title: "Shared", body: "{}", priority: "MEDIUM", archived: false, pathIds: [], labelIds: [] });
     const { useBoardsStore } = await import("./boards");
