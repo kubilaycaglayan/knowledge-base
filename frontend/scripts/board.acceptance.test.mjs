@@ -13,7 +13,7 @@ before(async () => { server = await createServer({ server: { host: "127.0.0.1", 
 after(async () => { await browser?.close(); await server?.close(); });
 
 async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false) {
-  const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
+  const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
   const fixtureStatuses = statuses.map((status) => ({ ...status }));
@@ -171,6 +171,17 @@ describe("board browser acceptance", () => {
       target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
     }, await page.locator(".kanban-column").nth(1).elementHandle());
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
+  it("moves a card with touch tap and keyboard Enter alternatives", async (t) => {
+    const { page } = await fixture(t, 390);
+    const moveNext = page.getByRole("button", { name: "Move card to next status" }).first();
+    await moveNext.tap();
+    await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+    const movePrevious = page.getByRole("button", { name: "Move card to previous status" }).first();
+    await movePrevious.focus();
+    await movePrevious.press("Enter");
+    await page.locator(".kanban-column").first().getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
   it("reveals and restores archived statuses", async (t) => {
