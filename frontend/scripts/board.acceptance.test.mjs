@@ -12,9 +12,11 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390) {
+async function fixture(t, width = 390, dense = false) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
+  const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
+  const fixtureStatuses = statuses.map((status) => ({ ...status }));
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
@@ -22,31 +24,32 @@ async function fixture(t, width = 390) {
     const request = route.request();
     const method = request.method();
     if (path === "/boards") body = [board];
-    else if (path === "/boards/board-1/statuses") body = statuses;
-    else if (path === "/boards/board-1/cards") body = cards;
-    else if (path === "/boards/board-1/gantt") body = cards.filter((card) => !card.archived && (card.startDate || card.dueDate));
+    else if (path === "/boards/board-1/statuses") body = fixtureStatuses;
+    else if (path === "/boards/board-1/cards") body = fixtureCards;
+    else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
+    else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [];
     else if (path === "/labels") body = [];
     if (method === "POST" && path === "/boards/board-1/cards") {
       const requestBody = request.postDataJSON();
       body = { ...requestBody, id: `card-${cards.length + 1}`, statusId: "status-0", position: cards.length, archived: false, pathIds: [], labelIds: [] };
-      cards.push(body);
+      fixtureCards.push(body);
     }
     if (method === "POST" && path === "/boards/board-1/cards/card-1/archive") {
-      cards[0].archived = true; body = cards[0];
+      fixtureCards[0].archived = true; body = fixtureCards[0];
     }
     if (method === "POST" && path === "/boards/board-1/cards/card-1/restore") {
-      cards[0].archived = false; body = cards[0];
+      fixtureCards[0].archived = false; body = fixtureCards[0];
     }
     if (method === "POST" && path === "/boards/board-1/cards/card-1/move") {
       const requestBody = request.postDataJSON();
-      cards[0].statusId = requestBody.statusId;
-      cards[0].position = requestBody.position;
-      body = cards[0];
+      fixtureCards[0].statusId = requestBody.statusId;
+      fixtureCards[0].position = requestBody.position;
+      body = fixtureCards[0];
     }
     if (method === "PUT" && path === "/boards/board-1/statuses/status-0") {
-      statuses[0].name = request.postDataJSON().name;
-      body = statuses[0];
+      fixtureStatuses[0].name = request.postDataJSON().name;
+      body = fixtureStatuses[0];
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
@@ -113,5 +116,13 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Ready" }).waitFor();
     await page.getByRole("button", { name: "Move card to next status" }).first().click();
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
+  it("loads a dense column in a 20-card page and exposes the next page", async (t) => {
+    const { page } = await fixture(t, 800, true);
+    assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 20);
+    await page.getByRole("button", { name: "Load more cards in Backlog" }).click();
+    await page.getByRole("heading", { name: "Dense card 21" }).waitFor();
+    assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 21);
   });
 });
