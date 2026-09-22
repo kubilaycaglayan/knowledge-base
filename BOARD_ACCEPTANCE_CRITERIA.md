@@ -106,7 +106,8 @@ Unchecked items are intentionally incomplete.
   bar while retaining the same card in Kanban.
 - [ ] Moving, archiving, restoring, and creating a dated card while viewing
   Gantt immediately reconciles with Kanban.
-- [ ] Archived statuses/cards and out-of-window cards are excluded correctly.
+- [x] Archived statuses/cards and out-of-window cards are excluded correctly
+  by the API and shared Gantt reconciliation.
 - [x] Mobile timeline scrolling is intentional; desktop layout is supported.
 
 ## I. Paths, labels, and ownership
