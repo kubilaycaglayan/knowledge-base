@@ -114,7 +114,8 @@ Unchecked items are intentionally incomplete.
 - [x] Isolated fixture-based board browser tests exist.
 - [x] Disposable Compose real-stack harness exists and cleans only its own
   project resources.
-- [ ] Real-stack Playwright execution passes with Chromium and Axe.
+- [x] Real-stack Playwright smoke scenarios pass with Chromium and Axe
+  (board switching, dated-card Gantt rendering, and mobile Axe audit).
 - [ ] Backend unit/integration, frontend unit/component, E2E, smoke, build,
   accessibility, and security checks are documented and green.
 - [ ] API, architecture, testing, roadmap, smoke, and import/export documents
