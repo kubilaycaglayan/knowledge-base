@@ -36,4 +36,32 @@ describe("boards store concurrency", () => {
     expect(store.cards.map((card) => card.id)).toEqual(["b-card"]);
     expect(store.statuses.map((status) => status.id)).toEqual(["b-status"]);
   });
+
+  it("keeps a failed lazy page retryable and exposes a recoverable error", async () => {
+    let pageCalls = 0;
+    apiMock.mockImplementation((path: string) => {
+      if (path.endsWith("/statuses")) return Promise.resolve([{ id: "status", name: "Backlog", position: 0, archived: false }]);
+      if (path.includes("/cards/page")) {
+        pageCalls += 1;
+        return pageCalls === 1
+          ? Promise.resolve({ items: [], nextCursor: 19 })
+          : pageCalls === 2
+            ? Promise.reject(new Error("offline"))
+            : Promise.resolve({ items: [{ id: "card-20", statusId: "status", title: "Recovered", body: "{}", priority: "MEDIUM", position: 20, archived: false, pathIds: [], labelIds: [] }], nextCursor: null });
+      }
+      return Promise.resolve([]);
+    });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    await store.loadBoard();
+    await expect(store.loadMore("status")).rejects.toThrow("offline");
+    expect(store.pageLoading.status).toBe(false);
+    expect(store.pageCursors.status).toBe(19);
+    expect(store.error).toBe("Unable to load more cards. Try again.");
+    await store.loadMore("status");
+    expect(store.cards.map((card) => card.id)).toEqual(["card-20"]);
+    expect(store.pageCursors.status).toBeNull();
+    expect(store.error).toBe("");
+  });
 });
