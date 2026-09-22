@@ -57,7 +57,9 @@ Unchecked items are intentionally incomplete.
   changes remain protected.
 - [x] HTTP 409 card-save conflicts keep the editor open, show a retry message,
   and allow a successful retry.
-- [ ] Other failed-save and timeout recovery behavior is covered.
+- [x] Other failed card saves keep the editor open, preserve the draft, and
+  allow a successful retry in browser acceptance coverage.
+- [ ] Timeout-specific save recovery is covered.
 
 ## E. Kanban behavior
 
