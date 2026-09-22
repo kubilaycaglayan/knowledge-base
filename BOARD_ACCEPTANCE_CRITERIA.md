@@ -22,7 +22,8 @@ Unchecked items are intentionally incomplete.
 - [x] Create, trim, validate, rename, switch, archive, and restore named
   boards.
 - [x] New boards seed Backlog, Pending, In Progress, and Done in order.
-- [ ] Add-board uses a compact plus action and duplicate submits are safe.
+- [x] Add-board exposes a compact, accessible plus action and duplicate board
+  submits are guarded.
 - [ ] Concurrent board loads and writes reject stale responses deterministically.
 - [x] Gantt responses are revision-checked so an older board/window cannot
   overwrite the current timeline.
