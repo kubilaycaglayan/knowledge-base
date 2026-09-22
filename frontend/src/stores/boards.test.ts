@@ -310,11 +310,13 @@ describe("boards store concurrency", () => {
     const { useBoardsStore } = await import("./boards");
     const store = useBoardsStore();
     store.selectedId = "board";
-    const card = { id: "card", statusId: "backlog", title: "Original", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.ganttFrom = "2026-09-01";
+    store.ganttTo = "2026-09-30";
+    const card = { id: "card", statusId: "backlog", title: "Original", body: "{}", priority: "MEDIUM" as const, startDate: "2026-09-10", dueDate: "2026-09-10", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
     store.cards = [card];
     store.ganttCards = [{ ...card }];
-    const first = store.updateCard(card, { title: "Older", body: "{}", priority: "MEDIUM" });
-    const second = store.updateCard(card, { title: "Newest", body: "{}", priority: "MEDIUM" });
+    const first = store.updateCard(card, { title: "Older", body: "{}", priority: "MEDIUM", startDate: card.startDate, dueDate: card.dueDate });
+    const second = store.updateCard(card, { title: "Newest", body: "{}", priority: "MEDIUM", startDate: card.startDate, dueDate: card.dueDate });
     secondUpdate.resolve({ ...card, title: "Newest" });
     await second;
     firstUpdate.resolve({ ...card, title: "Older" });
