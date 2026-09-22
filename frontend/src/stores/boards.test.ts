@@ -95,4 +95,20 @@ describe("boards store concurrency", () => {
     expect(apiMock).toHaveBeenCalledWith("/boards/board/statuses/order", { method: "PUT", body: JSON.stringify({ ids: ["done", "backlog"] }) });
     expect(store.statuses.map((status) => status.id)).toEqual(["done", "backlog"]);
   });
+
+  it("clears board data when the authenticated session changes", async () => {
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.boards = [{ id: "board", name: "Board", archived: false, createdAt: "", updatedAt: "" }];
+    store.statuses = [{ id: "status", name: "Backlog", position: 0, archived: false }];
+    store.cards = [{ id: "card", statusId: "status", title: "Secret", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+    store.reset();
+    expect(store.selectedId).toBe("");
+    expect(store.boards).toEqual([]);
+    expect(store.statuses).toEqual([]);
+    expect(store.cards).toEqual([]);
+    expect(store.ganttCards).toEqual([]);
+    expect(store.archivedCards).toEqual([]);
+  });
 });

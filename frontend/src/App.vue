@@ -6,12 +6,14 @@ import AuthView from "./views/AuthView.vue";
 import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
 import { theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
+import { useBoardsStore } from "./stores/boards";
 const auth = useAuthStore();
 const tracker = useTimerStore();
+const boards = useBoardsStore();
 watch(
   () => auth.token,
   (token, previous, onCleanup) => {
-    if (token !== previous) tracker.clear();
+    if (token !== previous) { tracker.clear(); boards.reset(); }
     if (token) {
       tracker.acquire();
       onCleanup(() => tracker.release());
