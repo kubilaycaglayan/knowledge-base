@@ -24,6 +24,8 @@ Unchecked items are intentionally incomplete.
 - [x] New boards seed Backlog, Pending, In Progress, and Done in order.
 - [ ] Add-board uses a compact plus action and duplicate submits are safe.
 - [ ] Concurrent board loads and writes reject stale responses deterministically.
+- [x] Gantt responses are revision-checked so an older board/window cannot
+  overwrite the current timeline.
 - [x] Archived boards reject mutations, remain permanently retained, and can be
   restored; authenticated integration coverage verifies this lifecycle.
 
