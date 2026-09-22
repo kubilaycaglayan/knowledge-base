@@ -78,7 +78,7 @@ describe("boards store concurrency", () => {
     expect(store.pageLoading.status).toBe(false);
     expect(store.pageCursors.status).toBe(19);
     expect(store.error).toBe("Unable to load more cards. Try again.");
-    await store.loadMore("status");
+    await store.retryLoadMore("status");
     expect(store.cards.map((card) => card.id)).toEqual(["card-20"]);
     expect(store.pageCursors.status).toBeNull();
     expect(store.error).toBe("");
