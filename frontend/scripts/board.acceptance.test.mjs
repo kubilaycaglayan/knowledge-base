@@ -12,7 +12,7 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false) {
+async function fixture(t, width = 390, dense = false, failBoard = false) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
@@ -23,6 +23,7 @@ async function fixture(t, width = 390, dense = false) {
     let body = [];
     const request = route.request();
     const method = request.method();
+    if (failBoard && path === "/boards/board-1/statuses") { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "offline" }) }); return; }
     if (path === "/boards") body = [board];
     else if (path === "/boards/board-1/statuses") body = fixtureStatuses;
     else if (path === "/boards/board-1/cards") body = fixtureCards;
@@ -131,5 +132,12 @@ describe("board browser acceptance", () => {
     await page.locator(".load-more-sentinel").first().evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.getByRole("heading", { name: "Dense card 21" }).waitFor();
     assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 21);
+  });
+
+  it("lets the user dismiss a recoverable board-load error", async (t) => {
+    const { page } = await fixture(t, 390, false, true);
+    await page.getByRole("alert").waitFor();
+    await page.getByRole("button", { name: "Dismiss board error" }).click();
+    assert.equal(await page.getByRole("alert").count(), 0);
   });
 });

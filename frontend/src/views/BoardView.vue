@@ -14,6 +14,7 @@ const { boards, statuses, cards, ganttCards, loading } = storeToRefs(store);
 const route = useRoute(); const router = useRouter();
 const view = computed(() => route.query.view === "gantt" ? "gantt" : "kanban");
 const showArchived = ref(false), newBoard = ref(""), newCardTitle = ref(""), newStatus = ref(""), error = ref("");
+function dismissError() { error.value = ""; store.error = ""; }
 const editing = ref<BoardCard | null>(null), discardOpen = ref(false), originalDraft = ref(""), draft = ref({ title: "", body: "{}", priority: "MEDIUM" as BoardCard["priority"], startDate: "", dueDate: "", pathIds: [] as string[], labelIds: [] as string[] });
 const editingStatusId = ref(""), statusDraft = ref(""), showArchivedCards = ref(false);
 const pageObservers = new Map<string, IntersectionObserver>();
@@ -59,7 +60,7 @@ onBeforeUnmount(() => pageObservers.forEach((observer) => observer.disconnect())
       <div><p class="eyebrow">Workspace</p><h1 id="board-heading">Boards</h1></div>
       <div class="board-actions"><button class="secondary" type="button" @click="toggleArchived">{{ showArchived ? "Active boards" : "Archived boards" }}</button><button v-if="store.selectedId" class="secondary" type="button" @click="archiveCurrent">Archive board</button></div>
     </header>
-    <p v-if="error || store.error" class="board-error" role="alert">{{ error || store.error }}</p>
+    <p v-if="error || store.error" class="board-error" role="alert">{{ error || store.error }}<button type="button" class="error-dismiss" aria-label="Dismiss board error" @click="dismissError">×</button></p>
     <div class="board-toolbar">
       <label class="board-select-label" for="board-select">Current board</label>
       <select id="board-select" :value="store.selectedId" @change="selectBoard(($event.target as HTMLSelectElement).value)"><option value="" disabled>Select a board…</option><option v-for="board in boards" :key="board.id" :value="board.id">{{ board.name }}</option></select>
