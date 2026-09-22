@@ -36,6 +36,8 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
     else if (path === "/labels") body = [];
+    const cardRoute = path.match(/^\/boards\/board-1\/cards\/([^/]+)(?:\/(archive|restore|move))?$/);
+    const routedCard = cardRoute && fixtureCards.find((card) => card.id === cardRoute[1]);
     if (method === "POST" && path === "/boards/board-1/cards") {
       const requestBody = request.postDataJSON();
       body = { ...requestBody, id: `card-${cards.length + 1}`, statusId: "status-0", position: cards.length, archived: false, pathIds: [], labelIds: [] };
@@ -45,27 +47,27 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       boardArchiveRequests += 1;
       body = { ...board, archived: true };
     }
-    if (method === "POST" && path === "/boards/board-1/cards/card-1/archive") {
-      fixtureCards[0].archived = true; body = fixtureCards[0];
+    if (method === "POST" && cardRoute?.[2] === "archive" && routedCard) {
+      routedCard.archived = true; body = routedCard;
     }
-    if (method === "POST" && path === "/boards/board-1/cards/card-1/restore") {
-      fixtureCards[0].archived = false; body = fixtureCards[0];
+    if (method === "POST" && cardRoute?.[2] === "restore" && routedCard) {
+      routedCard.archived = false; body = routedCard;
     }
-    if (method === "POST" && path === "/boards/board-1/cards/card-1/move") {
+    if (method === "POST" && cardRoute?.[2] === "move" && routedCard) {
       const requestBody = request.postDataJSON();
-      fixtureCards[0].statusId = requestBody.statusId;
-      fixtureCards[0].position = requestBody.position;
-      body = fixtureCards[0];
+      routedCard.statusId = requestBody.statusId;
+      routedCard.position = requestBody.position;
+      body = routedCard;
     }
-    if (method === "PUT" && path === "/boards/board-1/cards/card-1") {
+    if (method === "PUT" && cardRoute && !cardRoute[2] && routedCard) {
       cardUpdateRequests += 1;
       if (failCardUpdateOnce && cardUpdateFailures++ === 0) {
         await route.fulfill({ status: failCardUpdateStatus, contentType: "application/json", body: JSON.stringify({ message: failCardUpdateStatus === 409 ? "Card changed elsewhere" : "Temporary failure" }) });
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
-      Object.assign(fixtureCards[0], request.postDataJSON());
-      body = fixtureCards[0];
+      Object.assign(routedCard, request.postDataJSON());
+      body = routedCard;
     }
     if (method === "PUT" && path === "/boards/board-1/statuses/status-0") {
       fixtureStatuses[0].name = request.postDataJSON().name;
