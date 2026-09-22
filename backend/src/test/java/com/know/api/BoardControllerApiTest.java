@@ -20,6 +20,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.hamcrest.Matchers.nullValue;
 
 @WebMvcTest(BoardController.class)
 @Import(com.know.security.SecurityConfig.class)
@@ -179,6 +180,30 @@ class BoardControllerApiTest {
     List<BoardCard> page = new ArrayList<>();
     for (int i = 0; i < 21; i++) page.add(new BoardCard(boardId, statusId, i));
     when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(eq(boardId), eq(statusId), eq(-1), any())).thenReturn(page);
+    mvc.perform(get("/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId).with(authentication(auth())))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(20)).andExpect(jsonPath("$.nextCursor").value(19));
+  }
+
+  @Test void cardPagesHandleEmptySmallExactAndOverflowBoundaries() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), statusId = UUID.randomUUID();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(statusId, boardId)).thenReturn(Optional.of(status));
+    List<BoardCard> one = List.of(new BoardCard(boardId, statusId, 0));
+    List<BoardCard> exact = new ArrayList<>();
+    for (int i = 0; i < 20; i++) exact.add(new BoardCard(boardId, statusId, i));
+    List<BoardCard> overflow = new ArrayList<>(exact);
+    overflow.add(new BoardCard(boardId, statusId, 20));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(eq(boardId), eq(statusId), eq(-1), any()))
+        .thenReturn(List.of(), one, exact, overflow);
+
+    mvc.perform(get("/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId).with(authentication(auth())))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0)).andExpect(jsonPath("$.nextCursor").value(nullValue()));
+    mvc.perform(get("/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId).with(authentication(auth())))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.nextCursor").value(nullValue()));
+    mvc.perform(get("/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId).with(authentication(auth())))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(20)).andExpect(jsonPath("$.nextCursor").value(nullValue()));
     mvc.perform(get("/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId).with(authentication(auth())))
         .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(20)).andExpect(jsonPath("$.nextCursor").value(19));
   }
