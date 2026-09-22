@@ -27,6 +27,17 @@ for attempt in {1..60}; do
   fi
   sleep 2
 done
+for attempt in {1..60}; do
+  api_status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "http://localhost:${port}/api/v1/auth/me" || true)"
+  if [[ "$api_status" == "401" || "$api_status" == "405" ]]; then
+    break
+  fi
+  if [[ "$attempt" == 60 ]]; then
+    echo "Board E2E API did not become ready (last status: ${api_status:-none})" >&2
+    exit 1
+  fi
+  sleep 2
+done
 
 BOARD_E2E_BASE_URL="http://localhost:${port}" BOARD_E2E_EMAIL="$email" BOARD_E2E_PASSWORD="$password" \
   npm run test:board:e2e --prefix frontend

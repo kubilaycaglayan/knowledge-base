@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { after, before, beforeEach, describe, it } from "node:test";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -10,7 +10,10 @@ if (!baseUrl || !email || !password) throw new Error("BOARD_E2E_BASE_URL, BOARD_
 
 let browser;
 let page;
-const boardName = `Board E2E ${Date.now()}`;
+let activeBoardName;
+const isoDate = (value) => value.toISOString().slice(0, 10);
+const timelineStart = isoDate(new Date());
+const timelineEnd = isoDate(new Date(Date.now() + 2 * 86_400_000));
 
 before(async () => {
   browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
@@ -23,21 +26,37 @@ before(async () => {
   await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
   await page.getByRole("textbox", { name: "Confirm password" }).fill(password);
   await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.waitForFunction(() => Boolean(localStorage.getItem("know_token")));
+  await page.goto(`${baseUrl}/board`);
+  await page.reload();
+  await page.getByRole("heading", { name: "Boards" }).waitFor();
+});
+
+async function createBoard(name) {
+  await page.getByRole("textbox", { name: "New board name" }).fill(name);
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes("/api/v1/boards") && response.request().method() === "POST" && response.status() === 201),
+    page.getByRole("button", { name: "Create board" }).click(),
+  ]);
+  await page.locator("#board-select option", { hasText: name }).waitFor({ state: "attached" });
+  await page.getByRole("combobox", { name: "Current board" }).selectOption({ label: name });
+  activeBoardName = name;
+}
+
+beforeEach(async () => {
   await page.goto(`${baseUrl}/board`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
+  await createBoard(`Board E2E ${Date.now()}`);
 });
 
 after(async () => { await browser?.close(); });
 
 describe("board real-stack acceptance", () => {
   it("creates two boards, switches them, and keeps route state", async () => {
-    await page.getByRole("textbox", { name: "New board name" }).fill(boardName);
-    await page.getByRole("button", { name: "Create board" }).click();
-    await page.getByRole("option", { name: boardName }).waitFor();
-    await page.getByRole("textbox", { name: "New board name" }).fill(`${boardName} Second`);
-    await page.getByRole("button", { name: "Create board" }).click();
-    await page.getByRole("option", { name: `${boardName} Second` }).waitFor();
-    await page.getByRole("combobox", { name: "Current board" }).selectOption({ label: boardName });
+    const firstBoard = activeBoardName;
+    const secondBoard = `${firstBoard} Second`;
+    await createBoard(secondBoard);
+    await page.getByRole("combobox", { name: "Current board" }).selectOption({ label: firstBoard });
     assert.equal(new URL(page.url()).searchParams.get("board") !== null, true);
   });
 
@@ -47,11 +66,20 @@ describe("board real-stack acceptance", () => {
     await page.getByRole("heading", { name: "Untitled card" }).waitFor();
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Real timeline card");
-    await page.locator("input[name='startDate']").fill("2026-04-05");
-    await page.locator("input[name='dueDate']").fill("2026-04-07");
+    await page.locator("input[name='startDate']").fill(timelineStart);
+    await page.locator("input[name='dueDate']").fill(timelineEnd);
     await page.getByRole("button", { name: "Save card" }).click();
+    const viewChange = page.waitForURL(/view=gantt/);
     await page.getByRole("button", { name: "Gantt" }).click();
+    await viewChange;
+    const ganttRequest = page.waitForResponse((response) => response.url().includes("/gantt") && response.request().method() === "GET");
+    await page.reload();
+    const ganttResponse = await ganttRequest;
+    assert.equal(ganttResponse.status(), 200, await ganttResponse.text());
+    const ganttCards = await ganttResponse.json();
+    assert.equal(ganttCards.some((card) => card.title === "Real timeline card"), true);
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    await page.locator(".timeline-bar", { hasText: "Real timeline card" }).waitFor();
     assert.equal(await page.locator(".timeline-bar", { hasText: "Real timeline card" }).count(), 1);
   });
 
