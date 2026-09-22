@@ -52,6 +52,11 @@ async function fixture(t, width = 390, dense = false, failBoard = false) {
       fixtureStatuses[0].name = request.postDataJSON().name;
       body = fixtureStatuses[0];
     }
+    if (method === "PUT" && path === "/boards/board-1/statuses/order") {
+      const ids = request.postDataJSON().ids;
+      fixtureStatuses.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)).forEach((status, index) => { status.position = index; });
+      body = fixtureStatuses;
+    }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   const page = await context.newPage();
@@ -127,6 +132,14 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Ready" }).waitFor();
     await page.getByRole("button", { name: "Move card to next status" }).first().click();
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
+  it("reorders statuses with accessible icon actions", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Move Pending earlier" }).click();
+    await page.locator(".kanban-column").first().locator("h2").filter({ hasText: "Pending" }).waitFor();
+    assert.equal(await page.locator(".kanban-column").nth(0).locator("h2").innerText(), "Pending");
+    assert.equal(await page.locator(".kanban-column").nth(1).locator("h2").innerText(), "Backlog");
   });
 
   it("loads a dense column in a 20-card page and exposes the next page", async (t) => {

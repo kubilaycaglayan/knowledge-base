@@ -78,4 +78,21 @@ describe("boards store concurrency", () => {
     expect(store.ganttCards[0].statusId).toBe("done");
     expect(store.ganttCards[0].position).toBe(3);
   });
+
+  it("persists status order and replaces the local order from the server", async () => {
+    apiMock.mockResolvedValue([
+      { id: "done", name: "Done", position: 0, archived: false },
+      { id: "backlog", name: "Backlog", position: 1, archived: false },
+    ]);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.statuses = [
+      { id: "backlog", name: "Backlog", position: 0, archived: false },
+      { id: "done", name: "Done", position: 1, archived: false },
+    ];
+    await store.reorderStatuses(["done", "backlog"]);
+    expect(apiMock).toHaveBeenCalledWith("/boards/board/statuses/order", { method: "PUT", body: JSON.stringify({ ids: ["done", "backlog"] }) });
+    expect(store.statuses.map((status) => status.id)).toEqual(["done", "backlog"]);
+  });
 });

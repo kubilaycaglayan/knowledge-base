@@ -24,6 +24,7 @@ export const useBoardsStore = defineStore("boards", {
     async archiveCard(card: BoardCard, restore = false) { const saved = await api<BoardCard>(`/boards/${this.selectedId}/cards/${card.id}/${restore ? "restore" : "archive"}`, { method: "POST" }); if (restore) this.cards.push(saved); else this.cards = this.cards.filter((item) => item.id !== card.id); this.ganttCards = this.ganttCards.filter((item) => item.id !== card.id); return saved; },
     async createStatus(name: string) { const status = await api<BoardStatus>(`/boards/${this.selectedId}/statuses`, { method: "POST", body: JSON.stringify({ name }) }); this.statuses.push(status); return status; },
     async updateStatus(status: BoardStatus, name: string) { const saved = await api<BoardStatus>(`/boards/${this.selectedId}/statuses/${status.id}`, { method: "PUT", body: JSON.stringify({ name }) }); Object.assign(status, saved); return saved; },
+    async reorderStatuses(ids: string[]) { const saved = await api<BoardStatus[]>(`/boards/${this.selectedId}/statuses/order`, { method: "PUT", body: JSON.stringify({ ids }) }); this.statuses = saved; return saved; },
     async archiveStatus(status: BoardStatus, restore = false) { await api(`/boards/${this.selectedId}/statuses/${status.id}/${restore ? "restore" : "archive"}`, { method: "POST" }); status.archived = !restore; await this.loadBoard(); },
   },
 });
