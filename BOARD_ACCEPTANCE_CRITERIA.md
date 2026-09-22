@@ -65,8 +65,10 @@ Unchecked items are intentionally incomplete.
   covered for card status movement.
 - [x] Optimistic movement rolls back after failure and archived-status drops
   are rejected.
-- [ ] Position ordering, rapid moves, stale writes, invalid drops, and dense
-  columns reconcile deterministically.
+- [x] Rapid card moves use per-card revisions so stale responses cannot
+  overwrite newer Kanban/Gantt positions.
+- [ ] Position ordering, invalid drops, and dense-column reconciliation are
+  covered end to end.
 - [ ] Cards never silently disappear after create, move, edit, archive, or
   restore.
 
