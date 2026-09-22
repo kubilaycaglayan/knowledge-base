@@ -112,4 +112,6 @@ not be described as complete.
 - [] Load more cards button shouldn't exist, why do we need it? We should lazy load the cards if more than 20.
 - [] Cards shouldn't disappear, wtf?
 - [] Instead of rename button, clicking on the names should make them editable. Apply all the board infrastructure.
-- []
+
+## 12. Testing
+- [] Use uncommon ports that are not in use in the test configuration, whenever needed.
