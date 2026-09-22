@@ -230,4 +230,22 @@ describe("boards store concurrency", () => {
     expect(store.cards[0].statusId).toBe("done");
     expect(store.ganttCards[0].statusId).toBe("done");
   });
+
+  it("does not append a lazy page after the board changes", async () => {
+    const pendingPage = deferred<{ items: Array<{ id: string; statusId: string; title: string; body: string; priority: "MEDIUM"; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string }>; nextCursor: number | null }>();
+    apiMock.mockImplementation((path: string) => path.includes("/cards/page") ? pendingPage.promise : Promise.resolve([]));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board-a";
+    store.pageCursors.backlog = 20;
+    const stale = store.loadMore("backlog");
+    store.selectedId = "board-b";
+    store.boardLoadRevision += 1;
+    pendingPage.resolve({ items: [{ id: "old-page", statusId: "backlog", title: "Old", body: "{}", priority: "MEDIUM", position: 21, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }], nextCursor: null });
+    await stale;
+
+    expect(store.cards).toEqual([]);
+    expect(store.error).toBe("");
+    expect(store.pageLoading.backlog).toBe(false);
+  });
 });
