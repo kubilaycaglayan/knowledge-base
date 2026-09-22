@@ -19,6 +19,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const fixtureStatuses = statuses.map((status) => ({ ...status }));
   if (archivedStatus) fixtureStatuses[3].archived = true;
   let boardArchiveRequests = 0;
+  let cardUpdateRequests = 0;
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
@@ -54,6 +55,12 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       fixtureCards[0].position = requestBody.position;
       body = fixtureCards[0];
     }
+    if (method === "PUT" && path === "/boards/board-1/cards/card-1") {
+      cardUpdateRequests += 1;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      Object.assign(fixtureCards[0], request.postDataJSON());
+      body = fixtureCards[0];
+    }
     if (method === "PUT" && path === "/boards/board-1/statuses/status-0") {
       fixtureStatuses[0].name = request.postDataJSON().name;
       body = fixtureStatuses[0];
@@ -72,7 +79,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=board-1&view=kanban`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
-  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests };
+  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests };
 }
 
 describe("board browser acceptance", () => {
@@ -142,6 +149,16 @@ describe("board browser acceptance", () => {
     await page.getByRole("button", { name: "Save card" }).click();
     await page.getByRole("alert", { name: "Date range error" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).count(), 1);
+  });
+
+  it("coalesces rapid card save submissions", async (t) => {
+    const { page, getCardUpdateRequests } = await fixture(t);
+    await page.locator(".board-card").first().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Saved once");
+    const save = page.getByRole("button", { name: "Save card" });
+    await Promise.all([save.click(), save.click()]);
+    await page.getByRole("heading", { name: "Saved once" }).waitFor();
+    assert.equal(getCardUpdateRequests(), 1);
   });
 
   it("archives a card and restores it from the archived-card list", async (t) => {
