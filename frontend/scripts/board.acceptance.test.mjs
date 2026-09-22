@@ -110,6 +110,15 @@ describe("board browser acceptance", () => {
     assert.equal(new URL(page.url()).searchParams.get("view"), "gantt");
   });
 
+  it("resolves an invalid board query to the available board", async (t) => {
+    const { page } = await fixture(t);
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=missing-board&view=kanban`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    await page.getByRole("combobox", { name: "Current board" }).waitFor();
+    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), "board-1");
+    assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
+  });
+
   it("creates a blank-title card and safely protects unsaved edits", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("textbox", { name: "New card title" }).fill("");
