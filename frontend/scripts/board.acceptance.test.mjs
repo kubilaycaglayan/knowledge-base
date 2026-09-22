@@ -13,7 +13,7 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
@@ -60,7 +60,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     if (method === "PUT" && path === "/boards/board-1/cards/card-1") {
       cardUpdateRequests += 1;
       if (failCardUpdateOnce && cardUpdateFailures++ === 0) {
-        await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "Card changed elsewhere" }) });
+        await route.fulfill({ status: failCardUpdateStatus, contentType: "application/json", body: JSON.stringify({ message: failCardUpdateStatus === 409 ? "Card changed elsewhere" : "Temporary failure" }) });
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -241,6 +241,17 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).count(), 1);
     await page.getByRole("button", { name: "Save card" }).click();
     await page.getByRole("heading", { name: "Retry this save" }).waitFor();
+  });
+
+  it("keeps a failed card save retryable without losing the draft", async (t) => {
+    const { page } = await fixture(t, 390, false, false, false, false, true, 503);
+    await page.locator(".board-card").first().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry after outage");
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("alert").filter({ hasText: "Could not save card" }).waitFor();
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry after outage");
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("heading", { name: "Retry after outage" }).waitFor();
   });
 
   it("archives a card and restores it from the archived-card list", async (t) => {
