@@ -7,7 +7,7 @@ import AxeBuilder from "@axe-core/playwright";
 let server, browser;
 const board = { id: "board-1", name: "Product", archived: false };
 const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false }));
-const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: "2026-04-05", dueDate: "2026-04-07", position: 0, archived: false, pathIds: [], labelIds: [] }];
+const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: "2026-04-05", dueDate: "2026-04-07", position: 0, archived: false, pathIds: ["path-1"], labelIds: [] }];
 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
@@ -28,7 +28,7 @@ async function fixture(t, width = 390, dense = false) {
     else if (path === "/boards/board-1/cards") body = fixtureCards;
     else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
-    else if (path === "/paths") body = [];
+    else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }];
     else if (path === "/labels") body = [];
     if (method === "POST" && path === "/boards/board-1/cards") {
       const requestBody = request.postDataJSON();
@@ -75,6 +75,11 @@ describe("board browser acceptance", () => {
     assert.ok(await page.locator(".kanban").evaluate((element) => element.scrollWidth >= element.clientWidth));
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+  });
+
+  it("renders the first active path color as the card outliner accent", async (t) => {
+    const { page } = await fixture(t);
+    assert.equal(await page.locator(".board-card").first().evaluate((element) => getComputedStyle(element).borderInlineStartColor), "rgb(18, 171, 120)");
   });
 
   it("restores board route state through browser history", async (t) => {
