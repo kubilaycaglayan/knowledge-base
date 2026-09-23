@@ -95,3 +95,10 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   create/rename/reorder/archive, and board archival. Cards open in a flat,
   auto-saving editor (path, priority, status, date range, labels, title, body;
   ⌘/Ctrl+Enter closes) framed by the card's path colour.
+- [x] Give every path its own board from birth (V45 backfills existing paths),
+  named after the path and with its cards bound to it; a Show on board switch
+  in the path edit form hides or shows it after an in-app confirmation. A
+  single Manage boards gear opens a Boards dialog that lists every board,
+  opens its settings, and pins or drag-reorders custom boards; path boards
+  follow the Paths page order. Merging paths moves board cards by status name.
+  Acceptance: `docs/path-boards-acceptance-checklist.md`.
