@@ -40,7 +40,11 @@ export async function api<T>(
 ): Promise<T> {
   const token = localStorage.getItem("know_token");
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 15000);
   const forwardAbort = () => controller.abort();
   if (options.signal?.aborted) controller.abort();
   options.signal?.addEventListener("abort", forwardAbort, { once: true });
@@ -55,6 +59,11 @@ export async function api<T>(
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
+  } catch (error) {
+    if (timedOut && error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError("The request timed out. Please try again.", 408);
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
     options.signal?.removeEventListener("abort", forwardAbort);
