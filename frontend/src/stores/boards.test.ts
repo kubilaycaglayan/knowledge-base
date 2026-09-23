@@ -249,6 +249,22 @@ describe("boards store concurrency", () => {
     expect(apiMock.mock.calls.filter(([path]) => path === "/boards")).toHaveLength(1);
   });
 
+  it("coalesces duplicate board archive requests", async () => {
+    const response = deferred<{ id: string; name: string; archived: boolean; createdAt: string; updatedAt: string }>();
+    apiMock.mockImplementation((path: string) => path === "/boards/board/archive" ? response.promise : path.endsWith("/statuses") ? Promise.resolve([]) : Promise.resolve({ items: [], nextCursor: null }));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.boards = [{ id: "board", name: "Board", archived: false, createdAt: "", updatedAt: "" }];
+    const first = store.archiveBoard("board");
+    const second = store.archiveBoard("board");
+
+    expect(apiMock.mock.calls.filter(([path]) => path === "/boards/board/archive")).toHaveLength(1);
+    response.resolve({ id: "board", name: "Board", archived: true, createdAt: "", updatedAt: "" });
+    await expect(first).resolves.toMatchObject({ archived: true });
+    await expect(second).resolves.toBeNull();
+  });
+
   it("updates the selected board name without replacing its cards", async () => {
     const board = { id: "board", name: "Before", archived: false, createdAt: "", updatedAt: "" };
     apiMock.mockResolvedValue({ ...board, name: "After" });
