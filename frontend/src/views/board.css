@@ -120,6 +120,3 @@
 /* A path card's play button sits at its top right, beside the priority. */
 .board-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; min-height:1.2rem; } .board-card-top .board-card-play { flex:0 0 auto; margin:-.35rem -.35rem 0 0; }
 .card-editor-header .board-card-play { flex:0 0 auto; }
-/* Dark theme: a quieter play button on cards; the tracker keeps its own. */
-:global(:root[data-theme="dark"] .board-card-play) { border-color:#2f6b45; background:#15301f; color:#7fd49b; }
-:global(:root[data-theme="dark"] .board-card-play:hover) { border-color:#4f9b6d; background:#1c3f29; color:#a3e4b7; }
