@@ -110,3 +110,8 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   reordering. Board cards share the note body formatting, Add board lives in
   the Boards dialog, and untitled cards stay blank.
   Acceptance: `docs/board-column-sort-acceptance-checklist.md`.
+- [x] Start a session from a board card: cards on path boards, or with a path,
+  show the tracker's play button (the shared `TimerRunButton`) on the card and
+  in its editor while no timer runs; it starts a timer for that path with the
+  card title as the description.
+  Acceptance: `docs/board-card-timer-acceptance-checklist.md`.

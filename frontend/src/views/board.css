@@ -116,3 +116,10 @@
 .board-more-item { display:flex; align-items:center; width:100%; min-height:36px; padding:.35rem .6rem; border:0; border-radius:6px; background:transparent; color:inherit; text-align:left; font-size:.85rem; overflow-wrap:anywhere; } .board-more-item:hover, .board-more-item:focus-visible { background:var(--workspace-hover); }
 .board-tab-measure-row { position:absolute; top:0; left:0; display:flex; gap:.5rem; height:0; overflow:hidden; visibility:hidden; pointer-events:none; white-space:nowrap; } .board-tab-measure { display:inline-flex; align-items:center; flex:0 0 auto; box-sizing:border-box; } .board-tab-measure-dot { display:inline-block; width:.5rem; margin-right:.4rem; }
 @media (max-width: 700px) { .board-tab-current { flex-basis:8.5rem; } }
+
+/* A path card's play button sits at its top right, beside the priority. */
+.board-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; min-height:1.2rem; } .board-card-top .board-card-play { flex:0 0 auto; margin:-.35rem -.35rem 0 0; }
+.card-editor-header .board-card-play { flex:0 0 auto; }
+/* Dark theme: a quieter play button on cards; the tracker keeps its own. */
+:global(:root[data-theme="dark"] .board-card-play) { border-color:#2f6b45; background:#15301f; color:#7fd49b; }
+:global(:root[data-theme="dark"] .board-card-play:hover) { border-color:#4f9b6d; background:#1c3f29; color:#a3e4b7; }

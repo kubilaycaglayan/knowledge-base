@@ -526,6 +526,35 @@ export const useTimerStore = defineStore("timer", () => {
     window.removeEventListener("focus", resume);
     document.removeEventListener("visibilitychange", resume);
   }
+  // Starts a session for a known path and description, as a board card's play
+  // button does. The tracker form keeps its own draft; the server decides
+  // whether a timer may start.
+  async function startSession(input: Draft) {
+    if (actionBusy.value || current.value) return null;
+    actionBusy.value = true;
+    error.value = "";
+    try {
+      const versionAtRequest = ++timerStateVersion;
+      const started = await api<Timer>("/timers", {
+        method: "POST",
+        body: JSON.stringify({
+          pathId: input.pathId || null,
+          labelIds: input.labelIds || [],
+          description: input.description || null,
+        }),
+      });
+      if (versionAtRequest === timerStateVersion) applyTimer(started);
+      if (input.pathId) rememberPath(input.pathId);
+      historyVersion.value++;
+      return started;
+    } catch (cause) {
+      error.value =
+        "Could not start a session. Only one timer can run at a time.";
+      throw cause;
+    } finally {
+      actionBusy.value = false;
+    }
+  }
   function setCurrent(value: Timer | null) {
     timerStateVersion++;
     applyTimer(value);
@@ -582,6 +611,7 @@ export const useTimerStore = defineStore("timer", () => {
     setCurrent,
     clear,
     toggleRun,
+    startSession,
     updateTimer,
     toggleLabel,
     createLabel,

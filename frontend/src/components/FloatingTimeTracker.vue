@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import PromptDialog from "./PromptDialog.vue";
+import TimerRunButton from "./TimerRunButton.vue";
 import { paletteColors } from "../lib/color-palette";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
@@ -286,24 +287,13 @@ onUnmounted(() => {
   >
     <section class="floating-tracker session-grid" aria-label="Focus today">
       <div class="floating-tracker-bar focus" @click="expandFromBar">
-        <button
+        <TimerRunButton
           class="floating-tracker-action primary"
-          :class="{ 'is-running': timer }"
-          type="button"
-            :disabled="actionBusy"
-            :aria-busy="actionBusy"
-          :aria-label="timer ? 'Stop timer' : 'Start timer'"
+          :running="Boolean(timer)"
+          :busy="actionBusy"
+          :label="timer ? 'Stop timer' : 'Start timer'"
           @click="toggleRun"
-        >
-          <span
-            class="timer-action-icon"
-            :class="{ stop: timer }"
-            aria-hidden="true"
-          ></span
-          ><span class="sr-only">{{
-            timer ? "Stop session" : "Start a session"
-          }}</span>
-        </button>
+        />
         <button
           class="floating-tracker-clock"
           type="button"
@@ -581,44 +571,8 @@ onUnmounted(() => {
   padding: 8px 12px;
 }
 .floating-tracker-action {
-  display: inline-flex;
-  width: 36px;
-  min-width: 36px;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
   margin: 0 0 0 auto;
   order: 2;
-  border: 1px solid #4f9b6d;
-  border-radius: 6px;
-  padding: 0;
-  background: #edf8f0;
-  color: #197a43;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-.floating-tracker-action:hover {
-  border-color: #197a43;
-  background: #d9f0e0;
-  color: #105d31;
-}
-.floating-tracker-action:active {
-  background: #c8e8d1;
-}
-.floating-tracker-action:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.floating-tracker-action.is-running {
-  border-color: var(--workspace-danger-border);
-  background: var(--workspace-danger-surface);
-  color: var(--workspace-danger);
-}
-.floating-tracker-action.is-running:hover {
-  border-color: var(--workspace-danger);
-  background: var(--workspace-danger-surface);
-  color: var(--workspace-danger-hover);
 }
 .floating-tracker-clock {
   border: 0;
@@ -1007,19 +961,6 @@ onUnmounted(() => {
   margin: 0;
   color: var(--workspace-danger);
   font-size: 12px;
-}
-.timer-action-icon {
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 7px solid currentColor;
-}
-.timer-action-icon.stop {
-  width: 8px;
-  height: 8px;
-  border: 0;
-  background: currentColor;
 }
 .sr-only {
   position: absolute;

@@ -560,6 +560,17 @@ describe("board browser acceptance", () => {
     assert.deepEqual(await header.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline", "Close card"]);
   });
 
+  it("darkens the card play button in dark theme without touching the tracker's", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card-play").first().waitFor();
+    await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+    const luminance = (color) => { const [r, g, b] = color.match(/\d+/g).slice(0, 3).map(Number); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    const cardBackground = await page.locator(".board-card .board-card-play").first().evaluate((element) => getComputedStyle(element).backgroundColor);
+    const trackerBackground = await page.getByRole("button", { name: "Start timer" }).evaluate((element) => getComputedStyle(element).backgroundColor);
+    assert.equal(trackerBackground, "rgb(237, 248, 240)", "The tracker keeps its original play button");
+    assert.ok(luminance(cardBackground) < 80, `The card play button is dark (${cardBackground})`);
+  });
+
   it("sorts a column by priority from its header", async (t) => {
     const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
     await page.locator(".board-card").first().waitFor();
@@ -600,7 +611,7 @@ describe("board browser acceptance", () => {
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry this save");
     await page.getByRole("alert").filter({ hasText: "changed elsewhere" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry this save", "The draft is kept");
-    await page.getByRole("button", { name: "Retry" }).click();
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
     await page.getByRole("heading", { name: "Retry this save" }).waitFor();
   });
 
@@ -610,7 +621,7 @@ describe("board browser acceptance", () => {
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry after outage");
     await page.getByRole("alert").filter({ hasText: "Could not save card" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry after outage");
-    await page.getByRole("button", { name: "Retry" }).click();
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
     await page.getByRole("heading", { name: "Retry after outage" }).waitFor();
   });
 
@@ -624,7 +635,7 @@ describe("board browser acceptance", () => {
 
   it("archives a card and restores it from the archive page", async (t) => {
     const { page } = await fixture(t);
-    assert.equal(await page.locator(".board-card").getByRole("button").count(), 0, "Cards carry no inline controls");
+    assert.deepEqual(await page.locator(".board-card").getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline"], "Cards carry only their play button");
     await page.locator(".board-card", { hasText: "Ship timeline" }).click();
     await page.getByRole("button", { name: "Archive card" }).click();
     await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();

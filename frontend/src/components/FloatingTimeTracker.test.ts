@@ -840,9 +840,9 @@ describe("FloatingTimeTracker", () => {
     resolveCurrent?.(null);
     await flushPromises();
 
-    expect(wrapper.get("button.floating-tracker-action").text()).toContain(
-      "Stop session",
-    );
+    expect(
+      wrapper.get("button.floating-tracker-action").attributes("aria-label"),
+    ).toBe("Stop timer");
     expect(wrapper.get("button.floating-tracker-action").classes()).toContain(
       "is-running",
     );
@@ -858,9 +858,9 @@ describe("FloatingTimeTracker", () => {
       }),
     });
     await flushPromises();
-    expect(wrapper.get("button.floating-tracker-action").text()).toContain(
-      "Start a session",
-    );
+    expect(
+      wrapper.get("button.floating-tracker-action").attributes("aria-label"),
+    ).toBe("Start timer");
     expect(
       wrapper.get("button.floating-tracker-action").classes(),
     ).not.toContain("is-running");
