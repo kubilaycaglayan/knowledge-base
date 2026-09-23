@@ -135,6 +135,23 @@ describe("boards store concurrency", () => {
     expect(apiMock).not.toHaveBeenCalled();
   });
 
+  it("reorders neighboring cards when moving within the same status", async () => {
+    apiMock.mockResolvedValue({ id: "first", statusId: "backlog", position: 1, title: "First", body: "{}", priority: "MEDIUM", archived: false, pathIds: [], labelIds: [] });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.statuses = [{ id: "backlog", name: "Backlog", position: 0, archived: false }];
+    const first = { id: "first", statusId: "backlog", title: "First", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    const second = { id: "second", statusId: "backlog", title: "Second", body: "{}", priority: "MEDIUM" as const, position: 1, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.cards = [first, second];
+
+    await store.moveCard(first, "backlog", 1);
+
+    expect(store.cards.slice().sort((a, b) => a.position - b.position).map((card) => card.id)).toEqual(["second", "first"]);
+    expect(second.position).toBe(0);
+    expect(first.position).toBe(1);
+  });
+
   it("persists status order and replaces the local order from the server", async () => {
     apiMock.mockResolvedValue([
       { id: "done", name: "Done", position: 0, archived: false },

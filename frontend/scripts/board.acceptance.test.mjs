@@ -207,8 +207,8 @@ describe("board browser acceptance", () => {
     await page.getByRole("button", { name: "Restore" }).click();
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
     await page.getByRole("button", { name: "Gantt" }).click();
-    await page.getByRole("heading", { name: "Timeline" }).waitFor();
-    assert.equal(await page.getByText("Never disappears", { exact: true }).count() >= 1, true);
+    await page.locator(".timeline-bar", { hasText: "Never disappears" }).waitFor();
+    assert.equal(await page.locator(".timeline-bar", { hasText: "Never disappears" }).count() >= 1, true);
   });
 
   it("keeps Kanban usable on mobile and passes axe checks", async (t) => {
@@ -462,6 +462,16 @@ describe("board browser acceptance", () => {
     await movePrevious.focus();
     await movePrevious.press("Enter");
     await page.locator(".kanban-column").first().getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
+  it("reorders cards in a column with the keyboard alternative", async (t) => {
+    const { page } = await fixture(t, 390, true);
+    const column = page.locator(".kanban-column").first();
+    const first = column.locator(".board-card").first();
+    await first.focus();
+    await page.keyboard.press("Alt+ArrowDown");
+    await page.waitForFunction(() => document.querySelector(".kanban-column")?.querySelector(".board-card h3")?.textContent === "Dense card 2");
+    assert.equal(await column.locator(".board-card h3").first().innerText(), "Dense card 2");
   });
 
   it("reveals and restores archived statuses", async (t) => {
