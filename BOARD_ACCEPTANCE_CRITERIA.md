@@ -169,10 +169,11 @@ Unchecked items are intentionally incomplete.
   project resources.
 - [x] Real-stack Playwright smoke scenarios pass with Chromium and Axe
   (board switching, dated-card Gantt rendering, and mobile Axe audit).
-- [ ] Backend unit/integration, frontend unit/component, E2E, smoke, build,
-  accessibility, and security checks are documented and green.
-- [ ] API, architecture, testing, roadmap, smoke, and import/export documents
-  reflect the final behavior.
+- [x] Board backend unit/integration, frontend unit/component, real-stack E2E,
+  full-stack smoke, build, accessibility, and security checks are documented
+  and green.
+- [x] API, architecture, testing, roadmap, smoke, and import/export documents
+  reflect the final board behavior.
 
 ## Traceability convention
 
