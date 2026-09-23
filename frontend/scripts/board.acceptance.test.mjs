@@ -490,6 +490,23 @@ describe("board browser acceptance", () => {
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
+  it("inserts a dragged card at the pointer target within its column", async (t) => {
+    const { page } = await fixture(t, 390, true);
+    const column = page.locator(".kanban-column").first();
+    const first = column.locator(".board-card").nth(0);
+    const second = column.locator(".board-card").nth(1);
+    await first.evaluate((card, target) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData("text/plain", "dense-0");
+      card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+    }, await second.elementHandle());
+    await page.waitForFunction(() => document.querySelector(".kanban-column")?.querySelector(".board-card h3")?.textContent === "Dense card 2");
+    assert.equal(await column.locator(".board-card h3").first().innerText(), "Dense card 2");
+    assert.equal(await column.locator(".board-card h3").nth(1).innerText(), "Dense card 1");
+  });
+
   it("moves a card with touch tap and keyboard Enter alternatives", async (t) => {
     const { page } = await fixture(t, 390);
     const moveNext = page.getByRole("button", { name: "Move card to next status" }).first();
