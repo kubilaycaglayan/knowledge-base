@@ -11,6 +11,7 @@ if (!baseUrl || !email || !password) throw new Error("BOARD_E2E_BASE_URL, BOARD_
 let browser;
 let page;
 let activeBoardName;
+const consoleLog = [];
 const isoDate = (value) => value.toISOString().slice(0, 10);
 const timelineStart = isoDate(new Date());
 const timelineEnd = isoDate(new Date(Date.now() + 2 * 86_400_000));
@@ -20,6 +21,8 @@ before(async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "light", reducedMotion: "reduce" });
   context.setDefaultTimeout(10000);
   page = await context.newPage();
+  page.on("console", (message) => { if (message.type() === "error" || message.type() === "warning") consoleLog.push(`${message.type()}: ${message.text()}`); });
+  page.on("pageerror", (pageError) => consoleLog.push(`pageerror: ${pageError.message}`));
   await page.goto(`${baseUrl}/`);
   await page.getByRole("button", { name: /New here\? Create an account/ }).click();
   await page.getByRole("textbox", { name: "Email" }).fill(email);
@@ -32,15 +35,114 @@ before(async () => {
   await page.getByRole("heading", { name: "Boards" }).waitFor();
 });
 
+const escapeRe = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Boards are tabs, so a tab is addressed by its exact visible name.
+const boardTab = (name, target = page) => target.locator(".board-tab").filter({ hasText: new RegExp(`^${escapeRe(name)}$`) });
+const selectedTab = (target = page) => target.locator(".board-tab.selected");
+const currentBoardId = (target = page) => new URL(target.url()).searchParams.get("board");
+
+// "Loading board…" is on screen while the store swaps boards; waiting it out
+// keeps the next action from racing a half-loaded column set.
+const boardSettled = () => page.waitForFunction(() => !/Loading board/.test(document.querySelector(".board-empty")?.textContent || ""));
+
+// The app's time tracker is fixed to the bottom of the viewport, and it remounts
+// when a focused field blurs. A control scrolled to the very bottom edge can
+// therefore receive the tracker instead of the click, so centre it first.
+async function clickCentered(locator) {
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }));
+  await locator.click();
+}
+
+// Clicking the already-selected tab starts an inline rename, so only click a tab
+// that is not already the open board.
+async function clickBoardTab(name) {
+  if (!(await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).count())) {
+    await clickCentered(boardTab(name).first());
+    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).waitFor();
+  }
+  activeBoardName = name;
+}
+
+// `settle: false` for the delayed-response test, which switches boards on
+// purpose while a board load is still pending.
+async function selectBoard(name, { settle = true } = {}) {
+  await clickBoardTab(name);
+  if (settle) await boardSettled();
+}
+
+// Submits with Enter rather than clicking ＋. The app hides its bottom-fixed
+// time tracker while a text input has focus and remounts it on blur, so clicking
+// the button blurs the field and can drop the remounted tracker onto the click.
+// Enter keeps focus in the field, and is the interaction the guidelines require.
+async function submitCard(title) {
+  const field = page.getByRole("textbox", { name: "New card title" });
+  await field.fill(title);
+  await field.press("Enter");
+}
+
+// Reports what the board is actually showing when a card fails to appear,
+// instead of a bare locator timeout.
+async function addCard(title) {
+  let posted = null;
+  const postSeen = page
+    .waitForResponse((response) => /\/api\/v1\/boards\/[^/]+\/cards$/.test(new URL(response.url()).pathname) && response.request().method() === "POST", { timeout: 8000 })
+    .then((response) => { posted = `${response.status()}`; })
+    .catch(() => { posted = "no POST sent"; });
+  await submitCard(title);
+  await postSeen;
+  try {
+    await page.getByRole("heading", { name: title || "Untitled card" }).waitFor();
+  } catch (cause) {
+    const state = await page.evaluate(() => ({
+      url: location.href,
+      error: document.querySelector(".board-error")?.textContent || "",
+      columns: document.querySelectorAll(".kanban-column").length,
+      cards: document.querySelectorAll(".board-card h3").length,
+      titleValue: document.querySelector('input[name="cardTitle"]')?.value,
+      submitDisabled: document.querySelector("form.create-card button[type=submit]")?.disabled,
+    }));
+    throw new Error(`Card "${title}" never appeared (POST: ${posted}). Page: ${JSON.stringify(state)}. Console: ${JSON.stringify(consoleLog.slice(-5))}`, { cause });
+  }
+}
+
+// Seeds cards straight over the API so pagination tests stay fast.
+async function seedCards(boardId, count, prefix) {
+  await page.evaluate(async ({ boardId: id, count: total, prefix: label }) => {
+    const token = localStorage.getItem("know_token");
+    for (let index = 0; index < total; index += 1) {
+      const response = await fetch(`/api/v1/boards/${id}/cards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: "MEDIUM" }),
+      });
+      if (!response.ok) throw new Error(`Seeding ${label} card ${index} failed with ${response.status}`);
+    }
+  }, { boardId, count, prefix });
+}
+
+// A create settles after the tab appears: the view clears the field and
+// re-enables submit only once the store finishes loading the new board. Filling
+// before that lets the in-flight create wipe the name, so the form submits empty
+// and never sends a POST. Wait for the idle form instead of for the tab alone.
+async function createBoardFormIdle() {
+  await page.waitForFunction(() => {
+    const field = document.querySelector('form.create-board input[name="boardName"]');
+    const submit = document.querySelector('form.create-board button[type="submit"]');
+    return Boolean(field) && Boolean(submit) && !submit.disabled && field.value === "";
+  });
+}
+
 async function createBoard(name) {
   await page.getByRole("button", { name: "Create board" }).waitFor({ state: "visible" });
-  await page.getByRole("textbox", { name: "New board name" }).fill(name);
+  await createBoardFormIdle();
+  const field = page.getByRole("textbox", { name: "New board name" });
+  await field.fill(name);
   await Promise.all([
     page.waitForResponse((response) => response.url().includes("/api/v1/boards") && response.request().method() === "POST" && response.status() === 201),
-    page.getByRole("button", { name: "Create board" }).click(),
+    field.press("Enter"),
   ]);
-  await page.locator("#board-select option", { hasText: name }).waitFor({ state: "attached" });
-  await page.getByRole("combobox", { name: "Current board" }).selectOption({ label: name });
+  await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).waitFor();
+  await createBoardFormIdle();
   activeBoardName = name;
 }
 
@@ -57,41 +159,52 @@ describe("board real-stack acceptance", () => {
     const firstBoard = activeBoardName;
     const secondBoard = `${firstBoard} Second`;
     await createBoard(secondBoard);
-    await page.getByRole("combobox", { name: "Current board" }).selectOption({ label: firstBoard });
-    assert.equal(new URL(page.url()).searchParams.get("board") !== null, true);
+    const secondId = currentBoardId();
+    await selectBoard(firstBoard);
+    const firstId = currentBoardId();
+    assert.equal(firstId !== null, true);
+    assert.notEqual(firstId, secondId, "switching tabs must change the board route state");
+    assert.equal(await selectedTab().textContent(), firstBoard);
   });
 
   it("does not let a delayed board response replace the newly selected board", async () => {
     const firstBoard = activeBoardName;
-    const firstId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    await createBoard(`${firstBoard} Delayed response ${Date.now()}`);
-    const secondId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    await page.getByRole("textbox", { name: "New card title" }).fill("Second board card");
-    await page.getByRole("button", { name: "Add card" }).click();
-    await page.getByRole("heading", { name: "Second board card" }).waitFor();
+    const firstId = currentBoardId();
+    const secondBoard = `${firstBoard} Delayed response ${Date.now()}`;
+    await createBoard(secondBoard);
+    const secondId = currentBoardId();
+    await addCard("Second board card");
 
     let releaseFirstPage;
     const firstPageReleased = new Promise((resolve) => { releaseFirstPage = resolve; });
     let held = false;
-    await page.route(`**/api/v1/boards/${firstId}/cards/page*`, async (route) => {
+    const heldPattern = `**/api/v1/boards/${firstId}/cards/page*`;
+    await page.route(heldPattern, async (route) => {
       if (!held) {
         held = true;
         await firstPageReleased;
       }
-      await route.continue();
+      // The route may already be unhandled/handled by the time the hold is
+      // released, and an unhandled rejection here fails the whole suite.
+      await route.continue().catch(() => undefined);
     });
-    await page.getByRole("combobox", { name: "Current board" }).selectOption(firstId);
-    await page.waitForTimeout(100);
-    await page.getByRole("combobox", { name: "Current board" }).selectOption(secondId);
-    await page.getByRole("heading", { name: "Second board card" }).waitFor();
-    releaseFirstPage();
-    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), secondId);
-    assert.equal(await page.getByRole("heading", { name: "Second board card" }).count() >= 1, true);
-    await page.unroute(`**/api/v1/boards/${firstId}/cards/page*`);
+    try {
+      await selectBoard(firstBoard, { settle: false });
+      await page.waitForTimeout(100);
+      await selectBoard(secondBoard, { settle: false });
+      await page.getByRole("heading", { name: "Second board card" }).waitFor();
+      assert.equal(currentBoardId(), secondId);
+      assert.equal(await page.getByRole("heading", { name: "Second board card" }).count() >= 1, true);
+    } finally {
+      // Release and unroute even on failure: a still-held page request leaves
+      // loadBoard() pending forever and hangs every later test on this page.
+      releaseFirstPage();
+      await page.unroute(heldPattern);
+    }
   });
 
   it("protects a card from a stale concurrent tab write", async () => {
-    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    const boardId = currentBoardId();
     await page.getByRole("textbox", { name: "New card title" }).fill("Concurrent card");
     await Promise.all([
       page.waitForResponse((response) => response.url().includes(`/api/v1/boards/${boardId}/cards`) && response.request().method() === "POST" && response.status() === 201),
@@ -104,7 +217,6 @@ describe("board real-stack acceptance", () => {
       otherPage.setDefaultTimeout(10000);
       await otherPage.goto(`${baseUrl}/board?board=${boardId}`);
       await otherPage.getByRole("heading", { name: "Boards" }).waitFor();
-      await otherPage.getByRole("combobox", { name: "Current board" }).selectOption(boardId);
       await otherPage.reload();
       await otherPage.getByRole("heading", { name: "Concurrent card" }).waitFor();
 
@@ -124,9 +236,7 @@ describe("board real-stack acceptance", () => {
   });
 
   it("creates a blank card and renders that card on the real Gantt timeline", async () => {
-    await page.getByRole("textbox", { name: "New card title" }).fill("");
-    await page.getByRole("button", { name: "Add card" }).click();
-    await page.getByRole("heading", { name: "Untitled card" }).waitFor();
+    await addCard("");
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Real timeline card");
     await page.locator("input[name='startDate']").fill(timelineStart);
@@ -153,9 +263,7 @@ describe("board real-stack acceptance", () => {
   });
 
   it("does not display JSON objects in rendered card content", async () => {
-    await page.getByRole("textbox", { name: "New card title" }).fill("Card with content");
-    await page.getByRole("button", { name: "Add card" }).click();
-    await page.getByRole("heading", { name: "Card with content" }).waitFor();
+    await addCard("Card with content");
 
     // Get all visible text
     const content = await page.textContent(".kanban");
@@ -165,23 +273,33 @@ describe("board real-stack acceptance", () => {
   });
 
   it("provides error messages with dismissal capability", async () => {
-    // Trigger an error by attempting invalid action
-    await page.goto(`${baseUrl}/board?board=invalid-board-id`);
-    await page.getByRole("heading", { name: "Boards" }).waitFor();
-
-    // Create a new board to have a valid board
-    await page.getByRole("textbox", { name: "New board name" }).fill(`Board ${Date.now()}`);
-    await Promise.all([
-      page.waitForResponse((response) => response.url().includes("/api/v1/boards") && response.status() === 201),
-      page.getByRole("button", { name: "Create board" }).click(),
-    ]);
-
-    // Check for error message and close button
-    const errorAlert = page.locator("[role='alert']").first();
-    if (await errorAlert.count() > 0) {
-      const closeButton = await page.locator("[aria-label*='Dismiss']").first();
-      assert.equal(await closeButton.count() > 0, true, "Error messages should have a close button");
+    // beforeEach already leaves a fresh board open; force a real failure so the
+    // error surface is exercised rather than skipped.
+    await page.route("**/api/v1/boards/*/cards", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.continue()));
+    try {
+      await submitCard("Doomed card");
+      const alert = page.getByRole("alert").filter({ hasText: "Could not create card." });
+      await alert.waitFor();
+      const dismiss = page.getByRole("button", { name: "Dismiss board error" });
+      assert.equal(await dismiss.count(), 1, "Error messages must carry a close button");
+      await dismiss.click();
+      assert.equal(await alert.count(), 0, "Dismissing must remove the error");
+    } finally {
+      await page.unroute("**/api/v1/boards/*/cards");
     }
+  });
+
+  it("clears a standing error once the next action succeeds", async () => {
+    await page.route("**/api/v1/boards/*/cards", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.continue()));
+    try {
+      await submitCard("Doomed card");
+      await page.getByRole("alert").filter({ hasText: "Could not create card." }).waitFor();
+    } finally {
+      await page.unroute("**/api/v1/boards/*/cards");
+    }
+
+    await addCard("Recovered card");
+    assert.equal(await page.getByRole("alert").filter({ hasText: "Could not create card." }).count(), 0, "A successful action must clear the previous error");
   });
 
   it("shows plus button for adding boards (icon button, not text)", async () => {
@@ -195,137 +313,131 @@ describe("board real-stack acceptance", () => {
     assert.equal(buttonText.includes("＋"), true, "Button should use icon (plus sign) not text");
   });
 
-  it("allows Kanban view to be the primary view with Gantt switch available", async () => {
-    await page.goto(`${baseUrl}/board`);
-    const boardSelect = page.locator("#board-select");
-    if (await boardSelect.inputValue()) {
-      const viewButtons = page.locator(".view-switch button");
-      assert.equal(await viewButtons.count(), 2, "Should have Kanban and Gantt buttons");
-
-      const kanbanBtn = page.getByRole("button", { name: "Kanban" });
-      const ganttBtn = page.getByRole("button", { name: "Gantt" });
-      assert.equal(await kanbanBtn.count(), 1, "Should have Kanban button");
-      assert.equal(await ganttBtn.count(), 1, "Should have Gantt button");
-    }
-  });
-
-  it("dismisses error messages when user takes action or clicks close", async () => {
+  it("keeps the Kanban/Gantt switch in the board toolbar", async () => {
     await page.goto(`${baseUrl}/board`);
     await page.getByRole("heading", { name: "Boards" }).waitFor();
 
-    // Create a board to ensure we have one selected
-    await createBoard(`Board dismiss test ${Date.now()}`);
-
-    // Error message close button test
-    const errorButton = page.locator('button[aria-label*="Dismiss"]');
-    if (await errorButton.count() > 0) {
-      await errorButton.first().click();
-      await page.waitForTimeout(200);
-      // After clicking close, error should disappear
-      const alertAfterClose = page.locator("[role='alert']");
-      assert.equal(await alertAfterClose.count(), 0, "Error should be dismissed after clicking close");
-    }
+    const viewButtons = page.locator(".view-switch button");
+    await viewButtons.first().waitFor();
+    assert.equal(await viewButtons.count(), 2, "Should have Kanban and Gantt buttons");
+    assert.deepEqual(await viewButtons.allTextContents(), ["Kanban", "Gantt"]);
+    // The switch sits inside the toolbar that holds the board tabs, not in a
+    // page-level menu, so it stays next to the cards it applies to.
+    assert.equal(await page.locator(".board-toolbar .view-switch").count(), 1);
   });
 
-  it("supports board name inline editing (click to edit)", async () => {
-    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    if (boardId) {
-      // Look for rename button (current implementation has explicit rename button)
-      const renameButton = page.getByRole("button", { name: "Rename board" }).first();
-      if (await renameButton.count() > 0) {
-        await renameButton.click();
-        const boardNameInput = page.getByRole("textbox", { name: "Board name" });
-        assert.equal(await boardNameInput.count(), 1, "Should show inline edit input for board name");
-      }
-    }
+  it("renames a board by clicking its own tab, with no rename button", async () => {
+    const renamed = `${activeBoardName} Renamed`;
+    assert.equal(await page.getByRole("button", { name: /rename/i }).count(), 0, "No separate rename button should exist");
+
+    await clickCentered(selectedTab());
+    const field = page.getByRole("textbox", { name: "Board name", exact: true });
+    await field.waitFor();
+    assert.equal(await field.inputValue(), activeBoardName, "The field starts from the current name");
+
+    await field.fill(renamed);
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes("/api/v1/boards/") && response.request().method() === "PUT" && response.status() === 200),
+      field.press("Enter"),
+    ]);
+    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(renamed)}$`) }).waitFor();
+    activeBoardName = renamed;
+
+    // The rename survives a reload, so it really reached the server.
+    await page.reload();
+    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(renamed)}$`) }).waitFor();
   });
 
-  it("displays status column names as editable (click to inline edit)", async () => {
-    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    if (boardId) {
-      // Check if we can edit status names
-      const renameButtons = page.locator('button[aria-label*="Rename"]').filter({ hasText: "Rename" });
-      if (await renameButtons.count() > 0) {
-        await renameButtons.first().click();
-        const statusInputs = page.locator("input").filter({ hasText: "" });
-        // A rename input should appear
-        const inputs = page.locator(".status-edit input");
-        if (await inputs.count() > 0) {
-          assert.equal(await inputs.count() > 0, true, "Status names should be editable via inline edit");
-        }
-      }
-    }
+  it("abandons an inline board rename on Escape", async () => {
+    const original = activeBoardName;
+    await clickCentered(selectedTab());
+    const field = page.getByRole("textbox", { name: "Board name", exact: true });
+    await field.waitFor();
+    await field.fill(`${original} Discarded`);
+    await field.press("Escape");
+
+    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(original)}$`) }).waitFor();
+    await page.reload();
+    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(original)}$`) }).waitFor();
   });
 
-  it("does not show 'Load more' button - uses lazy loading sentinel instead", async () => {
-    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    if (boardId) {
-      // Create multiple cards to test pagination
-      for (let i = 0; i < 5; i++) {
-        await page.getByRole("textbox", { name: "New card title" }).fill(`Card ${i} for lazy load test`);
-        await page.getByRole("button", { name: "Add card" }).click();
-        await page.waitForTimeout(200);
-      }
+  it("renames a status column by clicking its name, with no rename button", async () => {
+    const column = page.locator(".kanban-column").first();
+    await column.waitFor();
+    const original = (await column.locator(".status-name").textContent()).trim();
+    assert.equal(await column.getByRole("button", { name: /rename/i }).count(), 0, "No separate rename button should exist");
 
-      // Look for explicit "Load more" button - should NOT exist
-      const loadMoreButtons = page.locator("text=Load more").first();
-      assert.equal(await loadMoreButtons.count() === 0, true, "Should not show 'Load more' button");
+    await clickCentered(column.locator(".status-name"));
+    const field = column.locator(".status-edit input");
+    await field.waitFor();
+    assert.equal(await field.inputValue(), original, "The field starts from the current name");
 
-      // Should have lazy-load sentinel instead
-      const sentinels = page.locator(".load-more-sentinel");
-      // Sentinel may be present but not visible
-      if (await sentinels.count() > 0) {
-        const ariaHidden = await sentinels.first().getAttribute("aria-hidden");
-        assert.equal(ariaHidden, "true", "Lazy load sentinel should be aria-hidden");
-      }
-    }
+    const renamed = `${original} Ready`;
+    await field.fill(renamed);
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes("/statuses/") && response.request().method() === "PUT" && response.status() === 200),
+      field.press("Enter"),
+    ]);
+    await page.locator(".kanban-column").first().getByRole("heading", { name: renamed }).waitFor();
+
+    await page.reload();
+    await page.locator(".kanban-column").first().getByRole("heading", { name: renamed }).waitFor();
   });
 
-  it("allows path selection as dropdown, not multiselect", async () => {
-    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    if (boardId) {
-      await page.getByRole("textbox", { name: "New card title" }).fill("Card for path test");
-      await page.getByRole("button", { name: "Add card" }).click();
-      await page.getByRole("heading", { name: "Card for path test" }).waitFor();
+  it("lazy loads past the first page with a sentinel instead of a Load more button", async () => {
+    // The page size is 20, so seed 25 cards over the API to reach a second page
+    // without paying for 25 round trips through the form.
+    const boardId = currentBoardId();
+    await seedCards(boardId, 25, "Lazy");
+    await page.reload();
+    await page.getByRole("heading", { name: "Lazy card 0" }).waitFor();
 
-      // Open card editor
-      await page.locator(".board-card", { hasText: "Card for path test" }).click();
-      await page.getByRole("heading", { name: "Edit card" }).waitFor();
+    assert.equal(await page.getByText("Load more", { exact: false }).count(), 0, "Should not show a 'Load more' control");
+    const sentinel = page.locator(".load-more-sentinel").first();
+    await sentinel.waitFor({ state: "attached" });
+    assert.equal(await sentinel.getAttribute("aria-hidden"), "true", "Lazy load sentinel should be aria-hidden");
 
-      // Check path selector - should be checkboxes (not dropdown, but also not a select)
-      const pathInputs = page.locator("input[name='cardPaths']");
-      // If paths exist, verify they're checkboxes not a select
-      if (await pathInputs.count() > 0) {
-        const inputType = await pathInputs.first().getAttribute("type");
-        assert.equal(inputType, "checkbox", "Paths should use checkboxes for selection");
-      }
+    const column = page.locator(".kanban-column").first();
+    assert.equal(await column.locator(".board-card").count(), 20, "The first page holds 20 cards");
 
-      // Close the editor
-      await page.getByRole("button", { name: "Cancel" }).click();
-    }
+    // Scrolling the sentinel into view is what loads the rest — no click needed.
+    await sentinel.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => document.querySelectorAll(".kanban-column")[0].querySelectorAll(".board-card").length === 25);
+    assert.equal(await page.getByRole("heading", { name: "Lazy card 24" }).count(), 1);
+  });
+
+  it("offers path selection as a single-select dropdown, not a multiselect", async () => {
+    await addCard("Card for path test");
+
+    await page.locator(".board-card", { hasText: "Card for path test" }).click();
+    await page.getByRole("heading", { name: "Edit card" }).waitFor();
+
+    const pathSelect = page.locator("select[name='cardPaths']");
+    assert.equal(await pathSelect.count(), 1, "Paths must be picked from one dropdown");
+    assert.equal(await pathSelect.getAttribute("multiple"), null, "The path dropdown must not be a multiselect");
+    assert.equal(await page.locator("input[name='cardPaths']").count(), 0, "Paths must not be checkboxes");
+    // "No path" is always offered so a card can be cleared of its path.
+    assert.equal(await pathSelect.locator("option[value='']").count(), 1);
+
+    await page.getByRole("button", { name: "Cancel" }).click();
   });
 
   it("cards do not disappear when switching views or boards", async () => {
-    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    if (boardId) {
-      // Create a card
-      const cardTitle = `Card persistence test ${Date.now()}`;
-      await page.getByRole("textbox", { name: "New card title" }).fill(cardTitle);
-      await page.getByRole("button", { name: "Add card" }).click();
-      await page.getByRole("heading", { name: cardTitle }).waitFor();
+    const cardTitle = `Card persistence test ${Date.now()}`;
+    await addCard(cardTitle);
 
-      // Switch to Gantt view
-      await page.getByRole("button", { name: "Gantt" }).click();
-      await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    await page.getByRole("button", { name: "Kanban" }).click();
+    await page.getByRole("heading", { name: cardTitle }).waitFor();
 
-      // Switch back to Kanban
-      await page.getByRole("button", { name: "Kanban" }).click();
-
-      // Card should still exist
-      await page.getByRole("heading", { name: cardTitle }).waitFor();
-      assert.equal(await page.getByRole("heading", { name: cardTitle }).count() >= 1, true,
-        "Card should persist when switching between views");
-    }
+    // Switching away to another board and back must also keep the card.
+    const origin = activeBoardName;
+    await createBoard(`${origin} Sibling`);
+    await selectBoard(origin);
+    await page.getByRole("heading", { name: cardTitle }).waitFor();
+    assert.equal(await page.getByRole("heading", { name: cardTitle }).count(), 1,
+      "Card should persist across view and board switches");
   });
 
   it("creates new boards and preserves them in the board list", async () => {
@@ -335,13 +447,86 @@ describe("board real-stack acceptance", () => {
     await createBoard(boardName1);
     await createBoard(boardName2);
 
-    // Both boards should be in the select
-    const option1 = page.locator("#board-select").locator(`option[label='${boardName1}']`);
-    const option2 = page.locator("#board-select").locator(`option[label='${boardName2}']`);
+    // Both boards stay available as tabs, and the newest one is open.
+    await boardTab(boardName1).waitFor();
+    await boardTab(boardName2).waitFor();
+    assert.equal(await boardTab(boardName1).count(), 1, "First board should stay in the tab list");
+    assert.equal(await boardTab(boardName2).count(), 1, "Second board should stay in the tab list");
+    assert.equal(await selectedTab().textContent(), boardName2);
 
-    assert.equal(await option1.count() > 0 || await page.getByRole("option", { name: boardName1 }).count() > 0, true,
-      "First board should be in selection list");
-    assert.equal(await option2.count() > 0 || await page.getByRole("option", { name: boardName2 }).count() > 0, true,
-      "Second board should be in selection list");
+    // The tabs survive a reload, so they come from the server, not local state.
+    await page.reload();
+    await boardTab(boardName1).waitFor();
+    await boardTab(boardName2).waitFor();
+  });
+
+  it("archives a card from the board and restores it on the archive page", async () => {
+    const boardId = currentBoardId();
+    const cardTitle = `Archive round trip ${Date.now()}`;
+    await addCard(cardTitle);
+
+    await clickCentered(page.getByRole("button", { name: `Archive ${cardTitle}` }));
+    await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();
+    await clickCentered(page.getByRole("alertdialog").getByRole("button", { name: "Archive", exact: true }));
+    try {
+      await page.getByRole("heading", { name: cardTitle }).waitFor({ state: "detached" });
+    } catch (cause) {
+      const state = await page.evaluate(() => ({
+        error: document.querySelector(".board-error")?.textContent || "",
+        dialogOpen: Boolean(document.querySelector(".dialog-backdrop")),
+        cards: document.querySelectorAll(".board-card h3").length,
+      }));
+      throw new Error(`Archiving "${cardTitle}" left it on the board. Page: ${JSON.stringify(state)}. Console: ${JSON.stringify(consoleLog.slice(-5))}`, { cause });
+    }
+
+    // The archive lives on its own page, reached from the end of the board.
+    const footer = page.locator("footer.board-footer");
+    await footer.scrollIntoViewIfNeeded();
+    await clickCentered(footer.getByRole("link", { name: "Archived items" }));
+    await page.waitForURL(/\/board\/archive/);
+    await page.getByRole("heading", { name: "Archive", exact: true }).waitFor();
+    assert.equal(currentBoardId(), boardId, "The archive page stays scoped to the board it came from");
+
+    await page.getByRole("button", { name: `Restore ${cardTitle}` }).click();
+    await page.getByRole("button", { name: `Restore ${cardTitle}` }).waitFor({ state: "detached" });
+
+    await page.getByRole("link", { name: "Back to board" }).click();
+    await page.waitForURL(/\/board\?/);
+    await page.getByRole("heading", { name: cardTitle }).waitFor();
+  });
+
+  it("keeps archived listings off the board page itself", async () => {
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    assert.equal(await page.locator(".archived-list").count(), 0, "Archived items belong on the archive page");
+    for (const label of ["Show archived cards", "Show archived statuses", "Archived boards"]) {
+      assert.equal(await page.getByRole("button", { name: label }).count(), 0, `"${label}" toggle should be gone`);
+    }
+    const footer = page.locator("footer.board-footer");
+    assert.equal(await footer.count(), 1, "Archive controls sit in a footer at the end of the page");
+    assert.equal(await footer.getByRole("button", { name: "Archive board" }).count(), 1);
+  });
+
+  it("keeps the archive footer clear of the fixed bottom tracker", async () => {
+    const footer = page.locator("footer.board-footer");
+    await footer.scrollIntoViewIfNeeded();
+    // The app pins its time tracker to the bottom of the viewport, so the last
+    // row of the page must still receive its own clicks.
+    const covering = await page.evaluate(() => {
+      const results = [];
+      for (const control of document.querySelectorAll("footer.board-footer a, footer.board-footer button")) {
+        const box = control.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        if (!control.contains(hit)) results.push(`${control.getAttribute("aria-label")} covered by ${hit?.className || hit?.tagName}`);
+      }
+      return results;
+    });
+    assert.deepEqual(covering, [], "Archive footer controls must not be covered");
+  });
+
+  it("passes Axe on the archive page", async () => {
+    await page.goto(`${baseUrl}/board/archive`);
+    await page.getByRole("heading", { name: "Archive", exact: true }).waitFor();
+    const results = await new AxeBuilder({ page }).analyze();
+    assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
   });
 });
