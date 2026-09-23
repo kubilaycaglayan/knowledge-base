@@ -1002,6 +1002,21 @@ describe("board tab overflow", () => {
     });
   }
 
+  for (const width of [390, 1280]) {
+    it(`opens the More menu right under its button (${width}px)`, async (t) => {
+      const page = await overflowFixture(t, width);
+      const more = page.getByRole("button", { name: /^More boards/ });
+      await more.click();
+      const menu = page.getByRole("menu", { name: "More boards" });
+      await menu.waitFor();
+      const button = await more.boundingBox();
+      const box = await menu.boundingBox();
+      assert.ok(box.y >= button.y + button.height - 1 && box.y <= button.y + button.height + 8, `Menu top ${box.y} sits just below the button bottom ${button.y + button.height}`);
+      assert.ok(Math.abs(box.x + box.width - (button.x + button.width)) <= 1, "Menu lines up with the button's right edge");
+      assert.ok(box.x >= 0 && box.x + box.width <= width, "Menu stays on screen");
+    });
+  }
+
   it("opens a board from More into the reserved first slot without shifting it", async (t) => {
     const page = await overflowFixture(t);
     const slot = page.locator(".board-tab-current");
