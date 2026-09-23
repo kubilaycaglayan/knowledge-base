@@ -91,7 +91,7 @@ const timerStore = useTimerStore();
 const cardPathId = (card: BoardCard) => selectedBoard.value?.pathId || card.pathIds[0] || "";
 const canStartSession = (card: BoardCard) => Boolean(cardPathId(card)) && !timerStore.isRunning;
 const startSessionLabel = (title: string) => `Start a session for ${title || "untitled card"}`;
-async function startCardSession(card: BoardCard, title = card.title) { dismissError(); try { await timerStore.startSession({ pathId: cardPathId(card), description: title || undefined }); } catch { error.value = "Could not start a session. Stop the running timer first."; } }
+async function startCardSession(card: BoardCard, title = card.title) { dismissError(); try { await timerStore.startSession({ pathId: cardPathId(card), description: title || undefined }); } catch (cause) { error.value = (cause as { status?: number })?.status === 409 ? "A session is already running. Stop it before starting another." : "Could not start a session. Try again."; } }
 function onCardPlay(event: MouseEvent, card: BoardCard, title?: string) { event.stopPropagation(); void startCardSession(card, title); }
 function activateBoardTab(id: string) { if (store.selectedId !== id) selectBoard(id); }
 // Board tabs never scroll sideways. The open board keeps a fixed-width first

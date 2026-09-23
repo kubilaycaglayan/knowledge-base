@@ -1,4 +1,4 @@
-import { defineStore } from "pinia";
+import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { api } from "../lib/api";
 import { usePathsStore } from "./paths";
@@ -619,3 +619,6 @@ export const useTimerStore = defineStore("timer", () => {
     sync,
   };
 });
+
+// Keep the live store in step with edited actions during development.
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useTimerStore, import.meta.hot));

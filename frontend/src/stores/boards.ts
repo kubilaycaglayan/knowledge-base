@@ -1,4 +1,4 @@
-import { defineStore } from "pinia";
+import { acceptHMRUpdate, defineStore } from "pinia";
 import { api } from "../lib/api";
 
 // pathId is set on the board every path owns; only path boards can be hidden and only custom boards pinned.
@@ -49,3 +49,6 @@ export const useBoardsStore = defineStore("boards", {
     async archiveStatus(status: BoardStatus, restore = false, targetBoardId?: string) { const boardId = targetBoardId ?? this.selectedId; await api(`/boards/${boardId}/statuses/${status.id}/${restore ? "restore" : "archive"}`, { method: "POST" }); status.archived = !restore; if (boardId === this.selectedId) await this.loadBoard(); },
   },
 });
+
+// Keep the live store in step with edited actions during development.
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useBoardsStore, import.meta.hot));
