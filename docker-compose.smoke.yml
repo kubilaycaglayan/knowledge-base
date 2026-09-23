@@ -9,4 +9,8 @@ services:
   api:
     ports: !override []
   proxy:
-    ports: !override ["127.0.0.1:${PROXY_HTTP_PORT:-18080}:80"]
+    ports: !override
+      [
+        "127.0.0.1:${PROXY_HTTP_PORT:-18080}:80",
+        "127.0.0.1:${PROXY_HTTPS_PORT:-18443}:443",
+      ]
