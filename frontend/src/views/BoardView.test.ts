@@ -572,6 +572,26 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
 
+    it("explains why a card could not start a session", async () => {
+      seedCustom();
+      const timer = useTimerStore();
+      const start = vi.spyOn(timer, "startSession");
+      const wrapper = mountBoard();
+      await flushPromises();
+
+      start.mockRejectedValueOnce(Object.assign(new Error("A timer is already running"), { status: 409 }));
+      await playFor(wrapper, "Write docs").trigger("click");
+      await flushPromises();
+      expect(wrapper.find(".board-error").text()).toContain("A session is already running. Stop it before starting another.");
+
+      start.mockRejectedValueOnce(new TypeError("startSession is not a function"));
+      await playFor(wrapper, "Write docs").trigger("click");
+      await flushPromises();
+      expect(wrapper.find(".board-error").text()).toContain("Could not start a session. Try again.");
+      expect(wrapper.find(".board-error").text()).not.toContain("Stop the running timer");
+      await wrapper.unmount();
+    });
+
     // CT-03
     it("puts the card play button before Close in the editor", async () => {
       seedCustom();
