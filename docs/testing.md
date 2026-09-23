@@ -15,6 +15,9 @@ The board store suite covers stale board-list/content/Gantt/page responses,
 stale moves and edits, optimistic rollback, invalid destinations, timeout
 preservation, Gantt reconciliation, page retry, request-timeout mapping, and
 optimistic `updatedAt` conflict recovery for concurrent card edits.
+The disposable full-stack smoke runner creates a temporary host-networked
+BuildKit builder so Gradle and npm dependency resolution works in the isolated
+builder, then removes that builder and only its smoke-scoped Compose resources.
 The real-stack browser suite also delays a board page response while switching
 boards to verify stale content cannot replace the selected board. Run the focused contract
 checks with:

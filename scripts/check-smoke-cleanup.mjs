@@ -25,6 +25,10 @@ const required = [
     "isolated Buildx builder creation",
   ],
   [
+    '--driver-opt network=host',
+    "Buildx builder network access for dependency resolution",
+  ],
+  [
     'export BUILDX_BUILDER="$buildx_builder"',
     "Buildx builds are scoped to the temporary builder",
   ],

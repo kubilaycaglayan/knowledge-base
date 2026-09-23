@@ -69,7 +69,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
 fi
 smoke_pid="${BASHPID:-$$}"
 buildx_builder="knowledge-base-smoke-${COMPOSE_PROJECT_NAME:-knowledge-base}-${smoke_pid}-$(date +%s%N)"
-if ! docker buildx create --name "$buildx_builder" --driver docker-container >/dev/null 2>&1; then
+if ! docker buildx create --name "$buildx_builder" --driver docker-container --driver-opt network=host >/dev/null 2>&1; then
   echo "Smoke tests require Docker Buildx so their build cache can be cleaned safely" >&2
   exit 1
 fi

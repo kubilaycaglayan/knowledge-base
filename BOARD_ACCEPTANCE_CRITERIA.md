@@ -188,8 +188,9 @@ Unchecked items are intentionally incomplete.
   (board switching, dated-card Gantt rendering, and mobile Axe audit).
 - [x] Board backend unit/integration, frontend unit/component, real-stack E2E,
   build, accessibility, and security checks are documented and green.
-- [ ] Disposable full-stack smoke is pending a successful BuildKit image build;
-  the latest attempt stalled before services started and was cleaned up safely.
+- [x] Disposable full-stack smoke passes with the temporary host-networked
+  BuildKit builder, Compose cleanup, API checks, proxy checks, and board smoke
+  coverage.
 - [x] API, architecture, testing, roadmap, smoke, and import/export documents
   reflect the final board behavior.
 
