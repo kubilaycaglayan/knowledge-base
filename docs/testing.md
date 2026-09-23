@@ -13,7 +13,9 @@ and volumes.
 
 The board store suite covers stale board-list/content/Gantt/page responses,
 stale moves and edits, optimistic rollback, invalid destinations, timeout
-preservation, Gantt reconciliation, and page retry. Run the focused contract
+preservation, Gantt reconciliation, page retry, and request-timeout mapping.
+The real-stack browser suite also delays a board page response while switching
+boards to verify stale content cannot replace the selected board. Run the focused contract
 checks with:
 
 ```bash

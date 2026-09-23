@@ -31,7 +31,8 @@ Unchecked items are intentionally incomplete.
   overwrite Kanban or Gantt state.
 - [x] Store-level concurrent board loads and writes reject stale responses
   deterministically.
-- [ ] Concurrent board loads and writes are covered end to end.
+- [x] Concurrent board loads and writes are covered end to end, including a
+  delayed real-stack board response that cannot replace the newly selected board.
 - [x] Gantt responses are revision-checked so an older board/window cannot
   overwrite the current timeline.
 - [x] Archived boards reject mutations, remain permanently retained, and can be
@@ -64,7 +65,7 @@ Unchecked items are intentionally incomplete.
 - [x] Other failed card saves keep the editor open, preserve the draft, and
   allow a successful retry in browser acceptance coverage.
 - [x] API abort timeouts leave the current card intact in store tests.
-- [ ] Timeout-specific editor feedback and retry are covered end to end.
+- [x] Timeout-specific editor feedback and retry are covered end to end.
 
 ## E. Kanban behavior
 
@@ -112,7 +113,7 @@ Unchecked items are intentionally incomplete.
 - [x] Offline board load, unauthenticated `401`, invalid-board `404`, card
   conflict `409`, failed-page retry, and recoverable mutation feedback are
   covered across browser/store tests.
-- [ ] Timeout-specific visible editor feedback is covered end to end.
+- [x] Timeout-specific visible editor feedback is covered end to end.
 - [x] Gantt load failures set a visible, dismissible retry message and clear
   stale timeline cards.
 - [ ] Concurrent tabs do not overwrite newer board/card state with stale data.
@@ -148,7 +149,8 @@ Unchecked items are intentionally incomplete.
   response in API tests; path and label ownership validation is covered.
 - [x] Foreign path and label IDs are rejected before card persistence in API
   tests.
-- [ ] Cross-user and cross-board IDs are covered across every mutation route.
+- [x] Cross-user and cross-board IDs are covered across every board, status, and
+  card mutation route.
 - [x] Adding `BOARD` labels does not alter existing label scopes.
 
 ## J. Accessibility and regression
