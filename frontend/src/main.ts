@@ -8,6 +8,7 @@ import "./theme.css";
 import "./extra.css";
 import "./rich-text.css";
 import { applyTheme, theme } from "./lib/theme";
+import { watchBrowserCompletions } from "./lib/no-autocomplete";
 applyTheme(theme.value);
 const router = createRouter({
   history: createWebHistory(),
@@ -56,4 +57,6 @@ router.beforeEach((to, from) => {
   }
   return true;
 });
+// Menus and dialogs teleport to <body>, so watch all of it, not only #app.
+watchBrowserCompletions(document.body);
 createApp(App).use(createPinia()).use(router).use(vuetify).mount("#app");

@@ -492,7 +492,7 @@ describe("BoardView", () => {
     expect(meta.find(".meta-dates").exists()).toBe(false);
 
     const footer = wrapper.find(".card-editor-footer");
-    const controls = [...footer.element.children].map((element) => element.classList.contains("meta-dates") ? "dates" : element.classList.contains("card-labels-picker") ? "labels" : element.classList.contains("save-state") ? "save" : element.getAttribute("name") || element.getAttribute("aria-label"));
+    const controls = [...footer.element.children].map((element) => element.classList.contains("meta-dates") ? "dates" : element.classList.contains("card-labels-picker-wrap") ? "labels" : element.classList.contains("save-state") ? "save" : element.getAttribute("name") || element.getAttribute("aria-label"));
     expect(controls).toEqual(["dates", "priority", "status", "labels", "save", "Archive card"]);
     const archive = footer.find('button[aria-label="Archive card"]');
     expect(archive.text()).toBe("");
@@ -524,7 +524,6 @@ describe("BoardView", () => {
       expect(picker.exists()).toBe(true);
       expect(picker.classes()).toContain("card-labels-picker");
       expect(picker.props("multiple")).toBe(true);
-      expect(picker.props("chips")).toBe(true);
       expect((picker.props("items") as Array<{ name: string }>).map((label) => label.name)).toEqual(["Design", "Docs"]);
       picker.vm.$emit("update:modelValue", ["label-docs"]);
       await flushPromises();

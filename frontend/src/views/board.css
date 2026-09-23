@@ -122,9 +122,11 @@
 .card-editor-header .board-card-play { flex:0 0 auto; }
 
 /* Card labels: a compact chip picker in the editor footer, one clipped row on cards. */
-.card-labels-picker { flex:1 1 12rem; min-width:10rem; }
+.card-labels-picker-wrap { position:relative; flex:1 1 12rem; min-width:10rem; } .card-labels-picker { min-width:0; }
 .card-labels-picker :deep(.v-field) { min-height:36px; border-radius:6px; background:var(--workspace-hover); box-shadow:none; font-size:.85rem; }
-.card-labels-picker :deep(.v-field__input) { min-height:36px; padding-block:2px; gap:3px; }
+.card-labels-picker :deep(.v-field__input) { min-height:36px; max-height:36px; padding-block:2px; gap:3px; flex-wrap:nowrap; overflow:hidden; } .card-labels-picker :deep(.v-autocomplete__selection:empty) { display:none; } .card-labels-picker :deep(.v-autocomplete__selection) { flex:0 0 auto; margin:0; }
+.card-labels-more, .card-labels-measure-chip { display:inline-flex; align-items:center; flex:0 0 auto; height:24px; padding:0 8px; border-radius:4px; font-size:.75rem; white-space:nowrap; } .card-labels-more { background:var(--workspace-selected); color:var(--muted-text); font-variant-numeric:tabular-nums; } .card-labels-measure-chip { padding-right:28px; }
+.card-labels-measure { position:absolute; top:0; left:0; display:flex; gap:3px; height:0; overflow:hidden; visibility:hidden; pointer-events:none; }
 .card-labels-picker :deep(.v-field__input input) { min-height:0; border:0; padding:0; font-size:max(16px, .85rem); }
 .card-labels-picker :deep(.card-labels-chip) { border-radius:4px; background:var(--workspace-selected); color:var(--workspace-selected-text, inherit); }
 .board-card-labels { display:flex; flex-wrap:nowrap; gap:.25rem; height:18px; margin:.3rem 0 0; overflow:hidden; }

@@ -615,7 +615,9 @@ describe("board browser acceptance", () => {
     await page.waitForFunction(() => document.querySelectorAll(".v-overlay-container .v-list-item-title").length === 1);
     assert.deepEqual((await options.allInnerTexts()).map((name) => name.trim()), ["Bug"], "Typing searches the labels");
     await options.first().click();
-    await page.locator(".card-labels-picker .v-chip", { hasText: "Bug" }).waitFor();
+    // Bug is the seventh label, so it joins the count rather than a visible chip.
+    await page.locator(".card-labels-picker .card-labels-more", { hasText: /^\+\d+$/ }).waitFor();
+    await page.waitForFunction(() => { const more = document.querySelector(".card-labels-picker .card-labels-more"); const chips = document.querySelectorAll(".card-labels-picker .card-labels-chip").length; return more && chips + Number(more.textContent.trim().slice(1)) === 7; });
     await page.keyboard.press("Escape");
     assert.equal(await page.locator(".card-editor").count(), 1, "Escape closes the label menu before the editor");
     await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
@@ -627,7 +629,8 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t, 1280);
     await page.locator(".board-card").first().click();
     const picker = page.locator(".card-labels-picker");
-    await picker.locator(".v-field").waitFor();
+    await picker.locator(".card-labels-more").waitFor();
+    await page.waitForFunction(() => document.querySelectorAll(".card-labels-picker .card-labels-chip").length > 0);
     const field = await picker.locator(".v-field").boundingBox();
     assert.ok(field.height <= 40, `The picker does not grow (${field.height}px)`);
     const chips = await picker.locator(".card-labels-chip").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
@@ -645,7 +648,7 @@ describe("board browser acceptance", () => {
     await page.locator(".board-card").first().click();
     await page.locator(".card-labels-picker input").click();
     const fields = await page.locator("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea").evaluateAll((items) => items.map((item) => `${item.getAttribute("aria-label") || item.name || item.className}:${item.getAttribute("autocomplete")}`));
-    assert.ok(fields.length > 3);
+    assert.ok(fields.length >= 3, `Title, dates, and labels at least (${fields})`);
     assert.deepEqual(fields.filter((field) => !field.endsWith(":off")), [], "Every field opts out of browser completions");
   });
 
