@@ -464,6 +464,14 @@ describe("board browser acceptance", () => {
     assert.equal(marginBottom, 8);
   });
 
+  it("shows the Archived items link without a border", async (t) => {
+    const { page } = await fixture(t, 1280);
+    const link = page.locator("footer.board-footer").getByRole("link", { name: "Archived items" });
+    await link.waitFor();
+    const borders = await link.evaluate((element) => { const style = getComputedStyle(element); return [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]; });
+    assert.deepEqual(borders, ["0px", "0px", "0px", "0px"]);
+  });
+
   it("sorts a column by priority from its header", async (t) => {
     const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
     await page.locator(".board-card").first().waitFor();
