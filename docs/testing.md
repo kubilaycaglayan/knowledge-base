@@ -36,6 +36,9 @@ node scripts/check-smoke-cleanup.mjs
 bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh
 sh -n deployment/backup-loop.sh deployment/neon-backup.sh
 JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
+SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke \
+  JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' \
+  ./scripts/run-smoke-tests.sh
 ```
 
 On macOS, generate the iOS Xcode project from `ios/project.yml` and run the generated scheme for native SwiftUI and UI-test validation.
