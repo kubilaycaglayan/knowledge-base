@@ -60,6 +60,35 @@ describe("board real-stack acceptance", () => {
     assert.equal(new URL(page.url()).searchParams.get("board") !== null, true);
   });
 
+  it("does not let a delayed board response replace the newly selected board", async () => {
+    const firstBoard = activeBoardName;
+    const firstId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    await createBoard(`${firstBoard} Delayed response`);
+    const secondId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    await page.getByRole("textbox", { name: "New card title" }).fill("Second board card");
+    await page.getByRole("button", { name: "Add card" }).click();
+    await page.getByRole("heading", { name: "Second board card" }).waitFor();
+
+    let releaseFirstPage;
+    const firstPageReleased = new Promise((resolve) => { releaseFirstPage = resolve; });
+    let held = false;
+    await page.route(`**/api/v1/boards/${firstId}/cards/page*`, async (route) => {
+      if (!held) {
+        held = true;
+        await firstPageReleased;
+      }
+      await route.continue();
+    });
+    await page.getByRole("combobox", { name: "Current board" }).selectOption(firstId);
+    await page.waitForTimeout(100);
+    await page.getByRole("combobox", { name: "Current board" }).selectOption(secondId);
+    await page.getByRole("heading", { name: "Second board card" }).waitFor();
+    releaseFirstPage();
+    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), secondId);
+    assert.equal(await page.getByRole("heading", { name: "Second board card" }).count() >= 1, true);
+    await page.unroute(`**/api/v1/boards/${firstId}/cards/page*`);
+  });
+
   it("creates a blank card and renders that card on the real Gantt timeline", async () => {
     await page.getByRole("textbox", { name: "New card title" }).fill("");
     await page.getByRole("button", { name: "Add card" }).click();
