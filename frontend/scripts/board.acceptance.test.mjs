@@ -519,6 +519,20 @@ describe("board browser acceptance", () => {
     assert.doesNotMatch(await page.locator(".board-card .card-dates").first().textContent(), /–/);
   });
 
+  it("keeps the card title at the top of the editor, level with the close button", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    const editor = page.locator(".card-editor");
+    await editor.waitFor();
+    assert.equal(await editor.evaluate((element) => getComputedStyle(element).paddingTop), "0px");
+    const box = await editor.boundingBox();
+    const title = await page.getByRole("textbox", { name: "Title", exact: true }).boundingBox();
+    const close = await page.getByRole("button", { name: "Close card" }).boundingBox();
+    assert.ok(title.y - box.y <= 12, `Title starts near the top (${title.y - box.y}px)`);
+    assert.ok(Math.abs(title.y + title.height / 2 - (close.y + close.height / 2)) <= 2, "Close is vertically centred on the title");
+    assert.ok(close.x > title.x + title.width - 1, "Close sits to the right of the title");
+  });
+
   it("sorts a column by priority from its header", async (t) => {
     const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
     await page.locator(".board-card").first().waitFor();

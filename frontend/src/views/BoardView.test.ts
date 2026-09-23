@@ -500,6 +500,21 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("puts the title and the close button on the editor's first row", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    const editor = wrapper.find(".card-editor");
+    const header = editor.find(".card-editor-header");
+    expect(editor.element.firstElementChild).toBe(header.element);
+    expect(header.findAll("textarea, button").map((element) => element.attributes("name") || element.attributes("aria-label"))).toEqual(["title", "Close card"]);
+    expect(editor.find('.card-meta button[aria-label="Close card"]').exists()).toBe(false);
+    expect(editor.find('.card-meta select[name="cardPaths"]').exists()).toBe(true);
+    await wrapper.unmount();
+  });
+
   it("asks to archive a card without the retention explanation", async () => {
     const store = seedBoard(["Backlog"]);
     store.cards = [{ id: "card-1", statusId: "status-1", title: "", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
