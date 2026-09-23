@@ -422,6 +422,28 @@ describe("BoardView", () => {
     expect(wrapper.find('input[aria-label="New status name"]').exists()).toBe(false);
     await wrapper.unmount();
   });
+  it("toggles the Kanban between page width and full width and remembers it", async () => {
+    localStorage.removeItem("board.kanbanWide");
+    seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    const toggle = () => wrapper.find(".kanban-area .kanban-width-toggle");
+    expect(wrapper.find(".kanban-area").classes()).not.toContain("wide");
+    expect(toggle().attributes("aria-pressed")).toBe("false");
+    await toggle().trigger("click");
+    expect(wrapper.find(".kanban-area").classes()).toContain("wide");
+    expect(toggle().attributes("aria-label")).toBe("Collapse board to page width");
+    expect(localStorage.getItem("board.kanbanWide")).toBe("1");
+    await wrapper.unmount();
+
+    const again = mountBoard();
+    await flushPromises();
+    expect(again.find(".kanban-area").classes()).toContain("wide");
+    await again.unmount();
+    localStorage.removeItem("board.kanbanWide");
+  });
+
   describe("card editor", () => {
     const baseCard = { id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" };
     async function openCard() {
