@@ -13,8 +13,8 @@ services:
 
   backup:
     image: postgres:16-alpine
-    # Write dumps and the Neon status file as the host deploy user so the
-    # repo-local backups/ directory stays readable without sudo.
+    # Write dumps and the backup database status file as the host deploy user so
+    # the repo-local backups/ directory stays readable without sudo.
     user: "${BACKUP_UID:-1000}:${BACKUP_GID:-1000}"
     environment:
       PGHOST: db
@@ -24,15 +24,15 @@ services:
       BACKUP_DIR: /backups
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-3600}
       BACKUP_RETENTION_COUNT: ${BACKUP_RETENTION_COUNT:-168}
-      NEON_BACKUP_ENABLED: ${NEON_BACKUP_ENABLED:-1}
-      NEON_DATABASE_URL: ${NEON_DATABASE_URL:-}
-      NEON_DATABASE_URL_POOLED: ${NEON_DATABASE_URL_POOLED:-}
-      NEON_BACKUP_DATABASE_CONFIRM: ${NEON_BACKUP_DATABASE_CONFIRM:-}
-      NEON_STATUS_FILE: /backups/neon-backup-status.env
+      BACKUP_DB_ENABLED: ${BACKUP_DB_ENABLED:-1}
+      BACKUP_DB_URL: ${BACKUP_DB_URL:-}
+      BACKUP_DB_URL_POOLED: ${BACKUP_DB_URL_POOLED:-}
+      BACKUP_DB_CONFIRM: ${BACKUP_DB_CONFIRM:-}
+      BACKUP_DB_STATUS_FILE: /backups/backup-db-status.env
     volumes:
       - ./backups:/backups
       - ./deployment/backup-loop.sh:/usr/local/bin/knowledge-base-backup-loop:ro
-      - ./deployment/neon-backup.sh:/usr/local/bin/knowledge-base-neon-backup:ro
+      - ./deployment/backup-db-refresh.sh:/usr/local/bin/knowledge-base-backup-db-refresh:ro
     entrypoint: ["/usr/local/bin/knowledge-base-backup-loop"]
     depends_on:
       db:

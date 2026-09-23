@@ -4,7 +4,7 @@ set -eu
 backup_dir="${BACKUP_DIR:-/backups}"
 interval_seconds="${BACKUP_INTERVAL_SECONDS:-3600}"
 retention_count="${BACKUP_RETENTION_COUNT:-168}"
-neon_enabled="${NEON_BACKUP_ENABLED:-1}"
+backup_db_enabled="${BACKUP_DB_ENABLED:-1}"
 
 mkdir -p "$backup_dir"
 umask 077
@@ -20,11 +20,11 @@ while :; do
   mv "$temporary" "$output"
   echo "Wrote backup to $output"
 
-  if [ "$neon_enabled" = "1" ]; then
-    if ! /usr/local/bin/knowledge-base-neon-backup; then
-      # Neon is a remote backup copy. A failed refresh must not stop local
-      # snapshots or affect application writes.
-      echo 'Neon backup failed; retaining the completed local snapshot.' >&2
+  if [ "$backup_db_enabled" = "1" ]; then
+    if ! /usr/local/bin/knowledge-base-backup-db-refresh; then
+      # The backup database is a remote copy. A failed refresh must not stop
+      # local snapshots or affect application writes.
+      echo 'Backup database refresh failed; retaining the completed local snapshot.' >&2
     fi
   fi
 

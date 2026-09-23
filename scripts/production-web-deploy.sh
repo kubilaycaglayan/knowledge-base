@@ -42,8 +42,8 @@ docker compose "${compose_args[@]}" build "${build_args[@]}"
 
 echo 'Updating the production stack (persistent volumes are preserved)...'
 # Keep the database stable across application deployments. The backup service
-# is recreated deliberately so changed backup/Neon environment values are
-# applied, without asking Compose to restart its database dependency.
+# is recreated deliberately so changed backup and backup database environment
+# values are applied, without asking Compose to restart its database dependency.
 docker compose "${compose_args[@]}" up -d --no-recreate db
 docker compose "${compose_args[@]}" up -d --force-recreate --no-deps backup
 docker compose "${compose_args[@]}" up -d --force-recreate --no-deps api web proxy cloudflared
