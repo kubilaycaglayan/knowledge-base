@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { EditorContent } from "@tiptap/vue-3";
@@ -19,7 +19,7 @@ const route = useRoute(); const router = useRouter();
 const view = computed(() => route.query.view === "gantt" ? "gantt" : "kanban");
 const showArchived = ref(false), archiveConfirmOpen = ref(false), archiveCardConfirm = ref<BoardCard | null>(null), newBoardInput = ref<HTMLInputElement | null>(null), newBoard = ref(""), newCardTitle = ref(""), newStatus = ref(""), editingBoard = ref(false), boardDraft = ref(""), error = ref("");
 function dismissError() { error.value = ""; store.error = ""; }
-const editing = ref<BoardCard | null>(null), discardOpen = ref(false), savingCard = ref(false), cardDateError = ref(""), originalDraft = ref(""), draft = ref({ title: "", body: "{}", priority: "MEDIUM" as BoardCard["priority"], startDate: "", dueDate: "", pathIds: [] as string[], labelIds: [] as string[] });
+const editing = ref<BoardCard | null>(null), lastFocusedCardId = ref(""), lastFocusedCard = shallowRef<HTMLElement | null>(null), discardOpen = ref(false), savingCard = ref(false), cardDateError = ref(""), originalDraft = ref(""), draft = ref({ title: "", body: "{}", priority: "MEDIUM" as BoardCard["priority"], startDate: "", dueDate: "", pathIds: [] as string[], labelIds: [] as string[] });
 const cardEditor = shallowRef<Editor | null>(null);
 const editingStatusId = ref(""), statusDraft = ref(""), showArchivedCards = ref(false), showArchivedStatuses = ref(false);
 const pageObservers = new Map<string, IntersectionObserver>();
@@ -46,10 +46,12 @@ async function createCard() { if (!store.selectedId) return; try { await store.c
 function defaultBoardDocument() { return { type: "doc", content: [{ type: "paragraph" }] }; }
 function parseBoardBody(body: string) { try { const parsed = JSON.parse(body); return parsed?.type === "doc" ? parsed : defaultBoardDocument(); } catch { return defaultBoardDocument(); } }
 function destroyCardEditor() { cardEditor.value?.destroy(); cardEditor.value = null; }
-function editCard(card: BoardCard) { destroyCardEditor(); editing.value = card; cardDateError.value = ""; draft.value = { title: card.title, body: card.body, priority: card.priority, startDate: card.startDate || "", dueDate: card.dueDate || "", pathIds: [...card.pathIds], labelIds: [...card.labelIds] }; originalDraft.value = JSON.stringify(draft.value); discardOpen.value = false; cardEditor.value = new Editor({ extensions: [StarterKit], content: parseBoardBody(card.body), editorProps: { attributes: { role: "textbox", "aria-label": "Card body", "aria-multiline": "true" } }, onUpdate: ({ editor }) => { draft.value.body = JSON.stringify(editor.getJSON()); } }); }
-function requestCloseEditor() { if (editing.value && JSON.stringify(draft.value) !== originalDraft.value) discardOpen.value = true; else { destroyCardEditor(); editing.value = null; } }
-function discardChanges() { discardOpen.value = false; destroyCardEditor(); editing.value = null; cardDateError.value = ""; }
-async function saveCard() { if (!editing.value || savingCard.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; savingCard.value = true; try { await store.updateCard(editing.value, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); destroyCardEditor(); editing.value = null; discardOpen.value = false; } catch (saveError) { error.value = saveError instanceof ApiError && saveError.status === 408 ? "The request timed out. Try again." : saveError instanceof ApiError && saveError.status === 409 ? "This card changed elsewhere. Try saving again." : "Could not save card."; } finally { savingCard.value = false; } }
+function rememberCardFocus(event: PointerEvent) { const card = (event.target as HTMLElement | null)?.closest<HTMLElement>(".board-card"); if (card) lastFocusedCard.value = card; }
+function restoreCardFocus() { const cardId = lastFocusedCardId.value; if (cardId) void nextTick(() => (lastFocusedCard.value || document.getElementById(`board-card-${cardId}`))?.focus()); }
+function editCard(card: BoardCard) { destroyCardEditor(); lastFocusedCardId.value = card.id; editing.value = card; cardDateError.value = ""; draft.value = { title: card.title, body: card.body, priority: card.priority, startDate: card.startDate || "", dueDate: card.dueDate || "", pathIds: [...card.pathIds], labelIds: [...card.labelIds] }; originalDraft.value = JSON.stringify(draft.value); discardOpen.value = false; cardEditor.value = new Editor({ extensions: [StarterKit], content: parseBoardBody(card.body), editorProps: { attributes: { role: "textbox", "aria-label": "Card body", "aria-multiline": "true" } }, onUpdate: ({ editor }) => { draft.value.body = JSON.stringify(editor.getJSON()); } }); }
+function requestCloseEditor() { if (editing.value && JSON.stringify(draft.value) !== originalDraft.value) discardOpen.value = true; else { destroyCardEditor(); editing.value = null; restoreCardFocus(); } }
+function discardChanges() { discardOpen.value = false; destroyCardEditor(); editing.value = null; cardDateError.value = ""; restoreCardFocus(); }
+async function saveCard() { if (!editing.value || savingCard.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; savingCard.value = true; try { await store.updateCard(editing.value, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); destroyCardEditor(); editing.value = null; discardOpen.value = false; restoreCardFocus(); } catch (saveError) { error.value = saveError instanceof ApiError && saveError.status === 408 ? "The request timed out. Try again." : saveError instanceof ApiError && saveError.status === 409 ? "This card changed elsewhere. Try saving again." : "Could not save card."; } finally { savingCard.value = false; } }
 async function addStatus() { if (!newStatus.value.trim()) return; try { await store.createStatus(newStatus.value); newStatus.value = ""; } catch { error.value = "Could not create status."; } }
 async function restoreStatus(status: BoardStatus) { try { await store.archiveStatus(status, true); } catch { error.value = "Could not restore status."; } }
 function editStatus(status: BoardStatus) { editingStatusId.value = status.id; statusDraft.value = status.name; }
@@ -65,10 +67,10 @@ async function confirmArchiveCard() { const card = archiveCardConfirm.value; arc
 async function archiveCurrent() { if (!store.selectedId) return; archiveConfirmOpen.value = false; try { await store.archiveBoard(store.selectedId); await router.replace({ query: {} }); } catch { error.value = "Could not archive board."; } }
 async function toggleArchived() { showArchived.value = !showArchived.value; if (showArchived.value) await store.loadBoards(true); }
 async function restoreBoard(id: string) { await store.archiveBoard(id, true); await store.loadBoards(true); }
-onMounted(async () => { await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested && boards.value.some((board) => board.id === requested)) store.selectedId = requested; await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
+onMounted(async () => { document.addEventListener("pointerdown", rememberCardFocus); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested && boards.value.some((board) => board.id === requested)) store.selectedId = requested; await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
-onBeforeUnmount(() => { pageObservers.forEach((observer) => observer.disconnect()); destroyCardEditor(); });
+onBeforeUnmount(() => { document.removeEventListener("pointerdown", rememberCardFocus); pageObservers.forEach((observer) => observer.disconnect()); destroyCardEditor(); });
 </script>
 
 <template>

@@ -338,6 +338,15 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Unsaved change");
   });
 
+  it("restores focus to the card after closing its editor", async (t) => {
+    const { page } = await fixture(t);
+    const card = page.locator(".board-card").first();
+    await card.click();
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.waitForSelector(".card-editor", { state: "detached" });
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("board-card")), true);
+  });
+
   it("rejects a reversed card date range inline and keeps the editor open", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();
