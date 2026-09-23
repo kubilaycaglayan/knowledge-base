@@ -160,8 +160,11 @@ Unchecked items are intentionally incomplete.
   reduced motion, and intentional overflow are present.
 - [x] Axe covers mobile and desktop Kanban layouts.
 - [x] Axe covers mobile and desktop Kanban and Gantt states.
-- [ ] Existing authentication, Sessions/timer, Paths, Labels, Notes, Calendar,
-  Reports, imports/exports, extension, security, and iOS checks remain green.
+- [x] Existing authentication, Sessions/timer, Paths, Labels, Notes, Calendar,
+  Reports, imports/exports, extension, and security checks remain green.
+- [ ] iOS package/build and UI checks remain pending because the Linux
+  environment has no Xcode toolchain; run the documented macOS checks before
+  release.
 - [x] Disposable mobile Kanban and Gantt screenshots are captured without
   repository artifacts or secrets.
 
