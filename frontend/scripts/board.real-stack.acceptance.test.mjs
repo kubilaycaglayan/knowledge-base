@@ -53,9 +53,17 @@ async function clickCentered(locator) {
   await locator.click();
 }
 
+// The view switch and the Manage boards gear sit in the board menu on phones.
+async function boardAction(name) {
+  const direct = page.getByRole("button", { name, exact: true });
+  if (await direct.isVisible().catch(() => false)) return clickCentered(direct);
+  await clickCentered(page.locator("button.board-tab-more"));
+  await page.locator('.board-more-menu [role^="menuitem"]', { hasText: new RegExp(`^${name}`) }).click();
+}
+
 // Board settings open from the board's name in the Boards dialog behind the single gear.
 async function openSettingsFor(name) {
-  await clickCentered(page.getByRole("button", { name: "Manage boards" }));
+  await boardAction("Manage boards");
   await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name, exact: true }).click();
 }
 
@@ -169,7 +177,7 @@ async function seedCards(boardId, count, prefix, priority = "MEDIUM") {
 // Boards are created from the Boards dialog's Add board button; the New board
 // dialog closes only once the store has created and loaded the new board.
 async function createBoard(name) {
-  await page.getByRole("button", { name: "Manage boards" }).click();
+  await boardAction("Manage boards");
   await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name: "Add board" }).click();
   const dialog = page.getByRole("dialog", { name: "New board" });
   const field = dialog.getByRole("textbox", { name: "New board name" });
@@ -273,7 +281,7 @@ describe("board real-stack acceptance", () => {
     await pickCardDates(timelineStart, timelineEnd);
     await closeCard();
     const viewChange = page.waitForURL(/view=gantt/);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction("Gantt");
     await viewChange;
     // Let the view switch's own Gantt load settle so the listener below can
     // only match the request made by the reloaded page.
@@ -290,7 +298,7 @@ describe("board real-stack acceptance", () => {
   });
 
   it("passes Axe on the primary mobile board view", async () => {
-    await page.getByRole("button", { name: "Kanban" }).click();
+    await boardAction("Kanban");
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
   });
@@ -340,23 +348,21 @@ describe("board real-stack acceptance", () => {
     await page.getByRole("heading", { name: "Boards" }).waitFor();
 
     assert.equal(await page.locator('button[aria-label="Add board"]').count(), 0, "No Add board button on the page");
-    await page.getByRole("button", { name: "Manage boards" }).click();
+    await boardAction("Manage boards");
     const manager = page.getByRole("dialog", { name: "Boards" });
     assert.equal(await manager.getByRole("button", { name: "Add board" }).count(), 1, "Boards dialog offers Add board");
     await manager.getByRole("button", { name: "Close boards" }).click();
   });
 
-  it("keeps the Kanban/Gantt switch in the board toolbar", async () => {
+  it("keeps the Kanban/Gantt switch in the board menu on phones", async () => {
     await page.goto(`${baseUrl}/board`);
     await page.getByRole("heading", { name: "Boards" }).waitFor();
 
-    const viewButtons = page.locator(".view-switch button");
-    await viewButtons.first().waitFor();
-    assert.equal(await viewButtons.count(), 2, "Should have Kanban and Gantt buttons");
-    assert.deepEqual(await viewButtons.allTextContents(), ["Kanban", "Gantt"]);
-    // The switch sits inside the toolbar that holds the board tabs, not in a
-    // page-level menu, so it stays next to the cards it applies to.
-    assert.equal(await page.locator(".board-toolbar .view-switch").count(), 1);
+    assert.equal(await page.locator(".view-switch").isVisible().catch(() => false), false, "No view switch row on phones");
+    await clickCentered(page.locator("button.board-tab-more"));
+    const radios = page.locator('.board-more-menu [role="menuitemradio"]');
+    assert.deepEqual((await radios.allTextContents()).map((text) => text.trim()), ["Kanban", "Gantt"]);
+    await page.keyboard.press("Escape");
   });
 
   it("renames the open board from its settings, never from a tab click", async () => {
@@ -505,9 +511,9 @@ describe("board real-stack acceptance", () => {
     const cardTitle = `Card persistence test ${Date.now()}`;
     await addCard(cardTitle);
 
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction("Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
-    await page.getByRole("button", { name: "Kanban" }).click();
+    await boardAction("Kanban");
     await page.getByRole("heading", { name: cardTitle }).waitFor();
 
     // Switching away to another board and back must also keep the card.

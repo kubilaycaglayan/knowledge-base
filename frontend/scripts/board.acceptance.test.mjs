@@ -133,6 +133,14 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
 }
 
 const selectedTab = (page) => page.locator(".board-tab.selected");
+// The view switch and the Manage boards gear sit in the toolbar on wide
+// screens and in the board menu (the tab bar's More button) on phones.
+async function boardAction(page, name) {
+  const direct = page.getByRole("button", { name, exact: true });
+  if (await direct.isVisible().catch(() => false)) return direct.click();
+  await page.locator("button.board-tab-more").click();
+  await page.locator('.board-more-menu [role^="menuitem"]', { hasText: new RegExp(`^${name}`) }).click();
+}
 // The card editor saves itself; closing it flushes the pending save.
 async function closeCard(page) {
   await page.getByRole("button", { name: "Close card" }).click();
@@ -173,7 +181,7 @@ async function archiveCardFromEditor(page, title) {
 // opened from the board's name in the Boards dialog behind the single gear.
 async function openBoardSettings(page) {
   const name = (await page.locator(".board-tab.selected").innerText()).trim();
-  await page.getByRole("button", { name: "Manage boards" }).click();
+  await boardAction(page, "Manage boards");
   await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name, exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Board settings" });
   await dialog.waitFor();
@@ -207,7 +215,7 @@ describe("board browser acceptance", () => {
 
   it("renders the same dated card in Kanban and as a Gantt timeline bar", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     assert.equal(await page.getByRole("button", { name: "Ship timeline" }).count(), 1);
     assert.match(await page.locator(".timeline-bar").innerText(), /Ship timeline/);
@@ -216,7 +224,7 @@ describe("board browser acceptance", () => {
 
   it("writes the default timeline window into URL state when switching to Gantt", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     const url = new URL(page.url());
     assert.equal(url.searchParams.get("view"), "gantt");
@@ -228,7 +236,7 @@ describe("board browser acceptance", () => {
 
   it("restores Gantt date inputs when browser history changes the URL", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     const initialUrl = new URL(page.url());
     const initialFrom = initialUrl.searchParams.get("from");
     const initialTo = initialUrl.searchParams.get("to");
@@ -242,33 +250,33 @@ describe("board browser acceptance", () => {
 
   it("removes an edited out-of-window card from Gantt but keeps it in Kanban", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).click();
     await pickCardDates(page, dateOnly(40), dateOnly(42));
     await closeCard(page);
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor({ state: "detached" });
     assert.equal(await page.locator(".timeline-bar", { hasText: "Ship timeline" }).count(), 0);
-    await page.getByRole("button", { name: "Kanban" }).click();
+    await boardAction(page, "Kanban");
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
   it("reconciles moved, archived, and restored cards between Kanban and Gantt", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Gantt" }).click();
-    await page.getByRole("button", { name: "Kanban" }).click();
+    await boardAction(page, "Gantt");
+    await boardAction(page, "Kanban");
     await setCardStatus(page, "Ship timeline", "Pending");
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.locator(".timeline-row small").filter({ hasText: "Pending" }).waitFor();
 
-    await page.getByRole("button", { name: "Kanban" }).click();
+    await boardAction(page, "Kanban");
     await archiveCardFromEditor(page, "Ship timeline");
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.locator(".board-empty").filter({ hasText: "No dated active cards" }).waitFor();
 
-    await page.getByRole("button", { name: "Kanban" }).click();
+    await boardAction(page, "Kanban");
     await restoreFromArchive(page, "Ship timeline");
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor();
   });
 
@@ -278,7 +286,7 @@ describe("board browser acceptance", () => {
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timeline from Kanban");
     await pickCardDates(page, dateOnly(1), dateOnly(3));
     await closeCard(page);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.locator(".timeline-bar", { hasText: "Timeline from Kanban" }).waitFor();
   });
 
@@ -294,7 +302,7 @@ describe("board browser acceptance", () => {
     await archiveCardFromEditor(page, "Never disappears");
     await restoreFromArchive(page, "Never disappears");
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.locator(".timeline-bar", { hasText: "Never disappears" }).waitFor();
     assert.equal(await page.locator(".timeline-bar", { hasText: "Never disappears" }).count() >= 1, true);
   });
@@ -316,7 +324,7 @@ describe("board browser acceptance", () => {
 
   it("passes axe checks on the mobile Gantt layout", async (t) => {
     const { page } = await fixture(t, 390);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
@@ -324,7 +332,7 @@ describe("board browser acceptance", () => {
 
   it("passes axe checks on the desktop Gantt layout", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
@@ -335,7 +343,7 @@ describe("board browser acceptance", () => {
     const kanbanPath = join(screenshotDir, "kanban-mobile.png");
     const ganttPath = join(screenshotDir, "gantt-mobile.png");
     await page.screenshot({ path: kanbanPath, fullPage: true });
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     await page.screenshot({ path: ganttPath, fullPage: true });
     assert.equal(existsSync(kanbanPath), true);
@@ -369,7 +377,7 @@ describe("board browser acceptance", () => {
 
   it("restores board route state through browser history", async (t) => {
     const { page } = await fixture(t, 800);
-    await page.getByRole("button", { name: "Gantt" }).click();
+    await boardAction(page, "Gantt");
     await page.goBack();
     assert.equal(new URL(page.url()).searchParams.get("view"), "kanban");
     await page.goForward();
@@ -407,7 +415,7 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     assert.equal(await page.getByRole("textbox", { name: "New board name" }).count(), 0, "No inline board input on the page");
     assert.equal(await page.getByRole("button", { name: "Add board" }).count(), 0, "No Add board button on the page");
-    await page.getByRole("button", { name: "Manage boards" }).click();
+    await boardAction(page, "Manage boards");
     const manager = page.getByRole("dialog", { name: "Boards" });
     await manager.getByRole("button", { name: "Add board" }).click();
     const dialog = page.getByRole("dialog", { name: "New board" });
@@ -666,6 +674,32 @@ describe("board browser acceptance", () => {
     const priority = await card.locator(".priority").boundingBox();
     const title = await card.locator("h3").boundingBox();
     assert.ok(priority.y + priority.height <= box.y && box.y + box.height <= title.y, "Labels sit between the priority and the title");
+  });
+
+  it("moves the view switch and board settings into the board menu on phones", async (t) => {
+    const { page } = await fixture(t, 390);
+    await page.locator(".board-card").first().waitFor();
+    assert.equal(await page.locator(".view-switch").isVisible().catch(() => false), false, "No view switch row on phones");
+    assert.equal(await page.getByRole("button", { name: "Manage boards", exact: true }).count(), 0, "No gear on phones");
+    const menuButton = page.getByRole("button", { name: "Board menu" });
+    await menuButton.click();
+    const menu = page.getByRole("menu", { name: "Board menu" });
+    assert.deepEqual(await menu.locator('[role^="menuitem"]').evaluateAll((items) => items.map((item) => `${item.getAttribute("role")}:${item.textContent.trim()}:${item.getAttribute("aria-checked") ?? ""}`)), ["menuitemradio:Kanban:true", "menuitemradio:Gantt:false", "menuitem:Manage boards…:"]);
+    await menu.getByRole("menuitemradio", { name: "Gantt" }).click();
+    await menu.waitFor({ state: "detached" });
+    await page.waitForFunction(() => new URL(location.href).searchParams.get("view") === "gantt");
+    await menuButton.click();
+    assert.equal(await menu.getByRole("menuitemradio", { name: "Gantt" }).getAttribute("aria-checked"), "true");
+    await menu.getByRole("menuitem", { name: "Manage boards…" }).click();
+    await page.getByRole("dialog", { name: "Boards" }).waitFor();
+  });
+
+  it("keeps the view switch and gear in the toolbar on wide screens", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().waitFor();
+    assert.equal(await page.locator(".view-switch").isVisible(), true);
+    assert.equal(await page.getByRole("button", { name: "Manage boards", exact: true }).isVisible(), true);
+    assert.equal(await page.locator("button.board-tab-more").count(), 0, "No menu when every board fits");
   });
 
   it("sorts a column by priority from its header", async (t) => {
@@ -1050,7 +1084,7 @@ describe("path boards", () => {
     await page.locator(".board-tab", { hasText: "Second" }).waitFor();
     assert.equal(await page.locator(".board-tab-settings").count(), 0);
 
-    await page.getByRole("button", { name: "Manage boards" }).click();
+    await boardAction(page, "Manage boards");
     const manager = page.getByRole("dialog", { name: "Boards" });
     await manager.getByRole("button", { name: "Reorder Second" }).press("ArrowUp");
     await page.waitForFunction(() => document.querySelector(".boards-manager-name")?.textContent?.trim() === "Second");
@@ -1089,7 +1123,7 @@ describe("path boards", () => {
     const tracker = page.locator(".floating-tracker");
     await tracker.waitFor();
 
-    await page.getByRole("button", { name: "Manage boards" }).click();
+    await boardAction(page, "Manage boards");
     const manager = page.getByRole("dialog", { name: "Boards" });
     await manager.waitFor();
     const rows = await manager.locator(".boards-manager-list li").evaluateAll((items) => items.map((item) => item.getBoundingClientRect()));
