@@ -479,6 +479,41 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("puts dates, priority, status, and an icon-only archive button in the editor footer", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    const meta = wrapper.find(".card-meta");
+    expect(meta.find('select[name="priority"]').exists()).toBe(false);
+    expect(meta.find('select[name="status"]').exists()).toBe(false);
+    expect(meta.find(".meta-dates").exists()).toBe(false);
+
+    const footer = wrapper.find(".card-editor-footer");
+    const controls = footer.findAll(".meta-dates, select, button").map((element) => element.classes().includes("meta-dates") ? "dates" : element.attributes("name") || element.attributes("aria-label"));
+    expect(controls.filter((control) => control !== "Clear card dates")).toEqual(["dates", "priority", "status", "Archive card"]);
+    const archive = footer.find('button[aria-label="Archive card"]');
+    expect(archive.text()).toBe("");
+    expect(archive.attributes("title")).toBe("Archive card");
+    expect(footer.element.lastElementChild).toBe(archive.element);
+    await wrapper.unmount();
+  });
+
+  it("asks to archive a card without the retention explanation", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    await wrapper.find('button[aria-label="Archive card"]').trigger("click");
+    const confirm = wrapper.find('[role="alertdialog"]');
+    expect(confirm.find("h2").text()).toBe("Archive card?");
+    expect(confirm.text()).not.toContain("retained");
+    expect(confirm.text()).not.toContain("Untitled card");
+    await wrapper.unmount();
+  });
+
   it("lists priorities from most to least pressing in the card editor", async () => {
     const store = seedBoard(["Backlog"]);
     store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
