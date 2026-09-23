@@ -73,7 +73,7 @@ cover it. Tick an item only once those tests pass.
 
 - [x] **PB-20** Board tabs appear in the order the API returns. A path board tab shows its path colour as a decorative dot.
   _Tests:_ `BoardView.test.ts` "renders path boards with a colour dot in API order"
-- [x] **PB-21** The card editor on a path board has no path `<select>`, and cards use the path colour as their accent. The card editor on a custom board still has the path `<select>`.
+- [x] **PB-21** The card editor on a path board has no path `<select>`, and neither cards nor the card editor show a path-colour accent border (the tab dot already identifies the path). The card editor on a custom board still has the path `<select>`, and custom-board cards keep their path accent.
   _Tests:_ `BoardView.test.ts` "hides the path picker on path boards"
 - [x] **PB-22** Board settings for a path board show the name as read-only text with a link to Paths, and have no Archive board button, pin switch or visibility switch. A board is shown or hidden only from the path edit form on /paths.
   _Tests:_ `BoardView.test.ts` "path board settings are read-only and leave visibility to the Paths page"

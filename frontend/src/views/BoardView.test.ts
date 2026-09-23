@@ -659,15 +659,19 @@ describe("BoardView", () => {
       store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: ["path-1"], labelIds: [], createdAt: "", updatedAt: "t1" }];
       const wrapper = mountBoard();
       await flushPromises();
-      expect(wrapper.find(".board-card").attributes("style")).toContain("--card-accent: #123456");
+      expect(wrapper.find(".board-card").classes()).not.toContain("accented");
+      expect(wrapper.find(".board-card").attributes("style") ?? "").not.toContain("--card-accent");
       await wrapper.find(".board-card").trigger("click");
       expect(wrapper.find(".card-editor").exists()).toBe(true);
+      expect(wrapper.find(".card-editor").classes()).not.toContain("accented");
       expect(wrapper.find('select[name="cardPaths"]').exists()).toBe(false);
       await wrapper.unmount();
 
       store.selectedId = "custom-a";
       const custom = mountBoard();
       await flushPromises();
+      expect(custom.find(".board-card").classes()).toContain("accented");
+      expect(custom.find(".board-card").attributes("style")).toContain("--card-accent: #123456");
       await custom.find(".board-card").trigger("click");
       expect(custom.find('select[name="cardPaths"]').exists()).toBe(true);
       await custom.unmount();
