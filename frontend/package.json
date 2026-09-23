@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:ui": "node scripts/check-ui.mjs",
     "test:tracker": "node --test scripts/session-tracker.acceptance.test.mjs",
+    "test:board": "node --test --test-concurrency=1 scripts/board.acceptance.test.mjs",
     "test:board:e2e": "node --test scripts/board.real-stack.acceptance.test.mjs",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview"
