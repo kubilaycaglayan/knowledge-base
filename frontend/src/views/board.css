@@ -62,5 +62,8 @@
 .settings-label { margin:.4rem 0 0; font-size:.78rem; font-weight:600; color:var(--muted-text); text-transform:uppercase; letter-spacing:.06em; }
 .settings-input { flex:1; min-width:0; border:1px solid transparent; border-radius:6px; padding:.45rem .6rem; background:var(--workspace-hover); color:inherit; font-size:max(16px, 1rem); } .settings-input:hover { border-color:var(--border-color); }
 .settings-statuses { display:grid; grid-template-columns:minmax(0, 1fr); gap:.25rem; margin:0; padding:0; list-style:none; } .settings-statuses li { display:flex; align-items:center; gap:.15rem; }
-.settings-add-status { display:flex; align-items:center; gap:.15rem; }
+.settings-add-status { display:flex; align-items:center; gap:.15rem; padding-bottom:.5rem; border-bottom:1px solid var(--border-color); }
+/* Drag handles reorder statuses; during a drag text selection is off and the dragged row is lifted. */
+.drag-handle { cursor:grab; touch-action:none; color:var(--muted-text); } .settings-statuses.dragging { user-select:none; cursor:grabbing; } .settings-statuses.dragging .drag-handle { cursor:grabbing; }
+.settings-statuses li.is-dragged { position:relative; z-index:1; border-radius:8px; background:var(--workspace-surface); box-shadow:0 1px 2px #0000001a, 0 6px 16px #00000024; }
 .board-settings-footer { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-top:.5rem; padding-top:.75rem; border-top:1px solid var(--border-color); }

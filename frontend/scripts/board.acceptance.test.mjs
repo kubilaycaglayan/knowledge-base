@@ -517,9 +517,17 @@ describe("board browser acceptance", () => {
     await page.getByRole("button", { name: "Restore Backlog status" }).waitFor();
   });
 
-  it("reorders statuses with accessible icon actions in board settings", async (t) => {
+  it("reorders statuses by dragging their handle in board settings", async (t) => {
     const { page } = await fixture(t);
-    await (await openBoardSettings(page)).getByRole("button", { name: "Move Pending up" }).click();
+    const settings = await openBoardSettings(page);
+    assert.equal(await settings.getByRole("button", { name: /^Move / }).count(), 0, "Arrows are replaced by drag handles");
+    const handle = await settings.getByRole("button", { name: "Reorder Pending" }).boundingBox();
+    const target = await settings.getByRole("button", { name: "Reorder Backlog" }).boundingBox();
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target.x + target.width / 2, target.y + 4, { steps: 8 });
+    await page.mouse.up();
+    await settings.getByRole("button", { name: "Done", exact: true }).click();
     await page.locator(".kanban-column").first().locator("h2").filter({ hasText: "Pending" }).waitFor();
     assert.equal(await page.locator(".kanban-column").nth(0).locator("h2").innerText(), "Pending");
     assert.equal(await page.locator(".kanban-column").nth(1).locator("h2").innerText(), "Backlog");

@@ -484,8 +484,10 @@ describe("BoardView", () => {
       await flushPromises();
       expect(store.updateStatus).toHaveBeenCalledWith(expect.objectContaining({ id: "status-2" }), "In review");
 
-      expect(dialog().find('button[aria-label="Move Backlog up"]').attributes("disabled")).toBeDefined();
-      await dialog().find('button[aria-label="Move Doing up"]').trigger("click");
+      // The drag handle doubles as the keyboard reorder control.
+      await dialog().find('button[aria-label="Reorder Backlog"]').trigger("keydown", { key: "ArrowUp" });
+      expect(store.reorderStatuses).not.toHaveBeenCalled();
+      await dialog().find('button[aria-label="Reorder Doing"]').trigger("keydown", { key: "ArrowUp" });
       await flushPromises();
       expect(store.reorderStatuses).toHaveBeenCalledWith(["status-2", "status-1", "status-3"]);
 
@@ -493,6 +495,16 @@ describe("BoardView", () => {
       await dialog().find(".settings-add-status").trigger("submit");
       await flushPromises();
       expect(store.createStatus).toHaveBeenCalledWith("Blocked");
+      await wrapper.unmount();
+    });
+
+    it("puts the new-status input above the status list and offers drag handles, not arrows", async () => {
+      const { wrapper, dialog } = await openSettings();
+      const form = dialog().find(".settings-add-status").element;
+      const list = dialog().find(".settings-statuses").element;
+      expect(form.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(dialog().findAll(".drag-handle")).toHaveLength(3);
+      expect(dialog().find('button[aria-label^="Move "]').exists()).toBe(false);
       await wrapper.unmount();
     });
 
