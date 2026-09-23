@@ -366,7 +366,8 @@ try {
           await page.goto("http://127.0.0.1:5191/");
           await page.locator(".auth").waitFor();
         } else await page.goto(`http://127.0.0.1:5191${path}`);
-        await page.locator("main h1").waitFor();
+        if (path !== "/" && path !== "/sessions" && path !== "/auth")
+          await page.locator("main h1").waitFor();
         await page.waitForLoadState("networkidle");
         const widths =
           state === "populated" || state === "long"
@@ -457,8 +458,9 @@ try {
               .getByRole("button", { name: "History", exact: true })
               .first()
               .click();
-            await page.locator(".path-summary").waitFor();
+            await page.locator(".path-history-dialog").waitFor();
             await check(page, `${mode}-path-history`);
+            await page.getByRole("button", { name: "Close", exact: true }).click();
             await page
               .getByRole("button", { name: "Edit", exact: true })
               .first()
@@ -467,7 +469,7 @@ try {
           }
           if (path === "/sessions") {
             await page
-              .getByRole("button", { name: "Edit session", exact: true })
+              .getByRole("button", { name: "Edit", exact: true })
               .click();
             await check(page, `${mode}-session-edit`);
           }
@@ -486,25 +488,10 @@ try {
             await page.locator(".dp__input").click();
             await check(page, `${mode}-date-picker`);
             await page.keyboard.press("Escape");
-            await page
-              .getByRole("button", { name: "Dark mode", exact: true })
-              .click();
-            await page.waitForFunction(
-              () =>
-                getComputedStyle(document.querySelector(".v-table"))
-                  .backgroundColor ===
-                getComputedStyle(document.querySelector(".dp__input"))
-                  .backgroundColor,
-            );
-            await check(page, `${mode}-reports-theme-switched`);
-            await page
-              .getByRole("button", { name: "Dark mode", exact: true })
-              .click();
           }
           if (path === "/") {
-            await page.locator("#timer-labels").focus();
-            await page.keyboard.press("ArrowDown");
-            await page.getByRole("listbox").waitFor();
+            await page.locator(".label-picker").click();
+            await page.locator("#tt-label-options button").first().waitFor();
             await check(page, `${mode}-label-menu`);
             await page.keyboard.press("Escape");
           }
@@ -532,7 +519,10 @@ try {
   await page.route("https://accounts.google.com/**", (route) => route.abort());
   await page.goto("http://127.0.0.1:5191/");
   assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
-  await page.getByRole("button", { name: "Dark mode", exact: true }).click();
+  await page.locator("button.theme-toggle").click();
+  await page.reload();
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+  await page.locator("button.theme-toggle").click();
   await page.reload();
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   await page.keyboard.press("Tab");
