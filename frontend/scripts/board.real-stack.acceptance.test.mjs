@@ -615,6 +615,34 @@ describe("board real-stack acceptance", () => {
   });
 
   // PB-29: every path owns a board on the real stack.
+  // CT-04, CT-05
+  it("starts and stops a session from a path board card", async () => {
+    const name = `Timer path ${Date.now()}`;
+    const boardId = await page.evaluate(async (pathName) => {
+      const headers = { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` };
+      const path = await (await fetch("/api/v1/paths", { method: "POST", headers, body: JSON.stringify({ name: pathName }) })).json();
+      const board = (await (await fetch("/api/v1/boards", { headers })).json()).find((item) => item.pathId === path.id);
+      await fetch(`/api/v1/boards/${board.id}/cards`, { method: "POST", headers, body: JSON.stringify({ title: "Timed card" }) });
+      return board.id;
+    }, name);
+    await page.goto(`${baseUrl}/board?board=${boardId}`);
+    const play = page.locator(".board-card").first().getByRole("button", { name: "Start a session for Timed card" });
+    await play.waitFor();
+    try {
+      await Promise.all([
+        page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/timers" && response.request().method() === "POST" && response.ok()),
+        play.click(),
+      ]);
+      await page.locator(".board-card-play").first().waitFor({ state: "detached" });
+      await page.locator(".floating-tracker-path", { hasText: name }).waitFor();
+      assert.equal(await page.locator(".card-editor").count(), 0);
+    } finally {
+      const stop = page.getByRole("button", { name: "Stop timer" });
+      if (await stop.count()) await stop.click();
+    }
+    await play.waitFor();
+  });
+
   it("path boards: creates a tab per path, hides the path picker, and hides the board from Paths", async () => {
     const name = `Path board ${Date.now()}`;
     await page.goto(`${baseUrl}/paths`);

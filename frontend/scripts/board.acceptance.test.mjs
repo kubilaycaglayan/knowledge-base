@@ -31,6 +31,8 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   let pageFailures = 0;
   let lazyPageRequests = 0;
   const sortRequests = [];
+  const timerStarts = [];
+  let runningTimer = null;
   const firstPageRequests = [];
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
@@ -49,6 +51,10 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-2", name: "Research", color: "#3366cc", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
     else if (path === "/labels") body = [];
+    else if (path === "/timers/current") body = runningTimer;
+    else if (path === "/timers/draft") body = {};
+    if (method === "POST" && path === "/timers") { const input = request.postDataJSON(); timerStarts.push(input); runningTimer = { id: "timer-1", ...input, startedAt: new Date().toISOString(), running: true }; body = runningTimer; }
+    if (method === "POST" && path === "/timers/timer-1/stop") { body = { ...runningTimer, running: false }; runningTimer = null; }
     const cardRoute = path.match(/^\/boards\/board-1\/cards\/([^/]+)(?:\/(archive|restore|move))?$/);
     const routedCard = cardRoute && fixtureCards.find((card) => card.id === cardRoute[1]);
     if (method === "POST" && path === "/boards/board-1/cards") {
@@ -122,7 +128,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=board-1&view=kanban`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
-  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests, getCardMoveRequests: () => cardMoveRequests, getLazyPageRequests: () => lazyPageRequests, sortRequests, firstPageRequests };
+  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests, getCardMoveRequests: () => cardMoveRequests, getLazyPageRequests: () => lazyPageRequests, sortRequests, firstPageRequests, timerStarts };
 }
 
 const selectedTab = (page) => page.locator(".board-tab.selected");
@@ -531,6 +537,27 @@ describe("board browser acceptance", () => {
     assert.ok(title.y - box.y <= 12, `Title starts near the top (${title.y - box.y}px)`);
     assert.ok(Math.abs(title.y + title.height / 2 - (close.y + close.height / 2)) <= 2, "Close is vertically centred on the title");
     assert.ok(close.x > title.x + title.width - 1, "Close sits to the right of the title");
+  });
+
+  // CT-04
+  it("starts a session from a card and hides every play button", async (t) => {
+    const { page, timerStarts } = await fixture(t, 1280);
+    const play = page.locator(".board-card").first().getByRole("button", { name: "Start a session for Ship timeline" });
+    await play.waitFor();
+    const card = await page.locator(".board-card").first().boundingBox();
+    const box = await play.boundingBox();
+    assert.ok(box.x + box.width >= card.x + card.width - 16 && box.y <= card.y + 16, "The play button sits at the card's top right");
+    await play.click();
+    await page.locator(".board-card-play").first().waitFor({ state: "detached" });
+    assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: [], description: "Ship timeline" }]);
+    assert.equal(await page.locator(".card-editor").count(), 0, "Starting a session does not open the card");
+    await page.getByRole("button", { name: "Stop timer" }).waitFor();
+
+    await page.getByRole("button", { name: "Stop timer" }).click();
+    await play.waitFor();
+    await page.locator(".board-card").first().click();
+    const header = page.locator(".card-editor-header");
+    assert.deepEqual(await header.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline", "Close card"]);
   });
 
   it("sorts a column by priority from its header", async (t) => {

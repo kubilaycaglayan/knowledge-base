@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import BoardView from "./BoardView.vue";
 import vuetify from "../plugins/vuetify";
 import { useBoardsStore } from "../stores/boards";
+import { useTimerStore } from "../stores/timer";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
 import { useRouter, useRoute } from "vue-router";
@@ -513,6 +514,85 @@ describe("BoardView", () => {
     expect(editor.find('.card-meta button[aria-label="Close card"]').exists()).toBe(false);
     expect(editor.find('.card-meta select[name="cardPaths"]').exists()).toBe(true);
     await wrapper.unmount();
+  });
+
+  describe("card play button", () => {
+    const card = (id: string, title: string, pathIds: string[], position: number) => ({ id, statusId: "status-1", title, body: "{}", priority: "MEDIUM", position, archived: false, pathIds, labelIds: [], createdAt: "", updatedAt: "t1" });
+    function seedCustom() {
+      const store = seedBoard(["Backlog"]);
+      store.cards = [card("with-path", "Write docs", ["path-1"], 0), card("no-path", "Loose", [], 1)] as any;
+      return store;
+    }
+    const playFor = (wrapper: ReturnType<typeof mountBoard>, title: string) => wrapper.find(`.board-card button[aria-label="Start a session for ${title}"]`);
+
+    // CT-02, CT-05
+    it("shows a card play button only for path cards while no timer runs", async () => {
+      seedCustom();
+      const timer = useTimerStore();
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(playFor(wrapper, "Write docs").exists()).toBe(true);
+      expect(playFor(wrapper, "Loose").exists()).toBe(false);
+      expect(wrapper.find(".board-card").element.querySelector(".board-card-play")).not.toBeNull();
+
+      timer.setCurrent({ id: "timer-1", startedAt: new Date().toISOString(), running: true });
+      await flushPromises();
+      expect(wrapper.findAll(".board-card-play")).toHaveLength(0);
+      timer.setCurrent(null);
+      await flushPromises();
+      expect(playFor(wrapper, "Write docs").exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    it("shows a play button on every card of a path board", async () => {
+      const boards = useBoardsStore();
+      usePathsStore().setAll([{ id: "path-1", name: "Writing", color: "#123456", status: "ACTIVE" }] as any);
+      boards.selectedId = "path-board";
+      boards.boards = [{ id: "path-board", name: "Writing", archived: false, createdAt: "", updatedAt: "", pathId: "path-1" }] as any;
+      boards.statuses = [{ id: "status-1", name: "Backlog", archived: false, position: 0 }];
+      boards.cards = [card("a", "", [], 0)] as any;
+      mockRoute.query = { board: "path-board" };
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.find('.board-card button[aria-label="Start a session for untitled card"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // CT-04
+    it("starts a session from a card without opening it", async () => {
+      seedCustom();
+      const timer = useTimerStore();
+      const start = vi.spyOn(timer, "startSession").mockResolvedValue(null as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await playFor(wrapper, "Write docs").trigger("click");
+      await playFor(wrapper, "Write docs").trigger("keydown", { key: "Enter" });
+      expect(start).toHaveBeenCalledWith({ pathId: "path-1", description: "Write docs" });
+      expect(wrapper.find(".card-editor").exists()).toBe(false);
+      await wrapper.unmount();
+    });
+
+    // CT-03
+    it("puts the card play button before Close in the editor", async () => {
+      seedCustom();
+      const timer = useTimerStore();
+      const start = vi.spyOn(timer, "startSession").mockResolvedValue(null as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.findAll(".board-card")[0].trigger("click");
+      const header = wrapper.find(".card-editor-header");
+      expect(header.findAll("button").map((button) => button.attributes("aria-label"))).toEqual(["Start a session for Write docs", "Close card"]);
+      await header.find('button[aria-label="Start a session for Write docs"]').trigger("click");
+      expect(start).toHaveBeenCalledWith({ pathId: "path-1", description: "Write docs" });
+      expect(wrapper.find(".card-editor").exists()).toBe(true);
+      await wrapper.unmount();
+
+      const loose = mountBoard();
+      await flushPromises();
+      await loose.findAll(".board-card")[1].trigger("click");
+      expect(loose.findAll(".card-editor-header button").map((button) => button.attributes("aria-label"))).toEqual(["Close card"]);
+      await loose.unmount();
+    });
   });
 
   it("asks to archive a card without the retention explanation", async () => {

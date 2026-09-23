@@ -18,6 +18,21 @@ describe("timer store", () => {
     localStorage.removeItem("know_token");
   });
 
+  // CT-04
+  it("starts a session for a given path and description", async () => {
+    const started = { id: "timer-1", pathId: "path-1", labelIds: [], description: "Write docs", startedAt: new Date().toISOString(), running: true };
+    vi.mocked(api).mockImplementation(async (path, options) => (path === "/timers" && options?.method === "POST" ? started : null));
+    const store = useTimerStore();
+    await store.startSession({ pathId: "path-1", description: "Write docs" });
+    expect(api).toHaveBeenCalledWith("/timers", expect.objectContaining({ method: "POST", body: JSON.stringify({ pathId: "path-1", labelIds: [], description: "Write docs" }) }));
+    expect(store.isRunning).toBe(true);
+    expect(store.current?.id).toBe("timer-1");
+
+    vi.mocked(api).mockClear();
+    await store.startSession({ pathId: "path-2" });
+    expect(api).not.toHaveBeenCalled();
+  });
+
   it("uses the WebSocket without starting the HTTP polling loop", async () => {
     vi.useFakeTimers();
     const originalWebSocket = globalThis.WebSocket;
