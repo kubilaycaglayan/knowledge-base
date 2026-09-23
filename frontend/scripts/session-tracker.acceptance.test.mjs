@@ -476,7 +476,7 @@ describe("web session tracker acceptance", () => {
   it("C4, L16–L17: recovers from no labels by creating and selecting the first label", async (t) => {
     const { page, writes } = await fixture(t, { empty: true, width: 390 });
     await page
-      .getByRole("textbox", { name: "New session label name" })
+      .getByRole("combobox", { name: "New session label name" })
       .fill("First label");
     await page.getByRole("button", { name: "Create label" }).click();
     await page
