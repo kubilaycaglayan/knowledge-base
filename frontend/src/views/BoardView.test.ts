@@ -63,15 +63,34 @@ describe("BoardView", () => {
     (labelsStore.loadScope as any) = vi.fn(() => Promise.resolve([]));
   });
 
-  it("renders the board page with proper structure", async () => {
-    const wrapper = mount(BoardView, {
+  // vue-router is mocked away above, so RouterLink has to be stubbed as a real
+  // anchor for the archive navigation assertions to inspect an href.
+  const routerLinkStub = {
+    props: ["to"],
+    template: '<a :href="typeof to === \'string\' ? to : to.path"><slot /></a>',
+  };
+
+  function mountBoard() {
+    return mount(BoardView, {
       global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
+        mocks: { $route: mockRoute, $router: mockRouter },
+        stubs: { RouterLink: routerLinkStub },
       },
     });
+  }
+
+  function seedBoard(statusNames: string[] = []) {
+    const store = useBoardsStore();
+    store.selectedId = "test-id";
+    store.boards = [{ id: "test-id", name: "Test Board", archived: false, createdAt: "", updatedAt: "" }];
+    store.statuses = statusNames.map((name, position) => ({ id: `status-${position + 1}`, name, archived: false, position }));
+    store.cards = [];
+    mockRoute.query = { board: "test-id" };
+    return store;
+  }
+
+  it("renders the board page with proper structure", async () => {
+    const wrapper = mountBoard();
 
     expect(wrapper.find(".board-page").exists()).toBe(true);
     expect(wrapper.find("h1#board-heading").text()).toContain("Boards");
@@ -79,14 +98,7 @@ describe("BoardView", () => {
   });
 
   it("displays create board form and button", async () => {
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const createForm = wrapper.find(".create-board");
     expect(createForm.exists()).toBe(true);
@@ -96,14 +108,7 @@ describe("BoardView", () => {
   });
 
   it("shows plus button for adding boards (icon button)", async () => {
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const addButton = wrapper.find('button[aria-label="Add board"]');
     expect(addButton.exists()).toBe(true);
@@ -112,14 +117,7 @@ describe("BoardView", () => {
   });
 
   it("displays error message with close button", async () => {
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const store = useBoardsStore();
     store.error = "Test error message";
@@ -139,40 +137,40 @@ describe("BoardView", () => {
   });
 
   it("displays error message that disappears after action", async () => {
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const store = useBoardsStore();
-    const vm = wrapper.vm as any;
-    vm.error = "Test error";
+    store.error = "Unable to load boards.";
+    await flushPromises();
+    expect(wrapper.find(".board-error").text()).toContain("Unable to load boards.");
+
+    await wrapper.find('button[aria-label="Dismiss board error"]').trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".board-error").exists()).toBe(false);
+    await wrapper.unmount();
+  });
+
+  it("clears a standing error when the next action succeeds", async () => {
+    const store = seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
     await flushPromises();
 
-    // Error message should exist or be available when there's an error
-    if (vm.error) {
-      // Simulate error dismissal via dismissError function
-      vm.dismissError();
-      await flushPromises();
-      expect(vm.error).toBe("");
-    }
+    store.error = "Could not create card.";
+    await flushPromises();
+    expect(wrapper.find(".board-error").exists()).toBe(true);
+
+    await wrapper.find('input[name="cardTitle"]').setValue("Next card");
+    await wrapper.find("form.create-card").trigger("submit");
+    await flushPromises();
+
+    expect(store.createCard).toHaveBeenCalled();
+    expect(wrapper.find(".board-error").exists()).toBe(false);
     await wrapper.unmount();
   });
 
   it("toggles between Kanban and Gantt views", async () => {
     mockRoute.query = { view: "kanban" };
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const viewButtons = wrapper.findAll(".view-switch button");
     expect(viewButtons.length).toBe(2);
@@ -182,14 +180,7 @@ describe("BoardView", () => {
   });
 
   it("does not display JSON objects in card output", async () => {
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     // Check that no rendered text contains raw JSON patterns like {}
     const html = wrapper.html();
@@ -210,14 +201,7 @@ describe("BoardView", () => {
     ];
     store.selectedId = "board-1";
 
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const boardTabs = wrapper.findAll(".board-tab");
     expect(boardTabs.length).toBe(2);
@@ -227,46 +211,80 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("handles board rename inline (edit by clicking)", async () => {
-    mockRoute.query = { board: "test-board-id" };
-    const store = useBoardsStore();
-    store.selectedId = "test-board-id";
-    store.boards = [{ id: "test-board-id", name: "Test Board", archived: false, createdAt: "", updatedAt: "" }];
+  it("turns the selected board tab into an input when its name is clicked", async () => {
+    const store = seedBoard();
+    const wrapper = mountBoard();
+    await flushPromises();
 
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    expect(wrapper.find(".board-tab-edit").exists()).toBe(false);
+    await wrapper.find(".board-tab.selected").trigger("click");
 
-    const vm = wrapper.vm as any;
-    expect(vm.editingBoard).toBe(false);
+    const field = wrapper.find<HTMLInputElement>("input.board-tab-edit");
+    expect(field.exists()).toBe(true);
+    expect(field.element.value).toBe("Test Board");
+    expect(field.attributes("aria-label")).toBe("Board name");
+    // The tab is replaced by the field, so no duplicate name is shown.
+    expect(wrapper.find(".board-tab.selected").exists()).toBe(false);
 
-    // Begin rename
-    vm.beginBoardRename();
-    await wrapper.vm.$nextTick();
-    expect(vm.editingBoard).toBe(true);
-    expect(vm.boardDraft).toBe("Test Board");
+    await field.setValue("Renamed board");
+    await field.trigger("keydown.enter");
+    await flushPromises();
 
-    // Cancel rename
-    vm.editingBoard = false;
-    await wrapper.vm.$nextTick();
-    expect(vm.editingBoard).toBe(false);
+    expect(store.updateBoard).toHaveBeenCalledWith("test-id", "Renamed board");
+    expect(wrapper.find(".board-tab-edit").exists()).toBe(false);
+    await wrapper.unmount();
+  });
+
+  it("clicking an unselected board tab switches boards instead of renaming", async () => {
+    const store = seedBoard();
+    store.boards = [
+      ...store.boards,
+      { id: "other-id", name: "Other Board", archived: false, createdAt: "", updatedAt: "" },
+    ];
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    const tabs = wrapper.findAll(".board-tab");
+    const other = tabs.find((tab) => tab.text() === "Other Board")!;
+    await other.trigger("click");
+    await flushPromises();
+
+    expect(store.selectedId).toBe("other-id");
+    expect(wrapper.find(".board-tab-edit").exists()).toBe(false);
+    expect(store.updateBoard).not.toHaveBeenCalled();
+    await wrapper.unmount();
+  });
+
+  it("escape abandons an inline board rename without saving", async () => {
+    const store = seedBoard();
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    await wrapper.find(".board-tab.selected").trigger("click");
+    const field = wrapper.find("input.board-tab-edit");
+    await field.setValue("Discarded name");
+    await field.trigger("keydown.esc");
+    await flushPromises();
+
+    expect(store.updateBoard).not.toHaveBeenCalled();
+    expect(wrapper.find(".board-tab.selected").text()).toBe("Test Board");
+    await wrapper.unmount();
+  });
+
+  it("offers no separate rename buttons anywhere on the board", async () => {
+    seedBoard(["Backlog", "Done"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    const renameControls = wrapper
+      .findAll("button")
+      .filter((button) => /rename/i.test(button.text()) || /rename/i.test(button.attributes("aria-label") || ""));
+    expect(renameControls).toHaveLength(0);
     await wrapper.unmount();
   });
 
   it("displays keyboard accessible controls", async () => {
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     // Check for aria labels and roles
     expect(wrapper.find(".board-page[aria-labelledby='board-heading']").exists()).toBe(true);
@@ -278,43 +296,107 @@ describe("BoardView", () => {
 
   it("initializes with proper default values", async () => {
     mockRoute.query = {};
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const vm = wrapper.vm as any;
     expect(vm.newBoard).toBe("");
     expect(vm.newCardTitle).toBe("");
     expect(vm.newStatus).toBe("");
     expect(vm.error).toBe("");
-    expect(vm.showArchived).toBe(false);
     await wrapper.unmount();
   });
 
-  it("has archive button at end of actions", async () => {
-    mockRoute.query = { board: "test-id" };
-    const store = useBoardsStore();
-    store.selectedId = "test-id";
-    store.boards = [{ id: "test-id", name: "Test", archived: false, createdAt: "", updatedAt: "" }];
+  it("puts the archive controls in a footer at the end of the page", async () => {
+    seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
 
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
+    const footer = wrapper.find("footer.board-footer");
+    expect(footer.exists()).toBe(true);
+    // The footer is the last element of the page, after the kanban board.
+    const children = [...wrapper.find(".board-page").element.children];
+    expect(children[children.length - 1]).toBe(footer.element);
+
+    const archiveLink = footer.find('a[aria-label="Archived items"]');
+    expect(archiveLink.exists()).toBe(true);
+    expect(archiveLink.attributes("href")).toBe("/board/archive");
+    expect(footer.find('button[aria-label="Archive board"]').exists()).toBe(true);
+    await wrapper.unmount();
+  });
+
+  it("does not render archived listings inline on the board page", async () => {
+    seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    expect(wrapper.find(".archived-list").exists()).toBe(false);
+    const toggles = wrapper
+      .findAll("button")
+      .filter((button) => /show archived|archived boards|archived statuses/i.test(button.text()));
+    expect(toggles).toHaveLength(0);
+    await wrapper.unmount();
+  });
+
+  it("creates a card with a start and due date picked from the kanban toolbar", async () => {
+    const store = seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    // The date fields stay out of the way until the calendar toggle is used.
+    expect(wrapper.find(".card-date-range").exists()).toBe(false);
+    const toggle = wrapper.find('button[aria-label="Card date range"]');
+    expect(toggle.attributes("aria-expanded")).toBe("false");
+    await toggle.trigger("click");
+
+    const range = wrapper.find(".card-date-range");
+    expect(range.exists()).toBe(true);
+    await range.find('input[aria-label="Card start date"]').setValue("2026-03-01");
+    await range.find('input[aria-label="Card due date"]').setValue("2026-03-09");
+    await wrapper.find('input[name="cardTitle"]').setValue("Dated card");
+    await wrapper.find("form.create-card").trigger("submit");
+    await flushPromises();
+
+    expect(store.createCard).toHaveBeenCalledWith({
+      title: "Dated card",
+      body: "{}",
+      priority: "MEDIUM",
+      startDate: "2026-03-01",
+      dueDate: "2026-03-09",
     });
+    // The range collapses again so the next card starts undated.
+    expect(wrapper.find(".card-date-range").exists()).toBe(false);
+    await wrapper.unmount();
+  });
 
-    const buttons = wrapper.findAll(".board-actions button");
-    // Last button should be archive-related
-    const lastButton = buttons[buttons.length - 1];
-    expect(lastButton.text()).toMatch(/Archive|Rename/);
+  it("omits empty dates rather than sending blank strings", async () => {
+    const store = seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    await wrapper.find('input[name="cardTitle"]').setValue("Undated card");
+    await wrapper.find("form.create-card").trigger("submit");
+    await flushPromises();
+
+    expect(store.createCard).toHaveBeenCalledWith({
+      title: "Undated card",
+      body: "{}",
+      priority: "MEDIUM",
+      startDate: undefined,
+      dueDate: undefined,
+    });
+    await wrapper.unmount();
+  });
+
+  it("uses icon buttons with accessible names for the create actions", async () => {
+    seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    for (const [label, icon] of [["Create board", "＋"], ["Add card", "＋"], ["Add status", "＋"]] as const) {
+      const button = wrapper.find(`button[aria-label="${label}"]`);
+      expect(button.exists(), `${label} button is missing`).toBe(true);
+      expect(button.text()).toBe(icon);
+    }
     await wrapper.unmount();
   });
 
@@ -324,14 +406,7 @@ describe("BoardView", () => {
     store.selectedId = "test-id";
     store.boards = [{ id: "test-id", name: "Test", archived: false, createdAt: "", updatedAt: "" }];
 
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const vm = wrapper.vm as any;
     expect(vm.archiveConfirmOpen).toBe(false);
@@ -363,35 +438,56 @@ describe("BoardView", () => {
     ];
     store.cards = [];
 
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
-    const vm = wrapper.vm as any;
-    const status = store.statuses[0];
+    await flushPromises();
+    const nameButton = wrapper.find(".status-name");
+    expect(nameButton.exists()).toBe(true);
+    expect(nameButton.text()).toBe("Backlog");
 
-    // Edit status
-    vm.editStatus(status);
-    await wrapper.vm.$nextTick();
-    expect(vm.editingStatusId).toBe("status-1");
-    expect(vm.statusDraft).toBe("Backlog");
+    await nameButton.trigger("click");
+    const field = wrapper.find<HTMLInputElement>(".status-edit input");
+    expect(field.exists()).toBe(true);
+    expect(field.element.value).toBe("Backlog");
+    expect(field.attributes("aria-label")).toBe("Rename Backlog");
+
+    await field.setValue("Ready");
+    await field.trigger("keydown.enter");
+    await flushPromises();
+
+    expect(store.updateStatus).toHaveBeenCalledWith(store.statuses[0], "Ready");
+    await wrapper.unmount();
+  });
+
+  it("escape abandons an inline status rename without saving", async () => {
+    const store = seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    await wrapper.find(".status-name").trigger("click");
+    const field = wrapper.find(".status-edit input");
+    await field.setValue("Discarded");
+    await field.trigger("keydown.esc");
+    await flushPromises();
+
+    expect(store.updateStatus).not.toHaveBeenCalled();
+    expect(wrapper.find(".status-name").text()).toBe("Backlog");
+    await wrapper.unmount();
+  });
+
+  it("keeps the column heading as the accessible name for its section", async () => {
+    seedBoard(["Backlog"]);
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    const column = wrapper.find(".kanban-column");
+    expect(column.attributes("aria-labelledby")).toBe("status-status-1");
+    expect(wrapper.find("h2#status-status-1").text()).toBe("Backlog");
     await wrapper.unmount();
   });
 
   it("clears error messages programmatically", async () => {
-    const wrapper = mount(BoardView, {
-      global: {
-        mocks: {
-          $route: mockRoute,
-          $router: mockRouter,
-        },
-      },
-    });
+    const wrapper = mountBoard();
 
     const vm = wrapper.vm as any;
     const store = useBoardsStore();
