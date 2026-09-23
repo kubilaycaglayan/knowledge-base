@@ -75,10 +75,12 @@ cover it. Tick an item only once those tests pass.
   _Tests:_ `BoardView.test.ts` "hides the path picker on path boards"
 - [ ] **PB-22** Board settings for a path board show the name as read-only text with a link to Paths, and have no Archive board button, pin switch or visibility switch. A board is shown or hidden only from the path edit form on /paths.
   _Tests:_ `BoardView.test.ts` "path board settings are read-only and leave visibility to the Paths page"
-- [ ] **PB-23** Board settings for a custom board include a "Pin board" switch that calls the pin endpoint.
-  _Tests:_ `BoardView.test.ts` "pins a custom board from settings"
-- [ ] **PB-24** Custom board tabs can be reordered within their group by dragging the tab, or by pressing Alt+Left or Alt+Right on the focused tab. The new order is sent to `PUT /boards/order`.
-  _Tests:_ `BoardView.test.ts` "reorders custom board tabs with the keyboard", `boards.test.ts` "reorderBoards"
+- [ ] **PB-23** Board tabs have no gear of their own. A single "Manage boards" gear button sits next to the Add board "+" button and opens a "Boards" dialog listing every active board in tab order. Clicking a board name opens that board's settings. Board settings have no pin switch.
+  _Tests:_ `BoardView.test.ts` "opens the boards dialog from the single gear and each name opens its settings"
+- [ ] **PB-24** In the Boards dialog, each custom board row has a drag handle. Dragging it up or down, or pressing ArrowUp or ArrowDown on the focused handle, reorders the board within its group (pinned or unpinned) and sends the full custom order to `PUT /boards/order`. Path board rows have no handle because their order comes from the Paths page.
+  _Tests:_ `BoardView.test.ts` "reorders custom boards from the boards dialog", `boards.test.ts` "reorderBoards"
+- [ ] **PB-31** Each custom board row in the Boards dialog has a pin button (`aria-pressed`) that pins or unpins the board and moves it between the pinned and unpinned groups. Path board rows have no pin button.
+  _Tests:_ `BoardView.test.ts` "pins and unpins custom boards from the boards dialog"
 
 ## Web: Paths page
 

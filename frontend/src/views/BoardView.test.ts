@@ -81,6 +81,14 @@ describe("BoardView", () => {
     });
   }
 
+  // Board settings open from the single "Manage boards" gear, via the board's name in the Boards dialog.
+  async function openSettingsFor(wrapper: ReturnType<typeof mountBoard>, name: string) {
+    await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
+    const manager = wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');
+    await manager.findAll(".boards-manager-name").find((button) => button.text() === name)!.trigger("click");
+    await flushPromises();
+  }
+
   function seedBoard(statusNames: string[] = []) {
     const store = useBoardsStore();
     store.selectedId = "test-id";
@@ -288,7 +296,7 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("opens another board's settings from its gear without switching to it", async () => {
+  it("opens another board's settings from the boards dialog without switching to it", async () => {
     const store = seedBoard(["Backlog"]);
     store.boards.push({ id: "other-id", name: "Other", archived: false, createdAt: "", updatedAt: "" });
     const otherStatuses = [{ id: "o-1", name: "Ideas", archived: false, position: 0 }, { id: "o-2", name: "Shipped", archived: false, position: 1 }];
@@ -297,8 +305,7 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
 
-    await wrapper.find('button[aria-label="Board settings for Other"]').trigger("click");
-    await flushPromises();
+    await openSettingsFor(wrapper, "Other");
     expect(store.selectedId).toBe("test-id");
     expect(store.fetchStatuses).toHaveBeenCalledWith("other-id");
     const dialog = wrapper.find('[aria-labelledby="board-settings-title"]');
@@ -497,12 +504,11 @@ describe("BoardView", () => {
       const store = seedBoard(["Backlog", "Doing", "Done"]);
       const wrapper = mountBoard();
       await flushPromises();
-      await wrapper.find('button[aria-label="Board settings for Test Board"]').trigger("click");
-      await flushPromises();
+      await openSettingsFor(wrapper, "Test Board");
       return { store, wrapper, dialog: () => wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]') };
     }
 
-    it("opens from the gear beside the board tab and closes with Done", async () => {
+    it("opens from the boards dialog and closes with Done", async () => {
       const { wrapper, dialog } = await openSettings();
       expect(dialog().exists()).toBe(true);
       expect(dialog().find<HTMLInputElement>("#board-settings-name").element.value).toBe("Test Board");
@@ -651,8 +657,7 @@ describe("BoardView", () => {
       seedPathBoards();
       const wrapper = mountBoard();
       await flushPromises();
-      await wrapper.find('button[aria-label="Board settings for Writing"]').trigger("click");
-      await flushPromises();
+      await openSettingsFor(wrapper, "Writing");
       const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
       expect(dialog.find("#board-settings-name").exists()).toBe(false);
       expect(dialog.find(".settings-name-readonly").text()).toContain("Writing");
@@ -665,38 +670,67 @@ describe("BoardView", () => {
     });
 
     // PB-23
-    it("pins a custom board from settings", async () => {
-      const store = seedPathBoards();
+    it("opens the boards dialog from the single gear and each name opens its settings", async () => {
+      seedPathBoards();
       const wrapper = mountBoard();
       await flushPromises();
-      await wrapper.find('button[aria-label="Board settings for Alpha"]').trigger("click");
+      expect(wrapper.findAll(".board-tab-settings")).toHaveLength(0);
+      const gear = wrapper.find('button[aria-label="Manage boards"]');
+      expect(gear.exists()).toBe(true);
+      expect(gear.element.previousElementSibling?.getAttribute("aria-label")).toBe("Add board");
+
+      await gear.trigger("click");
+      const manager = wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');
+      expect(manager.findAll(".boards-manager-name").map((button) => button.text())).toEqual(["Pinned", "Writing", "Alpha", "Beta"]);
+
+      await manager.findAll(".boards-manager-name").find((button) => button.text() === "Alpha")!.trigger("click");
       await flushPromises();
-      const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
-      expect(dialog.find('input[name="boardVisible"]').exists()).toBe(false);
-      const pin = dialog.find<HTMLInputElement>('input[name="boardPinned"]');
-      expect(pin.element.checked).toBe(false);
-      await pin.setValue(true);
-      await flushPromises();
-      expect(store.pinBoard).toHaveBeenCalledWith("custom-a", true);
+      expect(wrapper.find('[aria-labelledby="boards-manager-title"]').exists()).toBe(false);
+      const settings = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
+      expect(settings.find<HTMLInputElement>("#board-settings-name").element.value).toBe("Alpha");
+      expect(settings.find('input[name="boardPinned"]').exists()).toBe(false);
       await wrapper.unmount();
     });
 
     // PB-24
-    it("reorders custom board tabs with the keyboard", async () => {
+    it("reorders custom boards from the boards dialog", async () => {
       const store = seedPathBoards();
       const wrapper = mountBoard();
       await flushPromises();
-      const tab = (name: string) => wrapper.findAll(".board-tab").find((item) => item.text() === name)!;
+      await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
+      const manager = () => wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');
+      expect(manager().findAll(".drag-handle")).toHaveLength(3);
+      expect(manager().find('button[aria-label="Reorder Writing"]').exists()).toBe(false);
 
-      // Path boards follow the Paths page order and cannot move here.
-      await tab("Writing").trigger("keydown", { key: "ArrowRight", altKey: true });
-      // Groups do not mix: the first unpinned board cannot jump into the pinned group.
-      await tab("Alpha").trigger("keydown", { key: "ArrowLeft", altKey: true });
+      // Groups do not mix: the first unpinned board cannot move up into the pinned group.
+      await manager().find('button[aria-label="Reorder Alpha"]').trigger("keydown", { key: "ArrowUp" });
       expect(store.reorderBoards).not.toHaveBeenCalled();
 
-      await tab("Alpha").trigger("keydown", { key: "ArrowRight", altKey: true });
+      await manager().find('button[aria-label="Reorder Alpha"]').trigger("keydown", { key: "ArrowDown" });
       await flushPromises();
       expect(store.reorderBoards).toHaveBeenCalledWith(["pinned", "custom-b", "custom-a"]);
+      await wrapper.unmount();
+    });
+
+    // PB-31
+    it("pins and unpins custom boards from the boards dialog", async () => {
+      const store = seedPathBoards();
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
+      const manager = wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');
+      expect(manager.find('button[aria-label="Pin Writing"]').exists()).toBe(false);
+      const unpin = manager.find('button[aria-label="Unpin Pinned"]');
+      expect(unpin.attributes("aria-pressed")).toBe("true");
+      await unpin.trigger("click");
+      await flushPromises();
+      expect(store.pinBoard).toHaveBeenCalledWith("pinned", false);
+
+      const pin = manager.find('button[aria-label="Pin Alpha"]');
+      expect(pin.attributes("aria-pressed")).toBe("false");
+      await pin.trigger("click");
+      await flushPromises();
+      expect(store.pinBoard).toHaveBeenCalledWith("custom-a", true);
       await wrapper.unmount();
     });
   });

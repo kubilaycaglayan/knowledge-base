@@ -151,9 +151,11 @@ async function archiveCardFromEditor(page, title) {
 }
 
 // Status management and board archival live in the board settings dialog,
-// opened from the gear beside the selected board's tab.
+// opened from the board's name in the Boards dialog behind the single gear.
 async function openBoardSettings(page) {
-  await page.locator(".board-tab-wrap.selected .board-tab-settings").click();
+  const name = (await page.locator(".board-tab.selected").innerText()).trim();
+  await page.getByRole("button", { name: "Manage boards" }).click();
+  await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name, exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Board settings" });
   await dialog.waitFor();
   return dialog;
@@ -690,10 +692,11 @@ describe("path boards", () => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
     t.after(() => context.close());
     const paths = [];
-    const boards = [{ id: "custom-1", name: "Custom", archived: false, pathId: null, hidden: false, pinned: false }];
+    const boards = [{ id: "custom-1", name: "Custom", archived: false, pathId: null, hidden: false, pinned: false }, { id: "custom-2", name: "Second", archived: false, pathId: null, hidden: false, pinned: false }];
     const boardStatuses = {};
     const boardCards = {};
     const visibilityRequests = [];
+    const orderRequests = [];
     const statusesFor = (boardId) => (boardStatuses[boardId] ||= ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `${boardId}-status-${index}`, name, position: index, archived: false })));
     await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
     await context.route("**/api/**", async (route) => {
@@ -714,7 +717,19 @@ describe("path boards", () => {
         status = 201;
       } else if (path === "/paths") body = paths.map((item) => ({ ...item, boardHidden: boards.find((board) => board.id === item.boardId).hidden }));
       else if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : boards.filter((board) => url.searchParams.get("includeHidden") === "true" || !board.hidden);
-      else if ((match = path.match(/^\/boards\/([^/]+)\/visibility$/))) {
+      else if ((match = path.match(/^\/boards\/([^/]+)\/pin$/))) {
+        const board = boards.find((item) => item.id === match[1]);
+        board.pinned = request.postDataJSON().pinned;
+        boards.sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+        body = board;
+      } else if (path === "/boards/order" && method === "PUT") {
+        const ids = request.postDataJSON().ids;
+        orderRequests.push(ids);
+        const custom = ids.map((id) => boards.find((item) => item.id === id));
+        for (let index = 0, next = 0; index < boards.length; index += 1) if (!boards[index].pathId) boards[index] = custom[next++];
+        status = 204;
+        body = "";
+      } else if ((match = path.match(/^\/boards\/([^/]+)\/visibility$/))) {
         const board = boards.find((item) => item.id === match[1]);
         board.hidden = request.postDataJSON().hidden;
         visibilityRequests.push(request.postDataJSON());
@@ -733,11 +748,11 @@ describe("path boards", () => {
         Object.assign(card, request.postDataJSON(), { pathIds: card.pathIds });
         body = card;
       }
-      await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+      await route.fulfill({ status, contentType: "application/json", body: status === 204 ? "" : JSON.stringify(body) });
     });
     const page = await context.newPage();
     const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
-    return { page, origin, visibilityRequests };
+    return { page, origin, visibilityRequests, orderRequests };
   }
 
   it("creates a board with each path and hides it from the Paths page after confirmation", async (t) => {
@@ -782,4 +797,39 @@ describe("path boards", () => {
     await page.locator(".board-tab", { hasText: "Custom" }).waitFor();
     assert.equal(await page.locator(".board-tab", { hasText: "Launch" }).count(), 0);
   });
+
+  // PB-23, PB-24, PB-31: one gear opens the Boards dialog for pinning, ordering, and settings.
+  it("pins, reorders, and opens settings from the Boards dialog", async (t) => {
+    const { page, origin, orderRequests } = await pathBoardFixture(t);
+    await page.goto(`${origin}/board`);
+    await page.locator(".board-tab", { hasText: "Second" }).waitFor();
+    assert.equal(await page.locator(".board-tab-settings").count(), 0);
+
+    await page.getByRole("button", { name: "Manage boards" }).click();
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    await manager.getByRole("button", { name: "Reorder Second" }).press("ArrowUp");
+    await page.waitForFunction(() => document.querySelector(".board-tab")?.textContent?.trim() === "Second");
+    assert.deepEqual(orderRequests.at(-1), ["custom-2", "custom-1"]);
+
+    const handle = manager.getByRole("button", { name: "Reorder Custom" });
+    const target = manager.getByRole("button", { name: "Reorder Second" });
+    const from = await handle.boundingBox();
+    const to = await target.boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y - 4, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForFunction(() => document.querySelector(".board-tab")?.textContent?.trim() === "Custom");
+    assert.deepEqual(orderRequests.at(-1), ["custom-1", "custom-2"]);
+
+    await manager.getByRole("button", { name: "Pin Second" }).click();
+    await manager.getByRole("button", { name: "Unpin Second" }).waitFor();
+    assert.equal((await page.locator(".board-tab").first().innerText()).trim(), "Second");
+
+    await manager.getByRole("button", { name: "Custom", exact: true }).click();
+    const settings = page.getByRole("dialog", { name: "Board settings" });
+    await settings.waitFor();
+    assert.equal(await settings.getByRole("textbox", { name: "Name", exact: true }).inputValue(), "Custom");
+  });
 });
+

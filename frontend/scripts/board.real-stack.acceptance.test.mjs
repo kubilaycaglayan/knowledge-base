@@ -53,6 +53,12 @@ async function clickCentered(locator) {
   await locator.click();
 }
 
+// Board settings open from the board's name in the Boards dialog behind the single gear.
+async function openSettingsFor(name) {
+  await clickCentered(page.getByRole("button", { name: "Manage boards" }));
+  await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name, exact: true }).click();
+}
+
 // Tabs only switch boards, so clicking the open board's tab is skipped.
 async function clickBoardTab(name) {
   if (!(await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).count())) {
@@ -336,7 +342,7 @@ describe("board real-stack acceptance", () => {
     await clickCentered(selectedTab());
     assert.equal(await page.getByRole("textbox", { name: "Board name", exact: true }).count(), 0, "Clicking a tab must not start a rename");
 
-    await clickCentered(page.locator(".board-tab-wrap.selected .board-tab-settings"));
+    await openSettingsFor(activeBoardName);
     const settings = page.getByRole("dialog", { name: "Board settings" });
     const field = settings.getByRole("textbox", { name: "Name", exact: true });
     assert.equal(await field.inputValue(), activeBoardName, "The field starts from the current name");
@@ -354,15 +360,14 @@ describe("board real-stack acceptance", () => {
     await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(renamed)}$`) }).waitFor();
   });
 
-  it("edits another board's settings from its gear without switching to it", async () => {
+  it("edits another board's settings from the Boards dialog without switching to it", async () => {
     const other = activeBoardName;
     await createBoard(`${other} Open`);
     const open = activeBoardName;
-    const otherWrap = page.locator(".board-tab-wrap").filter({ has: boardTab(other) });
-    await clickCentered(otherWrap.locator(".board-tab-settings"));
+    await openSettingsFor(other);
     const settings = page.getByRole("dialog", { name: "Board settings" });
     await settings.getByRole("textbox", { name: "Status name Backlog" }).waitFor();
-    assert.equal(await selectedTab().textContent(), open, "The gear must not switch boards");
+    assert.equal(await selectedTab().textContent(), open, "Opening settings must not switch boards");
 
     await settings.getByRole("textbox", { name: "New status name" }).fill("Other only");
     await Promise.all([
@@ -384,7 +389,7 @@ describe("board real-stack acceptance", () => {
     const original = (await column.locator("h2").textContent()).trim();
     assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [`Add card to ${original}`], "Columns only offer adding a card");
 
-    await clickCentered(page.locator(".board-tab-wrap.selected .board-tab-settings"));
+    await openSettingsFor(activeBoardName);
     const settings = page.getByRole("dialog", { name: "Board settings" });
     await settings.waitFor();
     const field = settings.getByRole("textbox", { name: `Status name ${original}` });
