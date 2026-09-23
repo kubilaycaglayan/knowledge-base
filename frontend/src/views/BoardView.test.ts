@@ -450,6 +450,20 @@ describe("BoardView", () => {
     }
     await wrapper.unmount();
   });
+  it("leaves an untitled card blank instead of showing an Untitled card placeholder", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "", body: "{}", priority: "MEDIUM", startDate: "2026-09-09", dueDate: "2026-09-10", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    const card = wrapper.find(".board-card");
+    expect(card.find("h3").exists()).toBe(false);
+    expect(card.attributes("aria-label")).toBe("Untitled card");
+    expect(wrapper.text()).not.toContain("Untitled card");
+    await card.trigger("click");
+    expect(wrapper.find('textarea[name="title"]').attributes("placeholder")).toBeUndefined();
+    await wrapper.unmount();
+  });
+
   it("keeps Kanban column headers free of status management controls", async () => {
     seedBoard(["Backlog", "Doing"]);
     const wrapper = mountBoard();

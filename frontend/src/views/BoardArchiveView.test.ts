@@ -143,7 +143,8 @@ describe("BoardArchiveView", () => {
     const wrapper = mountArchive();
     await flushPromises();
 
-    expect(wrapper.find(".archive-row strong").text()).toBe("Untitled card");
+    expect(wrapper.find(".archive-row strong").text()).toBe("");
+    expect(wrapper.text()).not.toContain("Untitled card");
     await wrapper.find('button[aria-label="Restore untitled card"]').trigger("click");
     await flushPromises();
     expect(store.archiveCard).toHaveBeenCalledWith(archivedCard, true);

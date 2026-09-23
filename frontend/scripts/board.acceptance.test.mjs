@@ -417,7 +417,8 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     assert.equal(await page.getByRole("textbox", { name: "New card title" }).count(), 0, "No page-level add-card input");
     await page.getByRole("button", { name: "Add card to Pending" }).click();
-    await page.locator(".kanban-column", { hasText: "Pending" }).getByRole("heading", { name: "Untitled card" }).waitFor();
+    await page.locator(".kanban-column", { hasText: "Pending" }).locator('.board-card[aria-label="Untitled card"]').waitFor();
+    assert.equal(await page.getByText("Untitled card").count(), 0, "No visible Untitled card placeholder");
     const editor = page.getByRole("dialog", { name: "Edit card" });
     assert.equal(await editor.locator("h2").count(), 0, "No Edit card heading");
     assert.equal(await editor.locator("label", { hasText: /^(Title|Body)$/ }).count(), 0, "Title and body are unlabelled");

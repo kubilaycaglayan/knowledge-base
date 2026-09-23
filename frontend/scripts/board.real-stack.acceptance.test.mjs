@@ -117,7 +117,7 @@ async function addCard(title) {
   await submitCard(title);
   await postSeen;
   try {
-    await page.getByRole("heading", { name: title || "Untitled card" }).waitFor();
+    await (title ? page.getByRole("heading", { name: title }) : page.locator('.board-card[aria-label="Untitled card"]').first()).waitFor();
   } catch (cause) {
     const state = await page.evaluate(() => ({
       url: location.href,
