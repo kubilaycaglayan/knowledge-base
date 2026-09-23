@@ -17,7 +17,7 @@ const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", bod
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
@@ -70,7 +70,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
         await route.fulfill({ status: failCardUpdateStatus, contentType: "application/json", body: JSON.stringify({ message: failCardUpdateStatus === 409 ? "Card changed elsewhere" : "Temporary failure" }) });
         return;
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, delayCardUpdateMs || 100));
       Object.assign(routedCard, request.postDataJSON());
       body = routedCard;
     }
@@ -326,6 +326,15 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry after outage");
     await page.getByRole("button", { name: "Save card" }).click();
     await page.getByRole("heading", { name: "Retry after outage" }).waitFor();
+  });
+
+  it("shows timeout-specific editor feedback and keeps the draft retryable", async (t) => {
+    const { page } = await fixture(t, 390, false, false, false, false, false, 409, false, 16000);
+    await page.locator(".board-card").first().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timed out draft");
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("alert").filter({ hasText: "The request timed out. Try again." }).waitFor({ timeout: 20000 });
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Timed out draft");
   });
 
   it("archives a card and restores it from the archived-card list", async (t) => {

@@ -194,7 +194,9 @@ describe("api", () => {
 
     const request = api("/slow");
     const rejection = expect(request).rejects.toMatchObject({
-      name: "AbortError",
+      name: "ApiError",
+      status: 408,
+      message: "The request timed out. Please try again.",
     });
     await vi.advanceTimersByTimeAsync(15000);
 
