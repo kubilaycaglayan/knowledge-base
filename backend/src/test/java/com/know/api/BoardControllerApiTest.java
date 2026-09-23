@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.nullValue;
 
 @WebMvcTest(BoardController.class)
-@Import(com.know.security.SecurityConfig.class)
+@Import({com.know.security.SecurityConfig.class, com.know.service.BoardService.class})
 @TestPropertySource(properties = {"app.jwt-secret=board-api-test-secret-with-at-least-32-characters", "app.cors-origins=http://localhost"})
 class BoardControllerApiTest {
   @Autowired MockMvc mvc;

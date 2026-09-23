@@ -33,6 +33,7 @@ public class KnowledgeBaseTransferService {
   private final LabelScopeRepository scopes;
   private final ImportBatchRepository batches;
   private final UserRepository users;
+  private final BoardService boards;
 
   public KnowledgeBaseTransferService(
       ObjectMapper json,
@@ -49,7 +50,9 @@ public class KnowledgeBaseTransferService {
       LabelRepository labels,
       LabelScopeRepository scopes,
       ImportBatchRepository batches,
-      UserRepository users) {
+      UserRepository users,
+      BoardService boards) {
+    this.boards = boards;
     this.json = json;
     this.paths = paths;
     this.entries = entries;
@@ -267,6 +270,7 @@ public class KnowledgeBaseTransferService {
             path.restore();
             path.assignImportBatch(batch.getId());
             paths.save(path);
+            boards.createForPath(path);
             imported++;
           } else skipped++;
           pathMap.put(r.id, path);
@@ -292,6 +296,7 @@ public class KnowledgeBaseTransferService {
                     instant(p, "updatedAt")));
         path.assignImportBatch(batch.getId());
         paths.save(path);
+        boards.createForPath(path);
         pathMap.put(r.id, path);
         imported++;
         createdPaths++;

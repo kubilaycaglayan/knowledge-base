@@ -1,6 +1,7 @@
 package com.know.api;
 
 import com.know.domain.*;
+import com.know.service.BoardService;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -21,18 +22,21 @@ public class BoardController {
   private final PathRepository paths;
   private final LabelRepository labels;
   private final LabelScopeRepository scopes;
+  private final BoardService boardService;
 
   public BoardController(BoardRepository boards, BoardStatusRepository statuses, BoardCardRepository cards,
-      PathRepository paths, LabelRepository labels, LabelScopeRepository scopes) {
-    this.boards = boards; this.statuses = statuses; this.cards = cards; this.paths = paths; this.labels = labels; this.scopes = scopes;
+      PathRepository paths, LabelRepository labels, LabelScopeRepository scopes, BoardService boardService) {
+    this.boards = boards; this.statuses = statuses; this.cards = cards; this.paths = paths; this.labels = labels; this.scopes = scopes; this.boardService = boardService;
   }
 
   record BoardRequest(@NotBlank @Size(max = 120) String name) {}
   record StatusRequest(@NotBlank @Size(max = 80) String name) {}
   record OrderRequest(@NotEmpty List<UUID> ids) {}
+  record VisibilityRequest(boolean hidden) {}
+  record PinRequest(boolean pinned) {}
   record CardRequest(@Size(max = 240) String title, String body, BoardPriority priority, LocalDate startDate, LocalDate dueDate, List<UUID> pathIds, List<UUID> labelIds, Instant expectedUpdatedAt, UUID statusId) {}
   record MoveRequest(@NotNull UUID statusId, @Min(0) int position) {}
-  record BoardView(UUID id, String name, boolean archived, Instant createdAt, Instant updatedAt) { static BoardView of(Board b) { return new BoardView(b.getId(), b.getName(), b.isArchived(), b.getCreatedAt(), b.getUpdatedAt()); } }
+  record BoardView(UUID id, String name, boolean archived, UUID pathId, boolean hidden, boolean pinned, Instant createdAt, Instant updatedAt) { static BoardView of(Board b) { return new BoardView(b.getId(), b.getName(), b.isArchived(), b.getPathId(), b.isHidden(), b.isPinned(), b.getCreatedAt(), b.getUpdatedAt()); } }
   record StatusView(UUID id, String name, int position, boolean archived) { static StatusView of(BoardStatus s) { return new StatusView(s.getId(), s.getName(), s.getPosition(), s.isArchived()); } }
   record CardView(UUID id, UUID statusId, String title, String body, BoardPriority priority, LocalDate startDate, LocalDate dueDate, int position, boolean archived, List<UUID> pathIds, List<UUID> labelIds, Instant createdAt, Instant updatedAt) {
     static CardView of(BoardCard c) { return new CardView(c.getId(), c.getStatusId(), c.getTitle(), c.getBody(), c.getPriority(), c.getStartDate(), c.getDueDate(), c.getPosition(), c.isArchived(), c.getPaths().stream().map(Path::getId).toList(), c.getLabels().stream().map(Label::getId).toList(), c.getCreatedAt(), c.getUpdatedAt()); }
@@ -42,22 +46,34 @@ public class BoardController {
   private UUID user(Authentication auth) { return UUID.fromString(auth.getName()); }
   private Board board(Authentication auth, UUID id) { return boards.findByIdAndUserId(id, user(auth)).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Board not found")); }
   private Board writableBoard(Authentication auth, UUID id) { Board board = board(auth, id); if (board.isArchived()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Archived boards are read-only"); return board; }
+  private static final String PATH_BOARD_RULE = "Path boards follow their path";
+  private Board customBoard(Authentication auth, UUID id) { Board board = board(auth, id); if (board.isPathBoard()) throw new ResponseStatusException(HttpStatus.CONFLICT, PATH_BOARD_RULE); return board; }
   private BoardStatus status(Board board, UUID id) { return statuses.findByIdAndBoardId(id, board.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Status not found")); }
   private BoardCard card(Board board, UUID id) { return cards.findByIdAndBoardId(id, board.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found")); }
 
-  @GetMapping public List<BoardView> list(Authentication auth, @RequestParam(defaultValue = "false") boolean archived) {
-    return boards.findAllByUserIdOrderByUpdatedAtDesc(user(auth)).stream().filter(b -> b.isArchived() == archived).map(BoardView::of).toList();
+  // Active boards come back in tab order; see BoardService.tabs.
+  @GetMapping public List<BoardView> list(Authentication auth, @RequestParam(defaultValue = "false") boolean archived, @RequestParam(defaultValue = "false") boolean includeHidden) {
+    if (!archived) return boardService.tabs(user(auth), includeHidden).stream().map(BoardView::of).toList();
+    return boards.findAllByUserIdOrderByUpdatedAtDesc(user(auth)).stream().filter(Board::isArchived).map(BoardView::of).toList();
   }
-  @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional public BoardView create(Authentication auth, @Valid @RequestBody BoardRequest request) {
-    Board board = boards.save(new Board(user(auth), request.name()));
-    String[] defaults = {"Backlog", "Pending", "In Progress", "Done"};
-    for (int i = 0; i < defaults.length; i++) statuses.save(new BoardStatus(board.getId(), defaults[i], i));
-    return BoardView.of(board);
+  @PostMapping @ResponseStatus(HttpStatus.CREATED) public BoardView create(Authentication auth, @Valid @RequestBody BoardRequest request) {
+    return BoardView.of(boardService.create(user(auth), request.name()));
   }
+  @PutMapping("/order") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional public void order(Authentication auth, @Valid @RequestBody OrderRequest request) {
+    List<Board> owned = boards.findAllByUserIdAndIdIn(user(auth), request.ids());
+    if (owned.size() != request.ids().stream().distinct().count() || owned.stream().anyMatch(Board::isPathBoard)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every board must be a custom board owned by the user");
+    Map<UUID, Board> byId = new HashMap<>(); owned.forEach(b -> byId.put(b.getId(), b));
+    for (int i = 0; i < request.ids().size(); i++) byId.get(request.ids().get(i)).setSortOrder(i);
+    boards.saveAll(owned);
+  }
+  @PostMapping("/{id}/visibility") public BoardView visibility(Authentication auth, @PathVariable UUID id, @RequestBody VisibilityRequest request) {
+    Board b = board(auth, id); if (!b.isPathBoard()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Only path boards can be hidden"); b.setHidden(request.hidden()); return BoardView.of(boards.save(b));
+  }
+  @PostMapping("/{id}/pin") public BoardView pin(Authentication auth, @PathVariable UUID id, @RequestBody PinRequest request) { Board b = customBoard(auth, id); b.setPinned(request.pinned()); return BoardView.of(boards.save(b)); }
   @GetMapping("/{id}") public BoardView get(Authentication auth, @PathVariable UUID id) { return BoardView.of(board(auth, id)); }
-  @PutMapping("/{id}") public BoardView update(Authentication auth, @PathVariable UUID id, @Valid @RequestBody BoardRequest request) { Board b = writableBoard(auth, id); b.rename(request.name()); return BoardView.of(boards.save(b)); }
-  @PostMapping("/{id}/archive") public BoardView archive(Authentication auth, @PathVariable UUID id) { Board b = board(auth, id); b.archive(); return BoardView.of(boards.save(b)); }
-  @PostMapping("/{id}/restore") public BoardView restore(Authentication auth, @PathVariable UUID id) { Board b = board(auth, id); b.restore(); return BoardView.of(boards.save(b)); }
+  @PutMapping("/{id}") public BoardView update(Authentication auth, @PathVariable UUID id, @Valid @RequestBody BoardRequest request) { Board b = writableBoard(auth, id); if (b.isPathBoard()) throw new ResponseStatusException(HttpStatus.CONFLICT, PATH_BOARD_RULE); b.rename(request.name()); return BoardView.of(boards.save(b)); }
+  @PostMapping("/{id}/archive") public BoardView archive(Authentication auth, @PathVariable UUID id) { Board b = customBoard(auth, id); b.archive(); return BoardView.of(boards.save(b)); }
+  @PostMapping("/{id}/restore") public BoardView restore(Authentication auth, @PathVariable UUID id) { Board b = customBoard(auth, id); b.restore(); return BoardView.of(boards.save(b)); }
 
   @GetMapping("/{id}/statuses") public List<StatusView> statusList(Authentication auth, @PathVariable UUID id) { Board b = board(auth, id); return statuses.findAllByBoardIdOrderByPosition(b.getId()).stream().map(StatusView::of).toList(); }
   @PostMapping("/{id}/statuses") @ResponseStatus(HttpStatus.CREATED) public StatusView createStatus(Authentication auth, @PathVariable UUID id, @Valid @RequestBody StatusRequest request) { Board b = writableBoard(auth, id); int position = statuses.findAllByBoardIdOrderByPosition(b.getId()).size(); return StatusView.of(statuses.save(new BoardStatus(b.getId(), request.name(), position))); }
@@ -82,8 +98,10 @@ public class BoardController {
     validateDates(request);
     card.update(request.title(), request.body(), request.priority(), request.startDate(), request.dueDate());
     UUID owner = user(auth);
-    List<Path> ownedPaths = request.pathIds() == null ? List.of() : paths.findByUserIdAndIdIn(owner, request.pathIds());
-    if (ownedPaths.size() != (request.pathIds() == null ? 0 : request.pathIds().stream().distinct().count())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every path must belong to the user");
+    // A path board's cards always belong to exactly that path, whatever the request says.
+    List<UUID> pathIds = board.isPathBoard() ? List.of(board.getPathId()) : request.pathIds();
+    List<Path> ownedPaths = pathIds == null ? List.of() : paths.findByUserIdAndIdIn(owner, pathIds);
+    if (ownedPaths.size() != (pathIds == null ? 0 : pathIds.stream().distinct().count())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every path must belong to the user");
     List<Label> ownedLabels = request.labelIds() == null ? List.of() : labels.findAllByUserIdAndIdIn(owner, request.labelIds());
     if (ownedLabels.size() != (request.labelIds() == null ? 0 : request.labelIds().stream().distinct().count()) || ownedLabels.stream().anyMatch(l -> !scopes.existsByIdLabelIdAndIdScope(l.getId(), LabelScopeType.BOARD))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every label must be a BOARD label owned by the user");
     card.setPaths(ownedPaths); card.setLabels(ownedLabels);

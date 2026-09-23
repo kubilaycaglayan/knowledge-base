@@ -31,13 +31,16 @@ public class ClockifyImportService {
   private final ActivityRepository activities;
   private final ImportBatchRepository batches;
   private final UserRepository users;
+  private final BoardService boards;
 
   public ClockifyImportService(
       PathRepository paths,
       TimeEntryRepository entries,
       ActivityRepository activities,
       ImportBatchRepository batches,
-      UserRepository users) {
+      UserRepository users,
+      BoardService boards) {
+    this.boards = boards;
     this.paths = paths;
     this.entries = entries;
     this.activities = activities;
@@ -187,6 +190,7 @@ public class ClockifyImportService {
       path = paths.save(new Path(userId, name, "Imported from Clockify"));
       path.assignImportBatch(batchId);
       path = paths.save(path);
+      boards.createForPath(path);
       createdPathKeys.add(key);
     }
     cache.put(key, path);

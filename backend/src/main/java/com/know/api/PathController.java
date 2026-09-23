@@ -1,6 +1,7 @@
 package com.know.api;
 
 import com.know.domain.*;
+import com.know.service.BoardService;
 import com.know.service.PathManagementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -25,13 +26,19 @@ public class PathController {
   private final TimeEntryRepository timeEntries;
   private final TimeEntryLabelRepository entryLabels;
   private final PathManagementService pathManagement;
+  private final BoardRepository boards;
+  private final BoardService boardService;
 
   public PathController(
       PathRepository paths,
       ActivityRepository activities,
       TimeEntryRepository timeEntries,
       TimeEntryLabelRepository entryLabels,
-      PathManagementService pathManagement) {
+      PathManagementService pathManagement,
+      BoardRepository boards,
+      BoardService boardService) {
+    this.boards = boards;
+    this.boardService = boardService;
     this.paths = paths;
     this.activities = activities;
     this.timeEntries = timeEntries;
@@ -54,9 +61,11 @@ public class PathController {
       boolean pinned,
       Long sortOrder,
       String activityLabel,
+      UUID boardId,
+      boolean boardHidden,
       java.time.Instant createdAt,
       java.time.Instant updatedAt) {
-    static PathResponse of(Path p, String activityLabel) {
+    static PathResponse of(Path p, String activityLabel, Board board) {
       return new PathResponse(
           p.getId(),
           p.getName(),
@@ -66,6 +75,8 @@ public class PathController {
           p.isPinned(),
           p.getSortOrder(),
           activityLabel,
+          board == null ? null : board.getId(),
+          board != null && board.isHidden(),
           p.getCreatedAt(),
           p.getUpdatedAt());
     }
@@ -89,23 +100,28 @@ public class PathController {
     List<Path> ownedPaths =
         paths.findAllByUserIdOrderByUpdatedAtDesc(owner, PageRequest.of(0, 100));
     Map<UUID, String> labels = activityLabels(owner, ownedPaths);
+    Map<UUID, Board> pathBoards =
+        boards.findAllByPathIdIn(ownedPaths.stream().map(Path::getId).toList()).stream()
+            .collect(Collectors.toMap(Board::getPathId, board -> board));
     return ownedPaths.stream()
-        .map(path -> PathResponse.of(path, labels.get(path.getId())))
+        .map(path -> PathResponse.of(path, labels.get(path.getId()), pathBoards.get(path.getId())))
         .toList();
   }
 
   @PostMapping
+  @Transactional
   public ResponseEntity<PathResponse> create(Authentication a, @Valid @RequestBody PathRequest r) {
     UUID owner = user(a);
-    Path path = new Path(owner, r.name(), r.description(), r.color());
-    return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.of(paths.save(path), null));
+    Path path = paths.save(new Path(owner, r.name(), r.description(), r.color()));
+    Board board = boardService.createForPath(path);
+    return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.of(path, null, board));
   }
 
   @GetMapping("/{id}")
   public PathResponse get(Authentication a, @PathVariable UUID id) {
     UUID owner = user(a);
     Path path = find(a, id);
-    return PathResponse.of(path, activityLabels(owner, List.of(path)).get(path.getId()));
+    return PathResponse.of(path, activityLabels(owner, List.of(path)).get(path.getId()), boardOf(path));
   }
 
   @GetMapping("/{id}/summary")
@@ -144,15 +160,18 @@ public class PathController {
             .sorted(Comparator.comparing(Activity::getOccurredAt).reversed())
             .limit(50)
             .toList();
-    return new PathSummary(PathResponse.of(path, null), seconds, recent);
+    return new PathSummary(PathResponse.of(path, null, boardOf(path)), seconds, recent);
   }
 
   @PutMapping("/{id}")
+  @Transactional
   public PathResponse update(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody PathRequest r) {
     Path p = find(a, id);
     p.update(r.name(), r.description(), r.color());
-    return PathResponse.of(paths.save(p), activityLabels(user(a), List.of(p)).get(p.getId()));
+    paths.save(p);
+    boardService.renameForPath(p);
+    return PathResponse.of(p, activityLabels(user(a), List.of(p)).get(p.getId()), boardOf(p));
   }
 
   @DeleteMapping("/{id}")
@@ -175,13 +194,14 @@ public class PathController {
   public void restore(Authentication a, @PathVariable UUID id) {
     if (paths.restoreByIdAndUserId(id, user(a)) == 0)
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Path not found");
+    paths.findByIdAndUserId(id, user(a)).ifPresent(boardService::createForPath);
   }
 
   @PostMapping("/{id}/pin")
   public PathResponse pin(Authentication a, @PathVariable UUID id, @RequestBody PinRequest request) {
     Path path = find(a, id);
     path.setPinned(request.pinned());
-    return PathResponse.of(paths.save(path), activityLabels(user(a), List.of(path)).get(path.getId()));
+    return PathResponse.of(paths.save(path), activityLabels(user(a), List.of(path)).get(path.getId()), boardOf(path));
   }
 
   @PutMapping("/order")
@@ -196,6 +216,10 @@ public class PathController {
     for (int index = 0; index < request.pathIds().size(); index++)
       byId.get(request.pathIds().get(index)).setSortOrder(index);
     paths.saveAll(owned);
+  }
+
+  private Board boardOf(Path path) {
+    return boards.findByPathId(path.getId()).orElse(null);
   }
 
   private Path find(Authentication a, UUID id) {

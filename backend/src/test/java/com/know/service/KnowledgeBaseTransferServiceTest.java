@@ -32,6 +32,7 @@ class KnowledgeBaseTransferServiceTest {
   @Mock LabelScopeRepository scopes;
   @Mock ImportBatchRepository batches;
   @Mock UserRepository users;
+  @Mock BoardService boards;
   @InjectMocks KnowledgeBaseTransferService service;
 
   @Test

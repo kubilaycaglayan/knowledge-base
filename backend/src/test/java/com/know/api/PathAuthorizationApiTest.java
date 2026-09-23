@@ -35,6 +35,8 @@ class PathAuthorizationApiTest {
   @MockBean TimeEntryRepository timeEntries;
   @MockBean TimeEntryLabelRepository entryLabels;
   @MockBean PathManagementService pathManagement;
+  @MockBean BoardRepository boardRepository;
+  @MockBean com.know.service.BoardService boardService;
   @MockBean PasswordEncoder encoder;
 
   @Test

@@ -14,8 +14,10 @@ import org.springframework.web.server.ResponseStatusException;
 public class PathManagementService {
   private final PathRepository paths;
   private final TimeEntryRepository timeEntries;
+  private final BoardService boards;
 
-  public PathManagementService(PathRepository paths, TimeEntryRepository timeEntries) {
+  public PathManagementService(PathRepository paths, TimeEntryRepository timeEntries, BoardService boards) {
+    this.boards = boards;
     this.paths = paths;
     this.timeEntries = timeEntries;
   }
@@ -26,8 +28,9 @@ public class PathManagementService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a different target path");
 
     Path source = findOwned(userId, sourcePathId);
-    findOwned(userId, targetPathId);
+    Path target = findOwned(userId, targetPathId);
     timeEntries.moveAllByUserIdAndPathId(userId, sourcePathId, targetPathId);
+    boards.mergePathBoards(source, target);
     source.delete();
     paths.save(source);
   }

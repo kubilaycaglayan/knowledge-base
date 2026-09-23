@@ -31,6 +31,7 @@ public class BoardCard {
   public Set<Path> getPaths() { return paths; } public Set<Label> getLabels() { return labels; }
   public boolean isArchived() { return archivedAt != null; }
   public void update(String title, String body, BoardPriority priority, LocalDate start, LocalDate due) { this.title = title == null ? "" : title; this.body = body == null || body.isBlank() ? "{}" : body; this.priority = priority == null ? BoardPriority.MEDIUM : priority; this.startDate = start; this.dueDate = due; this.updatedAt = now(); }
+  public void moveToBoard(UUID boardId, UUID statusId, int position) { this.boardId = boardId; move(statusId, position); }
   public void move(UUID statusId, int position) { this.statusId = statusId; this.position = position; this.updatedAt = now(); }
   public void archive() { archivedAt = now(); updatedAt = now(); } public void restore() { archivedAt = null; updatedAt = now(); }
   public void setPaths(Collection<Path> values) { paths = new LinkedHashSet<>(values); } public void setLabels(Collection<Label> values) { labels = new LinkedHashSet<>(values); }

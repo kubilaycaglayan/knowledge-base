@@ -14,7 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 class PathManagementServiceTest {
   private final PathRepository paths = mock(PathRepository.class);
   private final TimeEntryRepository timeEntries = mock(TimeEntryRepository.class);
-  private final PathManagementService service = new PathManagementService(paths, timeEntries);
+  private final BoardService boards = mock(BoardService.class);
+  private final PathManagementService service = new PathManagementService(paths, timeEntries, boards);
 
   @Test
   void mergeMovesOnlyOwnedSessionsThenSoftDeletesTheSource() {
@@ -27,6 +28,7 @@ class PathManagementServiceTest {
     service.merge(user, sourceId, targetId);
 
     verify(timeEntries).moveAllByUserIdAndPathId(user, sourceId, targetId);
+    verify(boards).mergePathBoards(source, target);
     verify(paths).save(source);
   }
 
@@ -36,7 +38,7 @@ class PathManagementServiceTest {
 
     assertThrows(ResponseStatusException.class, () -> service.merge(user, path, path));
 
-    verifyNoInteractions(paths, timeEntries);
+    verifyNoInteractions(paths, timeEntries, boards);
   }
 
   @Test
@@ -48,7 +50,7 @@ class PathManagementServiceTest {
 
     assertThrows(ResponseStatusException.class, () -> service.merge(user, sourceId, targetId));
 
-    verifyNoInteractions(timeEntries);
+    verifyNoInteractions(timeEntries, boards);
     verify(paths, never()).save(any());
   }
 }

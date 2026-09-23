@@ -6,4 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface BoardRepository extends JpaRepository<Board, UUID> {
   List<Board> findAllByUserIdOrderByUpdatedAtDesc(UUID userId);
   Optional<Board> findByIdAndUserId(UUID id, UUID userId);
+  Optional<Board> findByPathId(UUID pathId);
+  List<Board> findAllByPathIdIn(Collection<UUID> pathIds);
+  List<Board> findAllByUserIdAndIdIn(UUID userId, Collection<UUID> ids);
 }

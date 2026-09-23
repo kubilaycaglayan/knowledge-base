@@ -34,7 +34,7 @@ class ClockifyImportServiceTest {
             new ClockifyImportService.ClockifyInterval(
                 Instant.parse("2026-08-25T10:00:00Z"), Instant.parse("2026-08-25T10:30:00Z"), null),
             "Java");
-    var service = new ClockifyImportService(paths, entries, activities, batches, users);
+    var service = new ClockifyImportService(paths, entries, activities, batches, users, mock(BoardService.class));
 
     var result =
         service.importEntries(
@@ -73,7 +73,7 @@ class ClockifyImportServiceTest {
     when(batches.findByIdAndUserId(batch.getId(), user)).thenReturn(Optional.of(batch));
     when(entries.deleteByUserIdAndImportBatchId(user, batch.getId())).thenReturn(3L);
     when(activities.deleteByUserIdAndImportBatchId(user, batch.getId())).thenReturn(3L);
-    var service = new ClockifyImportService(paths, entries, activities, batches, users);
+    var service = new ClockifyImportService(paths, entries, activities, batches, users, mock(BoardService.class));
 
     var result = service.undoBatch(user, batch.getId());
     var second = service.undoBatch(user, batch.getId());
@@ -93,7 +93,7 @@ class ClockifyImportServiceTest {
     ImportBatchRepository batches = mock(ImportBatchRepository.class);
     UserRepository users = mock(UserRepository.class);
     UUID user = UUID.randomUUID();
-    var service = new ClockifyImportService(paths, entries, activities, batches, users);
+    var service = new ClockifyImportService(paths, entries, activities, batches, users, mock(BoardService.class));
 
     assertThrows(ResponseStatusException.class, () -> service.importEntries(user, null));
     assertThrows(
@@ -139,7 +139,7 @@ class ClockifyImportServiceTest {
             "   ");
 
     var result =
-        new ClockifyImportService(paths, entries, activities, batches, users)
+        new ClockifyImportService(paths, entries, activities, batches, users, mock(BoardService.class))
             .importEntries(user, new ClockifyImportService.ClockifyImportRequest(List.of(source)));
 
     assertEquals(1, result.imported());
@@ -173,7 +173,7 @@ class ClockifyImportServiceTest {
     assertThrows(
         ResponseStatusException.class,
         () ->
-            new ClockifyImportService(paths, entries, activities, batches, users)
+            new ClockifyImportService(paths, entries, activities, batches, users, mock(BoardService.class))
                 .importEntries(
                     user, new ClockifyImportService.ClockifyImportRequest(List.of(source))));
     verify(entries, never()).save(any());
