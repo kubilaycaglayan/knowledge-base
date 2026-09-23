@@ -450,6 +450,18 @@ describe("BoardView", () => {
     }
     await wrapper.unmount();
   });
+  it("lists priorities from most to least pressing in the card editor", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    const options = wrapper.findAll('select[name="priority"] option');
+    expect(options.map((option) => option.text())).toEqual(["Urgent", "High", "Medium", "Low"]);
+    expect(options.map((option) => option.attributes("value"))).toEqual(["URGENT", "HIGH", "MEDIUM", "LOW"]);
+    await wrapper.unmount();
+  });
+
   it("leaves an untitled card blank instead of showing an Untitled card placeholder", async () => {
     const store = seedBoard(["Backlog"]);
     store.cards = [{ id: "card-1", statusId: "status-1", title: "", body: "{}", priority: "MEDIUM", startDate: "2026-09-09", dueDate: "2026-09-10", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
