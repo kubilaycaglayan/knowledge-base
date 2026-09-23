@@ -164,6 +164,24 @@ class BoardControllerApiTest {
     verify(cards, never()).save(any(BoardCard.class));
   }
 
+  @Test void cardRejectsForeignPathAndLabelReferences() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), pathId = UUID.randomUUID(), labelId = UUID.randomUUID();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findAllByBoardIdOrderByPosition(boardId)).thenReturn(List.of(status));
+    when(paths.findByUserIdAndIdIn(owner, List.of(pathId))).thenReturn(List.of());
+    when(labels.findAllByUserIdAndIdIn(owner, List.of(labelId))).thenReturn(List.of());
+
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"foreign path\",\"pathIds\":[\"" + pathId + "\"]}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"foreign label\",\"labelIds\":[\"" + labelId + "\"]}"))
+        .andExpect(status().isBadRequest());
+    verify(cards, never()).save(any(BoardCard.class));
+  }
+
   @Test void ganttAcceptsSingleDayAndOpenEndedCardsThatOverlapTheWindow() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
