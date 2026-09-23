@@ -35,7 +35,7 @@ let saveChain: Promise<void> = Promise.resolve();
 // A path board's cards all belong to its path, so the path picker is hidden and the path colour is the accent.
 const selectedBoard = computed(() => boards.value.find((board) => board.id === store.selectedId));
 const pathColor = (pathId?: string | null) => (pathId && pathsStore.byId(pathId)?.color) || undefined;
-const draftAccent = computed(() => selectedBoard.value?.pathId ? pathColor(selectedBoard.value.pathId) : pathsStore.activePaths.find((path) => draft.value.pathIds.includes(path.id))?.color || undefined);
+const draftAccent = computed(() => selectedBoard.value?.pathId ? undefined : pathsStore.activePaths.find((path) => draft.value.pathIds.includes(path.id))?.color || undefined);
 const draftDates = computed(() => draft.value.startDate ? [parseISO(draft.value.startDate), ...(draft.value.dueDate ? [parseISO(draft.value.dueDate)] : [])] : null);
 const shortDate = (value: Date) => format(value, value.getFullYear() === new Date().getFullYear() ? "d MMM" : "d MMM yyyy");
 const dateFormats = { input: (value: Date[] | null) => value?.length ? `${shortDate(value[0])}${value[1] ? ` – ${shortDate(value[1])}` : ""}` : "" };
@@ -67,7 +67,7 @@ const isWeekend = (value: string) => [0, 6].includes(new Date(`${value}T00:00:00
 const activeStatuses = computed(() => statuses.value.filter((status) => !status.archived));
 const cardsFor = (statusId: string) => cards.value.filter((card) => card.statusId === statusId && !card.archived).sort((a, b) => a.position - b.position);
 const statusName = (statusId: string) => statuses.value.find((status) => status.id === statusId)?.name || "Status";
-const cardAccent = (card: BoardCard) => selectedBoard.value?.pathId ? pathColor(selectedBoard.value.pathId) : pathsStore.activePaths.find((path) => card.pathIds.includes(path.id))?.color || undefined;
+const cardAccent = (card: BoardCard) => selectedBoard.value?.pathId ? undefined : pathsStore.activePaths.find((path) => card.pathIds.includes(path.id))?.color || undefined;
 const barStyle = (card: BoardCard) => { const position = barPosition(card.startDate || card.dueDate, card.dueDate || card.startDate, visibleDays.value); return position ? { left: `${position.left}%`, width: `${position.width}%` } : {}; };
 function selectBoard(id: string) { dismissError(); store.selectedId = id; void router.replace({ query: { ...route.query, board: id } }); void store.loadBoard(); }
 // Tabs only switch boards; renaming lives in board settings.
