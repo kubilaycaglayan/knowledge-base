@@ -5,7 +5,7 @@ import { storeToRefs } from "pinia";
 import { EditorContent } from "@tiptap/vue-3";
 import { Editor } from "@tiptap/core";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
-import { byPriorityThenPosition } from "../lib/board-priority";
+import { BOARD_PRIORITIES, byPriorityThenPosition } from "../lib/board-priority";
 import { useBoardsStore, type Board, type BoardCard, type BoardStatus } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
@@ -213,7 +213,7 @@ onBeforeUnmount(() => { endBoardDrag(); window.removeEventListener("resize", mea
     <div v-if="editing" class="dialog-backdrop" role="presentation" @click.self="closeEditor()"><section v-dialog-focus class="card-editor" :class="{ accented: draftAccent }" :style="{ '--card-accent': draftAccent }" role="dialog" aria-modal="true" aria-label="Edit card" tabindex="-1" @keydown.esc.prevent="closeEditor()" @keydown.meta.enter.prevent="closeEditor()" @keydown.ctrl.enter.prevent="closeEditor()">
       <div class="card-meta">
         <select v-if="!selectedBoard?.pathId" :value="draft.pathIds[0] || ''" class="meta-field" name="cardPaths" aria-label="Path" @change="(e) => { const select = e.target as HTMLSelectElement; draft.pathIds = select.value ? [select.value] : []; }"><option value="">No path</option><option v-for="path in pathsStore.activePaths" :key="path.id" :value="path.id">{{ path.name }}</option></select>
-        <select v-model="draft.priority" class="meta-field" name="priority" aria-label="Priority"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="URGENT">Urgent</option></select>
+        <select v-model="draft.priority" class="meta-field" name="priority" aria-label="Priority"><option v-for="priority in BOARD_PRIORITIES" :key="priority.value" :value="priority.value">{{ priority.label }}</option></select>
         <select :value="editing.statusId" class="meta-field" name="status" aria-label="Status" @change="changeCardStatus(($event.target as HTMLSelectElement).value)"><option v-for="status in activeStatuses" :key="status.id" :value="status.id">{{ status.name }}</option></select>
         <div class="meta-dates"><VueDatePicker :dark="theme === 'dark'" :model-value="draftDates" :range="{ partialRange: true }" :formats="dateFormats" :time-config="{ enableTimePicker: false }" :action-row="{ showCancel: false, showSelect: false, showNow: false, showPreview: false }" :input-attrs="{ clearable: true }" :text-input="false" auto-apply week-start="1" placeholder="Dates" :aria-labels="{ input: 'Card dates', clearInput: 'Clear card dates' }" teleport="body" @update:model-value="setDraftDates" /></div>
         <div v-if="labelsStore.forScope('BOARD').length" class="card-labels" role="group" aria-label="Board labels"><label v-for="label in labelsStore.forScope('BOARD')" :key="label.id" class="label-chip" :class="{ selected: draft.labelIds.includes(label.id) }"><input v-model="draft.labelIds" type="checkbox" :value="label.id" />{{ label.name }}</label></div>
