@@ -621,6 +621,22 @@ describe("board real-stack acceptance", () => {
   });
 
   // PB-29: every path owns a board on the real stack.
+  // UP-04, UP-05
+  it("remembers the Kanban width and theme on the server", async () => {
+    const put = (body) => page.evaluate(async (payload) => (await fetch("/api/v1/preferences", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` }, body: JSON.stringify(payload) })).json(), body);
+    try {
+      await put({ kanbanWide: true, theme: "dark" });
+      // A new browser has no cache; the server's values must still apply.
+      await page.evaluate(() => { localStorage.removeItem("board.kanbanWide"); localStorage.removeItem("knowledge-base-theme"); });
+      await page.reload();
+      await page.locator(".kanban-area.wide").waitFor({ state: "attached" });
+      await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+    } finally {
+      await put({ kanbanWide: false, theme: "light" });
+      await page.evaluate(() => { localStorage.removeItem("board.kanbanWide"); localStorage.setItem("knowledge-base-theme", "light"); });
+    }
+  });
+
   // CT-04, CT-05
   it("starts and stops a session from a path board card", async () => {
     const name = `Timer path ${Date.now()}`;

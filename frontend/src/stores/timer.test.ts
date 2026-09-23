@@ -3,6 +3,7 @@ import { useTimerStore } from "./timer";
 import { api } from "../lib/api";
 import { flushPromises } from "@vue/test-utils";
 import { useSessionsStore } from "./sessions";
+import { usePreferencesStore } from "./preferences";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -16,6 +17,18 @@ describe("timer store", () => {
   afterEach(() => {
     vi.useRealTimers();
     localStorage.removeItem("know_token");
+  });
+
+  // UP-06
+  it("takes recent paths from the server's preferences", async () => {
+    vi.mocked(api).mockImplementation(async (path) => (path === "/preferences" ? { theme: "auto", kanbanWide: false, recentPathIds: ["path-9", "path-3"] } : null));
+    const preferences = usePreferencesStore();
+    await preferences.load();
+    const store = useTimerStore();
+    expect(store.recentPathIds).toEqual(["path-9", "path-3"]);
+    store.rememberPath("path-4");
+    expect(store.recentPathIds).toEqual(["path-4", "path-9", "path-3"]);
+    expect(localStorage.getItem("know_recent_timer_paths")).toBeNull();
   });
 
   // CT-04

@@ -4,6 +4,7 @@ import vuetify from "../plugins/vuetify";
 import { useBoardsStore } from "../stores/boards";
 import { useTimerStore } from "../stores/timer";
 import { useNoticesStore } from "../stores/notices";
+import { usePreferencesStore } from "../stores/preferences";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
 import { useRouter, useRoute } from "vue-router";
@@ -782,9 +783,11 @@ describe("BoardView", () => {
     expect(wrapper.find('input[aria-label="New status name"]').exists()).toBe(false);
     await wrapper.unmount();
   });
+  // UP-05
   it("toggles the Kanban between page width and full width and remembers it", async () => {
-    localStorage.removeItem("board.kanbanWide");
     seedBoard(["Backlog"]);
+    const preferences = usePreferencesStore();
+    const save = vi.spyOn(preferences, "setKanbanWide");
     const wrapper = mountBoard();
     await flushPromises();
 
@@ -792,16 +795,15 @@ describe("BoardView", () => {
     expect(wrapper.find(".kanban-area").classes()).not.toContain("wide");
     expect(toggle().attributes("aria-pressed")).toBe("false");
     await toggle().trigger("click");
+    expect(save).toHaveBeenCalledWith(true);
     expect(wrapper.find(".kanban-area").classes()).toContain("wide");
     expect(toggle().attributes("aria-label")).toBe("Collapse board to page width");
-    expect(localStorage.getItem("board.kanbanWide")).toBe("1");
     await wrapper.unmount();
 
     const again = mountBoard();
     await flushPromises();
     expect(again.find(".kanban-area").classes()).toContain("wide");
     await again.unmount();
-    localStorage.removeItem("board.kanbanWide");
   });
 
   describe("card editor", () => {
