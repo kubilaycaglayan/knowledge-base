@@ -33,6 +33,7 @@ before(async () => {
 });
 
 async function createBoard(name) {
+  await page.getByRole("button", { name: "Create board" }).waitFor({ state: "visible" });
   await page.getByRole("textbox", { name: "New board name" }).fill(name);
   await Promise.all([
     page.waitForResponse((response) => response.url().includes("/api/v1/boards") && response.request().method() === "POST" && response.status() === 201),
@@ -63,7 +64,7 @@ describe("board real-stack acceptance", () => {
   it("does not let a delayed board response replace the newly selected board", async () => {
     const firstBoard = activeBoardName;
     const firstId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
-    await createBoard(`${firstBoard} Delayed response`);
+    await createBoard(`${firstBoard} Delayed response ${Date.now()}`);
     const secondId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
     await page.getByRole("textbox", { name: "New card title" }).fill("Second board card");
     await page.getByRole("button", { name: "Add card" }).click();
