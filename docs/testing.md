@@ -2,14 +2,28 @@
 
 The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, boards, and Flyway migrations. Board checks should cover default statuses, nested ownership, invalid date ranges, status archive safeguards, card archive/restore, cursor pages, and Gantt overlap filtering for single, open-ended, and inclusive ranges.
 
-Board browser coverage has two layers: `node --test frontend/scripts/board.acceptance.test.mjs`
-uses fast isolated API fixtures for deterministic mobile, keyboard, Gantt, archive,
-and pagination feedback, including mobile/desktop Axe audits and disposable
-Kanban/Gantt screenshots; `./scripts/run-board-e2e.sh` creates a uniquely named,
+Board browser coverage has two layers: `(cd frontend && npm run test:board)` runs
+`frontend/scripts/board.acceptance.test.mjs`, which uses fast isolated API
+fixtures for deterministic mobile, keyboard, Gantt, archive, and pagination
+feedback, including mobile/desktop Axe audits and disposable Kanban/Gantt
+screenshots; `./scripts/run-board-e2e.sh` creates a uniquely named,
 disposable Compose project with generated local credentials and runs
 `frontend/scripts/board.real-stack.acceptance.test.mjs` against the real API,
 PostgreSQL, proxy, and browser. The runner cleans only its own Compose project
 and volumes.
+
+Both board browser layers drive the board the way a person does — clicking a
+board tab or a column name to rename it inline, and reaching archived boards,
+statuses, and cards through the `/board/archive` page linked from the board
+footer. Assertions must not be wrapped in `if (await locator.count())` guards,
+because a guard turns a missing control into a silently passing test.
+
+Disposable test stacks bind uncommon, unassigned host ports so they never
+contend with the development stack (proxy `3000`, API `8080`, PostgreSQL
+`15432`) or with each other: the smoke runner uses `26080`/`26443` (plus
+`26000`, `26081`, and `26432`), and the board E2E runner uses `26180`. Override
+them with `PROXY_HTTP_PORT`, `PROXY_HTTPS_PORT`, or `BOARD_E2E_PROXY_PORT` when
+a port is already taken.
 
 The board store suite covers stale board-list/content/Gantt/page responses,
 stale moves and edits, optimistic rollback, invalid destinations, timeout
@@ -24,7 +38,7 @@ checks with:
 
 ```bash
 (cd frontend && npm test -- --run --no-file-parallelism src/stores/boards.test.ts src/lib/api.test.ts)
-(cd frontend && node --test --test-concurrency=1 scripts/board.acceptance.test.mjs)
+(cd frontend && npm run test:board)
 ```
 
 Run the required checks from the repository root:
@@ -33,6 +47,7 @@ Run the required checks from the repository root:
 docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
 (cd frontend && npm ci && npm run build)
 (cd frontend && npm run test:tracker)
+(cd frontend && npm run test:board)
 node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
 (cd chrome-extension && npm test)
