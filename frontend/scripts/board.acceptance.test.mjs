@@ -42,7 +42,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       body = wantsArchived ? (boardIsArchived ? [{ ...board, archived: true }] : []) : (boardIsArchived ? [] : [board]);
     }
     else if (path === "/boards/board-1/statuses") body = fixtureStatuses;
-    else if (path === "/boards/board-1/cards") body = fixtureCards;
+    else if (path === "/boards/board-1/cards") { const wantsArchived = new URL(request.url()).searchParams.get("archived") === "true"; body = fixtureCards.filter((card) => Boolean(card.archived) === wantsArchived); }
     else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (cursor >= 19) lazyPageRequests += 1; if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-2", name: "Research", color: "#3366cc", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
@@ -114,6 +114,22 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=board-1&view=kanban`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
   return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests, getCardMoveRequests: () => cardMoveRequests, getLazyPageRequests: () => lazyPageRequests };
+}
+
+const selectedTab = (page) => page.locator(".board-tab.selected");
+// Archived items live on their own page, reached from the board footer.
+async function openArchive(page) {
+  const footer = page.locator("footer.board-footer");
+  await footer.scrollIntoViewIfNeeded();
+  await footer.getByRole("link", { name: "Archived items" }).click();
+  await page.getByRole("heading", { name: "Archive", exact: true }).waitFor();
+}
+async function restoreFromArchive(page, label) {
+  await openArchive(page);
+  await page.getByRole("button", { name: `Restore ${label}` }).click();
+  await page.getByRole("button", { name: `Restore ${label}` }).waitFor({ state: "detached" });
+  await page.getByRole("link", { name: "Back to board" }).click();
+  await page.getByRole("heading", { name: "Boards" }).waitFor();
 }
 
 describe("board browser acceptance", () => {
@@ -190,8 +206,7 @@ describe("board browser acceptance", () => {
     await page.locator(".board-empty").filter({ hasText: "No dated active cards" }).waitFor();
 
     await page.getByRole("button", { name: "Kanban" }).click();
-    await page.getByRole("button", { name: "Show archived cards" }).click();
-    await page.getByRole("button", { name: "Restore" }).click();
+    await restoreFromArchive(page, "Ship timeline");
     await page.getByRole("button", { name: "Gantt" }).click();
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor();
   });
@@ -221,9 +236,7 @@ describe("board browser acceptance", () => {
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Never disappears" }).waitFor();
     await page.getByRole("button", { name: "Archive Never disappears" }).click();
     await page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }).click();
-    await page.getByRole("button", { name: "Show archived cards" }).click();
-    await page.getByText("Never disappears", { exact: true }).last().waitFor();
-    await page.getByRole("button", { name: "Restore" }).click();
+    await restoreFromArchive(page, "Never disappears");
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
     await page.getByRole("button", { name: "Gantt" }).click();
     await page.locator(".timeline-bar", { hasText: "Never disappears" }).waitFor();
@@ -277,17 +290,20 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     assert.equal(await page.locator(".board-card").first().evaluate((element) => getComputedStyle(element).borderInlineStartColor), "rgb(18, 171, 120)");
     await page.locator(".board-card").first().click();
-    assert.equal(await page.getByRole("checkbox", { name: "Product" }).count(), 1);
-    assert.equal(await page.getByRole("checkbox", { name: "Research" }).count(), 1);
-    await page.getByRole("checkbox", { name: "Research" }).check();
-    assert.equal(await page.getByRole("checkbox", { name: "Research" }).isChecked(), true);
+    // A card carries one path, so the editor offers a single-select dropdown.
+    const pathSelect = page.locator("select[name='cardPaths']");
+    assert.equal(await pathSelect.getAttribute("multiple"), null);
+    assert.deepEqual(await pathSelect.locator("option").allInnerTexts(), ["No path", "Product", "Research"]);
+    assert.equal(await pathSelect.inputValue(), "path-1");
+    await pathSelect.selectOption({ label: "Research" });
+    assert.equal(await pathSelect.inputValue(), "path-2");
     await page.getByRole("button", { name: "Save card" }).click();
   });
 
   it("does not expose archived paths or deleted BOARD labels in the editor", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();
-    assert.equal(await page.getByRole("checkbox", { name: "Archived path" }).count(), 0);
+    assert.equal(await page.locator("select[name='cardPaths']").locator("option", { hasText: "Archived path" }).count(), 0);
     assert.equal(await page.getByRole("group", { name: "Board labels" }).getByRole("checkbox").count(), 0);
   });
 
@@ -304,8 +320,8 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=missing-board&view=kanban`);
     await page.getByRole("heading", { name: "Boards" }).waitFor();
-    await page.getByRole("combobox", { name: "Current board" }).waitFor();
-    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), "board-1");
+    await selectedTab(page).waitFor();
+    assert.equal(await selectedTab(page).textContent(), "Product");
     assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
   });
 
@@ -318,11 +334,12 @@ describe("board browser acceptance", () => {
 
   it("restores an archived board and selects its cards", async (t) => {
     const { page } = await fixture(t, 390, false, false, false, true);
-    await page.getByRole("button", { name: "Archived boards" }).click();
-    await page.getByText("Product", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Restore" }).click();
-    await page.waitForFunction(() => document.querySelector("#board-select")?.value === "board-1");
-    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), "board-1");
+    await openArchive(page);
+    await page.getByRole("button", { name: "Restore Product board" }).click();
+    await page.getByRole("link", { name: "Back to board" }).click();
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    await selectedTab(page).waitFor();
+    assert.equal(await selectedTab(page).textContent(), "Product");
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
@@ -332,13 +349,15 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("textbox", { name: "New board name" }).evaluate((input) => document.activeElement === input), true);
   });
 
-  it("renames the selected board without losing its active view", async (t) => {
+  it("renames the selected board by clicking its tab, without losing its active view", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Rename board" }).click();
+    assert.equal(await page.getByRole("button", { name: /rename/i }).count(), 0, "No rename button should be offered");
+    await selectedTab(page).click();
     await page.getByRole("textbox", { name: "Board name", exact: true }).fill("Renamed board");
-    await page.getByRole("button", { name: "Save board" }).click();
-    await page.getByRole("option", { name: "Renamed board" }).waitFor({ state: "attached" });
-    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), "board-1");
+    await page.getByRole("textbox", { name: "Board name", exact: true }).press("Enter");
+    await selectedTab(page).filter({ hasText: /^Renamed board$/ }).waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
+    assert.equal(new URL(page.url()).searchParams.get("view"), "kanban");
     assert.equal(await page.getByRole("heading", { name: "Ship timeline" }).count(), 1);
   });
 
@@ -431,22 +450,30 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Timed out draft");
   });
 
-  it("archives a card and restores it from the archived-card list", async (t) => {
+  it("archives a card and restores it from the archive page", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Archive Ship timeline" }).click();
     await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();
     await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
-    await page.getByRole("button", { name: "Show archived cards" }).click();
-    await page.getByText("Ship timeline", { exact: true }).last().waitFor();
-    await page.getByRole("button", { name: "Restore" }).first().click();
+    await page.getByRole("heading", { name: "Ship timeline" }).waitFor({ state: "detached" });
+
+    await openArchive(page);
+    const restore = page.getByRole("button", { name: "Restore Ship timeline" });
+    await restore.waitFor();
+    // Only the archived card is listed; active cards stay on the board.
+    assert.deepEqual(await page.locator(".archive-row strong").allInnerTexts(), ["Ship timeline"]);
+    await restore.click();
+    await page.getByRole("link", { name: "Back to board" }).click();
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
-  it("renames a status and moves a card with the keyboard alternative", async (t) => {
+  it("renames a status by clicking its name and moves a card with the keyboard", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Rename Backlog" }).click();
+    const column = page.locator(".kanban-column").first();
+    assert.equal(await column.getByRole("button", { name: /rename/i }).count(), 0, "No rename button should be offered");
+    await column.locator(".status-name").click();
     await page.getByRole("textbox", { name: "Rename Backlog" }).fill("Ready");
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("textbox", { name: "Rename Backlog" }).press("Enter");
     await page.getByRole("heading", { name: "Ready" }).waitFor();
     await page.getByRole("button", { name: "Move card to next status" }).first().click();
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
@@ -467,7 +494,10 @@ describe("board browser acceptance", () => {
     await page.getByRole("alertdialog", { name: "Archive status?" }).getByRole("button", { name: "Archive" }).click();
     await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Pending" }).waitFor();
     await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Ship timeline" }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "Show archived statuses" }).count(), 1);
+    // The archived status is listed on the archive page, not inline on the board.
+    assert.equal(await page.locator(".archived-list").count(), 0);
+    await openArchive(page);
+    await page.getByRole("button", { name: "Restore Backlog status" }).waitFor();
   });
 
   it("reorders statuses with accessible icon actions", async (t) => {
@@ -528,10 +558,13 @@ describe("board browser acceptance", () => {
     assert.equal(await column.locator(".board-card h3").first().innerText(), "Dense card 2");
   });
 
-  it("reveals and restores archived statuses", async (t) => {
+  it("restores an archived status from the archive page", async (t) => {
     const { page } = await fixture(t, 390, false, false, true);
-    await page.getByRole("button", { name: "Show archived statuses" }).click();
+    assert.equal(await page.locator(".kanban-column").count(), 3, "The archived status is hidden from the board");
+    await openArchive(page);
     await page.getByRole("button", { name: "Restore Done status" }).click();
+    await page.getByRole("button", { name: "Restore Done status" }).waitFor({ state: "detached" });
+    await page.getByRole("link", { name: "Back to board" }).click();
     await page.locator(".kanban-column").filter({ has: page.locator("h2", { hasText: "Done" }) }).waitFor();
   });
 
