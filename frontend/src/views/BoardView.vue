@@ -15,7 +15,7 @@ import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { format, parseISO } from "date-fns";
 import { theme } from "../lib/theme";
-import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiClose, mdiDragVertical, mdiCogOutline, mdiPin, mdiPinOutline, mdiPlus, mdiTrashCanOutline } from "@mdi/js";
+import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiClose, mdiDragVertical, mdiCogOutline, mdiPin, mdiPinOutline, mdiPlus, mdiTrashCanOutline } from "@mdi/js";
 
 const store = useBoardsStore();
 const pathsStore = usePathsStore();
@@ -102,7 +102,7 @@ async function confirmArchiveStatus() { const status = archiveStatusConfirm.valu
 // Board settings hold the board name and all status management (create,
 // rename, reorder, archive) so the Kanban columns stay free of controls.
 async function openSettings(id: string) { settingsBoardId.value = id; settingsName.value = boards.value.find((board) => board.id === id)?.name || ""; newStatus.value = ""; otherBoardStatuses.value = []; settingsOpen.value = true; if (id === store.selectedId) return; try { const loaded = await store.fetchStatuses(id); if (settingsBoardId.value === id) otherBoardStatuses.value = loaded; } catch { error.value = "Could not load board statuses."; } }
-function closeSettings() { settingsOpen.value = false; }
+function closeSettings() { settingsOpen.value = false; settingsFromManager.value = false; }
 async function saveSettingsName() { const board = settingsBoard.value; const name = settingsName.value.trim(); if (!board || store.updatingBoard) return; if (!name) { settingsName.value = board.name; return; } if (name === board.name) return; dismissError(); try { await store.updateBoard(board.id, name); } catch { error.value = "Could not rename board."; } }
 async function renameStatus(status: BoardStatus, event: Event) { const input = event.target as HTMLInputElement; const name = input.value.trim(); if (!name) { input.value = status.name; return; } if (name === status.name) return; dismissError(); try { await store.updateStatus(status, name, settingsBoardId.value); } catch { input.value = status.name; error.value = "Could not save status."; } }
 async function saveStatusOrder(ids: string[]) { try { const saved = await store.reorderStatuses(ids, settingsBoardId.value, settingsAllStatuses.value); if (!settingsForOpenBoard.value) otherBoardStatuses.value = saved; } catch { error.value = "Could not reorder status."; } }
@@ -123,7 +123,10 @@ function customGroup(board: Board) { return boards.value.filter((item) => !item.
 const managerBoards = computed(() => { const order = managerDragOrder.value; if (!order) return boards.value; const byId = new Map(boards.value.map((board) => [board.id, board])); const queue = order.map((id) => byId.get(id)!); return boards.value.map((board) => order.includes(board.id) ? queue.shift()! : board); });
 function openManager() { managerOpen.value = true; }
 function closeManager() { managerOpen.value = false; }
-function openBoardSettings(id: string) { managerOpen.value = false; void openSettings(id); }
+// Settings opened from the Boards dialog offer a Back button that returns to the list.
+const settingsFromManager = ref(false);
+function openBoardSettings(id: string) { managerOpen.value = false; settingsFromManager.value = true; void openSettings(id); }
+function backToManager() { settingsOpen.value = false; settingsFromManager.value = false; managerOpen.value = true; }
 function saveCustomOrder(group: Board[], pinned: boolean) { const custom = boards.value.filter((item) => !item.pathId); const ids = [...(pinned ? group : custom.filter((item) => item.pinned)), ...(pinned ? custom.filter((item) => !item.pinned) : group)].map((item) => item.id); store.reorderBoards(ids).catch(() => { error.value = "Could not reorder boards."; }); }
 function moveBoard(board: Board, direction: number) { const group = customGroup(board); const index = group.findIndex((item) => item.id === board.id); const target = index + direction; if (target < 0 || target >= group.length) return; const next = [...group]; [next[index], next[target]] = [next[target], next[index]]; saveCustomOrder(next, Boolean(board.pinned)); }
 // The preview moves rows in the DOM, which drops pointer capture, so the drag listens on the window.
@@ -158,7 +161,7 @@ onBeforeUnmount(() => { endBoardDrag(); window.removeEventListener("resize", mea
       <footer class="board-settings-footer end-only"><button type="button" @click="closeManager">Done</button></footer>
     </section></div>
     <div v-if="settingsOpen && settingsBoard" class="dialog-backdrop" role="presentation" @click.self="closeSettings"><section v-dialog-focus class="confirm-dialog board-settings" role="dialog" aria-modal="true" aria-labelledby="board-settings-title" tabindex="-1" @keydown.esc.prevent="closeSettings">
-      <header class="board-settings-header"><h2 id="board-settings-title">Board settings</h2><button class="icon-button quiet" type="button" aria-label="Close board settings" title="Close" @click="closeSettings"><v-icon :icon="mdiClose" size="20" aria-hidden="true" /></button></header>
+      <header class="board-settings-header"><div class="board-settings-heading"><button v-if="settingsFromManager" class="icon-button quiet" type="button" aria-label="Back to boards" title="Back to boards" @click="backToManager"><v-icon :icon="mdiArrowLeft" size="20" aria-hidden="true" /></button><h2 id="board-settings-title">Board settings</h2></div><button class="icon-button quiet" type="button" aria-label="Close board settings" title="Close" @click="closeSettings"><v-icon :icon="mdiClose" size="20" aria-hidden="true" /></button></header>
       <template v-if="settingsBoard.pathId">
         <h3 class="settings-label">Name</h3>
         <p class="settings-name-readonly">{{ settingsBoard.name }} <RouterLink to="/paths" class="settings-path-link">Rename or hide on Paths</RouterLink></p>

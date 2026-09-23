@@ -830,6 +830,10 @@ describe("path boards", () => {
     const settings = page.getByRole("dialog", { name: "Board settings" });
     await settings.waitFor();
     assert.equal(await settings.getByRole("textbox", { name: "Name", exact: true }).inputValue(), "Custom");
+
+    await settings.getByRole("button", { name: "Back to boards" }).click();
+    await manager.waitFor();
+    assert.equal(await settings.count(), 0);
   });
 
   // Long board lists fit on screen: rows are dense on fine pointers, and dialogs cover the floating tracker.

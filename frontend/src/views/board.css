@@ -72,7 +72,7 @@
 .danger { color:#b42318; } .danger:hover:not(:disabled) { background:color-mix(in srgb, #b42318 10%, transparent); }
 .with-icon { display:inline-flex; align-items:center; gap:.4rem; }
 .board-settings { display:grid; grid-template-columns:minmax(0, 1fr); gap:.5rem; box-sizing:border-box; width:min(460px, calc(100% - 2rem)); max-height:calc(100dvh - 2rem); overflow:auto; overscroll-behavior:contain; }
-.board-settings-header { display:flex; align-items:center; justify-content:space-between; } .board-settings h2 { margin:0; font-size:1.1rem; }
+.board-settings-header { display:flex; align-items:center; justify-content:space-between; } .board-settings-heading { display:flex; align-items:center; gap:.25rem; min-width:0; } .board-settings h2 { margin:0; font-size:1.1rem; }
 .settings-label { margin:.4rem 0 0; font-size:.78rem; font-weight:600; color:var(--muted-text); text-transform:uppercase; letter-spacing:.06em; }
 .settings-input { flex:1; min-width:0; border:1px solid transparent; border-radius:6px; padding:.45rem .6rem; background:var(--workspace-hover); color:inherit; font-size:max(16px, 1rem); } .settings-input:hover { border-color:var(--border-color); }
 .settings-statuses { display:grid; grid-template-columns:minmax(0, 1fr); gap:.25rem; margin:0; padding:0; list-style:none; } .settings-statuses li { display:flex; align-items:center; gap:.15rem; }
