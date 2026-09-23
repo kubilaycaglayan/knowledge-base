@@ -205,6 +205,42 @@ class KnowIntegrationTest {
     assertEquals("Board label", get("/api/v1/labels?scope=BOARD", token).getBody().get(0).get("name").asText());
   }
 
+  /**
+   * Archiving and restoring must return the card view over a real persistence
+   * context. CardView reads the lazy paths and labels collections, so an endpoint
+   * without a transaction fails here even though a mocked-repository web test
+   * passes, because mocked entities never lazy-load.
+   */
+  @Test
+  void archivingAndRestoringACardReturnsItsRelationships() {
+    String token = freshToken();
+    String boardId = post("/api/v1/boards", token, json("name", "Archive round trip"))
+        .getBody().get("id").asText();
+    String pathId = post("/api/v1/paths", token, "{\"name\":\"Archive path\"}")
+        .getBody().get("id").asText();
+    String labelId = post("/api/v1/labels", token,
+        "{\"name\":\"Archive label\",\"scopes\":[\"BOARD\"]}")
+        .getBody().get("id").asText();
+    String cardId = post("/api/v1/boards/" + boardId + "/cards", token,
+        "{\"title\":\"Archivable\",\"pathIds\":[\"" + pathId + "\"],\"labelIds\":[\"" + labelId + "\"]}")
+        .getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> archived =
+        post("/api/v1/boards/" + boardId + "/cards/" + cardId + "/archive", token, null);
+    assertEquals(HttpStatus.OK, archived.getStatusCode());
+    assertTrue(archived.getBody().get("archived").asBoolean());
+    assertEquals(pathId, archived.getBody().get("pathIds").get(0).asText());
+    assertEquals(labelId, archived.getBody().get("labelIds").get(0).asText());
+
+    assertEquals(1, get("/api/v1/boards/" + boardId + "/cards?archived=true", token).getBody().size());
+
+    ResponseEntity<JsonNode> restored =
+        post("/api/v1/boards/" + boardId + "/cards/" + cardId + "/restore", token, null);
+    assertEquals(HttpStatus.OK, restored.getStatusCode());
+    assertFalse(restored.getBody().get("archived").asBoolean());
+    assertEquals(pathId, restored.getBody().get("pathIds").get(0).asText());
+  }
+
   @Test
   void ganttExcludesCardsInArchivedStatuses() {
     String token = freshToken();
