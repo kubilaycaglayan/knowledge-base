@@ -85,10 +85,7 @@ onBeforeUnmount(() => { document.removeEventListener("pointerdown", rememberCard
 
 <template>
   <section class="board-page" aria-labelledby="board-heading">
-    <header class="board-header">
-      <div><p class="eyebrow">Workspace</p><h1 id="board-heading">Boards</h1></div>
-      <div class="board-actions"><button class="secondary icon-button" type="button" aria-label="Add board" title="Add board" @click="focusNewBoard">＋</button></div>
-    </header>
+    <h1 id="board-heading" class="sr-only">Boards</h1>
     <div v-if="archiveConfirmOpen" class="dialog-backdrop" role="presentation"><div class="confirm-dialog" role="alertdialog" aria-labelledby="archive-board-title" aria-describedby="archive-board-description"><h2 id="archive-board-title">Archive board?</h2><p id="archive-board-description">Cards and statuses stay retained and can be restored later.</p><div class="editor-actions"><button class="secondary" type="button" @click="archiveConfirmOpen = false">Cancel</button><button type="button" :disabled="store.selectedId && store.boardMutations[store.selectedId]" @click="archiveCurrent">Archive</button></div></div></div>
     <div v-if="archiveCardConfirm" class="dialog-backdrop" role="presentation"><div class="confirm-dialog" role="alertdialog" aria-labelledby="archive-card-title" aria-describedby="archive-card-description"><h2 id="archive-card-title">Archive card?</h2><p id="archive-card-description">{{ archiveCardConfirm.title || "Untitled card" }} will remain retained and can be restored later.</p><div class="editor-actions"><button class="secondary" type="button" @click="archiveCardConfirm = null">Cancel</button><button type="button" @click="confirmArchiveCard">Archive</button></div></div></div>
     <div v-if="archiveStatusConfirm" class="dialog-backdrop" role="presentation"><div class="confirm-dialog" role="alertdialog" aria-labelledby="archive-status-title" aria-describedby="archive-status-description"><h2 id="archive-status-title">Archive status?</h2><p id="archive-status-description">{{ archiveStatusConfirm.name }} will be archived and its active cards will move to another status.</p><div class="editor-actions"><button class="secondary" type="button" @click="archiveStatusConfirm = null">Cancel</button><button type="button" :disabled="archivingStatusId === archiveStatusConfirm.id" @click="confirmArchiveStatus">Archive</button></div></div></div>
@@ -100,6 +97,7 @@ onBeforeUnmount(() => { document.removeEventListener("pointerdown", rememberCard
           <button v-else :class="{ selected: store.selectedId === board.id }" class="board-tab" type="button" :title="store.selectedId === board.id ? 'Rename board' : 'Open board'" @click="activateBoardTab(board.id)">{{ board.name }}</button>
         </template>
         <button v-if="!boards.length" class="board-tab empty" disabled type="button">No boards</button>
+        <button class="secondary icon-button add-board" type="button" aria-label="Add board" title="Add board" @click="focusNewBoard">＋</button>
       </div>
       <div class="view-switch" role="group" aria-label="Board view"><button :class="{ selected: view === 'kanban' }" type="button" @click="setView('kanban')">Kanban</button><button :class="{ selected: view === 'gantt' }" type="button" @click="setView('gantt')">Gantt</button></div>
     </div>
