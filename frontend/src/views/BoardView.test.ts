@@ -97,13 +97,43 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("displays create board form and button", async () => {
+  it("opens a new-board dialog from the add-board button instead of an inline form", async () => {
     const wrapper = mountBoard();
 
-    const createForm = wrapper.find(".create-board");
-    expect(createForm.exists()).toBe(true);
-    expect(createForm.find('input[name="boardName"]').exists()).toBe(true);
-    expect(wrapper.find('button[aria-label="Add board"]').exists()).toBe(true);
+    expect(wrapper.find('input[name="boardName"]').exists()).toBe(false);
+    await wrapper.find('button[aria-label="Add board"]').trigger("click");
+    const dialog = wrapper.find('[role="dialog"][aria-labelledby="new-board-title"]');
+    expect(dialog.exists()).toBe(true);
+    expect(dialog.find('input[name="boardName"]').exists()).toBe(true);
+    expect(dialog.findAll("button").map((button) => button.text())).toEqual(["Cancel", "Create"]);
+    await dialog.findAll("button")[0].trigger("click");
+    expect(wrapper.find('[aria-labelledby="new-board-title"]').exists()).toBe(false);
+    await wrapper.unmount();
+  });
+
+  it("validates an empty board name inside the dialog without creating a board", async () => {
+    const wrapper = mountBoard();
+    const store = useBoardsStore();
+    const create = vi.spyOn(store, "createBoard");
+
+    await wrapper.find('button[aria-label="Add board"]').trigger("click");
+    await wrapper.find(".new-board-dialog").trigger("submit");
+    expect(wrapper.find("#new-board-error").text()).toBe("Enter a board name.");
+    expect(create).not.toHaveBeenCalled();
+    await wrapper.unmount();
+  });
+
+  it("creates the board from the dialog and closes it", async () => {
+    const wrapper = mountBoard();
+    const store = useBoardsStore();
+    const create = vi.spyOn(store, "createBoard").mockResolvedValue(undefined as never);
+
+    await wrapper.find('button[aria-label="Add board"]').trigger("click");
+    await wrapper.find("#new-board-name").setValue("  Launch  ");
+    await wrapper.find(".new-board-dialog").trigger("submit");
+    await flushPromises();
+    expect(create).toHaveBeenCalledWith("Launch");
+    expect(wrapper.find(".new-board-dialog").exists()).toBe(false);
     await wrapper.unmount();
   });
 
@@ -402,7 +432,7 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
 
-    for (const [label, icon] of [["Create board", "＋"], ["Add card", "＋"], ["Add status", "＋"]] as const) {
+    for (const [label, icon] of [["Add board", "＋"], ["Add card", "＋"], ["Add status", "＋"]] as const) {
       const button = wrapper.find(`button[aria-label="${label}"]`);
       expect(button.exists(), `${label} button is missing`).toBe(true);
       expect(button.text()).toBe(icon);

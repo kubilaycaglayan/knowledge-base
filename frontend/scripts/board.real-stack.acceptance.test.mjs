@@ -120,29 +120,19 @@ async function seedCards(boardId, count, prefix) {
   }, { boardId, count, prefix });
 }
 
-// A create settles after the tab appears: the view clears the field and
-// re-enables submit only once the store finishes loading the new board. Filling
-// before that lets the in-flight create wipe the name, so the form submits empty
-// and never sends a POST. Wait for the idle form instead of for the tab alone.
-async function createBoardFormIdle() {
-  await page.waitForFunction(() => {
-    const field = document.querySelector('form.create-board input[name="boardName"]');
-    const submit = document.querySelector('form.create-board button[type="submit"]');
-    return Boolean(field) && Boolean(submit) && !submit.disabled && field.value === "";
-  });
-}
-
+// Boards are created from the add-board dialog, which closes only once the
+// store has created and loaded the new board.
 async function createBoard(name) {
-  await page.getByRole("button", { name: "Create board" }).waitFor({ state: "visible" });
-  await createBoardFormIdle();
-  const field = page.getByRole("textbox", { name: "New board name" });
+  await page.getByRole("button", { name: "Add board" }).click();
+  const dialog = page.getByRole("dialog", { name: "New board" });
+  const field = dialog.getByRole("textbox", { name: "New board name" });
   await field.fill(name);
   await Promise.all([
     page.waitForResponse((response) => response.url().includes("/api/v1/boards") && response.request().method() === "POST" && response.status() === 201),
     field.press("Enter"),
   ]);
+  await dialog.waitFor({ state: "detached" });
   await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).waitFor();
-  await createBoardFormIdle();
   activeBoardName = name;
 }
 
@@ -245,6 +235,9 @@ describe("board real-stack acceptance", () => {
     const viewChange = page.waitForURL(/view=gantt/);
     await page.getByRole("button", { name: "Gantt" }).click();
     await viewChange;
+    // Let the view switch's own Gantt load settle so the listener below can
+    // only match the request made by the reloaded page.
+    await page.waitForLoadState("networkidle");
     const ganttRequest = page.waitForResponse((response) => response.url().includes("/gantt") && response.request().method() === "GET");
     await page.reload();
     const ganttResponse = await ganttRequest;
@@ -507,8 +500,10 @@ describe("board real-stack acceptance", () => {
   });
 
   it("keeps the archive footer clear of the fixed bottom tracker", async () => {
-    const footer = page.locator("footer.board-footer");
-    await footer.scrollIntoViewIfNeeded();
+    await page.locator("footer.board-footer").waitFor();
+    // A user reaches the last row by scrolling to the end of the page; a
+    // footer that is only partly on screen would not be scrolled into view.
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     // The app pins its time tracker to the bottom of the viewport, so the last
     // row of the page must still receive its own clicks.
     const covering = await page.evaluate(() => {

@@ -343,10 +343,16 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
-  it("provides a compact add-board plus action", async (t) => {
+  it("opens a new-board dialog from the compact add-board plus action", async (t) => {
     const { page } = await fixture(t);
+    assert.equal(await page.getByRole("textbox", { name: "New board name" }).count(), 0, "No inline board input on the page");
     await page.getByRole("button", { name: "Add board" }).click();
-    assert.equal(await page.getByRole("textbox", { name: "New board name" }).evaluate((input) => document.activeElement === input), true);
+    const dialog = page.getByRole("dialog", { name: "New board" });
+    await dialog.waitFor();
+    assert.equal(await dialog.getByRole("textbox", { name: "New board name" }).evaluate((input) => document.activeElement === input), true);
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached" });
+    assert.equal(await page.getByRole("button", { name: "Add board" }).evaluate((button) => document.activeElement === button), true);
   });
 
   it("renames the selected board by clicking its tab, without losing its active view", async (t) => {
