@@ -25,6 +25,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   if (archivedStatus) fixtureStatuses[3].archived = true;
   let boardArchiveRequests = 0;
   let cardUpdateRequests = 0;
+  let cardMoveRequests = 0;
   let cardUpdateFailures = 0;
   let pageFailures = 0;
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
@@ -59,6 +60,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       routedCard.archived = false; body = routedCard;
     }
     if (method === "POST" && cardRoute?.[2] === "move" && routedCard) {
+      cardMoveRequests += 1;
       const requestBody = request.postDataJSON();
       routedCard.statusId = requestBody.statusId;
       routedCard.position = requestBody.position;
@@ -92,7 +94,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=board-1&view=kanban`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
-  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests };
+  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests, getCardMoveRequests: () => cardMoveRequests };
 }
 
 describe("board browser acceptance", () => {
@@ -406,6 +408,19 @@ describe("board browser acceptance", () => {
     await page.locator(".load-more-sentinel").first().evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.getByRole("heading", { name: "Dense card 21" }).waitFor();
     assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 21);
+  });
+
+  it("keeps dense position order and ignores an invalid drop", async (t) => {
+    const { page, getCardMoveRequests } = await fixture(t, 800, true);
+    const cardsInColumn = page.locator(".kanban-column").first().locator(".board-card");
+    assert.deepEqual((await cardsInColumn.locator("h3").allTextContents()).slice(0, 20), Array.from({ length: 20 }, (_, index) => `Dense card ${index + 1}`));
+    await page.locator(".kanban-column").nth(1).evaluate((element) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData("text/plain", "missing-card");
+      element.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+    });
+    assert.equal(getCardMoveRequests(), 0);
+    assert.equal(await cardsInColumn.count(), 20);
   });
 
   it("retries a failed lazy page without losing the existing cards", async (t) => {
