@@ -74,6 +74,34 @@ class BoardControllerApiTest {
         .andExpect(status().isNotFound());
   }
 
+  @Test void everyBoardMutationRejectsAForeignBoard() throws Exception {
+    UUID boardId = UUID.randomUUID();
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.empty());
+    String base = "/api/v1/boards/" + boardId;
+    mvc.perform(put(base).with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Nope\"}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(post(base + "/archive").with(authentication(auth()))).andExpect(status().isNotFound());
+    mvc.perform(post(base + "/restore").with(authentication(auth()))).andExpect(status().isNotFound());
+    mvc.perform(post(base + "/statuses").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Nope\"}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(put(base + "/statuses/" + UUID.randomUUID()).with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Nope\"}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(put(base + "/statuses/order").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"ids\":[\"" + UUID.randomUUID() + "\"]}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(post(base + "/statuses/" + UUID.randomUUID() + "/archive").with(authentication(auth()))).andExpect(status().isNotFound());
+    mvc.perform(post(base + "/statuses/" + UUID.randomUUID() + "/restore").with(authentication(auth()))).andExpect(status().isNotFound());
+    UUID cardId = UUID.randomUUID();
+    mvc.perform(post(base + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Nope\"}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(put(base + "/cards/" + cardId).with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Nope\"}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(post(base + "/cards/" + cardId + "/move").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON).content("{\"statusId\":\"" + UUID.randomUUID() + "\",\"position\":0}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(post(base + "/cards/" + cardId + "/archive").with(authentication(auth()))).andExpect(status().isNotFound());
+    mvc.perform(post(base + "/cards/" + cardId + "/restore").with(authentication(auth()))).andExpect(status().isNotFound());
+    verifyNoInteractions(statuses, cards, paths, labels, scopes);
+  }
+
   @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
     Board board = new Board(owner, "Archived");
     board.archive();
