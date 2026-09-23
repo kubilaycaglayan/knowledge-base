@@ -25,6 +25,8 @@ Unchecked items are intentionally incomplete.
 - [x] New boards seed Backlog, Pending, In Progress, and Done in order.
 - [x] Add-board exposes a compact, accessible plus action and duplicate board
   submits are guarded.
+- [x] Duplicate archive and restore submissions are coalesced per board while
+  the mutation is pending.
 - [x] Board-list, board-content, Gantt, pagination, and rapid-move store
   requests reject stale responses with revision checks.
 - [x] Card edit responses use per-card revisions so stale saves cannot
@@ -77,6 +79,8 @@ Unchecked items are intentionally incomplete.
 - [x] Kanban and Gantt are views of the same cards, not separate card sets.
 - [x] Pointer drag, touch tap, and keyboard Enter movement alternatives are
   covered for card status movement.
+- [x] Pointer drops onto another card insert at that card’s position within a
+  column, while column drops append at the end.
 - [x] Optimistic movement rolls back after failure and archived-status drops
   are rejected.
 - [x] Rapid card moves use per-card revisions so stale responses cannot
