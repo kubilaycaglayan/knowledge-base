@@ -29,6 +29,7 @@ const required = [
     "Buildx builds are scoped to the temporary builder",
   ],
   ["for attempt in {1..90}; do", "fresh-database API health startup budget"],
+  ["PROXY_HTTPS_PORT:=18443", "isolated full-stack HTTPS proxy port"],
   [
     "docker-compose.smoke-gha-cache.yml",
     "GitHub Actions BuildKit cache overlay",
