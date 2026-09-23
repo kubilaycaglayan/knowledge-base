@@ -412,6 +412,12 @@ onMounted(load);
   gap: 6px;
   font-weight: 600;
 }
+/* Scope names act as checkbox targets; tapping them should not select text. */
+.scope-selector label,
+.scope-editor label {
+  -webkit-user-select: none;
+  user-select: none;
+}
 .label-create-form fieldset {
   display: grid;
   gap: 6px;
