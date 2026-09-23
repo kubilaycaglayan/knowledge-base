@@ -683,3 +683,103 @@ describe("board browser acceptance", () => {
     assert.equal(getBoardArchiveRequests(), 1);
   });
 });
+
+// PB-28: every path owns a board; hiding it from the Paths page removes its tab.
+describe("path boards", () => {
+  async function pathBoardFixture(t) {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
+    t.after(() => context.close());
+    const paths = [];
+    const boards = [{ id: "custom-1", name: "Custom", archived: false, pathId: null, hidden: false, pinned: false }];
+    const boardStatuses = {};
+    const boardCards = {};
+    const visibilityRequests = [];
+    const statusesFor = (boardId) => (boardStatuses[boardId] ||= ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `${boardId}-status-${index}`, name, position: index, archived: false })));
+    await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
+    await context.route("**/api/**", async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const path = url.pathname.replace("/api/v1", "");
+      const method = request.method();
+      let body = [];
+      let status = 200;
+      let match;
+      if (path === "/paths" && method === "POST") {
+        const input = request.postDataJSON();
+        const id = `path-${paths.length + 1}`;
+        const board = { id: `board-${id}`, name: input.name, archived: false, pathId: id, hidden: false, pinned: false };
+        boards.splice(0, 0, board);
+        body = { id, name: input.name, description: input.description || null, color: input.color || "#12ab78", status: "ACTIVE", boardId: board.id, boardHidden: false };
+        paths.push(body);
+        status = 201;
+      } else if (path === "/paths") body = paths.map((item) => ({ ...item, boardHidden: boards.find((board) => board.id === item.boardId).hidden }));
+      else if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : boards.filter((board) => url.searchParams.get("includeHidden") === "true" || !board.hidden);
+      else if ((match = path.match(/^\/boards\/([^/]+)\/visibility$/))) {
+        const board = boards.find((item) => item.id === match[1]);
+        board.hidden = request.postDataJSON().hidden;
+        visibilityRequests.push(request.postDataJSON());
+        body = board;
+      } else if ((match = path.match(/^\/boards\/([^/]+)\/statuses$/))) body = statusesFor(match[1]);
+      else if ((match = path.match(/^\/boards\/([^/]+)\/cards\/page$/))) body = { items: (boardCards[match[1]] || []).filter((card) => card.statusId === url.searchParams.get("statusId")), nextCursor: null };
+      else if ((match = path.match(/^\/boards\/([^/]+)\/cards$/)) && method === "POST") {
+        const board = boards.find((item) => item.id === match[1]);
+        const input = request.postDataJSON();
+        const cards = (boardCards[board.id] ||= []);
+        body = { id: `card-${board.id}-${cards.length + 1}`, statusId: input.statusId || statusesFor(board.id)[0].id, title: input.title || "", body: "{}", priority: "MEDIUM", position: cards.length, archived: false, pathIds: board.pathId ? [board.pathId] : [], labelIds: [], createdAt: "", updatedAt: "t1" };
+        cards.push(body);
+        status = 201;
+      } else if ((match = path.match(/^\/boards\/([^/]+)\/cards\/([^/]+)$/)) && method === "PUT") {
+        const card = boardCards[match[1]].find((item) => item.id === match[2]);
+        Object.assign(card, request.postDataJSON(), { pathIds: card.pathIds });
+        body = card;
+      }
+      await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+    });
+    const page = await context.newPage();
+    const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+    return { page, origin, visibilityRequests };
+  }
+
+  it("creates a board with each path and hides it from the Paths page after confirmation", async (t) => {
+    const { page, origin, visibilityRequests } = await pathBoardFixture(t);
+    await page.goto(`${origin}/paths`);
+    await page.getByRole("button", { name: "Add path" }).first().click();
+    await page.getByRole("textbox", { name: "New path name" }).fill("Launch");
+    await page.locator(".path-create-form").getByRole("button", { name: "Add path" }).click();
+    await page.getByRole("heading", { name: "Launch" }).waitFor();
+
+    await page.goto(`${origin}/board`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    const launchTab = page.locator(".board-tab", { hasText: "Launch" });
+    await launchTab.waitFor();
+    assert.equal(await page.locator(".board-tab-dot").count(), 1);
+
+    await launchTab.click();
+    await page.getByRole("button", { name: "Add card to Backlog" }).click();
+    await page.locator(".card-editor").waitFor();
+    assert.equal(await page.locator('.card-editor select[name="cardPaths"]').count(), 0);
+    await page.getByRole("button", { name: "Close card" }).click();
+    await page.locator(".card-editor").waitFor({ state: "detached" });
+
+    await page.goto(`${origin}/paths`);
+    await page.getByRole("button", { name: "Edit" }).first().click();
+    const toggle = page.getByRole("switch", { name: "Show on board" });
+    assert.equal(await toggle.isChecked(), true);
+    await toggle.click();
+    const dialog = page.locator(".prompt-dialog");
+    await dialog.waitFor();
+    assert.match(await dialog.innerText(), /Hide the “Launch” board\?/);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    assert.equal(await toggle.isChecked(), true);
+    assert.equal(visibilityRequests.length, 0);
+
+    await toggle.click();
+    await page.locator(".prompt-dialog").getByRole("button", { name: "Hide board" }).click();
+    await page.getByText("Launch board is hidden").waitFor();
+    assert.deepEqual(visibilityRequests, [{ hidden: true }]);
+
+    await page.goto(`${origin}/board`);
+    await page.locator(".board-tab", { hasText: "Custom" }).waitFor();
+    assert.equal(await page.locator(".board-tab", { hasText: "Launch" }).count(), 0);
+  });
+});

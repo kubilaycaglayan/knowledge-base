@@ -596,4 +596,116 @@ describe("BoardView", () => {
     expect(store.error).toBe("");
     await wrapper.unmount();
   });
+
+  describe("path boards", () => {
+    const board = (id: string, name: string, extra: Record<string, unknown> = {}) => ({ id, name, archived: false, createdAt: "", updatedAt: "", pathId: null, hidden: false, pinned: false, ...extra });
+    function seedPathBoards() {
+      const store = useBoardsStore();
+      const pathsStore = usePathsStore();
+      pathsStore.setAll([{ id: "path-1", name: "Writing", color: "#123456", status: "ACTIVE" }]);
+      store.boards = [board("pinned", "Pinned", { pinned: true }), board("path-board", "Writing", { pathId: "path-1" }), board("custom-a", "Alpha"), board("custom-b", "Beta")] as any;
+      store.selectedId = "path-board";
+      store.statuses = [{ id: "status-1", name: "Backlog", archived: false, position: 0 }];
+      store.cards = [];
+      (store.setVisibility as any) = vi.fn(() => Promise.resolve(null));
+      (store.pinBoard as any) = vi.fn(() => Promise.resolve(null));
+      (store.reorderBoards as any) = vi.fn(() => Promise.resolve());
+      return store;
+    }
+
+    // PB-20
+    it("renders path boards with a colour dot in API order", async () => {
+      seedPathBoards();
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.findAll(".board-tab:not(.empty)").map((tab) => tab.text())).toEqual(["Pinned", "Writing", "Alpha", "Beta"]);
+      const dots = wrapper.findAll(".board-tab-dot");
+      expect(dots).toHaveLength(1);
+      expect(dots[0].attributes("aria-hidden")).toBe("true");
+      expect(dots[0].attributes("style")).toContain("background-color: rgb(18, 52, 86)");
+      await wrapper.unmount();
+    });
+
+    // PB-21
+    it("hides the path picker on path boards", async () => {
+      const store = seedPathBoards();
+      store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: ["path-1"], labelIds: [], createdAt: "", updatedAt: "t1" }];
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.find(".board-card").attributes("style")).toContain("--card-accent: #123456");
+      await wrapper.find(".board-card").trigger("click");
+      expect(wrapper.find(".card-editor").exists()).toBe(true);
+      expect(wrapper.find('select[name="cardPaths"]').exists()).toBe(false);
+      await wrapper.unmount();
+
+      store.selectedId = "custom-a";
+      const custom = mountBoard();
+      await flushPromises();
+      await custom.find(".board-card").trigger("click");
+      expect(custom.find('select[name="cardPaths"]').exists()).toBe(true);
+      await custom.unmount();
+    });
+
+    // PB-22
+    it("path board settings use a visibility switch", async () => {
+      const store = seedPathBoards();
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find('button[aria-label="Board settings for Writing"]').trigger("click");
+      await flushPromises();
+      const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
+      expect(dialog.find("#board-settings-name").exists()).toBe(false);
+      expect(dialog.find(".settings-name-readonly").text()).toContain("Writing");
+      expect(dialog.findAll("button").map((button) => button.text())).not.toContain("Archive board");
+      const toggle = dialog.find<HTMLInputElement>('input[name="boardVisible"]');
+      expect(toggle.attributes("role")).toBe("switch");
+      expect(toggle.element.checked).toBe(true);
+
+      await toggle.setValue(false);
+      const confirm = wrapper.find('[role="alertdialog"][aria-labelledby="hide-board-title"]');
+      expect(confirm.exists()).toBe(true);
+      expect(store.setVisibility).not.toHaveBeenCalled();
+      await confirm.findAll("button").find((button) => button.text() === "Hide board")!.trigger("click");
+      await flushPromises();
+      expect(store.setVisibility).toHaveBeenCalledWith("path-board", true);
+      await wrapper.unmount();
+    });
+
+    // PB-23
+    it("pins a custom board from settings", async () => {
+      const store = seedPathBoards();
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find('button[aria-label="Board settings for Alpha"]').trigger("click");
+      await flushPromises();
+      const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
+      expect(dialog.find('input[name="boardVisible"]').exists()).toBe(false);
+      const pin = dialog.find<HTMLInputElement>('input[name="boardPinned"]');
+      expect(pin.element.checked).toBe(false);
+      await pin.setValue(true);
+      await flushPromises();
+      expect(store.pinBoard).toHaveBeenCalledWith("custom-a", true);
+      await wrapper.unmount();
+    });
+
+    // PB-24
+    it("reorders custom board tabs with the keyboard", async () => {
+      const store = seedPathBoards();
+      const wrapper = mountBoard();
+      await flushPromises();
+      const tab = (name: string) => wrapper.findAll(".board-tab").find((item) => item.text() === name)!;
+
+      // Path boards follow the Paths page order and cannot move here.
+      await tab("Writing").trigger("keydown", { key: "ArrowRight", altKey: true });
+      // Groups do not mix: the first unpinned board cannot jump into the pinned group.
+      await tab("Alpha").trigger("keydown", { key: "ArrowLeft", altKey: true });
+      expect(store.reorderBoards).not.toHaveBeenCalled();
+
+      await tab("Alpha").trigger("keydown", { key: "ArrowRight", altKey: true });
+      await flushPromises();
+      expect(store.reorderBoards).toHaveBeenCalledWith(["pinned", "custom-b", "custom-a"]);
+      await wrapper.unmount();
+    });
+  });
 });
+

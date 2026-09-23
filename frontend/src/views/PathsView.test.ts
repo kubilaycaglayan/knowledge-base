@@ -682,4 +682,89 @@ describe("PathsView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe("Could not remove path.");
     expect(wrapper.find(".undo-snackbar").exists()).toBe(false);
   });
+
+  describe("show on board (PB-25 – PB-27)", () => {
+    const calls = () => vi.mocked(api).mock.calls.filter(([path]) => String(path).endsWith("/visibility"));
+    beforeEach(() => {
+      vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+        if (path === "/paths")
+          return [{ id: "path-1", name: "Algorithms", status: "ACTIVE", boardId: "board-1", boardHidden: false }];
+        if (path === "/boards/board-1/visibility")
+          return { id: "board-1", name: "Algorithms", archived: false, pathId: "path-1", pinned: false, hidden: JSON.parse(String(options?.body)).hidden };
+        return undefined;
+      });
+    });
+    async function openEdit() {
+      const confirmSpy = vi.spyOn(window, "confirm");
+      const promptSpy = vi.spyOn(window, "prompt");
+      const wrapper = mount(PathsView, { attachTo: document.body });
+      await flushPromises();
+      await wrapper.findAll("button.text-button").find((button) => button.text() === "Edit")!.trigger("click");
+      return { wrapper, confirmSpy, promptSpy, toggle: () => wrapper.find<HTMLInputElement>('form.path-edit input[name="boardVisible"]') };
+    }
+
+    it("shows the board visibility switch", async () => {
+      const { wrapper, toggle } = await openEdit();
+      expect(toggle().exists()).toBe(true);
+      expect(toggle().attributes("role")).toBe("switch");
+      expect(toggle().element.checked).toBe(true);
+      expect(wrapper.find('form.path-edit label[for="' + toggle().attributes("id") + '"]').text()).toContain("Show on board");
+      wrapper.unmount();
+    });
+
+    it("turning the board switch on saves immediately", async () => {
+      vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+        if (path === "/paths") return [{ id: "path-1", name: "Algorithms", status: "ACTIVE", boardId: "board-1", boardHidden: true }];
+        if (path === "/boards/board-1/visibility") return { id: "board-1", hidden: JSON.parse(String(options?.body)).hidden };
+        return undefined;
+      });
+      const { wrapper, toggle } = await openEdit();
+      expect(toggle().element.checked).toBe(false);
+      await toggle().setValue(true);
+      await flushPromises();
+      expect(calls()).toEqual([["/boards/board-1/visibility", expect.objectContaining({ method: "POST", body: JSON.stringify({ hidden: false }) })]]);
+      expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
+      expect(wrapper.find('[aria-live="polite"]').text()).toContain("Algorithms board is shown");
+      wrapper.unmount();
+    });
+
+    it("turning the board switch off asks for confirmation", async () => {
+      const { wrapper, toggle, confirmSpy, promptSpy } = await openEdit();
+      await toggle().setValue(false);
+      await flushPromises();
+      expect(calls()).toHaveLength(0);
+      const dialog = wrapper.find(".prompt-dialog");
+      expect(dialog.exists()).toBe(true);
+      expect(dialog.text()).toContain("Hide the “Algorithms” board?");
+      await dialog.find(".primary").trigger("click");
+      await flushPromises();
+      expect(calls()).toEqual([["/boards/board-1/visibility", expect.objectContaining({ method: "POST", body: JSON.stringify({ hidden: true }) })]]);
+      expect(toggle().element.checked).toBe(false);
+      expect(wrapper.find('[aria-live="polite"]').text()).toContain("Algorithms board is hidden");
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(promptSpy).not.toHaveBeenCalled();
+      wrapper.unmount();
+    });
+
+    it("labels the hide confirmation button Hide board", async () => {
+      const { wrapper, toggle } = await openEdit();
+      await toggle().setValue(false);
+      await flushPromises();
+      expect(wrapper.find(".prompt-dialog .primary").text()).toBe("Hide board");
+      wrapper.unmount();
+    });
+
+    it("cancelling the hide confirmation keeps the board visible", async () => {
+      const { wrapper, toggle } = await openEdit();
+      await toggle().setValue(false);
+      await flushPromises();
+      await wrapper.find(".prompt-dialog .text-button").trigger("click");
+      await flushPromises();
+      expect(calls()).toHaveLength(0);
+      expect(toggle().element.checked).toBe(true);
+      expect(document.activeElement).toBe(toggle().element);
+      wrapper.unmount();
+    });
+  });
 });
+

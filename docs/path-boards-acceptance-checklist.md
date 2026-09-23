@@ -60,12 +60,12 @@ cover it. Tick an item only once those tests pass.
 - [ ] **PB-17** `POST /boards/{id}/pin {"pinned":bool}` pins or unpins a custom board. On a path board it returns 409.
   _Tests:_ `PathBoardIntegrationTest.pinningOnlyAppliesToCustomBoards`
 - [ ] **PB-18** `PUT /boards/order {"ids":[…]}` sets the manual order of custom boards. It returns 400 if the list includes another user's board or a path board.
-  _Tests:_ `PathBoardIntegrationTest.reorderingCustomBoards`, `BoardControllerApiTest.orderRejectsForeignBoards`
+  _Tests:_ `PathBoardIntegrationTest.reorderingCustomBoards`, `PathBoardIntegrationTest.pathBoardMutationsRejectForeignBoards`
 
 ## Ownership
 
 - [ ] **PB-19** Changing visibility, pinning or ordering on another user's board returns 404 or 400 and changes nothing.
-  _Tests:_ `BoardControllerApiTest.pathBoardMutationsRejectForeignBoards`
+  _Tests:_ `PathBoardIntegrationTest.pathBoardMutationsRejectForeignBoards`
 
 ## Web: board page
 
@@ -77,7 +77,7 @@ cover it. Tick an item only once those tests pass.
   _Tests:_ `BoardView.test.ts` "path board settings use a visibility switch"
 - [ ] **PB-23** Board settings for a custom board include a "Pin board" switch that calls the pin endpoint.
   _Tests:_ `BoardView.test.ts` "pins a custom board from settings"
-- [ ] **PB-24** Custom board tabs can be reordered within their group by dragging a handle, or by pressing Alt+Arrow keys on the focused tab. The new order is sent to `PUT /boards/order`.
+- [ ] **PB-24** Custom board tabs can be reordered within their group by dragging the tab, or by pressing Alt+Left or Alt+Right on the focused tab. The new order is sent to `PUT /boards/order`.
   _Tests:_ `BoardView.test.ts` "reorders custom board tabs with the keyboard", `boards.test.ts` "reorderBoards"
 
 ## Web: Paths page
@@ -91,7 +91,7 @@ cover it. Tick an item only once those tests pass.
   - Confirm hides the board.
   - The result is announced in a polite live region.
 
-  _Tests:_ `PathsView.test.ts` "turning the board switch off asks for confirmation", "cancelling the hide confirmation keeps the board visible"
+  _Tests:_ `PathsView.test.ts` "turning the board switch off asks for confirmation", "labels the hide confirmation button Hide board", "cancelling the hide confirmation keeps the board visible"
 
 ## Acceptance and smoke
 

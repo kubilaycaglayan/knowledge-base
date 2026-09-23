@@ -559,4 +559,39 @@ describe("board real-stack acceptance", () => {
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
   });
+
+  // PB-29: every path owns a board on the real stack.
+  it("path boards: creates a tab per path, hides the path picker, and hides the board from Paths", async () => {
+    const name = `Path board ${Date.now()}`;
+    await page.goto(`${baseUrl}/paths`);
+    await page.getByRole("button", { name: "Add path" }).first().click();
+    await page.getByRole("textbox", { name: "New path name" }).fill(name);
+    await page.locator(".path-create-form").getByRole("button", { name: "Add path" }).click();
+    await page.getByRole("heading", { name }).waitFor();
+
+    await page.goto(`${baseUrl}/board`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    await boardTab(name).waitFor();
+    await selectBoard(name);
+    assert.equal(await page.locator(".kanban-column h2").allInnerTexts().then((names) => names.join("|")), "Backlog|Pending|In Progress|Done");
+    await clickAddCard();
+    await page.locator(".card-editor").waitFor();
+    assert.equal(await page.locator(".card-editor select[name='cardPaths']").count(), 0, "Path boards own their path");
+    await closeCard();
+
+    await page.goto(`${baseUrl}/paths`);
+    const row = page.locator("li, article").filter({ has: page.getByRole("heading", { name }) }).last();
+    await row.getByRole("button", { name: "Edit" }).click();
+    const toggle = page.getByRole("switch", { name: "Show on board" });
+    assert.equal(await toggle.isChecked(), true);
+    await toggle.click();
+    await page.locator(".prompt-dialog").getByRole("button", { name: "Hide board" }).click();
+    await page.getByText(`${name} board is hidden`).waitFor();
+
+    await page.goto(`${baseUrl}/board`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    await boardSettled();
+    assert.equal(await boardTab(name).count(), 0);
+  });
 });
+

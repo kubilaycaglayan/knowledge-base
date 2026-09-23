@@ -264,6 +264,12 @@ path="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke path
 path_id="$(printf '%s' "$path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 other_path="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Other smoke path"}' http://localhost:8080/api/v1/paths)"
 other_path_id="$(printf '%s' "$other_path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+# Every path owns a board from birth.
+path_boards="$(api "${header[@]}" http://localhost:8080/api/v1/boards)"
+if [[ "$path_boards" != *"\"pathId\":\"$path_id\""* ]]; then
+  echo "path board was not created for $path_id" >&2
+  exit 1
+fi
 import_start="$(date -u -d '20 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 import_end="$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 clockify_payload="$(
