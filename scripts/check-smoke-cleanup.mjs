@@ -28,6 +28,7 @@ const required = [
     'export BUILDX_BUILDER="$buildx_builder"',
     "Buildx builds are scoped to the temporary builder",
   ],
+  ["for attempt in {1..90}; do", "fresh-database API health startup budget"],
   [
     "docker-compose.smoke-gha-cache.yml",
     "GitHub Actions BuildKit cache overlay",
