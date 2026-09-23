@@ -25,6 +25,7 @@
 .link-button { border-radius:8px; background:#334155; color:#fff; text-decoration:none; }
 .link-button.secondary { background:transparent; color:inherit; border:1px solid var(--border-color); }
 .board-footer { display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem; padding-top:.75rem; border-top:1px solid var(--border-color); }
+.board-footer .link-button.secondary { border:0; } .board-footer .link-button.secondary:hover { background:var(--workspace-hover); }
 .gantt-heading { display:flex; justify-content:space-between; gap:1rem; align-items:flex-end; margin:1.25rem 0 .75rem; }
 .gantt-controls { display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; }
 .gantt-controls label { display:grid; gap:.2rem; color:var(--workspace-muted); font-size:.75rem; }
