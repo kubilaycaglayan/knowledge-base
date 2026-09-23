@@ -143,7 +143,8 @@ Unchecked items are intentionally incomplete.
 
 - [x] Every board, status, card, path, and label reference is scoped to the
   authenticated user and selected board.
-- [x] A card’s single active path inherits its color.
+- [x] A card’s first active path supplies its outliner color while all selected
+  paths remain attached and editable.
 - [x] Archived paths and deleted BOARD labels do not leak into the board
   editor or card controls.
 - [x] Foreign board/card/status references return the documented not-found

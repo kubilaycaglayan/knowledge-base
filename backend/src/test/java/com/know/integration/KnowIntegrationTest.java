@@ -183,6 +183,29 @@ class KnowIntegrationTest {
   }
 
   @Test
+  void boardCardsAcceptMultiplePathsAndBoardScopedLabels() {
+    String token = freshToken();
+    String boardId = post("/api/v1/boards", token, json("name", "Relationships"))
+        .getBody().get("id").asText();
+    String firstPath = post("/api/v1/paths", token, "{\"name\":\"One\"}")
+        .getBody().get("id").asText();
+    String secondPath = post("/api/v1/paths", token, "{\"name\":\"Two\"}")
+        .getBody().get("id").asText();
+    String labelId = post("/api/v1/labels", token,
+        "{\"name\":\"Board label\",\"scopes\":[\"BOARD\"]}")
+        .getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> card = post("/api/v1/boards/" + boardId + "/cards", token,
+        "{\"title\":\"Linked card\",\"pathIds\":[\"" + firstPath + "\",\"" + secondPath
+            + "\"],\"labelIds\":[\"" + labelId + "\"]}");
+
+    assertEquals(HttpStatus.CREATED, card.getStatusCode());
+    assertEquals(2, card.getBody().get("pathIds").size());
+    assertEquals(labelId, card.getBody().get("labelIds").get(0).asText());
+    assertEquals("Board label", get("/api/v1/labels?scope=BOARD", token).getBody().get(0).get("name").asText());
+  }
+
+  @Test
   void ganttExcludesCardsInArchivedStatuses() {
     String token = freshToken();
     ResponseEntity<JsonNode> board = post("/api/v1/boards", token, json("name", "Archived status Gantt"));

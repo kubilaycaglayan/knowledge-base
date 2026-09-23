@@ -15,10 +15,11 @@ const scopeOptions: { value: Scope; label: string }[] = [
   { value: "CALENDAR", label: "Calendar" },
   { value: "TIME_ENTRY", label: "Sessions" },
   { value: "LOG", label: "Logs" },
+  { value: "BOARD", label: "Boards" },
 ];
 const defaultScopes = (): Scope[] =>
   scopeOptions
-    .filter((option) => option.value !== "CALENDAR")
+    .filter((option) => !["CALENDAR", "BOARD"].includes(option.value))
     .map((option) => option.value);
 const colors = labelColors;
 const labelStore = useLabelsStore();

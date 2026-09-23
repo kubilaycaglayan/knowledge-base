@@ -178,7 +178,7 @@ describe("LabelsView", () => {
         id: "log-label",
         name: "Important",
         color: null,
-        scopes: ["LOG"],
+        scopes: ["LOG", "BOARD"],
         system: false,
       },
     ]);
@@ -186,7 +186,9 @@ describe("LabelsView", () => {
       global: { stubs: { PromptDialog: true } },
     });
     await flushPromises();
-    expect(wrapper.get(".scope-list").text()).toBe("Logs");
+    expect(wrapper.get(".scope-list").text()).toBe("Logs · Boards");
+    await wrapper.get('button[aria-label="Add label"]').trigger("click");
+    expect(wrapper.get(".scope-selector").text()).toContain("Boards");
     expect(wrapper.text()).not.toContain("System label");
     expect(
       wrapper.get(".label-row button.danger").attributes("disabled"),
