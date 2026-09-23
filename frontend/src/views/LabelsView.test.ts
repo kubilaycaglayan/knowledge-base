@@ -93,7 +93,7 @@ describe("LabelsView", () => {
     expect(wrapper.text()).not.toContain("Study");
   });
 
-  it("creates labels hidden from Calendar by default and saves inverted scope selections", async () => {
+  it("creates labels hidden from Calendar only, shown on Boards, by default and saves inverted scope selections", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
         if (path === "/labels" && !options)
@@ -130,6 +130,10 @@ describe("LabelsView", () => {
     expect(
       wrapper.get(".scope-selector label:nth-of-type(1) input").element,
     ).toHaveProperty("checked", false);
+    expect(
+      wrapper.get(".scope-selector label:nth-of-type(5) input").element,
+      "Boards is not ticked under “Don’t show in”",
+    ).toHaveProperty("checked", false);
     await wrapper.get('input[name="label-name"]').setValue("Focus");
     await wrapper.get("form").trigger("submit");
     await flushPromises();
@@ -141,7 +145,7 @@ describe("LabelsView", () => {
         body: JSON.stringify({
           name: "Focus",
           color: "#F8FAFC",
-          scopes: ["NOTE", "TIME_ENTRY", "LOG"],
+          scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
         }),
       }),
     );
