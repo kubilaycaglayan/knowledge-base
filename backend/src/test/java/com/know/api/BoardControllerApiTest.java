@@ -209,6 +209,19 @@ class BoardControllerApiTest {
     verifyNoInteractions(cards);
   }
 
+  @Test void oversizedCardTitleIsRejectedBeforePersistence() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findAllByBoardIdOrderByPosition(boardId)).thenReturn(List.of(status));
+
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"" + "x".repeat(241) + "\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(cards);
+  }
+
   @Test void staleCardUpdateReturnsConflictWithoutOverwritingTheNewerCard() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
