@@ -56,6 +56,23 @@ describe("boards store concurrency", () => {
     expect(store.statuses.map((status) => status.id)).toEqual(["b-status"]);
   });
 
+  it("clears the previous board cards before the next board finishes loading", async () => {
+    const statuses = deferred<Array<{ id: string; name: string; position: number; archived: boolean }>>();
+    apiMock.mockImplementation((path: string) => path.endsWith("/statuses") ? statuses.promise : Promise.resolve({ items: [], nextCursor: null }));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "next-board";
+    store.statuses = [{ id: "old-status", name: "Old", position: 0, archived: false }];
+    store.cards = [{ id: "old-card", statusId: "old-status", title: "Old board", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+
+    const loading = store.loadBoard();
+
+    expect(store.statuses).toEqual([]);
+    expect(store.cards).toEqual([]);
+    statuses.resolve([]);
+    await loading;
+  });
+
   it("keeps a failed lazy page retryable and exposes a recoverable error", async () => {
     let pageCalls = 0;
     apiMock.mockImplementation((path: string) => {
