@@ -70,4 +70,13 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
       @Param("targetPathId") UUID targetPathId);
 
   long deleteByUserIdAndImportBatchId(UUID userId, UUID importBatchId);
+
+  /** Up to {@code limit} distinct active paths from the user's most recent time entries, newest first. */
+  @Query(
+      value =
+          "select cast(t.path_id as varchar) from time_entry t join path p on p.id = t.path_id"
+              + " where t.user_id = :userId and t.deleted_at is null and p.deleted_at is null and p.status = 'ACTIVE'"
+              + " group by t.path_id order by max(t.started_at) desc limit :limit",
+      nativeQuery = true)
+  List<String> findRecentPathIds(@Param("userId") UUID userId, @Param("limit") int limit);
 }

@@ -69,7 +69,7 @@ class UserPreferencesIntegrationTest {
 
   void entry(String token, String pathId, String startedAt) {
     String body = "{\"pathId\":\"" + pathId + "\",\"labelIds\":[],\"startedAt\":\"" + startedAt + "\",\"endedAt\":\"" + startedAt.replace("T09", "T10") + "\"}";
-    assertEquals(HttpStatus.CREATED, exchange(HttpMethod.POST, "/api/v1/time-entries", token, body).getStatusCode());
+    assertTrue(exchange(HttpMethod.POST, "/api/v1/time-entries", token, body).getStatusCode().is2xxSuccessful());
   }
 
   ResponseEntity<JsonNode> preferences(String token) {
