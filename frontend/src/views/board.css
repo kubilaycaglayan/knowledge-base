@@ -133,3 +133,8 @@
 .board-card-label { flex:0 0 auto; max-width:10rem; padding:0 .4rem; overflow:hidden; border-radius:4px; background:color-mix(in srgb, var(--label-color, #64748b) 16%, transparent); font-size:.7rem; line-height:18px; text-overflow:ellipsis; white-space:nowrap; }
 .board-card-labels + h3 { margin-top:.25rem; }
 .card-labels-picker :deep(.v-field__input input:focus), .card-labels-picker :deep(.v-field__input input:focus-visible) { outline:none !important; box-shadow:none; }
+
+/* Phone board menu: views as radio items and board settings below the boards. */
+.board-more-separator { height:1px; margin:.3rem .2rem; background:var(--border-color); }
+.board-more-item .board-more-check { margin-right:.45rem; color:var(--muted-text); }
+.board-more-item[role="menuitemradio"] .board-more-check { visibility:hidden; } .board-more-item[aria-checked="true"] { font-weight:600; } .board-more-item[aria-checked="true"] .board-more-check { visibility:visible; color:inherit; }

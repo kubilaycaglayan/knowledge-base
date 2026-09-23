@@ -20,7 +20,7 @@ import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { format, parseISO } from "date-fns";
 import { theme } from "../lib/theme";
-import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiChevronDown, mdiClose, mdiDragVertical, mdiCogOutline, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
+import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiCheck, mdiChevronDown, mdiClose, mdiDragVertical, mdiCogOutline, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
 
 const store = useBoardsStore();
 const pathsStore = usePathsStore();
@@ -125,18 +125,30 @@ const fittingTabs = ref(Number.POSITIVE_INFINITY), moreOpen = ref(false);
 const otherBoards = computed(() => boards.value.filter((board) => board.id !== store.selectedId));
 const shownBoards = computed(() => otherBoards.value.slice(0, fittingTabs.value));
 const moreBoards = computed(() => otherBoards.value.slice(fittingTabs.value));
-function measureTabs() { const bar = tabBar.value, measure = tabMeasure.value; if (!bar || !measure) return; const available = bar.clientWidth - (tabSlot.value?.offsetWidth ?? 0) - TAB_GAP; if (bar.clientWidth <= 0) { fittingTabs.value = Number.POSITIVE_INFINITY; return; } const widths = [...measure.querySelectorAll<HTMLElement>("[data-measure-tab]")].map((tab) => tab.offsetWidth); const moreWidth = measure.querySelector<HTMLElement>("[data-measure-more]")?.offsetWidth ?? 0; fittingTabs.value = fitTabs(widths, available, moreWidth, TAB_GAP); }
+function measureTabs() { const bar = tabBar.value, measure = tabMeasure.value; if (!bar || !measure) return; const available = bar.clientWidth - (tabSlot.value?.offsetWidth ?? 0) - TAB_GAP; if (bar.clientWidth <= 0) { fittingTabs.value = Number.POSITIVE_INFINITY; return; } const widths = [...measure.querySelectorAll<HTMLElement>("[data-measure-tab]")].map((tab) => tab.offsetWidth); const moreWidth = measure.querySelector<HTMLElement>("[data-measure-more]")?.offsetWidth ?? 0; fittingTabs.value = phone.value ? fitTabs(widths, available - moreWidth - TAB_GAP, 0, TAB_GAP) : fitTabs(widths, available, moreWidth, TAB_GAP); }
 const tabResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureTabs());
 watch(tabBar, (bar, previous) => { if (previous) tabResize?.unobserve(previous); if (bar) { tabResize?.observe(bar); void nextTick(measureTabs); } });
 watch(() => [store.selectedId, ...otherBoards.value.map((board) => `${board.id}:${board.name}:${board.pathId || ""}`)].join("|"), () => { void nextTick(measureTabs); });
-const moreItems = () => [...(moreMenu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+// On phones the view switch and the Manage boards gear move into this menu,
+// so it is always there, even when every board fits.
+const PHONE_QUERY = "(max-width: 700px)";
+const phone = ref(false);
+let phoneQuery: MediaQueryList | undefined;
+const onPhoneChange = (event: MediaQueryListEvent) => { phone.value = event.matches; };
+const showBoardMenu = computed(() => moreBoards.value.length > 0 || phone.value);
+const boardMenuName = computed(() => (moreBoards.value.length ? "More boards" : "Board menu"));
+const boardMenuLabel = computed(() => (moreBoards.value.length ? `More boards (${moreBoards.value.length})` : "Board menu"));
+function pickView(next: string) { closeMore(); setView(next); }
+function pickManageBoards() { closeMore(); openManager(); }
+const moreItems = () => [...(moreMenu.value?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])];
 function openMore() { moreOpen.value = true; void nextTick(() => moreItems()[0]?.focus()); }
 function closeMore(returnFocus = false) { moreOpen.value = false; if (returnFocus) moreButton.value?.focus(); }
 function toggleMore() { if (moreOpen.value) closeMore(); else openMore(); }
 function pickMoreBoard(id: string) { closeMore(); activateBoardTab(id); }
 function moveMoreFocus(event: KeyboardEvent) { const items = moreItems(); const index = items.indexOf(document.activeElement as HTMLElement); const last = items.length - 1; const next = event.key === "ArrowDown" ? (index + 1) % items.length : event.key === "ArrowUp" ? (index <= 0 ? last : index - 1) : event.key === "Home" ? 0 : event.key === "End" ? last : -1; if (next < 0) return; event.preventDefault(); items[next]?.focus(); }
 function closeMoreOnOutside(event: PointerEvent) { const target = event.target as Node | null; if (moreOpen.value && target && !moreMenu.value?.contains(target) && !moreButton.value?.contains(target)) closeMore(); }
-watch(moreBoards, (hidden) => { if (!hidden.length) closeMore(); });
+watch(showBoardMenu, (shown) => { if (!shown) closeMore(); });
+watch(phone, () => { void nextTick(measureTabs); });
 function setView(next: string) { if (view.value === next) return; void router.push({ query: { ...route.query, view: next, ...(next === "gantt" ? { from: ganttFrom.value, to: ganttTo.value } : {}) } }); }
 function updateGanttRange() { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; void router.push({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
 function shiftGantt(amount: number) { ganttFrom.value = addCalendarDays(ganttFrom.value, amount); ganttTo.value = addCalendarDays(ganttTo.value, amount); updateGanttRange(); }
@@ -207,13 +219,13 @@ function requestArchiveBoard() { if (settingsBoardId.value) archiveConfirmOpen.v
 function requestArchiveCard(card: BoardCard) { archiveCardConfirm.value = card; }
 async function confirmArchiveCard() { const card = archiveCardConfirm.value; archiveCardConfirm.value = null; if (!card) return; try { if (editing.value?.id === card.id) { await queueSave(); clearTimeout(saveTimer); destroyCardEditor(); editing.value = null; } await store.archiveCard(card); } catch { error.value = "Could not archive card."; } }
 async function archiveBoard() { const id = settingsBoardId.value; if (!id) return; const wasOpen = id === store.selectedId; archiveConfirmOpen.value = false; settingsOpen.value = false; dismissError(); try { await store.archiveBoard(id); if (wasOpen) await router.replace({ query: {} }); } catch { error.value = "Could not archive board."; } }
-onMounted(async () => { document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureKanbanHeight); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); window.addEventListener("beforeunload", warnBeforeUnload); // The URL's board is selected before the list loads, so loading never falls back to the first tab first.
+onMounted(async () => { phoneQuery = typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : undefined; phone.value = Boolean(phoneQuery?.matches); phoneQuery?.addEventListener("change", onPhoneChange); document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureKanbanHeight); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); window.addEventListener("beforeunload", warnBeforeUnload); // The URL's board is selected before the list loads, so loading never falls back to the first tab first.
   const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested) store.selectedId = requested; await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => [route.query.from, route.query.to], ([from, to]) => { if (view.value !== "gantt" || typeof from !== "string" || typeof to !== "string" || from === ganttFrom.value && to === ganttTo.value) return; ganttFrom.value = from; ganttTo.value = to; void store.loadGantt(from, to); });
-onBeforeUnmount(() => { document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
+onBeforeUnmount(() => { phoneQuery?.removeEventListener("change", onPhoneChange); document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
 </script>
 
 <template>
@@ -259,18 +271,18 @@ onBeforeUnmount(() => { document.removeEventListener("pointerdown", closeMoreOnO
         <div class="board-tab-list">
           <button v-for="board in shownBoards" :key="board.id" class="board-tab" type="button" @click="activateBoardTab(board.id)"><span v-if="board.pathId" class="board-tab-dot" :style="{ backgroundColor: pathColor(board.pathId) }" aria-hidden="true"></span>{{ board.name }}</button>
         </div>
-        <div v-if="moreBoards.length" class="board-tab-more-anchor">
-          <button ref="moreButton" class="board-tab-more" type="button" :aria-label="`More boards (${moreBoards.length})`" aria-haspopup="menu" :aria-expanded="moreOpen" @click="toggleMore" @keydown.down.prevent="openMore">{{ moreBoards.length }} more<v-icon :icon="mdiChevronDown" size="18" aria-hidden="true" /></button>
-          <ul v-if="moreOpen && moreBoards.length" ref="moreMenu" class="board-more-menu" role="menu" aria-label="More boards" @keydown="moveMoreFocus" @keydown.esc.prevent="closeMore(true)" @keydown.tab="closeMore()">
+        <div v-if="showBoardMenu" class="board-tab-more-anchor">
+          <button ref="moreButton" class="board-tab-more" type="button" :aria-label="boardMenuLabel" aria-haspopup="menu" :aria-expanded="moreOpen" @click="toggleMore" @keydown.down.prevent="openMore">{{ moreBoards.length ? `${moreBoards.length} more` : "More" }}<v-icon :icon="mdiChevronDown" size="18" aria-hidden="true" /></button>
+          <ul v-if="moreOpen && showBoardMenu" ref="moreMenu" class="board-more-menu" role="menu" :aria-label="boardMenuName" @keydown="moveMoreFocus" @keydown.esc.prevent="closeMore(true)" @keydown.tab="closeMore()">
             <li v-for="board in moreBoards" :key="board.id" role="none"><button class="board-more-item" type="button" role="menuitem" tabindex="-1" @click="pickMoreBoard(board.id)"><span v-if="board.pathId" class="board-tab-dot" :style="{ backgroundColor: pathColor(board.pathId) }" aria-hidden="true"></span>{{ board.name }}</button></li>
-          </ul>
+          <template v-if="phone"><li v-if="moreBoards.length" role="separator" class="board-more-separator"></li><li v-for="option in [{ value: 'kanban', label: 'Kanban' }, { value: 'gantt', label: 'Gantt' }]" :key="option.value" role="none"><button class="board-more-item" type="button" role="menuitemradio" tabindex="-1" :aria-checked="view === option.value" @click="pickView(option.value)"><v-icon class="board-more-check" :icon="mdiCheck" size="16" aria-hidden="true" />{{ option.label }}</button></li><li role="separator" class="board-more-separator"></li><li role="none"><button class="board-more-item" type="button" role="menuitem" tabindex="-1" @click="pickManageBoards"><v-icon class="board-more-check" :icon="mdiCogOutline" size="16" aria-hidden="true" />Manage boards…</button></li></template></ul>
         </div>
         <div ref="tabMeasure" class="board-tab-measure-row" aria-hidden="true">
           <span v-for="board in otherBoards" :key="board.id" class="board-tab-measure" data-measure-tab><span v-if="board.pathId" class="board-tab-measure-dot"></span>{{ board.name }}</span>
           <span class="board-tab-more" data-measure-more>{{ otherBoards.length }} more<v-icon :icon="mdiChevronDown" size="18" /></span>
         </div>
       </div>
-      <div class="board-view-actions"><button class="secondary icon-button manage-boards" type="button" aria-label="Manage boards" title="Manage boards" aria-haspopup="dialog" @click="openManager"><v-icon :icon="mdiCogOutline" size="20" aria-hidden="true" /></button><div class="view-switch" role="group" aria-label="Board view"><button :class="{ selected: view === 'kanban' }" type="button" @click="setView('kanban')">Kanban</button><button :class="{ selected: view === 'gantt' }" type="button" @click="setView('gantt')">Gantt</button></div></div>
+      <div v-if="!phone" class="board-view-actions"><button class="secondary icon-button manage-boards" type="button" aria-label="Manage boards" title="Manage boards" aria-haspopup="dialog" @click="openManager"><v-icon :icon="mdiCogOutline" size="20" aria-hidden="true" /></button><div class="view-switch" role="group" aria-label="Board view"><button :class="{ selected: view === 'kanban' }" type="button" @click="setView('kanban')">Kanban</button><button :class="{ selected: view === 'gantt' }" type="button" @click="setView('gantt')">Gantt</button></div></div>
     </div>
     <div v-if="loading" class="board-empty" aria-live="polite">Loading board…</div>
     <div v-else-if="!store.selectedId" class="board-empty"><h2>Create your first board</h2><p>Keep projects, priorities, and dates together in one focused workspace.</p><button type="button" @click="openNewBoard">New board…</button></div>

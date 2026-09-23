@@ -1173,7 +1173,8 @@ describe("board tab overflow", () => {
       assert.equal(shown[0], "Launch plan", "The open board comes first");
       await more.click();
       const menu = page.getByRole("menu", { name: "More boards" });
-      const hidden = (await menu.getByRole("menuitem").allInnerTexts()).map((text) => text.trim());
+      // On phones the menu also holds the views and Manage boards…
+      const hidden = (await menu.getByRole("menuitem").allInnerTexts()).map((text) => text.trim()).filter((text) => text !== "Manage boards…");
       assert.ok(hidden.length > 0);
       assert.deepEqual([...shown, ...hidden].sort(), [...names].sort(), "Every board is either a tab or in More, once");
       for (const tab of await page.locator(".board-tabs .board-tab").all()) {
