@@ -610,6 +610,7 @@ describe("BoardView", () => {
       (store.setVisibility as any) = vi.fn(() => Promise.resolve(null));
       (store.pinBoard as any) = vi.fn(() => Promise.resolve(null));
       (store.reorderBoards as any) = vi.fn(() => Promise.resolve());
+      (store.fetchStatuses as any) = vi.fn(() => Promise.resolve([]));
       return store;
     }
 

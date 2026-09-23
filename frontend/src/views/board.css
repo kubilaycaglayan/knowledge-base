@@ -92,3 +92,9 @@
 .kanban-width-toggle:hover { color:inherit; }
 .kanban-area.wide .kanban-width-toggle { right:-6px; }
 @media (max-width: 700px) { .kanban-width-toggle { display:none; } .kanban-area.wide { width:auto; margin-left:0; } }
+.board-tab-dot { display:inline-block; width:.5rem; height:.5rem; margin-right:.4rem; border-radius:50%; vertical-align:middle; }
+.board-tab-wrap[draggable="true"] { cursor:grab; } .board-tab-wrap.is-dragged { opacity:.5; }
+.settings-name-readonly { display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:0; padding:.45rem 0; overflow-wrap:anywhere; } .settings-path-link { font-size:.85rem; }
+.settings-switch { display:flex; align-items:center; gap:.6rem; min-height:44px; cursor:pointer; } .settings-switch input { width:1.1rem; height:1.1rem; margin:0; accent-color:#334155; cursor:pointer; }
+.board-settings-footer.end-only { justify-content:flex-end; }
+.archive-note { font-size:.8rem; color:var(--muted-text); }

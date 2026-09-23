@@ -66,7 +66,8 @@ public class BoardService {
     List<Path> ordered = paths.findAllByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 10_000));
     for (Path path : ordered) if (path.getStatus() == PathStatus.ACTIVE) pathRank.put(path.getId(), pathRank.size());
 
-    Comparator<Board> manual = Comparator.comparing(Board::getSortOrder, Comparator.nullsLast(Comparator.naturalOrder()));
+    // Boards never reordered by hand keep creation order, so a new board lands at the end.
+    Comparator<Board> manual = Comparator.comparing(Board::getSortOrder, Comparator.nullsLast(Comparator.<Long>naturalOrder())).thenComparing(Board::getCreatedAt);
     List<Board> custom = active.stream().filter(board -> !board.isPathBoard()).sorted(manual).toList();
     List<Board> pathBoards = active.stream()
         .filter(board -> board.isPathBoard() && pathRank.containsKey(board.getPathId()) && (includeHidden || !board.isHidden()))

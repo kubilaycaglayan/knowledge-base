@@ -54,7 +54,7 @@ cover it. Tick an item only once those tests pass.
 - [ ] **PB-16** `GET /boards` returns boards in this order:
   1. pinned custom boards, in manual order
   2. path boards, in Paths page order (pinned, then manual order, then most recent activity)
-  3. unpinned custom boards, in manual order, with never-ordered boards falling back to most recently updated first
+  3. unpinned custom boards, in manual order, with never-ordered boards in creation order so a new board lands last
 
   _Tests:_ `PathBoardIntegrationTest.boardListFollowsTabOrder`
 - [ ] **PB-17** `POST /boards/{id}/pin {"pinned":bool}` pins or unpins a custom board. On a path board it returns 409.

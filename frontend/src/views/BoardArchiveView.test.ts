@@ -95,6 +95,17 @@ describe("BoardArchiveView", () => {
     await wrapper.unmount();
   });
 
+  it("explains that a merged path board returns with its path instead of offering restore", async () => {
+    const store = useBoardsStore();
+    store.archivedBoards = [{ ...board("board-3", "Merged path"), pathId: "path-9" }];
+    const wrapper = mountArchive();
+    await flushPromises();
+
+    expect(wrapper.find('button[aria-label="Restore Merged path board"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain("Returns when its path is restored");
+    await wrapper.unmount();
+  });
+
   it("restores an archived status through an icon button", async () => {
     const store = useBoardsStore();
     store.statuses = [

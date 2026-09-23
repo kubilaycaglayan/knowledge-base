@@ -326,8 +326,10 @@ class PathBoardIntegrationTest {
     assertEquals(HttpStatus.OK, post("/api/v1/boards/" + pinned + "/pin", token, "{\"pinned\":true}").getStatusCode());
     assertEquals(HttpStatus.NO_CONTENT, put("/api/v1/boards/order", token, "{\"ids\":[\"" + z + "\",\"" + y + "\"]}").getStatusCode());
 
+    createBoard(token, "Newest custom");
+
     List<String> names = boards(token, "").stream().map(b -> b.get("name").asText()).toList();
-    assertEquals(List.of("Pinned custom", "Second path", "First path", "Z custom", "Y custom"), names);
+    assertEquals(List.of("Pinned custom", "Second path", "First path", "Z custom", "Y custom", "Newest custom"), names);
   }
 
   // PB-17

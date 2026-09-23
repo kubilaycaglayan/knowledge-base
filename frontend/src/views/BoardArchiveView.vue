@@ -36,7 +36,7 @@ onMounted(async () => {
     <section class="archived-list" aria-labelledby="archived-boards-heading">
       <h2 id="archived-boards-heading" class="muted">Archived boards</h2>
       <p v-if="!store.archivedBoards.length" class="column-empty">No archived boards.</p>
-      <div v-for="board in store.archivedBoards" :key="board.id" class="archive-row"><strong>{{ board.name }}</strong><button class="icon-button" type="button" :aria-label="`Restore ${board.name} board`" :title="`Restore ${board.name} board`" :disabled="Boolean(restoring) || store.boardMutations[board.id]" @click="restoreBoard(board.id)">↩</button></div>
+      <div v-for="board in store.archivedBoards" :key="board.id" class="archive-row"><strong>{{ board.name }}</strong><span v-if="board.pathId" class="archive-note">Returns when its path is restored</span><button v-else class="icon-button" type="button" :aria-label="`Restore ${board.name} board`" :title="`Restore ${board.name} board`" :disabled="Boolean(restoring) || store.boardMutations[board.id]" @click="restoreBoard(board.id)">↩</button></div>
     </section>
     <section class="archived-list" aria-labelledby="archived-statuses-heading">
       <h2 id="archived-statuses-heading" class="muted">Archived statuses<span v-if="boardName"> · {{ boardName }}</span></h2>
