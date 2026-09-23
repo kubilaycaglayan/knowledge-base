@@ -198,6 +198,32 @@ describe("boards store concurrency", () => {
     expect(store.cards[0].title).toBe("Retained");
   });
 
+  it("clears the archived board cards before loading the replacement board", async () => {
+    const archived = { id: "board-a", name: "Archived", archived: true, createdAt: "", updatedAt: "" };
+    const replacement = { id: "board-b", name: "Replacement", archived: false, createdAt: "", updatedAt: "" };
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/boards/board-a/archive") return Promise.resolve(archived);
+      if (path === "/boards/board-b/statuses") return Promise.resolve([]);
+      if (path.includes("/cards/page")) return Promise.resolve({ items: [], nextCursor: null });
+      return Promise.resolve(replacement);
+    });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.boards = [
+      { id: "board-a", name: "Archived", archived: false, createdAt: "", updatedAt: "" },
+      replacement,
+    ];
+    store.selectedId = "board-a";
+    store.statuses = [{ id: "status", name: "Backlog", position: 0, archived: false }];
+    store.cards = [{ id: "old-card", statusId: "status", title: "Old", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+
+    await store.archiveBoard("board-a");
+
+    expect(store.selectedId).toBe("board-b");
+    expect(store.cards).toEqual([]);
+    expect(store.statuses).toEqual([]);
+  });
+
   it("reconciles edited dates with the active Gantt window", async () => {
     const saved = { id: "card", statusId: "backlog", title: "Dated", body: "{}", priority: "MEDIUM" as const, startDate: "2026-10-01", dueDate: "2026-10-02", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
     apiMock.mockResolvedValue(saved);

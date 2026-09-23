@@ -476,5 +476,10 @@ describe("board browser acceptance", () => {
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
     assert.equal(await page.getByRole("alertdialog").count(), 0);
     assert.equal(getBoardArchiveRequests(), 0);
+    await page.getByRole("button", { name: "Archive board" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
+    await page.getByRole("heading", { name: "Create your first board" }).waitFor();
+    assert.equal(await page.locator(".board-card").count(), 0);
+    assert.equal(getBoardArchiveRequests(), 1);
   });
 });
