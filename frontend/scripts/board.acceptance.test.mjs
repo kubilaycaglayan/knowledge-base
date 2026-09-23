@@ -130,6 +130,18 @@ describe("board browser acceptance", () => {
     assert.equal(new URL(page.url()).searchParams.get("view"), "gantt");
   });
 
+  it("writes the default timeline window into URL state when switching to Gantt", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    const url = new URL(page.url());
+    assert.equal(url.searchParams.get("view"), "gantt");
+    assert.match(url.searchParams.get("from") || "", /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(url.searchParams.get("to") || "", /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(await page.getByRole("textbox", { name: "Timeline start date" }).inputValue(), url.searchParams.get("from"));
+    assert.equal(await page.getByRole("textbox", { name: "Timeline end date" }).inputValue(), url.searchParams.get("to"));
+  });
+
   it("removes an edited out-of-window card from Gantt but keeps it in Kanban", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Gantt" }).click();

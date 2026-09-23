@@ -38,7 +38,7 @@ const barStyle = (card: BoardCard) => { const position = barPosition(card.startD
 function selectBoard(id: string) { store.selectedId = id; void router.replace({ query: { ...route.query, board: id } }); void store.loadBoard(); }
 function beginBoardRename() { const board = store.selected; if (!board) return; boardDraft.value = board.name; editingBoard.value = true; }
 async function saveBoardRename() { if (!store.selectedId || !boardDraft.value.trim() || store.updatingBoard) return; try { await store.updateBoard(store.selectedId, boardDraft.value); editingBoard.value = false; } catch { error.value = "Could not rename board."; } }
-function setView(next: string) { if (view.value === next) return; void router.push({ query: { ...route.query, view: next } }); }
+function setView(next: string) { if (view.value === next) return; void router.push({ query: { ...route.query, view: next, ...(next === "gantt" ? { from: ganttFrom.value, to: ganttTo.value } : {}) } }); }
 function updateGanttRange() { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; void router.replace({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
 function shiftGantt(amount: number) { ganttFrom.value = addCalendarDays(ganttFrom.value, amount); ganttTo.value = addCalendarDays(ganttTo.value, amount); updateGanttRange(); }
 async function createBoard() { if (!newBoard.value.trim()) return; try { await store.createBoard(newBoard.value); newBoard.value = ""; await router.replace({ query: { ...route.query, board: store.selectedId } }); } catch { error.value = "Could not create board."; } }
