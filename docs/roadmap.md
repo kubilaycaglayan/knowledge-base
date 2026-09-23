@@ -90,5 +90,6 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   ownership/error tests, mobile/desktop Axe coverage, and disposable visual
   evidence.
 - [x] Refine the web board: dialog-based board creation, flat single-row
-  board tabs, and per-column card creation through an optional card-create
-  `statusId`.
+  board tabs, per-column card creation through an optional card-create
+  `statusId`, and a per-board settings dialog for the board name, status
+  create/rename/reorder/archive, and board archival.

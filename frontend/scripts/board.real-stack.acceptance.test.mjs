@@ -354,15 +354,16 @@ describe("board real-stack acceptance", () => {
     await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(original)}$`) }).waitFor();
   });
 
-  it("renames a status column by clicking its name, with no rename button", async () => {
+  it("renames and adds statuses from the board settings dialog", async () => {
     const column = page.locator(".kanban-column").first();
     await column.waitFor();
-    const original = (await column.locator(".status-name").textContent()).trim();
-    assert.equal(await column.getByRole("button", { name: /rename/i }).count(), 0, "No separate rename button should exist");
+    const original = (await column.locator("h2").textContent()).trim();
+    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [`Add card to ${original}`], "Columns only offer adding a card");
 
-    await clickCentered(column.locator(".status-name"));
-    const field = column.locator(".status-edit input");
-    await field.waitFor();
+    await clickCentered(page.locator(".board-tab-wrap.selected .board-tab-settings"));
+    const settings = page.getByRole("dialog", { name: "Board settings" });
+    await settings.waitFor();
+    const field = settings.getByRole("textbox", { name: `Status name ${original}` });
     assert.equal(await field.inputValue(), original, "The field starts from the current name");
 
     const renamed = `${original} Ready`;
@@ -371,10 +372,18 @@ describe("board real-stack acceptance", () => {
       page.waitForResponse((response) => response.url().includes("/statuses/") && response.request().method() === "PUT" && response.status() === 200),
       field.press("Enter"),
     ]);
-    await page.locator(".kanban-column").first().getByRole("heading", { name: renamed }).waitFor();
+    await settings.getByRole("textbox", { name: "New status name" }).fill("Blocked");
+    await Promise.all([
+      page.waitForResponse((response) => response.url().endsWith("/statuses") && response.request().method() === "POST" && response.status() === 201),
+      settings.getByRole("textbox", { name: "New status name" }).press("Enter"),
+    ]);
+    await settings.getByRole("button", { name: "Done", exact: true }).click();
+    await column.getByRole("heading", { name: renamed }).waitFor();
+    await page.locator(".kanban-column").last().getByRole("heading", { name: "Blocked" }).waitFor();
 
     await page.reload();
     await page.locator(".kanban-column").first().getByRole("heading", { name: renamed }).waitFor();
+    await page.locator(".kanban-column").last().getByRole("heading", { name: "Blocked" }).waitFor();
   });
 
   it("lazy loads past the first page with a sentinel instead of a Load more button", async () => {
@@ -496,7 +505,8 @@ describe("board real-stack acceptance", () => {
     }
     const footer = page.locator("footer.board-footer");
     assert.equal(await footer.count(), 1, "Archive controls sit in a footer at the end of the page");
-    assert.equal(await footer.getByRole("button", { name: "Archive board" }).count(), 1);
+    assert.equal(await footer.getByRole("link", { name: "Archived items" }).count(), 1);
+    assert.equal(await footer.getByRole("button", { name: "Archive board" }).count(), 0, "Board archival lives in board settings");
   });
 
   it("keeps the archive footer clear of the fixed bottom tracker", async () => {

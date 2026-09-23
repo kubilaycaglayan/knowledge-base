@@ -117,6 +117,15 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
 }
 
 const selectedTab = (page) => page.locator(".board-tab.selected");
+// Status management and board archival live in the board settings dialog,
+// opened from the gear beside the selected board's tab.
+async function openBoardSettings(page) {
+  await page.locator(".board-tab-wrap.selected .board-tab-settings").click();
+  const dialog = page.getByRole("dialog", { name: "Board settings" });
+  await dialog.waitFor();
+  return dialog;
+}
+
 // Archived items live on their own page, reached from the board footer.
 async function openArchive(page) {
   const footer = page.locator("footer.board-footer");
@@ -470,21 +479,23 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
-  it("renames a status by clicking its name and moves a card with the keyboard", async (t) => {
+  it("renames a status in board settings and moves a card with the keyboard", async (t) => {
     const { page } = await fixture(t);
     const column = page.locator(".kanban-column").first();
-    assert.equal(await column.getByRole("button", { name: /rename/i }).count(), 0, "No rename button should be offered");
-    await column.locator(".status-name").click();
-    await page.getByRole("textbox", { name: "Rename Backlog" }).fill("Ready");
-    await page.getByRole("textbox", { name: "Rename Backlog" }).press("Enter");
-    await page.getByRole("heading", { name: "Ready" }).waitFor();
+    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Add card to Backlog"], "Columns only offer adding a card");
+    const settings = await openBoardSettings(page);
+    await settings.getByRole("textbox", { name: "Status name Backlog" }).fill("Ready");
+    await settings.getByRole("textbox", { name: "Status name Backlog" }).press("Enter");
+    await column.getByRole("heading", { name: "Ready" }).waitFor();
+    await page.keyboard.press("Escape");
+    await settings.waitFor({ state: "detached" });
     await page.getByRole("button", { name: "Move card to next status" }).first().click();
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
   it("confirms status archival before sending the destructive request", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Archive Backlog status" }).click();
+    await (await openBoardSettings(page)).getByRole("button", { name: "Archive Backlog status" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Archive status?" });
     await dialog.waitFor();
     await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -493,8 +504,11 @@ describe("board browser acceptance", () => {
 
   it("reassigns cards when a status is archived", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Archive Backlog status" }).click();
+    const settings = await openBoardSettings(page);
+    await settings.getByRole("button", { name: "Archive Backlog status" }).click();
     await page.getByRole("alertdialog", { name: "Archive status?" }).getByRole("button", { name: "Archive" }).click();
+    await settings.getByRole("textbox", { name: "Status name Backlog" }).waitFor({ state: "detached" });
+    await settings.getByRole("button", { name: "Done", exact: true }).click();
     await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Pending" }).waitFor();
     await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Ship timeline" }).waitFor();
     // The archived status is listed on the archive page, not inline on the board.
@@ -503,9 +517,9 @@ describe("board browser acceptance", () => {
     await page.getByRole("button", { name: "Restore Backlog status" }).waitFor();
   });
 
-  it("reorders statuses with accessible icon actions", async (t) => {
+  it("reorders statuses with accessible icon actions in board settings", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Move Pending earlier" }).click();
+    await (await openBoardSettings(page)).getByRole("button", { name: "Move Pending up" }).click();
     await page.locator(".kanban-column").first().locator("h2").filter({ hasText: "Pending" }).waitFor();
     assert.equal(await page.locator(".kanban-column").nth(0).locator("h2").innerText(), "Pending");
     assert.equal(await page.locator(".kanban-column").nth(1).locator("h2").innerText(), "Backlog");
@@ -622,14 +636,17 @@ describe("board browser acceptance", () => {
 
   it("confirms board archival before sending the destructive request", async (t) => {
     const { page, getBoardArchiveRequests } = await fixture(t);
-    await page.getByRole("button", { name: "Archive board" }).click();
+    assert.equal(await page.locator("footer.board-footer").getByRole("button").count(), 0, "Board archival is not a page-level control");
+    const settings = await openBoardSettings(page);
+    await settings.getByRole("button", { name: "Archive board" }).click();
     await page.getByRole("alertdialog", { name: "Archive board?" }).waitFor();
     assert.equal(getBoardArchiveRequests(), 0);
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
     assert.equal(await page.getByRole("alertdialog").count(), 0);
     assert.equal(getBoardArchiveRequests(), 0);
-    await page.getByRole("button", { name: "Archive board" }).click();
+    await settings.getByRole("button", { name: "Archive board" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
+    await settings.waitFor({ state: "detached" });
     await page.getByRole("heading", { name: "Create your first board" }).waitFor();
     assert.equal(await page.locator(".board-card").count(), 0);
     assert.equal(getBoardArchiveRequests(), 1);

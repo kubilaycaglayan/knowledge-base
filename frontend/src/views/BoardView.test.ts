@@ -1,11 +1,12 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import BoardView from "./BoardView.vue";
+import vuetify from "../plugins/vuetify";
 import { useBoardsStore } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
 import { useRouter, useRoute } from "vue-router";
 import { createPinia, setActivePinia } from "pinia";
-import { vi } from "vitest";
+import { describe, vi } from "vitest";
 
 vi.mock("vue-router", () => ({
   useRouter: vi.fn(),
@@ -73,6 +74,7 @@ describe("BoardView", () => {
   function mountBoard() {
     return mount(BoardView, {
       global: {
+        plugins: [vuetify],
         mocks: { $route: mockRoute, $router: mockRouter },
         stubs: { RouterLink: routerLinkStub },
       },
@@ -346,7 +348,7 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("puts the archive controls in a footer at the end of the page", async () => {
+  it("keeps the archived-items link in a footer at the end of the page", async () => {
     seedBoard(["Backlog"]);
     const wrapper = mountBoard();
     await flushPromises();
@@ -357,13 +359,13 @@ describe("BoardView", () => {
     const children = [...wrapper.find(".board-page").element.children];
     expect(children[children.length - 1]).toBe(footer.element);
 
-    const archiveLink = footer.find('a[aria-label="Archived items"]');
-    expect(archiveLink.exists()).toBe(true);
+    const archiveLink = footer.find("a");
+    expect(archiveLink.text()).toBe("Archived items");
     expect(archiveLink.attributes("href")).toBe("/board/archive");
-    expect(footer.find('button[aria-label="Archive board"]').exists()).toBe(true);
+    // Archiving the board itself lives in the board settings dialog.
+    expect(footer.find("button").exists()).toBe(false);
     await wrapper.unmount();
   });
-
   it("does not render archived listings inline on the board page", async () => {
     seedBoard(["Backlog"]);
     const wrapper = mountBoard();
@@ -399,14 +401,13 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
 
-    for (const [label, icon] of [["Add board", "＋"], ["Add card to Backlog", "＋"], ["Add status", "＋"]] as const) {
+    for (const label of ["Add board", "Add card to Backlog"]) {
       const button = wrapper.find(`button[aria-label="${label}"]`);
       expect(button.exists(), `${label} button is missing`).toBe(true);
-      expect(button.text()).toBe(icon);
+      expect(button.text()).toBe("＋");
     }
     await wrapper.unmount();
   });
-
   it("shows confirmation dialog for destructive actions", async () => {
     mockRoute.query = { board: "test-id" };
     const store = useBoardsStore();
@@ -430,58 +431,83 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("supports column name editing (editable status names)", async () => {
-    mockRoute.query = { board: "test-id" };
-    const store = useBoardsStore();
-    store.selectedId = "test-id";
-    store.boards = [{ id: "test-id", name: "Test", archived: false, createdAt: "", updatedAt: "" }];
-    store.statuses = [
-      {
-        id: "status-1",
-        name: "Backlog",
-        archived: false,
-        position: 0,
-      },
-    ];
-    store.cards = [];
-
-    const wrapper = mountBoard();
-
-    await flushPromises();
-    const nameButton = wrapper.find(".status-name");
-    expect(nameButton.exists()).toBe(true);
-    expect(nameButton.text()).toBe("Backlog");
-
-    await nameButton.trigger("click");
-    const field = wrapper.find<HTMLInputElement>(".status-edit input");
-    expect(field.exists()).toBe(true);
-    expect(field.element.value).toBe("Backlog");
-    expect(field.attributes("aria-label")).toBe("Rename Backlog");
-
-    await field.setValue("Ready");
-    await field.trigger("keydown.enter");
-    await flushPromises();
-
-    expect(store.updateStatus).toHaveBeenCalledWith(store.statuses[0], "Ready");
-    await wrapper.unmount();
-  });
-
-  it("escape abandons an inline status rename without saving", async () => {
-    const store = seedBoard(["Backlog"]);
+  it("keeps Kanban column headers free of status management controls", async () => {
+    seedBoard(["Backlog", "Doing"]);
     const wrapper = mountBoard();
     await flushPromises();
 
-    await wrapper.find(".status-name").trigger("click");
-    const field = wrapper.find(".status-edit input");
-    await field.setValue("Discarded");
-    await field.trigger("keydown.esc");
-    await flushPromises();
-
-    expect(store.updateStatus).not.toHaveBeenCalled();
-    expect(wrapper.find(".status-name").text()).toBe("Backlog");
+    const header = wrapper.findAll(".kanban-column")[0].find("header");
+    expect(header.find("h2").text()).toBe("Backlog");
+    expect(header.findAll("button").map((button) => button.attributes("aria-label"))).toEqual(["Add card to Backlog"]);
+    expect(wrapper.find('input[aria-label="New status name"]').exists()).toBe(false);
     await wrapper.unmount();
   });
+  describe("board settings dialog", () => {
+    async function openSettings() {
+      const store = seedBoard(["Backlog", "Doing", "Done"]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find('button[aria-label="Board settings for Test Board"]').trigger("click");
+      await flushPromises();
+      return { store, wrapper, dialog: () => wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]') };
+    }
 
+    it("opens from the gear beside the board tab and closes with Done", async () => {
+      const { wrapper, dialog } = await openSettings();
+      expect(dialog().exists()).toBe(true);
+      expect(dialog().find<HTMLInputElement>("#board-settings-name").element.value).toBe("Test Board");
+      expect(dialog().findAll(".settings-statuses li")).toHaveLength(3);
+      await dialog().findAll("footer button").at(-1)!.trigger("click");
+      expect(dialog().exists()).toBe(false);
+      await wrapper.unmount();
+    });
+
+    it("renames the board on blur and ignores an unchanged or blank name", async () => {
+      const { store, wrapper, dialog } = await openSettings();
+      const name = dialog().find("#board-settings-name");
+      await name.trigger("blur");
+      await name.setValue("   ");
+      await name.trigger("blur");
+      expect(store.updateBoard).not.toHaveBeenCalled();
+      await name.setValue("Roadmap");
+      await name.trigger("blur");
+      await flushPromises();
+      expect(store.updateBoard).toHaveBeenCalledWith("test-id", "Roadmap");
+      await wrapper.unmount();
+    });
+
+    it("renames, reorders, and adds statuses", async () => {
+      const { store, wrapper, dialog } = await openSettings();
+      const doing = dialog().find('input[aria-label="Status name Doing"]');
+      await doing.setValue("In review");
+      await doing.trigger("blur");
+      await flushPromises();
+      expect(store.updateStatus).toHaveBeenCalledWith(expect.objectContaining({ id: "status-2" }), "In review");
+
+      expect(dialog().find('button[aria-label="Move Backlog up"]').attributes("disabled")).toBeDefined();
+      await dialog().find('button[aria-label="Move Doing up"]').trigger("click");
+      await flushPromises();
+      expect(store.reorderStatuses).toHaveBeenCalledWith(["status-2", "status-1", "status-3"]);
+
+      await dialog().find('input[aria-label="New status name"]').setValue("Blocked");
+      await dialog().find(".settings-add-status").trigger("submit");
+      await flushPromises();
+      expect(store.createStatus).toHaveBeenCalledWith("Blocked");
+      await wrapper.unmount();
+    });
+
+    it("confirms before archiving a status or the board", async () => {
+      const { wrapper, dialog } = await openSettings();
+      await dialog().find('button[aria-label="Archive Doing status"]').trigger("click");
+      expect(wrapper.find('[role="alertdialog"][aria-labelledby="archive-status-title"]').exists()).toBe(true);
+      await wrapper.find('[aria-labelledby="archive-status-title"]').findAll("button")[0].trigger("click");
+
+      const archiveBoard = dialog().findAll("footer button").find((button) => button.text() === "Archive board");
+      await archiveBoard!.trigger("click");
+      expect(wrapper.find('[role="alertdialog"][aria-labelledby="archive-board-title"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+  });
   it("keeps the column heading as the accessible name for its section", async () => {
     seedBoard(["Backlog"]);
     const wrapper = mountBoard();
