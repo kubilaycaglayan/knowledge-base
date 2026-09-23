@@ -343,6 +343,22 @@ describe("boards store concurrency", () => {
     expect(store.ganttCards[0].title).toBe("Newest");
   });
 
+  it("refreshes the card after a conflict so a deliberate retry uses the latest timestamp", async () => {
+    const card = { id: "card", statusId: "backlog", title: "Draft", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "old" };
+    const latest = { ...card, title: "Changed in another tab", updatedAt: "new" };
+    let calls = 0;
+    apiMock.mockImplementation(() => calls++ === 0 ? Promise.reject({ status: 409 }) : Promise.resolve(latest));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.cards = [card];
+
+    await expect(store.updateCard(card, { title: "Draft edit", body: "{}", priority: "MEDIUM" })).rejects.toMatchObject({ status: 409 });
+
+    expect(card.title).toBe("Changed in another tab");
+    expect(card.updatedAt).toBe("new");
+  });
+
   it("keeps the current card intact when an edit times out", async () => {
     apiMock.mockRejectedValue(new DOMException("The operation was aborted.", "AbortError"));
     const { useBoardsStore } = await import("./boards");

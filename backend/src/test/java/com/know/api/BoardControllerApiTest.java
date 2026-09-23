@@ -176,6 +176,21 @@ class BoardControllerApiTest {
     verifyNoInteractions(cards);
   }
 
+  @Test void staleCardUpdateReturnsConflictWithoutOverwritingTheNewerCard() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    BoardCard card = new BoardCard(boardId, status.getId(), 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(cards.findByIdAndBoardId(any(), eq(boardId))).thenReturn(Optional.of(card));
+    when(cards.save(any(BoardCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    mvc.perform(put("/api/v1/boards/" + boardId + "/cards/" + card.getId()).with(authentication(auth()))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"stale\",\"expectedUpdatedAt\":\"2000-01-01T00:00:00Z\"}"))
+        .andExpect(status().isConflict());
+    verify(cards, never()).save(any(BoardCard.class));
+  }
+
   @Test void cardRejectsMoreThanOnePath() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId(), statusId = UUID.randomUUID(), firstPath = UUID.randomUUID(), secondPath = UUID.randomUUID();
