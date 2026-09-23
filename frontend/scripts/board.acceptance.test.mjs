@@ -117,6 +117,39 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
 }
 
 const selectedTab = (page) => page.locator(".board-tab.selected");
+// The card editor saves itself; closing it flushes the pending save.
+async function closeCard(page) {
+  await page.getByRole("button", { name: "Close card" }).click();
+  await page.locator(".card-editor").waitFor({ state: "detached" });
+}
+
+// Picks an inclusive range in the editor's date-range picker, paging months as needed.
+async function pickCardDates(page, start, end) {
+  await page.getByRole("textbox", { name: "Card dates" }).click();
+  for (const date of [start, end]) {
+    const cell = page.locator(`.dp__menu [data-test-id="dp-${date}"]`).first();
+    for (let step = 0; step < 24 && !(await cell.count()); step += 1) {
+      const shown = (await page.locator(".dp__menu .dp__calendar_item").nth(15).getAttribute("data-test-id")).slice(3, 10);
+      await page.locator(".dp__menu").getByRole("button", { name: date.slice(0, 7) > shown ? "Next month" : "Previous month" }).click();
+    }
+    await cell.click();
+  }
+  await page.locator(".dp__menu").waitFor({ state: "detached" });
+}
+
+// Status and archival are changed from inside the card editor.
+async function setCardStatus(page, title, status) {
+  await page.locator(".board-card", { hasText: title }).click();
+  await page.getByRole("combobox", { name: "Status" }).selectOption({ label: status });
+  await closeCard(page);
+}
+async function archiveCardFromEditor(page, title) {
+  await page.locator(".board-card", { hasText: title }).click();
+  await page.getByRole("button", { name: "Archive card" }).click();
+  await page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }).click();
+  await page.locator(".card-editor").waitFor({ state: "detached" });
+}
+
 // Status management and board archival live in the board settings dialog,
 // opened from the gear beside the selected board's tab.
 async function openBoardSettings(page) {
@@ -190,9 +223,8 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Gantt" }).click();
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).click();
-    await page.locator("input[name='startDate']").fill(dateOnly(40));
-    await page.locator("input[name='dueDate']").fill(dateOnly(42));
-    await page.getByRole("button", { name: "Save card" }).click();
+    await pickCardDates(page, dateOnly(40), dateOnly(42));
+    await closeCard(page);
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor({ state: "detached" });
     assert.equal(await page.locator(".timeline-bar", { hasText: "Ship timeline" }).count(), 0);
@@ -204,13 +236,12 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Gantt" }).click();
     await page.getByRole("button", { name: "Kanban" }).click();
-    await page.getByRole("button", { name: "Move card to next status" }).click();
+    await setCardStatus(page, "Ship timeline", "Pending");
     await page.getByRole("button", { name: "Gantt" }).click();
     await page.locator(".timeline-row small").filter({ hasText: "Pending" }).waitFor();
 
     await page.getByRole("button", { name: "Kanban" }).click();
-    await page.getByRole("button", { name: "Archive Ship timeline" }).click();
-    await page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }).click();
+    await archiveCardFromEditor(page, "Ship timeline");
     await page.getByRole("button", { name: "Gantt" }).click();
     await page.locator(".board-empty").filter({ hasText: "No dated active cards" }).waitFor();
 
@@ -224,9 +255,8 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Add card to Backlog" }).click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timeline from Kanban");
-    await page.locator("input[name='startDate']").fill(dateOnly(1));
-    await page.locator("input[name='dueDate']").fill(dateOnly(3));
-    await page.getByRole("button", { name: "Save card" }).click();
+    await pickCardDates(page, dateOnly(1), dateOnly(3));
+    await closeCard(page);
     await page.getByRole("button", { name: "Gantt" }).click();
     await page.locator(".timeline-bar", { hasText: "Timeline from Kanban" }).waitFor();
   });
@@ -235,14 +265,12 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Never disappears");
-    await page.locator("input[name='startDate']").fill(dateOnly());
-    await page.locator("input[name='dueDate']").fill(dateOnly(2));
-    await page.getByRole("button", { name: "Save card" }).click();
+    await pickCardDates(page, dateOnly(), dateOnly(2));
+    await closeCard(page);
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
-    await page.getByRole("button", { name: "Move card to next status" }).click();
+    await setCardStatus(page, "Never disappears", "Pending");
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Never disappears" }).waitFor();
-    await page.getByRole("button", { name: "Archive Never disappears" }).click();
-    await page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }).click();
+    await archiveCardFromEditor(page, "Never disappears");
     await restoreFromArchive(page, "Never disappears");
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
     await page.getByRole("button", { name: "Gantt" }).click();
@@ -293,18 +321,20 @@ describe("board browser acceptance", () => {
     assert.equal(existsSync(ganttPath), true);
   });
 
-  it("renders the first active path color as the card outliner accent", async (t) => {
+  it("frames the card and its editor with the path color", async (t) => {
     const { page } = await fixture(t);
-    assert.equal(await page.locator(".board-card").first().evaluate((element) => getComputedStyle(element).borderInlineStartColor), "rgb(18, 171, 120)");
+    const edges = (locator) => locator.evaluate((element) => { const style = getComputedStyle(element); return [style.borderTopColor, style.borderLeftColor, style.borderTopWidth, style.borderLeftWidth]; });
+    assert.deepEqual(await edges(page.locator(".board-card").first()), ["rgb(18, 171, 120)", "rgb(18, 171, 120)", "6px", "6px"]);
     await page.locator(".board-card").first().click();
     // A card carries one path, so the editor offers a single-select dropdown.
     const pathSelect = page.locator("select[name='cardPaths']");
     assert.equal(await pathSelect.getAttribute("multiple"), null);
     assert.deepEqual(await pathSelect.locator("option").allInnerTexts(), ["No path", "Product", "Research"]);
     assert.equal(await pathSelect.inputValue(), "path-1");
+    assert.deepEqual((await edges(page.locator(".card-editor"))).slice(0, 2), ["rgb(18, 171, 120)", "rgb(18, 171, 120)"]);
     await pathSelect.selectOption({ label: "Research" });
     assert.equal(await pathSelect.inputValue(), "path-2");
-    await page.getByRole("button", { name: "Save card" }).click();
+    await closeCard(page);
   });
 
   it("does not expose archived paths or deleted BOARD labels in the editor", async (t) => {
@@ -376,25 +406,39 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("heading", { name: "Ship timeline" }).count(), 1);
   });
 
-  it("creates a blank-title card and safely protects unsaved edits", async (t) => {
+  it("creates a blank-title card from a column and edits it in a flat editor", async (t) => {
     const { page } = await fixture(t);
     assert.equal(await page.getByRole("textbox", { name: "New card title" }).count(), 0, "No page-level add-card input");
     await page.getByRole("button", { name: "Add card to Pending" }).click();
     await page.locator(".kanban-column", { hasText: "Pending" }).getByRole("heading", { name: "Untitled card" }).waitFor();
-    assert.equal(await page.locator(".card-editor textarea[name=body]").count(), 0);
-    assert.equal(await page.locator(".card-editor .ProseMirror").count(), 1);
-    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Unsaved change");
-    await page.getByRole("button", { name: "Cancel" }).click();
-    assert.equal(await page.getByRole("heading", { name: "Discard unsaved changes?" }).count(), 1);
-    await page.getByRole("button", { name: "Keep editing" }).click();
-    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Unsaved change");
+    const editor = page.getByRole("dialog", { name: "Edit card" });
+    assert.equal(await editor.locator("h2").count(), 0, "No Edit card heading");
+    assert.equal(await editor.locator("label", { hasText: /^(Title|Body)$/ }).count(), 0, "Title and body are unlabelled");
+    assert.equal(await editor.getByRole("button", { name: /Save card|Cancel/ }).count(), 0, "Edits save themselves");
+    assert.equal(await editor.locator(".ProseMirror").count(), 1);
+    assert.equal(await editor.getByRole("combobox", { name: "Status" }).inputValue(), "status-1");
+  });
+
+  it("autosaves edits and closes with Cmd/Ctrl+Enter from the body", async (t) => {
+    const { page, getCardUpdateRequests } = await fixture(t);
+    await page.locator(".board-card").first().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Saved by itself");
+    await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
+    assert.equal(getCardUpdateRequests(), 1, "Rapid typing coalesces into one save");
+    await page.getByRole("heading", { name: "Saved by itself" }).waitFor();
+
+    await page.locator(".card-editor .ProseMirror").click();
+    await page.keyboard.type("Body line");
+    await page.keyboard.press("ControlOrMeta+Enter");
+    await page.locator(".card-editor").waitFor({ state: "detached" });
+    assert.equal(getCardUpdateRequests(), 2, "Closing flushes the pending body edit");
   });
 
   it("restores focus to the card after closing its editor", async (t) => {
     const { page } = await fixture(t);
     const card = page.locator(".board-card").first();
     await card.click();
-    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.keyboard.press("Escape");
     await page.waitForSelector(".card-editor", { state: "detached" });
     assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("board-card")), true);
   });
@@ -411,36 +455,13 @@ describe("board browser acceptance", () => {
     assert.equal(unloadResult.defaultPrevented || unloadResult.returnValue === "", true);
   });
 
-  it("rejects a reversed card date range inline and keeps the editor open", async (t) => {
-    const { page } = await fixture(t);
-    await page.locator(".board-card").first().click();
-    await page.locator("input[name='startDate']").fill("2026-04-10");
-    await page.locator("input[name='dueDate']").fill("2026-04-05");
-    await page.getByRole("button", { name: "Save card" }).click();
-    await page.getByRole("alert", { name: "Date range error" }).waitFor();
-    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).count(), 1);
-  });
-
-  it("coalesces rapid card save submissions", async (t) => {
-    const { page, getCardUpdateRequests } = await fixture(t);
-    await page.locator(".board-card").first().click();
-    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Saved once");
-    const save = page.getByRole("button", { name: "Save card" });
-    const firstSave = save.click({ force: true });
-    await save.dispatchEvent("click");
-    await firstSave;
-    await page.getByRole("heading", { name: "Saved once" }).waitFor();
-    assert.equal(getCardUpdateRequests(), 1);
-  });
-
   it("keeps a conflicted card editor open and allows a retry", async (t) => {
     const { page } = await fixture(t, 390, false, false, false, false, true);
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry this save");
-    await page.getByRole("button", { name: "Save card" }).click();
     await page.getByRole("alert").filter({ hasText: "changed elsewhere" }).waitFor();
-    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).count(), 1);
-    await page.getByRole("button", { name: "Save card" }).click();
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry this save", "The draft is kept");
+    await page.getByRole("button", { name: "Retry" }).click();
     await page.getByRole("heading", { name: "Retry this save" }).waitFor();
   });
 
@@ -448,10 +469,9 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t, 390, false, false, false, false, true, 503);
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry after outage");
-    await page.getByRole("button", { name: "Save card" }).click();
     await page.getByRole("alert").filter({ hasText: "Could not save card" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry after outage");
-    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("button", { name: "Retry" }).click();
     await page.getByRole("heading", { name: "Retry after outage" }).waitFor();
   });
 
@@ -459,14 +479,15 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t, 390, false, false, false, false, false, 409, false, 16000);
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timed out draft");
-    await page.getByRole("button", { name: "Save card" }).click();
-    await page.getByRole("alert").filter({ hasText: "The request timed out. Try again." }).waitFor({ timeout: 20000 });
+    await page.getByRole("alert").filter({ hasText: "The request timed out." }).waitFor({ timeout: 20000 });
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Timed out draft");
   });
 
   it("archives a card and restores it from the archive page", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Archive Ship timeline" }).click();
+    assert.equal(await page.locator(".board-card").getByRole("button").count(), 0, "Cards carry no inline controls");
+    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
+    await page.getByRole("button", { name: "Archive card" }).click();
     await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();
     await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor({ state: "detached" });
@@ -484,6 +505,7 @@ describe("board browser acceptance", () => {
   it("renames a status in board settings and moves a card with the keyboard", async (t) => {
     const { page } = await fixture(t);
     const column = page.locator(".kanban-column").first();
+    await column.getByRole("heading", { name: "Ship timeline" }).waitFor();
     assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Add card to Backlog"], "Columns only offer adding a card");
     const settings = await openBoardSettings(page);
     await settings.getByRole("textbox", { name: "Status name Backlog" }).fill("Ready");
@@ -491,7 +513,7 @@ describe("board browser acceptance", () => {
     await column.getByRole("heading", { name: "Ready" }).waitFor();
     await page.keyboard.press("Escape");
     await settings.waitFor({ state: "detached" });
-    await page.getByRole("button", { name: "Move card to next status" }).first().click();
+    await setCardStatus(page, "Ship timeline", "Pending");
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
@@ -564,15 +586,12 @@ describe("board browser acceptance", () => {
     assert.equal(await column.locator(".board-card h3").nth(1).innerText(), "Dense card 1");
   });
 
-  it("moves a card with touch tap and keyboard Enter alternatives", async (t) => {
+  it("moves a card with touch taps through the editor's status select", async (t) => {
     const { page } = await fixture(t, 390);
-    const moveNext = page.getByRole("button", { name: "Move card to next status" }).first();
-    await moveNext.tap();
+    await page.locator(".board-card", { hasText: "Ship timeline" }).tap();
+    await page.getByRole("combobox", { name: "Status" }).selectOption({ label: "Pending" });
+    await page.getByRole("button", { name: "Close card" }).tap();
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
-    const movePrevious = page.getByRole("button", { name: "Move card to previous status" }).first();
-    await movePrevious.focus();
-    await movePrevious.press("Enter");
-    await page.locator(".kanban-column").first().getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
   it("reorders cards in a column with the keyboard alternative", async (t) => {
@@ -587,6 +606,7 @@ describe("board browser acceptance", () => {
 
   it("restores an archived status from the archive page", async (t) => {
     const { page } = await fixture(t, 390, false, false, true);
+    await page.locator(".kanban-column").first().waitFor();
     assert.equal(await page.locator(".kanban-column").count(), 3, "The archived status is hidden from the board");
     await openArchive(page);
     await page.getByRole("button", { name: "Restore Done status" }).click();
@@ -608,6 +628,7 @@ describe("board browser acceptance", () => {
   it("keeps dense position order and ignores an invalid drop", async (t) => {
     const { page, getCardMoveRequests } = await fixture(t, 800, true);
     const cardsInColumn = page.locator(".kanban-column").first().locator(".board-card");
+    await page.getByRole("heading", { name: "Dense card 20", exact: true }).waitFor();
     assert.deepEqual((await cardsInColumn.locator("h3").allTextContents()).slice(0, 20), Array.from({ length: 20 }, (_, index) => `Dense card ${index + 1}`));
     await page.locator(".kanban-column").nth(1).evaluate((element) => {
       const dataTransfer = new DataTransfer();

@@ -76,13 +76,28 @@ async function submitCard(title) {
   await clickAddCard();
   const editor = page.locator(".card-editor");
   await editor.waitFor();
-  if (title) {
-    await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
-    await page.getByRole("button", { name: "Save card" }).click();
-  } else {
-    await page.getByRole("button", { name: "Cancel" }).click();
+  if (title) await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
+  await closeCard();
+}
+
+// The editor saves itself; closing it flushes the pending save first.
+async function closeCard(target = page) {
+  await target.getByRole("button", { name: "Close card" }).click();
+  await target.locator(".card-editor").waitFor({ state: "detached" });
+}
+
+// Picks an inclusive range in the editor's date-range picker, paging months as needed.
+async function pickCardDates(start, end) {
+  await page.getByRole("textbox", { name: "Card dates" }).click();
+  for (const date of [start, end]) {
+    const cell = page.locator(`.dp__menu [data-test-id="dp-${date}"]`).first();
+    for (let step = 0; step < 24 && !(await cell.count()); step += 1) {
+      const shown = (await page.locator(".dp__menu .dp__calendar_item").nth(15).getAttribute("data-test-id")).slice(3, 10);
+      await page.locator(".dp__menu").getByRole("button", { name: date.slice(0, 7) > shown ? "Next month" : "Previous month" }).click();
+    }
+    await cell.click();
   }
-  await editor.waitFor({ state: "detached" });
+  await page.locator(".dp__menu").waitFor({ state: "detached" });
 }
 
 // Reports what the board is actually showing when a card fails to appear,
@@ -211,12 +226,11 @@ describe("board real-stack acceptance", () => {
 
     await page.locator(".board-card", { hasText: "Concurrent card" }).click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("First tab wins");
-    await page.getByRole("button", { name: "Save card" }).click();
+    await closeCard();
     await page.getByRole("heading", { name: "First tab wins" }).waitFor();
 
     await otherPage.locator(".board-card", { hasText: "Concurrent card" }).click();
     await otherPage.getByRole("textbox", { name: "Title", exact: true }).fill("Stale second tab");
-    await otherPage.getByRole("button", { name: "Save card" }).click();
     await otherPage.getByRole("alert").filter({ hasText: "changed elsewhere" }).waitFor();
     assert.equal(await otherPage.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Stale second tab");
     } finally {
@@ -228,9 +242,8 @@ describe("board real-stack acceptance", () => {
     await addCard("");
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Real timeline card");
-    await page.locator("input[name='startDate']").fill(timelineStart);
-    await page.locator("input[name='dueDate']").fill(timelineEnd);
-    await page.getByRole("button", { name: "Save card" }).click();
+    await pickCardDates(timelineStart, timelineEnd);
+    await closeCard();
     const viewChange = page.waitForURL(/view=gantt/);
     await page.getByRole("button", { name: "Gantt" }).click();
     await viewChange;
@@ -423,7 +436,7 @@ describe("board real-stack acceptance", () => {
     await addCard("Card for path test");
 
     await page.locator(".board-card", { hasText: "Card for path test" }).click();
-    await page.getByRole("heading", { name: "Edit card" }).waitFor();
+    await page.getByRole("dialog", { name: "Edit card" }).waitFor();
 
     const pathSelect = page.locator("select[name='cardPaths']");
     assert.equal(await pathSelect.count(), 1, "Paths must be picked from one dropdown");
@@ -432,7 +445,7 @@ describe("board real-stack acceptance", () => {
     // "No path" is always offered so a card can be cleared of its path.
     assert.equal(await pathSelect.locator("option[value='']").count(), 1);
 
-    await page.getByRole("button", { name: "Cancel" }).click();
+    await closeCard();
   });
 
   it("cards do not disappear when switching views or boards", async () => {
@@ -478,7 +491,8 @@ describe("board real-stack acceptance", () => {
     const cardTitle = `Archive round trip ${Date.now()}`;
     await addCard(cardTitle);
 
-    await clickCentered(page.getByRole("button", { name: `Archive ${cardTitle}` }));
+    await clickCentered(page.locator(".board-card", { hasText: cardTitle }));
+    await page.getByRole("button", { name: "Archive card" }).click();
     await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();
     await clickCentered(page.getByRole("alertdialog").getByRole("button", { name: "Archive", exact: true }));
     try {

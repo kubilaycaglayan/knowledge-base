@@ -92,4 +92,6 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Refine the web board: dialog-based board creation, flat single-row
   board tabs, per-column card creation through an optional card-create
   `statusId`, and a per-board settings dialog for the board name, status
-  create/rename/reorder/archive, and board archival.
+  create/rename/reorder/archive, and board archival. Cards open in a flat,
+  auto-saving editor (path, priority, status, date range, labels, title, body;
+  ⌘/Ctrl+Enter closes) framed by the card's path colour.

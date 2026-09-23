@@ -6,7 +6,7 @@ import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
 import { useRouter, useRoute } from "vue-router";
 import { createPinia, setActivePinia } from "pinia";
-import { describe, vi } from "vitest";
+import { afterEach, describe, vi } from "vitest";
 
 vi.mock("vue-router", () => ({
   useRouter: vi.fn(),
@@ -422,6 +422,54 @@ describe("BoardView", () => {
     expect(wrapper.find('input[aria-label="New status name"]').exists()).toBe(false);
     await wrapper.unmount();
   });
+  describe("card editor", () => {
+    const baseCard = { id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" };
+    async function openCard() {
+      const store = seedBoard(["Backlog", "Doing"]);
+      store.cards = [{ ...baseCard }];
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      return { store, wrapper };
+    }
+    afterEach(() => vi.useRealTimers());
+
+    it("has no save or cancel buttons and debounces edits into one save", async () => {
+      vi.useFakeTimers();
+      const { store, wrapper } = await openCard();
+      (store.updateCard as any) = vi.fn(async (card: any, input: any) => ({ ...card, ...input, updatedAt: "t2" }));
+      expect(wrapper.find(".card-editor").findAll("button").map((button) => button.text())).not.toContain("Save card");
+      const title = wrapper.find('textarea[name="title"]');
+      await title.setValue("Dra");
+      await title.setValue("Drafted");
+      expect(store.updateCard).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(700);
+      expect(store.updateCard).toHaveBeenCalledTimes(1);
+      expect((store.updateCard as any).mock.calls[0][1]).toMatchObject({ title: "Drafted" });
+      expect(wrapper.find(".save-state").text()).toBe("Saved");
+
+      // The next save carries the updatedAt returned by the previous one.
+      await title.setValue("Drafted again");
+      await vi.advanceTimersByTimeAsync(700);
+      expect((store.updateCard as any).mock.calls[1][0].updatedAt).toBe("t2");
+      await wrapper.unmount();
+    });
+
+    it("flushes pending edits when closed and moves the card from the status select", async () => {
+      const { store, wrapper } = await openCard();
+      (store.updateCard as any) = vi.fn(async (card: any, input: any) => ({ ...card, ...input }));
+      await wrapper.find('textarea[name="title"]').setValue("Closed quickly");
+      await wrapper.find('select[name="status"]').setValue("status-2");
+      await flushPromises();
+      expect(store.moveCard).toHaveBeenCalledWith(expect.objectContaining({ id: "card-1" }), "status-2", 0);
+      await wrapper.find('button[aria-label="Close card"]').trigger("click");
+      await flushPromises();
+      expect(store.updateCard).toHaveBeenCalledTimes(1);
+      expect(wrapper.find(".card-editor").exists()).toBe(false);
+      await wrapper.unmount();
+    });
+  });
+
   describe("board settings dialog", () => {
     async function openSettings() {
       const store = seedBoard(["Backlog", "Doing", "Done"]);
