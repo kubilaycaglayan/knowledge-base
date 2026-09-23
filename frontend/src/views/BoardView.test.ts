@@ -201,8 +201,15 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("shows board selection dropdown (not tabs, but valid selection UI)", async () => {
+  it("shows board selection as tabs", async () => {
     mockRoute.query = {};
+    const store = useBoardsStore();
+    store.boards = [
+      { id: "board-1", name: "Board 1", archived: false, createdAt: "", updatedAt: "" },
+      { id: "board-2", name: "Board 2", archived: false, createdAt: "", updatedAt: "" },
+    ];
+    store.selectedId = "board-1";
+
     const wrapper = mount(BoardView, {
       global: {
         mocks: {
@@ -212,9 +219,11 @@ describe("BoardView", () => {
       },
     });
 
-    const boardSelect = wrapper.find("#board-select");
-    expect(boardSelect.exists()).toBe(true);
-    expect(boardSelect.element.tagName).toBe("SELECT");
+    const boardTabs = wrapper.findAll(".board-tab");
+    expect(boardTabs.length).toBe(2);
+    expect(boardTabs[0].text()).toBe("Board 1");
+    expect(boardTabs[1].text()).toBe("Board 2");
+    expect(boardTabs[0].classes()).toContain("selected");
     await wrapper.unmount();
   });
 
