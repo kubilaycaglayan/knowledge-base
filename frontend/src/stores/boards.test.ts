@@ -547,22 +547,8 @@ describe("boards store concurrency", () => {
     expect(store.pageErrors).toEqual({});
   });
 
-  describe("path boards (PB-08, PB-17, PB-18, PB-24)", () => {
+  describe("custom board ordering (PB-17, PB-18, PB-24)", () => {
     const board = (id: string, extra: Record<string, unknown> = {}) => ({ id, name: id, archived: false, createdAt: "", updatedAt: "", pathId: null, hidden: false, pinned: false, ...extra });
-
-    it("hides a path board, drops its tab, and selects the next board", async () => {
-      apiMock.mockImplementation((path: string) => path.endsWith("/visibility") ? Promise.resolve(board("p1", { pathId: "path-1", hidden: true })) : Promise.resolve([]));
-      const { useBoardsStore } = await import("./boards");
-      const store = useBoardsStore();
-      store.boards = [board("p1", { pathId: "path-1" }), board("c1")] as any;
-      store.selectedId = "p1";
-
-      await store.setVisibility("p1", true);
-
-      expect(apiMock).toHaveBeenCalledWith("/boards/p1/visibility", expect.objectContaining({ method: "POST", body: JSON.stringify({ hidden: true }) }));
-      expect(store.boards.map((item) => item.id)).toEqual(["c1"]);
-      expect(store.selectedId).toBe("c1");
-    });
 
     it("pins a custom board and reloads the server tab order", async () => {
       apiMock.mockImplementation((path: string) => path.endsWith("/pin") ? Promise.resolve(board("c2", { pinned: true })) : Promise.resolve([board("c2", { pinned: true }), board("c1")]));

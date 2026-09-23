@@ -8,6 +8,7 @@ type PromptOptions = {
   multiline?: boolean;
   confirmation?: boolean;
   inputType?: "text" | "datetime-local";
+  confirmLabel?: string;
 };
 
 const visible = ref(false);
@@ -16,6 +17,7 @@ const value = ref("");
 const multiline = ref(false);
 const confirmation = ref(false);
 const inputType = ref<PromptOptions["inputType"]>("text");
+const confirmLabel = ref("");
 let resolvePrompt: ((result: string | null) => void) | null = null;
 
 function finish(result: string | null) {
@@ -46,6 +48,7 @@ function open(
   multiline.value = Boolean(options.multiline);
   confirmation.value = Boolean(options.confirmation);
   inputType.value = options.inputType || "text";
+  confirmLabel.value = options.confirmLabel || "";
   visible.value = true;
   void nextTick(() => {
     document
@@ -105,7 +108,7 @@ defineExpose({ open });
       <div class="prompt-dialog-actions">
         <button class="text-button" @click="finish(null)">Cancel</button>
         <button class="primary" @click="finish(value)">
-          {{ confirmation ? "Confirm" : "OK" }}
+          {{ confirmLabel || (confirmation ? "Confirm" : "OK") }}
         </button>
       </div>
     </section>

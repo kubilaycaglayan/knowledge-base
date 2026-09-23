@@ -1959,3 +1959,27 @@
     border-radius: 4px 0 0 4px;
   }
 }
+.path-board-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.path-edit .path-board-switch input {
+  width: 18px;
+  min-height: 0;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--workspace-accent, #e8754e);
+  cursor: pointer;
+}
+.path-board-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

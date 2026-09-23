@@ -607,7 +607,6 @@ describe("BoardView", () => {
       store.selectedId = "path-board";
       store.statuses = [{ id: "status-1", name: "Backlog", archived: false, position: 0 }];
       store.cards = [];
-      (store.setVisibility as any) = vi.fn(() => Promise.resolve(null));
       (store.pinBoard as any) = vi.fn(() => Promise.resolve(null));
       (store.reorderBoards as any) = vi.fn(() => Promise.resolve());
       (store.fetchStatuses as any) = vi.fn(() => Promise.resolve([]));
@@ -648,8 +647,8 @@ describe("BoardView", () => {
     });
 
     // PB-22
-    it("path board settings use a visibility switch", async () => {
-      const store = seedPathBoards();
+    it("path board settings are read-only and leave visibility to the Paths page", async () => {
+      seedPathBoards();
       const wrapper = mountBoard();
       await flushPromises();
       await wrapper.find('button[aria-label="Board settings for Writing"]').trigger("click");
@@ -657,18 +656,11 @@ describe("BoardView", () => {
       const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
       expect(dialog.find("#board-settings-name").exists()).toBe(false);
       expect(dialog.find(".settings-name-readonly").text()).toContain("Writing");
+      expect(dialog.find('a[href="/paths"]').exists()).toBe(true);
       expect(dialog.findAll("button").map((button) => button.text())).not.toContain("Archive board");
-      const toggle = dialog.find<HTMLInputElement>('input[name="boardVisible"]');
-      expect(toggle.attributes("role")).toBe("switch");
-      expect(toggle.element.checked).toBe(true);
-
-      await toggle.setValue(false);
-      const confirm = wrapper.find('[role="alertdialog"][aria-labelledby="hide-board-title"]');
-      expect(confirm.exists()).toBe(true);
-      expect(store.setVisibility).not.toHaveBeenCalled();
-      await confirm.findAll("button").find((button) => button.text() === "Hide board")!.trigger("click");
-      await flushPromises();
-      expect(store.setVisibility).toHaveBeenCalledWith("path-board", true);
+      expect(dialog.find('input[name="boardVisible"]').exists()).toBe(false);
+      expect(dialog.find('input[name="boardPinned"]').exists()).toBe(false);
+      expect(dialog.findAll(".settings-statuses li")).toHaveLength(1);
       await wrapper.unmount();
     });
 

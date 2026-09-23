@@ -9,6 +9,9 @@ export type Path = {
   status: string;
   pinned?: boolean;
   sortOrder?: number;
+  // Every path owns a board; boardHidden hides it from the board tabs.
+  boardId?: string | null;
+  boardHidden?: boolean;
 };
 let loadPromise: Promise<Path[]> | null = null;
 let loadRevision = 0;

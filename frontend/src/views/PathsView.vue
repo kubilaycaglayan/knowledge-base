@@ -428,6 +428,37 @@ async function saveEdit(path: Path) {
     error.value = "Could not update path.";
   }
 }
+const boardAnnouncement = ref("");
+// Turning the board on saves at once; hiding it asks first because its tab disappears.
+async function changeBoardVisibility(path: Path, event: Event) {
+  const input = event.target as HTMLInputElement;
+  const hidden = !input.checked;
+  if (!path.boardId) return;
+  if (hidden) {
+    input.checked = true;
+    const confirmation = await promptDialog.value!.open(
+      `Hide the “${path.name}” board? Its cards are kept and come back when you turn it on again.`,
+      "",
+      { confirmation: true, confirmLabel: "Hide board" },
+    );
+    if (confirmation === null) {
+      input.focus();
+      return;
+    }
+  }
+  try {
+    await api(`/boards/${path.boardId}/visibility`, {
+      method: "POST",
+      body: JSON.stringify({ hidden }),
+    });
+    pathsStore.replace({ ...path, boardHidden: hidden });
+    boardAnnouncement.value = `${path.name} board is ${hidden ? "hidden" : "shown"}.`;
+  } catch {
+    input.checked = !path.boardHidden;
+    error.value = hidden ? "Could not hide the board." : "Could not show the board.";
+  }
+  input.focus();
+}
 async function remove(path: Path) {
   const confirmation = await promptDialog.value!.open(
     `Remove ${path.name}? You can undo this for a few seconds.`,
@@ -507,6 +538,7 @@ onBeforeUnmount(() => {
       </button>
     </header>
     <p class="lede">Long-lived areas that give your work a place to belong.</p>
+    <p class="path-board-announcement" role="status" aria-live="polite">{{ boardAnnouncement }}</p>
     <p
       v-if="error && !addDialogOpen"
       class="notice"
@@ -585,6 +617,16 @@ onBeforeUnmount(() => {
               option-label="Set edit path color"
               @update:model-value="chooseEditColor"
           /></span>
+          <label v-if="path.boardId" class="path-board-switch" :for="`path-board-${path.id}`"
+            ><input
+              :id="`path-board-${path.id}`"
+              type="checkbox"
+              role="switch"
+              name="boardVisible"
+              :checked="!path.boardHidden"
+              @change="changeBoardVisibility(path, $event)"
+            />Show on board</label
+          >
           <div class="row-actions">
             <button class="primary">Save path</button
             ><button

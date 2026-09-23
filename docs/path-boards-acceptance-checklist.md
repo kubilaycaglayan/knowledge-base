@@ -73,8 +73,8 @@ cover it. Tick an item only once those tests pass.
   _Tests:_ `BoardView.test.ts` "renders path boards with a colour dot in API order"
 - [ ] **PB-21** The card editor on a path board has no path `<select>`, and cards use the path colour as their accent. The card editor on a custom board still has the path `<select>`.
   _Tests:_ `BoardView.test.ts` "hides the path picker on path boards"
-- [ ] **PB-22** Board settings for a path board show the name as read-only text rather than an input, and a "Show on board" switch in place of "Archive board". Turning the switch off asks for confirmation in an in-app dialog.
-  _Tests:_ `BoardView.test.ts` "path board settings use a visibility switch"
+- [ ] **PB-22** Board settings for a path board show the name as read-only text with a link to Paths, and have no Archive board button, pin switch or visibility switch. A board is shown or hidden only from the path edit form on /paths.
+  _Tests:_ `BoardView.test.ts` "path board settings are read-only and leave visibility to the Paths page"
 - [ ] **PB-23** Board settings for a custom board include a "Pin board" switch that calls the pin endpoint.
   _Tests:_ `BoardView.test.ts` "pins a custom board from settings"
 - [ ] **PB-24** Custom board tabs can be reordered within their group by dragging the tab, or by pressing Alt+Left or Alt+Right on the focused tab. The new order is sent to `PUT /boards/order`.
