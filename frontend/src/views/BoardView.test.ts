@@ -697,6 +697,7 @@ describe("BoardView", () => {
       const { wrapper, dialog } = await openSettings();
       expect(dialog().exists()).toBe(true);
       expect(dialog().find<HTMLInputElement>("#board-settings-name").element.value).toBe("Test Board");
+      expect(dialog().find('label[for="board-settings-name"]').classes()).toContain("sr-only");
       expect(dialog().findAll(".settings-statuses li")).toHaveLength(3);
       await dialog().findAll("footer button").at(-1)!.trigger("click");
       expect(dialog().exists()).toBe(false);
@@ -862,7 +863,9 @@ describe("BoardView", () => {
       const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
       expect(dialog.find("#board-settings-name").exists()).toBe(false);
       expect(dialog.find(".settings-name-readonly").text()).toContain("Writing");
-      expect(dialog.find('a[href="/paths"]').exists()).toBe(true);
+      expect(dialog.find('a[href="/paths"]').text()).toBe("Rename…");
+      expect(dialog.find(".settings-name-readonly").text()).toBe("Writing Rename…");
+      expect(dialog.findAll(".settings-label").map((label) => label.text())).not.toContain("Name");
       expect(dialog.findAll("button").map((button) => button.text())).not.toContain("Archive board");
       expect(dialog.find('input[name="boardVisible"]').exists()).toBe(false);
       expect(dialog.find('input[name="boardPinned"]').exists()).toBe(false);

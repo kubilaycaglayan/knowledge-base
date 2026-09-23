@@ -75,7 +75,7 @@ cover it. Tick an item only once those tests pass.
   _Tests:_ `BoardView.test.ts` "renders path boards with a colour dot in API order"
 - [x] **PB-21** The card editor on a path board has no path `<select>`, and neither cards nor the card editor show a path-colour accent border (the tab dot already identifies the path). The card editor on a custom board still has the path `<select>`, and custom-board cards keep their path accent.
   _Tests:_ `BoardView.test.ts` "hides the path picker on path boards"
-- [x] **PB-22** Board settings for a path board show the name as read-only text with a link to Paths, and have no Archive board button, pin switch or visibility switch. A board is shown or hidden only from the path edit form on /paths.
+- [x] **PB-22** Board settings for a path board show the name as read-only text followed by a "Rename…" link to Paths (no "Name" label), and have no Archive board button, pin switch or visibility switch. A board is shown or hidden only from the path edit form on /paths.
   _Tests:_ `BoardView.test.ts` "path board settings are read-only and leave visibility to the Paths page"
 - [x] **PB-23** Board tabs have no gear of their own. A single "Manage boards" gear button (the only board-management control on the page) opens a "Boards" dialog listing every active board in tab order. Clicking a board name opens that board's settings. Board settings have no pin switch. The Boards dialog header has an "Add board" button that opens the New board dialog; cancelling returns to the Boards dialog.
   _Tests:_ `BoardView.test.ts` "opens the boards dialog from the single gear and each name opens its settings"
