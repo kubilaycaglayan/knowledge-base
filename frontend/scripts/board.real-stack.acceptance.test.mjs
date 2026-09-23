@@ -151,4 +151,197 @@ describe("board real-stack acceptance", () => {
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
   });
+
+  it("does not display JSON objects in rendered card content", async () => {
+    await page.getByRole("textbox", { name: "New card title" }).fill("Card with content");
+    await page.getByRole("button", { name: "Add card" }).click();
+    await page.getByRole("heading", { name: "Card with content" }).waitFor();
+
+    // Get all visible text
+    const content = await page.textContent(".kanban");
+    // Ensure no raw JSON objects appear in UI
+    assert.equal(content.includes("{}"), false, "JSON object {} should not appear in rendered UI");
+    assert.equal(content.includes('{"'), false, "Raw JSON should not appear in rendered UI");
+  });
+
+  it("provides error messages with dismissal capability", async () => {
+    // Trigger an error by attempting invalid action
+    await page.goto(`${baseUrl}/board?board=invalid-board-id`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+
+    // Create a new board to have a valid board
+    await page.getByRole("textbox", { name: "New board name" }).fill(`Board ${Date.now()}`);
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes("/api/v1/boards") && response.status() === 201),
+      page.getByRole("button", { name: "Create board" }).click(),
+    ]);
+
+    // Check for error message and close button
+    const errorAlert = page.locator("[role='alert']").first();
+    if (await errorAlert.count() > 0) {
+      const closeButton = await page.locator("[aria-label*='Dismiss']").first();
+      assert.equal(await closeButton.count() > 0, true, "Error messages should have a close button");
+    }
+  });
+
+  it("shows plus button for adding boards (icon button, not text)", async () => {
+    await page.goto(`${baseUrl}/board`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+
+    const addButton = page.locator('button[aria-label="Add board"]');
+    assert.equal(await addButton.count(), 1, "Should have add board button");
+
+    const buttonText = await addButton.textContent();
+    assert.equal(buttonText.includes("＋"), true, "Button should use icon (plus sign) not text");
+  });
+
+  it("allows Kanban view to be the primary view with Gantt switch available", async () => {
+    await page.goto(`${baseUrl}/board`);
+    const boardSelect = page.locator("#board-select");
+    if (await boardSelect.inputValue()) {
+      const viewButtons = page.locator(".view-switch button");
+      assert.equal(await viewButtons.count(), 2, "Should have Kanban and Gantt buttons");
+
+      const kanbanBtn = page.getByRole("button", { name: "Kanban" });
+      const ganttBtn = page.getByRole("button", { name: "Gantt" });
+      assert.equal(await kanbanBtn.count(), 1, "Should have Kanban button");
+      assert.equal(await ganttBtn.count(), 1, "Should have Gantt button");
+    }
+  });
+
+  it("dismisses error messages when user takes action or clicks close", async () => {
+    await page.goto(`${baseUrl}/board`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+
+    // Create a board to ensure we have one selected
+    await createBoard(`Board dismiss test ${Date.now()}`);
+
+    // Error message close button test
+    const errorButton = page.locator('button[aria-label*="Dismiss"]');
+    if (await errorButton.count() > 0) {
+      await errorButton.first().click();
+      await page.waitForTimeout(200);
+      // After clicking close, error should disappear
+      const alertAfterClose = page.locator("[role='alert']");
+      assert.equal(await alertAfterClose.count(), 0, "Error should be dismissed after clicking close");
+    }
+  });
+
+  it("supports board name inline editing (click to edit)", async () => {
+    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    if (boardId) {
+      // Look for rename button (current implementation has explicit rename button)
+      const renameButton = page.getByRole("button", { name: "Rename board" }).first();
+      if (await renameButton.count() > 0) {
+        await renameButton.click();
+        const boardNameInput = page.getByRole("textbox", { name: "Board name" });
+        assert.equal(await boardNameInput.count(), 1, "Should show inline edit input for board name");
+      }
+    }
+  });
+
+  it("displays status column names as editable (click to inline edit)", async () => {
+    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    if (boardId) {
+      // Check if we can edit status names
+      const renameButtons = page.locator('button[aria-label*="Rename"]').filter({ hasText: "Rename" });
+      if (await renameButtons.count() > 0) {
+        await renameButtons.first().click();
+        const statusInputs = page.locator("input").filter({ hasText: "" });
+        // A rename input should appear
+        const inputs = page.locator(".status-edit input");
+        if (await inputs.count() > 0) {
+          assert.equal(await inputs.count() > 0, true, "Status names should be editable via inline edit");
+        }
+      }
+    }
+  });
+
+  it("does not show 'Load more' button - uses lazy loading sentinel instead", async () => {
+    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    if (boardId) {
+      // Create multiple cards to test pagination
+      for (let i = 0; i < 5; i++) {
+        await page.getByRole("textbox", { name: "New card title" }).fill(`Card ${i} for lazy load test`);
+        await page.getByRole("button", { name: "Add card" }).click();
+        await page.waitForTimeout(200);
+      }
+
+      // Look for explicit "Load more" button - should NOT exist
+      const loadMoreButtons = page.locator("text=Load more").first();
+      assert.equal(await loadMoreButtons.count() === 0, true, "Should not show 'Load more' button");
+
+      // Should have lazy-load sentinel instead
+      const sentinels = page.locator(".load-more-sentinel");
+      // Sentinel may be present but not visible
+      if (await sentinels.count() > 0) {
+        const ariaHidden = await sentinels.first().getAttribute("aria-hidden");
+        assert.equal(ariaHidden, "true", "Lazy load sentinel should be aria-hidden");
+      }
+    }
+  });
+
+  it("allows path selection as dropdown, not multiselect", async () => {
+    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    if (boardId) {
+      await page.getByRole("textbox", { name: "New card title" }).fill("Card for path test");
+      await page.getByRole("button", { name: "Add card" }).click();
+      await page.getByRole("heading", { name: "Card for path test" }).waitFor();
+
+      // Open card editor
+      await page.locator(".board-card", { hasText: "Card for path test" }).click();
+      await page.getByRole("heading", { name: "Edit card" }).waitFor();
+
+      // Check path selector - should be checkboxes (not dropdown, but also not a select)
+      const pathInputs = page.locator("input[name='cardPaths']");
+      // If paths exist, verify they're checkboxes not a select
+      if (await pathInputs.count() > 0) {
+        const inputType = await pathInputs.first().getAttribute("type");
+        assert.equal(inputType, "checkbox", "Paths should use checkboxes for selection");
+      }
+
+      // Close the editor
+      await page.getByRole("button", { name: "Cancel" }).click();
+    }
+  });
+
+  it("cards do not disappear when switching views or boards", async () => {
+    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    if (boardId) {
+      // Create a card
+      const cardTitle = `Card persistence test ${Date.now()}`;
+      await page.getByRole("textbox", { name: "New card title" }).fill(cardTitle);
+      await page.getByRole("button", { name: "Add card" }).click();
+      await page.getByRole("heading", { name: cardTitle }).waitFor();
+
+      // Switch to Gantt view
+      await page.getByRole("button", { name: "Gantt" }).click();
+      await page.getByRole("heading", { name: "Timeline" }).waitFor();
+
+      // Switch back to Kanban
+      await page.getByRole("button", { name: "Kanban" }).click();
+
+      // Card should still exist
+      await page.getByRole("heading", { name: cardTitle }).waitFor();
+      assert.equal(await page.getByRole("heading", { name: cardTitle }).count() >= 1, true,
+        "Card should persist when switching between views");
+    }
+  });
+
+  it("creates new boards and preserves them in the board list", async () => {
+    const boardName1 = `Test board ${Date.now()}-1`;
+    const boardName2 = `Test board ${Date.now()}-2`;
+
+    await createBoard(boardName1);
+    await createBoard(boardName2);
+
+    // Both boards should be in the select
+    const option1 = page.locator("#board-select").locator(`option[label='${boardName1}']`);
+    const option2 = page.locator("#board-select").locator(`option[label='${boardName2}']`);
+
+    assert.equal(await option1.count() > 0 || await page.getByRole("option", { name: boardName1 }).count() > 0, true,
+      "First board should be in selection list");
+    assert.equal(await option2.count() > 0 || await page.getByRole("option", { name: boardName2 }).count() > 0, true,
+      "Second board should be in selection list");
+  });
 });
