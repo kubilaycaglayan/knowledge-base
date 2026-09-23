@@ -169,6 +169,19 @@ describe("boards store concurrency", () => {
     expect(store.statuses.map((status) => status.id)).toEqual(["done", "backlog"]);
   });
 
+  it("keeps a status active when archive fails", async () => {
+    apiMock.mockRejectedValue({ status: 409 });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    const status = { id: "backlog", name: "Backlog", position: 0, archived: false };
+    store.statuses = [status];
+
+    await expect(store.archiveStatus(status)).rejects.toMatchObject({ status: 409 });
+
+    expect(status.archived).toBe(false);
+  });
+
   it("includes archived statuses when persisting an active-status reorder", async () => {
     apiMock.mockResolvedValue([
       { id: "done", name: "Done", position: 0, archived: false },

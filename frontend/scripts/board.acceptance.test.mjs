@@ -99,6 +99,11 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       fixtureStatuses.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)).forEach((status, index) => { status.position = index; });
       body = fixtureStatuses;
     }
+    if (method === "POST" && path === "/boards/board-1/statuses/status-0/archive") {
+      fixtureStatuses[0].archived = true;
+      fixtureCards.filter((card) => card.statusId === "status-0" && !card.archived).forEach((card, index) => { card.statusId = "status-1"; card.position = index; });
+      body = {};
+    }
     if (method === "POST" && path === "/boards/board-1/statuses/status-3/restore") {
       fixtureStatuses[3].archived = false;
       body = fixtureStatuses[3];
@@ -431,6 +436,24 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Ready" }).waitFor();
     await page.getByRole("button", { name: "Move card to next status" }).first().click();
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+  });
+
+  it("confirms status archival before sending the destructive request", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Archive Backlog status" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "Archive status?" });
+    await dialog.waitFor();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    assert.equal(await page.getByRole("alertdialog", { name: "Archive status?" }).count(), 0);
+  });
+
+  it("reassigns cards when a status is archived", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Archive Backlog status" }).click();
+    await page.getByRole("alertdialog", { name: "Archive status?" }).getByRole("button", { name: "Archive" }).click();
+    await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Pending" }).waitFor();
+    await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Ship timeline" }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Show archived statuses" }).count(), 1);
   });
 
   it("reorders statuses with accessible icon actions", async (t) => {
