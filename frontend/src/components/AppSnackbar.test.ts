@@ -1,12 +1,14 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import vuetify from "../plugins/vuetify";
 import AppSnackbar from "./AppSnackbar.vue";
 import { useNoticesStore } from "../stores/notices";
 
 describe("AppSnackbar", () => {
-  afterEach(() => { document.body.innerHTML = ""; });
+  // jsdom has no visual viewport; Vuetify's overlay positioning reads one.
+  beforeEach(() => { vi.stubGlobal("visualViewport", Object.assign(new EventTarget(), { width: 1024, height: 768, offsetLeft: 0, offsetTop: 0, scale: 1 })); });
+  afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ""; });
 
   it("shows a notice politely and dismisses it", async () => {
     setActivePinia(createPinia());

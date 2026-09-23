@@ -7,6 +7,7 @@ const stubs = {
   RouterLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
   RouterView: { template: "<div data-test=router-view />" },
   FloatingTimeTracker: { template: "<aside data-test= floating-tracker />" },
+  AppSnackbar: { template: "<div data-test=app-snackbar />" },
   AuthView: {
     emits: ["authenticated"],
     template:

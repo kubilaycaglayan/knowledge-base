@@ -4,6 +4,7 @@ import { useTimerStore } from "./stores/timer";
 import { routeLocationKey, routerKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
 import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
+import AppSnackbar from "./components/AppSnackbar.vue";
 import { theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 import { useBoardsStore } from "./stores/boards";
@@ -164,6 +165,7 @@ function authenticated() {
       /><RouterView v-else />
     </main>
     <FloatingTimeTracker v-if="showFloatingTracker()" />
+    <AppSnackbar />
   </div>
 </template>
 
