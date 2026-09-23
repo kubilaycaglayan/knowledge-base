@@ -76,10 +76,13 @@ Unchecked items are intentionally incomplete.
   overwrite newer Kanban/Gantt positions.
 - [x] Store movement rejects archived/unknown destinations and negative
   positions before optimistic mutation or network I/O.
+- [x] Backend/API ordering, browser pointer movement, and dense-column page
+  reconciliation are covered; invalid-destination behavior is covered in the
+  store contract.
 - [ ] Position ordering, invalid drops, and dense-column reconciliation are
   covered end to end.
-- [ ] Cards never silently disappear after create, move, edit, archive, or
-  restore.
+- [x] An integrated browser flow keeps one card visible through create, move,
+  edit, archive, restore, and the Kanban/Gantt view switch.
 
 ## F. Archive and restore
 
