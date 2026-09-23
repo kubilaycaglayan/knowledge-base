@@ -374,4 +374,18 @@ describe("boards store concurrency", () => {
     expect(store.error).toBe("");
     expect(store.pageLoading.backlog).toBe(false);
   });
+
+  it("clears a previous board page error before loading the next board", async () => {
+    apiMock.mockImplementation((path: string) => path.endsWith("/statuses")
+      ? Promise.resolve([{ id: "backlog", name: "Backlog", position: 0, archived: false }])
+      : Promise.resolve({ items: [], nextCursor: null }));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board-b";
+    store.pageErrors.backlog = "Unable to load more cards. Try again.";
+
+    await store.loadBoard();
+
+    expect(store.pageErrors).toEqual({});
+  });
 });
