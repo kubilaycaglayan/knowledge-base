@@ -137,6 +137,27 @@ class BoardControllerApiTest {
     verify(statuses, never()).save(any(BoardStatus.class));
   }
 
+  @Test void archivingStatusAppendsItsCardsAfterExistingDestinationCards() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId();
+    BoardStatus archived = new BoardStatus(boardId, "Ready to archive", 0);
+    BoardStatus destination = new BoardStatus(boardId, "Backlog", 1);
+    BoardCard existing = new BoardCard(boardId, destination.getId(), 0);
+    BoardCard moved = new BoardCard(boardId, archived.getId(), 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(archived.getId(), boardId)).thenReturn(Optional.of(archived));
+    when(statuses.findAllByBoardIdOrderByPosition(boardId)).thenReturn(List.of(archived, destination));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(boardId, archived.getId())).thenReturn(List.of(moved));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(boardId, destination.getId())).thenReturn(List.of(existing));
+
+    mvc.perform(post("/api/v1/boards/" + boardId + "/statuses/" + archived.getId() + "/archive")
+        .with(authentication(auth())))
+        .andExpect(status().isOk());
+
+    assertEquals(destination.getId(), moved.getStatusId());
+    assertEquals(1, moved.getPosition());
+  }
+
   @Test void restoringCardFallsBackWhenItsStatusWasArchived() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId(), archivedStatusId = UUID.randomUUID(), activeStatusId = UUID.randomUUID(), cardId = UUID.randomUUID();
