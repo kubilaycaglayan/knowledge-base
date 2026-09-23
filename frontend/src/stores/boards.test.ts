@@ -152,6 +152,26 @@ describe("boards store concurrency", () => {
     expect(store.statuses.map((status) => status.id)).toEqual(["done", "backlog"]);
   });
 
+  it("includes archived statuses when persisting an active-status reorder", async () => {
+    apiMock.mockResolvedValue([
+      { id: "done", name: "Done", position: 0, archived: false },
+      { id: "backlog", name: "Backlog", position: 1, archived: false },
+      { id: "archived", name: "Archived", position: 2, archived: true },
+    ]);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.statuses = [
+      { id: "backlog", name: "Backlog", position: 0, archived: false },
+      { id: "done", name: "Done", position: 1, archived: false },
+      { id: "archived", name: "Archived", position: 2, archived: true },
+    ];
+
+    await store.reorderStatuses(["done", "backlog"]);
+
+    expect(apiMock).toHaveBeenCalledWith("/boards/board/statuses/order", { method: "PUT", body: JSON.stringify({ ids: ["done", "backlog", "archived"] }) });
+  });
+
   it("clears board data when the authenticated session changes", async () => {
     const { useBoardsStore } = await import("./boards");
     const store = useBoardsStore();
