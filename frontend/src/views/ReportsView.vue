@@ -496,6 +496,7 @@ onBeforeUnmount(() =>
 
 <template>
   <section class="reports-page">
+    <h1 class="sr-only">Reports</h1>
     <div class="reports-nav">
       <div class="reports-period-controls">
         <ReportDateRange

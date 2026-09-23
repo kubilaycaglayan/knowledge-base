@@ -479,6 +479,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="notes-page">
+    <h1 class="sr-only">{{ isEditor ? "Note" : "Notes" }}</h1>
     <p v-if="error" class="notes-error" role="alert">{{ error }}</p>
     <template v-if="!isEditor">
       <div class="notes-toolbar">
