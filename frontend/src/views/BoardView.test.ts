@@ -296,6 +296,27 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("opens the board named in the URL after a reload, not the first tab", async () => {
+    const store = useBoardsStore();
+    mockRoute.query = { board: "board-2" };
+    (store.loadBoards as any) = vi.fn(async () => {
+      store.boards = [
+        { id: "board-1", name: "First", archived: false, createdAt: "", updatedAt: "" },
+        { id: "board-2", name: "Second", archived: false, createdAt: "", updatedAt: "" },
+      ];
+      if (!store.selectedId || !store.boards.some((board) => board.id === store.selectedId)) store.selectedId = store.boards[0].id;
+    });
+    const loaded: string[] = [];
+    (store.loadBoard as any) = vi.fn(async () => { loaded.push(store.selectedId); });
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    expect(store.selectedId).toBe("board-2");
+    expect(loaded).toEqual(["board-2"]);
+    expect(mockRouter.replace).not.toHaveBeenCalledWith(expect.objectContaining({ query: expect.objectContaining({ board: "board-1" }) }));
+    await wrapper.unmount();
+  });
+
   it("opens another board's settings from the boards dialog without switching to it", async () => {
     const store = seedBoard(["Backlog"]);
     store.boards.push({ id: "other-id", name: "Other", archived: false, createdAt: "", updatedAt: "" });
