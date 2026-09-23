@@ -99,6 +99,8 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   named after the path and with its cards bound to it; a Show on board switch
   in the path edit form hides or shows it after an in-app confirmation. A
   single Manage boards gear opens a Boards dialog that lists every board,
-  opens its settings, and pins or drag-reorders custom boards; path boards
-  follow the Paths page order. Merging paths moves board cards by status name.
+  opens its settings (with a Back button to the list), and pins or
+  drag-reorders any board, so custom boards can sit between path boards; board
+  tab order stays independent of the Paths page. Merging paths moves board
+  cards by status name.
   Acceptance: `docs/path-boards-acceptance-checklist.md`.

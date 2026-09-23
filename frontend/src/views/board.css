@@ -99,8 +99,7 @@
 /* A thick, easy-to-grab scrollbar for the board tab strip. */
 .board-tabs::-webkit-scrollbar { height:12px; } .board-tabs::-webkit-scrollbar-track { background:transparent; } .board-tabs::-webkit-scrollbar-thumb { border-radius:6px; background:var(--muted-text); border:2px solid transparent; background-clip:padding-box; } .board-tabs::-webkit-scrollbar-thumb:hover { background-color:var(--workspace-muted, #64748b); }
 .boards-manager-list { gap:0; } .boards-manager-list li { gap:.25rem; } .boards-manager-name { flex:1; min-width:0; min-height:28px; padding:0 .25rem; line-height:1.3; border-radius:6px; background:transparent; color:inherit; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .boards-manager-name:hover { background:var(--workspace-hover); }
-.boards-manager-path { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; } .boards-manager-path .board-tab-dot { margin:0; }
 /* Dense rows so long board lists fit at once; touch screens keep 44px targets. */
-.boards-manager-list .icon-button, .boards-manager-path { min-width:28px; min-height:28px; padding:0; } .boards-manager-note { min-width:28px; }
-@media (pointer: coarse) { .boards-manager-name, .boards-manager-list .icon-button, .boards-manager-path { min-height:44px; } .boards-manager-list .icon-button, .boards-manager-path, .boards-manager-note { min-width:44px; } }
-.boards-manager-pin.pinned { opacity:1; color:#e8754e; } .boards-manager-note { min-width:44px; text-align:center; font-size:.75rem; color:var(--muted-text); }
+.boards-manager-list .icon-button { min-width:28px; min-height:28px; padding:0; }
+@media (pointer: coarse) { .boards-manager-name, .boards-manager-list .icon-button { min-height:44px; } .boards-manager-list .icon-button { min-width:44px; } }
+.boards-manager-pin.pinned { opacity:1; color:#e8754e; }

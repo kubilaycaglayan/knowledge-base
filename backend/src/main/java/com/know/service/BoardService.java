@@ -56,8 +56,10 @@ public class BoardService {
   }
 
   /**
-   * Active boards in tab order: pinned custom boards, then path boards in Paths page order, then
-   * the remaining custom boards. Path boards only appear while their path is active.
+   * Active boards in tab order: pinned boards, then the rest. Within each group path and custom
+   * boards share one manual order; boards never placed by hand follow, path boards in Paths page
+   * order and then custom boards in creation order. Path boards only appear while their path is
+   * active.
    */
   @Transactional(readOnly = true)
   public List<Board> tabs(UUID userId, boolean includeHidden) {
@@ -66,19 +68,24 @@ public class BoardService {
     List<Path> ordered = paths.findAllByUserIdOrderByUpdatedAtDesc(userId, PageRequest.of(0, 10_000));
     for (Path path : ordered) if (path.getStatus() == PathStatus.ACTIVE) pathRank.put(path.getId(), pathRank.size());
 
-    // Boards never reordered by hand keep creation order, so a new board lands at the end.
-    Comparator<Board> manual = Comparator.comparing(Board::getSortOrder, Comparator.nullsLast(Comparator.<Long>naturalOrder())).thenComparing(Board::getCreatedAt);
-    List<Board> custom = active.stream().filter(board -> !board.isPathBoard()).sorted(manual).toList();
-    List<Board> pathBoards = active.stream()
-        .filter(board -> board.isPathBoard() && pathRank.containsKey(board.getPathId()) && (includeHidden || !board.isHidden()))
-        .sorted(Comparator.comparing(board -> pathRank.get(board.getPathId())))
+    List<Board> visible = active.stream()
+        .filter(board -> !board.isPathBoard() || (pathRank.containsKey(board.getPathId()) && (includeHidden || !board.isHidden())))
         .toList();
-
-    List<Board> result = new ArrayList<>();
-    custom.stream().filter(Board::isPinned).forEach(result::add);
-    result.addAll(pathBoards);
-    custom.stream().filter(board -> !board.isPinned()).forEach(result::add);
+    List<Board> result = new ArrayList<>(inTabOrder(visible.stream().filter(Board::isPinned).toList(), pathRank));
+    result.addAll(inTabOrder(visible.stream().filter(board -> !board.isPinned()).toList(), pathRank));
     return result;
+  }
+
+  private static List<Board> inTabOrder(List<Board> group, Map<UUID, Integer> pathRank) {
+    Comparator<Board> manual = Comparator.comparing(Board::getSortOrder, Comparator.nullsLast(Comparator.<Long>naturalOrder()));
+    Comparator<Board> pathBoardsFirst = Comparator.comparing(board -> board.isPathBoard() ? 0 : 1);
+    Comparator<Board> unplaced = pathBoardsFirst
+        .thenComparing(board -> board.isPathBoard() ? pathRank.get(board.getPathId()) : 0)
+        .thenComparing(Board::getCreatedAt);
+    // Until a path board has been placed by hand, keep the earlier layout: path boards (Paths page
+    // order) ahead of the custom boards, whose manual order only ranked them among themselves.
+    boolean pathBoardPlaced = group.stream().anyMatch(board -> board.isPathBoard() && board.getSortOrder() != null);
+    return group.stream().sorted(pathBoardPlaced ? manual.thenComparing(unplaced) : pathBoardsFirst.thenComparing(manual).thenComparing(unplaced)).toList();
   }
 
   /**

@@ -61,7 +61,7 @@ public class BoardController {
   }
   @PutMapping("/order") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional public void order(Authentication auth, @Valid @RequestBody OrderRequest request) {
     List<Board> owned = boards.findAllByUserIdAndIdIn(user(auth), request.ids());
-    if (owned.size() != request.ids().stream().distinct().count() || owned.stream().anyMatch(Board::isPathBoard)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every board must be a custom board owned by the user");
+    if (owned.size() != request.ids().stream().distinct().count()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every board must be owned by the user");
     Map<UUID, Board> byId = new HashMap<>(); owned.forEach(b -> byId.put(b.getId(), b));
     for (int i = 0; i < request.ids().size(); i++) byId.get(request.ids().get(i)).setSortOrder(i);
     boards.saveAll(owned);
@@ -69,7 +69,7 @@ public class BoardController {
   @PostMapping("/{id}/visibility") public BoardView visibility(Authentication auth, @PathVariable UUID id, @RequestBody VisibilityRequest request) {
     Board b = board(auth, id); if (!b.isPathBoard()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Only path boards can be hidden"); b.setHidden(request.hidden()); return BoardView.of(boards.save(b));
   }
-  @PostMapping("/{id}/pin") public BoardView pin(Authentication auth, @PathVariable UUID id, @RequestBody PinRequest request) { Board b = customBoard(auth, id); b.setPinned(request.pinned()); return BoardView.of(boards.save(b)); }
+  @PostMapping("/{id}/pin") public BoardView pin(Authentication auth, @PathVariable UUID id, @RequestBody PinRequest request) { Board b = board(auth, id); b.setPinned(request.pinned()); return BoardView.of(boards.save(b)); }
   @GetMapping("/{id}") public BoardView get(Authentication auth, @PathVariable UUID id) { return BoardView.of(board(auth, id)); }
   @PutMapping("/{id}") public BoardView update(Authentication auth, @PathVariable UUID id, @Valid @RequestBody BoardRequest request) { Board b = writableBoard(auth, id); if (b.isPathBoard()) throw new ResponseStatusException(HttpStatus.CONFLICT, PATH_BOARD_RULE); b.rename(request.name()); return BoardView.of(boards.save(b)); }
   @PostMapping("/{id}/archive") public BoardView archive(Authentication auth, @PathVariable UUID id) { Board b = customBoard(auth, id); b.archive(); return BoardView.of(boards.save(b)); }

@@ -36,7 +36,8 @@ public class Board {
   public Long getSortOrder() { return sortOrder; }
   public boolean isArchived() { return archivedAt != null; }
   public void setHidden(boolean hidden) { this.hidden = hidden; updatedAt = Instant.now(); }
-  public void setPinned(boolean pinned) { this.pinned = pinned; updatedAt = Instant.now(); }
+  // Moving between the pinned and unpinned groups drops the manual slot, so the board joins the end of its new group.
+  public void setPinned(boolean pinned) { if (this.pinned != pinned) sortOrder = null; this.pinned = pinned; updatedAt = Instant.now(); }
   public void setSortOrder(long sortOrder) { this.sortOrder = sortOrder; }
   public void rename(String name) { this.name = name.trim(); this.updatedAt = Instant.now(); }
   public void archive() { archivedAt = Instant.now(); updatedAt = Instant.now(); }
