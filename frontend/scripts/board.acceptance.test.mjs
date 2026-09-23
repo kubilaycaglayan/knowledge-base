@@ -10,7 +10,7 @@ import AxeBuilder from "@axe-core/playwright";
 let server, browser;
 const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screenshots-"));
 const board = { id: "board-1", name: "Product", archived: false };
-const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false }));
+const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false, cardSort: "MANUAL" }));
 const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0, 10); };
 const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: [] }];
 
@@ -30,6 +30,8 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   let cardUpdateFailures = 0;
   let pageFailures = 0;
   let lazyPageRequests = 0;
+  const sortRequests = [];
+  const firstPageRequests = [];
   await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
@@ -43,7 +45,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     }
     else if (path === "/boards/board-1/statuses") body = fixtureStatuses;
     else if (path === "/boards/board-1/cards") { const wantsArchived = new URL(request.url()).searchParams.get("archived") === "true"; body = fixtureCards.filter((card) => Boolean(card.archived) === wantsArchived); }
-    else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (cursor >= 19) lazyPageRequests += 1; if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
+    else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (cursor >= 19) lazyPageRequests += 1; if (cursor === -1) firstPageRequests.push(statusId); if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-2", name: "Research", color: "#3366cc", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
     else if (path === "/labels") body = [];
@@ -94,6 +96,13 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       fixtureStatuses[0].name = request.postDataJSON().name;
       body = fixtureStatuses[0];
     }
+    const sortRoute = path.match(/^\/boards\/board-1\/statuses\/([^/]+)\/sort$/);
+    if (method === "PUT" && sortRoute) {
+      const status = fixtureStatuses.find((item) => item.id === sortRoute[1]);
+      status.cardSort = request.postDataJSON().cardSort;
+      sortRequests.push(`${status.id}:${status.cardSort}`);
+      body = status;
+    }
     if (method === "PUT" && path === "/boards/board-1/statuses/order") {
       const ids = request.postDataJSON().ids;
       fixtureStatuses.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)).forEach((status, index) => { status.position = index; });
@@ -113,7 +122,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=board-1&view=kanban`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
-  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests, getCardMoveRequests: () => cardMoveRequests, getLazyPageRequests: () => lazyPageRequests };
+  return { context, page, getBoardArchiveRequests: () => boardArchiveRequests, getCardUpdateRequests: () => cardUpdateRequests, getCardMoveRequests: () => cardMoveRequests, getLazyPageRequests: () => lazyPageRequests, sortRequests, firstPageRequests };
 }
 
 const selectedTab = (page) => page.locator(".board-tab.selected");
@@ -453,6 +462,19 @@ describe("board browser acceptance", () => {
     assert.ok(Math.abs(lineHeight / fontSize - 1.45) < 0.02, `line-height ratio ${lineHeight / fontSize}`);
     assert.equal(marginTop, 0);
     assert.equal(marginBottom, 8);
+  });
+
+  it("sorts a column by priority from its header", async (t) => {
+    const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
+    await page.locator(".board-card").first().waitFor();
+    const toggle = page.getByRole("button", { name: "Sort Backlog by priority" });
+    assert.equal(await toggle.getAttribute("aria-pressed"), "false");
+    const reloadsBefore = firstPageRequests.filter((id) => id === "status-0").length;
+    await toggle.click();
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Sort Backlog by priority"]')?.getAttribute("aria-pressed") === "true");
+    assert.deepEqual(sortRequests, ["status-0:PRIORITY"]);
+    assert.equal(firstPageRequests.filter((id) => id === "status-0").length, reloadsBefore + 1, "Sorting reloads the column from its first page");
+    await page.locator(".board-card").first().waitFor();
   });
 
   it("restores focus to the card after closing its editor", async (t) => {

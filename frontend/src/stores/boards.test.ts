@@ -73,6 +73,31 @@ describe("boards store concurrency", () => {
     await loading;
   });
 
+  // CS-04
+  it("saves a column's sort and reloads only that column from its first page", async () => {
+    const card = (id: string, statusId: string, priority: string, position: number) => ({ id, statusId, title: id, body: "{}", priority, position, archived: false, pathIds: [], labelIds: [] });
+    apiMock.mockImplementation((path: string, options?: RequestInit) => {
+      if (path.endsWith("/statuses")) return Promise.resolve([{ id: "backlog", name: "Backlog", position: 0, archived: false, cardSort: "MANUAL" }, { id: "done", name: "Done", position: 1, archived: false, cardSort: "MANUAL" }]);
+      if (path.endsWith("/statuses/backlog/sort")) return Promise.resolve({ id: "backlog", name: "Backlog", position: 0, archived: false, cardSort: JSON.parse(String(options?.body)).cardSort });
+      if (path.includes("statusId=backlog")) return Promise.resolve({ items: [card("low", "backlog", "LOW", 0), card("urgent", "backlog", "URGENT", 1)], nextCursor: 19 });
+      if (path.includes("statusId=done")) return Promise.resolve({ items: [card("shipped", "done", "LOW", 0)], nextCursor: null });
+      return Promise.resolve([]);
+    });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    await store.loadBoard();
+    apiMock.mockClear();
+
+    await store.setStatusSort(store.statuses[0], "PRIORITY");
+    expect(apiMock).toHaveBeenCalledWith("/boards/board/statuses/backlog/sort", expect.objectContaining({ method: "PUT", body: JSON.stringify({ cardSort: "PRIORITY" }) }));
+    expect(apiMock).toHaveBeenCalledWith("/boards/board/cards/page?statusId=backlog&cursor=-1&limit=20");
+    expect(apiMock).not.toHaveBeenCalledWith(expect.stringContaining("statusId=done"));
+    expect(store.statuses[0].cardSort).toBe("PRIORITY");
+    expect(store.cards.map((item) => item.id).sort()).toEqual(["low", "shipped", "urgent"]);
+    expect(store.pageCursors.backlog).toBe(19);
+  });
+
   it("keeps a failed lazy page retryable and exposes a recoverable error", async () => {
     let pageCalls = 0;
     apiMock.mockImplementation((path: string) => {

@@ -464,6 +464,69 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  describe("column sort", () => {
+    const card = (id: string, priority: string, position: number) => ({ id, statusId: "status-1", title: id, body: "{}", priority, position, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" });
+    function seedSorted(cardSort: "MANUAL" | "PRIORITY") {
+      const store = seedBoard(["Backlog", "Done"]);
+      store.statuses = store.statuses.map((status) => ({ ...status, cardSort }));
+      store.cards = [card("low", "LOW", 0), card("urgent", "URGENT", 1), card("medium", "MEDIUM", 2), card("high", "HIGH", 3)] as any;
+      return store;
+    }
+    const headings = (wrapper: ReturnType<typeof mountBoard>) => wrapper.findAll(".kanban-column").at(0)!.findAll(".board-card h3").map((heading) => heading.text());
+
+    // CS-04
+    it("toggles a column's priority sort and reloads the column", async () => {
+      const store = seedSorted("MANUAL");
+      const setStatusSort = vi.spyOn(store, "setStatusSort").mockResolvedValue(undefined as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      const toggle = wrapper.find('button[aria-label="Sort Backlog by priority"]');
+      expect(toggle.exists()).toBe(true);
+      expect(toggle.attributes("aria-pressed")).toBe("false");
+      await toggle.trigger("click");
+      expect(setStatusSort).toHaveBeenCalledWith(expect.objectContaining({ id: "status-1" }), "PRIORITY");
+
+      store.statuses[0].cardSort = "PRIORITY";
+      await flushPromises();
+      expect(toggle.attributes("aria-pressed")).toBe("true");
+      await toggle.trigger("click");
+      expect(setStatusSort).toHaveBeenLastCalledWith(expect.objectContaining({ id: "status-1" }), "MANUAL");
+      await wrapper.unmount();
+    });
+
+    // CS-05
+    it("shows a priority-sorted column in priority order", async () => {
+      const store = seedSorted("MANUAL");
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(headings(wrapper)).toEqual(["low", "urgent", "medium", "high"]);
+      store.statuses[0].cardSort = "PRIORITY";
+      await flushPromises();
+      expect(headings(wrapper)).toEqual(["urgent", "high", "medium", "low"]);
+      store.cards.find((item) => item.id === "low")!.priority = "URGENT";
+      await flushPromises();
+      expect(headings(wrapper)).toEqual(["low", "urgent", "high", "medium"]);
+      await wrapper.unmount();
+    });
+
+    // CS-06
+    it("does not reorder within a priority-sorted column", async () => {
+      const store = seedSorted("PRIORITY");
+      const moveCard = vi.spyOn(store, "moveCard").mockResolvedValue(undefined as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      const vm = wrapper.vm as any;
+      const [low, urgent] = [store.cards[0], store.cards[1]];
+      await vm.reorderCard(urgent, 1);
+      vm.dropCard({ stopPropagation: () => undefined, dataTransfer: { getData: () => "low" } }, urgent);
+      expect(moveCard).not.toHaveBeenCalled();
+
+      await wrapper.findAll(".kanban-column").at(1)!.trigger("drop", { dataTransfer: { getData: () => low.id } });
+      expect(moveCard).toHaveBeenCalledWith(expect.objectContaining({ id: "low" }), "status-2", 0);
+      await wrapper.unmount();
+    });
+  });
+
   it("keeps Kanban column headers free of status management controls", async () => {
     seedBoard(["Backlog", "Doing"]);
     const wrapper = mountBoard();
