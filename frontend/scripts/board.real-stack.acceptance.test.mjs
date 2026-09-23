@@ -53,8 +53,7 @@ async function clickCentered(locator) {
   await locator.click();
 }
 
-// Clicking the already-selected tab starts an inline rename, so only click a tab
-// that is not already the open board.
+// Tabs only switch boards, so clicking the open board's tab is skipped.
 async function clickBoardTab(name) {
   if (!(await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).count())) {
     await clickCentered(boardTab(name).first());
@@ -319,20 +318,21 @@ describe("board real-stack acceptance", () => {
     assert.equal(await page.locator(".board-toolbar .view-switch").count(), 1);
   });
 
-  it("renames a board by clicking its own tab, with no rename button", async () => {
+  it("renames the open board from its settings, never from a tab click", async () => {
     const renamed = `${activeBoardName} Renamed`;
-    assert.equal(await page.getByRole("button", { name: /rename/i }).count(), 0, "No separate rename button should exist");
-
     await clickCentered(selectedTab());
-    const field = page.getByRole("textbox", { name: "Board name", exact: true });
-    await field.waitFor();
-    assert.equal(await field.inputValue(), activeBoardName, "The field starts from the current name");
+    assert.equal(await page.getByRole("textbox", { name: "Board name", exact: true }).count(), 0, "Clicking a tab must not start a rename");
 
+    await clickCentered(page.locator(".board-tab-wrap.selected .board-tab-settings"));
+    const settings = page.getByRole("dialog", { name: "Board settings" });
+    const field = settings.getByRole("textbox", { name: "Name", exact: true });
+    assert.equal(await field.inputValue(), activeBoardName, "The field starts from the current name");
     await field.fill(renamed);
     await Promise.all([
-      page.waitForResponse((response) => response.url().includes("/api/v1/boards/") && response.request().method() === "PUT" && response.status() === 200),
+      page.waitForResponse((response) => /\/api\/v1\/boards\/[^/]+$/.test(new URL(response.url()).pathname) && response.request().method() === "PUT" && response.status() === 200),
       field.press("Enter"),
     ]);
+    await settings.getByRole("button", { name: "Done", exact: true }).click();
     await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(renamed)}$`) }).waitFor();
     activeBoardName = renamed;
 
@@ -341,17 +341,28 @@ describe("board real-stack acceptance", () => {
     await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(renamed)}$`) }).waitFor();
   });
 
-  it("abandons an inline board rename on Escape", async () => {
-    const original = activeBoardName;
-    await clickCentered(selectedTab());
-    const field = page.getByRole("textbox", { name: "Board name", exact: true });
-    await field.waitFor();
-    await field.fill(`${original} Discarded`);
-    await field.press("Escape");
+  it("edits another board's settings from its gear without switching to it", async () => {
+    const other = activeBoardName;
+    await createBoard(`${other} Open`);
+    const open = activeBoardName;
+    const otherWrap = page.locator(".board-tab-wrap").filter({ has: boardTab(other) });
+    await clickCentered(otherWrap.locator(".board-tab-settings"));
+    const settings = page.getByRole("dialog", { name: "Board settings" });
+    await settings.getByRole("textbox", { name: "Status name Backlog" }).waitFor();
+    assert.equal(await selectedTab().textContent(), open, "The gear must not switch boards");
 
-    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(original)}$`) }).waitFor();
-    await page.reload();
-    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(original)}$`) }).waitFor();
+    await settings.getByRole("textbox", { name: "New status name" }).fill("Other only");
+    await Promise.all([
+      page.waitForResponse((response) => response.url().endsWith("/statuses") && response.request().method() === "POST" && response.status() === 201),
+      settings.getByRole("textbox", { name: "New status name" }).press("Enter"),
+    ]);
+    await settings.getByRole("textbox", { name: "Status name Other only" }).waitFor();
+    await settings.getByRole("button", { name: "Done", exact: true }).click();
+    assert.equal(await page.locator(".kanban-column h2", { hasText: "Other only" }).count(), 0, "The open board's columns are unchanged");
+
+    await clickBoardTab(other);
+    await boardSettled();
+    await page.locator(".kanban-column").last().getByRole("heading", { name: "Other only" }).waitFor();
   });
 
   it("renames and adds statuses from the board settings dialog", async () => {

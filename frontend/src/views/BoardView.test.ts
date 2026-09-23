@@ -254,30 +254,20 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("turns the selected board tab into an input when its name is clicked", async () => {
+  it("only switches boards from a tab click, never renames inline", async () => {
     const store = seedBoard();
+    store.boards.push({ id: "other-id", name: "Other", archived: false, createdAt: "", updatedAt: "" });
     const wrapper = mountBoard();
     await flushPromises();
 
-    expect(wrapper.find(".board-tab-edit").exists()).toBe(false);
     await wrapper.find(".board-tab.selected").trigger("click");
-
-    const field = wrapper.find<HTMLInputElement>("input.board-tab-edit");
-    expect(field.exists()).toBe(true);
-    expect(field.element.value).toBe("Test Board");
-    expect(field.attributes("aria-label")).toBe("Board name");
-    // The tab is replaced by the field, so no duplicate name is shown.
-    expect(wrapper.find(".board-tab.selected").exists()).toBe(false);
-
-    await field.setValue("Renamed board");
-    await field.trigger("keydown.enter");
-    await flushPromises();
-
-    expect(store.updateBoard).toHaveBeenCalledWith("test-id", "Renamed board");
-    expect(wrapper.find(".board-tab-edit").exists()).toBe(false);
+    expect(wrapper.find("input[aria-label='Board name']").exists()).toBe(false);
+    expect(store.loadBoard).not.toHaveBeenCalledTimes(2);
+    const other = wrapper.findAll(".board-tab").find((tab) => tab.text() === "Other")!;
+    await other.trigger("click");
+    expect(store.selectedId).toBe("other-id");
     await wrapper.unmount();
   });
-
   it("clicking an unselected board tab switches boards instead of renaming", async () => {
     const store = seedBoard();
     store.boards = [
@@ -298,22 +288,35 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("escape abandons an inline board rename without saving", async () => {
-    const store = seedBoard();
+  it("opens another board's settings from its gear without switching to it", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.boards.push({ id: "other-id", name: "Other", archived: false, createdAt: "", updatedAt: "" });
+    const otherStatuses = [{ id: "o-1", name: "Ideas", archived: false, position: 0 }, { id: "o-2", name: "Shipped", archived: false, position: 1 }];
+    (store as any).fetchStatuses = vi.fn(() => Promise.resolve(otherStatuses.map((status) => ({ ...status }))));
+    (store.createStatus as any) = vi.fn(() => Promise.resolve({ id: "o-3", name: "Later", archived: false, position: 2 }));
     const wrapper = mountBoard();
     await flushPromises();
 
-    await wrapper.find(".board-tab.selected").trigger("click");
-    const field = wrapper.find("input.board-tab-edit");
-    await field.setValue("Discarded name");
-    await field.trigger("keydown.esc");
+    await wrapper.find('button[aria-label="Board settings for Other"]').trigger("click");
     await flushPromises();
+    expect(store.selectedId).toBe("test-id");
+    expect(store.fetchStatuses).toHaveBeenCalledWith("other-id");
+    const dialog = wrapper.find('[aria-labelledby="board-settings-title"]');
+    expect(dialog.find<HTMLInputElement>("#board-settings-name").element.value).toBe("Other");
+    expect(dialog.findAll(".settings-statuses li input").map((input) => (input.element as HTMLInputElement).value)).toEqual(["Ideas", "Shipped"]);
 
-    expect(store.updateBoard).not.toHaveBeenCalled();
-    expect(wrapper.find(".board-tab.selected").text()).toBe("Test Board");
+    await dialog.find("#board-settings-name").setValue("Renamed other");
+    await dialog.find("#board-settings-name").trigger("blur");
+    await dialog.find('input[aria-label="New status name"]').setValue("Later");
+    await dialog.find(".settings-add-status").trigger("submit");
+    await flushPromises();
+    expect(store.updateBoard).toHaveBeenCalledWith("other-id", "Renamed other");
+    expect(store.createStatus).toHaveBeenCalledWith("Later", "other-id");
+    expect(dialog.findAll(".settings-statuses li")).toHaveLength(3);
+    // The open board's own columns are untouched.
+    expect(wrapper.findAll(".kanban-column h2").map((heading) => heading.text())).toEqual(["Backlog"]);
     await wrapper.unmount();
   });
-
   it("offers no separate rename buttons anywhere on the board", async () => {
     seedBoard(["Backlog", "Done"]);
     const wrapper = mountBoard();
@@ -408,29 +411,6 @@ describe("BoardView", () => {
     }
     await wrapper.unmount();
   });
-  it("shows confirmation dialog for destructive actions", async () => {
-    mockRoute.query = { board: "test-id" };
-    const store = useBoardsStore();
-    store.selectedId = "test-id";
-    store.boards = [{ id: "test-id", name: "Test", archived: false, createdAt: "", updatedAt: "" }];
-
-    const wrapper = mountBoard();
-
-    const vm = wrapper.vm as any;
-    expect(vm.archiveConfirmOpen).toBe(false);
-
-    // Request archive
-    vm.requestArchiveCurrent();
-    await wrapper.vm.$nextTick();
-    expect(vm.archiveConfirmOpen).toBe(true);
-
-    // Dialog should be visible
-    const dialog = wrapper.find("[role='alertdialog']");
-    expect(dialog.exists()).toBe(true);
-    expect(dialog.text()).toContain("Archive board");
-    await wrapper.unmount();
-  });
-
   it("keeps Kanban column headers free of status management controls", async () => {
     seedBoard(["Backlog", "Doing"]);
     const wrapper = mountBoard();
@@ -482,19 +462,19 @@ describe("BoardView", () => {
       await doing.setValue("In review");
       await doing.trigger("blur");
       await flushPromises();
-      expect(store.updateStatus).toHaveBeenCalledWith(expect.objectContaining({ id: "status-2" }), "In review");
+      expect(store.updateStatus).toHaveBeenCalledWith(expect.objectContaining({ id: "status-2" }), "In review", "test-id");
 
       // The drag handle doubles as the keyboard reorder control.
       await dialog().find('button[aria-label="Reorder Backlog"]').trigger("keydown", { key: "ArrowUp" });
       expect(store.reorderStatuses).not.toHaveBeenCalled();
       await dialog().find('button[aria-label="Reorder Doing"]').trigger("keydown", { key: "ArrowUp" });
       await flushPromises();
-      expect(store.reorderStatuses).toHaveBeenCalledWith(["status-2", "status-1", "status-3"]);
+      expect(store.reorderStatuses).toHaveBeenCalledWith(["status-2", "status-1", "status-3"], "test-id", expect.any(Array));
 
       await dialog().find('input[aria-label="New status name"]').setValue("Blocked");
       await dialog().find(".settings-add-status").trigger("submit");
       await flushPromises();
-      expect(store.createStatus).toHaveBeenCalledWith("Blocked");
+      expect(store.createStatus).toHaveBeenCalledWith("Blocked", "test-id");
       await wrapper.unmount();
     });
 

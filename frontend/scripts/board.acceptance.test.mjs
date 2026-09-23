@@ -362,12 +362,14 @@ describe("board browser acceptance", () => {
     assert.equal(await page.getByRole("button", { name: "Add board" }).evaluate((button) => document.activeElement === button), true);
   });
 
-  it("renames the selected board by clicking its tab, without losing its active view", async (t) => {
+  it("renames the selected board from board settings, without losing its active view", async (t) => {
     const { page } = await fixture(t);
-    assert.equal(await page.getByRole("button", { name: /rename/i }).count(), 0, "No rename button should be offered");
     await selectedTab(page).click();
-    await page.getByRole("textbox", { name: "Board name", exact: true }).fill("Renamed board");
-    await page.getByRole("textbox", { name: "Board name", exact: true }).press("Enter");
+    assert.equal(await page.getByRole("textbox", { name: "Board name", exact: true }).count(), 0, "A tab click must not start a rename");
+    const settings = await openBoardSettings(page);
+    await settings.getByRole("textbox", { name: "Name", exact: true }).fill("Renamed board");
+    await settings.getByRole("textbox", { name: "Name", exact: true }).press("Enter");
+    await settings.getByRole("button", { name: "Done", exact: true }).click();
     await selectedTab(page).filter({ hasText: /^Renamed board$/ }).waitFor();
     assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
     assert.equal(new URL(page.url()).searchParams.get("view"), "kanban");
