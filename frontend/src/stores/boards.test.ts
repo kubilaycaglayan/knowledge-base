@@ -224,6 +224,23 @@ describe("boards store concurrency", () => {
     expect(store.statuses).toEqual([]);
   });
 
+  it("selects and loads a restored board when no board is active", async () => {
+    const restored = { id: "restored", name: "Restored", archived: false, createdAt: "", updatedAt: "" };
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/boards/restored/restore") return Promise.resolve(restored);
+      if (path === "/boards/restored/statuses") return Promise.resolve([]);
+      if (path.includes("/cards/page")) return Promise.resolve({ items: [], nextCursor: null });
+      return Promise.resolve([]);
+    });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+
+    await store.archiveBoard("restored", true);
+
+    expect(store.selectedId).toBe("restored");
+    expect(store.boards[0].name).toBe("Restored");
+  });
+
   it("reconciles edited dates with the active Gantt window", async () => {
     const saved = { id: "card", statusId: "backlog", title: "Dated", body: "{}", priority: "MEDIUM" as const, startDate: "2026-10-01", dueDate: "2026-10-02", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
     apiMock.mockResolvedValue(saved);

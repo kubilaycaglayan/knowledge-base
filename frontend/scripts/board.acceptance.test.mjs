@@ -24,6 +24,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const fixtureStatuses = statuses.map((status) => ({ ...status }));
   if (archivedStatus) fixtureStatuses[3].archived = true;
   let boardArchiveRequests = 0;
+  let boardIsArchived = archivedBoard;
   let cardUpdateRequests = 0;
   let cardMoveRequests = 0;
   let cardUpdateFailures = 0;
@@ -36,7 +37,10 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     const request = route.request();
     const method = request.method();
     if (failBoard && path === "/boards/board-1/statuses") { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "offline" }) }); return; }
-    if (path === "/boards") body = archivedBoard ? [] : [board];
+    if (path === "/boards") {
+      const wantsArchived = new URL(request.url()).searchParams.get("archived") === "true";
+      body = wantsArchived ? (boardIsArchived ? [{ ...board, archived: true }] : []) : (boardIsArchived ? [] : [board]);
+    }
     else if (path === "/boards/board-1/statuses") body = fixtureStatuses;
     else if (path === "/boards/board-1/cards") body = fixtureCards;
     else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (cursor >= 19) lazyPageRequests += 1; if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
@@ -52,7 +56,12 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     }
     if (method === "POST" && path === "/boards/board-1/archive") {
       boardArchiveRequests += 1;
+      boardIsArchived = true;
       body = { ...board, archived: true };
+    }
+    if (method === "POST" && path === "/boards/board-1/restore") {
+      boardIsArchived = false;
+      body = { ...board, archived: false };
     }
     if (method === "PUT" && path === "/boards/board-1") {
       board.name = request.postDataJSON().name;
@@ -274,6 +283,16 @@ describe("board browser acceptance", () => {
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=archived-board&view=kanban`);
     await page.getByRole("heading", { name: "Create your first board" }).waitFor();
     assert.equal(await page.locator(".board-card").count(), 0);
+  });
+
+  it("restores an archived board and selects its cards", async (t) => {
+    const { page } = await fixture(t, 390, false, false, false, true);
+    await page.getByRole("button", { name: "Archived boards" }).click();
+    await page.getByText("Product", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Restore" }).click();
+    await page.waitForFunction(() => document.querySelector("#board-select")?.value === "board-1");
+    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), "board-1");
+    await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
   it("provides a compact add-board plus action", async (t) => {
