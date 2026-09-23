@@ -450,6 +450,35 @@ describe("BoardView", () => {
     }
     await wrapper.unmount();
   });
+  it("shows card dates compactly, without the current year or a repeated single day", async () => {
+    const year = new Date().getFullYear();
+    const store = seedBoard(["Backlog"]);
+    const card = (id: string, startDate: string, dueDate: string, position: number) => ({ id, statusId: "status-1", title: id, body: "{}", priority: "MEDIUM", startDate, dueDate, position, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" });
+    store.cards = [card("range", `${year}-09-09`, `${year}-09-10`, 0), card("day", `${year}-09-09`, `${year}-09-09`, 1), card("later", `${year + 1}-01-02`, `${year + 1}-01-02`, 2)] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    expect(wrapper.findAll(".board-card .card-dates").map((dates) => dates.text())).toEqual(["9 Sep – 10 Sep", "9 Sep", `2 Jan ${year + 1}`]);
+    await wrapper.unmount();
+  });
+
+  it("saves a single confirmed day as both start and due date", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    const vm = wrapper.vm as any;
+    vm.setDraftDates([new Date(2026, 8, 9)]);
+    expect([vm.draft.startDate, vm.draft.dueDate]).toEqual(["2026-09-09", "2026-09-09"]);
+    vm.setDraftDates([new Date(2026, 8, 9), null]);
+    expect([vm.draft.startDate, vm.draft.dueDate]).toEqual(["2026-09-09", "2026-09-09"]);
+    vm.setDraftDates([new Date(2026, 8, 9), new Date(2026, 8, 10)]);
+    expect([vm.draft.startDate, vm.draft.dueDate]).toEqual(["2026-09-09", "2026-09-10"]);
+    vm.setDraftDates(null);
+    expect([vm.draft.startDate, vm.draft.dueDate]).toEqual(["", ""]);
+    await wrapper.unmount();
+  });
+
   it("lists priorities from most to least pressing in the card editor", async () => {
     const store = seedBoard(["Backlog"]);
     store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;

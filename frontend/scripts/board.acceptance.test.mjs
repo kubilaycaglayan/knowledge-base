@@ -142,7 +142,10 @@ async function pickCardDates(page, start, end) {
       await page.locator(".dp__menu").getByRole("button", { name: date.slice(0, 7) > shown ? "Next month" : "Previous month" }).click();
     }
     await cell.click();
+    if (start === end) break;
   }
+  // Picking dates never closes the picker; OK confirms them.
+  await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
   await page.locator(".dp__menu").waitFor({ state: "detached" });
 }
 
@@ -470,6 +473,45 @@ describe("board browser acceptance", () => {
     await link.waitFor();
     const borders = await link.evaluate((element) => { const style = getComputedStyle(element); return [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]; });
     assert.deepEqual(borders, ["0px", "0px", "0px", "0px"]);
+  });
+
+  it("keeps the date picker open until OK and shows a single confirmed day once", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    const day = dateOnly(5);
+    await page.getByRole("textbox", { name: "Card dates" }).click();
+    const cell = page.locator(`.dp__menu [data-test-id="dp-${day}"]`).first();
+    if (!(await cell.count())) await page.locator(".dp__menu").getByRole("button", { name: "Next month" }).click();
+    await cell.click();
+    await cell.click();
+    assert.equal(await page.locator(".dp__menu").count(), 1, "Picking a range leaves the picker open");
+    await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
+    await page.locator(".dp__menu").waitFor({ state: "detached" });
+    const input = page.getByRole("textbox", { name: "Card dates" });
+    assert.doesNotMatch(await input.inputValue(), /–/, "A single day is not shown as a range");
+
+    await input.click();
+    await page.locator(".dp__menu").waitFor();
+    await page.locator(".card-title-input").click();
+    await page.locator(".dp__menu").waitFor({ state: "detached" });
+  });
+
+  it("confirms a single picked day without expecting a range end", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    const day = dateOnly(6);
+    await page.getByRole("textbox", { name: "Card dates" }).click();
+    const cell = page.locator(`.dp__menu [data-test-id="dp-${day}"]`).first();
+    if (!(await cell.count())) await page.locator(".dp__menu").getByRole("button", { name: "Next month" }).click();
+    await cell.click();
+    await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
+    await page.locator(".dp__menu").waitFor({ state: "detached" });
+    await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
+    await closeCard(page);
+    const [year, month, date] = day.split("-").map(Number);
+    const label = new Date(year, month - 1, date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    await page.locator(".board-card .card-dates", { hasText: new RegExp(`^${label}`) }).first().waitFor();
+    assert.doesNotMatch(await page.locator(".board-card .card-dates").first().textContent(), /–/);
   });
 
   it("sorts a column by priority from its header", async (t) => {
