@@ -22,12 +22,11 @@ See [iOS setup and smoke checks](../ios/README.md).
 
 Authenticated endpoints currently include:
 
-Board cards accept at most one distinct `pathIds` value; requests with more
-than one path are rejected with `400`. Kanban and Gantt are views over the
-same active board cards; Gantt only places cards with dates overlapping its
-inclusive window on the timeline. Date-only values use calendar arithmetic, so
-inclusive ranges remain stable across month, leap-day, and daylight-saving
-boundaries.
+Board cards accept zero or more distinct owned `pathIds` values. Kanban and
+Gantt are views over the same active board cards; Gantt only places cards with
+dates overlapping its inclusive window on the timeline. Date-only values use
+calendar arithmetic, so inclusive ranges remain stable across month, leap-day,
+and daylight-saving boundaries.
 
 - `GET/POST /boards`, `GET/PUT /boards/{id}`, and `POST /boards/{id}/archive|restore` manage user-owned named boards. New boards seed Backlog, Pending, In Progress, and Done statuses. `GET/POST /boards/{id}/statuses`, `PUT /boards/{id}/statuses/{statusId}`, `PUT /boards/{id}/statuses/order`, and status archive/restore endpoints manage board-owned columns; archiving a status reassigns its active cards and cannot remove the final active status. `GET/POST/PUT /boards/{id}/cards` manage cards with Tiptap-compatible JSON body text, four priorities, optional inclusive dates, owned paths, and `BOARD` labels. Card updates may include `expectedUpdatedAt`; a mismatch returns `409` without persistence so concurrent tabs cannot overwrite newer card state. `GET /boards/{id}/cards/page?statusId=…&cursor=-1&limit=20` returns cursor pages for dense columns. Card move, archive/restore, and `GET /boards/{id}/gantt?from=YYYY-MM-DD&to=YYYY-MM-DD` are board-scoped; Gantt returns active cards whose inclusive date range overlaps the requested window, including open-ended one-sided dates. All board references reject cross-user resources; archived cards are retained and excluded from active Kanban/Gantt results. Clients retain drafts on save failures, treat `409` as a retryable conflict, treat a client request timeout as `408` with a retryable editor message, retry failed pages with the same cursor, and ignore late board/page/Gantt/move/edit responses after a newer request.
 

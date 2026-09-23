@@ -51,8 +51,8 @@ Unchecked items are intentionally incomplete.
 
 - [x] Cards allow blank titles, empty Tiptap-compatible bodies, four priorities,
   optional single dates or inclusive date ranges.
-- [x] Each card supports exactly one path; path ownership and color inheritance
-  are enforced and tested.
+- [x] Each card supports multiple owned paths; path ownership and color
+  inheritance are enforced and tested.
 - [x] Cards support reusable `BOARD` labels without changing existing scopes.
 - [x] The editor uses the existing Tiptap UI and does not display raw `{}` JSON;
   long-content handling and focus restoration remain.

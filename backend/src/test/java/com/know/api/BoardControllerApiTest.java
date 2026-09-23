@@ -191,7 +191,7 @@ class BoardControllerApiTest {
     verify(cards, never()).save(any(BoardCard.class));
   }
 
-  @Test void cardRejectsMoreThanOnePath() throws Exception {
+  @Test void cardCanReferenceMultipleOwnedPaths() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId(), statusId = UUID.randomUUID(), firstPath = UUID.randomUUID(), secondPath = UUID.randomUUID();
     BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
@@ -200,11 +200,12 @@ class BoardControllerApiTest {
     when(paths.findByUserIdAndIdIn(owner, List.of(firstPath, secondPath))).thenReturn(List.of(
         Path.imported(firstPath, owner, "One", null, "#111111", PathStatus.ACTIVE, null, null),
         Path.imported(secondPath, owner, "Two", null, "#222222", PathStatus.ACTIVE, null, null)));
-    when(scopes.existsByIdLabelIdAndIdScope(any(), eq(LabelScopeType.BOARD))).thenReturn(true);
+    when(cards.save(any(BoardCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
     mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
-        .content("{\"title\":\"single path\",\"pathIds\":[\"" + firstPath + "\",\"" + secondPath + "\"]}"))
-        .andExpect(status().isBadRequest());
-    verify(cards, never()).save(any(BoardCard.class));
+        .content("{\"title\":\"multiple paths\",\"pathIds\":[\"" + firstPath + "\",\"" + secondPath + "\"]}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.pathIds.length()").value(2));
+    verify(cards).save(argThat(card -> card.getPaths().size() == 2));
   }
 
   @Test void cardRejectsForeignPathAndLabelReferences() throws Exception {

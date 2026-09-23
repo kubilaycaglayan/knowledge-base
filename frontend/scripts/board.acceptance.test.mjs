@@ -41,7 +41,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     else if (path === "/boards/board-1/cards") body = fixtureCards;
     else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (cursor >= 19) lazyPageRequests += 1; if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
-    else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
+    else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-2", name: "Research", color: "#3366cc", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
     else if (path === "/labels") body = [];
     const cardRoute = path.match(/^\/boards\/board-1\/cards\/([^/]+)(?:\/(archive|restore|move))?$/);
     const routedCard = cardRoute && fixtureCards.find((card) => card.id === cardRoute[1]);
@@ -233,13 +233,17 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     assert.equal(await page.locator(".board-card").first().evaluate((element) => getComputedStyle(element).borderInlineStartColor), "rgb(18, 171, 120)");
     await page.locator(".board-card").first().click();
-    assert.equal(await page.getByRole("radio").count(), 1);
+    assert.equal(await page.getByRole("checkbox", { name: "Product" }).count(), 1);
+    assert.equal(await page.getByRole("checkbox", { name: "Research" }).count(), 1);
+    await page.getByRole("checkbox", { name: "Research" }).check();
+    assert.equal(await page.getByRole("checkbox", { name: "Research" }).isChecked(), true);
+    await page.getByRole("button", { name: "Save card" }).click();
   });
 
   it("does not expose archived paths or deleted BOARD labels in the editor", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();
-    assert.equal(await page.getByRole("radio", { name: "Archived path" }).count(), 0);
+    assert.equal(await page.getByRole("checkbox", { name: "Archived path" }).count(), 0);
     assert.equal(await page.getByRole("group", { name: "Board labels" }).getByRole("checkbox").count(), 0);
   });
 
