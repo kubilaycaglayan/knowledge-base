@@ -62,12 +62,10 @@
 .card-editor-footer { display:flex; justify-content:space-between; align-items:center; gap:.5rem; } .save-state { color:var(--muted-text); font-size:.8rem; font-variant-numeric:tabular-nums; }
 .link-like { min-height:0; padding:0 .2rem; text-decoration:underline; }
 .confirm-dialog { position:absolute; width:min(420px, calc(100% - 2rem)); padding:1rem; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); box-shadow:0 12px 32px #0005; }
-@media (max-width: 700px) { .board-page { padding:0 .8rem .8rem; } .board-header { align-items:flex-start; flex-direction:column; } .board-toolbar { align-items:stretch; flex-direction:column; } .board-tabs { flex-basis:100%; } .board-tab, .board-tab-edit, .board-tab-settings { min-height:44px; font-size:.8rem; } .board-view-actions { margin-left:0; } .view-switch { flex:1; } .view-switch button { flex:1; } .gantt-heading { align-items:stretch; flex-direction:column; } .gantt-controls { justify-content:space-between; } .timeline-header, .timeline-row { grid-template-columns:140px 1fr; } }
+@media (max-width: 700px) { .board-page { padding:0 .8rem .8rem; } .board-header { align-items:flex-start; flex-direction:column; } .board-toolbar { align-items:stretch; flex-direction:column; } .board-tabs { flex-basis:100%; } .board-tab, .board-tab-edit { min-height:44px; font-size:.8rem; } .board-view-actions { margin-left:0; } .view-switch { flex:1; } .view-switch button { flex:1; } .gantt-heading { align-items:stretch; flex-direction:column; } .gantt-controls { justify-content:space-between; } .timeline-header, .timeline-row { grid-template-columns:140px 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior:auto !important; transition-duration:.01ms !important; animation-duration:.01ms !important; } }
 .new-board-dialog { display:grid; gap:.6rem; } .new-board-dialog h2 { margin:0 0 .2rem; font-size:1.1rem; } .new-board-dialog label { font-weight:600; font-size:.85rem; } .new-board-dialog input { min-width:0; border:1px solid var(--border-color); border-radius:8px; padding:.6rem .75rem; background:var(--surface-color); color:inherit; font-size:max(16px, 1rem); } .new-board-dialog .editor-actions { justify-content:flex-end; margin-top:.3rem; } .field-error { margin:0; color:#b42318; font-size:.85rem; }
 /* Board tabs carry a quiet settings gear beside each name. */
-.board-tab-wrap { display:inline-flex; align-items:center; flex:0 0 auto; border-radius:6px; } .board-tab-wrap.selected { background:#334155; color:#fff; }
-.board-tab-wrap .board-tab { padding-right:.1rem; } .board-tab-settings { display:inline-flex; align-items:center; justify-content:center; min-width:24px; min-height:36px; padding:0 .35rem 0 .1rem; background:transparent; color:inherit; opacity:.6; } .board-tab-settings:hover, .board-tab-settings:focus-visible { opacity:1; }
 /* Flat, low-emphasis icon buttons; danger ones read red. */
 .quiet { background:transparent; color:inherit; border:0; } .quiet:hover:not(:disabled) { background:var(--workspace-hover); } .quiet:disabled { opacity:.35; cursor:not-allowed; }
 .danger { color:#b42318; } .danger:hover:not(:disabled) { background:color-mix(in srgb, #b42318 10%, transparent); }
@@ -93,10 +91,12 @@
 .kanban-area.wide .kanban-width-toggle { right:-6px; }
 @media (max-width: 700px) { .kanban-width-toggle { display:none; } .kanban-area.wide { width:auto; margin-left:0; } }
 .board-tab-dot { display:inline-block; width:.5rem; height:.5rem; margin-right:.4rem; border-radius:50%; vertical-align:middle; }
-.board-tab-wrap[draggable="true"] { cursor:grab; } .board-tab-wrap.is-dragged { opacity:.5; }
 .settings-name-readonly { display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:0; padding:.45rem 0; overflow-wrap:anywhere; } .settings-path-link { font-size:.85rem; }
 .settings-switch { display:flex; align-items:center; gap:.6rem; min-height:44px; cursor:pointer; } .settings-switch input { width:1.1rem; height:1.1rem; margin:0; accent-color:#334155; cursor:pointer; }
 .board-settings-footer.end-only { justify-content:flex-end; }
 .archive-note { font-size:.8rem; color:var(--muted-text); }
 /* A thick, easy-to-grab scrollbar for the board tab strip. */
 .board-tabs::-webkit-scrollbar { height:12px; } .board-tabs::-webkit-scrollbar-track { background:transparent; } .board-tabs::-webkit-scrollbar-thumb { border-radius:6px; background:var(--muted-text); border:2px solid transparent; background-clip:padding-box; } .board-tabs::-webkit-scrollbar-thumb:hover { background-color:var(--workspace-muted, #64748b); }
+.boards-manager-list li { gap:.35rem; } .boards-manager-name { flex:1; min-width:0; min-height:44px; padding:.45rem .6rem; border-radius:6px; background:transparent; color:inherit; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .boards-manager-name:hover { background:var(--workspace-hover); }
+.boards-manager-path { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; } .boards-manager-path .board-tab-dot { margin:0; }
+.boards-manager-pin.pinned { opacity:1; color:#e8754e; } .boards-manager-note { min-width:44px; text-align:center; font-size:.75rem; color:var(--muted-text); }
