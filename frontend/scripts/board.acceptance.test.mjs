@@ -610,6 +610,7 @@ describe("board browser acceptance", () => {
     const input = page.locator(".card-labels-picker input");
     await input.click();
     await input.fill("bu");
+    assert.equal(await input.evaluate((element) => getComputedStyle(element).outlineStyle), "none", "Only the field shows a focus ring, not the text inside it");
     const options = page.locator(".v-overlay-container .v-list-item-title");
     await page.waitForFunction(() => document.querySelectorAll(".v-overlay-container .v-list-item-title").length === 1);
     assert.deepEqual((await options.allInnerTexts()).map((name) => name.trim()), ["Bug"], "Typing searches the labels");

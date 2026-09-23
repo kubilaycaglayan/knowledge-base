@@ -120,3 +120,14 @@
 /* A path card's play button sits at its top right, beside the priority. */
 .board-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; min-height:1.2rem; } .board-card-top .board-card-play { flex:0 0 auto; margin:-.35rem -.35rem 0 0; }
 .card-editor-header .board-card-play { flex:0 0 auto; }
+
+/* Card labels: a compact chip picker in the editor footer, one clipped row on cards. */
+.card-labels-picker { flex:1 1 12rem; min-width:10rem; }
+.card-labels-picker :deep(.v-field) { min-height:36px; border-radius:6px; background:var(--workspace-hover); box-shadow:none; font-size:.85rem; }
+.card-labels-picker :deep(.v-field__input) { min-height:36px; padding-block:2px; gap:3px; }
+.card-labels-picker :deep(.v-field__input input) { min-height:0; border:0; padding:0; font-size:max(16px, .85rem); }
+.card-labels-picker :deep(.card-labels-chip) { border-radius:4px; background:var(--workspace-selected); color:var(--workspace-selected-text, inherit); }
+.board-card-labels { display:flex; flex-wrap:nowrap; gap:.25rem; height:18px; margin:.3rem 0 0; overflow:hidden; }
+.board-card-label { flex:0 0 auto; max-width:10rem; padding:0 .4rem; overflow:hidden; border-radius:4px; background:color-mix(in srgb, var(--label-color, #64748b) 16%, transparent); font-size:.7rem; line-height:18px; text-overflow:ellipsis; white-space:nowrap; }
+.board-card-labels + h3 { margin-top:.25rem; }
+.card-labels-picker :deep(.v-field__input input:focus), .card-labels-picker :deep(.v-field__input input:focus-visible) { outline:none !important; box-shadow:none; }

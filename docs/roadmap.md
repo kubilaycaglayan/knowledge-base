@@ -115,3 +115,6 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   in its editor while no timer runs; it starts a timer for that path with the
   card title as the description.
   Acceptance: `docs/board-card-timer-acceptance-checklist.md`.
+- [x] Label board cards with `BOARD` labels from a searchable Vuetify chip
+  picker in the card editor footer; cards show one compact, clipped row of
+  label chips between the priority and the title.
