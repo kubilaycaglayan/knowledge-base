@@ -116,7 +116,8 @@ Unchecked items are intentionally incomplete.
 - [x] Timeout-specific visible editor feedback is covered end to end.
 - [x] Gantt load failures set a visible, dismissible retry message and clear
   stale timeline cards.
-- [ ] Concurrent tabs do not overwrite newer board/card state with stale data.
+- [x] Concurrent tabs do not overwrite newer card state: stale writes receive
+  `409`, refresh the latest card, and preserve the second tab’s draft for retry.
 
 ## H. Gantt timeline
 

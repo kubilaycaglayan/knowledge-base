@@ -17,7 +17,11 @@ operations reconcile both views immediately. Board-list, board-load, page,
 Gantt, move, and card-edit requests use revisions so late responses cannot
 overwrite newer selected-board state. A failed lazy page stops automatic
 retries and exposes an explicit retry action; card-save failures preserve the
-editor draft.
+editor draft. Card updates carry the last observed `updatedAt` as an optimistic
+concurrency precondition; stale tab writes receive `409`, refresh the latest
+card, and leave the user’s draft open for an explicit retry. Card timestamps are
+normalized to PostgreSQL microsecond precision so a same-tab save is not falsely
+classified as stale.
 
 Timer synchronization uses a hybrid model. REST commands (`start`, `stop`, `cancel`, and
 `configure`) mutate the server-owned timer in PostgreSQL. After a successful transaction,
