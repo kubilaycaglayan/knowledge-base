@@ -90,6 +90,31 @@ describe("board real-stack acceptance", () => {
     await page.unroute(`**/api/v1/boards/${firstId}/cards/page*`);
   });
 
+  it("protects a card from a stale concurrent tab write", async () => {
+    const boardId = await page.getByRole("combobox", { name: "Current board" }).inputValue();
+    await page.getByRole("textbox", { name: "New card title" }).fill("Concurrent card");
+    await page.getByRole("button", { name: "Add card" }).click();
+    await page.getByRole("heading", { name: "Concurrent card" }).waitFor();
+
+    const otherPage = await page.context().newPage();
+    otherPage.setDefaultTimeout(10000);
+    await otherPage.goto(`${baseUrl}/board?board=${boardId}`);
+    await otherPage.getByRole("heading", { name: "Boards" }).waitFor();
+    await otherPage.getByRole("heading", { name: "Concurrent card" }).waitFor();
+
+    await page.locator(".board-card", { hasText: "Concurrent card" }).click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("First tab wins");
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("heading", { name: "First tab wins" }).waitFor();
+
+    await otherPage.locator(".board-card", { hasText: "Concurrent card" }).click();
+    await otherPage.getByRole("textbox", { name: "Title", exact: true }).fill("Stale second tab");
+    await otherPage.getByRole("button", { name: "Save card" }).click();
+    await otherPage.getByRole("alert").filter({ hasText: "changed elsewhere" }).waitFor();
+    assert.equal(await otherPage.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Stale second tab");
+    await otherPage.close();
+  });
+
   it("creates a blank card and renders that card on the real Gantt timeline", async () => {
     await page.getByRole("textbox", { name: "New card title" }).fill("");
     await page.getByRole("button", { name: "Add card" }).click();
