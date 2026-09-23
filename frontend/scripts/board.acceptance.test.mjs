@@ -571,6 +571,34 @@ describe("board browser acceptance", () => {
     assert.ok(luminance(cardBackground) < 80, `The card play button is dark (${cardBackground})`);
   });
 
+  for (const [width, height] of [[1280, 900], [390, 844]]) {
+    it(`keeps columns equally tall, within the screen, and scrollable (${width}x${height})`, async (t) => {
+      const { page } = await fixture(t, width, true);
+      await page.locator(".board-card").first().waitFor();
+      const columns = page.locator(".kanban-column");
+      const heights = await columns.evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().height)));
+      assert.ok(heights.every((value) => Math.abs(value - heights[0]) <= 1), `Columns share one height: ${heights}`);
+      const bottom = await columns.first().evaluate((item) => item.getBoundingClientRect().bottom);
+      assert.ok(bottom <= height, `Columns end within the screen (${bottom} <= ${height})`);
+      const dense = columns.first();
+      assert.ok(await dense.evaluate((item) => item.scrollHeight > item.clientHeight), "The dense column overflows inside itself");
+      await dense.evaluate((item) => { item.scrollTop = 200; });
+      assert.ok(await dense.evaluate((item) => item.scrollTop > 0), "The hidden cards scroll into view");
+      assert.equal(await dense.locator("header").evaluate((header) => getComputedStyle(header).position), "sticky", "The column header stays visible while scrolling");
+
+      // A keyboard or an address bar shrinks the visible viewport; the columns follow.
+      await page.setViewportSize({ width, height: height - 250 });
+      await page.waitForFunction((limit) => document.querySelector(".kanban-column").getBoundingClientRect().bottom <= limit, height - 250);
+    });
+  }
+
+  it("keeps short columns equal to the tallest one", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().waitFor();
+    const heights = await page.locator(".kanban-column").evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().height)));
+    assert.ok(heights.every((value) => value === heights[0]), `Columns share one height: ${heights}`);
+  });
+
   it("sorts a column by priority from its header", async (t) => {
     const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
     await page.locator(".board-card").first().waitFor();
