@@ -104,3 +104,9 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   tab order stays independent of the Paths page. Merging paths moves board
   cards by status name.
   Acceptance: `docs/path-boards-acceptance-checklist.md`.
+- [x] Let each Kanban column sort its cards by priority from a header toggle.
+  The sort is stored on the status (V46) and applied by the server to card
+  pages, so dense columns stay in order; sorted columns ignore in-column
+  reordering. Board cards share the note body formatting, Add board lives in
+  the Boards dialog, and untitled cards stay blank.
+  Acceptance: `docs/board-column-sort-acceptance-checklist.md`.

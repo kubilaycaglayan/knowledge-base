@@ -534,7 +534,7 @@ describe("BoardView", () => {
 
     const header = wrapper.findAll(".kanban-column")[0].find("header");
     expect(header.find("h2").text()).toBe("Backlog");
-    expect(header.findAll("button").map((button) => button.attributes("aria-label"))).toEqual(["Add card to Backlog"]);
+    expect(header.findAll("button").map((button) => button.attributes("aria-label"))).toEqual(["Sort Backlog by priority", "Add card to Backlog"]);
     expect(wrapper.find('input[aria-label="New status name"]').exists()).toBe(false);
     await wrapper.unmount();
   });

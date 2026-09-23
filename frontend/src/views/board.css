@@ -103,3 +103,4 @@
 .boards-manager-list .icon-button { min-width:28px; min-height:28px; padding:0; }
 @media (pointer: coarse) { .boards-manager-name, .boards-manager-list .icon-button { min-height:44px; } .boards-manager-list .icon-button { min-width:44px; } }
 .boards-manager-pin.pinned { opacity:1; color:#e8754e; }
+.column-tools .column-sort { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:.25rem; background:transparent; color:var(--muted-text); } .column-tools .column-sort:hover { background:var(--workspace-hover); color:inherit; } .column-tools .column-sort.active { background:color-mix(in srgb, #9f3f22 14%, transparent); color:#9f3f22; }

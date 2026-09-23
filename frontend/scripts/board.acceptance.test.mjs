@@ -549,7 +549,7 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     const column = page.locator(".kanban-column").first();
     await column.getByRole("heading", { name: "Ship timeline" }).waitFor();
-    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Add card to Backlog"], "Columns only offer adding a card");
+    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Sort Backlog by priority", "Add card to Backlog"], "Columns only offer sorting and adding a card");
     const settings = await openBoardSettings(page);
     await settings.getByRole("textbox", { name: "Status name Backlog" }).fill("Ready");
     await settings.getByRole("textbox", { name: "Status name Backlog" }).press("Enter");

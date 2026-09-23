@@ -131,18 +131,18 @@ async function addCard(title) {
 }
 
 // Seeds cards straight over the API so pagination tests stay fast.
-async function seedCards(boardId, count, prefix) {
-  await page.evaluate(async ({ boardId: id, count: total, prefix: label }) => {
+async function seedCards(boardId, count, prefix, priority = "MEDIUM") {
+  await page.evaluate(async ({ boardId: id, count: total, prefix: label, priority: level }) => {
     const token = localStorage.getItem("know_token");
     for (let index = 0; index < total; index += 1) {
       const response = await fetch(`/api/v1/boards/${id}/cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: "MEDIUM" }),
+        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: level }),
       });
       if (!response.ok) throw new Error(`Seeding ${label} card ${index} failed with ${response.status}`);
     }
-  }, { boardId, count, prefix });
+  }, { boardId, count, prefix, priority });
 }
 
 // Boards are created from the Boards dialog's Add board button; the New board
@@ -388,7 +388,7 @@ describe("board real-stack acceptance", () => {
     const column = page.locator(".kanban-column").first();
     await column.waitFor();
     const original = (await column.locator("h2").textContent()).trim();
-    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [`Add card to ${original}`], "Columns only offer adding a card");
+    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [`Sort ${original} by priority`, `Add card to ${original}`], "Columns only offer sorting and adding a card");
 
     await openSettingsFor(activeBoardName);
     const settings = page.getByRole("dialog", { name: "Board settings" });
@@ -414,6 +414,32 @@ describe("board real-stack acceptance", () => {
     await page.reload();
     await page.locator(".kanban-column").first().getByRole("heading", { name: renamed }).waitFor();
     await page.locator(".kanban-column").last().getByRole("heading", { name: "Blocked" }).waitFor();
+  });
+
+  it("sorts a column by priority on the server, past the first page, and keeps the sort", async () => {
+    const boardId = currentBoardId();
+    // Urgent cards sit after a full manual page, so only a server-side sort can surface them.
+    await seedCards(boardId, 21, "Calm", "LOW");
+    await seedCards(boardId, 2, "Fire", "URGENT");
+    await page.reload();
+    const column = page.locator(".kanban-column").first();
+    await column.getByRole("heading", { name: "Calm card 0" }).waitFor();
+    assert.equal(await column.getByRole("heading", { name: /^Fire card/ }).count(), 0, "Urgent cards start beyond the first manual page");
+
+    const toggle = column.getByRole("button", { name: /^Sort .* by priority$/ });
+    await Promise.all([
+      page.waitForResponse((response) => response.url().endsWith("/sort") && response.request().method() === "PUT" && response.status() === 200),
+      toggle.click(),
+    ]);
+    await column.getByRole("heading", { name: "Fire card 0" }).waitFor();
+    const firstTitles = async () => (await column.locator(".board-card h3").allTextContents()).slice(0, 3);
+    assert.deepEqual(await firstTitles(), ["Fire card 0", "Fire card 1", "Calm card 0"]);
+    assert.equal(await toggle.getAttribute("aria-pressed"), "true");
+
+    await page.reload();
+    await column.getByRole("heading", { name: "Fire card 0" }).waitFor();
+    assert.deepEqual(await firstTitles(), ["Fire card 0", "Fire card 1", "Calm card 0"], "The sort is stored on the column");
+    assert.equal(await toggle.getAttribute("aria-pressed"), "true");
   });
 
   it("lazy loads past the first page with a sentinel instead of a Load more button", async () => {
