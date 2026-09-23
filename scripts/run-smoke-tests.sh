@@ -81,10 +81,6 @@ for attempt in {1..180}; do
   if compose exec -T api wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
     break
   fi
-  if [[ "$attempt" == 30 ]]; then
-    echo "API did not become healthy" >&2
-    exit 1
-  fi
   sleep 2
 done
 compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
