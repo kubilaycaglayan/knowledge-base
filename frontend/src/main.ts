@@ -6,6 +6,7 @@ import vuetify from "./plugins/vuetify";
 import "./style.css";
 import "./theme.css";
 import "./extra.css";
+import "./rich-text.css";
 import { applyTheme, theme } from "./lib/theme";
 applyTheme(theme.value);
 const router = createRouter({

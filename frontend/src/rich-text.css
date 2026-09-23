@@ -1,0 +1,35 @@
+/* Shared formatting for rich-text bodies (notes and board cards). See src/lib/rich-text.ts. */
+.rich-text .ProseMirror {
+  line-height: 1.45;
+}
+.rich-text .ProseMirror p {
+  margin: 0 0 8px;
+}
+.rich-text h1,
+.rich-text h2,
+.rich-text h3 {
+  letter-spacing: -1px;
+}
+.rich-text ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.rich-text ul[data-type="taskList"] li {
+  display: flex;
+  gap: 8px;
+}
+.rich-text ul[data-type="taskList"] li > label {
+  margin-top: 5px;
+}
+.rich-text pre {
+  overflow-x: auto;
+  padding: 12px;
+  background: var(--workspace-selected);
+  border-radius: var(--workspace-radius);
+}
+.rich-text blockquote {
+  border-left: 2px solid var(--workspace-control-border);
+  margin-inline: 0;
+  padding-left: 16px;
+  color: var(--workspace-muted);
+}

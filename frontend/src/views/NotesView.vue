@@ -10,10 +10,8 @@ import {
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { EditorContent } from "@tiptap/vue-3";
+import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
 import { Editor } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
 import { api } from "../lib/api";
 import NotesPageSizeSelect from "../components/NotesPageSizeSelect.vue";
 import { storeToRefs } from "pinia";
@@ -400,7 +398,7 @@ async function loadEditor() {
     }
     editor.value?.destroy();
     editor.value = new Editor({
-      extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true })],
+      extensions: richTextExtensions(),
       content: parseContent(fromList.content),
       editorProps: {
         attributes: {
@@ -408,8 +406,7 @@ async function loadEditor() {
           "aria-label": "Note content",
           "aria-multiline": "true",
         },
-        clipboardTextSerializer: (slice) =>
-          slice.content.textBetween(0, slice.content.size, "\n", "\n"),
+        ...richTextEditorProps,
       },
       onUpdate: scheduleSave,
       onFocus: keepEditorVisible,
@@ -703,7 +700,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
-      <div ref="editorHost" class="rich-editor">
+      <div ref="editorHost" class="rich-editor" :class="RICH_TEXT_CLASS">
         <EditorContent v-if="editor" :editor="editor" />
       </div>
       <p v-if="selected" class="note-dates">
@@ -1029,23 +1026,6 @@ onBeforeUnmount(() => {
 }
 .rich-editor :deep(.ProseMirror) {
   min-height: 380px;
-  line-height: 1.45;
-}
-.rich-editor :deep(h1),
-.rich-editor :deep(h2),
-.rich-editor :deep(h3) {
-  letter-spacing: -1px;
-}
-.rich-editor :deep(ul[data-type="taskList"]) {
-  list-style: none;
-  padding-left: 0;
-}
-.rich-editor :deep(ul[data-type="taskList"] li) {
-  display: flex;
-  gap: 8px;
-}
-.rich-editor :deep(ul[data-type="taskList"] li > label) {
-  margin-top: 5px;
 }
 .note-dates {
   color: var(--workspace-muted);
@@ -1128,18 +1108,6 @@ onBeforeUnmount(() => {
 .icon-button:hover {
   background: var(--workspace-accent-hover);
 }
-.rich-editor :deep(pre) {
-  overflow-x: auto;
-  padding: 12px;
-  background: var(--workspace-selected);
-  border-radius: var(--workspace-radius);
-}
-.rich-editor :deep(blockquote) {
-  border-left: 2px solid var(--workspace-control-border);
-  margin-inline: 0;
-  padding-left: 16px;
-  color: var(--workspace-muted);
-}
 .note-title-row {
   display: flex;
   align-items: center;
@@ -1157,9 +1125,6 @@ onBeforeUnmount(() => {
 }
 .rich-editor :deep(.ProseMirror) {
   scroll-margin-bottom: 180px;
-}
-.rich-editor :deep(.ProseMirror p) {
-  margin: 0 0 8px;
 }
 @media (max-width: 700px) {
   .note-tag button {
