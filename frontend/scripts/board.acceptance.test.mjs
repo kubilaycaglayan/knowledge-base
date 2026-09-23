@@ -166,6 +166,8 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Never disappears");
+    await page.locator("input[name='startDate']").fill(dateOnly());
+    await page.locator("input[name='dueDate']").fill(dateOnly(2));
     await page.getByRole("button", { name: "Save card" }).click();
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
     await page.getByRole("button", { name: "Move card to next status" }).click();
