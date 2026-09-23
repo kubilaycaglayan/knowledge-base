@@ -677,6 +677,18 @@ describe("BoardView", () => {
       await custom.unmount();
     });
 
+    it("formats the card body with the same rich-text rules as notes", async () => {
+      const store = seedPathBoards();
+      store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: JSON.stringify({ type: "doc", content: [{ type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [{ type: "paragraph", content: [{ type: "text", text: "Done" }] }] }] }] }), priority: "MEDIUM", position: 0, archived: false, pathIds: ["path-1"], labelIds: [], createdAt: "", updatedAt: "t1" }];
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      await flushPromises();
+      expect(wrapper.find(".card-body-editor").classes()).toContain("rich-text");
+      expect(wrapper.find('.card-body-editor ul[data-type="taskList"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
     // PB-22
     it("path board settings are read-only and leave visibility to the Paths page", async () => {
       seedPathBoards();

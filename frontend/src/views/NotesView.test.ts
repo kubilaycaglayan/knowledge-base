@@ -228,6 +228,7 @@ describe("NotesView", () => {
     expect(wrapper.get('[aria-label="Note content"]').text()).toBe(
       "Graph theory",
     );
+    expect(wrapper.get(".rich-editor").classes()).toContain("rich-text");
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(

@@ -436,6 +436,19 @@ describe("board browser acceptance", () => {
     assert.equal(getCardUpdateRequests(), 2, "Closing flushes the pending body edit");
   });
 
+  it("uses the note body line height and paragraph spacing in the card body", async (t) => {
+    const { page } = await fixture(t);
+    await page.locator(".board-card").first().click();
+    await page.locator(".card-editor .ProseMirror").click();
+    await page.keyboard.type("First line");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Second line");
+    const [lineHeight, fontSize, marginTop, marginBottom] = await page.locator(".card-editor .ProseMirror p").first().evaluate((element) => { const style = getComputedStyle(element); return [style.lineHeight, style.fontSize, style.marginTop, style.marginBottom].map(parseFloat); });
+    assert.ok(Math.abs(lineHeight / fontSize - 1.45) < 0.02, `line-height ratio ${lineHeight / fontSize}`);
+    assert.equal(marginTop, 0);
+    assert.equal(marginBottom, 8);
+  });
+
   it("restores focus to the card after closing its editor", async (t) => {
     const { page } = await fixture(t);
     const card = page.locator(".board-card").first();
