@@ -31,6 +31,8 @@ Unchecked items are intentionally incomplete.
   overwrite Kanban or Gantt state.
 - [x] Store-level concurrent board loads and writes reject stale responses
   deterministically.
+- [x] Board transitions clear the previous statuses, cards, archive, and
+  timeline projection before the next board response arrives.
 - [x] Concurrent board loads and writes are covered end to end, including a
   delayed real-stack board response that cannot replace the newly selected board.
 - [x] Gantt responses are revision-checked so an older board/window cannot
@@ -44,13 +46,15 @@ Unchecked items are intentionally incomplete.
 - [x] Status archive reassigns active cards and protects the final active
   status.
 - [x] UI reorder, inline name editing, keyboard reorder actions, and archived
-  status restore are covered; safeguards, 404/409 errors, and retry behavior
-  remain.
+  status restore, destructive archive confirmation, reassignment, and 409
+  recovery feedback are covered.
 
 ## D. Cards and editor
 
 - [x] Cards allow blank titles, empty Tiptap-compatible bodies, four priorities,
   optional single dates or inclusive date ranges.
+- [x] Card titles are bounded at the persistence limit and oversized requests
+  return validation errors before card persistence.
 - [x] Each card supports multiple owned paths; path ownership and color
   inheritance are enforced and tested.
 - [x] Cards support reusable `BOARD` labels without changing existing scopes.
@@ -124,6 +128,8 @@ Unchecked items are intentionally incomplete.
 - [x] Gantt is a view switch for existing active Kanban cards.
 - [x] Cards with a single date or inclusive date range render as timeline bars.
 - [x] The default window is 14 days and date state is URL-addressable.
+- [x] Timeline range changes create browser-history entries and Back/Forward
+  restores both the URL and the visible date inputs.
 - [x] Month/year boundaries, leap days, and daylight-saving transitions use
   date-only arithmetic.
 - [x] Cards without dates are omitted with a clear explanation.
