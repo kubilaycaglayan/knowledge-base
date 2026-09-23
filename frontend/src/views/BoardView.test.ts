@@ -137,13 +137,15 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("keeps the add-board button in the tabs row without a visible page title", async () => {
+  it("keeps the add-board button beside the view switch without a visible page title", async () => {
     const wrapper = mountBoard();
 
     expect(wrapper.find(".board-header").exists()).toBe(false);
     expect(wrapper.find(".eyebrow").exists()).toBe(false);
     expect(wrapper.find("h1#board-heading").classes()).toContain("sr-only");
-    expect(wrapper.find('.board-toolbar .board-tabs button[aria-label="Add board"]').exists()).toBe(true);
+    const actions = wrapper.find(".board-toolbar .board-view-actions");
+    expect(actions.find('button[aria-label="Add board"]').exists()).toBe(true);
+    expect(actions.element.lastElementChild?.classList.contains("view-switch")).toBe(true);
     await wrapper.unmount();
   });
 

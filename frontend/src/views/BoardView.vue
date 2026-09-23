@@ -101,9 +101,8 @@ onBeforeUnmount(() => { document.removeEventListener("pointerdown", rememberCard
           <button v-else :class="{ selected: store.selectedId === board.id }" class="board-tab" type="button" :title="store.selectedId === board.id ? 'Rename board' : 'Open board'" @click="activateBoardTab(board.id)">{{ board.name }}</button>
         </template>
         <button v-if="!boards.length" class="board-tab empty" disabled type="button">No boards</button>
-        <button class="secondary icon-button add-board" type="button" aria-label="Add board" title="Add board" @click="openNewBoard">＋</button>
       </div>
-      <div class="view-switch" role="group" aria-label="Board view"><button :class="{ selected: view === 'kanban' }" type="button" @click="setView('kanban')">Kanban</button><button :class="{ selected: view === 'gantt' }" type="button" @click="setView('gantt')">Gantt</button></div>
+      <div class="board-view-actions"><button class="secondary icon-button add-board" type="button" aria-label="Add board" title="Add board" @click="openNewBoard">＋</button><div class="view-switch" role="group" aria-label="Board view"><button :class="{ selected: view === 'kanban' }" type="button" @click="setView('kanban')">Kanban</button><button :class="{ selected: view === 'gantt' }" type="button" @click="setView('gantt')">Gantt</button></div></div>
     </div>
     <div v-if="loading" class="board-empty" aria-live="polite">Loading board…</div>
     <div v-else-if="!store.selectedId" class="board-empty"><h2>Create your first board</h2><p>Keep projects, priorities, and dates together in one focused workspace.</p><button type="button" @click="openNewBoard">New board…</button></div>
