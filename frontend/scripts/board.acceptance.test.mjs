@@ -958,8 +958,8 @@ describe("path boards", () => {
 // and boards that do not fit move into a More menu.
 describe("board tab overflow", () => {
   const names = ["Launch plan", "Research", "Hiring", "A board with a rather long name for its tab", "Ops", "Marketing", "Design system", "Finance", "Legal", "Support", "Roadmap", "Infra", "Mobile", "Sales"];
-  async function overflowFixture(t, width = 1280) {
-    const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
+  async function overflowFixture(t, width = 1280, touch = width <= 390) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: touch, colorScheme: "light", reducedMotion: "reduce" });
     t.after(() => context.close());
     const boards = names.map((name, index) => ({ id: `board-${index}`, name, archived: false, pathId: null, hidden: false, pinned: false }));
     await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
@@ -1016,6 +1016,15 @@ describe("board tab overflow", () => {
       assert.ok(box.x >= 0 && box.x + box.width <= width, "Menu stays on screen");
     });
   }
+
+  it("does not leave a tapped-looking highlight on the tab that slides under a finger", async (t) => {
+    const page = await overflowFixture(t, 820, true);
+    const first = page.locator(".board-tab-list .board-tab").first();
+    await first.tap();
+    await page.waitForFunction(() => document.querySelector(".board-tab-current .board-tab")?.textContent?.trim() !== "Launch plan");
+    const backgrounds = await page.locator(".board-tab-list .board-tab").evaluateAll((tabs) => tabs.map((tab) => getComputedStyle(tab).backgroundColor));
+    assert.ok(backgrounds.every((color) => color === "rgba(0, 0, 0, 0)"), `Unselected tabs stay flat after a tap: ${backgrounds}`);
+  });
 
   it("opens a board from More into the reserved first slot without shifting it", async (t) => {
     const page = await overflowFixture(t);

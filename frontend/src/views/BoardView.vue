@@ -7,6 +7,7 @@ import { Editor } from "@tiptap/core";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
 import { BOARD_PRIORITIES, byPriorityThenPosition } from "../lib/board-priority";
 import { formatCardDates } from "../lib/card-dates";
+import { fitTabs } from "../lib/fit-tabs";
 import { useBoardsStore, type Board, type BoardCard, type BoardStatus } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
@@ -17,7 +18,7 @@ import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { format, parseISO } from "date-fns";
 import { theme } from "../lib/theme";
-import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiClose, mdiDragVertical, mdiCogOutline, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
+import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiChevronDown, mdiClose, mdiDragVertical, mdiCogOutline, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
 
 const store = useBoardsStore();
 const pathsStore = usePathsStore();
@@ -75,6 +76,28 @@ const barStyle = (card: BoardCard) => { const position = barPosition(card.startD
 function selectBoard(id: string) { dismissError(); store.selectedId = id; void router.replace({ query: { ...route.query, board: id } }); void store.loadBoard(); }
 // Tabs only switch boards; renaming lives in board settings.
 function activateBoardTab(id: string) { if (store.selectedId !== id) selectBoard(id); }
+// Board tabs never scroll sideways. The open board keeps a fixed-width first
+// slot; the other boards follow while they fit and the rest go under More.
+// Widths come from a hidden copy of the tabs, so hiding a tab never changes
+// what is measured.
+const TAB_GAP = 8;
+const tabBar = ref<HTMLElement | null>(null), tabSlot = ref<HTMLElement | null>(null), tabMeasure = ref<HTMLElement | null>(null), moreButton = ref<HTMLButtonElement | null>(null), moreMenu = ref<HTMLElement | null>(null);
+const fittingTabs = ref(Number.POSITIVE_INFINITY), moreOpen = ref(false);
+const otherBoards = computed(() => boards.value.filter((board) => board.id !== store.selectedId));
+const shownBoards = computed(() => otherBoards.value.slice(0, fittingTabs.value));
+const moreBoards = computed(() => otherBoards.value.slice(fittingTabs.value));
+function measureTabs() { const bar = tabBar.value, measure = tabMeasure.value; if (!bar || !measure) return; const available = bar.clientWidth - (tabSlot.value?.offsetWidth ?? 0) - TAB_GAP; if (bar.clientWidth <= 0) { fittingTabs.value = Number.POSITIVE_INFINITY; return; } const widths = [...measure.querySelectorAll<HTMLElement>("[data-measure-tab]")].map((tab) => tab.offsetWidth); const moreWidth = measure.querySelector<HTMLElement>("[data-measure-more]")?.offsetWidth ?? 0; fittingTabs.value = fitTabs(widths, available, moreWidth, TAB_GAP); }
+const tabResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureTabs());
+watch(tabBar, (bar, previous) => { if (previous) tabResize?.unobserve(previous); if (bar) { tabResize?.observe(bar); void nextTick(measureTabs); } });
+watch(() => [store.selectedId, ...otherBoards.value.map((board) => `${board.id}:${board.name}:${board.pathId || ""}`)].join("|"), () => { void nextTick(measureTabs); });
+const moreItems = () => [...(moreMenu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+function openMore() { moreOpen.value = true; void nextTick(() => moreItems()[0]?.focus()); }
+function closeMore(returnFocus = false) { moreOpen.value = false; if (returnFocus) moreButton.value?.focus(); }
+function toggleMore() { if (moreOpen.value) closeMore(); else openMore(); }
+function pickMoreBoard(id: string) { closeMore(); activateBoardTab(id); }
+function moveMoreFocus(event: KeyboardEvent) { const items = moreItems(); const index = items.indexOf(document.activeElement as HTMLElement); const last = items.length - 1; const next = event.key === "ArrowDown" ? (index + 1) % items.length : event.key === "ArrowUp" ? (index <= 0 ? last : index - 1) : event.key === "Home" ? 0 : event.key === "End" ? last : -1; if (next < 0) return; event.preventDefault(); items[next]?.focus(); }
+function closeMoreOnOutside(event: PointerEvent) { const target = event.target as Node | null; if (moreOpen.value && target && !moreMenu.value?.contains(target) && !moreButton.value?.contains(target)) closeMore(); }
+watch(moreBoards, (hidden) => { if (!hidden.length) closeMore(); });
 function setView(next: string) { if (view.value === next) return; void router.push({ query: { ...route.query, view: next, ...(next === "gantt" ? { from: ganttFrom.value, to: ganttTo.value } : {}) } }); }
 function updateGanttRange() { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; void router.push({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
 function shiftGantt(amount: number) { ganttFrom.value = addCalendarDays(ganttFrom.value, amount); ganttTo.value = addCalendarDays(ganttTo.value, amount); updateGanttRange(); }
@@ -145,13 +168,13 @@ function requestArchiveBoard() { if (settingsBoardId.value) archiveConfirmOpen.v
 function requestArchiveCard(card: BoardCard) { archiveCardConfirm.value = card; }
 async function confirmArchiveCard() { const card = archiveCardConfirm.value; archiveCardConfirm.value = null; if (!card) return; try { if (editing.value?.id === card.id) { await queueSave(); clearTimeout(saveTimer); destroyCardEditor(); editing.value = null; } await store.archiveCard(card); } catch { error.value = "Could not archive card."; } }
 async function archiveBoard() { const id = settingsBoardId.value; if (!id) return; const wasOpen = id === store.selectedId; archiveConfirmOpen.value = false; settingsOpen.value = false; dismissError(); try { await store.archiveBoard(id); if (wasOpen) await router.replace({ query: {} }); } catch { error.value = "Could not archive board."; } }
-onMounted(async () => { measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); window.addEventListener("beforeunload", warnBeforeUnload); // The URL's board is selected before the list loads, so loading never falls back to the first tab first.
+onMounted(async () => { document.addEventListener("pointerdown", closeMoreOnOutside); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); window.addEventListener("beforeunload", warnBeforeUnload); // The URL's board is selected before the list loads, so loading never falls back to the first tab first.
   const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested) store.selectedId = requested; await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => [route.query.from, route.query.to], ([from, to]) => { if (view.value !== "gantt" || typeof from !== "string" || typeof to !== "string" || from === ganttFrom.value && to === ganttTo.value) return; ganttFrom.value = from; ganttTo.value = to; void store.loadGantt(from, to); });
-onBeforeUnmount(() => { endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
+onBeforeUnmount(() => { document.removeEventListener("pointerdown", closeMoreOnOutside); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
 </script>
 
 <template>
@@ -189,11 +212,24 @@ onBeforeUnmount(() => { endBoardDrag(); window.removeEventListener("resize", mea
     <div v-if="archiveStatusConfirm" class="dialog-backdrop confirm-layer" role="presentation"><div class="confirm-dialog" role="alertdialog" aria-labelledby="archive-status-title" aria-describedby="archive-status-description"><h2 id="archive-status-title">Archive status?</h2><p id="archive-status-description">{{ archiveStatusConfirm.name }} will be archived and its active cards will move to another status.</p><div class="editor-actions"><button class="secondary" type="button" @click="archiveStatusConfirm = null">Cancel</button><button type="button" :disabled="archivingStatusId === archiveStatusConfirm.id" @click="confirmArchiveStatus">Archive</button></div></div></div>
     <p v-if="error || store.error" class="board-error" role="alert">{{ error || store.error }}<button type="button" class="error-dismiss" aria-label="Dismiss board error" @click="dismissError">×</button></p>
     <div class="board-toolbar">
-      <div class="board-tabs" role="group" aria-label="Boards">
-        <template v-for="board in boards" :key="board.id">
-          <button :class="{ selected: store.selectedId === board.id }" class="board-tab" type="button" :aria-current="store.selectedId === board.id ? 'true' : undefined" @click="activateBoardTab(board.id)"><span v-if="board.pathId" class="board-tab-dot" :style="{ backgroundColor: pathColor(board.pathId) }" aria-hidden="true"></span>{{ board.name }}</button>
-        </template>
-        <button v-if="!boards.length" class="board-tab empty" disabled type="button">No boards</button>
+      <div ref="tabBar" class="board-tabs" role="group" aria-label="Boards">
+        <div ref="tabSlot" class="board-tab-current">
+          <button v-if="selectedBoard" class="board-tab selected" type="button" aria-current="true" :title="selectedBoard.name" @click="activateBoardTab(selectedBoard.id)"><span v-if="selectedBoard.pathId" class="board-tab-dot" :style="{ backgroundColor: pathColor(selectedBoard.pathId) }" aria-hidden="true"></span>{{ selectedBoard.name }}</button>
+          <button v-else class="board-tab empty" disabled type="button">No boards</button>
+        </div>
+        <div class="board-tab-list">
+          <button v-for="board in shownBoards" :key="board.id" class="board-tab" type="button" @click="activateBoardTab(board.id)"><span v-if="board.pathId" class="board-tab-dot" :style="{ backgroundColor: pathColor(board.pathId) }" aria-hidden="true"></span>{{ board.name }}</button>
+        </div>
+        <div v-if="moreBoards.length" class="board-tab-more-anchor">
+          <button ref="moreButton" class="board-tab-more" type="button" :aria-label="`More boards (${moreBoards.length})`" aria-haspopup="menu" :aria-expanded="moreOpen" @click="toggleMore" @keydown.down.prevent="openMore">{{ moreBoards.length }} more<v-icon :icon="mdiChevronDown" size="18" aria-hidden="true" /></button>
+          <ul v-if="moreOpen && moreBoards.length" ref="moreMenu" class="board-more-menu" role="menu" aria-label="More boards" @keydown="moveMoreFocus" @keydown.esc.prevent="closeMore(true)" @keydown.tab="closeMore()">
+            <li v-for="board in moreBoards" :key="board.id" role="none"><button class="board-more-item" type="button" role="menuitem" tabindex="-1" @click="pickMoreBoard(board.id)"><span v-if="board.pathId" class="board-tab-dot" :style="{ backgroundColor: pathColor(board.pathId) }" aria-hidden="true"></span>{{ board.name }}</button></li>
+          </ul>
+        </div>
+        <div ref="tabMeasure" class="board-tab-measure-row" aria-hidden="true">
+          <span v-for="board in otherBoards" :key="board.id" class="board-tab-measure" data-measure-tab><span v-if="board.pathId" class="board-tab-measure-dot"></span>{{ board.name }}</span>
+          <span class="board-tab-more" data-measure-more>{{ otherBoards.length }} more<v-icon :icon="mdiChevronDown" size="18" /></span>
+        </div>
       </div>
       <div class="board-view-actions"><button class="secondary icon-button manage-boards" type="button" aria-label="Manage boards" title="Manage boards" aria-haspopup="dialog" @click="openManager"><v-icon :icon="mdiCogOutline" size="20" aria-hidden="true" /></button><div class="view-switch" role="group" aria-label="Board view"><button :class="{ selected: view === 'kanban' }" type="button" @click="setView('kanban')">Kanban</button><button :class="{ selected: view === 'gantt' }" type="button" @click="setView('gantt')">Gantt</button></div></div>
     </div>

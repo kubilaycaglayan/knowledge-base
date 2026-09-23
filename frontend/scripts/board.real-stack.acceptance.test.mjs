@@ -59,10 +59,28 @@ async function openSettingsFor(name) {
   await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name, exact: true }).click();
 }
 
-// Tabs only switch boards, so clicking the open board's tab is skipped.
+// Every board name on the page: the visible tabs plus the More menu's items.
+async function listedBoardNames() {
+  const tabs = (await page.locator(".board-tabs .board-tab:not(.empty)").allInnerTexts()).map((name) => name.trim());
+  const more = page.getByRole("button", { name: /^More boards/ });
+  if (!(await more.count())) return tabs;
+  await clickCentered(more);
+  const menu = page.getByRole("menu", { name: "More boards" });
+  const hidden = (await menu.getByRole("menuitem").allInnerTexts()).map((name) => name.trim());
+  await page.keyboard.press("Escape");
+  await menu.waitFor({ state: "detached" });
+  return [...tabs, ...hidden];
+}
+
+// Tabs only switch boards, so clicking the open board's tab is skipped. Boards
+// that do not fit in the tab bar are picked from the More menu.
 async function clickBoardTab(name) {
   if (!(await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).count())) {
-    await clickCentered(boardTab(name).first());
+    if (await boardTab(name).count()) await clickCentered(boardTab(name).first());
+    else {
+      await clickCentered(page.getByRole("button", { name: /^More boards/ }));
+      await page.getByRole("menu", { name: "More boards" }).getByRole("menuitem", { name, exact: true }).click();
+    }
     await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).waitFor();
   }
   activeBoardName = name;
@@ -508,17 +526,18 @@ describe("board real-stack acceptance", () => {
     await createBoard(boardName1);
     await createBoard(boardName2);
 
-    // Both boards stay available as tabs, and the newest one is open.
-    await boardTab(boardName1).waitFor();
-    await boardTab(boardName2).waitFor();
-    assert.equal(await boardTab(boardName1).count(), 1, "First board should stay in the tab list");
-    assert.equal(await boardTab(boardName2).count(), 1, "Second board should stay in the tab list");
+    // Both boards stay available, as a tab or under More, and the newest one is open.
+    await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(boardName2)}$`) }).waitFor();
+    let listed = await listedBoardNames();
+    assert.equal(listed.filter((name) => name === boardName1).length, 1, "First board should stay in the board list");
+    assert.equal(listed.filter((name) => name === boardName2).length, 1, "Second board should stay in the board list");
     assert.equal(await selectedTab().textContent(), boardName2);
 
-    // The tabs survive a reload, so they come from the server, not local state.
+    // The list survives a reload, so it comes from the server, not local state.
     await page.reload();
-    await boardTab(boardName1).waitFor();
-    await boardTab(boardName2).waitFor();
+    await selectedTab().waitFor();
+    listed = await listedBoardNames();
+    assert.ok(listed.includes(boardName1) && listed.includes(boardName2));
   });
 
   it("archives a card from the board and restores it on the archive page", async () => {
