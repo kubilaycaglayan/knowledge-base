@@ -70,14 +70,20 @@ async function selectBoard(name, { settle = true } = {}) {
   if (settle) await boardSettled();
 }
 
-// Submits with Enter rather than clicking ＋. The app hides its bottom-fixed
-// time tracker while a text input has focus and remounts it on blur, so clicking
-// the button blurs the field and can drop the remounted tracker onto the click.
-// Enter keeps focus in the field, and is the interaction the guidelines require.
+// Cards are added with the first column's header ＋, which creates a blank card
+// and opens its editor; a title is then saved from the editor.
+const clickAddCard = () => clickCentered(page.locator(".kanban-column").first().locator(".column-tools .add-card"));
 async function submitCard(title) {
-  const field = page.getByRole("textbox", { name: "New card title" });
-  await field.fill(title);
-  await field.press("Enter");
+  await clickAddCard();
+  const editor = page.locator(".card-editor");
+  await editor.waitFor();
+  if (title) {
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
+    await page.getByRole("button", { name: "Save card" }).click();
+  } else {
+    await page.getByRole("button", { name: "Cancel" }).click();
+  }
+  await editor.waitFor({ state: "detached" });
 }
 
 // Reports what the board is actually showing when a card fails to appear,
@@ -98,8 +104,7 @@ async function addCard(title) {
       error: document.querySelector(".board-error")?.textContent || "",
       columns: document.querySelectorAll(".kanban-column").length,
       cards: document.querySelectorAll(".board-card h3").length,
-      titleValue: document.querySelector('input[name="cardTitle"]')?.value,
-      submitDisabled: document.querySelector("form.create-card button[type=submit]")?.disabled,
+      editorOpen: Boolean(document.querySelector(".card-editor")),
     }));
     throw new Error(`Card "${title}" never appeared (POST: ${posted}). Page: ${JSON.stringify(state)}. Console: ${JSON.stringify(consoleLog.slice(-5))}`, { cause });
   }
@@ -195,12 +200,7 @@ describe("board real-stack acceptance", () => {
 
   it("protects a card from a stale concurrent tab write", async () => {
     const boardId = currentBoardId();
-    await page.getByRole("textbox", { name: "New card title" }).fill("Concurrent card");
-    await Promise.all([
-      page.waitForResponse((response) => response.url().includes(`/api/v1/boards/${boardId}/cards`) && response.request().method() === "POST" && response.status() === 201),
-      page.getByRole("button", { name: "Add card" }).click(),
-    ]);
-    await page.getByRole("heading", { name: "Concurrent card" }).waitFor();
+    await addCard("Concurrent card");
 
     const otherPage = await page.context().newPage();
     try {
@@ -270,7 +270,7 @@ describe("board real-stack acceptance", () => {
     // error surface is exercised rather than skipped.
     await page.route("**/api/v1/boards/*/cards", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.continue()));
     try {
-      await submitCard("Doomed card");
+      await clickAddCard();
       const alert = page.getByRole("alert").filter({ hasText: "Could not create card." });
       await alert.waitFor();
       const dismiss = page.getByRole("button", { name: "Dismiss board error" });
@@ -285,7 +285,7 @@ describe("board real-stack acceptance", () => {
   it("clears a standing error once the next action succeeds", async () => {
     await page.route("**/api/v1/boards/*/cards", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.continue()));
     try {
-      await submitCard("Doomed card");
+      await clickAddCard();
       await page.getByRole("alert").filter({ hasText: "Could not create card." }).waitFor();
     } finally {
       await page.unroute("**/api/v1/boards/*/cards");

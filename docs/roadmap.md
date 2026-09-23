@@ -89,3 +89,6 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   cursor pagination and explicit page retry, stale-response protection,
   ownership/error tests, mobile/desktop Axe coverage, and disposable visual
   evidence.
+- [x] Refine the web board: dialog-based board creation, flat single-row
+  board tabs, and per-column card creation through an optional card-create
+  `statusId`.

@@ -51,7 +51,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     const routedCard = cardRoute && fixtureCards.find((card) => card.id === cardRoute[1]);
     if (method === "POST" && path === "/boards/board-1/cards") {
       const requestBody = request.postDataJSON();
-      body = { ...requestBody, id: `card-${cards.length + 1}`, statusId: "status-0", position: cards.length, archived: false, pathIds: [], labelIds: [] };
+      body = { ...requestBody, id: `card-${cards.length + 1}`, statusId: requestBody.statusId || "status-0", position: fixtureCards.filter((card) => card.statusId === (requestBody.statusId || "status-0")).length, archived: false, pathIds: [], labelIds: [] };
       fixtureCards.push(body);
     }
     if (method === "POST" && path === "/boards/board-1/archive") {
@@ -213,10 +213,8 @@ describe("board browser acceptance", () => {
 
   it("shows a newly created dated card after switching to Gantt", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("textbox", { name: "New card title" }).fill("Timeline from Kanban");
-    await page.getByRole("button", { name: "Add card" }).click();
-    await page.getByRole("heading", { name: "Timeline from Kanban" }).waitFor();
-    await page.locator(".board-card", { hasText: "Timeline from Kanban" }).click();
+    await page.getByRole("button", { name: "Add card to Backlog" }).click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timeline from Kanban");
     await page.locator("input[name='startDate']").fill(dateOnly(1));
     await page.locator("input[name='dueDate']").fill(dateOnly(3));
     await page.getByRole("button", { name: "Save card" }).click();
@@ -369,10 +367,9 @@ describe("board browser acceptance", () => {
 
   it("creates a blank-title card and safely protects unsaved edits", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("textbox", { name: "New card title" }).fill("");
-    await page.getByRole("button", { name: "Add card" }).click();
-    await page.getByRole("heading", { name: "Untitled card" }).waitFor();
-    await page.locator(".board-card").last().click();
+    assert.equal(await page.getByRole("textbox", { name: "New card title" }).count(), 0, "No page-level add-card input");
+    await page.getByRole("button", { name: "Add card to Pending" }).click();
+    await page.locator(".kanban-column", { hasText: "Pending" }).getByRole("heading", { name: "Untitled card" }).waitFor();
     assert.equal(await page.locator(".card-editor textarea[name=body]").count(), 0);
     assert.equal(await page.locator(".card-editor .ProseMirror").count(), 1);
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Unsaved change");

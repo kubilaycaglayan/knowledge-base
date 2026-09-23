@@ -201,8 +201,7 @@ describe("BoardView", () => {
     await flushPromises();
     expect(wrapper.find(".board-error").exists()).toBe(true);
 
-    await wrapper.find('input[name="cardTitle"]').setValue("Next card");
-    await wrapper.find("form.create-card").trigger("submit");
+    await wrapper.find('button[aria-label="Add card to Backlog"]').trigger("click");
     await flushPromises();
 
     expect(store.createCard).toHaveBeenCalled();
@@ -342,7 +341,6 @@ describe("BoardView", () => {
 
     const vm = wrapper.vm as any;
     expect(vm.newBoard).toBe("");
-    expect(vm.newCardTitle).toBe("");
     expect(vm.newStatus).toBe("");
     expect(vm.error).toBe("");
     await wrapper.unmount();
@@ -379,53 +377,20 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("creates a card with a start and due date picked from the kanban toolbar", async () => {
-    const store = seedBoard(["Backlog"]);
+  it("adds a blank card to the clicked column from its header and opens it", async () => {
+    const store = seedBoard(["Backlog", "Doing"]);
+    const created = { id: "card-new", statusId: "status-2", title: "", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    (store.createCard as any) = vi.fn(async () => { store.cards.push(created); return created; });
     const wrapper = mountBoard();
     await flushPromises();
 
-    // The date fields stay out of the way until the calendar toggle is used.
-    expect(wrapper.find(".card-date-range").exists()).toBe(false);
-    const toggle = wrapper.find('button[aria-label="Card date range"]');
-    expect(toggle.attributes("aria-expanded")).toBe("false");
-    await toggle.trigger("click");
-
-    const range = wrapper.find(".card-date-range");
-    expect(range.exists()).toBe(true);
-    await range.find('input[aria-label="Card start date"]').setValue("2026-03-01");
-    await range.find('input[aria-label="Card due date"]').setValue("2026-03-09");
-    await wrapper.find('input[name="cardTitle"]').setValue("Dated card");
-    await wrapper.find("form.create-card").trigger("submit");
+    expect(wrapper.find('input[name="cardTitle"]').exists()).toBe(false);
+    const doing = wrapper.findAll(".kanban-column")[1];
+    await doing.find("header .column-tools").find('button[aria-label="Add card to Doing"]').trigger("click");
     await flushPromises();
 
-    expect(store.createCard).toHaveBeenCalledWith({
-      title: "Dated card",
-      body: "{}",
-      priority: "MEDIUM",
-      startDate: "2026-03-01",
-      dueDate: "2026-03-09",
-    });
-    // The range collapses again so the next card starts undated.
-    expect(wrapper.find(".card-date-range").exists()).toBe(false);
-    await wrapper.unmount();
-  });
-
-  it("omits empty dates rather than sending blank strings", async () => {
-    const store = seedBoard(["Backlog"]);
-    const wrapper = mountBoard();
-    await flushPromises();
-
-    await wrapper.find('input[name="cardTitle"]').setValue("Undated card");
-    await wrapper.find("form.create-card").trigger("submit");
-    await flushPromises();
-
-    expect(store.createCard).toHaveBeenCalledWith({
-      title: "Undated card",
-      body: "{}",
-      priority: "MEDIUM",
-      startDate: undefined,
-      dueDate: undefined,
-    });
+    expect(store.createCard).toHaveBeenCalledWith({ title: "", body: "{}", priority: "MEDIUM", statusId: "status-2" });
+    expect(wrapper.find(".card-editor").exists()).toBe(true);
     await wrapper.unmount();
   });
 
@@ -434,7 +399,7 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
 
-    for (const [label, icon] of [["Add board", "＋"], ["Add card", "＋"], ["Add status", "＋"]] as const) {
+    for (const [label, icon] of [["Add board", "＋"], ["Add card to Backlog", "＋"], ["Add status", "＋"]] as const) {
       const button = wrapper.find(`button[aria-label="${label}"]`);
       expect(button.exists(), `${label} button is missing`).toBe(true);
       expect(button.text()).toBe(icon);

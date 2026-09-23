@@ -209,6 +209,39 @@ class BoardControllerApiTest {
     verifyNoInteractions(cards);
   }
 
+  @Test void cardIsCreatedInTheRequestedStatusAtItsEnd() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId();
+    BoardStatus doing = new BoardStatus(boardId, "Doing", 1);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(doing.getId(), boardId)).thenReturn(Optional.of(doing));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(boardId, doing.getId())).thenReturn(List.of(new BoardCard(boardId, doing.getId(), 0)));
+    when(cards.save(any(BoardCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"\",\"statusId\":\"" + doing.getId() + "\"}"))
+        .andExpect(status().isCreated()).andExpect(jsonPath("$.statusId").value(doing.getId().toString())).andExpect(jsonPath("$.position").value(1));
+    verify(statuses, never()).findAllByBoardIdOrderByPosition(boardId);
+  }
+
+  @Test void cardCreateRejectsAForeignOrArchivedStatus() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), foreign = UUID.randomUUID();
+    BoardStatus archived = new BoardStatus(boardId, "Old", 0);
+    archived.archive();
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(foreign, boardId)).thenReturn(Optional.empty());
+    when(statuses.findByIdAndBoardId(archived.getId(), boardId)).thenReturn(Optional.of(archived));
+
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"x\",\"statusId\":\"" + foreign + "\"}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(post("/api/v1/boards/" + boardId + "/cards").with(authentication(auth())).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"title\":\"x\",\"statusId\":\"" + archived.getId() + "\"}"))
+        .andExpect(status().isConflict());
+    verify(cards, never()).save(any(BoardCard.class));
+  }
+
   @Test void oversizedCardTitleIsRejectedBeforePersistence() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
