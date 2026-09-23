@@ -623,6 +623,32 @@ describe("board browser acceptance", () => {
     await page.locator(".board-card .board-card-label", { hasText: "Bug" }).waitFor();
   });
 
+  it("keeps the label picker to one row with a count and lists selected labels first", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    const picker = page.locator(".card-labels-picker");
+    await picker.locator(".v-field").waitFor();
+    const field = await picker.locator(".v-field").boundingBox();
+    assert.ok(field.height <= 40, `The picker does not grow (${field.height}px)`);
+    const chips = await picker.locator(".card-labels-chip").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+    assert.ok(chips.length >= 1 && chips.length < 6, `Only the chips that fit are shown (${chips.length})`);
+    assert.ok(chips.every((top) => Math.abs(top - chips[0]) < 1), "Chips stay on one row");
+    assert.equal((await picker.locator(".card-labels-more").innerText()).trim(), `+${6 - chips.length}`);
+    await picker.locator(".v-field").click();
+    const options = (await page.locator(".v-overlay-container .v-list-item-title").allInnerTexts()).map((name) => name.trim());
+    assert.deepEqual(options.slice(0, 6).sort(), ["Backend", "Design", "Docs", "Frontend", "Operations", "Research"], "Selected labels come first");
+    assert.equal(options[6], "Bug");
+  });
+
+  it("turns off browser completions on the board's inputs", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    await page.locator(".card-labels-picker input").click();
+    const fields = await page.locator("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea").evaluateAll((items) => items.map((item) => `${item.getAttribute("aria-label") || item.name || item.className}:${item.getAttribute("autocomplete")}`));
+    assert.ok(fields.length > 3);
+    assert.deepEqual(fields.filter((field) => !field.endsWith(":off")), [], "Every field opts out of browser completions");
+  });
+
   it("keeps a card's labels to one compact row between priority and title", async (t) => {
     const { page } = await fixture(t, 1280);
     const card = page.locator(".board-card").first();
