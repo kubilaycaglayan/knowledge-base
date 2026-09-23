@@ -810,11 +810,25 @@ describe("BoardView", () => {
       seedPathBoards();
       const wrapper = mountBoard();
       await flushPromises();
-      expect(wrapper.findAll(".board-tab:not(.empty)").map((tab) => tab.text())).toEqual(["Pinned", "Writing", "Alpha", "Beta"]);
+      // The open board (Writing) takes the reserved first slot; the rest keep API order.
+      expect(wrapper.findAll(".board-tab:not(.empty)").map((tab) => tab.text())).toEqual(["Writing", "Pinned", "Alpha", "Beta"]);
       const dots = wrapper.findAll(".board-tab-dot");
       expect(dots).toHaveLength(1);
       expect(dots[0].attributes("aria-hidden")).toBe("true");
       expect(dots[0].attributes("style")).toContain("background-color: rgb(18, 52, 86)");
+      await wrapper.unmount();
+    });
+
+    it("keeps the open board in the reserved first slot without repeating it", async () => {
+      const store = seedPathBoards();
+      store.selectedId = "custom-b";
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.find(".board-tab-current .board-tab").text()).toBe("Beta");
+      expect(wrapper.find(".board-tab-current .board-tab").classes()).toContain("selected");
+      expect(wrapper.findAll(".board-tab-list .board-tab").map((tab) => tab.text())).toEqual(["Pinned", "Writing", "Alpha"]);
+      // Everything fits in jsdom (no layout), so there is nothing to overflow.
+      expect(wrapper.find('button[aria-label^="More boards"]').exists()).toBe(false);
       await wrapper.unmount();
     });
 

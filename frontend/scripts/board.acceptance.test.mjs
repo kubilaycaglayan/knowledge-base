@@ -904,7 +904,7 @@ describe("path boards", () => {
     await page.getByRole("button", { name: "Manage boards" }).click();
     const manager = page.getByRole("dialog", { name: "Boards" });
     await manager.getByRole("button", { name: "Reorder Second" }).press("ArrowUp");
-    await page.waitForFunction(() => document.querySelector(".board-tab")?.textContent?.trim() === "Second");
+    await page.waitForFunction(() => document.querySelector(".boards-manager-name")?.textContent?.trim() === "Second");
     assert.deepEqual(orderRequests.at(-1), ["custom-2", "custom-1"]);
 
     const handle = manager.getByRole("button", { name: "Reorder Custom" });
@@ -915,12 +915,12 @@ describe("path boards", () => {
     await page.mouse.down();
     await page.mouse.move(to.x + to.width / 2, to.y - 4, { steps: 6 });
     await page.mouse.up();
-    await page.waitForFunction(() => document.querySelector(".board-tab")?.textContent?.trim() === "Custom");
+    await page.waitForFunction(() => document.querySelector(".boards-manager-name")?.textContent?.trim() === "Custom");
     assert.deepEqual(orderRequests.at(-1), ["custom-1", "custom-2"]);
 
     await manager.getByRole("button", { name: "Pin Second" }).click();
     await manager.getByRole("button", { name: "Unpin Second" }).waitFor();
-    assert.equal((await page.locator(".board-tab").first().innerText()).trim(), "Second");
+    assert.equal((await manager.locator(".boards-manager-name").first().innerText()).trim(), "Second");
 
     await manager.getByRole("button", { name: "Custom", exact: true }).click();
     const settings = page.getByRole("dialog", { name: "Board settings" });
@@ -954,3 +954,101 @@ describe("path boards", () => {
   });
 });
 
+// Board tabs never scroll sideways: the open board keeps a reserved first slot
+// and boards that do not fit move into a More menu.
+describe("board tab overflow", () => {
+  const names = ["Launch plan", "Research", "Hiring", "A board with a rather long name for its tab", "Ops", "Marketing", "Design system", "Finance", "Legal", "Support", "Roadmap", "Infra", "Mobile", "Sales"];
+  async function overflowFixture(t, width = 1280) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
+    t.after(() => context.close());
+    const boards = names.map((name, index) => ({ id: `board-${index}`, name, archived: false, pathId: null, hidden: false, pinned: false }));
+    await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
+    await context.route("**/api/**", async (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname.replace("/api/v1", "");
+      let body = [];
+      if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : boards;
+      else if (/^\/boards\/[^/]+\/statuses$/.test(path)) body = [{ id: `${path.split("/")[2]}-status`, name: "Backlog", position: 0, archived: false, cardSort: "MANUAL" }];
+      else if (/^\/boards\/[^/]+\/cards\/page$/.test(path)) body = { items: [], nextCursor: null };
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+    });
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board`);
+    await page.locator(".board-tab-current .board-tab").waitFor();
+    return page;
+  }
+  const tabNames = (page) => page.locator(".board-tabs .board-tab").evaluateAll((tabs) => tabs.filter((tab) => tab.checkVisibility()).map((tab) => tab.textContent.trim()));
+
+  for (const width of [1280, 390]) {
+    it(`fits the tabs without sideways scrolling and lists the rest under More (${width}px)`, async (t) => {
+      const page = await overflowFixture(t, width);
+      const tabs = page.locator(".board-tabs");
+      assert.ok(await tabs.evaluate((element) => element.scrollWidth <= element.clientWidth + 1), "Board tabs never scroll sideways");
+      const more = page.getByRole("button", { name: /^More boards/ });
+      await more.waitFor();
+      const shown = await tabNames(page);
+      assert.equal(shown[0], "Launch plan", "The open board comes first");
+      await more.click();
+      const menu = page.getByRole("menu", { name: "More boards" });
+      const hidden = (await menu.getByRole("menuitem").allInnerTexts()).map((text) => text.trim());
+      assert.ok(hidden.length > 0);
+      assert.deepEqual([...shown, ...hidden].sort(), [...names].sort(), "Every board is either a tab or in More, once");
+      for (const tab of await page.locator(".board-tabs .board-tab").all()) {
+        if (!(await tab.isVisible())) continue;
+        const box = await tab.boundingBox();
+        const bar = await tabs.boundingBox();
+        assert.ok(box.x + box.width <= bar.x + bar.width + 1, "Visible tabs sit fully inside the bar");
+      }
+    });
+  }
+
+  it("opens a board from More into the reserved first slot without shifting it", async (t) => {
+    const page = await overflowFixture(t);
+    const slot = page.locator(".board-tab-current");
+    const before = await slot.boundingBox();
+    await page.getByRole("button", { name: /^More boards/ }).click();
+    const menu = page.getByRole("menu", { name: "More boards" });
+    await menu.getByRole("menuitem", { name: "Sales" }).click();
+    await menu.waitFor({ state: "detached" });
+    await page.waitForFunction(() => document.querySelector(".board-tab-current .board-tab")?.textContent?.trim() === "Sales");
+    assert.equal(new URL(page.url()).searchParams.get("board"), "board-13");
+    const after = await slot.boundingBox();
+    assert.deepEqual([after.x, after.width], [before.x, before.width], "The reserved slot does not move or resize");
+    assert.equal((await tabNames(page)).filter((name) => name === "Sales").length, 1);
+    await page.getByRole("button", { name: /^More boards/ }).click();
+    assert.ok((await menu.getByRole("menuitem").allInnerTexts()).every((text) => text.trim() !== "Sales"));
+  });
+
+  it("works the More menu from the keyboard and closes it on an outside click", async (t) => {
+    const page = await overflowFixture(t);
+    const more = page.getByRole("button", { name: /^More boards/ });
+    await more.focus();
+    await page.keyboard.press("Enter");
+    const menu = page.getByRole("menu", { name: "More boards" });
+    await menu.waitFor();
+    assert.equal(await more.getAttribute("aria-expanded"), "true");
+    assert.equal(await menu.getByRole("menuitem").first().evaluate((item) => document.activeElement === item), true, "Opening focuses the first item");
+    await page.keyboard.press("ArrowDown");
+    assert.equal(await menu.getByRole("menuitem").nth(1).evaluate((item) => document.activeElement === item), true);
+    await page.keyboard.press("Escape");
+    await menu.waitFor({ state: "detached" });
+    assert.equal(await more.evaluate((button) => document.activeElement === button), true, "Escape returns focus to More");
+
+    await more.click();
+    await menu.waitFor();
+    await page.mouse.click(5, 600);
+    await menu.waitFor({ state: "detached" });
+  });
+
+  it("shows a very long open board name truncated in its slot", async (t) => {
+    const page = await overflowFixture(t);
+    await page.getByRole("button", { name: /^More boards/ }).click();
+    const item = page.getByRole("menu", { name: "More boards" }).getByRole("menuitem", { name: "A board with a rather long name for its tab" });
+    if (await item.count()) await item.click();
+    else await page.locator(".board-tabs .board-tab", { hasText: "A board with a rather long" }).click();
+    const current = page.locator(".board-tab-current .board-tab");
+    await page.waitForFunction(() => document.querySelector(".board-tab-current .board-tab")?.textContent?.includes("rather long"));
+    assert.equal(await current.getAttribute("title"), "A board with a rather long name for its tab");
+    assert.ok(await current.evaluate((element) => element.scrollWidth > element.clientWidth), "The long name is truncated");
+  });
+});
