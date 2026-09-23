@@ -831,5 +831,26 @@ describe("path boards", () => {
     await settings.waitFor();
     assert.equal(await settings.getByRole("textbox", { name: "Name", exact: true }).inputValue(), "Custom");
   });
+
+  // Long board lists fit on screen: rows are dense on fine pointers, and dialogs cover the floating tracker.
+  it("keeps Boards dialog rows compact and above the floating tracker", async (t) => {
+    const { page, origin } = await pathBoardFixture(t);
+    await page.goto(`${origin}/board`);
+    await page.locator(".board-tab", { hasText: "Second" }).waitFor();
+    const tracker = page.locator(".floating-tracker");
+    await tracker.waitFor();
+
+    await page.getByRole("button", { name: "Manage boards" }).click();
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    await manager.waitFor();
+    const rows = await manager.locator(".boards-manager-list li").evaluateAll((items) => items.map((item) => item.getBoundingClientRect()));
+    assert.ok(rows.length >= 2);
+    for (const row of rows) assert.ok(row.height <= 32, `row height ${row.height}px should be at most 32px`);
+    assert.ok(rows[1].top - rows[0].bottom <= 1, "rows should sit next to each other");
+
+    const box = await tracker.boundingBox();
+    const topmost = await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest(".dialog-backdrop")), { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    assert.ok(topmost, "the dialog backdrop should cover the floating tracker");
+  });
 });
 
