@@ -560,15 +560,17 @@ describe("board browser acceptance", () => {
     assert.deepEqual(await header.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline", "Close card"]);
   });
 
-  it("darkens the card play button in dark theme without touching the tracker's", async (t) => {
+  it("darkens the play button in dark theme, on cards and in the tracker", async (t) => {
     const { page } = await fixture(t, 1280);
     await page.locator(".board-card-play").first().waitFor();
     await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     const luminance = (color) => { const [r, g, b] = color.match(/\d+/g).slice(0, 3).map(Number); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
     const cardBackground = await page.locator(".board-card .board-card-play").first().evaluate((element) => getComputedStyle(element).backgroundColor);
     const trackerBackground = await page.getByRole("button", { name: "Start timer" }).evaluate((element) => getComputedStyle(element).backgroundColor);
-    assert.equal(trackerBackground, "rgb(237, 248, 240)", "The tracker keeps its original play button");
     assert.ok(luminance(cardBackground) < 80, `The card play button is dark (${cardBackground})`);
+    assert.equal(trackerBackground, cardBackground, "The tracker shares the dark play button");
+    await page.evaluate(() => { document.documentElement.dataset.theme = "light"; });
+    assert.equal(await page.getByRole("button", { name: "Start timer" }).evaluate((element) => getComputedStyle(element).backgroundColor), "rgb(237, 248, 240)", "Light theme keeps the original play button");
   });
 
   for (const [width, height] of [[1280, 900], [390, 844]]) {
