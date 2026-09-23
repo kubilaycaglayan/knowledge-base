@@ -81,4 +81,13 @@
   --dp-range-between-dates-background-color: var(--workspace-selected);
   --dp-range-between-dates-text-color: var(--workspace-selected-text);
   --dp-range-between-border-color: var(--workspace-selected);
+  --dp-action-button-height: 32px;
+  --dp-action-buttons-padding: 0 14px;
+  --dp-preview-font-size: 14px;
+}
+
+/* The date picker confirms with OK; keep it a comfortable target. */
+.dp__action_buttons .dp__action_select {
+  min-width: 56px;
+  justify-content: center;
 }

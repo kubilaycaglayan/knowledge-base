@@ -13,6 +13,9 @@ services:
 
   backup:
     image: postgres:16-alpine
+    # Write dumps and the Neon status file as the host deploy user so the
+    # repo-local backups/ directory stays readable without sudo.
+    user: "${BACKUP_UID:-1000}:${BACKUP_GID:-1000}"
     environment:
       PGHOST: db
       PGDATABASE: ${POSTGRES_DB:-know}

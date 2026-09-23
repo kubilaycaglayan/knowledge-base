@@ -485,6 +485,8 @@ describe("board browser acceptance", () => {
     await cell.click();
     await cell.click();
     assert.equal(await page.locator(".dp__menu").count(), 1, "Picking a range leaves the picker open");
+    const okBox = await page.locator(".dp__menu").getByRole("button", { name: "OK" }).boundingBox();
+    assert.ok(okBox.height >= 32 && okBox.width >= 44, `OK is a comfortable target (${okBox.width}x${okBox.height})`);
     await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
     await page.locator(".dp__menu").waitFor({ state: "detached" });
     const input = page.getByRole("textbox", { name: "Card dates" });
@@ -492,8 +494,11 @@ describe("board browser acceptance", () => {
 
     await input.click();
     await page.locator(".dp__menu").waitFor();
-    await page.locator(".card-title-input").click();
+    const body = page.locator(".card-body-editor");
+    const box = await body.boundingBox();
+    await body.click({ position: { x: box.width - 20, y: box.height - 20 } });
     await page.locator(".dp__menu").waitFor({ state: "detached" });
+    assert.equal(await page.locator(".card-editor").count(), 1, "An outside click closes only the picker");
   });
 
   it("confirms a single picked day without expecting a range end", async (t) => {
@@ -508,8 +513,8 @@ describe("board browser acceptance", () => {
     await page.locator(".dp__menu").waitFor({ state: "detached" });
     await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
     await closeCard(page);
-    const [year, month, date] = day.split("-").map(Number);
-    const label = new Date(year, month - 1, date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const [, month, date] = day.split("-").map(Number);
+    const label = `${date} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1]}`;
     await page.locator(".board-card .card-dates", { hasText: new RegExp(`^${label}`) }).first().waitFor();
     assert.doesNotMatch(await page.locator(".board-card .card-dates").first().textContent(), /–/);
   });

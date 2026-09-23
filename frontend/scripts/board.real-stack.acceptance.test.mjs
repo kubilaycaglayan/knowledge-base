@@ -102,7 +102,10 @@ async function pickCardDates(start, end) {
       await page.locator(".dp__menu").getByRole("button", { name: date.slice(0, 7) > shown ? "Next month" : "Previous month" }).click();
     }
     await cell.click();
+    if (start === end) break;
   }
+  // Picking dates never closes the picker; OK confirms them.
+  await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
   await page.locator(".dp__menu").waitFor({ state: "detached" });
 }
 
