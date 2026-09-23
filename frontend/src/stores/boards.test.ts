@@ -182,6 +182,22 @@ describe("boards store concurrency", () => {
     expect(apiMock.mock.calls.filter(([path]) => path === "/boards")).toHaveLength(1);
   });
 
+  it("updates the selected board name without replacing its cards", async () => {
+    const board = { id: "board", name: "Before", archived: false, createdAt: "", updatedAt: "" };
+    apiMock.mockResolvedValue({ ...board, name: "After" });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = board.id;
+    store.boards = [board];
+    store.cards = [{ id: "card", statusId: "status", title: "Retained", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+
+    await store.updateBoard(board.id, "After");
+
+    expect(apiMock).toHaveBeenCalledWith("/boards/board", { method: "PUT", body: JSON.stringify({ name: "After" }) });
+    expect(store.boards[0].name).toBe("After");
+    expect(store.cards[0].title).toBe("Retained");
+  });
+
   it("reconciles edited dates with the active Gantt window", async () => {
     const saved = { id: "card", statusId: "backlog", title: "Dated", body: "{}", priority: "MEDIUM" as const, startDate: "2026-10-01", dueDate: "2026-10-02", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
     apiMock.mockResolvedValue(saved);

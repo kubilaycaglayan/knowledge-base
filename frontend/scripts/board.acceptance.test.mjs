@@ -54,6 +54,10 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
       boardArchiveRequests += 1;
       body = { ...board, archived: true };
     }
+    if (method === "PUT" && path === "/boards/board-1") {
+      board.name = request.postDataJSON().name;
+      body = { ...board };
+    }
     if (method === "POST" && cardRoute?.[2] === "archive" && routedCard) {
       routedCard.archived = true; body = routedCard;
     }
@@ -276,6 +280,16 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Add board" }).click();
     assert.equal(await page.getByRole("textbox", { name: "New board name" }).evaluate((input) => document.activeElement === input), true);
+  });
+
+  it("renames the selected board without losing its active view", async (t) => {
+    const { page } = await fixture(t);
+    await page.getByRole("button", { name: "Rename board" }).click();
+    await page.getByRole("textbox", { name: "Board name", exact: true }).fill("Renamed board");
+    await page.getByRole("button", { name: "Save board" }).click();
+    await page.getByRole("option", { name: "Renamed board" }).waitFor({ state: "attached" });
+    assert.equal(await page.getByRole("combobox", { name: "Current board" }).inputValue(), "board-1");
+    assert.equal(await page.getByRole("heading", { name: "Ship timeline" }).count(), 1);
   });
 
   it("creates a blank-title card and safely protects unsaved edits", async (t) => {

@@ -74,6 +74,18 @@ class BoardControllerApiTest {
         .andExpect(status().isNotFound());
   }
 
+  @Test void ownerCanRenameBoardWithoutChangingItsIdentity() throws Exception {
+    Board board = new Board(owner, "Before");
+    UUID boardId = board.getId();
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(boards.save(board)).thenReturn(board);
+
+    mvc.perform(put("/api/v1/boards/" + boardId).with(authentication(auth()))
+        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"  After  \"}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(boardId.toString()))
+        .andExpect(jsonPath("$.name").value("After"));
+  }
+
   @Test void everyBoardMutationRejectsAForeignBoard() throws Exception {
     UUID boardId = UUID.randomUUID();
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.empty());
