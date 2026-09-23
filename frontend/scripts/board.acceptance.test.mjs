@@ -347,6 +347,18 @@ describe("board browser acceptance", () => {
     assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("board-card")), true);
   });
 
+  it("warns before unloading a card with unsaved changes", async (t) => {
+    const { page } = await fixture(t);
+    await page.locator(".board-card").first().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Unsaved navigation");
+    const unloadResult = await page.evaluate(() => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return { defaultPrevented: event.defaultPrevented, returnValue: event.returnValue };
+    });
+    assert.equal(unloadResult.defaultPrevented || unloadResult.returnValue === "", true);
+  });
+
   it("rejects a reversed card date range inline and keeps the editor open", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();

@@ -48,6 +48,7 @@ function parseBoardBody(body: string) { try { const parsed = JSON.parse(body); r
 function destroyCardEditor() { cardEditor.value?.destroy(); cardEditor.value = null; }
 function rememberCardFocus(event: PointerEvent) { const card = (event.target as HTMLElement | null)?.closest<HTMLElement>(".board-card"); if (card) lastFocusedCard.value = card; }
 function restoreCardFocus() { const cardId = lastFocusedCardId.value; if (cardId) void nextTick(() => (lastFocusedCard.value || document.getElementById(`board-card-${cardId}`))?.focus()); }
+function warnBeforeUnload(event: BeforeUnloadEvent) { if (editing.value && JSON.stringify(draft.value) !== originalDraft.value) { event.preventDefault(); event.returnValue = ""; } }
 function editCard(card: BoardCard) { destroyCardEditor(); lastFocusedCardId.value = card.id; editing.value = card; cardDateError.value = ""; draft.value = { title: card.title, body: card.body, priority: card.priority, startDate: card.startDate || "", dueDate: card.dueDate || "", pathIds: [...card.pathIds], labelIds: [...card.labelIds] }; originalDraft.value = JSON.stringify(draft.value); discardOpen.value = false; cardEditor.value = new Editor({ extensions: [StarterKit], content: parseBoardBody(card.body), editorProps: { attributes: { role: "textbox", "aria-label": "Card body", "aria-multiline": "true" } }, onUpdate: ({ editor }) => { draft.value.body = JSON.stringify(editor.getJSON()); } }); }
 function requestCloseEditor() { if (editing.value && JSON.stringify(draft.value) !== originalDraft.value) discardOpen.value = true; else { destroyCardEditor(); editing.value = null; restoreCardFocus(); } }
 function discardChanges() { discardOpen.value = false; destroyCardEditor(); editing.value = null; cardDateError.value = ""; restoreCardFocus(); }
@@ -67,10 +68,10 @@ async function confirmArchiveCard() { const card = archiveCardConfirm.value; arc
 async function archiveCurrent() { if (!store.selectedId) return; archiveConfirmOpen.value = false; try { await store.archiveBoard(store.selectedId); await router.replace({ query: {} }); } catch { error.value = "Could not archive board."; } }
 async function toggleArchived() { showArchived.value = !showArchived.value; if (showArchived.value) await store.loadBoards(true); }
 async function restoreBoard(id: string) { await store.archiveBoard(id, true); await store.loadBoards(true); }
-onMounted(async () => { document.addEventListener("pointerdown", rememberCardFocus); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested && boards.value.some((board) => board.id === requested)) store.selectedId = requested; await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
+onMounted(async () => { document.addEventListener("pointerdown", rememberCardFocus); window.addEventListener("beforeunload", warnBeforeUnload); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested && boards.value.some((board) => board.id === requested)) store.selectedId = requested; await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
-onBeforeUnmount(() => { document.removeEventListener("pointerdown", rememberCardFocus); pageObservers.forEach((observer) => observer.disconnect()); destroyCardEditor(); });
+onBeforeUnmount(() => { document.removeEventListener("pointerdown", rememberCardFocus); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); destroyCardEditor(); });
 </script>
 
 <template>
