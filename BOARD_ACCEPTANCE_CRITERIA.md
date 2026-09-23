@@ -29,7 +29,9 @@ Unchecked items are intentionally incomplete.
   requests reject stale responses with revision checks.
 - [x] Card edit responses use per-card revisions so stale saves cannot
   overwrite Kanban or Gantt state.
-- [ ] Concurrent board loads and writes reject stale responses deterministically.
+- [x] Store-level concurrent board loads and writes reject stale responses
+  deterministically.
+- [ ] Concurrent board loads and writes are covered end to end.
 - [x] Gantt responses are revision-checked so an older board/window cannot
   overwrite the current timeline.
 - [x] Archived boards reject mutations, remain permanently retained, and can be
@@ -107,8 +109,10 @@ Unchecked items are intentionally incomplete.
   page.
 - [ ] Duplicate boundary requests and stale board responses are covered end to
   end.
-- [ ] Offline, 401, 404, 409, timeout, and recoverable mutation states have
-  visible, dismissible feedback.
+- [x] Offline board load, unauthenticated `401`, invalid-board `404`, card
+  conflict `409`, failed-page retry, and recoverable mutation feedback are
+  covered across browser/store tests.
+- [ ] Timeout-specific visible editor feedback is covered end to end.
 - [x] Gantt load failures set a visible, dismissible retry message and clear
   stale timeline cards.
 - [ ] Concurrent tabs do not overwrite newer board/card state with stale data.
