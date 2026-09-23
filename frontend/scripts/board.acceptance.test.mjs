@@ -12,7 +12,8 @@ const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screensho
 const board = { id: "board-1", name: "Product", archived: false };
 const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false, cardSort: "MANUAL" }));
 const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0, 10); };
-const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: [] }];
+const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"] }];
+const boardLabels = [["label-design", "Design"], ["label-docs", "Docs"], ["label-research", "Research"], ["label-backend", "Backend"], ["label-frontend", "Frontend"], ["label-ops", "Operations"], ["label-bug", "Bug"]].map(([id, name]) => ({ id, name, color: null, scopes: ["BOARD"] }));
 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
@@ -50,7 +51,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (cursor >= 19) lazyPageRequests += 1; if (cursor === -1) firstPageRequests.push(statusId); if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
     else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-2", name: "Research", color: "#3366cc", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
-    else if (path === "/labels") body = [];
+    else if (path === "/labels") body = new URL(request.url()).searchParams.get("scope") === "BOARD" ? boardLabels : [];
     else if (path === "/timers/current") body = runningTimer;
     else if (path === "/timers/draft") body = {};
     if (method === "POST" && path === "/timers") { const input = request.postDataJSON(); timerStarts.push(input); runningTimer = { id: "timer-1", ...input, startedAt: new Date().toISOString(), running: true }; body = runningTimer; }
@@ -361,7 +362,9 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();
     assert.equal(await page.locator("select[name='cardPaths']").locator("option", { hasText: "Archived path" }).count(), 0);
-    assert.equal(await page.getByRole("group", { name: "Board labels" }).getByRole("checkbox").count(), 0);
+    await page.locator(".card-labels-picker input").click();
+    const options = (await page.locator(".v-overlay-container .v-list-item-title").allInnerTexts()).map((name) => name.trim());
+    assert.deepEqual(options.sort(), boardLabels.map((label) => label.name).sort(), "Only the live BOARD labels are offered");
   });
 
   it("restores board route state through browser history", async (t) => {
@@ -599,6 +602,40 @@ describe("board browser acceptance", () => {
     await page.locator(".board-card").first().waitFor();
     const heights = await page.locator(".kanban-column").evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().height)));
     assert.ok(heights.every((value) => value === heights[0]), `Columns share one height: ${heights}`);
+  });
+
+  it("searches and picks card labels, then shows them on the card", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    const input = page.locator(".card-labels-picker input");
+    await input.click();
+    await input.fill("bu");
+    const options = page.locator(".v-overlay-container .v-list-item-title");
+    await page.waitForFunction(() => document.querySelectorAll(".v-overlay-container .v-list-item-title").length === 1);
+    assert.deepEqual((await options.allInnerTexts()).map((name) => name.trim()), ["Bug"], "Typing searches the labels");
+    await options.first().click();
+    await page.locator(".card-labels-picker .v-chip", { hasText: "Bug" }).waitFor();
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator(".card-editor").count(), 1, "Escape closes the label menu before the editor");
+    await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
+    await closeCard(page);
+    await page.locator(".board-card .board-card-label", { hasText: "Bug" }).waitFor();
+  });
+
+  it("keeps a card's labels to one compact row between priority and title", async (t) => {
+    const { page } = await fixture(t, 1280);
+    const card = page.locator(".board-card").first();
+    const row = card.locator(".board-card-labels");
+    await row.waitFor();
+    const chips = await row.locator(".board-card-label").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+    assert.ok(chips.length > 1);
+    assert.ok(chips.every((top) => Math.abs(top - chips[0]) < 1), "Every label sits on one row");
+    const box = await row.boundingBox();
+    assert.ok(box.height <= 24, `The label row is compact (${box.height}px)`);
+    assert.ok(await row.evaluate((element) => element.scrollWidth >= element.clientWidth && getComputedStyle(element).overflow === "hidden"), "Extra labels are clipped, not wrapped");
+    const priority = await card.locator(".priority").boundingBox();
+    const title = await card.locator("h3").boundingBox();
+    assert.ok(priority.y + priority.height <= box.y && box.y + box.height <= title.y, "Labels sit between the priority and the title");
   });
 
   it("sorts a column by priority from its header", async (t) => {

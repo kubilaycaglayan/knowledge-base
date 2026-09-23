@@ -492,13 +492,65 @@ describe("BoardView", () => {
     expect(meta.find(".meta-dates").exists()).toBe(false);
 
     const footer = wrapper.find(".card-editor-footer");
-    const controls = footer.findAll(".meta-dates, select, button").map((element) => element.classes().includes("meta-dates") ? "dates" : element.attributes("name") || element.attributes("aria-label"));
-    expect(controls.filter((control) => control !== "Clear card dates")).toEqual(["dates", "priority", "status", "Archive card"]);
+    const controls = [...footer.element.children].map((element) => element.classList.contains("meta-dates") ? "dates" : element.classList.contains("card-labels-picker") ? "labels" : element.classList.contains("save-state") ? "save" : element.getAttribute("name") || element.getAttribute("aria-label"));
+    expect(controls).toEqual(["dates", "priority", "status", "labels", "save", "Archive card"]);
     const archive = footer.find('button[aria-label="Archive card"]');
     expect(archive.text()).toBe("");
     expect(archive.attributes("title")).toBe("Archive card");
     expect(footer.element.lastElementChild).toBe(archive.element);
     await wrapper.unmount();
+  });
+
+  describe("card labels", () => {
+    const boardLabels = [
+      { id: "label-design", name: "Design", color: "#7c3aed", scopes: ["BOARD"] },
+      { id: "label-docs", name: "Docs", color: "#0e7490", scopes: ["BOARD"] },
+      { id: "label-note", name: "Reading", color: "#999999", scopes: ["NOTE"] },
+    ];
+    function seedLabelled(labelIds: string[]) {
+      const store = seedBoard(["Backlog"]);
+      useLabelsStore().labels = boardLabels as any;
+      store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds, createdAt: "", updatedAt: "t1" }] as any;
+      return store;
+    }
+
+    it("picks card labels from a searchable chip selector in the editor footer", async () => {
+      seedLabelled([]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      expect(wrapper.find(".card-meta .card-labels").exists()).toBe(false);
+      const picker = wrapper.findComponent({ name: "VAutocomplete" });
+      expect(picker.exists()).toBe(true);
+      expect(picker.classes()).toContain("card-labels-picker");
+      expect(picker.props("multiple")).toBe(true);
+      expect(picker.props("chips")).toBe(true);
+      expect((picker.props("items") as Array<{ name: string }>).map((label) => label.name)).toEqual(["Design", "Docs"]);
+      picker.vm.$emit("update:modelValue", ["label-docs"]);
+      await flushPromises();
+      expect((wrapper.vm as any).draft.labelIds).toEqual(["label-docs"]);
+      await wrapper.unmount();
+    });
+
+    it("shows one row of label chips between the priority and the title", async () => {
+      seedLabelled(["label-docs", "label-design", "label-missing"]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      const card = wrapper.find(".board-card");
+      const parts = [...card.element.children].map((element) => element.className || element.tagName.toLowerCase());
+      expect(parts.indexOf("board-card-labels")).toBe(parts.indexOf("board-card-top") + 1);
+      expect(parts.indexOf("h3")).toBe(parts.indexOf("board-card-labels") + 1);
+      expect(card.findAll(".board-card-labels .board-card-label").map((chip) => chip.text())).toEqual(["Docs", "Design"]);
+      await wrapper.unmount();
+    });
+
+    it("leaves unlabelled cards without a label row", async () => {
+      seedLabelled([]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.find(".board-card-labels").exists()).toBe(false);
+      await wrapper.unmount();
+    });
   });
 
   it("puts the title and the close button on the editor's first row", async () => {
