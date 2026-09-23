@@ -17,9 +17,10 @@ const scopeOptions: { value: Scope; label: string }[] = [
   { value: "LOG", label: "Logs" },
   { value: "BOARD", label: "Boards" },
 ];
+// New labels show everywhere except the Calendar, including on Boards.
 const defaultScopes = (): Scope[] =>
   scopeOptions
-    .filter((option) => !["CALENDAR", "BOARD"].includes(option.value))
+    .filter((option) => option.value !== "CALENDAR")
     .map((option) => option.value);
 const colors = labelColors;
 const labelStore = useLabelsStore();
