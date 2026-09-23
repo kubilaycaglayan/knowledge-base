@@ -67,7 +67,7 @@
 .new-board-dialog { display:grid; gap:.6rem; } .new-board-dialog h2 { margin:0 0 .2rem; font-size:1.1rem; } .new-board-dialog label { font-weight:600; font-size:.85rem; } .new-board-dialog input { min-width:0; border:1px solid var(--border-color); border-radius:8px; padding:.6rem .75rem; background:var(--surface-color); color:inherit; font-size:max(16px, 1rem); } .new-board-dialog .editor-actions { justify-content:flex-end; margin-top:.3rem; } .field-error { margin:0; color:#b42318; font-size:.85rem; }
 /* Board tabs carry a quiet settings gear beside each name. */
 .board-tab-wrap { display:inline-flex; align-items:center; flex:0 0 auto; border-radius:6px; } .board-tab-wrap.selected { background:#334155; color:#fff; }
-.board-tab-settings { display:inline-flex; align-items:center; justify-content:center; min-width:28px; min-height:36px; padding:0 .3rem; background:transparent; color:inherit; opacity:.6; } .board-tab-settings:hover, .board-tab-settings:focus-visible { opacity:1; }
+.board-tab-wrap .board-tab { padding-right:.1rem; } .board-tab-settings { display:inline-flex; align-items:center; justify-content:center; min-width:24px; min-height:36px; padding:0 .35rem 0 .1rem; background:transparent; color:inherit; opacity:.6; } .board-tab-settings:hover, .board-tab-settings:focus-visible { opacity:1; }
 /* Flat, low-emphasis icon buttons; danger ones read red. */
 .quiet { background:transparent; color:inherit; border:0; } .quiet:hover:not(:disabled) { background:var(--workspace-hover); } .quiet:disabled { opacity:.35; cursor:not-allowed; }
 .danger { color:#b42318; } .danger:hover:not(:disabled) { background:color-mix(in srgb, #b42318 10%, transparent); }
