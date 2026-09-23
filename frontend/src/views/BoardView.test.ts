@@ -107,17 +107,25 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("opens a new-board dialog from the add-board button instead of an inline form", async () => {
+  // Add board lives only in the Boards dialog behind the Manage boards gear.
+  async function openAddBoard(wrapper: ReturnType<typeof mountBoard>) {
+    await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
+    await wrapper.find('[aria-labelledby="boards-manager-title"] button[aria-label="Add board"]').trigger("click");
+  }
+
+  it("opens a new-board dialog from the Boards dialog and returns there on cancel", async () => {
     const wrapper = mountBoard();
 
     expect(wrapper.find('input[name="boardName"]').exists()).toBe(false);
-    await wrapper.find('button[aria-label="Add board"]').trigger("click");
+    await openAddBoard(wrapper);
+    expect(wrapper.find('[aria-labelledby="boards-manager-title"]').exists()).toBe(false);
     const dialog = wrapper.find('[role="dialog"][aria-labelledby="new-board-title"]');
     expect(dialog.exists()).toBe(true);
     expect(dialog.find('input[name="boardName"]').exists()).toBe(true);
     expect(dialog.findAll("button").map((button) => button.text())).toEqual(["Cancel", "Create"]);
     await dialog.findAll("button")[0].trigger("click");
     expect(wrapper.find('[aria-labelledby="new-board-title"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-labelledby="boards-manager-title"]').exists()).toBe(true);
     await wrapper.unmount();
   });
 
@@ -126,7 +134,7 @@ describe("BoardView", () => {
     const store = useBoardsStore();
     const create = vi.spyOn(store, "createBoard");
 
-    await wrapper.find('button[aria-label="Add board"]').trigger("click");
+    await openAddBoard(wrapper);
     await wrapper.find(".new-board-dialog").trigger("submit");
     expect(wrapper.find("#new-board-error").text()).toBe("Enter a board name.");
     expect(create).not.toHaveBeenCalled();
@@ -138,33 +146,36 @@ describe("BoardView", () => {
     const store = useBoardsStore();
     const create = vi.spyOn(store, "createBoard").mockResolvedValue(undefined as never);
 
-    await wrapper.find('button[aria-label="Add board"]').trigger("click");
+    await openAddBoard(wrapper);
     await wrapper.find("#new-board-name").setValue("  Launch  ");
     await wrapper.find(".new-board-dialog").trigger("submit");
     await flushPromises();
     expect(create).toHaveBeenCalledWith("Launch");
     expect(wrapper.find(".new-board-dialog").exists()).toBe(false);
+    expect(wrapper.find('[aria-labelledby="boards-manager-title"]').exists()).toBe(false);
     await wrapper.unmount();
   });
 
-  it("keeps the add-board button beside the view switch without a visible page title", async () => {
+  it("keeps only the Manage boards gear beside the view switch without a visible page title", async () => {
     const wrapper = mountBoard();
 
     expect(wrapper.find(".board-header").exists()).toBe(false);
     expect(wrapper.find(".eyebrow").exists()).toBe(false);
     expect(wrapper.find("h1#board-heading").classes()).toContain("sr-only");
     const actions = wrapper.find(".board-toolbar .board-view-actions");
-    expect(actions.find('button[aria-label="Add board"]').exists()).toBe(true);
+    expect(actions.find('button[aria-label="Add board"]').exists()).toBe(false);
+    expect(actions.find('button[aria-label="Manage boards"]').exists()).toBe(true);
     expect(actions.element.lastElementChild?.classList.contains("view-switch")).toBe(true);
     await wrapper.unmount();
   });
 
-  it("shows plus button for adding boards (icon button)", async () => {
+  it("shows an Add board icon button in the Boards dialog header", async () => {
     const wrapper = mountBoard();
 
-    const addButton = wrapper.find('button[aria-label="Add board"]');
+    await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
+    const addButton = wrapper.find('[aria-labelledby="boards-manager-title"] .board-settings-header button[aria-label="Add board"]');
     expect(addButton.exists()).toBe(true);
-    expect(addButton.text()).toContain("＋");
+    expect(addButton.attributes("title")).toBe("Add board");
     await wrapper.unmount();
   });
 
@@ -432,7 +443,7 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
 
-    for (const label of ["Add board", "Add card to Backlog"]) {
+    for (const label of ["Add card to Backlog"]) {
       const button = wrapper.find(`button[aria-label="${label}"]`);
       expect(button.exists(), `${label} button is missing`).toBe(true);
       expect(button.text()).toBe("＋");
@@ -714,7 +725,6 @@ describe("BoardView", () => {
       expect(wrapper.findAll(".board-tab-settings")).toHaveLength(0);
       const gear = wrapper.find('button[aria-label="Manage boards"]');
       expect(gear.exists()).toBe(true);
-      expect(gear.element.previousElementSibling?.getAttribute("aria-label")).toBe("Add board");
 
       await gear.trigger("click");
       const manager = wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');

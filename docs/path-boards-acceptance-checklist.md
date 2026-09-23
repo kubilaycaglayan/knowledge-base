@@ -77,7 +77,7 @@ cover it. Tick an item only once those tests pass.
   _Tests:_ `BoardView.test.ts` "hides the path picker on path boards"
 - [x] **PB-22** Board settings for a path board show the name as read-only text with a link to Paths, and have no Archive board button, pin switch or visibility switch. A board is shown or hidden only from the path edit form on /paths.
   _Tests:_ `BoardView.test.ts` "path board settings are read-only and leave visibility to the Paths page"
-- [x] **PB-23** Board tabs have no gear of their own. A single "Manage boards" gear button sits next to the Add board "+" button and opens a "Boards" dialog listing every active board in tab order. Clicking a board name opens that board's settings. Board settings have no pin switch.
+- [x] **PB-23** Board tabs have no gear of their own. A single "Manage boards" gear button (the only board-management control on the page) opens a "Boards" dialog listing every active board in tab order. Clicking a board name opens that board's settings. Board settings have no pin switch. The Boards dialog header has an "Add board" button that opens the New board dialog; cancelling returns to the Boards dialog.
   _Tests:_ `BoardView.test.ts` "opens the boards dialog from the single gear and each name opens its settings"
 - [x] **PB-24** In the Boards dialog, every board row (path or custom) has a drag handle. Dragging it up or down, or pressing ArrowUp or ArrowDown on the focused handle, reorders the board within its group (pinned or unpinned) and sends that group's full order to `PUT /boards/order`. Path board rows keep their colour dot.
   _Tests:_ `BoardView.test.ts` "reorders path and custom boards together from the boards dialog", `boards.test.ts` "reorderBoards"

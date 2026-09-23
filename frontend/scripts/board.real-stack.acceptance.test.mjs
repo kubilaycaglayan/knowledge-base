@@ -145,10 +145,11 @@ async function seedCards(boardId, count, prefix) {
   }, { boardId, count, prefix });
 }
 
-// Boards are created from the add-board dialog, which closes only once the
-// store has created and loaded the new board.
+// Boards are created from the Boards dialog's Add board button; the New board
+// dialog closes only once the store has created and loaded the new board.
 async function createBoard(name) {
-  await page.getByRole("button", { name: "Add board" }).click();
+  await page.getByRole("button", { name: "Manage boards" }).click();
+  await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name: "Add board" }).click();
   const dialog = page.getByRole("dialog", { name: "New board" });
   const field = dialog.getByRole("textbox", { name: "New board name" });
   await field.fill(name);
@@ -313,15 +314,15 @@ describe("board real-stack acceptance", () => {
     assert.equal(await page.getByRole("alert").filter({ hasText: "Could not create card." }).count(), 0, "A successful action must clear the previous error");
   });
 
-  it("shows plus button for adding boards (icon button, not text)", async () => {
+  it("keeps Add board in the Boards dialog, not on the page", async () => {
     await page.goto(`${baseUrl}/board`);
     await page.getByRole("heading", { name: "Boards" }).waitFor();
 
-    const addButton = page.locator('button[aria-label="Add board"]');
-    assert.equal(await addButton.count(), 1, "Should have add board button");
-
-    const buttonText = await addButton.textContent();
-    assert.equal(buttonText.includes("＋"), true, "Button should use icon (plus sign) not text");
+    assert.equal(await page.locator('button[aria-label="Add board"]').count(), 0, "No Add board button on the page");
+    await page.getByRole("button", { name: "Manage boards" }).click();
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    assert.equal(await manager.getByRole("button", { name: "Add board" }).count(), 1, "Boards dialog offers Add board");
+    await manager.getByRole("button", { name: "Close boards" }).click();
   });
 
   it("keeps the Kanban/Gantt switch in the board toolbar", async () => {

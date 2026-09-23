@@ -382,16 +382,21 @@ describe("board browser acceptance", () => {
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
-  it("opens a new-board dialog from the compact add-board plus action", async (t) => {
+  it("opens a new-board dialog from the Boards dialog and returns there on Escape", async (t) => {
     const { page } = await fixture(t);
     assert.equal(await page.getByRole("textbox", { name: "New board name" }).count(), 0, "No inline board input on the page");
-    await page.getByRole("button", { name: "Add board" }).click();
+    assert.equal(await page.getByRole("button", { name: "Add board" }).count(), 0, "No Add board button on the page");
+    await page.getByRole("button", { name: "Manage boards" }).click();
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    await manager.getByRole("button", { name: "Add board" }).click();
     const dialog = page.getByRole("dialog", { name: "New board" });
     await dialog.waitFor();
+    assert.equal(await manager.count(), 0, "The Boards dialog gives way to New board");
     assert.equal(await dialog.getByRole("textbox", { name: "New board name" }).evaluate((input) => document.activeElement === input), true);
     await page.keyboard.press("Escape");
     await dialog.waitFor({ state: "detached" });
-    assert.equal(await page.getByRole("button", { name: "Add board" }).evaluate((button) => document.activeElement === button), true);
+    await manager.waitFor();
+    assert.equal(await manager.getByRole("button", { name: "Add board" }).evaluate((button) => document.activeElement === button), true);
   });
 
   it("renames the selected board from board settings, without losing its active view", async (t) => {
