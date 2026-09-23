@@ -1,6 +1,6 @@
 import { flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../lib/api";
 import { applyTheme, themePreference, toggleTheme, setThemePreference } from "../lib/theme";
 import { usePreferencesStore } from "./preferences";
@@ -15,6 +15,8 @@ describe("preferences store", () => {
     setThemePreference("auto");
     applyTheme("light");
   });
+  // The store watches the app-wide theme ref, so stop each test's store.
+  afterEach(() => usePreferencesStore().$dispose());
 
   // UP-04, UP-05, UP-06
   it("loads the server's preferences without saving them back", async () => {

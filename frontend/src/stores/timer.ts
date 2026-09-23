@@ -1,10 +1,11 @@
 import { acceptHMRUpdate, defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { api } from "../lib/api";
 import { usePathsStore } from "./paths";
 import { useLabelsStore } from "./labels";
 import { useReportsStore } from "./reports";
 import { useSessionsStore } from "./sessions";
+import { usePreferencesStore } from "./preferences";
 
 export type Timer = {
   id: string;
@@ -39,6 +40,16 @@ export const useTimerStore = defineStore("timer", () => {
   const newLabel = ref(""),
     labelsOpen = ref(false),
     recentPathIds = ref<string[]>([]);
+  // Recent paths come from the server (derived from time entries); starting a
+  // timer moves its path to the front until the next load.
+  const preferencesStore = usePreferencesStore();
+  watch(
+    () => preferencesStore.recentPathIds,
+    (ids) => {
+      recentPathIds.value = [...ids];
+    },
+    { immediate: true },
+  );
   const now = ref(Date.now()),
     busy = ref(false),
     actionBusy = ref(false),
@@ -78,10 +89,6 @@ export const useTimerStore = defineStore("timer", () => {
       id,
       ...recentPathIds.value.filter((value) => value !== id),
     ].slice(0, 5);
-    localStorage.setItem(
-      "know_recent_timer_paths",
-      JSON.stringify(recentPathIds.value),
-    );
   }
   function fieldFocused(field: "path" | "labels" | "description") {
     const active = document.activeElement;
@@ -497,13 +504,6 @@ export const useTimerStore = defineStore("timer", () => {
   }
   function acquire() {
     if (++consumers > 1) return;
-    try {
-      recentPathIds.value = JSON.parse(
-        localStorage.getItem("know_recent_timer_paths") || "[]",
-      );
-    } catch {
-      recentPathIds.value = [];
-    }
     void load();
     ticker = window.setInterval(() => {
       now.value = Date.now();

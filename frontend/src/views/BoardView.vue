@@ -11,6 +11,7 @@ import { fitTabs } from "../lib/fit-tabs";
 import TimerRunButton from "../components/TimerRunButton.vue";
 import { useTimerStore } from "../stores/timer";
 import { useNoticesStore } from "../stores/notices";
+import { usePreferencesStore } from "../stores/preferences";
 import { useBoardsStore, type Board, type BoardCard, type BoardStatus } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
@@ -61,10 +62,9 @@ const pageObservers = new Map<string, IntersectionObserver>();
 // The Kanban can break out of the page's max width. The preference is a
 // per-browser convenience, and the viewport width is measured so the
 // breakout never adds a horizontal scrollbar.
-const KANBAN_WIDE_KEY = "board.kanbanWide";
-const kanbanWide = ref(readKanbanWide()), viewportWidth = ref(0), contentLeft = ref(0), boardPage = ref<HTMLElement | null>(null);
-function readKanbanWide() { try { return localStorage.getItem(KANBAN_WIDE_KEY) === "1"; } catch { return false; } }
-function toggleKanbanWide() { measureViewport(); kanbanWide.value = !kanbanWide.value; try { localStorage.setItem(KANBAN_WIDE_KEY, kanbanWide.value ? "1" : "0"); } catch { /* Storage is optional. */ } }
+const preferences = usePreferencesStore(), kanbanWide = computed(() => preferences.kanbanWide), viewportWidth = ref(0), contentLeft = ref(0), boardPage = ref<HTMLElement | null>(null);
+
+function toggleKanbanWide() { measureViewport(); void preferences.setKanbanWide(!kanbanWide.value); }
 // Columns share the tallest column's height but never run past the visible
 // viewport (which shrinks for an on-screen keyboard or a showing address bar)
 // or under the floating tracker; each column scrolls its own cards.

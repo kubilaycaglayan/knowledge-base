@@ -118,3 +118,8 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Label board cards with `BOARD` labels from a searchable Vuetify chip
   picker in the card editor footer; cards show one compact, clipped row of
   label chips between the priority and the title.
+- [x] Store user preferences on the server: the theme and Kanban width live
+  in `user_preferences` (V48) behind `GET/PUT /preferences`, and the tracker's
+  recent paths are derived from time entries. The browser keeps only the
+  sign-in token and a first-paint cache.
+  Acceptance: `docs/user-preferences-acceptance-checklist.md`.

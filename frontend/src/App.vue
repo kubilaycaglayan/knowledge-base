@@ -8,14 +8,17 @@ import AppSnackbar from "./components/AppSnackbar.vue";
 import { theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 import { useBoardsStore } from "./stores/boards";
+import { usePreferencesStore } from "./stores/preferences";
 const auth = useAuthStore();
 const tracker = useTimerStore();
 const boards = useBoardsStore();
+const preferences = usePreferencesStore();
 watch(
   () => auth.token,
   (token, previous, onCleanup) => {
-    if (token !== previous) { tracker.clear(); boards.reset(); }
+    if (token !== previous) { tracker.clear(); boards.reset(); preferences.reset(); }
     if (token) {
+      void preferences.load();
       tracker.acquire();
       onCleanup(() => tracker.release());
     }
