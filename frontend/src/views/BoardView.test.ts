@@ -3,6 +3,7 @@ import BoardView from "./BoardView.vue";
 import vuetify from "../plugins/vuetify";
 import { useBoardsStore } from "../stores/boards";
 import { useTimerStore } from "../stores/timer";
+import { useNoticesStore } from "../stores/notices";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
 import { useRouter, useRoute } from "vue-router";
@@ -633,13 +634,14 @@ describe("BoardView", () => {
       start.mockRejectedValueOnce(Object.assign(new Error("A timer is already running"), { status: 409 }));
       await playFor(wrapper, "Write docs").trigger("click");
       await flushPromises();
-      expect(wrapper.find(".board-error").text()).toContain("A session is already running. Stop it before starting another.");
+      const notices = useNoticesStore();
+      expect(notices.current?.text).toBe("A session is already running. Stop it before starting another.");
+      expect(wrapper.find(".board-error").exists()).toBe(false);
 
       start.mockRejectedValueOnce(new TypeError("startSession is not a function"));
       await playFor(wrapper, "Write docs").trigger("click");
       await flushPromises();
-      expect(wrapper.find(".board-error").text()).toContain("Could not start a session. Try again.");
-      expect(wrapper.find(".board-error").text()).not.toContain("Stop the running timer");
+      expect(notices.current?.text).toBe("Could not start a session. Try again.");
       await wrapper.unmount();
     });
 

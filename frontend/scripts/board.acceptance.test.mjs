@@ -702,6 +702,22 @@ describe("board browser acceptance", () => {
     assert.equal(await page.locator("button.board-tab-more").count(), 0, "No menu when every board fits");
   });
 
+  it("reports a failed action in a snackbar above the floating tracker", async (t) => {
+    const { page, context } = await fixture(t, 390);
+    await context.route("**/api/v1/timers", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.fallback()));
+    await page.locator(".board-card-play").first().click();
+    const snackbar = page.locator(".app-snackbar").filter({ hasText: "Could not start a session. Try again." });
+    await snackbar.waitFor();
+    assert.equal(await page.locator(".board-error").count(), 0, "Action errors do not use the inline banner");
+    assert.equal(await snackbar.getByRole("status").count(), 1, "The snackbar is announced politely");
+    const box = await snackbar.locator(".v-snackbar__wrapper").boundingBox();
+    const tracker = await page.locator(".floating-tracker").boundingBox();
+    assert.ok(box.y + box.height <= tracker.y - 4, `The snackbar sits above the tracker (${box.y + box.height} <= ${tracker.y})`);
+    assert.ok(box.x >= 0 && box.x + box.width <= 390, "The snackbar fits the phone screen");
+    await snackbar.getByRole("button", { name: "Dismiss message" }).click();
+    await snackbar.waitFor({ state: "detached" });
+  });
+
   it("sorts a column by priority from its header", async (t) => {
     const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
     await page.locator(".board-card").first().waitFor();

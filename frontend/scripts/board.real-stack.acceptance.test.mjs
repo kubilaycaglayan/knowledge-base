@@ -319,12 +319,12 @@ describe("board real-stack acceptance", () => {
     await page.route("**/api/v1/boards/*/cards", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.continue()));
     try {
       await clickAddCard();
-      const alert = page.getByRole("alert").filter({ hasText: "Could not create card." });
-      await alert.waitFor();
-      const dismiss = page.getByRole("button", { name: "Dismiss board error" });
+      const snackbar = page.locator(".app-snackbar").filter({ hasText: "Could not create card." });
+      await snackbar.waitFor();
+      const dismiss = snackbar.getByRole("button", { name: "Dismiss message" });
       assert.equal(await dismiss.count(), 1, "Error messages must carry a close button");
       await dismiss.click();
-      assert.equal(await alert.count(), 0, "Dismissing must remove the error");
+      await snackbar.waitFor({ state: "detached" });
     } finally {
       await page.unroute("**/api/v1/boards/*/cards");
     }
@@ -334,13 +334,13 @@ describe("board real-stack acceptance", () => {
     await page.route("**/api/v1/boards/*/cards", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.continue()));
     try {
       await clickAddCard();
-      await page.getByRole("alert").filter({ hasText: "Could not create card." }).waitFor();
+      await page.locator(".app-snackbar").filter({ hasText: "Could not create card." }).waitFor();
     } finally {
       await page.unroute("**/api/v1/boards/*/cards");
     }
 
     await addCard("Recovered card");
-    assert.equal(await page.getByRole("alert").filter({ hasText: "Could not create card." }).count(), 0, "A successful action must clear the previous error");
+    await page.locator(".app-snackbar").filter({ hasText: "Could not create card." }).waitFor({ state: "detached" });
   });
 
   it("keeps Add board in the Boards dialog, not on the page", async () => {
