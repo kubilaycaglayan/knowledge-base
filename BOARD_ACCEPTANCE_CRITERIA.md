@@ -187,8 +187,9 @@ Unchecked items are intentionally incomplete.
 - [x] Real-stack Playwright smoke scenarios pass with Chromium and Axe
   (board switching, dated-card Gantt rendering, and mobile Axe audit).
 - [x] Board backend unit/integration, frontend unit/component, real-stack E2E,
-  full-stack smoke, build, accessibility, and security checks are documented
-  and green.
+  build, accessibility, and security checks are documented and green.
+- [ ] Disposable full-stack smoke is pending a successful BuildKit image build;
+  the latest attempt stalled before services started and was cleaned up safely.
 - [x] API, architecture, testing, roadmap, smoke, and import/export documents
   reflect the final board behavior.
 
