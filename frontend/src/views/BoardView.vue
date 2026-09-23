@@ -170,11 +170,10 @@ onBeforeUnmount(() => { endBoardDrag(); window.removeEventListener("resize", mea
     <div v-if="settingsOpen && settingsBoard" class="dialog-backdrop" role="presentation" @click.self="closeSettings"><section v-dialog-focus class="confirm-dialog board-settings" role="dialog" aria-modal="true" aria-labelledby="board-settings-title" tabindex="-1" @keydown.esc.prevent="closeSettings">
       <header class="board-settings-header"><div class="board-settings-heading"><button v-if="settingsFromManager" class="icon-button quiet" type="button" aria-label="Back to boards" title="Back to boards" @click="backToManager"><v-icon :icon="mdiArrowLeft" size="20" aria-hidden="true" /></button><h2 id="board-settings-title">Board settings</h2></div><button class="icon-button quiet" type="button" aria-label="Close board settings" title="Close" @click="closeSettings"><v-icon :icon="mdiClose" size="20" aria-hidden="true" /></button></header>
       <template v-if="settingsBoard.pathId">
-        <h3 class="settings-label">Name</h3>
-        <p class="settings-name-readonly">{{ settingsBoard.name }} <RouterLink to="/paths" class="settings-path-link">Rename or hide on Paths</RouterLink></p>
+        <p class="settings-name-readonly">{{ settingsBoard.name }} <RouterLink to="/paths" class="settings-path-link" title="Rename or hide this board on the Paths page">Rename…</RouterLink></p>
       </template>
       <template v-else>
-        <label class="settings-label" for="board-settings-name">Name</label>
+        <label class="sr-only" for="board-settings-name">Name</label>
         <input id="board-settings-name" v-model="settingsName" class="settings-input" name="boardSettingsName" maxlength="120" autocomplete="off" @keydown.enter.prevent="saveSettingsName" @blur="saveSettingsName" />
       </template>
       <h3 class="settings-label">Statuses</h3>
