@@ -1963,9 +1963,16 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
-  margin-top: 8px;
+  min-height: 28px;
+  /* Sit close to the color swatch above instead of a full form gap away. */
+  margin-top: -6px;
   cursor: pointer;
+}
+@media (pointer: coarse) {
+  .path-board-switch {
+    min-height: 44px;
+    margin-top: 0;
+  }
 }
 .path-edit .path-board-switch input {
   width: 18px;
