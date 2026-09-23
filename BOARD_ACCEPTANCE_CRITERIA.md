@@ -82,7 +82,7 @@ Unchecked items are intentionally incomplete.
 - [x] Backend/API ordering, browser pointer movement, and dense-column page
   reconciliation are covered; invalid-destination behavior is covered in the
   store contract.
-- [ ] Position ordering, invalid drops, and dense-column reconciliation are
+- [x] Position ordering, invalid drops, and dense-column reconciliation are
   covered end to end.
 - [x] An integrated browser flow keeps one card visible through create, move,
   edit, archive, restore, and the Kanban/Gantt view switch.
@@ -108,7 +108,7 @@ Unchecked items are intentionally incomplete.
   at the store level.
 - [x] Failed lazy-page retry is covered end to end without losing the initial
   page.
-- [ ] Duplicate boundary requests and stale board responses are covered end to
+- [x] Duplicate boundary requests and stale board responses are covered end to
   end.
 - [x] Offline board load, unauthenticated `401`, invalid-board `404`, card
   conflict `409`, failed-page retry, and recoverable mutation feedback are
