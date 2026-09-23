@@ -51,16 +51,18 @@ cover it. Tick an item only once those tests pass.
 
 ## Tab order, pinning and reordering
 
-- [ ] **PB-16** `GET /boards` returns boards in this order:
-  1. pinned custom boards, in manual order
-  2. path boards, in Paths page order (pinned, then manual order, then most recent activity)
-  3. unpinned custom boards, in manual order, with never-ordered boards in creation order so a new board lands last
+- [ ] **PB-16** `GET /boards` returns pinned boards first, then unpinned boards. Within each group:
+  1. boards follow their manual order (`PUT /boards/order`), whether they are path or custom boards
+  2. boards never placed by hand come after the ordered ones: path boards in Paths page order, then custom boards in creation order, so a new board lands last
+  3. until a path board in the group has been placed by hand, the group keeps the earlier layout: path boards (Paths page order) before custom boards (manual order)
 
-  _Tests:_ `PathBoardIntegrationTest.boardListFollowsTabOrder`
-- [ ] **PB-17** `POST /boards/{id}/pin {"pinned":bool}` pins or unpins a custom board. On a path board it returns 409.
-  _Tests:_ `PathBoardIntegrationTest.pinningOnlyAppliesToCustomBoards`
-- [ ] **PB-18** `PUT /boards/order {"ids":[…]}` sets the manual order of custom boards. It returns 400 if the list includes another user's board or a path board.
-  _Tests:_ `PathBoardIntegrationTest.reorderingCustomBoards`, `PathBoardIntegrationTest.pathBoardMutationsRejectForeignBoards`
+  _Tests:_ `PathBoardIntegrationTest.boardListFollowsTabOrder`, `PathBoardIntegrationTest.customBoardsCanSitBetweenPathBoards`
+- [ ] **PB-17** `POST /boards/{id}/pin {"pinned":bool}` pins or unpins any active board, path or custom.
+  _Tests:_ `PathBoardIntegrationTest.anyBoardCanBePinned`
+- [ ] **PB-18** `PUT /boards/order {"ids":[…]}` sets the manual order of the listed boards, which may mix path and custom boards. It returns 400 if the list includes another user's board.
+  _Tests:_ `PathBoardIntegrationTest.reorderingBoards`, `PathBoardIntegrationTest.pathBoardMutationsRejectForeignBoards`
+- [ ] **PB-32** A custom board can sit between two path boards. Reordering board tabs never changes the Paths page order.
+  _Tests:_ `PathBoardIntegrationTest.customBoardsCanSitBetweenPathBoards`, `BoardView.test.ts` "reorders path and custom boards together from the boards dialog"
 
 ## Ownership
 
@@ -77,10 +79,10 @@ cover it. Tick an item only once those tests pass.
   _Tests:_ `BoardView.test.ts` "path board settings are read-only and leave visibility to the Paths page"
 - [ ] **PB-23** Board tabs have no gear of their own. A single "Manage boards" gear button sits next to the Add board "+" button and opens a "Boards" dialog listing every active board in tab order. Clicking a board name opens that board's settings. Board settings have no pin switch.
   _Tests:_ `BoardView.test.ts` "opens the boards dialog from the single gear and each name opens its settings"
-- [ ] **PB-24** In the Boards dialog, each custom board row has a drag handle. Dragging it up or down, or pressing ArrowUp or ArrowDown on the focused handle, reorders the board within its group (pinned or unpinned) and sends the full custom order to `PUT /boards/order`. Path board rows have no handle because their order comes from the Paths page.
-  _Tests:_ `BoardView.test.ts` "reorders custom boards from the boards dialog", `boards.test.ts` "reorderBoards"
-- [ ] **PB-31** Each custom board row in the Boards dialog has a pin button (`aria-pressed`) that pins or unpins the board and moves it between the pinned and unpinned groups. Path board rows have no pin button.
-  _Tests:_ `BoardView.test.ts` "pins and unpins custom boards from the boards dialog"
+- [ ] **PB-24** In the Boards dialog, every board row (path or custom) has a drag handle. Dragging it up or down, or pressing ArrowUp or ArrowDown on the focused handle, reorders the board within its group (pinned or unpinned) and sends that group's full order to `PUT /boards/order`. Path board rows keep their colour dot.
+  _Tests:_ `BoardView.test.ts` "reorders path and custom boards together from the boards dialog", `boards.test.ts` "reorderBoards"
+- [ ] **PB-31** Every board row in the Boards dialog has a pin button (`aria-pressed`) that pins or unpins the board and moves it between the pinned and unpinned groups.
+  _Tests:_ `BoardView.test.ts` "pins and unpins any board from the boards dialog"
 
 ## Web: Paths page
 

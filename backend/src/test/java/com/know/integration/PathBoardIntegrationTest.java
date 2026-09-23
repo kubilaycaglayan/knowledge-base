@@ -334,33 +334,58 @@ class PathBoardIntegrationTest {
 
   // PB-17
   @Test
-  void pinningOnlyAppliesToCustomBoards() {
+  void anyBoardCanBePinned() {
     String token = token();
-    String pathId = createPath(token, "Not pinnable");
+    String pathId = createPath(token, "Pinned path");
     String pathBoard = boardForPath(token, pathId).get("id").asText();
     String custom = createBoard(token, "Pinnable");
 
-    assertEquals(HttpStatus.CONFLICT, post("/api/v1/boards/" + pathBoard + "/pin", token, "{\"pinned\":true}").getStatusCode());
+    ResponseEntity<JsonNode> pinnedPath = post("/api/v1/boards/" + pathBoard + "/pin", token, "{\"pinned\":true}");
+    assertEquals(HttpStatus.OK, pinnedPath.getStatusCode());
+    assertTrue(pinnedPath.getBody().get("pinned").asBoolean());
     ResponseEntity<JsonNode> pinned = post("/api/v1/boards/" + custom + "/pin", token, "{\"pinned\":true}");
     assertEquals(HttpStatus.OK, pinned.getStatusCode());
     assertTrue(pinned.getBody().get("pinned").asBoolean());
+    assertEquals(List.of("Pinned path", "Pinnable"), boards(token, "").stream().map(b -> b.get("name").asText()).toList());
     assertFalse(post("/api/v1/boards/" + custom + "/pin", token, "{\"pinned\":false}").getBody().get("pinned").asBoolean());
   }
 
   // PB-18
   @Test
-  void reorderingCustomBoards() {
+  void reorderingBoards() {
     String token = token();
     String a = createBoard(token, "A");
     String b = createBoard(token, "B");
-    String pathBoard = boardForPath(token, createPath(token, "In the way")).get("id").asText();
+    String pathBoard = boardForPath(token, createPath(token, "Between")).get("id").asText();
     String foreign = createBoard(token(), "Foreign");
 
-    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/boards/order", token, "{\"ids\":[\"" + a + "\",\"" + pathBoard + "\"]}").getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/boards/order", token, "{\"ids\":[\"" + a + "\",\"" + foreign + "\"]}").getStatusCode());
-    assertEquals(HttpStatus.NO_CONTENT, put("/api/v1/boards/order", token, "{\"ids\":[\"" + a + "\",\"" + b + "\"]}").getStatusCode());
-    List<String> custom = boards(token, "").stream().filter(x -> x.path("pathId").isNull() || x.path("pathId").isMissingNode()).map(x -> x.get("name").asText()).toList();
-    assertEquals(List.of("A", "B"), custom);
+    assertEquals(HttpStatus.NO_CONTENT, put("/api/v1/boards/order", token, "{\"ids\":[\"" + a + "\",\"" + pathBoard + "\",\"" + b + "\"]}").getStatusCode());
+    assertEquals(List.of("A", "Between", "B"), boards(token, "").stream().map(x -> x.get("name").asText()).toList());
+  }
+
+  // PB-32: custom and path boards interleave freely; the Paths page keeps its own order.
+  @Test
+  void customBoardsCanSitBetweenPathBoards() {
+    String token = token();
+    String path1 = createPath(token, "Path 1");
+    String path2 = createPath(token, "Path 2");
+    String path3 = createPath(token, "Path 3");
+    String custom1 = createBoard(token, "Custom 1");
+    String custom2 = createBoard(token, "Custom 2");
+    String board1 = boardForPath(token, path1).get("id").asText();
+    String board2 = boardForPath(token, path2).get("id").asText();
+    String board3 = boardForPath(token, path3).get("id").asText();
+    assertEquals(HttpStatus.NO_CONTENT, put("/api/v1/paths/order", token, "{\"pathIds\":[\"" + path1 + "\",\"" + path2 + "\",\"" + path3 + "\"]}").getStatusCode());
+
+    assertEquals(HttpStatus.NO_CONTENT, put("/api/v1/boards/order", token, "{\"ids\":[\"" + board1 + "\",\"" + custom2 + "\",\"" + board2 + "\",\"" + board3 + "\",\"" + custom1 + "\"]}").getStatusCode());
+    createBoard(token, "Newest custom");
+    createPath(token, "Newest path");
+
+    assertEquals(List.of("Path 1", "Custom 2", "Path 2", "Path 3", "Custom 1", "Newest path", "Newest custom"), boards(token, "").stream().map(b -> b.get("name").asText()).toList());
+    List<String> pathOrder = new ArrayList<>();
+    get("/api/v1/paths", token).getBody().forEach(path -> pathOrder.add(path.get("name").asText()));
+    assertEquals(List.of("Path 1", "Path 2", "Path 3"), pathOrder.stream().filter(name -> !name.equals("Newest path")).toList());
   }
 
   // PB-19

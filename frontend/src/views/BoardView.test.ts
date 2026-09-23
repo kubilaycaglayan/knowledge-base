@@ -713,34 +713,33 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
 
-    // PB-24
-    it("reorders custom boards from the boards dialog", async () => {
+    // PB-24, PB-32
+    it("reorders path and custom boards together from the boards dialog", async () => {
       const store = seedPathBoards();
       const wrapper = mountBoard();
       await flushPromises();
       await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
       const manager = () => wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');
-      expect(manager().findAll(".drag-handle")).toHaveLength(3);
-      expect(manager().find('button[aria-label="Reorder Writing"]').exists()).toBe(false);
+      expect(manager().findAll(".drag-handle")).toHaveLength(4);
 
       // Groups do not mix: the first unpinned board cannot move up into the pinned group.
-      await manager().find('button[aria-label="Reorder Alpha"]').trigger("keydown", { key: "ArrowUp" });
+      await manager().find('button[aria-label="Reorder Writing"]').trigger("keydown", { key: "ArrowUp" });
       expect(store.reorderBoards).not.toHaveBeenCalled();
 
-      await manager().find('button[aria-label="Reorder Alpha"]').trigger("keydown", { key: "ArrowDown" });
+      // A custom board can move above a path board; only the unpinned group is sent.
+      await manager().find('button[aria-label="Reorder Alpha"]').trigger("keydown", { key: "ArrowUp" });
       await flushPromises();
-      expect(store.reorderBoards).toHaveBeenCalledWith(["pinned", "custom-b", "custom-a"]);
+      expect(store.reorderBoards).toHaveBeenCalledWith(["custom-a", "path-board", "custom-b"]);
       await wrapper.unmount();
     });
 
     // PB-31
-    it("pins and unpins custom boards from the boards dialog", async () => {
+    it("pins and unpins any board from the boards dialog", async () => {
       const store = seedPathBoards();
       const wrapper = mountBoard();
       await flushPromises();
       await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
       const manager = wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');
-      expect(manager.find('button[aria-label="Pin Writing"]').exists()).toBe(false);
       const unpin = manager.find('button[aria-label="Unpin Pinned"]');
       expect(unpin.attributes("aria-pressed")).toBe("true");
       await unpin.trigger("click");
@@ -752,6 +751,10 @@ describe("BoardView", () => {
       await pin.trigger("click");
       await flushPromises();
       expect(store.pinBoard).toHaveBeenCalledWith("custom-a", true);
+
+      await manager.find('button[aria-label="Pin Writing"]').trigger("click");
+      await flushPromises();
+      expect(store.pinBoard).toHaveBeenCalledWith("path-board", true);
       await wrapper.unmount();
     });
   });

@@ -725,8 +725,8 @@ describe("path boards", () => {
       } else if (path === "/boards/order" && method === "PUT") {
         const ids = request.postDataJSON().ids;
         orderRequests.push(ids);
-        const custom = ids.map((id) => boards.find((item) => item.id === id));
-        for (let index = 0, next = 0; index < boards.length; index += 1) if (!boards[index].pathId) boards[index] = custom[next++];
+        const ordered = ids.map((id) => boards.find((item) => item.id === id));
+        for (let index = 0, next = 0; index < boards.length; index += 1) if (ids.includes(boards[index].id)) boards[index] = ordered[next++];
         status = 204;
         body = "";
       } else if ((match = path.match(/^\/boards\/([^/]+)\/visibility$/))) {

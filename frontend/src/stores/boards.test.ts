@@ -547,7 +547,7 @@ describe("boards store concurrency", () => {
     expect(store.pageErrors).toEqual({});
   });
 
-  describe("custom board ordering (PB-17, PB-18, PB-24)", () => {
+  describe("board ordering (PB-17, PB-18, PB-24, PB-32)", () => {
     const board = (id: string, extra: Record<string, unknown> = {}) => ({ id, name: id, archived: false, createdAt: "", updatedAt: "", pathId: null, hidden: false, pinned: false, ...extra });
 
     it("pins a custom board and reloads the server tab order", async () => {
@@ -564,16 +564,16 @@ describe("boards store concurrency", () => {
       expect(store.selectedId).toBe("c1");
     });
 
-    it("reorderBoards applies the custom order optimistically and persists it", async () => {
+    it("reorderBoards interleaves path and custom boards within a group and persists it", async () => {
       apiMock.mockResolvedValue(undefined);
       const { useBoardsStore } = await import("./boards");
       const store = useBoardsStore();
-      store.boards = [board("p1", { pathId: "path-1" }), board("c1"), board("c2")] as any;
+      store.boards = [board("pinned", { pinned: true }), board("p1", { pathId: "path-1" }), board("p2", { pathId: "path-2" }), board("c1")] as any;
 
-      await store.reorderBoards(["c2", "c1"]);
+      await store.reorderBoards(["p1", "c1", "p2"]);
 
-      expect(apiMock).toHaveBeenCalledWith("/boards/order", expect.objectContaining({ method: "PUT", body: JSON.stringify({ ids: ["c2", "c1"] }) }));
-      expect(store.boards.map((item) => item.id)).toEqual(["p1", "c2", "c1"]);
+      expect(apiMock).toHaveBeenCalledWith("/boards/order", expect.objectContaining({ method: "PUT", body: JSON.stringify({ ids: ["p1", "c1", "p2"] }) }));
+      expect(store.boards.map((item) => item.id)).toEqual(["pinned", "p1", "c1", "p2"]);
     });
 
     it("reorderBoards rolls back when the server rejects the order", async () => {
