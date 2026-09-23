@@ -14,13 +14,13 @@ elif [[ "$COMPOSE_PROJECT_NAME" != *smoke* ]]; then
   echo "COMPOSE_PROJECT_NAME must contain 'smoke' so cleanup cannot target a persistent stack" >&2
   exit 1
 fi
-: "${DB_DEV_PORT:=15432}"
-: "${API_DEV_PORT:=18081}"
+: "${DB_DEV_PORT:=26432}"
+: "${API_DEV_PORT:=26081}"
 export DB_DEV_PORT API_DEV_PORT
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
-  : "${PROXY_DEV_PORT:=18000}"
-  : "${PROXY_HTTP_PORT:=18080}"
-  : "${PROXY_HTTPS_PORT:=18443}"
+  : "${PROXY_DEV_PORT:=26000}"
+  : "${PROXY_HTTP_PORT:=26080}"
+  : "${PROXY_HTTPS_PORT:=26443}"
   export PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
 fi
 
