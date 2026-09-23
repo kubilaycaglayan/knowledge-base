@@ -75,7 +75,9 @@ if ! docker buildx create --name "$buildx_builder" --driver docker-container >/d
 fi
 export BUILDX_BUILDER="$buildx_builder"
 compose up -d "${services[@]}" --build >/dev/null
-for attempt in {1..30}; do
+# A fresh disposable database applies all Flyway migrations before the
+# actuator endpoint becomes healthy; allow that cold-start path to complete.
+for attempt in {1..90}; do
   if compose exec -T api wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
     break
   fi
