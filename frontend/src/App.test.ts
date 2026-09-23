@@ -15,9 +15,16 @@ const stubs = {
 };
 
 describe("App", () => {
+  const nativeWebSocket = globalThis.WebSocket;
+
   beforeEach(() => {
     localStorage.clear();
+    globalThis.WebSocket = undefined as unknown as typeof WebSocket;
     setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    globalThis.WebSocket = nativeWebSocket;
   });
 
   it("shows authentication before a token exists", () => {
