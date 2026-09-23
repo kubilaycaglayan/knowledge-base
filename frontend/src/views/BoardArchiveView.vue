@@ -46,7 +46,7 @@ onMounted(async () => {
     <section class="archived-list" aria-labelledby="archived-cards-heading">
       <h2 id="archived-cards-heading" class="muted">Archived cards<span v-if="boardName"> · {{ boardName }}</span></h2>
       <p v-if="!store.archivedCards.length" class="column-empty">No archived cards.</p>
-      <div v-for="card in store.archivedCards" :key="card.id" class="archive-row"><strong>{{ card.title || "Untitled card" }}</strong><button class="icon-button" type="button" :aria-label="`Restore ${card.title || 'untitled card'}`" :title="`Restore ${card.title || 'untitled card'}`" :disabled="Boolean(restoring)" @click="restoreCard(card)">↩</button></div>
+      <div v-for="card in store.archivedCards" :key="card.id" class="archive-row"><strong>{{ card.title }}</strong><button class="icon-button" type="button" :aria-label="`Restore ${card.title || 'untitled card'}`" :title="`Restore ${card.title || 'untitled card'}`" :disabled="Boolean(restoring)" @click="restoreCard(card)">↩</button></div>
     </section>
   </section>
 </template>
