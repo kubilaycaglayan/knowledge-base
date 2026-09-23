@@ -142,6 +142,8 @@ Unchecked items are intentionally incomplete.
   editor or card controls.
 - [x] Foreign board/card/status references return the documented not-found
   response in API tests; path and label ownership validation is covered.
+- [x] Foreign path and label IDs are rejected before card persistence in API
+  tests.
 - [ ] Cross-user and cross-board IDs are covered across every mutation route.
 - [x] Adding `BOARD` labels does not alter existing label scopes.
 
