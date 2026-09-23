@@ -49,6 +49,8 @@ const required = [
   ['rm -rf "$backup_dir"', "temporary backup directory cleanup"],
 ];
 for (const [fragment, description] of required)
-  if (!smoke.includes(fragment))
+if (!smoke.includes(fragment))
     throw new Error(`Cleanup contract failed: ${description}`);
+if (smoke.includes('if [[ "$attempt" == 30 ]]'))
+  throw new Error("Cleanup contract failed: API health must not retain the premature 30-attempt timeout");
 console.log(`Cleanup contract passed (${required.length} checks)`);
