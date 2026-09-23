@@ -77,7 +77,7 @@ export BUILDX_BUILDER="$buildx_builder"
 compose up -d "${services[@]}" --build >/dev/null
 # A fresh disposable database applies all Flyway migrations before the
 # actuator endpoint becomes healthy; allow that cold-start path to complete.
-for attempt in {1..90}; do
+for attempt in {1..180}; do
   if compose exec -T api wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
     break
   fi
