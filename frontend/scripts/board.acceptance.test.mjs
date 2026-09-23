@@ -162,6 +162,25 @@ describe("board browser acceptance", () => {
     await page.locator(".timeline-bar", { hasText: "Timeline from Kanban" }).waitFor();
   });
 
+  it("keeps one card present through edit, move, archive, and restore", async (t) => {
+    const { page } = await fixture(t);
+    await page.locator(".board-card").first().click();
+    await page.getByRole("textbox", { name: "Title", exact: true }).fill("Never disappears");
+    await page.getByRole("button", { name: "Save card" }).click();
+    await page.getByRole("heading", { name: "Never disappears" }).waitFor();
+    await page.getByRole("button", { name: "Move card to next status" }).click();
+    await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Never disappears" }).waitFor();
+    await page.getByRole("button", { name: "Archive Never disappears" }).click();
+    await page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }).click();
+    await page.getByRole("button", { name: "Show archived cards" }).click();
+    await page.getByText("Never disappears", { exact: true }).last().waitFor();
+    await page.getByRole("button", { name: "Restore" }).click();
+    await page.getByRole("heading", { name: "Never disappears" }).waitFor();
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    assert.equal(await page.getByText("Never disappears", { exact: true }).count() >= 1, true);
+  });
+
   it("keeps Kanban usable on mobile and passes axe checks", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".kanban-column").first().waitFor();
