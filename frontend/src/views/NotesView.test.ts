@@ -242,6 +242,21 @@ describe("NotesView", () => {
     expect(wrapper.find('button[aria-label="Undo"]').exists()).toBe(true);
   });
 
+  // RT-01
+  it("puts the formatting toolbar under the note body", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => (path === "/notes/note-1" && !options ? note : undefined));
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const host = wrapper.get(".rich-editor");
+    const toolbar = host.find('[role="toolbar"][aria-label="Formatting"]');
+    expect(toolbar.exists()).toBe(true);
+    expect(host.element.lastElementChild).toBe(toolbar.element.closest(".rich-text-toolbar"));
+    expect(toolbar.find('button[aria-label="Bold"]').exists()).toBe(true);
+  });
+
   it("suggests matching existing labels while typing and applies a selected label", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {

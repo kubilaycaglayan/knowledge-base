@@ -501,9 +501,41 @@ describe("board browser acceptance", () => {
     await page.keyboard.press("Enter");
     await page.keyboard.type("Second line");
     const [lineHeight, fontSize, marginTop, marginBottom] = await page.locator(".card-editor .ProseMirror p").first().evaluate((element) => { const style = getComputedStyle(element); return [style.lineHeight, style.fontSize, style.marginTop, style.marginBottom].map(parseFloat); });
-    assert.ok(Math.abs(lineHeight / fontSize - 1.45) < 0.02, `line-height ratio ${lineHeight / fontSize}`);
+    // RT-06: Enter starts a paragraph that sits as close as a Shift+Enter line.
+    assert.ok(Math.abs(lineHeight / fontSize - 1.35) < 0.02, `line-height ratio ${lineHeight / fontSize}`);
     assert.equal(marginTop, 0);
-    assert.equal(marginBottom, 8);
+    assert.equal(marginBottom, 0);
+    const [first, second] = await page.locator(".card-editor .ProseMirror p").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+    assert.ok(Math.abs(second - first - lineHeight) < 1, `Paragraphs are one line apart (${second - first}px)`);
+  });
+
+  // RT-03, RT-05
+  it("formats a card body from the toolbar on desktop and phone", async (t) => {
+    for (const width of [1280, 390]) {
+      const { page } = await fixture(t, width);
+      await page.locator(".board-card").first().click();
+      const body = page.locator(".card-editor .ProseMirror");
+      const toolbar = page.getByRole("toolbar", { name: "Formatting" });
+      await toolbar.waitFor();
+      const [bodyBox, toolbarBox] = [await page.locator(".card-editor .card-body-editor").boundingBox(), await toolbar.boundingBox()];
+      assert.ok(toolbarBox.y >= bodyBox.y + bodyBox.height - toolbarBox.height - 1 && toolbarBox.y + toolbarBox.height <= bodyBox.y + bodyBox.height + 1, `${width}px: the toolbar sits at the bottom of the text box`);
+      await body.click();
+      await page.keyboard.type("Make this bold");
+      await page.keyboard.press("Shift+Home");
+      await toolbar.getByRole("button", { name: "Bold" }).click();
+      await body.locator("strong", { hasText: "Make this bold" }).waitFor();
+      assert.equal(await toolbar.getByRole("button", { name: "Bold" }).getAttribute("aria-pressed"), "true");
+      await toolbar.getByRole("button", { name: /^Text style/ }).click();
+      await page.locator(".rich-text-style-menu").getByRole("menuitemradio", { name: "Heading 2" }).click();
+      await body.locator("h2", { hasText: "Make this bold" }).waitFor();
+      const heights = await toolbar.locator("button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+      if (width === 390) assert.ok(heights.every((height) => height >= 44), `Touch targets are 44px (${heights})`);
+      const tops = await toolbar.locator("button").evaluateAll((buttons) => buttons.map((button) => Math.round(button.getBoundingClientRect().top)));
+      assert.ok(tops.every((top) => top === tops[0]), `${width}px: one row of controls`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${width}px: the page does not scroll sideways`);
+      assert.ok(await page.locator(".card-editor").evaluate((element) => element.scrollWidth <= element.clientWidth), `${width}px: the dialog does not overflow`);
+      await closeCard(page);
+    }
   });
 
   it("shows the Archived items link without a border", async (t) => {

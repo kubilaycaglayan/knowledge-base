@@ -611,6 +611,20 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  // RT-01
+  it("puts the formatting toolbar under the card body", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    const body = wrapper.find(".card-editor .card-body-editor");
+    const toolbar = body.find('[role="toolbar"][aria-label="Formatting"]');
+    expect(toolbar.exists()).toBe(true);
+    expect(body.element.lastElementChild).toBe(toolbar.element.closest(".rich-text-toolbar"));
+    await wrapper.unmount();
+  });
+
   describe("card play button", () => {
     const card = (id: string, title: string, pathIds: string[], position: number) => ({ id, statusId: "status-1", title, body: "{}", priority: "MEDIUM", position, archived: false, pathIds, labelIds: [], createdAt: "", updatedAt: "t1" });
     // Card play buttons only show in the In Progress column (CT-06).
