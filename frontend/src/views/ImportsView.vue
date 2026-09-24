@@ -5,6 +5,7 @@ import { formatDateTime } from "../lib/date";
 import ErrorNotice from "../components/ErrorNotice.vue";
 import { useReportsStore } from "../stores/reports";
 import { useSessionsStore } from "../stores/sessions";
+import { useBoardsStore } from "../stores/boards";
 
 const props = defineProps<{
   knowledgeBaseOnly?: boolean;
@@ -13,6 +14,7 @@ const props = defineProps<{
 const HISTORY_PAGE_SIZE = 5;
 const reportsStore = useReportsStore();
 const sessionsStore = useSessionsStore();
+const boardsStore = useBoardsStore();
 
 type ImportBatch = {
   id: string;
@@ -52,6 +54,7 @@ const formatDate = (iso: string) => formatDateTime(iso);
 function invalidateActivityCaches() {
   sessionsStore.clearPages();
   reportsStore.clear();
+  boardsStore.invalidate();
 }
 function showError(message: string, cause?: unknown) {
   error.value = message;

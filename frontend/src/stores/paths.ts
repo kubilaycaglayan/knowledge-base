@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { api } from "../lib/api";
+import { useBoardsStore } from "./boards";
 
 export type Path = {
   id: string;
@@ -13,6 +14,11 @@ export type Path = {
   boardId?: string | null;
   boardHidden?: boolean;
 };
+// Every path owns a board named after it, so a path change leaves cached boards stale.
+function boardsChanged() {
+  useBoardsStore().invalidate();
+}
+
 let loadPromise: Promise<Path[]> | null = null;
 let loadRevision = 0;
 
@@ -27,6 +33,7 @@ export const usePathsStore = defineStore("paths", {
   actions: {
     async load(force = false) {
       if (this.loaded && !force) return this.paths;
+      if (force) boardsChanged();
       if (loadPromise && !force) return loadPromise;
       this.loading = true;
       loadPromise = api<Path[]>("/paths");
@@ -55,23 +62,29 @@ export const usePathsStore = defineStore("paths", {
       loadPromise = null;
     },
     add(path: Path) {
+      boardsChanged();
       this.paths = [...this.paths, path];
     },
     replace(path: Path) {
+      boardsChanged();
       this.paths = this.paths.map((value) =>
         value.id === path.id ? path : value,
       );
     },
     remove(id: string) {
+      boardsChanged();
       this.paths = this.paths.filter((path) => path.id !== id);
     },
     restore(path: Path) {
+      boardsChanged();
       this.paths = [...this.paths.filter((value) => value.id !== path.id), path];
     },
     setPinned(path: Path) {
+      boardsChanged();
       this.paths = this.paths.map((value) => value.id === path.id ? path : value);
     },
     setOrder(paths: Path[]) {
+      boardsChanged();
       this.paths = paths;
     },
   },
