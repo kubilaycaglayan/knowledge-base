@@ -498,12 +498,15 @@ describe("board real-stack acceptance", () => {
     await page.locator(".board-card", { hasText: "Card for path test" }).click();
     await page.getByRole("dialog", { name: "Edit card" }).waitFor();
 
-    const pathSelect = page.locator("select[name='cardPaths']");
-    assert.equal(await pathSelect.count(), 1, "Paths must be picked from one dropdown");
-    assert.equal(await pathSelect.getAttribute("multiple"), null, "The path dropdown must not be a multiselect");
-    assert.equal(await page.locator("input[name='cardPaths']").count(), 0, "Paths must not be checkboxes");
+    const pathPicker = page.locator(".card-editor .card-path-picker");
+    assert.equal(await pathPicker.count(), 1, "Paths must be picked from one dropdown");
+    assert.equal(await pathPicker.evaluate((element) => element.classList.contains("v-select--multiple")), false, "The path dropdown must not be a multiselect");
+    assert.equal(await page.locator("input[type='checkbox'][name='cardPaths']").count(), 0, "Paths must not be checkboxes");
     // "No path" is always offered so a card can be cleared of its path.
-    assert.equal(await pathSelect.locator("option[value='']").count(), 1);
+    await pathPicker.locator(".v-field").click();
+    await page.locator(".card-path-menu .v-list-item", { hasText: /^No path$/ }).waitFor();
+    await page.keyboard.press("Escape");
+    await page.locator(".card-path-menu").waitFor({ state: "detached" });
 
     await closeCard();
   });
@@ -681,7 +684,7 @@ describe("board real-stack acceptance", () => {
     assert.equal(await page.locator(".kanban-column h2").allInnerTexts().then((names) => names.join("|")), "Backlog|Pending|In Progress|Done");
     await clickAddCard();
     await page.locator(".card-editor").waitFor();
-    assert.equal(await page.locator(".card-editor select[name='cardPaths']").count(), 0, "Path boards own their path");
+    assert.equal(await page.locator(".card-editor .card-path-picker").count(), 0, "Path boards own their path");
     await closeCard();
 
     await page.goto(`${baseUrl}/paths`);

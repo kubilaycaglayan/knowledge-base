@@ -141,6 +141,17 @@ async function boardAction(page, name) {
   await page.locator("button.board-tab-more").click();
   await page.locator('.board-more-menu [role^="menuitem"]', { hasText: new RegExp(`^${name}`) }).click();
 }
+// The card editor saves itself without showing a status; wait for the save request instead.
+const cardSaved = (page) => page.waitForResponse((response) => response.request().method() === "PUT" && /\/boards\/[^/]+\/cards\/[^/]+$/.test(new URL(response.url()).pathname));
+
+// The card path picker is a Vuetify select: open it and pick an option by name.
+async function pickCardPath(page, name) {
+  await page.locator(".card-editor .card-path-picker .v-field").click();
+  await page.locator(".card-path-menu .v-list-item", { hasText: new RegExp(`^${name}$`) }).click();
+  await page.locator(".card-path-menu").waitFor({ state: "detached" });
+}
+const cardPathText = (page) => page.locator(".card-editor .card-path-picker .v-select__selection-text").innerText().then((text) => text.trim());
+
 // The card editor saves itself; closing it flushes the pending save.
 async function closeCard(page) {
   await page.getByRole("button", { name: "Close card" }).click();
@@ -355,21 +366,28 @@ describe("board browser acceptance", () => {
     const edges = (locator) => locator.evaluate((element) => { const style = getComputedStyle(element); return [style.borderTopColor, style.borderLeftColor, style.borderTopWidth, style.borderLeftWidth]; });
     assert.deepEqual(await edges(page.locator(".board-card").first()), ["rgb(18, 171, 120)", "rgb(18, 171, 120)", "6px", "6px"]);
     await page.locator(".board-card").first().click();
-    // A card carries one path, so the editor offers a single-select dropdown.
-    const pathSelect = page.locator("select[name='cardPaths']");
-    assert.equal(await pathSelect.getAttribute("multiple"), null);
-    assert.deepEqual(await pathSelect.locator("option").allInnerTexts(), ["No path", "Product", "Research"]);
-    assert.equal(await pathSelect.inputValue(), "path-1");
+    // A card carries one path, so the editor offers a single-select Vuetify dropdown.
+    assert.equal(await page.locator('.card-editor select[name="cardPaths"]').count(), 0, "The path picker is not a native select");
+    assert.equal(await cardPathText(page), "Product");
     assert.deepEqual((await edges(page.locator(".card-editor"))).slice(0, 2), ["rgb(18, 171, 120)", "rgb(18, 171, 120)"]);
-    await pathSelect.selectOption({ label: "Research" });
-    assert.equal(await pathSelect.inputValue(), "path-2");
+    await page.locator(".card-editor .card-path-picker .v-field").click();
+    await page.locator(".card-path-menu .v-list-item").first().waitFor();
+    assert.deepEqual((await page.locator(".card-path-menu .v-list-item-title").allInnerTexts()).map((name) => name.trim()), ["No path", "Product", "Research"]);
+    await page.keyboard.press("Escape");
+    await page.locator(".card-path-menu").waitFor({ state: "detached" });
+    await pickCardPath(page, "Research");
+    assert.equal(await cardPathText(page), "Research");
     await closeCard(page);
   });
 
   it("does not expose archived paths or deleted BOARD labels in the editor", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().click();
-    assert.equal(await page.locator("select[name='cardPaths']").locator("option", { hasText: "Archived path" }).count(), 0);
+    await page.locator(".card-editor .card-path-picker .v-field").click();
+    await page.locator(".card-path-menu .v-list-item").first().waitFor();
+    assert.equal(await page.locator(".card-path-menu .v-list-item", { hasText: "Archived path" }).count(), 0);
+    await page.keyboard.press("Escape");
+    await page.locator(".card-path-menu").waitFor({ state: "detached" });
     await page.locator(".card-labels-picker input").click();
     const options = (await page.locator(".v-overlay-container .v-list-item-title").allInnerTexts()).map((name) => name.trim());
     assert.deepEqual(options.sort(), boardLabels.map((label) => label.name).sort(), "Only the live BOARD labels are offered");
@@ -459,8 +477,9 @@ describe("board browser acceptance", () => {
   it("autosaves edits and closes with Cmd/Ctrl+Enter from the body", async (t) => {
     const { page, getCardUpdateRequests } = await fixture(t);
     await page.locator(".board-card").first().click();
+    const saved = cardSaved(page);
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Saved by itself");
-    await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
+    await saved;
     assert.equal(getCardUpdateRequests(), 1, "Rapid typing coalesces into one save");
     await page.getByRole("heading", { name: "Saved by itself" }).waitFor();
 
@@ -526,9 +545,10 @@ describe("board browser acceptance", () => {
     const cell = page.locator(`.dp__menu [data-test-id="dp-${day}"]`).first();
     if (!(await cell.count())) await page.locator(".dp__menu").getByRole("button", { name: "Next month" }).click();
     await cell.click();
+    const saved = cardSaved(page);
     await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
     await page.locator(".dp__menu").waitFor({ state: "detached" });
-    await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
+    await saved;
     await closeCard(page);
     const [, month, date] = day.split("-").map(Number);
     const label = `${date} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1]}`;
@@ -612,6 +632,69 @@ describe("board browser acceptance", () => {
     assert.ok(heights.every((value) => value === heights[0]), `Columns share one height: ${heights}`);
   });
 
+  // CD-04
+  it("opens the card path menu under its field on desktop and phone", async (t) => {
+    for (const width of [1280, 390]) {
+      const { page } = await fixture(t, width);
+      await page.locator(".board-card").first().click();
+      const header = page.locator(".card-editor-header");
+      const field = page.locator(".card-editor-header .card-path-picker .v-field");
+      await field.click();
+      const menu = page.locator(".card-path-menu");
+      await menu.locator(".v-list-item").first().waitFor();
+      await page.waitForTimeout(50);
+      const [fieldBox, menuBox] = [await field.boundingBox(), await menu.boundingBox()];
+      assert.ok(menuBox.y >= fieldBox.y + fieldBox.height - 1 && menuBox.y <= fieldBox.y + fieldBox.height + 8, `${width}px: the menu opens right under the field (${menuBox.y} vs ${fieldBox.y + fieldBox.height})`);
+      assert.ok(menuBox.x >= 0 && menuBox.x + menuBox.width <= width, `${width}px: the menu stays inside the viewport`);
+      assert.ok(Math.abs(menuBox.x - fieldBox.x) <= 2 || Math.abs(menuBox.x + menuBox.width - fieldBox.x - fieldBox.width) <= 2, `${width}px: the menu lines up with an edge of the field`);
+      await page.keyboard.press("Escape");
+      await menu.waitFor({ state: "detached" });
+      assert.equal(await page.locator(".card-editor").count(), 1, "Escape closes the path menu before the editor");
+      const order = await header.evaluate((element) => [...element.children].map((child) => child.classList.contains("card-path-picker") ? "path" : child.getAttribute("name") || child.getAttribute("aria-label") || child.className));
+      assert.deepEqual(order.filter((item) => !/board-card-play|^Start a session/.test(item)), ["title", "path", "Close card"]);
+      await pickCardPath(page, "No path");
+      assert.equal(await cardPathText(page), "No path");
+      await pickCardPath(page, "Research");
+      assert.equal(await cardPathText(page), "Research");
+      await closeCard(page);
+    }
+  });
+
+  // CD-01, CD-03, CD-05
+  it("keeps every card editor control in its own slot on desktop and phone", async (t) => {
+    for (const width of [1280, 390]) {
+      const { page } = await fixture(t, width);
+      await page.locator(".board-card").first().click();
+      const editor = page.locator(".card-editor");
+      await page.waitForFunction(() => document.querySelectorAll(".card-editor .card-labels-chip").length > 0);
+      const chipNames = (await editor.locator(".card-labels-chip").allInnerTexts()).map((name) => name.trim());
+      assert.ok(chipNames.length && chipNames.every((name) => name.length > 0), `${width}px: label chips show their names (${JSON.stringify(chipNames)})`);
+      const saved = cardSaved(page);
+      await editor.locator(".ProseMirror").click();
+      await page.keyboard.type("Edited");
+      await saved;
+      await page.waitForTimeout(100);
+      assert.doesNotMatch(await editor.innerText(), /Saving|Saved/, `${width}px: no autosave text`);
+      for (const row of [".card-editor-header", ".card-editor-footer"]) {
+        const boxes = await editor.locator(row).evaluate((element) => {
+          const outer = element.getBoundingClientRect();
+          return { outer: { left: outer.left, right: outer.right }, overflow: element.scrollWidth - element.clientWidth, children: [...element.children].filter((child) => child.getClientRects().length).map((child) => { const box = child.getBoundingClientRect(); return { name: child.getAttribute("aria-label") || child.getAttribute("name") || child.className.split(" ")[0], left: box.left, right: box.right, top: box.top, bottom: box.bottom }; }) };
+        });
+        assert.ok(boxes.overflow <= 0, `${width}px: ${row} does not overflow (${boxes.overflow}px)`);
+        for (const child of boxes.children) assert.ok(child.left >= boxes.outer.left - 1 && child.right <= boxes.outer.right + 1, `${width}px: ${child.name} stays inside ${row}`);
+        for (let i = 0; i < boxes.children.length; i += 1) for (let j = i + 1; j < boxes.children.length; j += 1) {
+          const [a, b] = [boxes.children[i], boxes.children[j]];
+          const overlap = Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+          assert.ok(!overlap, `${width}px: ${a.name} and ${b.name} do not overlap in ${row}`);
+        }
+      }
+      const [labels, archive] = [await editor.locator(".card-labels-picker-wrap").boundingBox(), await editor.getByRole("button", { name: "Archive card" }).boundingBox()];
+      assert.ok(Math.abs(labels.y + labels.height / 2 - (archive.y + archive.height / 2)) <= 4, `${width}px: the archive button stays on the labels' row`);
+      await page.screenshot({ path: join(screenshotDir, `card-editor-${width}.png`) });
+      await closeCard(page);
+    }
+  });
+
   it("searches and picks card labels, then shows them on the card", async (t) => {
     const { page } = await fixture(t, 1280);
     await page.locator(".board-card").first().click();
@@ -622,13 +705,14 @@ describe("board browser acceptance", () => {
     const options = page.locator(".v-overlay-container .v-list-item-title");
     await page.waitForFunction(() => document.querySelectorAll(".v-overlay-container .v-list-item-title").length === 1);
     assert.deepEqual((await options.allInnerTexts()).map((name) => name.trim()), ["Bug"], "Typing searches the labels");
+    const saved = cardSaved(page);
     await options.first().click();
     // Bug is the seventh label, so it joins the count rather than a visible chip.
     await page.locator(".card-labels-picker .card-labels-more", { hasText: /^\+\d+$/ }).waitFor();
     await page.waitForFunction(() => { const more = document.querySelector(".card-labels-picker .card-labels-more"); const chips = document.querySelectorAll(".card-labels-picker .card-labels-chip").length; return more && chips + Number(more.textContent.trim().slice(1)) === 7; });
     await page.keyboard.press("Escape");
     assert.equal(await page.locator(".card-editor").count(), 1, "Escape closes the label menu before the editor");
-    await page.locator(".card-editor .save-state").filter({ hasText: "Saved" }).waitFor();
+    await saved;
     await closeCard(page);
     await page.locator(".board-card .board-card-label", { hasText: "Bug" }).waitFor();
   });
@@ -1070,7 +1154,7 @@ describe("path boards", () => {
     await launchTab.click();
     await page.getByRole("button", { name: "Add card to Backlog" }).click();
     await page.locator(".card-editor").waitFor();
-    assert.equal(await page.locator('.card-editor select[name="cardPaths"]').count(), 0);
+    assert.equal(await page.locator(".card-editor .card-path-picker").count(), 0);
     await page.getByRole("button", { name: "Close card" }).click();
     await page.locator(".card-editor").waitFor({ state: "detached" });
 

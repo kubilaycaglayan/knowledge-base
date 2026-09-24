@@ -2,6 +2,9 @@ import { flushPromises, mount } from "@vue/test-utils";
 import ReportsView from "./ReportsView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
+import vuetify from "../plugins/vuetify";
+import { usePathsStore } from "../stores/paths";
+import { useLabelsStore } from "../stores/labels";
 import { endOfWeek, format, startOfWeek, subDays, subYears } from "date-fns";
 
 vi.mock("vue-echarts", () => ({ default: { template: "<div />" } }));
@@ -225,6 +228,23 @@ describe("ReportsView", () => {
       "https://knowledge-base.test",
     ).searchParams;
     expect(query.getAll("pathId")).toEqual(["path-1", "path-2"]);
+  });
+
+  it("shows each selected path and label name on its filter chip", async () => {
+    window.history.replaceState({}, "", "/reports?pathId=path-1&labelId=label-1");
+    const { VSelect: _nativeSelect, VTextField: _plainInput, ...stubs } = global.stubs;
+    const wrapper = mount(ReportsView, { global: { plugins: [vuetify], stubs } });
+    await flushPromises();
+    usePathsStore().setAll([{ id: "path-1", name: "Wander", color: "#123456", status: "ACTIVE" }] as never);
+    useLabelsStore().labels = [{ id: "label-1", name: "Deep work", color: "#2878D5", scopes: ["TIME_ENTRY"] }] as never;
+    await flushPromises();
+    const chips = wrapper.findAll(".breakdown-control .v-chip");
+    expect(chips.map((chip) => chip.text())).toEqual(["Wander", "Deep work"]);
+    expect(chips.map((chip) => chip.attributes("aria-label"))).toEqual(["Selected path: Wander", "Selected label: Deep work"]);
+    await chips[0].find(".v-chip__close").trigger("click");
+    await flushPromises();
+    expect(new URL(window.location.href).searchParams.getAll("pathId")).toEqual([]);
+    wrapper.unmount();
   });
 
   it("sends selected labels together with selected paths and persists both filters", async () => {

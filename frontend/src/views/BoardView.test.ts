@@ -483,7 +483,7 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("puts dates, priority, status, and an icon-only archive button in the editor footer", async () => {
+  it("puts dates, priority, status, labels, and an icon-only archive button in the editor footer", async () => {
     const store = seedBoard(["Backlog"]);
     store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
     const wrapper = mountBoard();
@@ -496,7 +496,7 @@ describe("BoardView", () => {
 
     const footer = wrapper.find(".card-editor-footer");
     const controls = [...footer.element.children].map((element) => element.classList.contains("meta-dates") ? "dates" : element.classList.contains("card-labels-picker-wrap") ? "labels" : element.classList.contains("save-state") ? "save" : element.getAttribute("name") || element.getAttribute("aria-label"));
-    expect(controls).toEqual(["dates", "priority", "status", "labels", "save", "Archive card"]);
+    expect(controls).toEqual(["dates", "priority", "status", "labels", "Archive card"]);
     const archive = footer.find('button[aria-label="Archive card"]');
     expect(archive.text()).toBe("");
     expect(archive.attributes("title")).toBe("Archive card");
@@ -534,6 +534,19 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
 
+    it("shows each selected label's name on its chip and removes it from the chip", async () => {
+      seedLabelled(["label-docs", "label-design"]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      await flushPromises();
+      const chips = wrapper.findAll(".card-editor .card-labels-chip");
+      expect(chips.map((chip) => chip.text())).toEqual(["Docs", "Design"]);
+      await chips[0].find(".v-chip__close").trigger("click");
+      expect((wrapper.vm as any).draft.labelIds).toEqual(["label-design"]);
+      await wrapper.unmount();
+    });
+
     it("shows one row of label chips between the priority and the title", async () => {
       seedLabelled(["label-docs", "label-design", "label-missing"]);
       const wrapper = mountBoard();
@@ -555,7 +568,7 @@ describe("BoardView", () => {
     });
   });
 
-  it("puts the title and the close button on the editor's first row", async () => {
+  it("puts the title, the path picker, and the close button on the editor's first row", async () => {
     const store = seedBoard(["Backlog"]);
     store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
     const wrapper = mountBoard();
@@ -564,9 +577,35 @@ describe("BoardView", () => {
     const editor = wrapper.find(".card-editor");
     const header = editor.find(".card-editor-header");
     expect(editor.element.firstElementChild).toBe(header.element);
-    expect(header.findAll("textarea, button").map((element) => element.attributes("name") || element.attributes("aria-label"))).toEqual(["title", "Close card"]);
+    const parts = [...header.element.children].map((element) => element.classList.contains("card-path-picker") ? "path" : element.getAttribute("name") || element.getAttribute("aria-label"));
+    expect(parts).toEqual(["title", "path", "Close card"]);
     expect(editor.find('.card-meta button[aria-label="Close card"]').exists()).toBe(false);
-    expect(editor.find('.card-meta select[name="cardPaths"]').exists()).toBe(true);
+    expect(editor.find("select").exists() && editor.find(".card-path-picker").exists()).toBe(false);
+    await wrapper.unmount();
+  });
+
+  it("sets and clears the card path from the header picker", async () => {
+    const store = seedBoard(["Backlog"]);
+    usePathsStore().setAll([{ id: "path-1", name: "Writing", color: "#123456", status: "ACTIVE" }, { id: "path-old", name: "Old", color: "#999999", status: "ARCHIVED" }] as any);
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    const picker = wrapper.findComponent({ name: "VSelect" });
+    expect(picker.exists()).toBe(true);
+    expect(picker.classes()).toContain("card-path-picker");
+    expect(picker.props("multiple")).toBe(false);
+    expect((picker.props("items") as Array<{ name: string }>).map((path) => path.name)).toEqual(["No path", "Writing"]);
+    expect(picker.props("modelValue")).toBe("");
+    picker.vm.$emit("update:modelValue", "path-1");
+    await flushPromises();
+    expect((wrapper.vm as any).draft.pathIds).toEqual(["path-1"]);
+    picker.vm.$emit("update:modelValue", "");
+    await flushPromises();
+    expect((wrapper.vm as any).draft.pathIds).toEqual([]);
+    picker.vm.$emit("update:modelValue", null);
+    await flushPromises();
+    expect((wrapper.vm as any).draft.pathIds).toEqual([]);
     await wrapper.unmount();
   });
 
@@ -838,12 +877,27 @@ describe("BoardView", () => {
       await vi.advanceTimersByTimeAsync(700);
       expect(store.updateCard).toHaveBeenCalledTimes(1);
       expect((store.updateCard as any).mock.calls[0][1]).toMatchObject({ title: "Drafted" });
-      expect(wrapper.find(".save-state").text()).toBe("Saved");
 
       // The next save carries the updatedAt returned by the previous one.
       await title.setValue("Drafted again");
       await vi.advanceTimersByTimeAsync(700);
       expect((store.updateCard as any).mock.calls[1][0].updatedAt).toBe("t2");
+      await wrapper.unmount();
+    });
+
+    it("shows no saving or saved text in the editor", async () => {
+      vi.useFakeTimers();
+      const { store, wrapper } = await openCard();
+      let finish: (value: unknown) => void = () => {};
+      (store.updateCard as any) = vi.fn((card: any, input: any) => new Promise((resolve) => { finish = () => resolve({ ...card, ...input, updatedAt: "t2" }); }));
+      await wrapper.find('textarea[name="title"]').setValue("Drafted");
+      await vi.advanceTimersByTimeAsync(700);
+      expect(store.updateCard).toHaveBeenCalledTimes(1);
+      expect(wrapper.find(".card-editor").text()).not.toMatch(/Saving|Saved/);
+      finish(undefined);
+      await flushPromises();
+      expect(wrapper.find(".card-editor").text()).not.toMatch(/Saving|Saved/);
+      expect(wrapper.find(".card-editor .save-state").exists()).toBe(false);
       await wrapper.unmount();
     });
 
@@ -1047,7 +1101,7 @@ describe("BoardView", () => {
       await wrapper.find(".board-card").trigger("click");
       expect(wrapper.find(".card-editor").exists()).toBe(true);
       expect(wrapper.find(".card-editor").classes()).not.toContain("accented");
-      expect(wrapper.find('select[name="cardPaths"]').exists()).toBe(false);
+      expect(wrapper.find(".card-path-picker").exists()).toBe(false);
       await wrapper.unmount();
 
       store.selectedId = "custom-a";
@@ -1056,7 +1110,7 @@ describe("BoardView", () => {
       expect(custom.find(".board-card").classes()).toContain("accented");
       expect(custom.find(".board-card").attributes("style")).toContain("--card-accent: #123456");
       await custom.find(".board-card").trigger("click");
-      expect(custom.find('select[name="cardPaths"]').exists()).toBe(true);
+      expect(custom.find(".card-path-picker").exists()).toBe(true);
       await custom.unmount();
     });
 
@@ -1365,11 +1419,11 @@ describe("BoardView", () => {
       expect(cards.at(1)!.find(".board-card-play").exists()).toBe(true);
       expect(cards.at(0)!.find(".board-card-play").exists()).toBe(false);
       await cards.at(1)!.trigger("click");
-      expect(wrapper.find('select[name="cardPaths"]').exists()).toBe(false);
+      expect(wrapper.find(".card-path-picker").exists()).toBe(false);
       await wrapper.find('button[aria-label="Close card"]').trigger("click");
       await flushPromises();
       await wrapper.findAll(".board-card").at(0)!.trigger("click");
-      expect(wrapper.find('select[name="cardPaths"]').exists()).toBe(true);
+      expect(wrapper.find(".card-path-picker").exists()).toBe(true);
       await wrapper.unmount();
     });
 
