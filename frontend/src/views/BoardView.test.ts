@@ -71,7 +71,7 @@ describe("BoardView", () => {
   // anchor for the archive navigation assertions to inspect an href.
   const routerLinkStub = {
     props: ["to"],
-    template: '<a :href="typeof to === \'string\' ? to : to.path"><slot /></a>',
+    template: '<a :href="typeof to === \'string\' ? to : to.path" :data-query="typeof to === \'string\' ? \'{}\' : JSON.stringify(to.query || {})"><slot /></a>',
   };
 
   function mountBoard() {
@@ -719,22 +719,29 @@ describe("BoardView", () => {
     }
     const headings = (wrapper: ReturnType<typeof mountBoard>) => wrapper.findAll(".kanban-column").at(0)!.findAll(".board-card h3").map((heading) => heading.text());
 
-    // CS-04
-    it("toggles a column's priority sort and reloads the column", async () => {
+    // CS-04, AB-13
+    it("cycles a column's sort through three states", async () => {
       const store = seedSorted("MANUAL");
       const setStatusSort = vi.spyOn(store, "setStatusSort").mockResolvedValue(undefined as never);
       const wrapper = mountBoard();
       await flushPromises();
-      const toggle = wrapper.find('button[aria-label="Sort Backlog by priority"]');
-      expect(toggle.exists()).toBe(true);
-      expect(toggle.attributes("aria-pressed")).toBe("false");
-      await toggle.trigger("click");
-      expect(setStatusSort).toHaveBeenCalledWith(expect.objectContaining({ id: "status-1" }), "PRIORITY");
+      const toggle = () => wrapper.find(".kanban-column .column-sort");
+      expect(toggle().attributes("aria-label")).toBe("Sort Backlog: unsorted");
+      await toggle().trigger("click");
+      expect(setStatusSort).toHaveBeenLastCalledWith(expect.objectContaining({ id: "status-1" }), "PRIORITY");
 
       store.statuses[0].cardSort = "PRIORITY";
       await flushPromises();
-      expect(toggle.attributes("aria-pressed")).toBe("true");
-      await toggle.trigger("click");
+      expect(toggle().attributes("aria-label")).toBe("Sort Backlog: priority first");
+      expect(toggle().classes()).toContain("active");
+      await toggle().trigger("click");
+      expect(setStatusSort).toHaveBeenLastCalledWith(expect.objectContaining({ id: "status-1" }), "PRIORITY_LAST");
+
+      store.statuses[0].cardSort = "PRIORITY_LAST";
+      await flushPromises();
+      expect(toggle().attributes("aria-label")).toBe("Sort Backlog: priority last");
+      expect(headings(wrapper)).toEqual(["low", "medium", "high", "urgent"]);
+      await toggle().trigger("click");
       expect(setStatusSort).toHaveBeenLastCalledWith(expect.objectContaining({ id: "status-1" }), "MANUAL");
       await wrapper.unmount();
     });
@@ -779,7 +786,7 @@ describe("BoardView", () => {
 
     const header = wrapper.findAll(".kanban-column")[0].find("header");
     expect(header.find("h2").text()).toBe("Backlog");
-    expect(header.findAll("button").map((button) => button.attributes("aria-label"))).toEqual(["Sort Backlog by priority", "Add card to Backlog"]);
+    expect(header.findAll("button").map((button) => button.attributes("aria-label"))).toEqual(["Sort Backlog: unsorted", "Add card to Backlog"]);
     expect(wrapper.find('input[aria-label="New status name"]').exists()).toBe(false);
     await wrapper.unmount();
   });
@@ -1124,5 +1131,215 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
   });
-});
 
+  describe("All boards view", () => {
+    const board = (id: string, name: string, extra: Record<string, unknown> = {}) => ({ id, name, archived: false, createdAt: "", updatedAt: "", ...extra });
+    const status = (id: string, boardId: string, name: string, position: number) => ({ id, boardId, name, position, archived: false, cardSort: "MANUAL" as const });
+    const card = (id: string, boardId: string, statusId: string, position: number, extra: Record<string, unknown> = {}) => ({ id, boardId, statusId, title: id, body: "{}", priority: "MEDIUM", position, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1", ...extra });
+
+    function seedAll() {
+      const store = useBoardsStore();
+      store.selectedId = "all";
+      store.viewKey = "all";
+      store.boards = [board("work", "Work"), board("home", "A very long home improvement board name", { pathId: "path-1" })];
+      store.statuses = [status("w-todo", "work", "To Do", 0), status("w-done", "work", "Done", 1), status("h-todo", "home", "To do", 0), status("h-wait", "home", "Waiting", 1)];
+      store.allColumns = [{ name: "To Do", key: "to do", cardSort: "MANUAL", statusIds: ["w-todo", "h-todo"] }, { name: "Done", key: "done", cardSort: "MANUAL", statusIds: ["w-done"] }, { name: "Waiting", key: "waiting", cardSort: "MANUAL", statusIds: ["h-wait"] }];
+      store.cards = [card("w0", "work", "w-todo", 0), card("w1", "work", "w-todo", 1), card("w2", "work", "w-todo", 2), card("h0", "home", "h-todo", 0), card("h1", "home", "h-todo", 1)] as any;
+      mockRoute.query = { board: "all" };
+      const paths = usePathsStore();
+      paths.paths = [{ id: "path-1", name: "Home", color: "#2e7d32", status: "ACTIVE" }] as any;
+      return store;
+    }
+    const columnTitles = (wrapper: ReturnType<typeof mountBoard>, index: number) => wrapper.findAll(".kanban-column").at(index)!.findAll(".board-card h3").map((heading) => heading.text());
+    const drop = (id: string) => ({ stopPropagation: () => undefined, dataTransfer: { getData: () => id } });
+
+    // AB-11
+    it("selects the All boards view from the icon button", async () => {
+      const store = seedBoard(["Backlog"]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      const all = wrapper.find('button[aria-label="All boards"]');
+      expect(all.exists()).toBe(true);
+      expect(all.text()).toBe("");
+      expect(all.attributes("aria-current")).toBeUndefined();
+      expect(all.element.compareDocumentPosition(wrapper.find(".board-tab.selected").element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      await all.trigger("click");
+      expect(store.selectedId).toBe("all");
+      expect(mockRouter.replace).toHaveBeenCalledWith({ query: { board: "all" } });
+      expect(store.loadBoard).toHaveBeenCalled();
+      await flushPromises();
+      expect(wrapper.find('button[aria-label="All boards"]').attributes("aria-current")).toBe("true");
+      expect(wrapper.findAll(".board-tab-list .board-tab").map((tab) => tab.text())).toEqual(["Test Board"]);
+      await wrapper.unmount();
+    });
+
+    // AB-12
+    it("shows merged columns with a one-line board badge", async () => {
+      seedAll();
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.findAll(".kanban-column h2").map((heading) => heading.text())).toEqual(["To Do", "Done", "Waiting"]);
+      expect(columnTitles(wrapper, 0)).toEqual(["w0", "h0", "w1", "h1", "w2"]);
+      const top = wrapper.find(".board-card .board-card-top");
+      expect(top.find(".priority").exists()).toBe(true);
+      expect(top.find(".board-card-board").text()).toBe("Work");
+      const home = wrapper.findAll(".board-card").at(1)!.find(".board-card-board");
+      expect(home.text()).toBe("A very long home improvement board name");
+      expect(home.attributes("title")).toBe("A very long home improvement board name");
+      expect(home.find(".board-tab-dot").exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // AB-13
+    it("cycles a merged column's sort", async () => {
+      const store = seedAll();
+      const setColumnSort = vi.spyOn(store, "setColumnSort").mockResolvedValue(undefined as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find('button[aria-label="Sort To Do: unsorted"]').trigger("click");
+      expect(setColumnSort).toHaveBeenCalledWith("to do", "PRIORITY");
+      store.allColumns[0].cardSort = "PRIORITY_LAST";
+      store.cards.find((item) => item.id === "w1")!.priority = "LOW";
+      await flushPromises();
+      expect(columnTitles(wrapper, 0)[0]).toBe("w1");
+      expect(wrapper.find('button[aria-label="Sort To Do: priority last"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // AB-14
+    it("creates a missing column when a card is dropped on it", async () => {
+      const store = seedAll();
+      const moveCard = vi.spyOn(store, "moveCard").mockResolvedValue(undefined as never);
+      const moveCardToColumn = vi.spyOn(store, "moveCardToColumn").mockResolvedValue({ card: {} as any, status: status("w-wait", "work", "Waiting", 2), statusCreated: true });
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.findAll(".kanban-column").at(2)!.trigger("drop", { dataTransfer: { getData: () => "w0" } });
+      await flushPromises();
+      expect(moveCardToColumn).toHaveBeenCalledWith(expect.objectContaining({ id: "w0" }), "Waiting", 0);
+      expect(useNoticesStore().current?.text).toBe("Added “Waiting” to “Work”.");
+
+      await wrapper.findAll(".kanban-column").at(1)!.trigger("drop", { dataTransfer: { getData: () => "w1" } });
+      expect(moveCard).toHaveBeenCalledWith(expect.objectContaining({ id: "w1" }), "w-done", 0);
+      await wrapper.unmount();
+    });
+
+    // AB-15
+    it("reorders a card among other boards' cards", async () => {
+      const store = seedAll();
+      const moveCard = vi.spyOn(store, "moveCard").mockResolvedValue(undefined as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      const vm = wrapper.vm as any;
+      vm.dropCard(drop("w2"), store.cards.find((item) => item.id === "h0"));
+      expect(moveCard).toHaveBeenCalledWith(expect.objectContaining({ id: "w2" }), "w-todo", 1);
+      vm.dropCard(drop("w0"), store.cards.find((item) => item.id === "h1"));
+      expect(moveCard).toHaveBeenLastCalledWith(expect.objectContaining({ id: "w0" }), "w-todo", 1);
+      await wrapper.unmount();
+    });
+
+    // AB-16
+    it("adds a card to the last chosen board", async () => {
+      const store = seedAll();
+      const preferences = usePreferencesStore();
+      const created = card("new", "home", "h-todo", 2);
+      const createCard = vi.spyOn(store, "createCard").mockResolvedValue(created as any);
+      const createCardInColumn = vi.spyOn(store, "createCardInColumn").mockResolvedValue({ card: card("new-2", "home", "h-done", 0) as any, status: status("h-done", "home", "Done", 2), statusCreated: true });
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find('button[aria-label="Add card to To Do"]').trigger("click");
+      await flushPromises();
+      expect(createCard).toHaveBeenCalledWith(expect.objectContaining({ statusId: "w-todo" }), "work");
+      await wrapper.find('button[aria-label="Close card"]').trigger("click");
+      await flushPromises();
+
+      preferences.lastCardBoardId = "home";
+      await wrapper.find('button[aria-label="Add card to Done"]').trigger("click");
+      await flushPromises();
+      expect(createCardInColumn).toHaveBeenCalledWith("home", "Done", expect.objectContaining({ title: "", priority: "MEDIUM" }));
+      expect(useNoticesStore().current?.text).toBe("Added “Done” to “A very long home improvement board name”.");
+      expect(wrapper.find('[aria-label="Edit card"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // AB-17
+    it("moves a card to another board from the editor", async () => {
+      const store = seedAll();
+      const preferences = usePreferencesStore();
+      const remember = vi.spyOn(preferences, "setLastCardBoard").mockResolvedValue(undefined);
+      const transferCard = vi.spyOn(store, "transferCard").mockImplementation(async (moving) => { moving.boardId = "home"; moving.statusId = "h-todo"; return { card: moving, status: store.statuses[2], statusCreated: false }; });
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.findAll(".board-card").at(0)!.trigger("click");
+      const select = wrapper.find('select[name="board"]');
+      expect(select.findAll("option").map((option) => option.text())).toEqual(["Work", "A very long home improvement board name"]);
+      expect((select.element as HTMLSelectElement).value).toBe("work");
+      await select.setValue("home");
+      await flushPromises();
+      expect(transferCard).toHaveBeenCalledWith(expect.objectContaining({ id: "w0" }), "home");
+      expect(remember).toHaveBeenCalledWith("home");
+      expect(wrapper.find('select[name="board"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // AB-17
+    it("groups the card's own columns first in the status select", async () => {
+      const store = seedAll();
+      const moveCardToColumn = vi.spyOn(store, "moveCardToColumn").mockResolvedValue({ card: {} as any, status: status("h-done", "home", "Done", 2), statusCreated: true });
+      const moveCard = vi.spyOn(store, "moveCard").mockResolvedValue(undefined as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.findAll(".board-card").at(1)!.trigger("click");
+      const groups = wrapper.findAll('select[name="status"] optgroup');
+      expect(groups.map((group) => group.attributes("label"))).toEqual(["A very long home improvement board name", "Other columns"]);
+      expect(groups[0].findAll("option").map((option) => option.text())).toEqual(["To do", "Waiting"]);
+      expect(groups[1].findAll("option").map((option) => option.text())).toEqual(["Done"]);
+      await wrapper.find('select[name="status"]').setValue("h-wait");
+      await flushPromises();
+      expect(moveCard).toHaveBeenCalledWith(expect.objectContaining({ id: "h0" }), "h-wait", 0);
+      await wrapper.find('select[name="status"]').setValue("column:done");
+      await flushPromises();
+      expect(moveCardToColumn).toHaveBeenCalledWith(expect.objectContaining({ id: "h0" }), "Done", 0);
+      expect(useNoticesStore().current?.text).toBe("Added “Done” to “A very long home improvement board name”.");
+      await wrapper.unmount();
+    });
+
+    it("keeps the single-board card editor free of the board select", async () => {
+      const store = seedBoard(["Backlog"]);
+      store.cards = [{ id: "card-1", statusId: "status-1", title: "Card", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" }] as any;
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      expect(wrapper.find('select[name="board"]').exists()).toBe(false);
+      expect(wrapper.find('select[name="status"] optgroup').exists()).toBe(false);
+      await wrapper.unmount();
+    });
+
+    // AB-18
+    it("uses the card's own board for path rules in the All view", async () => {
+      seedAll();
+      const wrapper = mountBoard();
+      await flushPromises();
+      const cards = wrapper.findAll(".board-card");
+      expect(cards.at(1)!.find(".board-card-play").exists()).toBe(true);
+      expect(cards.at(0)!.find(".board-card-play").exists()).toBe(false);
+      await cards.at(1)!.trigger("click");
+      expect(wrapper.find('select[name="cardPaths"]').exists()).toBe(false);
+      await wrapper.find('button[aria-label="Close card"]').trigger("click");
+      await flushPromises();
+      await wrapper.findAll(".board-card").at(0)!.trigger("click");
+      expect(wrapper.find('select[name="cardPaths"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // AB-20
+    it("links archived items without a board in the All view", async () => {
+      seedAll();
+      const wrapper = mountBoard();
+      await flushPromises();
+      const link = wrapper.find(".board-footer a");
+      expect(link.attributes("href")).toBe("/board/archive");
+      expect(link.attributes("data-query")).toBe("{}");
+      await wrapper.unmount();
+    });
+  });
+});
