@@ -795,6 +795,17 @@ describe("All boards view and cached views (AB-19, AB-20)", () => {
     expect(apiMock.mock.calls.length).toBe(calls);
   });
 
+  it("fetches the All boards view again after a board is created from it", async () => {
+    serve({ "/boards": { id: "c", name: "C", archived: false, createdAt: "", updatedAt: "" }, "/boards/c/statuses": [], });
+    const store = await storeWith();
+    store.selectedId = "all"; await store.loadBoard();
+    await store.createBoard("C");
+    expect(store.selectedId).toBe("c");
+    const calls = apiMock.mock.calls.length;
+    store.selectedId = "all"; await store.loadBoard();
+    expect(apiMock.mock.calls.slice(calls).map(([path]) => path)).toContain("/boards/all/columns");
+  });
+
   it("keeps All boards selected when the board list loads", async () => {
     serve();
     const store = await storeWith();
