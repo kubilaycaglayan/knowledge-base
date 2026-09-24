@@ -12,19 +12,27 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# One empty image per tag, built a second apart so creation times order them.
-build() {
-  printf 'FROM scratch\nLABEL knowledge-base-prune-check=%s\n' "$1" | docker build -q -t "$repo:$1" - >/dev/null
-  sleep 1
-}
-build aaaaaaaaaaa1 # oldest build, still used by a container
-build diagnostic
-build aaaaaaaaaaa2
-build aaaaaaaaaaa3-dirty-20260101000000
-build aaaaaaaaaaa4
-build test-only
-build aaaaaaaaaaa5
-build aaaaaaaaaaa6
+# One empty image per tag. SOURCE_DATE_EPOCH gives each an explicit creation
+# time a second apart, in the order listed, so the builds can run in parallel
+# instead of sleeping between them.
+tags=(
+  aaaaaaaaaaa1 # oldest build, still used by a container
+  diagnostic
+  aaaaaaaaaaa2
+  aaaaaaaaaaa3-dirty-20260101000000
+  aaaaaaaaaaa4
+  test-only
+  aaaaaaaaaaa5
+  aaaaaaaaaaa6
+)
+pids=()
+for index in "${!tags[@]}"; do
+  printf 'FROM scratch\nLABEL knowledge-base-prune-check=%s\n' "${tags[$index]}" |
+    docker build -q --build-arg "SOURCE_DATE_EPOCH=$((1700000000 + index))" \
+      -t "$repo:${tags[$index]}" - >/dev/null &
+  pids+=("$!")
+done
+for pid in "${pids[@]}"; do wait "$pid"; done
 docker tag "$repo:aaaaaaaaaaa6" "$repo:latest"
 container="$(docker create "$repo:aaaaaaaaaaa1" /nonexistent)"
 
