@@ -57,7 +57,7 @@ main() {
     current_step=""
   }
   summary() {
-    stop_browser_stack >/dev/null 2>&1
+    stop_test_stack >/dev/null 2>&1
     # A step still marked as current was interrupted (for example by Ctrl-C).
     if [[ -n "$current_step" ]]; then
       record "STOPPED"
@@ -168,74 +168,71 @@ main() {
   run_step "Proxy configs" validate_proxy_configs
 
   # Disposable Docker stacks. The test-only images are built once from this
-  # tree and reused by every stack below.
+  # tree; the full-stack smoke starts a stack with both the local and the
+  # production (Cloudflare) proxy configs, and the browser suites run against
+  # that same stack before it is removed.
   test_compose=(docker compose -f docker-compose.yml -f docker-compose.smoke.yml)
-  browser_project="knowledge-base-browser-smoke-$$"
-  browser_proxy_port=26180
-  browser_cloudflare_port=26290
-  browser_stack_started=0
-  browser_compose() {
-    COMPOSE_PROJECT_NAME="$browser_project" PROXY_HTTP_PORT="$browser_proxy_port" \
-      PROXY_HTTPS_PORT=26543 PROXY_CLOUDFLARE_PORT="$browser_cloudflare_port" "${test_compose[@]}" "$@"
+  stack_project="knowledge-base-full-smoke-$$"
+  stack_proxy_port=26080
+  stack_cloudflare_port=26090
+  stack_created=0
+  stack_compose() {
+    COMPOSE_PROJECT_NAME="$stack_project" "${test_compose[@]}" "$@"
   }
-  start_browser_stack() {
-    browser_stack_started=1
-    browser_compose up -d --no-build db api web proxy proxy-cloudflare || return
+  stack_ready() {
     local attempt api_status
     for attempt in {1..90}; do
       api_status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 \
-        "http://localhost:${browser_proxy_port}/api/v1/auth/me" || true)"
+        "http://localhost:${stack_proxy_port}/api/v1/auth/me" || true)"
       if [[ "$api_status" == 401 ]] &&
-        curl -fsS --max-time 5 "http://localhost:${browser_proxy_port}/" | grep -q 'id="app"' &&
-        curl -fsS --max-time 5 "http://localhost:${browser_cloudflare_port}/" | grep -q 'id="app"'; then
+        curl -fsS --max-time 5 "http://localhost:${stack_proxy_port}/" | grep -q 'id="app"' &&
+        curl -fsS --max-time 5 "http://localhost:${stack_cloudflare_port}/" | grep -q 'id="app"'; then
         return 0
       fi
       sleep 2
     done
-    echo "Browser test stack did not become ready (last API status: ${api_status:-none})" >&2
+    echo "The test stack is not serving (last API status: ${api_status:-none})" >&2
     return 1
   }
-  stop_browser_stack() {
-    (( browser_stack_started )) || return 0
-    browser_stack_started=0
-    browser_compose down --volumes --remove-orphans
+  stop_test_stack() {
+    (( stack_created )) || return 0
+    stack_created=0
+    stack_compose down --volumes --remove-orphans --rmi local
   }
   # Board flows through the local proxy config (as scripts/run-board-e2e.sh).
   board_browser_tests() {
-    BOARD_E2E_BASE_URL="http://localhost:${browser_proxy_port}" \
+    BOARD_E2E_BASE_URL="http://localhost:${stack_proxy_port}" \
       BOARD_E2E_EMAIL="board-e2e-$(date +%s%N)@example.com" \
       BOARD_E2E_PASSWORD="Board-e2e-$(date +%s%N)" npm run test:board:e2e --prefix frontend
   }
   # Timer sync through the production proxy config (as
   # scripts/run-timer-websocket-e2e.sh).
   timer_browser_tests() {
-    node scripts/check-timer-websocket.mjs "http://localhost:${browser_cloudflare_port}" --round-trip &&
-      TIMER_E2E_BASE_URL="http://localhost:${browser_cloudflare_port}" npm run test:timer:e2e --prefix frontend
+    node scripts/check-timer-websocket.mjs "http://localhost:${stack_cloudflare_port}" --round-trip &&
+      TIMER_E2E_BASE_URL="http://localhost:${stack_cloudflare_port}" npm run test:timer:e2e --prefix frontend
   }
 
   if (( quick == 0 )); then
-    docker_steps=(
-      "Full-stack smoke test (proxies, timer WebSocket, backup/restore)"
-      "Start browser test stack"
-      "Board real-stack browser tests"
-      "Timer WebSocket real-stack browser tests"
-      "Stop browser test stack"
-    )
+    smoke_step="Full-stack smoke test (proxies, timer WebSocket, backup/restore)"
+    browser_steps=("Board real-stack browser tests" "Timer WebSocket real-stack browser tests")
     if run_step "Build test images" \
       env COMPOSE_PROJECT_NAME=knowledge-base-test-images "${test_compose[@]}" build api web; then
+      stack_created=1
       # The full-stack smoke covers everything the API-only smoke does, and more.
-      run_step "${docker_steps[0]}" env SMOKE_SKIP_BUILD=1 SMOKE_FULL_STACK=1 SMOKE_BACKUP_RESTORE=1 \
-        COMPOSE_PROJECT_NAME=knowledge-base-full-smoke ./scripts/run-smoke-tests.sh
-      if run_step "${docker_steps[1]}" start_browser_stack; then
-        run_step "${docker_steps[2]}" board_browser_tests
-        run_step "${docker_steps[3]}" timer_browser_tests
+      run_step "$smoke_step" env SMOKE_SKIP_BUILD=1 SMOKE_KEEP_STACK=1 SMOKE_FULL_STACK=1 \
+        SMOKE_BACKUP_RESTORE=1 PROXY_HTTP_PORT="$stack_proxy_port" \
+        PROXY_CLOUDFLARE_PORT="$stack_cloudflare_port" COMPOSE_PROJECT_NAME="$stack_project" \
+        ./scripts/run-smoke-tests.sh
+      if stack_ready; then
+        run_step "${browser_steps[0]}" board_browser_tests
+        run_step "${browser_steps[1]}" timer_browser_tests
       else
-        skip_step "${docker_steps[2]}" "the browser test stack did not start"
-        skip_step "${docker_steps[3]}" "the browser test stack did not start"
+        for name in "${browser_steps[@]}"; do skip_step "$name" "the test stack is not serving"; done
+        failures=$(( failures + 1 ))
       fi
-      run_step "${docker_steps[4]}" stop_browser_stack
+      run_step "Remove test stack" stop_test_stack
     else
-      for name in "${docker_steps[@]}"; do
+      for name in "$smoke_step" "${browser_steps[@]}"; do
         skip_step "$name" "the test images did not build"
       done
     fi

@@ -50,7 +50,11 @@ cleanup() {
   fi
   # The project name is generated or explicitly smoke-scoped above. Remove
   # only its Compose-managed volumes; external volumes are never removed.
-  compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
+  # SMOKE_KEEP_STACK=1 leaves the running stack for the caller to test further
+  # and remove (scripts/test-run-all.sh does both).
+  if [[ "${SMOKE_KEEP_STACK:-0}" != "1" ]]; then
+    compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
+  fi
   if [[ -n "$buildx_builder" ]]; then
     # Temporary smoke builders must not leave their intermediate BuildKit
     # records in the Docker engine after the test stack is removed.
