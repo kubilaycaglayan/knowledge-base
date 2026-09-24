@@ -53,6 +53,7 @@ describe("FloatingTimeTracker", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     if (originalMatchMedia)
       Object.defineProperty(window, "matchMedia", originalMatchMedia);
     else Reflect.deleteProperty(window, "matchMedia");
@@ -360,6 +361,82 @@ describe("FloatingTimeTracker", () => {
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     await nextTick();
     expect(wrapper.find("#floating-tracker-panel").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  async function openFloatingPathMenu() {
+    // jsdom has no visualViewport, which Vuetify menus position against.
+    vi.stubGlobal("visualViewport", Object.assign(new EventTarget(), { width: 1024, height: 768, offsetLeft: 0, offsetTop: 0, scale: 1 }));
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return Array.from({ length: 15 }, (_, index) => ({
+          id: `path-${index + 1}`,
+          name: `Path ${index + 1}`,
+          status: "ACTIVE",
+        }));
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return null;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+    await wrapper.get(".floating-tracker-toggle").trigger("click");
+    await wrapper.get(".tracker-path-select .v-field").trigger("mousedown");
+    await flushPromises();
+    const menu = document.querySelector<HTMLElement>(".tracker-path-menu");
+    expect(menu).not.toBeNull();
+    return { wrapper, menu: menu! };
+  }
+
+  it("stays open when the path menu's scrollbar is pressed", async () => {
+    const { wrapper, menu } = await openFloatingPathMenu();
+
+    // A press on the list's scrollbar targets the list itself.
+    menu
+      .querySelector(".v-list")!
+      .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await nextTick();
+
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
+    expect(document.querySelector(".tracker-path-menu")).not.toBeNull();
+    wrapper.unmount();
+  });
+
+  it("stays open and applies a path chosen from the floating path menu", async () => {
+    const { wrapper, menu } = await openFloatingPathMenu();
+
+    const item = [...menu.querySelectorAll<HTMLElement>(".v-list-item")].find(
+      (element) => element.textContent?.includes("Path 2"),
+    )!;
+    item.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await nextTick();
+    item.click();
+    await flushPromises();
+
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
+    expect(wrapper.get(".floating-tracker-path").text()).toBe("Path 2");
+    wrapper.unmount();
+  });
+
+  it("stays open while the new path prompt opened from it is used", async () => {
+    const { wrapper, menu } = await openFloatingPathMenu();
+
+    const addItem = menu.querySelector<HTMLElement>(".v-list-item")!;
+    addItem.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await nextTick();
+    addItem.click();
+    await flushPromises();
+    const prompt = document.querySelector<HTMLElement>(".prompt-dialog");
+    expect(prompt).not.toBeNull();
+    prompt!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await nextTick();
+
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
+    expect(document.querySelector(".prompt-dialog")).not.toBeNull();
     wrapper.unmount();
   });
 
