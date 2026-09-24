@@ -51,4 +51,6 @@ done
 
 echo "Starting the rebuilt stack..."
 docker compose "${compose_args[@]}" up -d --force-recreate
+echo 'Removing old production image builds...'
+./scripts/prune-production-images.sh || echo 'Warning: old production images were not pruned.' >&2
 docker compose "${compose_args[@]}" ps

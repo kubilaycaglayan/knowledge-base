@@ -25,6 +25,7 @@ node --check chrome-extension/options.js
 node scripts/check-accessibility.mjs
 node scripts/check-security.mjs
 node scripts/check-smoke-cleanup.mjs
+./scripts/check-image-prune.sh
 bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh
 JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
 SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
