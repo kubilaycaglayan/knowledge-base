@@ -9,7 +9,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
@@ -18,28 +17,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 /** Server-stored user preferences (docs/user-preferences-acceptance-checklist.md). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class UserPreferencesIntegrationTest {
-  @DynamicPropertySource
-  static void configureDataSource(DynamicPropertyRegistry registry) {
-    registry.add(
-        "spring.datasource.url",
-        () ->
-            "jdbc:h2:mem:know_user_preferences;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1");
-    registry.add("spring.datasource.driver-class-name", () -> "org.h2.Driver");
-    registry.add("spring.datasource.username", () -> "sa");
-    registry.add("spring.datasource.password", () -> "");
-    registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    registry.add("spring.flyway.enabled", () -> "false");
-    registry.add("app.jwt-secret", () -> "integration-test-secret-with-enough-chars-123");
-    registry.add("app.cors-origins", () -> "http://localhost");
-    registry.add("app.google-client-id", () -> "");
-  }
-
+class UserPreferencesIntegrationTest extends IntegrationTestSupport {
   @LocalServerPort int port;
   @Autowired TestRestTemplate rest;
   String base;
