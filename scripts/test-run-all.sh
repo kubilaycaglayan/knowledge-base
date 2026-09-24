@@ -3,11 +3,18 @@ set -uo pipefail
 
 # Runs every automated test and check that can run on Linux. By default every
 # step runs even after a failure, so the summary shows the full picture; the
-# exit code is non-zero if any step failed. The Docker-stack stage (smoke,
-# full-stack smoke, and the real-stack browser tests) takes most of the time.
+# exit code is non-zero if any step failed. The Docker-stack stage (full-stack
+# smoke and the real-stack browser tests) takes most of the time.
 #
-#   ./scripts/test-run-all.sh              # everything (~30-45 minutes)
-#   ./scripts/test-run-all.sh --quick      # no disposable Docker stacks (~5 minutes)
+# Repeat runs reuse caches under ~/.cache/knowledge-base (override with
+# TEST_RUN_CACHE_DIR): the smoke image build cache, the backend Gradle
+# dependencies, and npm installs, which are skipped while package-lock.json
+# and the Node.js version are unchanged. CI always builds and installs clean.
+# Delete that directory (and `docker volume rm knowledge-base-test-gradle`) to
+# start cold.
+#
+#   ./scripts/test-run-all.sh              # everything
+#   ./scripts/test-run-all.sh --quick      # no disposable Docker stacks
 #   ./scripts/test-run-all.sh --fail-fast  # stop at the first failing step
 #
 # Options can be combined. iOS tests need macOS and Xcode and are not run here
@@ -32,6 +39,11 @@ main() {
   # Throwaway secrets for the disposable stacks; never production values.
   export JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
   export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-local-$(openssl rand -hex 8)}"
+  cache_dir="${TEST_RUN_CACHE_DIR:-$HOME/.cache/knowledge-base}"
+  # run-smoke-tests.sh uses a new Buildx builder per run; this local cache lets
+  # it reuse image layers (dependencies) from the previous run.
+  export SMOKE_BUILD_CACHE_DIR="${SMOKE_BUILD_CACHE_DIR:-$cache_dir/smoke-build}"
+  mkdir -p "$SMOKE_BUILD_CACHE_DIR"
 
   # Each step's output streams to the terminal as it runs; every step is timed
   # and a summary table prints at the end, also when the run is interrupted.
@@ -94,18 +106,41 @@ main() {
     fi
   }
 
+  # npm ci only when the lockfile or Node.js version changed since the last
+  # install this script made in that directory.
+  npm_install() {
+    local dir="$1" stamp="$1/node_modules/.test-run-all-install" fingerprint
+    fingerprint="$(node --version) $(sha256sum "$dir/package-lock.json" | cut -d' ' -f1)"
+    if [[ -f "$stamp" && "$(cat "$stamp")" == "$fingerprint" ]]; then
+      echo "${dir}: package-lock.json and Node.js unchanged since the last install; skipping npm ci"
+      return 0
+    fi
+    (cd "$dir" && npm ci) && echo "$fingerprint" > "$stamp"
+  }
+  web_tests() {
+    npm_install frontend &&
+      (cd frontend && npm test && npm run build && npm run test:tracker && npm run test:board)
+  }
+  extension_tests() {
+    node --check chrome-extension/popup.js &&
+      node --check chrome-extension/options.js &&
+      npm_install chrome-extension &&
+      (cd chrome-extension && npm test)
+  }
+
+  # The Gradle dependency cache lives in a volume used only by this script.
   run_step "Backend unit and integration tests" \
-    docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon \
+    docker run --rm -v "$PWD/backend:/app" -w /app \
+    -e GRADLE_USER_HOME=/gradle-home -v knowledge-base-test-gradle:/gradle-home \
+    gradle:8.13-jdk21 gradle test --no-daemon \
     --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-$$"
 
-  run_step "Web unit tests, build, and mocked browser acceptance" \
-    bash -c 'cd frontend && npm ci && npm test && npm run build && npm run test:tracker && npm run test:board'
+  run_step "Web unit tests, build, and mocked browser acceptance" web_tests
 
-  run_step "Chrome extension tests" \
-    bash -c 'node --check chrome-extension/popup.js && node --check chrome-extension/options.js && cd chrome-extension && npm ci && npm test'
+  run_step "Chrome extension tests" extension_tests
 
   run_step "Contract checks" \
-    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-smoke-cleanup.mjs'
+    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-smoke-cleanup.mjs && ./scripts/check-image-prune.sh'
 
   run_step "Shell script syntax" \
     bash -c 'bash -n scripts/*.sh deployment/backup.sh deployment/preflight.sh && sh -n deployment/backup-loop.sh deployment/backup-db-refresh.sh'
@@ -122,7 +157,7 @@ main() {
   run_step "Proxy configs" validate_proxy_configs
 
   if (( quick == 0 )); then
-    run_step "Smoke test" ./scripts/run-smoke-tests.sh
+    # The full-stack smoke covers everything the API-only smoke does, and more.
     run_step "Full-stack smoke test (both proxies and the timer WebSocket)" \
       env SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke ./scripts/run-smoke-tests.sh
     run_step "Board real-stack browser tests" ./scripts/run-board-e2e.sh

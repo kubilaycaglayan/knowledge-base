@@ -41,7 +41,7 @@ checks with:
 (cd frontend && npm run test:board)
 ```
 
-To run every Linux test and check in one go, with live output, per-step times, and a summary table, run `./scripts/test-run-all.sh` (about 30–45 minutes), or `./scripts/test-run-all.sh --quick` (about 5 minutes) to skip the disposable Docker stacks. Every step runs even after a failure so the summary shows the full picture (the exit code is non-zero if any step failed); add `--fail-fast` to stop at the first failing step.
+To run every Linux test and check in one go, with live output, per-step times, and a summary table, run `./scripts/test-run-all.sh`, or `./scripts/test-run-all.sh --quick` to skip the disposable Docker stacks. Repeat runs reuse caches (the smoke image build cache under `~/.cache/knowledge-base`, a `knowledge-base-test-gradle` Docker volume for Gradle dependencies, and `npm ci` is skipped while `package-lock.json` and the Node.js version are unchanged); CI always builds and installs clean. Every step runs even after a failure so the summary shows the full picture (the exit code is non-zero if any step failed); add `--fail-fast` to stop at the first failing step.
 
 Run the required checks from the repository root:
 
