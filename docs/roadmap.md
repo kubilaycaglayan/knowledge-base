@@ -117,6 +117,10 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   runs. A running timer hides the card buttons without shifting the cards. The
   button starts a timer for that path with the card title as the description.
   Acceptance: `docs/board-card-timer-acceptance-checklist.md`.
+- [x] Rich-text formatting toolbar at the bottom of note and card bodies
+  (text style, bold, italic, underline, strikethrough, lists, checklist,
+  quote, code block), with paragraphs one line apart.
+  Acceptance: `docs/rich-text-toolbar-acceptance-checklist.md`.
 - [x] Card dialog layout: the path picker is a Vuetify select in the header,
   label chips show their names, there is no autosave text, and every header
   and footer control has its own slot on desktop and phone.

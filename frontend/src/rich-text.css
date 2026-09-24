@@ -1,9 +1,10 @@
 /* Shared formatting for rich-text bodies (notes and board cards). See src/lib/rich-text.ts. */
+/* Paragraphs sit one line apart, so Enter reads like Shift+Enter. */
 .rich-text .ProseMirror {
-  line-height: 1.45;
+  line-height: 1.35;
 }
 .rich-text .ProseMirror p {
-  margin: 0 0 8px;
+  margin: 0;
 }
 .rich-text h1,
 .rich-text h2,

@@ -60,7 +60,7 @@
 .label-chip { display:inline-flex; align-items:center; min-height:28px; padding:.1rem .6rem; border-radius:999px; background:var(--workspace-hover); font-size:.8rem; cursor:pointer; } .label-chip input { position:absolute; opacity:0; pointer-events:none; } .label-chip.selected { background:#334155; color:#fff; } .label-chip:focus-within { outline:3px solid #e8754e; outline-offset:2px; }
 .editor-close { flex:0 0 auto; }
 .card-title-input { min-width:0; padding:.35rem .1rem; border:0; background:transparent; color:inherit; font:inherit; font-size:1.25rem; font-weight:700; line-height:1.3; resize:none; field-sizing:content; min-height:0; max-height:6.5em; overflow-wrap:anywhere; } .card-title-input:focus-visible { outline:none; box-shadow:inset 0 -2px 0 #e8754e; }
-.card-body-editor { flex:1; min-height:140px; display:flex; flex-direction:column; overflow:auto; border-radius:8px; background:var(--workspace-hover); }
+.card-body-editor { flex:1; min-height:140px; display:flex; flex-direction:column; overflow:hidden; border-radius:8px; background:var(--workspace-hover); } .card-body-content { flex:1; min-height:0; display:flex; flex-direction:column; overflow:auto; }
 .card-body-editor :deep(.ProseMirror) { flex:1; padding:.65rem .75rem; outline:none; } .card-body-editor:focus-within { outline:3px solid #e8754e; outline-offset:2px; }
 /* Every footer control has its own grid slot, so a long value or many labels never push the others around. */
 .card-editor-footer { display:grid; grid-template-columns:minmax(0, 11rem) 6.5rem 9rem minmax(0, 1fr) auto; grid-template-areas:"dates priority status labels archive"; align-items:center; gap:.4rem; }

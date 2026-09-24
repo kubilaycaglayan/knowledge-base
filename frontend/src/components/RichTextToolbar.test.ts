@@ -1,6 +1,6 @@
 import { Editor } from "@tiptap/core";
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import vuetify from "../plugins/vuetify";
 import { richTextExtensions } from "../lib/rich-text";
 import RichTextToolbar from "./RichTextToolbar.vue";
@@ -10,11 +10,11 @@ const paragraph = (text: string) => ({ type: "paragraph", content: [{ type: "tex
 describe("RichTextToolbar", () => {
   let editor: Editor;
   function mountToolbar(content: object = { type: "doc", content: [paragraph("Hello world")] }) {
-    editor = new Editor({ extensions: richTextExtensions(), content });
+    editor = new Editor({ element: document.body.appendChild(document.createElement("div")), extensions: richTextExtensions(), content });
     return mount(RichTextToolbar, { props: { editor }, attachTo: document.body, global: { plugins: [vuetify] } });
   }
   const button = (wrapper: ReturnType<typeof mountToolbar>, name: string) => wrapper.get(`button[aria-label="${name}"]`);
-  afterEach(() => { editor?.destroy(); document.body.innerHTML = ""; });
+  afterEach(() => { editor?.destroy(); document.body.innerHTML = ""; vi.unstubAllGlobals(); });
 
   // RT-01
   it("is a named toolbar", () => {
@@ -25,6 +25,9 @@ describe("RichTextToolbar", () => {
 
   // RT-02
   it("shows and changes the text style of the current block", async () => {
+    // jsdom has no visualViewport, which Vuetify menus position against.
+    vi.stubGlobal("visualViewport", Object.assign(new EventTarget(), { width: 1024, height: 768, offsetLeft: 0, offsetTop: 0, scale: 1 }));
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     const wrapper = mountToolbar();
     const style = button(wrapper, "Text style: Normal text");
     await style.trigger("click");

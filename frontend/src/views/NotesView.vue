@@ -10,6 +10,7 @@ import {
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { EditorContent } from "@tiptap/vue-3";
+import RichTextToolbar from "../components/RichTextToolbar.vue";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
 import { Editor } from "@tiptap/core";
 import { api } from "../lib/api";
@@ -702,6 +703,7 @@ onBeforeUnmount(() => {
       </div>
       <div ref="editorHost" class="rich-editor" :class="RICH_TEXT_CLASS">
         <EditorContent v-if="editor" :editor="editor" />
+        <RichTextToolbar v-if="editor" class="note-toolbar" :editor="editor" />
       </div>
       <p v-if="selected" class="note-dates">
         Created {{ formatDate(selected.createdAt) }} · Updated
@@ -1026,6 +1028,16 @@ onBeforeUnmount(() => {
 }
 .rich-editor :deep(.ProseMirror) {
   min-height: 380px;
+}
+/* The formatting toolbar stays in view above the floating tracker while a long note scrolls. */
+.note-toolbar {
+  position: sticky;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  z-index: 1;
+  margin-top: 12px;
+  border: 1px solid var(--workspace-border);
+  border-radius: 8px;
+  background: var(--workspace-surface);
 }
 .note-dates {
   color: var(--workspace-muted);

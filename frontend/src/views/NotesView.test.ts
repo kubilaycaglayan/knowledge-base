@@ -1,4 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
+import vuetify from "../plugins/vuetify";
 import { createMemoryHistory, createRouter } from "vue-router";
 import NotesView from "./NotesView.vue";
 import { api } from "../lib/api";
@@ -50,7 +51,7 @@ function page(items = [note]) {
 }
 function mountNotes(r: ReturnType<typeof router>) {
   return mount(NotesView, {
-    global: { plugins: [r] },
+    global: { plugins: [r, vuetify] },
   });
 }
 

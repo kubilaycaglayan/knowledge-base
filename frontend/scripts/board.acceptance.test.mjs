@@ -519,9 +519,20 @@ describe("board browser acceptance", () => {
       await toolbar.waitFor();
       const [bodyBox, toolbarBox] = [await page.locator(".card-editor .card-body-editor").boundingBox(), await toolbar.boundingBox()];
       assert.ok(toolbarBox.y >= bodyBox.y + bodyBox.height - toolbarBox.height - 1 && toolbarBox.y + toolbarBox.height <= bodyBox.y + bodyBox.height + 1, `${width}px: the toolbar sits at the bottom of the text box`);
+      // The dialog focuses its title on open; wait for the body to hold focus before typing.
+      await page.getByRole("textbox", { name: "Title", exact: true }).evaluate((element) => element === document.activeElement || new Promise((resolve) => element.addEventListener("focus", resolve, { once: true })));
       await body.click();
+      await page.waitForFunction(() => Boolean(document.activeElement?.closest(".card-editor .ProseMirror")));
+      const saved = cardSaved(page);
       await page.keyboard.type("Make this bold");
-      await page.keyboard.press("Shift+Home");
+      await saved;
+      // Select the line with a mouse drag, then wait for the editor to take the selection.
+      const line = await body.getByText("Make this bold").boundingBox();
+      await page.mouse.move(line.x + 1, line.y + line.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(line.x + line.width + 20, line.y + line.height / 2, { steps: 5 });
+      await page.mouse.up();
+      await page.waitForFunction(() => { const selection = document.querySelector(".card-editor .ProseMirror").editor.state.selection; return selection.to - selection.from === "Make this bold".length; });
       await toolbar.getByRole("button", { name: "Bold" }).click();
       await body.locator("strong", { hasText: "Make this bold" }).waitFor();
       assert.equal(await toolbar.getByRole("button", { name: "Bold" }).getAttribute("aria-pressed"), "true");
