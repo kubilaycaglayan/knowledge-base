@@ -984,6 +984,33 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
 
+    // CH-01
+    it("marks the card just closed for three seconds", async () => {
+      vi.useFakeTimers();
+      const { store, wrapper } = await openCard();
+      store.cards = [...store.cards, { ...baseCard, id: "card-2", title: "Second", position: 1 }];
+      await flushPromises();
+      const card = (id: string) => wrapper.find(`#board-card-${id}`);
+      expect(card("card-1").classes()).not.toContain("just-closed");
+      await wrapper.find('button[aria-label="Close card"]').trigger("click");
+      await flushPromises();
+      expect(card("card-1").classes()).toContain("just-closed");
+      await vi.advanceTimersByTimeAsync(2900);
+      expect(card("card-1").classes()).toContain("just-closed");
+      await vi.advanceTimersByTimeAsync(200);
+      expect(card("card-1").classes()).not.toContain("just-closed");
+
+      await card("card-1").trigger("click");
+      await wrapper.find('button[aria-label="Close card"]').trigger("click");
+      await flushPromises();
+      await card("card-2").trigger("click");
+      await wrapper.find(".card-editor").trigger("keydown", { key: "Escape" });
+      await flushPromises();
+      expect(card("card-1").classes()).not.toContain("just-closed");
+      expect(card("card-2").classes()).toContain("just-closed");
+      await wrapper.unmount();
+    });
+
     it("shows no saving or saved text in the editor", async () => {
       vi.useFakeTimers();
       const { store, wrapper } = await openCard();

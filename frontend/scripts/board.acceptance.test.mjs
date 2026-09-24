@@ -902,6 +902,38 @@ describe("board browser acceptance", () => {
     await page.locator(".board-card").first().waitFor();
   });
 
+  // CH-02, CH-03
+  it("rings the card just closed and fades the ring out", async (t) => {
+    const { page } = await fixture(t, 1280);
+    const card = page.locator(".board-card").first();
+    const ring = () => card.evaluate((element) => { const style = getComputedStyle(element, "::after"); return { content: style.content, name: style.animationName, duration: style.animationDuration, property: style.transitionProperty, opacity: Number(style.opacity), events: style.pointerEvents, marked: element.classList.contains("just-closed") }; });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const before = await card.boundingBox();
+    await card.click();
+    await closeCard(page);
+    let now = await ring();
+    assert.ok(now.marked && now.content !== "none", "The closed card is ringed");
+    assert.equal(now.name, "card-return-fade");
+    assert.equal(now.duration, "3s");
+    assert.equal(now.events, "none");
+    assert.deepEqual(await card.boundingBox(), before, "The ring does not move or resize the card");
+    await page.waitForTimeout(1500);
+    now = await ring();
+    assert.ok(now.opacity > 0 && now.opacity < 1, `The ring is fading (${now.opacity})`);
+    await page.waitForTimeout(1700);
+    assert.equal((await ring()).marked, false, "The ring is gone after 3 seconds");
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await card.click();
+    await closeCard(page);
+    now = await ring();
+    assert.ok(now.marked);
+    assert.equal(now.name, "none", "Reduced motion shows the ring without animating");
+    assert.equal(now.opacity, 1);
+    await page.waitForTimeout(3200);
+    assert.equal((await ring()).marked, false);
+  });
+
   it("restores focus to the card after closing its editor", async (t) => {
     const { page } = await fixture(t);
     const card = page.locator(".board-card").first();
