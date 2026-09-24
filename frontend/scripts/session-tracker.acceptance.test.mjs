@@ -237,7 +237,7 @@ async function extensionFixture(t, width = 360) {
 const chips = (page) => page.locator("#tt-label-options button");
 const toggle = (page) => page.locator(".label-picker-toggle");
 
-describe("web session tracker acceptance", () => {
+describe("web session tracker acceptance", { concurrency: 4 }, () => {
   it("P4–P10, V1/V3: opens the actual menu, renders its separator, selects by keyboard, and creates a path", async (t) => {
     const { page, writes } = await fixture(t);
     const path = page.getByRole("combobox", { name: "Timer path" });
