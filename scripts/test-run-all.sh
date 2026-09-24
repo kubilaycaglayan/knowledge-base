@@ -6,12 +6,12 @@ set -uo pipefail
 # exit code is non-zero if any step failed. The Docker-stack stage (full-stack
 # smoke and the real-stack browser tests) takes most of the time.
 #
-# Repeat runs reuse caches under ~/.cache/knowledge-base (override with
-# TEST_RUN_CACHE_DIR): the smoke image build cache, the backend Gradle
-# dependencies, and npm installs, which are skipped while package-lock.json
-# and the Node.js version are unchanged. CI always builds and installs clean.
-# Delete that directory (and `docker volume rm knowledge-base-test-gradle`) to
-# start cold.
+# Repeat runs reuse caches: the test images are built once per run with
+# Docker's normal builder (layer cache in the Docker engine; reclaim it with
+# `docker builder prune`) and shared by the smoke and browser stages; Gradle's
+# dependency and project caches live in the knowledge-base-test-gradle volume;
+# npm ci is skipped while package-lock.json and the Node.js version are
+# unchanged. CI always builds and installs clean.
 #
 #   ./scripts/test-run-all.sh              # everything
 #   ./scripts/test-run-all.sh --quick      # no disposable Docker stacks
@@ -39,11 +39,6 @@ main() {
   # Throwaway secrets for the disposable stacks; never production values.
   export JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
   export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-local-$(openssl rand -hex 8)}"
-  cache_dir="${TEST_RUN_CACHE_DIR:-$HOME/.cache/knowledge-base}"
-  # run-smoke-tests.sh uses a new Buildx builder per run; this local cache lets
-  # it reuse image layers (dependencies) from the previous run.
-  export SMOKE_BUILD_CACHE_DIR="${SMOKE_BUILD_CACHE_DIR:-$cache_dir/smoke-build}"
-  mkdir -p "$SMOKE_BUILD_CACHE_DIR"
 
   # Each step's output streams to the terminal as it runs; every step is timed
   # and a summary table prints at the end, also when the run is interrupted.
@@ -62,6 +57,7 @@ main() {
     current_step=""
   }
   summary() {
+    stop_browser_stack >/dev/null 2>&1
     # A step still marked as current was interrupted (for example by Ctrl-C).
     if [[ -n "$current_step" ]]; then
       record "STOPPED"
@@ -103,7 +99,14 @@ main() {
       if (( fail_fast )); then
         exit "$status"
       fi
+      return "$status"
     fi
+  }
+  skip_step() {
+    current_step="$1"
+    current_started=$SECONDS
+    printf '\n==> %s skipped: %s\n' "$1" "$2"
+    record "skipped"
   }
 
   # npm ci only when the lockfile or Node.js version changed since the last
@@ -164,12 +167,78 @@ main() {
   }
   run_step "Proxy configs" validate_proxy_configs
 
+  # Disposable Docker stacks. The test-only images are built once from this
+  # tree and reused by every stack below.
+  test_compose=(docker compose -f docker-compose.yml -f docker-compose.smoke.yml)
+  browser_project="knowledge-base-browser-smoke-$$"
+  browser_proxy_port=26180
+  browser_cloudflare_port=26290
+  browser_stack_started=0
+  browser_compose() {
+    COMPOSE_PROJECT_NAME="$browser_project" PROXY_HTTP_PORT="$browser_proxy_port" \
+      PROXY_HTTPS_PORT=26543 PROXY_CLOUDFLARE_PORT="$browser_cloudflare_port" "${test_compose[@]}" "$@"
+  }
+  start_browser_stack() {
+    browser_stack_started=1
+    browser_compose up -d --no-build db api web proxy proxy-cloudflare || return
+    local attempt api_status
+    for attempt in {1..90}; do
+      api_status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 \
+        "http://localhost:${browser_proxy_port}/api/v1/auth/me" || true)"
+      if [[ "$api_status" == 401 ]] &&
+        curl -fsS --max-time 5 "http://localhost:${browser_proxy_port}/" | grep -q 'id="app"' &&
+        curl -fsS --max-time 5 "http://localhost:${browser_cloudflare_port}/" | grep -q 'id="app"'; then
+        return 0
+      fi
+      sleep 2
+    done
+    echo "Browser test stack did not become ready (last API status: ${api_status:-none})" >&2
+    return 1
+  }
+  stop_browser_stack() {
+    (( browser_stack_started )) || return 0
+    browser_stack_started=0
+    browser_compose down --volumes --remove-orphans
+  }
+  # Board flows through the local proxy config (as scripts/run-board-e2e.sh).
+  board_browser_tests() {
+    BOARD_E2E_BASE_URL="http://localhost:${browser_proxy_port}" \
+      BOARD_E2E_EMAIL="board-e2e-$(date +%s%N)@example.com" \
+      BOARD_E2E_PASSWORD="Board-e2e-$(date +%s%N)" npm run test:board:e2e --prefix frontend
+  }
+  # Timer sync through the production proxy config (as
+  # scripts/run-timer-websocket-e2e.sh).
+  timer_browser_tests() {
+    node scripts/check-timer-websocket.mjs "http://localhost:${browser_cloudflare_port}" --round-trip &&
+      TIMER_E2E_BASE_URL="http://localhost:${browser_cloudflare_port}" npm run test:timer:e2e --prefix frontend
+  }
+
   if (( quick == 0 )); then
-    # The full-stack smoke covers everything the API-only smoke does, and more.
-    run_step "Full-stack smoke test (both proxies and the timer WebSocket)" \
-      env SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke ./scripts/run-smoke-tests.sh
-    run_step "Board real-stack browser tests" ./scripts/run-board-e2e.sh
-    run_step "Timer WebSocket real-stack browser tests" ./scripts/run-timer-websocket-e2e.sh
+    docker_steps=(
+      "Full-stack smoke test (both proxies and the timer WebSocket)"
+      "Start browser test stack"
+      "Board real-stack browser tests"
+      "Timer WebSocket real-stack browser tests"
+      "Stop browser test stack"
+    )
+    if run_step "Build test images" \
+      env COMPOSE_PROJECT_NAME=knowledge-base-test-images "${test_compose[@]}" build api web; then
+      # The full-stack smoke covers everything the API-only smoke does, and more.
+      run_step "${docker_steps[0]}" env SMOKE_SKIP_BUILD=1 SMOKE_FULL_STACK=1 \
+        COMPOSE_PROJECT_NAME=knowledge-base-full-smoke ./scripts/run-smoke-tests.sh
+      if run_step "${docker_steps[1]}" start_browser_stack; then
+        run_step "${docker_steps[2]}" board_browser_tests
+        run_step "${docker_steps[3]}" timer_browser_tests
+      else
+        skip_step "${docker_steps[2]}" "the browser test stack did not start"
+        skip_step "${docker_steps[3]}" "the browser test stack did not start"
+      fi
+      run_step "${docker_steps[4]}" stop_browser_stack
+    else
+      for name in "${docker_steps[@]}"; do
+        skip_step "$name" "the test images did not build"
+      done
+    fi
   fi
 
   (( failures == 0 ))

@@ -4,7 +4,12 @@ services:
   db:
     ports: !override []
     healthcheck:
+      # Over TCP: the image's init-time server listens only on the socket, so
+      # this cannot report ready before the real server is up. Checked every
+      # second while starting instead of every 10s.
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       start_period: 60s
+      start_interval: 1s
       retries: 12
   # Disposable stacks build test-only images so they never move the tags that
   # production containers are created from.

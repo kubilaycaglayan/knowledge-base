@@ -68,14 +68,26 @@ content_json=(--header='Content-Type: application/json')
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   services+=(web proxy proxy-cloudflare)
 fi
-smoke_pid="${BASHPID:-$$}"
-buildx_builder="knowledge-base-smoke-${COMPOSE_PROJECT_NAME:-knowledge-base}-${smoke_pid}-$(date +%s%N)"
-if ! docker buildx create --name "$buildx_builder" --driver docker-container --driver-opt network=host >/dev/null 2>&1; then
-  echo "Smoke tests require Docker Buildx so their build cache can be cleaned safely" >&2
-  exit 1
+if [[ "${SMOKE_SKIP_BUILD:-0}" == "1" ]]; then
+  # The caller (scripts/test-run-all.sh) already built the test-only images
+  # from this tree; reuse them instead of rebuilding in a temporary builder.
+  for image in knowledge-base-api:test-only knowledge-base-web:test-only; do
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+      echo "SMOKE_SKIP_BUILD=1 needs the prebuilt image $image" >&2
+      exit 1
+    fi
+  done
+  compose up -d "${services[@]}" --no-build >/dev/null
+else
+  smoke_pid="${BASHPID:-$$}"
+  buildx_builder="knowledge-base-smoke-${COMPOSE_PROJECT_NAME:-knowledge-base}-${smoke_pid}-$(date +%s%N)"
+  if ! docker buildx create --name "$buildx_builder" --driver docker-container --driver-opt network=host >/dev/null 2>&1; then
+    echo "Smoke tests require Docker Buildx so their build cache can be cleaned safely" >&2
+    exit 1
+  fi
+  export BUILDX_BUILDER="$buildx_builder"
+  compose up -d "${services[@]}" --build >/dev/null
 fi
-export BUILDX_BUILDER="$buildx_builder"
-compose up -d "${services[@]}" --build >/dev/null
 # A fresh disposable database applies all Flyway migrations before the
 # actuator endpoint becomes healthy; allow that cold-start path to complete.
 for attempt in {1..180}; do

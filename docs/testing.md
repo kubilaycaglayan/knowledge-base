@@ -41,7 +41,7 @@ checks with:
 (cd frontend && npm run test:board)
 ```
 
-To run every Linux test and check in one go, with live output, per-step times, and a summary table, run `./scripts/test-run-all.sh`, or `./scripts/test-run-all.sh --quick` to skip the disposable Docker stacks. Repeat runs reuse caches (the smoke image build cache under `~/.cache/knowledge-base`, a `knowledge-base-test-gradle` Docker volume for Gradle dependencies, and `npm ci` is skipped while `package-lock.json` and the Node.js version are unchanged); CI always builds and installs clean. Every step runs even after a failure so the summary shows the full picture (the exit code is non-zero if any step failed); add `--fail-fast` to stop at the first failing step.
+To run every Linux test and check in one go, with live output, per-step times, and a summary table, run `./scripts/test-run-all.sh`, or `./scripts/test-run-all.sh --quick` to skip the disposable Docker stacks. Repeat runs reuse caches (the test images are built once per run with Docker's normal builder and shared by the smoke and browser stages, a `knowledge-base-test-gradle` Docker volume holds Gradle's caches, and `npm ci` is skipped while `package-lock.json` and the Node.js version are unchanged); CI always builds and installs clean. `SMOKE_SKIP_BUILD=1 ./scripts/run-smoke-tests.sh` reuses already-built `knowledge-base-api:test-only` / `knowledge-base-web:test-only` images. Every step runs even after a failure so the summary shows the full picture (the exit code is non-zero if any step failed); add `--fail-fast` to stop at the first failing step.
 
 Run the required checks from the repository root:
 
