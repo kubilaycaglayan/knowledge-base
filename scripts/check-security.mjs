@@ -19,6 +19,7 @@ const deployProductionNoCache = read(
 const developmentCompose = read("docker-compose.dev.yml");
 const productionCompose = read("docker-compose.production.yml");
 const iosDevelopmentCompose = read("docker-compose.ios-dev.yml");
+const smokeCompose = read("docker-compose.smoke.yml");
 
 const checks = [
   [
@@ -102,6 +103,25 @@ const checks = [
         "compose_args=(--project-name knowledge-base-production",
       ),
     "no-cache production deployment uses the fixed production Compose project name",
+  ],
+  [
+    compose.includes("image: knowledge-base-api:${KNOWLEDGE_BASE_IMAGE_TAG:-latest}") &&
+      compose.includes("image: knowledge-base-web:${KNOWLEDGE_BASE_IMAGE_TAG:-latest}"),
+    "Compose image tags can be set per build",
+  ],
+  [
+    [deployProduction, deployProductionNoCache].every(
+      (script) =>
+        script.includes('image_tag="$(git rev-parse --short=12 HEAD)"') &&
+        script.includes('export KNOWLEDGE_BASE_IMAGE_TAG="$image_tag"') &&
+        script.includes('docker tag "$image:$image_tag" "$image:latest"'),
+    ),
+    "production deployments tag images with the git commit they were built from",
+  ],
+  [
+    smokeCompose.includes("image: knowledge-base-api:test-only") &&
+      smokeCompose.includes("image: knowledge-base-web:test-only"),
+    "smoke and board E2E stacks build test-only images, never production tags",
   ],
   [
     developmentCompose.startsWith("name: knowledge-base-dev\n") &&
