@@ -215,7 +215,7 @@ main() {
 
   if (( quick == 0 )); then
     docker_steps=(
-      "Full-stack smoke test (both proxies and the timer WebSocket)"
+      "Full-stack smoke test (proxies, timer WebSocket, backup/restore)"
       "Start browser test stack"
       "Board real-stack browser tests"
       "Timer WebSocket real-stack browser tests"
@@ -224,7 +224,7 @@ main() {
     if run_step "Build test images" \
       env COMPOSE_PROJECT_NAME=knowledge-base-test-images "${test_compose[@]}" build api web; then
       # The full-stack smoke covers everything the API-only smoke does, and more.
-      run_step "${docker_steps[0]}" env SMOKE_SKIP_BUILD=1 SMOKE_FULL_STACK=1 \
+      run_step "${docker_steps[0]}" env SMOKE_SKIP_BUILD=1 SMOKE_FULL_STACK=1 SMOKE_BACKUP_RESTORE=1 \
         COMPOSE_PROJECT_NAME=knowledge-base-full-smoke ./scripts/run-smoke-tests.sh
       if run_step "${docker_steps[1]}" start_browser_stack; then
         run_step "${docker_steps[2]}" board_browser_tests

@@ -3,6 +3,11 @@ services:
   # services do not need host ports. Avoid colliding with a live dev stack.
   db:
     ports: !override []
+    # A disposable database needs no durability: skip initdb's final sync and
+    # run without fsync (on this host's HDD initdb spent ~15s syncing).
+    environment:
+      POSTGRES_INITDB_ARGS: --no-sync
+    command: [postgres, -c, fsync=off, -c, synchronous_commit=off, -c, full_page_writes=off]
     healthcheck:
       # Over TCP: the image's init-time server listens only on the socket, so
       # this cannot report ready before the real server is up. Checked every
