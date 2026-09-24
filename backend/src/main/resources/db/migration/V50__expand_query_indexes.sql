@@ -14,6 +14,6 @@ create index item_event_user_path_occurred_idx
 
 -- The primary keys on these association tables are ordered by the owning
 -- record, so add reverse lookup indexes for label, path, and card queries.
-create index note_tag_label_note_idx on note_tag(label_id, note_id);
+create index note_label_label_note_idx on note_label(label_id, note_id);
 create index board_card_labels_label_card_idx on board_card_labels(label_id, card_id);
 create index board_card_paths_path_card_idx on board_card_paths(path_id, card_id);
