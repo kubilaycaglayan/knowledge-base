@@ -82,6 +82,62 @@ describe("timer store", () => {
     globalThis.WebSocket = originalWebSocket;
   });
 
+  it("does not refetch the timer on focus or visibility changes while the WebSocket is connected", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    let socket: MockSocket;
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        socket = this;
+        queueMicrotask(() => this.onopen?.());
+      }
+      send() {
+        this.onmessage?.({ data: '{"type":"READY"}' });
+      }
+      close() {}
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft") return {};
+      return [];
+    });
+    const timerRequests = () =>
+      vi.mocked(api).mock.calls.filter(([path]) => String(path).startsWith("/timers"))
+        .length;
+
+    const store = useTimerStore();
+    store.acquire();
+    await flushPromises();
+    const connectedRequestCount = timerRequests();
+
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+    await flushPromises();
+    expect(timerRequests()).toBe(connectedRequestCount);
+
+    // Without a live socket, returning to the page still catches up over HTTP.
+    socket!.onclose = null;
+    store.release();
+    globalThis.WebSocket = class {
+      constructor() {
+        throw new Error("offline");
+      }
+    } as unknown as typeof WebSocket;
+    store.acquire();
+    await flushPromises();
+    const disconnectedRequestCount = timerRequests();
+    window.dispatchEvent(new Event("focus"));
+    await flushPromises();
+    expect(timerRequests()).toBeGreaterThan(disconnectedRequestCount);
+    store.release();
+    globalThis.WebSocket = originalWebSocket;
+  });
+
   it("starts HTTP polling after the WebSocket closes", async () => {
     vi.useFakeTimers();
     const originalWebSocket = globalThis.WebSocket;
