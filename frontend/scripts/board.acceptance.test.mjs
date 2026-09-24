@@ -18,10 +18,10 @@ const boardLabels = [["label-design", "Design"], ["label-docs", "Docs"], ["label
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0) {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0") {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
-  const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card) => ({ ...card }));
+  const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card, index) => ({ ...card, ...(index === 0 ? { statusId: firstCardStatus } : {}) }));
   const fixtureStatuses = statuses.map((status) => ({ ...status }));
   if (archivedStatus) fixtureStatuses[3].archived = true;
   let boardArchiveRequests = 0;
@@ -141,6 +141,9 @@ async function boardAction(page, name) {
   await page.locator("button.board-tab-more").click();
   await page.locator('.board-more-menu [role^="menuitem"]', { hasText: new RegExp(`^${name}`) }).click();
 }
+// Card play buttons only show in the In Progress column (CT-06), so play tests put the card there.
+const inProgressFixture = (t, width) => fixture(t, width, false, false, false, false, false, 409, false, 0, "status-2");
+
 // The card editor saves itself without showing a status; wait for the save request instead.
 const cardSaved = (page) => page.waitForResponse((response) => response.request().method() === "PUT" && /\/boards\/[^/]+\/cards\/[^/]+$/.test(new URL(response.url()).pathname));
 
@@ -572,14 +575,14 @@ describe("board browser acceptance", () => {
 
   // CT-04
   it("starts a session from a card and hides every play button", async (t) => {
-    const { page, timerStarts } = await fixture(t, 1280);
+    const { page, timerStarts } = await inProgressFixture(t, 1280);
     const play = page.locator(".board-card").first().getByRole("button", { name: "Start a session for Ship timeline" });
     await play.waitFor();
     const card = await page.locator(".board-card").first().boundingBox();
     const box = await play.boundingBox();
     assert.ok(box.x + box.width >= card.x + card.width - 16 && box.y <= card.y + 16, "The play button sits at the card's top right");
     await play.click();
-    await page.locator(".board-card-play").first().waitFor({ state: "detached" });
+    await page.locator(".board-card-play").first().waitFor({ state: "hidden" });
     assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: [], description: "Ship timeline" }]);
     assert.equal(await page.locator(".card-editor").count(), 0, "Starting a session does not open the card");
     await page.getByRole("button", { name: "Stop timer" }).waitFor();
@@ -591,8 +594,34 @@ describe("board browser acceptance", () => {
     assert.deepEqual(await header.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline", "Close card"]);
   });
 
+  // CT-06, CT-07
+  it("keeps every card in place when a timer starts and stops", async (t) => {
+    const { page } = await inProgressFixture(t, 1280);
+    const play = page.getByRole("button", { name: "Start a session for Ship timeline" });
+    await play.waitFor();
+    const column = await page.locator(".board-card").first().evaluate((element) => element.closest(".kanban-column").querySelector("h2").textContent.trim());
+    assert.equal(column, "In Progress");
+    const boxes = () => page.locator(".board-card, .kanban-column").evaluateAll((items) => items.map((item) => { const box = item.getBoundingClientRect(); return [box.x, box.y, box.width, box.height].map(Math.round).join(","); }));
+    const before = await boxes();
+    await play.click();
+    await page.getByRole("button", { name: "Stop timer" }).waitFor();
+    await page.locator(".board-card-play").first().waitFor({ state: "hidden" });
+    assert.deepEqual(await boxes(), before, "Starting a timer does not move or resize cards");
+    assert.equal(await page.locator(".board-card").first().getByRole("button").count(), 0, "The hidden play slot is not a button to assistive tech");
+    await page.getByRole("button", { name: "Stop timer" }).click();
+    await play.waitFor();
+    assert.deepEqual(await boxes(), before, "Stopping a timer does not move or resize cards");
+
+    // Moving a path card out of In Progress takes its play button away.
+    await page.locator(".board-card").first().click();
+    await page.getByRole("combobox", { name: "Status" }).selectOption({ label: "Backlog" });
+    await closeCard(page);
+    await page.locator(".kanban-column").first().locator(".board-card", { hasText: "Ship timeline" }).waitFor();
+    assert.equal(await page.locator(".board-card-play").count(), 0);
+  });
+
   it("darkens the play button in dark theme, on cards and in the tracker", async (t) => {
-    const { page } = await fixture(t, 1280);
+    const { page } = await inProgressFixture(t, 1280);
     await page.locator(".board-card-play").first().waitFor();
     await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     const luminance = (color) => { const [r, g, b] = color.match(/\d+/g).slice(0, 3).map(Number); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
@@ -787,7 +816,7 @@ describe("board browser acceptance", () => {
   });
 
   it("reports a failed action in a snackbar above the floating tracker", async (t) => {
-    const { page, context } = await fixture(t, 390);
+    const { page, context } = await inProgressFixture(t, 390);
     await context.route("**/api/v1/timers", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.fallback()));
     await page.locator(".board-card-play").first().click();
     const snackbar = page.locator(".app-snackbar").filter({ hasText: "Could not start a session. Try again." });
@@ -869,7 +898,7 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     // evaluateAll does not wait, so let the card render first.
     await page.locator(".board-card", { hasText: "Ship timeline" }).waitFor();
-    assert.deepEqual(await page.locator(".board-card").getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline"], "Cards carry only their play button");
+    assert.deepEqual(await page.locator(".board-card").getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [], "Cards outside In Progress carry no buttons");
     await page.locator(".board-card", { hasText: "Ship timeline" }).click();
     await page.getByRole("button", { name: "Archive card" }).click();
     await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();

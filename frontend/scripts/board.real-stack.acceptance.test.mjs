@@ -648,7 +648,9 @@ describe("board real-stack acceptance", () => {
       const headers = { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` };
       const path = await (await fetch("/api/v1/paths", { method: "POST", headers, body: JSON.stringify({ name: pathName }) })).json();
       const board = (await (await fetch("/api/v1/boards", { headers })).json()).find((item) => item.pathId === path.id);
-      await fetch(`/api/v1/boards/${board.id}/cards`, { method: "POST", headers, body: JSON.stringify({ title: "Timed card" }) });
+      // Card play buttons only show in the In Progress column (CT-06).
+      const inProgress = (await (await fetch(`/api/v1/boards/${board.id}/statuses`, { headers })).json()).find((status) => status.name === "In Progress");
+      await fetch(`/api/v1/boards/${board.id}/cards`, { method: "POST", headers, body: JSON.stringify({ title: "Timed card", statusId: inProgress.id }) });
       return board.id;
     }, name);
     await page.goto(`${baseUrl}/board?board=${boardId}`);
@@ -659,7 +661,7 @@ describe("board real-stack acceptance", () => {
         page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/timers" && response.request().method() === "POST" && response.ok()),
         play.click(),
       ]);
-      await page.locator(".board-card-play").first().waitFor({ state: "detached" });
+      await page.locator(".board-card-play").first().waitFor({ state: "hidden" });
       await page.locator(".floating-tracker-path", { hasText: name }).waitFor();
       assert.equal(await page.locator(".card-editor").count(), 0);
     } finally {

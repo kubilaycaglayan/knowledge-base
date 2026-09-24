@@ -9,7 +9,7 @@ those tests pass.
 
 - [x] **CT-01** `TimerRunButton` renders the tracker's play icon (or its stop icon while running), takes an accessible label, and is disabled while busy. The floating tracker uses it for Start/Stop.
   _Tests:_ `TimerRunButton.test.ts`, `FloatingTimeTracker.test.ts`
-- [x] **CT-02** A card shows a play button at its top right when its board belongs to a path or the card has a path, and only while no timer is running. Cards on a custom board without a path have none.
+- [x] **CT-02** A card shows a play button at its top right when its board belongs to a path or the card has a path, and only while no timer is running (and only in the In Progress column, see CT-06). Cards on a custom board without a path have none.
   _Tests:_ `BoardView.test.ts` "shows a card play button only for path cards while no timer runs"
 - [x] **CT-03** The card editor shows the same play button in its top row, just before Close, under the same conditions.
   _Tests:_ `BoardView.test.ts` "puts the card play button before Close in the editor"
@@ -17,3 +17,7 @@ those tests pass.
   _Tests:_ `timer.test.ts` "starts a session for a given path and description", `BoardView.test.ts` "starts a session from a card without opening it", `board.acceptance.test.mjs` "starts a session from a card and hides every play button", `board.real-stack.acceptance.test.mjs` "starts and stops a session from a path board card"
 - [x] **CT-05** A timer started or stopped anywhere else (the tracker, another tab) hides or shows the play buttons without a reload.
   _Tests:_ `BoardView.test.ts` "shows a card play button only for path cards while no timer runs", `board.real-stack.acceptance.test.mjs` "starts and stops a session from a path board card"
+- [ ] **CT-06** Card play buttons appear only on cards in the "In Progress" column (matched by name, ignoring case, spaces, hyphens, and underscores, so "in-progress" counts; in the All boards view, by the card's own status name). A path card moved into In Progress gains the button while no timer runs, and one moved out loses it. The card editor's play button (CT-03) is unaffected.
+  _Tests:_ `BoardView.test.ts` "shows card play buttons only in the In Progress column", "uses the card's own board for path rules in the All view", `board.acceptance.test.mjs` "starts a session from a card and hides every play button"
+- [ ] **CT-07** Starting or stopping a timer does not shift cards. An In Progress path card keeps an invisible, unfocusable play slot while a timer runs, so the card keeps its size.
+  _Tests:_ `BoardView.test.ts` "keeps an invisible play slot on In Progress cards while a timer runs", `board.acceptance.test.mjs` "keeps every card in place when a timer starts and stops"

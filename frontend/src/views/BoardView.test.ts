@@ -613,8 +613,9 @@ describe("BoardView", () => {
 
   describe("card play button", () => {
     const card = (id: string, title: string, pathIds: string[], position: number) => ({ id, statusId: "status-1", title, body: "{}", priority: "MEDIUM", position, archived: false, pathIds, labelIds: [], createdAt: "", updatedAt: "t1" });
+    // Card play buttons only show in the In Progress column (CT-06).
     function seedCustom() {
-      const store = seedBoard(["Backlog"]);
+      const store = seedBoard(["In Progress"]);
       store.cards = [card("with-path", "Write docs", ["path-1"], 0), card("no-path", "Loose", [], 1)] as any;
       return store;
     }
@@ -632,24 +633,59 @@ describe("BoardView", () => {
 
       timer.setCurrent({ id: "timer-1", startedAt: new Date().toISOString(), running: true });
       await flushPromises();
-      expect(wrapper.findAll(".board-card-play")).toHaveLength(0);
+      expect(wrapper.findAll(".board-card-play:not(.play-hidden)")).toHaveLength(0);
       timer.setCurrent(null);
       await flushPromises();
       expect(playFor(wrapper, "Write docs").exists()).toBe(true);
       await wrapper.unmount();
     });
 
-    it("shows a play button on every card of a path board", async () => {
+    it("shows a play button on every In Progress card of a path board", async () => {
       const boards = useBoardsStore();
       usePathsStore().setAll([{ id: "path-1", name: "Writing", color: "#123456", status: "ACTIVE" }] as any);
       boards.selectedId = "path-board";
       boards.boards = [{ id: "path-board", name: "Writing", archived: false, createdAt: "", updatedAt: "", pathId: "path-1" }] as any;
-      boards.statuses = [{ id: "status-1", name: "Backlog", archived: false, position: 0 }];
+      boards.statuses = [{ id: "status-1", name: "in-progress", archived: false, position: 0 }];
       boards.cards = [card("a", "", [], 0)] as any;
       mockRoute.query = { board: "path-board" };
       const wrapper = mountBoard();
       await flushPromises();
       expect(wrapper.find('.board-card button[aria-label="Start a session for untitled card"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // CT-06
+    it("shows card play buttons only in the In Progress column", async () => {
+      const store = seedBoard(["Pending", "In Progress", "Done"]);
+      usePathsStore().setAll([{ id: "path-1", name: "Writing", color: "#123456", status: "ACTIVE" }] as any);
+      store.cards = [{ ...card("pending", "Waiting card", ["path-1"], 0), statusId: "status-1" }, { ...card("doing", "Doing card", ["path-1"], 0), statusId: "status-2" }, { ...card("done", "Done card", ["path-1"], 0), statusId: "status-3" }] as any;
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.findAll(".board-card-play").map((button) => button.attributes("aria-label"))).toEqual(["Start a session for Doing card"]);
+      store.cards = store.cards.map((item) => item.id === "pending" ? { ...item, statusId: "status-2", position: 1 } : item.id === "doing" ? { ...item, statusId: "status-3", position: 1 } : item);
+      await flushPromises();
+      expect(wrapper.findAll(".board-card-play").map((button) => button.attributes("aria-label"))).toEqual(["Start a session for Waiting card"]);
+      // The editor keeps its own play button whatever the column.
+      await wrapper.findAll(".board-card").find((item) => item.text().includes("Done card"))!.trigger("click");
+      expect(wrapper.find('.card-editor-header button[aria-label="Start a session for Done card"]').exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // CT-07
+    it("keeps an invisible play slot on In Progress cards while a timer runs", async () => {
+      seedCustom();
+      const timer = useTimerStore();
+      const wrapper = mountBoard({ attachTo: document.body });
+      await flushPromises();
+      timer.setCurrent({ id: "timer-1", startedAt: new Date().toISOString(), running: true });
+      await flushPromises();
+      const slot = wrapper.find(".board-card .board-card-play");
+      expect(slot.exists()).toBe(true);
+      expect(slot.classes()).toContain("play-hidden");
+      expect(getComputedStyle(slot.element).visibility).toBe("hidden");
+      timer.setCurrent(null);
+      await flushPromises();
+      expect(wrapper.find(".board-card .board-card-play").classes()).not.toContain("play-hidden");
       await wrapper.unmount();
     });
 
@@ -1414,7 +1450,9 @@ describe("BoardView", () => {
 
     // AB-18
     it("uses the card's own board for path rules in the All view", async () => {
-      seedAll();
+      const store = seedAll();
+      // Card play buttons follow the card's own status name (CT-06).
+      store.statuses = store.statuses.map((item) => item.id === "h-todo" ? { ...item, name: "In progress" } : item);
       const wrapper = mountBoard();
       await flushPromises();
       const cards = wrapper.findAll(".board-card");
