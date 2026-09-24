@@ -8,7 +8,10 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5177,
     strictPort: true,
-    proxy: { "/api": { target: "http://localhost:8080", changeOrigin: true } },
+    proxy: {
+      "/api": { target: "http://localhost:8080", changeOrigin: true },
+      "/ws": { target: "ws://localhost:8080", ws: true },
+    },
   },
   test: {
     environment: "jsdom",

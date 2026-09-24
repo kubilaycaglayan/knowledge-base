@@ -16,6 +16,10 @@
 :80 {
 	import security_headers
 
+	handle /ws/* {
+		reverse_proxy api:8080
+	}
+
 	handle /api/* {
 		reverse_proxy api:8080
 	}
