@@ -125,4 +125,20 @@ class UserPreferencesIntegrationTest {
     preferences(token).getBody().get("recentPathIds").forEach(id -> recent.add(id.asText()));
     assertEquals(List.of(ids.get(1), ids.get(6), ids.get(4), ids.get(3), ids.get(2)), recent);
   }
+  // AB-10
+  @Test
+  void lastCardBoardIsStoredAndValidated() {
+    String token = token(), other = token();
+    assertTrue(preferences(token).getBody().get("lastCardBoardId").isNull());
+    String boardId = exchange(HttpMethod.POST, "/api/v1/boards", token, "{\"name\":\"Work\"}").getBody().get("id").asText();
+    String foreign = exchange(HttpMethod.POST, "/api/v1/boards", other, "{\"name\":\"Theirs\"}").getBody().get("id").asText();
+
+    JsonNode saved = update(token, "{\"lastCardBoardId\":\"" + boardId + "\"}").getBody();
+    assertEquals(boardId, saved.get("lastCardBoardId").asText());
+    assertEquals("auto", saved.get("theme").asText(), "Omitted fields keep their value");
+    assertEquals(boardId, update(token, "{\"theme\":\"dark\"}").getBody().get("lastCardBoardId").asText());
+    assertEquals(HttpStatus.NOT_FOUND, update(token, "{\"lastCardBoardId\":\"" + foreign + "\"}").getStatusCode());
+    assertEquals(boardId, preferences(token).getBody().get("lastCardBoardId").asText());
+    assertTrue(preferences(other).getBody().get("lastCardBoardId").isNull());
+  }
 }

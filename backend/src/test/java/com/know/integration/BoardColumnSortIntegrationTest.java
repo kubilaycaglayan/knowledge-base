@@ -164,4 +164,26 @@ class BoardColumnSortIntegrationTest {
     }
     assertEquals(List.of("card-3", "card-7", "card-2", "card-6", "card-1", "card-5", "card-0", "card-4", "card-8"), walked);
   }
+  // AB-09
+  @Test
+  void priorityLastPagesOrderLowFirst() {
+    String token = token();
+    String boardId = board(token);
+    String statusId = firstStatus(token, boardId).get("id").asText();
+    card(token, boardId, statusId, "urgent", "URGENT");
+    card(token, boardId, statusId, "low-1", "LOW");
+    card(token, boardId, statusId, "high", "HIGH");
+    card(token, boardId, statusId, "low-2", "LOW");
+    assertEquals("PRIORITY_LAST", sort(token, boardId, statusId, "PRIORITY_LAST").getBody().get("cardSort").asText());
+
+    List<String> walked = new ArrayList<>();
+    String cursor = "-1";
+    int pages = 0;
+    while (cursor != null && pages++ < 10) {
+      JsonNode body = exchange(HttpMethod.GET, "/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId + "&cursor=" + cursor + "&limit=3", token, null).getBody();
+      walked.addAll(titles(body.get("items")));
+      cursor = body.get("nextCursor").isNull() ? null : body.get("nextCursor").asText();
+    }
+    assertEquals(List.of("low-1", "low-2", "high", "urgent"), walked);
+  }
 }
