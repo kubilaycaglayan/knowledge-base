@@ -7,11 +7,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.know.security.JwtTokenService;
 import com.know.service.TimerChangedEvent;
 import com.know.service.TimerService;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -60,6 +62,29 @@ class TimerWebSocketHandlerTest {
     handler.timerChanged(new TimerChangedEvent(user, null));
 
     verify(session).sendMessage(new TextMessage("{\"type\":\"TIMER_STATE\",\"timer\":null}"));
+  }
+
+  @Test
+  void pingsAuthenticatedConnectionsSoIdleProxiesKeepThemOpen() throws Exception {
+    UUID user = UUID.randomUUID();
+    WebSocketSession authenticated = session("authenticated");
+    WebSocketSession broken = session("broken");
+    WebSocketSession anonymous = session("anonymous");
+    when(tokens.userId("token")).thenReturn(user);
+    handler.handleMessage(authenticated, new TextMessage("{\"type\":\"AUTH\",\"token\":\"token\"}"));
+    handler.handleMessage(broken, new TextMessage("{\"type\":\"AUTH\",\"token\":\"token\"}"));
+    handler.afterConnectionEstablished(anonymous);
+    doThrow(new IOException("gone")).when(broken).sendMessage(any(PingMessage.class));
+
+    handler.sendHeartbeats();
+
+    verify(authenticated).sendMessage(any(PingMessage.class));
+    verify(broken).close(CloseStatus.SERVER_ERROR);
+    verify(anonymous, never()).sendMessage(any());
+    handler.timerChanged(new TimerChangedEvent(user, null));
+    verify(authenticated).sendMessage(new TextMessage("{\"type\":\"TIMER_STATE\",\"timer\":null}"));
+    verify(broken, never())
+        .sendMessage(new TextMessage("{\"type\":\"TIMER_STATE\",\"timer\":null}"));
   }
 
   private WebSocketSession session(String id) {
