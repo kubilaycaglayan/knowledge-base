@@ -219,7 +219,7 @@ async function restoreFromArchive(page, label) {
   await page.getByRole("heading", { name: "Boards" }).waitFor();
 }
 
-describe("board browser acceptance", () => {
+describe("board browser acceptance", { concurrency: 4 }, () => {
   it("does not expose board data before authentication", async (t) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
     t.after(() => context.close());
@@ -900,7 +900,10 @@ describe("board browser acceptance", () => {
     await page.getByRole("button", { name: "Sort Backlog: priority first" }).click();
     await page.getByRole("button", { name: "Sort Backlog: priority last" }).waitFor();
     assert.deepEqual(sortRequests, ["status-0:PRIORITY", "status-0:PRIORITY_LAST"]);
-    assert.equal(firstPageRequests.filter((id) => id === "status-0").length, reloadsBefore + 2, "Sorting reloads the column from its first page");
+    // The header label updates before the column's first page is re-requested.
+    const reloads = () => firstPageRequests.filter((id) => id === "status-0").length;
+    for (const deadline = Date.now() + 5000; reloads() < reloadsBefore + 2 && Date.now() < deadline;) await page.waitForTimeout(50);
+    assert.equal(reloads(), reloadsBefore + 2, "Sorting reloads the column from its first page");
     await page.locator(".board-card").first().waitFor();
   });
 
@@ -1195,7 +1198,7 @@ describe("board browser acceptance", () => {
 });
 
 // PB-28: every path owns a board; hiding it from the Paths page removes its tab.
-describe("path boards", () => {
+describe("path boards", { concurrency: 4 }, () => {
   async function pathBoardFixture(t) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
     t.after(() => context.close());
@@ -1368,7 +1371,7 @@ describe("path boards", () => {
 
 // Board tabs never scroll sideways: the open board keeps a reserved first slot
 // and boards that do not fit move into a More menu.
-describe("board tab overflow", () => {
+describe("board tab overflow", { concurrency: 4 }, () => {
   const names = ["Launch plan", "Research", "Hiring", "A board with a rather long name for its tab", "Ops", "Marketing", "Design system", "Finance", "Legal", "Support", "Roadmap", "Infra", "Mobile", "Sales"];
   async function overflowFixture(t, width = 1280, touch = width <= 390) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: touch, colorScheme: "light", reducedMotion: "reduce" });
@@ -1490,7 +1493,7 @@ describe("board tab overflow", () => {
   });
 });
 
-describe("All boards view", () => {
+describe("All boards view", { concurrency: 4 }, () => {
   // Two boards whose columns partly share names: Work (custom) and a path board with a long name.
   async function allBoardsFixture(t, width = 1280) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
