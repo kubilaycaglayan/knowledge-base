@@ -134,8 +134,12 @@ const labelsResize = typeof ResizeObserver === "undefined" ? null : new ResizeOb
 watch(labelsPicker, (picker) => { labelsResize?.disconnect(); if (picker) { labelsResize?.observe(picker); void nextTick(() => { measureLabelChips(); requestAnimationFrame(measureLabelChips); }); } });
 watch(() => `${labelsFocused.value}|${draftLabels.value.map((label) => label.name).join("|")}`, () => { void nextTick(measureLabelChips); });
 let labelsMenuWasOpen = false;
-function noteLabelsMenu(event: KeyboardEvent) { if (event.key === "Escape") labelsMenuWasOpen = labelsMenuOpen.value; }
-function escapeEditor() { if (labelsMenuWasOpen) { labelsMenuWasOpen = false; labelsMenuOpen.value = false; return; } void closeEditor(); }
+function noteLabelsMenu(event: KeyboardEvent) { if (event.key === "Escape") labelsMenuWasOpen = labelsMenuOpen.value || pathMenuOpen.value; }
+function escapeEditor() { if (labelsMenuWasOpen) { labelsMenuWasOpen = false; labelsMenuOpen.value = false; pathMenuOpen.value = false; return; } void closeEditor(); }
+// The header's path picker: "No path" first, then the active paths.
+const pathMenuOpen = ref(false);
+const cardPathItems = computed(() => [{ id: "", name: "No path" }, ...pathsStore.activePaths.map((path) => ({ id: path.id, name: path.name }))]);
+function setDraftPath(pathId: string | null) { draft.value.pathIds = pathId ? [pathId] : []; }
 const cardPathId = (card: BoardCard) => cardBoard(card)?.pathId || card.pathIds[0] || "";
 const canStartSession = (card: BoardCard) => Boolean(cardPathId(card)) && !timerStore.isRunning;
 const startSessionLabel = (title: string) => `Start a session for ${title || "untitled card"}`;
@@ -378,10 +382,10 @@ onBeforeUnmount(() => { phoneQuery?.removeEventListener("change", onPhoneChange)
     </section>
     <footer class="board-footer"><RouterLink class="link-button secondary with-icon" :to="{ path: '/board/archive', query: store.selectedId && !isAll ? { board: store.selectedId } : {} }"><v-icon :icon="mdiArchiveOutline" size="18" aria-hidden="true" />Archived items</RouterLink></footer>
     <div v-if="editing" class="dialog-backdrop" role="presentation" v-backdrop-close="() => closeEditor()"><section v-dialog-focus class="card-editor" :class="{ accented: draftAccent }" :style="{ '--card-accent': draftAccent }" role="dialog" aria-modal="true" aria-label="Edit card" tabindex="-1" @keydown.capture="noteLabelsMenu" @keydown.esc.prevent="escapeEditor" @keydown.meta.enter.prevent="closeEditor()" @keydown.ctrl.enter.prevent="closeEditor()">
-      <div class="card-editor-header"><textarea v-model="draft.title" class="card-title-input" name="title" aria-label="Title" maxlength="240" rows="1" autocomplete="off" @keydown.enter.exact.prevent="cardEditor?.commands.focus('start')"></textarea><TimerRunButton v-if="canStartSession(editing)" class="board-card-play" :label="startSessionLabel(draft.title)" :busy="timerStore.actionBusy" @click="onCardPlay($event, editing, draft.title)" /><button class="icon-button quiet editor-close" type="button" aria-label="Close card" title="Close" @click="closeEditor()"><v-icon :icon="mdiClose" size="20" aria-hidden="true" /></button></div>
-      <div v-if="isAll || !editingBoard?.pathId" class="card-meta">
+      <div class="card-editor-header"><textarea v-model="draft.title" class="card-title-input" name="title" aria-label="Title" maxlength="240" rows="1" autocomplete="off" @keydown.enter.exact.prevent="cardEditor?.commands.focus('start')"></textarea><v-select v-if="!editingBoard?.pathId" v-model:menu="pathMenuOpen" class="card-path-picker" :model-value="draft.pathIds[0] || ''" :items="cardPathItems" item-title="name" item-value="id" name="cardPath" aria-label="Path" hide-details flat variant="solo-filled" density="compact" :menu-props="{ contentClass: 'card-path-menu', location: 'bottom start' }" @update:model-value="setDraftPath" /><TimerRunButton v-if="canStartSession(editing)" class="board-card-play" :label="startSessionLabel(draft.title)" :busy="timerStore.actionBusy" @click="onCardPlay($event, editing, draft.title)" /><button class="icon-button quiet editor-close" type="button" aria-label="Close card" title="Close" @click="closeEditor()"><v-icon :icon="mdiClose" size="20" aria-hidden="true" /></button></div>
+      <div v-if="isAll" class="card-meta">
         <select v-if="isAll" :value="cardBoardId(editing)" class="meta-field" name="board" aria-label="Board" @change="changeCardBoard(($event.target as HTMLSelectElement).value)"><option v-for="board in boards" :key="board.id" :value="board.id">{{ board.name }}</option></select>
-        <select v-if="!editingBoard?.pathId" :value="draft.pathIds[0] || ''" class="meta-field" name="cardPaths" aria-label="Path" @change="(e) => { const select = e.target as HTMLSelectElement; draft.pathIds = select.value ? [select.value] : []; }"><option value="">No path</option><option v-for="path in pathsStore.activePaths" :key="path.id" :value="path.id">{{ path.name }}</option></select>
+        
         
       </div>
       <EditorContent v-if="cardEditor" class="card-body-editor" :class="RICH_TEXT_CLASS" :editor="cardEditor" />

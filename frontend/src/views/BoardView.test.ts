@@ -489,7 +489,9 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
     await wrapper.find(".board-card").trigger("click");
-    const meta = wrapper.find(".card-meta");
+    // Only the All boards view has a meta row (for the board picker); the rest sit in the footer.
+    expect(wrapper.find(".card-meta").exists()).toBe(false);
+    const meta = wrapper.find(".card-editor-header");
     expect(meta.find('select[name="priority"]').exists()).toBe(false);
     expect(meta.find('select[name="status"]').exists()).toBe(false);
     expect(meta.find(".meta-dates").exists()).toBe(false);
@@ -580,7 +582,7 @@ describe("BoardView", () => {
     const parts = [...header.element.children].map((element) => element.classList.contains("card-path-picker") ? "path" : element.getAttribute("name") || element.getAttribute("aria-label"));
     expect(parts).toEqual(["title", "path", "Close card"]);
     expect(editor.find('.card-meta button[aria-label="Close card"]').exists()).toBe(false);
-    expect(editor.find("select").exists() && editor.find(".card-path-picker").exists()).toBe(false);
+    expect(editor.find('select[name="cardPaths"]').exists()).toBe(false);
     await wrapper.unmount();
   });
 
