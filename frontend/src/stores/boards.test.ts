@@ -614,3 +614,205 @@ describe("boards store concurrency", () => {
   });
 });
 
+describe("All boards view and cached views (AB-19, AB-20)", () => {
+  beforeEach(() => { setActivePinia(createPinia()); apiMock.mockReset(); });
+
+  const card = (id: string, boardId: string, statusId: string, extra: Record<string, unknown> = {}) => ({ id, boardId, statusId, title: id, body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "u1", ...extra });
+  const status = (id: string, boardId: string, name: string, position = 0) => ({ id, boardId, name, position, archived: false, cardSort: "MANUAL" });
+  const boardA = [status("a-todo", "a", "To Do"), status("a-done", "a", "Done", 1)];
+  const boardB = [status("b-todo", "b", "To do", 0)];
+
+  function serve(routes: Record<string, unknown> = {}) {
+    apiMock.mockImplementation((path: string, options?: RequestInit) => {
+      // A route matches its exact path; a route with a query matches by prefix.
+      for (const [prefix, value] of Object.entries(routes)) if (path === prefix || path.startsWith(prefix.includes("?") ? prefix : `${prefix}?`)) return Promise.resolve(typeof value === "function" ? (value as (p: string, o?: RequestInit) => unknown)(path, options) : value);
+      if (path === "/boards?archived=false") return Promise.resolve([{ id: "a", name: "A", archived: false, createdAt: "", updatedAt: "" }, { id: "b", name: "B", archived: false, createdAt: "", updatedAt: "" }]);
+      if (path === "/boards/a/statuses") return Promise.resolve(boardA);
+      if (path === "/boards/b/statuses") return Promise.resolve(boardB);
+      if (path.startsWith("/boards/a/cards/page?statusId=a-todo")) return Promise.resolve({ items: [card("c1", "a", "a-todo")], nextCursor: null });
+      if (path.startsWith("/boards/a/cards/page")) return Promise.resolve({ items: [], nextCursor: null });
+      if (path.startsWith("/boards/b/cards/page")) return Promise.resolve({ items: [card("c2", "b", "b-todo")], nextCursor: null });
+      if (path === "/boards/all/columns") return Promise.resolve([{ name: "To Do", cardSort: "MANUAL", statuses: [boardA[0], boardB[0]] }, { name: "Done", cardSort: "PRIORITY", statuses: [boardA[1]] }]);
+      if (path.startsWith("/boards/all/columns/cards/page?name=To%20Do")) return Promise.resolve({ items: [card("c1", "a", "a-todo"), card("c2", "b", "b-todo")], nextCursor: 1 });
+      if (path.startsWith("/boards/all/columns/cards/page")) return Promise.resolve({ items: [], nextCursor: null });
+      return Promise.resolve([]);
+    });
+  }
+
+  async function storeWith() {
+    const { useBoardsStore } = await import("./boards");
+    return useBoardsStore();
+  }
+
+  it("serves a loaded view from the cache", async () => {
+    serve();
+    const store = await storeWith();
+    await store.loadBoards();
+    await store.loadBoards();
+    expect(apiMock.mock.calls.filter(([path]) => path === "/boards?archived=false")).toHaveLength(1);
+
+    store.selectedId = "a"; await store.loadBoard();
+    store.selectedId = "b"; await store.loadBoard();
+    store.selectedId = "all"; await store.loadBoard();
+    const calls = apiMock.mock.calls.length;
+    store.selectedId = "a"; await store.loadBoard();
+    expect(store.cards.map((item) => item.id)).toEqual(["c1"]);
+    expect(store.statuses.map((item) => item.id)).toEqual(["a-todo", "a-done"]);
+    store.selectedId = "all"; await store.loadBoard();
+    expect(store.cards.map((item) => item.id)).toEqual(["c1", "c2"]);
+    expect(store.pageCursors["column:to do"]).toBe(1);
+    store.selectedId = "b"; await store.loadBoard();
+    expect(store.cards.map((item) => item.id)).toEqual(["c2"]);
+    expect(apiMock.mock.calls.length).toBe(calls);
+
+    await store.loadBoard(true);
+    expect(apiMock.mock.calls.length).toBeGreaterThan(calls);
+  });
+
+  it("loads merged columns for the All boards view", async () => {
+    serve();
+    const store = await storeWith();
+    store.selectedId = "all";
+    await store.loadBoard();
+    expect(apiMock).toHaveBeenCalledWith("/boards/all/columns");
+    expect(apiMock).toHaveBeenCalledWith("/boards/all/columns/cards/page?name=To%20Do&cursor=-1&limit=20");
+    expect(store.mergedColumns.map((column) => [column.name, column.cardSort, column.statuses.map((item) => item.id)])).toEqual([["To Do", "MANUAL", ["a-todo", "b-todo"]], ["Done", "PRIORITY", ["a-done"]]]);
+    expect(store.statuses.map((item) => item.id)).toEqual(["a-todo", "b-todo", "a-done"]);
+  });
+
+  it("pages a merged column and saves its sort", async () => {
+    serve({
+      "/boards/all/columns/cards/page?name=To%20Do&cursor=1": { items: [card("c3", "a", "a-todo", { position: 1 })], nextCursor: null },
+      "/boards/all/columns/sort": (_path: string, options?: RequestInit) => ({ name: "To Do", cardSort: JSON.parse(String(options?.body)).cardSort }),
+    });
+    const store = await storeWith();
+    store.selectedId = "all";
+    await store.loadBoard();
+    await store.loadMoreColumn("to do");
+    expect(store.cards.map((item) => item.id)).toEqual(["c1", "c2", "c3"]);
+    expect(store.pageCursors["column:to do"]).toBeNull();
+
+    await store.setColumnSort("to do", "PRIORITY_LAST");
+    expect(apiMock).toHaveBeenCalledWith("/boards/all/columns/sort", expect.objectContaining({ method: "PUT", body: JSON.stringify({ name: "To Do", cardSort: "PRIORITY_LAST" }) }));
+    expect(store.mergedColumns[0].cardSort).toBe("PRIORITY_LAST");
+    expect(store.cards.map((item) => item.id).sort()).toEqual(["c1", "c2"]);
+  });
+
+  it("shares card changes across cached views", async () => {
+    serve({
+      "/boards/a/cards/c1/archive": card("c1", "a", "a-todo", { archived: true }),
+      "/boards/a/cards/c1": card("c1", "a", "a-todo", { title: "Renamed", updatedAt: "u2" }),
+      "/boards/a/cards": card("c9", "a", "a-done"),
+    });
+    const store = await storeWith();
+    store.selectedId = "a"; await store.loadBoard();
+    store.selectedId = "all"; await store.loadBoard();
+
+    await store.updateCard(store.cards.find((item) => item.id === "c1")!, { title: "Renamed", body: "{}", priority: "MEDIUM" });
+    await store.createCard({ title: "", body: "{}", priority: "MEDIUM", statusId: "a-done" }, "a");
+    expect(apiMock).toHaveBeenCalledWith("/boards/a/cards", expect.objectContaining({ method: "POST" }));
+    store.selectedId = "a"; await store.loadBoard();
+    expect(store.cards.find((item) => item.id === "c1")?.title).toBe("Renamed");
+    expect(store.cards.map((item) => item.id)).toContain("c9");
+
+    await store.archiveCard(store.cards.find((item) => item.id === "c1")!);
+    store.selectedId = "all"; await store.loadBoard();
+    expect(store.cards.map((item) => item.id)).not.toContain("c1");
+  });
+
+  it("sends card changes to the card's own board", async () => {
+    serve({
+      "/boards/b/cards/c2/move": card("c2", "b", "b-todo"),
+      "/boards/b/cards/c2/archive": card("c2", "b", "b-todo", { archived: true }),
+      "/boards/b/cards/c2": card("c2", "b", "b-todo", { title: "Edited" }),
+    });
+    const store = await storeWith();
+    store.selectedId = "all"; await store.loadBoard();
+    const target = store.cards.find((item) => item.id === "c2")!;
+
+    await store.updateCard(target, { title: "Edited", body: "{}", priority: "MEDIUM" });
+    expect(apiMock).toHaveBeenCalledWith("/boards/b/cards/c2", expect.objectContaining({ method: "PUT" }));
+    await store.moveCard(target, "b-todo", 0);
+    expect(apiMock).toHaveBeenCalledWith("/boards/b/cards/c2/move", expect.objectContaining({ method: "POST" }));
+    await store.archiveCard(target);
+    expect(apiMock).toHaveBeenCalledWith("/boards/b/cards/c2/archive", expect.objectContaining({ method: "POST" }));
+  });
+
+  // AB-14, AB-16
+  it("adds a created column to the board and the merged columns", async () => {
+    const created = status("b-review", "b", "Review", 1);
+    serve({
+      "/boards/b/cards/c2/move-to-column": { card: card("c2", "b", "b-review"), status: created, statusCreated: true },
+      "/boards/b/cards/in-column": { card: card("c5", "b", "b-review"), status: created, statusCreated: false },
+    });
+    const store = await storeWith();
+    store.selectedId = "b"; await store.loadBoard();
+    store.selectedId = "all"; await store.loadBoard();
+
+    const placed = await store.moveCardToColumn(store.cards.find((item) => item.id === "c2")!, "Review", 0);
+    expect(apiMock).toHaveBeenCalledWith("/boards/b/cards/c2/move-to-column", expect.objectContaining({ method: "POST", body: JSON.stringify({ columnName: "Review", position: 0 }) }));
+    expect(placed.statusCreated).toBe(true);
+    expect(store.mergedColumns.map((column) => column.name)).toEqual(["To Do", "Done", "Review"]);
+    expect(store.cards.find((item) => item.id === "c2")?.statusId).toBe("b-review");
+
+    const added = await store.createCardInColumn("b", "review", { title: "", body: "{}", priority: "MEDIUM" });
+    expect(apiMock).toHaveBeenCalledWith("/boards/b/cards/in-column", expect.objectContaining({ method: "POST", body: JSON.stringify({ columnName: "review", title: "", body: "{}", priority: "MEDIUM" }) }));
+    expect(added.card.id).toBe("c5");
+    expect(store.cards.map((item) => item.id)).toContain("c5");
+
+    store.selectedId = "b"; await store.loadBoard();
+    expect(store.statuses.map((item) => item.id)).toEqual(["b-todo", "b-review"]);
+    expect(store.cards.map((item) => item.id).sort()).toEqual(["c2", "c5"]);
+  });
+
+  // AB-17
+  it("moves a transferred card between cached board views", async () => {
+    serve({ "/boards/a/cards/c1/transfer": { card: card("c1", "b", "b-todo", { position: 1 }), status: boardB[0], statusCreated: false } });
+    const store = await storeWith();
+    store.selectedId = "a"; await store.loadBoard();
+    store.selectedId = "b"; await store.loadBoard();
+    store.selectedId = "all"; await store.loadBoard();
+
+    const moved = await store.transferCard(store.cards.find((item) => item.id === "c1")!, "b");
+    expect(apiMock).toHaveBeenCalledWith("/boards/a/cards/c1/transfer", expect.objectContaining({ method: "POST", body: JSON.stringify({ boardId: "b" }) }));
+    expect(moved.card.boardId).toBe("b");
+    store.selectedId = "a"; await store.loadBoard();
+    expect(store.cards.map((item) => item.id)).toEqual([]);
+    store.selectedId = "b"; await store.loadBoard();
+    expect(store.cards.map((item) => item.id).sort()).toEqual(["c1", "c2"]);
+  });
+
+  // AB-20
+  it("loads the All boards timeline", async () => {
+    serve({ "/boards/all/gantt": [card("dated", "a", "a-todo", { startDate: "2026-09-02", dueDate: "2026-09-03" })] });
+    const store = await storeWith();
+    store.selectedId = "all";
+    await store.loadGantt("2026-09-01", "2026-09-10");
+    expect(apiMock).toHaveBeenCalledWith("/boards/all/gantt?from=2026-09-01&to=2026-09-10");
+    expect(store.ganttCards.map((item) => item.id)).toEqual(["dated"]);
+    const calls = apiMock.mock.calls.length;
+    await store.loadGantt("2026-09-01", "2026-09-10");
+    expect(apiMock.mock.calls.length).toBe(calls);
+  });
+
+  it("keeps All boards selected when the board list loads", async () => {
+    serve();
+    const store = await storeWith();
+    store.selectedId = "all";
+    await store.loadBoards();
+    expect(store.selectedId).toBe("all");
+  });
+
+  it("forgets cached views when boards change elsewhere", async () => {
+    serve();
+    const store = await storeWith();
+    await store.loadBoards();
+    store.selectedId = "a"; await store.loadBoard();
+    store.selectedId = "b"; await store.loadBoard();
+    store.invalidate();
+    const calls = apiMock.mock.calls.length;
+    await store.loadBoards();
+    store.selectedId = "a"; await store.loadBoard();
+    expect(apiMock.mock.calls.length).toBeGreaterThan(calls + 1);
+  });
+});
