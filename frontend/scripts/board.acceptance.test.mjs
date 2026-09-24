@@ -913,7 +913,7 @@ describe("board browser acceptance", () => {
     await closeCard(page);
     let now = await ring();
     assert.ok(now.marked && now.content !== "none", "The closed card is ringed");
-    assert.equal(now.name, "card-return-fade");
+    assert.match(now.name, /^card-return-fade/, "Scoped keyframes carry a suffix");
     assert.equal(now.duration, "3s");
     assert.equal(now.events, "none");
     assert.deepEqual(await card.boundingBox(), before, "The ring does not move or resize the card");

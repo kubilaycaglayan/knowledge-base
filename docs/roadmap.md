@@ -117,6 +117,9 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   runs. A running timer hides the card buttons without shifting the cards. The
   button starts a timer for that path with the card title as the description.
   Acceptance: `docs/board-card-timer-acceptance-checklist.md`.
+- [x] Closing a card's dialog rings that card on the board, and the ring
+  fades out over 3 seconds (static, then removed, with reduced motion).
+  Acceptance: `docs/card-close-highlight-acceptance-checklist.md`.
 - [x] Rich-text formatting toolbar at the bottom of note and card bodies
   (text style, bold, italic, underline, strikethrough, lists, checklist,
   quote, code block), with paragraphs one line apart.

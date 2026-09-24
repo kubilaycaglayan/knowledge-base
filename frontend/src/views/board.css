@@ -89,6 +89,10 @@
 .board-settings-footer { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-top:.5rem; padding-top:.75rem; border-top:1px solid var(--border-color); }
 /* A card takes its path colour as a 6px top and left edge. */
 .board-card.accented { border-top:6px solid var(--card-accent); border-left:6px solid var(--card-accent); }
+/* CH-02: a ring around the card whose dialog just closed; only its opacity animates. */
+.board-card { position:relative; } .board-card.just-closed::after { content:""; position:absolute; inset:-4px; border:2px solid #e8754e; border-radius:13px; box-shadow:0 0 0 4px #e8754e33; pointer-events:none; animation:card-return-fade 3s cubic-bezier(.4, 0, .6, 1) forwards; }
+@keyframes card-return-fade { 0%, 35% { opacity:1; } 100% { opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .board-card.just-closed::after { animation:none; } }
 /* Kanban width toggle: a small floating control at the area's top-right.
    Expanded, the area spans the viewport less the shell's side gutters. */
 .kanban-area { position:relative; }
