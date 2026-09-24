@@ -500,7 +500,9 @@ export const useTimerStore = defineStore("timer", () => {
   }
 
   function resume() {
-    void sync();
+    // A live socket already pushes every timer change; only catch up over
+    // HTTP when it is down.
+    if (!socketConnected.value) void sync();
   }
   function acquire() {
     if (++consumers > 1) return;
@@ -523,6 +525,7 @@ export const useTimerStore = defineStore("timer", () => {
       socket.close();
       socket = undefined;
     }
+    socketConnected.value = false;
     window.removeEventListener("focus", resume);
     document.removeEventListener("visibilitychange", resume);
   }
@@ -583,6 +586,7 @@ export const useTimerStore = defineStore("timer", () => {
       socket.close();
       socket = undefined;
     }
+    socketConnected.value = false;
     version.value++;
     if (consumers > 0)
       queueMicrotask(() => {
