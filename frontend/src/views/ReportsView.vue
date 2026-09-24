@@ -696,11 +696,11 @@ onBeforeUnmount(() =>
             >
               <template #chip="{ item }">
                 <v-chip
-                  :text="item.title"
+                  :text="item.name"
                   closable
                   close-icon="$close"
-                  :aria-label="`Selected path: ${item.title}`"
-                  @click:close="removePath(String(item.value))"
+                  :aria-label="`Selected path: ${item.name}`"
+                  @click:close="removePath(item.id)"
                 />
               </template>
             </v-select>
@@ -724,11 +724,11 @@ onBeforeUnmount(() =>
             >
               <template #chip="{ item }">
                 <v-chip
-                  :text="item.title"
+                  :text="item.name"
                   closable
                   close-icon="$close"
-                  :aria-label="`Selected label: ${item.title}`"
-                  @click:close="removeLabel(String(item.value))"
+                  :aria-label="`Selected label: ${item.name}`"
+                  @click:close="removeLabel(item.id)"
                 />
               </template>
             </v-select>
