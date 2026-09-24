@@ -21,7 +21,8 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
   : "${PROXY_DEV_PORT:=26000}"
   : "${PROXY_HTTP_PORT:=26080}"
   : "${PROXY_HTTPS_PORT:=26443}"
-  export PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT
+  : "${PROXY_CLOUDFLARE_PORT:=26090}"
+  export PROXY_DEV_PORT PROXY_HTTP_PORT PROXY_HTTPS_PORT PROXY_CLOUDFLARE_PORT
 fi
 
 compose_files=(-f docker-compose.yml -f docker-compose.smoke.yml)
@@ -65,7 +66,7 @@ trap cleanup EXIT
 services=(db api)
 content_json=(--header='Content-Type: application/json')
 if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
-  services+=(web proxy)
+  services+=(web proxy proxy-cloudflare)
 fi
 smoke_pid="${BASHPID:-$$}"
 buildx_builder="knowledge-base-smoke-${COMPOSE_PROJECT_NAME:-knowledge-base}-${smoke_pid}-$(date +%s%N)"
@@ -215,6 +216,22 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
     --data "{\"email\":\"$proxy_email\",\"password\":\"correct-horse-battery\"}" \
     "https://localhost:${PROXY_HTTPS_PORT}/api/v1/auth/register" \
     | grep -q '"token"'
+  # The timer WebSocket must reach the API through both the local proxy and
+  # the production (Cloudflare) proxy config: a proxy that serves the web app
+  # for /ws/* instead leaves every client polling /timers/current.
+  for proxy_port in "$PROXY_HTTP_PORT" "$PROXY_CLOUDFLARE_PORT"; do
+    for attempt in {1..30}; do
+      if curl -fsS --connect-timeout 2 --max-time 5 "http://localhost:${proxy_port}/" | grep -q 'id="app"'; then
+        break
+      fi
+      if [[ "$attempt" == 30 ]]; then
+        echo "proxy on port ${proxy_port} did not become ready" >&2
+        exit 1
+      fi
+      sleep 2
+    done
+    node scripts/check-timer-websocket.mjs "http://localhost:${proxy_port}" --round-trip
+  done
 fi
 
 api() { compose exec -T api wget -qO- "$@"; }

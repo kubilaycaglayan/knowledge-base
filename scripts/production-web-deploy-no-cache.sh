@@ -51,6 +51,13 @@ done
 
 echo "Starting the rebuilt stack..."
 docker compose "${compose_args[@]}" up -d --force-recreate
+
+# Containers can be healthy while the public timer WebSocket is misrouted.
+if ! ./scripts/verify-production-timer-websocket.sh; then
+  echo 'Production timer WebSocket check failed: the deployed stack is running but clients will fall back to polling.' >&2
+  exit 1
+fi
+
 echo 'Removing old production image builds...'
 ./scripts/prune-production-images.sh || echo 'Warning: old production images were not pruned.' >&2
 docker compose "${compose_args[@]}" ps

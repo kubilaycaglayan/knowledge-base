@@ -25,6 +25,14 @@ for backup_db_url_name in BACKUP_DB_URL; do
   [[ "$backup_db_url" == postgresql://* || "$backup_db_url" == postgres://* ]] || fail "$backup_db_url_name must be a PostgreSQL URL"
   [[ "$backup_db_url" != *[[:space:]]* && "$backup_db_url" != *$'\n'* && "$backup_db_url" != *$'\r'* ]] || fail "$backup_db_url_name must not contain whitespace or line breaks"
 done
+# The post-deploy timer WebSocket check runs on this host with Node's
+# built-in WebSocket; fail before any container is replaced.
+node -e 'process.exit(typeof WebSocket === "function" ? 0 : 1)' 2>/dev/null \
+  || fail 'Node.js 22 or newer is required for the post-deploy timer WebSocket check'
+if [[ -n "${TIMER_WS_EMAIL:-}" || -n "${TIMER_WS_PASSWORD:-}" ]]; then
+  [[ -n "${TIMER_WS_EMAIL:-}" && -n "${TIMER_WS_PASSWORD:-}" ]] \
+    || fail 'TIMER_WS_EMAIL and TIMER_WS_PASSWORD must be set together'
+fi
 [[ "$BACKUP_DB_CONFIRM" == 1 ]] || fail 'BACKUP_DB_CONFIRM must be 1 to authorize the confirmed backup database target'
 case "$BACKUP_DB_URL" in
   */[A-Za-z0-9_-]*|*/[A-Za-z0-9_-]*\?*) ;;

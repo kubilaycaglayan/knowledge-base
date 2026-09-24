@@ -19,3 +19,12 @@ services:
         "127.0.0.1:${PROXY_HTTP_PORT:-26080}:80",
         "127.0.0.1:${PROXY_HTTPS_PORT:-26443}:443",
       ]
+  # Production serves the app through Caddyfile.cloudflare, not the main
+  # Caddyfile. Full-stack smoke runs it too so its routing (including the
+  # timer WebSocket) is exercised before it is deployed.
+  proxy-cloudflare:
+    image: caddy:2-alpine
+    volumes:
+      - ./deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro
+    ports: ["127.0.0.1:${PROXY_CLOUDFLARE_PORT:-26090}:80"]
+    depends_on: [web, api]

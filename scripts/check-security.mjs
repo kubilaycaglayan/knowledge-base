@@ -20,6 +20,9 @@ const developmentCompose = read("docker-compose.dev.yml");
 const productionCompose = read("docker-compose.production.yml");
 const iosDevelopmentCompose = read("docker-compose.ios-dev.yml");
 const smokeCompose = read("docker-compose.smoke.yml");
+const smokeTests = read("scripts/run-smoke-tests.sh");
+const verifyWorkflow = read(".github/workflows/verify.yml");
+const verifyTimerWebSocket = read("scripts/verify-production-timer-websocket.sh");
 
 const checks = [
   [
@@ -220,6 +223,46 @@ const checks = [
     /handle \/ws\/\* \{\s*reverse_proxy api:8080\s*\}/.test(caddyfile),
     `${name} routes timer WebSockets to the API`,
   ]),
+  [
+    /proxy-cloudflare:[\s\S]*\.\/deployment\/Caddyfile\.cloudflare:\/etc\/caddy\/Caddyfile/.test(
+      smokeCompose,
+    ) && smokeTests.includes("services+=(web proxy proxy-cloudflare)"),
+    "full-stack smoke runs the production Cloudflare proxy config",
+  ],
+  [
+    smokeTests.includes('for proxy_port in "$PROXY_HTTP_PORT" "$PROXY_CLOUDFLARE_PORT"; do') &&
+      smokeTests.includes(
+        'node scripts/check-timer-websocket.mjs "http://localhost:${proxy_port}" --round-trip',
+      ),
+    "full-stack smoke exercises the timer WebSocket through both proxies",
+  ],
+  ...[
+    ["production deploy", deployProduction],
+    ["no-cache production deploy", deployProductionNoCache],
+  ].map(([name, script]) => [
+    script.includes("./scripts/verify-production-timer-websocket.sh"),
+    `${name} fails when the public timer WebSocket does not reach the API`,
+  ]),
+  [
+    verifyTimerWebSocket.includes('public_url="https://${DOMAIN}"') &&
+      verifyTimerWebSocket.includes('node scripts/check-timer-websocket.mjs "$public_url"'),
+    "post-deploy timer WebSocket check targets the public domain",
+  ],
+  [
+    preflight.includes("typeof WebSocket"),
+    "preflight requires a Node.js with WebSocket before replacing containers",
+  ],
+  [
+    /smoke:[\s\S]*setup-node@v4[\s\S]*node-version: 22[\s\S]*run-smoke-tests\.sh/.test(verifyWorkflow) &&
+      verifyWorkflow.includes("deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro"),
+    "CI validates the Cloudflare proxy config and runs smoke with Node 22",
+  ],
+  [
+    read("scripts/run-timer-websocket-e2e.sh").includes("proxy-cloudflare") &&
+      read("scripts/run-timer-websocket-e2e.sh").includes("npm run test:timer:e2e") &&
+      verifyWorkflow.includes("./scripts/run-timer-websocket-e2e.sh"),
+    "CI runs the browser timer WebSocket acceptance behind the production proxy config",
+  ],
   [
     developmentDocs.includes("http://localhost:3000") &&
       developmentDocs.includes("0.0.0.0:5177") &&
