@@ -138,3 +138,8 @@
 .board-more-separator { height:1px; margin:.3rem .2rem; background:var(--border-color); }
 .board-more-item .board-more-check { margin-right:.45rem; color:var(--muted-text); }
 .board-more-item[role="menuitemradio"] .board-more-check { visibility:hidden; } .board-more-item[aria-checked="true"] { font-weight:600; } .board-more-item[aria-checked="true"] .board-more-check { visibility:visible; color:inherit; }
+/* All boards: an icon-only tab before the board tabs, and a one-line board badge beside each card's priority. */
+.board-all-tab { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; min-width:36px; min-height:36px; padding:.25rem .45rem; border:0; border-radius:6px; background:transparent; color:var(--muted-text); cursor:pointer; touch-action:manipulation; } @media (hover: hover) { .board-all-tab:hover { background:var(--workspace-hover); color:inherit; } } .board-all-tab.selected, .board-all-tab.selected:hover { background:#334155; color:#fff; }
+@media (max-width: 700px) { .board-all-tab { min-width:44px; min-height:44px; } }
+.board-card-top .priority { flex:0 0 auto; }
+.board-card-board { display:flex; align-items:center; flex:1 1 auto; min-width:0; margin-right:auto; color:var(--muted-text); font-size:.7rem; line-height:1.2rem; white-space:nowrap; } .board-card-board .board-tab-dot { flex:0 0 auto; margin-right:.3rem; } .board-card-board-name { min-width:0; overflow:hidden; text-overflow:ellipsis; }
