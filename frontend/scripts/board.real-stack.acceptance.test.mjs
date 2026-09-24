@@ -697,5 +697,68 @@ describe("board real-stack acceptance", () => {
     await boardSettled();
     assert.equal(await boardTab(name).count(), 0);
   });
+
+  // AB-11, AB-12, AB-14, AB-17, AB-19
+  it("shows every board in the All boards view, creates missing columns, and moves cards across boards", async () => {
+    const stamp = Date.now();
+    const alpha = `AB Alpha ${stamp}`, beta = `AB Beta ${stamp}`, review = `Review ${stamp}`;
+    const ids = await page.evaluate(async ({ alpha, beta, review }) => {
+      const headers = { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` };
+      const post = async (path, body) => (await fetch(`/api/v1${path}`, { method: "POST", headers, body: JSON.stringify(body) })).json();
+      const a = await post("/boards", { name: alpha });
+      const b = await post("/boards", { name: beta });
+      await post(`/boards/${a.id}/statuses`, { name: review });
+      await post(`/boards/${a.id}/cards`, { title: "AB alpha card" });
+      await post(`/boards/${b.id}/cards`, { title: "AB beta card" });
+      return { alpha: a.id, beta: b.id };
+    }, { alpha, beta, review });
+    const api = (path) => page.evaluate(async (target) => (await fetch(`/api/v1${target}`, { headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` } })).json(), path);
+
+    await page.goto(`${baseUrl}/board`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    await boardSettled();
+    await clickCentered(page.getByRole("button", { name: "All boards" }));
+    await page.waitForURL(/board=all/);
+    const backlog = page.locator(".kanban-column").filter({ has: page.getByRole("heading", { name: "Backlog", exact: true }) });
+    await backlog.locator(".board-card", { hasText: "AB alpha card" }).waitFor();
+    assert.equal((await backlog.locator(".board-card", { hasText: "AB beta card" }).locator(".board-card-board").innerText()).trim(), beta);
+    await page.getByRole("heading", { name: review, exact: true }).waitFor();
+    const results = await new AxeBuilder({ page }).include(".kanban").analyze();
+    assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+
+    await page.evaluate(({ review }) => {
+      const source = [...document.querySelectorAll(".board-card")].find((item) => item.textContent.includes("AB beta card"));
+      const target = [...document.querySelectorAll(".kanban-column")].find((column) => column.querySelector("h2")?.textContent === review);
+      const dataTransfer = new DataTransfer();
+      source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+    }, { review });
+    await page.getByText(`Added “${review}” to “${beta}”.`).waitFor();
+    const betaStatuses = await api(`/boards/${ids.beta}/statuses`);
+    const betaReview = betaStatuses.find((item) => item.name === review);
+    assert.ok(betaReview, "Beta gained the column");
+    assert.equal((await api(`/boards/${ids.beta}/cards`)).find((item) => item.title === "AB beta card").statusId, betaReview.id);
+
+    await clickCentered(backlog.locator(".board-card", { hasText: "AB alpha card" }));
+    await page.locator(".card-editor select[name='board']").selectOption(ids.beta);
+    await closeCard();
+    await backlog.locator(".board-card", { hasText: "AB alpha card" }).locator(".board-card-board", { hasText: beta }).waitFor();
+    assert.equal((await api(`/boards/${ids.beta}/cards`)).some((item) => item.title === "AB alpha card"), true, "The card moved to Beta on the server");
+    // The preference is saved in the background once the move lands.
+    let remembered = null;
+    for (let attempt = 0; attempt < 20 && remembered !== ids.beta; attempt += 1) { remembered = (await api("/preferences")).lastCardBoardId; if (remembered !== ids.beta) await page.waitForTimeout(100); }
+    assert.equal(remembered, ids.beta, "The chosen board is remembered");
+
+    const boardRequests = [];
+    const track = (request) => { if (/\/api\/v1\/boards/.test(request.url())) boardRequests.push(request.url()); };
+    page.on("request", track);
+    await clickCentered(page.getByRole("link", { name: "Paths" }));
+    await page.waitForURL(/\/paths/);
+    await page.goBack();
+    await backlog.locator(".board-card", { hasText: "AB alpha card" }).waitFor();
+    page.off("request", track);
+    assert.deepEqual(boardRequests, [], "Coming back to the All boards view fetches nothing");
+  });
 });
 

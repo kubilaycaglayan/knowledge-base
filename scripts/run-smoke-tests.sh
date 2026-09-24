@@ -270,6 +270,19 @@ if [[ "$path_boards" != *"\"pathId\":\"$path_id\""* ]]; then
   echo "path board was not created for $path_id" >&2
   exit 1
 fi
+# The All boards view merges tab boards' columns by name; a card placed in a
+# column its board lacks creates that column (V49 adds per-user column sorts).
+path_board_id="$(printf '%s' "$path_boards" | grep -o "{[^{}]*\"pathId\":\"$path_id\"[^{}]*}" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+[[ -n "$path_board_id" ]]
+api "${header[@]}" http://localhost:8080/api/v1/boards/all/columns | grep -q '"name":"Backlog"'
+api "${header[@]}" "${content_json[@]}" \
+  --post-data='{"columnName":"Smoke review","title":"Smoke all-boards card","priority":"LOW"}' \
+  "http://localhost:8080/api/v1/boards/$path_board_id/cards/in-column" | grep -q '"statusCreated":true'
+api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data='{"name":"Smoke review","cardSort":"PRIORITY_LAST"}' \
+  http://localhost:8080/api/v1/boards/all/columns/sort | grep -q '"cardSort":"PRIORITY_LAST"'
+api "${header[@]}" "http://localhost:8080/api/v1/boards/all/columns/cards/page?name=Smoke%20review&cursor=-1&limit=20" \
+  | grep -q 'Smoke all-boards card'
 import_start="$(date -u -d '20 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 import_end="$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 clockify_payload="$(

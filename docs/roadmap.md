@@ -124,3 +124,11 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   recent paths are derived from time entries. The browser keeps only the
   sign-in token and a first-paint cache.
   Acceptance: `docs/user-preferences-acceptance-checklist.md`.
+- [x] Show every board at once: an icon-only All boards button left of the
+  board tabs merges every tab board's columns by name, mixes their cards by
+  position or priority, and badges each card with its board. Cards stay fully
+  editable; dropping or adding a card into a column its board lacks creates
+  that column, and the editor's Board select moves a card between boards.
+  Column sort cycles Unsorted, Priority first, and Priority last (V49), and
+  the Boards page serves boards it already loaded from the Pinia cache.
+  Acceptance: `docs/all-boards-view-acceptance-checklist.md`.
