@@ -718,16 +718,17 @@ describe("board browser acceptance", () => {
     await snackbar.waitFor({ state: "detached" });
   });
 
-  it("sorts a column by priority from its header", async (t) => {
+  // CS-04, AB-13
+  it("cycles a column's sort from its header", async (t) => {
     const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
     await page.locator(".board-card").first().waitFor();
-    const toggle = page.getByRole("button", { name: "Sort Backlog by priority" });
-    assert.equal(await toggle.getAttribute("aria-pressed"), "false");
     const reloadsBefore = firstPageRequests.filter((id) => id === "status-0").length;
-    await toggle.click();
-    await page.waitForFunction(() => document.querySelector('button[aria-label="Sort Backlog by priority"]')?.getAttribute("aria-pressed") === "true");
-    assert.deepEqual(sortRequests, ["status-0:PRIORITY"]);
-    assert.equal(firstPageRequests.filter((id) => id === "status-0").length, reloadsBefore + 1, "Sorting reloads the column from its first page");
+    await page.getByRole("button", { name: "Sort Backlog: unsorted" }).click();
+    await page.getByRole("button", { name: "Sort Backlog: priority first" }).waitFor();
+    await page.getByRole("button", { name: "Sort Backlog: priority first" }).click();
+    await page.getByRole("button", { name: "Sort Backlog: priority last" }).waitFor();
+    assert.deepEqual(sortRequests, ["status-0:PRIORITY", "status-0:PRIORITY_LAST"]);
+    assert.equal(firstPageRequests.filter((id) => id === "status-0").length, reloadsBefore + 2, "Sorting reloads the column from its first page");
     await page.locator(".board-card").first().waitFor();
   });
 
@@ -803,7 +804,7 @@ describe("board browser acceptance", () => {
     const { page } = await fixture(t);
     const column = page.locator(".kanban-column").first();
     await column.getByRole("heading", { name: "Ship timeline" }).waitFor();
-    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Sort Backlog by priority", "Add card to Backlog"], "Columns only offer sorting and adding a card");
+    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Sort Backlog: unsorted", "Add card to Backlog"], "Columns only offer sorting and adding a card");
     const settings = await openBoardSettings(page);
     await settings.getByRole("textbox", { name: "Status name Backlog" }).fill("Ready");
     await settings.getByRole("textbox", { name: "Status name Backlog" }).press("Enter");
@@ -1276,3 +1277,183 @@ describe("board tab overflow", () => {
     assert.ok(await current.evaluate((element) => element.scrollWidth > element.clientWidth), "The long name is truncated");
   });
 });
+
+describe("All boards view", () => {
+  // Two boards whose columns partly share names: Work (custom) and a path board with a long name.
+  async function allBoardsFixture(t, width = 1280) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
+    t.after(() => context.close());
+    await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
+    const boards = [{ id: "work", name: "Work", archived: false, pathId: null, hidden: false, pinned: false }, { id: "home", name: "Home improvement projects for the whole year", archived: false, pathId: "path-1", hidden: false, pinned: false }];
+    const statuses = [["w-todo", "work", "To Do"], ["w-done", "work", "Done"], ["h-todo", "home", "To do"], ["h-wait", "home", "Waiting"]].map(([id, boardId, name], index) => ({ id, boardId, name, position: index % 2, archived: false, cardSort: "MANUAL" }));
+    const card = (id, boardId, statusId, position, extra = {}) => ({ id, boardId, statusId, title: id, body: "{}", priority: "MEDIUM", position, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1", ...extra });
+    const cards = [card("Work first", "work", "w-todo", 0), card("Work second", "work", "w-todo", 1, { priority: "URGENT" }), card("Home first", "home", "h-todo", 0, { pathIds: ["path-1"] })];
+    const preferences = { theme: "light", kanbanWide: false, recentPathIds: [], lastCardBoardId: null };
+    const boardReads = [];
+    const columnSorts = {};
+    const key = (name) => name.trim().toLowerCase();
+    const columns = () => {
+      const merged = [];
+      for (const board of boards) for (const status of statuses.filter((item) => item.boardId === board.id && !item.archived).sort((a, b) => a.position - b.position)) {
+        const column = merged.find((item) => key(item.name) === key(status.name));
+        if (column) column.statuses.push(status); else merged.push({ name: status.name, cardSort: columnSorts[key(status.name)] || "MANUAL", statuses: [status] });
+      }
+      return merged;
+    };
+    const findOrCreate = (boardId, name) => {
+      const existing = statuses.find((status) => status.boardId === boardId && !status.archived && key(status.name) === key(name));
+      if (existing) return { status: existing, statusCreated: false };
+      const status = { id: `${boardId}-${key(name)}`, boardId, name: name.trim(), position: statuses.filter((item) => item.boardId === boardId).length, archived: false, cardSort: "MANUAL" };
+      statuses.push(status);
+      return { status, statusCreated: true };
+    };
+    const renumber = (statusId) => cards.filter((item) => item.statusId === statusId && !item.archived).sort((a, b) => a.position - b.position).forEach((item, index) => { item.position = index; });
+    await context.route("**/api/**", async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const path = url.pathname.replace("/api/v1", "");
+      const method = request.method();
+      let body = [];
+      let status = 200;
+      let match;
+      if (method === "GET" && path.startsWith("/boards")) boardReads.push(`${path}${url.search}`);
+      if (path === "/preferences") { if (method === "PUT") Object.assign(preferences, request.postDataJSON()); body = preferences; }
+      else if (path === "/paths") body = [{ id: "path-1", name: "Home", color: "#12ab78", status: "ACTIVE", boardId: "home", boardHidden: false }];
+      else if (path === "/labels") body = [];
+      else if (path === "/timers/current") body = null;
+      else if (path === "/timers/draft") body = {};
+      else if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : boards;
+      else if (path === "/boards/all/columns") body = columns();
+      else if (path === "/boards/all/columns/sort") { const input = request.postDataJSON(); columnSorts[key(input.name)] = input.cardSort; body = input; }
+      else if (path === "/boards/all/columns/cards/page") {
+        const column = columns().find((item) => key(item.name) === key(url.searchParams.get("name")));
+        const ids = column ? column.statuses.map((item) => item.id) : [];
+        body = { items: cards.filter((item) => ids.includes(item.statusId) && !item.archived).sort((a, b) => a.position - b.position || ids.indexOf(a.statusId) - ids.indexOf(b.statusId)), nextCursor: null };
+      } else if ((match = path.match(/^\/boards\/([^/]+)\/statuses$/))) body = statuses.filter((item) => item.boardId === match[1]);
+      else if ((match = path.match(/^\/boards\/([^/]+)\/cards\/page$/))) body = { items: cards.filter((item) => item.boardId === match[1] && item.statusId === url.searchParams.get("statusId")).sort((a, b) => a.position - b.position), nextCursor: null };
+      else if ((match = path.match(/^\/boards\/([^/]+)\/cards\/in-column$/))) {
+        const input = request.postDataJSON();
+        const placed = findOrCreate(match[1], input.columnName);
+        const created = card(`New ${cards.length}`, match[1], placed.status.id, cards.filter((item) => item.statusId === placed.status.id).length, { title: "" });
+        cards.push(created);
+        body = { card: created, ...placed };
+        status = 201;
+      } else if ((match = path.match(/^\/boards\/([^/]+)\/cards$/)) && method === "POST") {
+        const input = request.postDataJSON();
+        const created = card(`New ${cards.length}`, match[1], input.statusId, cards.filter((item) => item.statusId === input.statusId).length, { title: "" });
+        cards.push(created);
+        body = created;
+        status = 201;
+      } else if ((match = path.match(/^\/boards\/([^/]+)\/cards\/([^/]+)\/(move|move-to-column|transfer)$/))) {
+        const moving = cards.find((item) => item.id === decodeURIComponent(match[2]));
+        const input = request.postDataJSON();
+        const source = moving.statusId;
+        let placed;
+        if (match[3] === "transfer") { const current = statuses.find((item) => item.id === moving.statusId); placed = findOrCreate(input.boardId, current.name); moving.boardId = input.boardId; moving.position = cards.filter((item) => item.statusId === placed.status.id).length; }
+        else placed = match[3] === "move" ? { status: statuses.find((item) => item.id === input.statusId), statusCreated: false } : findOrCreate(match[1], input.columnName);
+        const others = cards.filter((item) => item.statusId === placed.status.id && item.id !== moving.id).sort((a, b) => a.position - b.position);
+        if (match[3] !== "transfer") { others.splice(Math.min(input.position, others.length), 0, moving); others.forEach((item, index) => { item.position = index; }); }
+        moving.statusId = placed.status.id;
+        renumber(source);
+        body = match[3] === "move" ? moving : { card: moving, ...placed };
+      } else if ((match = path.match(/^\/boards\/([^/]+)\/cards\/([^/]+)$/)) && method === "PUT") {
+        const editing = cards.find((item) => item.id === decodeURIComponent(match[2]));
+        Object.assign(editing, request.postDataJSON(), { updatedAt: `t${Date.now()}` });
+        body = editing;
+      }
+      await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+    });
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=work&view=kanban`);
+    await page.getByRole("heading", { name: "Boards" }).waitFor();
+    await page.locator(".board-card").first().waitFor();
+    return { page, boardReads, preferences, statuses, cards };
+  }
+
+  const columnTitles = (page, index) => page.locator(".kanban-column").nth(index).locator(".board-card h3").allTextContents();
+  async function dragCard(page, title, targetSelector) {
+    await page.evaluate(({ title, targetSelector }) => {
+      const source = [...document.querySelectorAll(".board-card")].find((item) => item.querySelector("h3")?.textContent === title);
+      const target = document.querySelector(targetSelector);
+      const dataTransfer = new DataTransfer();
+      source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+    }, { title, targetSelector });
+  }
+
+  // AB-11, AB-12, AB-14, AB-19
+  it("shows every board's cards in the All boards view", async (t) => {
+    const { page, boardReads } = await allBoardsFixture(t);
+    const all = page.getByRole("button", { name: "All boards" });
+    assert.equal((await all.textContent()).trim(), "");
+    await all.click();
+    await page.waitForURL(/board=all/);
+    assert.equal(await all.getAttribute("aria-current"), "true");
+    await page.locator(".kanban-column h2", { hasText: "Waiting" }).waitFor();
+    assert.deepEqual(await page.locator(".kanban-column h2").allTextContents(), ["To Do", "Done", "Waiting"]);
+    assert.deepEqual(await columnTitles(page, 0), ["Work first", "Home first", "Work second"], "Cards of different boards mix by position");
+    assert.deepEqual(await page.locator(".kanban-column").first().locator(".board-card-board").allTextContents(), ["Work", "Home improvement projects for the whole year", "Work"]);
+    const results = await new AxeBuilder({ page }).analyze();
+    assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+    await page.screenshot({ path: join(screenshotDir, "all-boards-desktop.png"), fullPage: true });
+
+    await page.getByRole("button", { name: "Sort To Do: unsorted" }).click();
+    await page.getByRole("button", { name: "Sort To Do: priority first" }).waitFor();
+
+    await dragCard(page, "Work first", ".kanban-column:nth-child(3)");
+    await page.getByText("Added “Waiting” to “Work”.").waitFor();
+    await page.locator(".kanban-column").nth(2).getByRole("heading", { name: "Work first" }).waitFor();
+
+    const reads = boardReads.length;
+    await page.getByRole("link", { name: "Paths" }).click();
+    await page.waitForURL(/\/paths/);
+    await page.goBack();
+    await page.locator(".kanban-column").nth(2).getByRole("heading", { name: "Work first" }).waitFor();
+    await page.locator(".board-tab", { hasText: "Work" }).click();
+    await page.locator(".kanban-column h2", { hasText: "Waiting" }).waitFor();
+    assert.deepEqual(boardReads.slice(reads), [], "Coming back and switching to a loaded board fetches nothing");
+  });
+
+  // AB-12
+  it("keeps the board badge on the priority row on a phone", async (t) => {
+    const { page } = await allBoardsFixture(t, 390);
+    const all = page.getByRole("button", { name: "All boards" });
+    const box = await all.boundingBox();
+    assert.ok(box.width >= 44 && box.height >= 44, "The All boards button is a 44px target on phones");
+    await all.click();
+    const homeCard = page.locator(".board-card", { hasText: "Home first" });
+    await homeCard.waitFor();
+    const badge = homeCard.locator(".board-card-board");
+    const [badgeBox, priorityBox] = [await badge.boundingBox(), await homeCard.locator(".priority").boundingBox()];
+    assert.ok(Math.abs(badgeBox.y + badgeBox.height / 2 - (priorityBox.y + priorityBox.height / 2)) <= 4, "The badge shares the priority's row");
+    assert.ok(badgeBox.height <= 24, "The badge stays on one line");
+    assert.ok(await homeCard.locator(".board-card-board-name").evaluate((element) => element.scrollWidth > element.clientWidth), "A long board name is truncated");
+    const results = await new AxeBuilder({ page }).analyze();
+    assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+    await page.screenshot({ path: join(screenshotDir, "all-boards-mobile.png"), fullPage: true });
+  });
+
+  // AB-16, AB-17
+  it("adds and moves cards across boards from the All boards view", async (t) => {
+    const { page, preferences } = await allBoardsFixture(t);
+    await page.getByRole("button", { name: "All boards" }).click();
+    await page.locator(".board-card", { hasText: "Home first" }).click();
+    const editor = page.locator(".card-editor");
+    assert.deepEqual(await editor.locator('select[name="status"] optgroup').evaluateAll((groups) => groups.map((group) => group.label)), ["Home improvement projects for the whole year", "Other columns"]);
+    await editor.locator('select[name="board"]').selectOption("work");
+    await page.locator(".kanban-column").first().locator(".board-card", { hasText: "Home first" }).locator(".board-card-board", { hasText: "Work" }).waitFor();
+    assert.equal(preferences.lastCardBoardId, "work");
+    await editor.locator('select[name="status"]').selectOption({ label: "Waiting" });
+    await page.getByText("Added “Waiting” to “Work”.").waitFor();
+    await page.getByRole("button", { name: "Close card" }).click();
+    await editor.waitFor({ state: "detached" });
+
+    await page.getByRole("button", { name: "Add card to Done" }).click();
+    await editor.waitFor();
+    assert.equal(await editor.locator('select[name="board"]').inputValue(), "work", "New cards go to the last chosen board");
+    await page.getByRole("button", { name: "Close card" }).click();
+    await page.locator(".kanban-column").nth(1).locator(".board-card").first().waitFor();
+  });
+});
+
