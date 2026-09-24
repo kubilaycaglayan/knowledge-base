@@ -1,6 +1,6 @@
 import { Editor } from "@tiptap/core";
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import vuetify from "../plugins/vuetify";
 import { richTextExtensions } from "../lib/rich-text";
 import RichTextToolbar from "./RichTextToolbar.vue";
@@ -9,6 +9,17 @@ const paragraph = (text: string) => ({ type: "paragraph", content: [{ type: "tex
 
 describe("RichTextToolbar", () => {
   let editor: Editor;
+  // jsdom has no layout, so Range lacks getClientRects, which ProseMirror calls
+  // when a toolbar command scrolls the selection into view.
+  const rangeProto = Range.prototype as Partial<Range>;
+  beforeAll(() => {
+    rangeProto.getClientRects = () => [] as unknown as DOMRectList;
+    rangeProto.getBoundingClientRect = () => new DOMRect();
+  });
+  afterAll(() => {
+    delete rangeProto.getClientRects;
+    delete rangeProto.getBoundingClientRect;
+  });
   function mountToolbar(content: object = { type: "doc", content: [paragraph("Hello world")] }) {
     editor = new Editor({ element: document.body.appendChild(document.createElement("div")), extensions: richTextExtensions(), content });
     return mount(RichTextToolbar, { props: { editor }, attachTo: document.body, global: { plugins: [vuetify] } });
