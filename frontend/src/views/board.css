@@ -123,7 +123,7 @@
 
 /* A path card's play button sits at its top right, beside the priority. */
 .board-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; min-height:1.2rem; } .board-card-top .board-card-play { flex:0 0 auto; margin:-.35rem -.35rem 0 0; }
-.card-editor-header .board-card-play { flex:0 0 auto; }
+.card-editor-header .board-card-play { flex:0 0 auto; } .board-card-play.play-hidden { visibility:hidden; }
 .card-path-picker { flex:0 0 10rem; min-width:0; } @media (max-width: 700px) { .card-path-picker { flex-basis:8rem; } .card-path-picker :deep(.v-field__input) { padding-inline:8px 0; } .card-path-picker :deep(.v-field__append-inner) { padding-inline:0 4px; } }
 .card-path-picker :deep(.v-field) { min-height:36px; border-radius:6px; background:var(--workspace-hover); box-shadow:none; font-size:.85rem; } .card-path-picker :deep(.v-field__input) { min-height:36px; padding-block:0; flex-wrap:nowrap; } .card-path-picker :deep(.v-select__selection) { min-width:0; } .card-path-picker :deep(.v-select__selection-text) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .card-path-picker :deep(.v-field__input input) { font-size:max(16px, .85rem); }
 

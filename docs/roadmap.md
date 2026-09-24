@@ -112,10 +112,15 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   the Boards dialog, and untitled cards stay blank.
   Acceptance: `docs/board-column-sort-acceptance-checklist.md`.
 - [x] Start a session from a board card: cards on path boards, or with a path,
-  show the tracker's play button (the shared `TimerRunButton`) on the card and
-  in its editor while no timer runs; it starts a timer for that path with the
-  card title as the description.
+  show the tracker's play button (the shared `TimerRunButton`) in their editor,
+  and on the card itself while it is in the In Progress column, while no timer
+  runs. A running timer hides the card buttons without shifting the cards. The
+  button starts a timer for that path with the card title as the description.
   Acceptance: `docs/board-card-timer-acceptance-checklist.md`.
+- [x] Card dialog layout: the path picker is a Vuetify select in the header,
+  label chips show their names, there is no autosave text, and every header
+  and footer control has its own slot on desktop and phone.
+  Acceptance: `docs/card-dialog-layout-acceptance-checklist.md`.
 - [x] Label board cards with `BOARD` labels from a searchable Vuetify chip
   picker in the card editor footer; cards show one compact, clipped row of
   label chips between the priority and the title.
