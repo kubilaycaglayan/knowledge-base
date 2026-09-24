@@ -9,7 +9,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 let server, browser;
 const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screenshots-"));
-const board = { id: "board-1", name: "Product", archived: false };
+const boardTemplate = { id: "board-1", name: "Product", archived: false };
 const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false, cardSort: "MANUAL" }));
 const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0, 10); };
 const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"] }];
@@ -21,6 +21,8 @@ after(async () => { await browser?.close(); await server?.close(); });
 async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0") {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
+  // Each fixture owns its board so a rename cannot leak into another test.
+  const board = { ...boardTemplate };
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card, index) => ({ ...card, ...(index === 0 ? { statusId: firstCardStatus } : {}) }));
   const fixtureStatuses = statuses.map((status) => ({ ...status }));
   if (archivedStatus) fixtureStatuses[3].archived = true;
@@ -977,9 +979,15 @@ describe("board browser acceptance", () => {
 
   it("shows timeout-specific editor feedback and keeps the draft retryable", async (t) => {
     const { page } = await fixture(t, 390, false, false, false, false, false, 409, false, 16000);
+    // The API client aborts after 15 seconds; a fake clock skips that wait
+    // instead of sitting through it.
+    await page.clock.install();
     await page.locator(".board-card").first().click();
+    const save = page.waitForRequest((request) => request.method() === "PUT" && request.url().includes("/cards/"));
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timed out draft");
-    await page.getByRole("alert").filter({ hasText: "The request timed out." }).waitFor({ timeout: 20000 });
+    await save;
+    await page.clock.fastForward(15_000);
+    await page.getByRole("alert").filter({ hasText: "The request timed out." }).waitFor({ timeout: 5000 });
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Timed out draft");
   });
 
