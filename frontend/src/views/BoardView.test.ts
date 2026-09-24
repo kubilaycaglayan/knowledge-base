@@ -74,8 +74,9 @@ describe("BoardView", () => {
     template: '<a :href="typeof to === \'string\' ? to : to.path" :data-query="typeof to === \'string\' ? \'{}\' : JSON.stringify(to.query || {})"><slot /></a>',
   };
 
-  function mountBoard() {
+  function mountBoard(options: { attachTo?: Element } = {}) {
     return mount(BoardView, {
+      ...options,
       global: {
         plugins: [vuetify],
         mocks: { $route: mockRoute, $router: mockRouter },
@@ -1187,6 +1188,21 @@ describe("BoardView", () => {
       expect(home.text()).toBe("A very long home improvement board name");
       expect(home.attributes("title")).toBe("A very long home improvement board name");
       expect(home.find(".board-tab-dot").exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // AB-12: a merged column named with several words is labelled by its own heading.
+    it("labels each merged column region by its own heading", async () => {
+      const store = seedAll();
+      store.statuses.push(status("w-todo-ready", "work", "To Do Ready", 2));
+      store.allColumns.push({ name: "To Do Ready", key: "to do ready", cardSort: "MANUAL", statusIds: ["w-todo-ready"] });
+      const wrapper = mountBoard({ attachTo: document.body });
+      await flushPromises();
+      const names = wrapper.findAll(".kanban-column").map((column) => {
+        const ids = column.attributes("aria-labelledby")!.split(/\s+/);
+        return ids.map((id) => document.getElementById(id)?.textContent).join(" ");
+      });
+      expect(names).toEqual(["To Do", "Done", "Waiting", "To Do Ready"]);
       await wrapper.unmount();
     });
 
