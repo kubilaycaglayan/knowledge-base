@@ -594,6 +594,20 @@ describe("board browser acceptance", () => {
     assert.deepEqual(await header.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline", "Close card"]);
   });
 
+  // CT-08
+  it("moves a card to In Progress when a session starts from its editor", async (t) => {
+    const { page, timerStarts } = await fixture(t, 1280);
+    const card = page.locator(".board-card", { hasText: "Ship timeline" });
+    assert.equal(await card.evaluate((element) => element.closest(".kanban-column").querySelector("h2").textContent.trim()), "Backlog");
+    await card.click();
+    await page.locator(".card-editor-header").getByRole("button", { name: "Start a session for Ship timeline" }).click();
+    await page.getByRole("button", { name: "Stop timer" }).waitFor();
+    await page.getByRole("combobox", { name: "Status" }).locator("option:checked", { hasText: "In Progress" }).waitFor({ state: "attached" });
+    await closeCard(page);
+    await page.locator(".kanban-column", { has: page.locator("h2", { hasText: /^In Progress$/ }) }).locator(".board-card", { hasText: "Ship timeline" }).waitFor();
+    assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: [], description: "Ship timeline" }]);
+  });
+
   // CT-06, CT-07
   it("keeps every card in place when a timer starts and stops", async (t) => {
     const { page } = await inProgressFixture(t, 1280);

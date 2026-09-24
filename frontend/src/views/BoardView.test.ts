@@ -689,6 +689,53 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
 
+    // CT-08
+    it("moves the card to In Progress when its session starts from the editor", async () => {
+      const store = seedBoard(["Backlog", "In Progress"]);
+      store.cards = [card("with-path", "Write docs", ["path-1"], 0), { ...card("doing", "Doing", [], 0), statusId: "status-2" }] as any;
+      const start = vi.spyOn(useTimerStore(), "startSession").mockResolvedValue(null as never);
+      const move = vi.spyOn(store, "moveCard").mockResolvedValue(null as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.findAll(".board-card")[0].trigger("click");
+      await wrapper.find('.card-editor-header button[aria-label="Start a session for Write docs"]').trigger("click");
+      await flushPromises();
+      expect(start).toHaveBeenCalledWith({ pathId: "path-1", description: "Write docs" });
+      expect(move).toHaveBeenCalledWith(expect.objectContaining({ id: "with-path" }), "status-2", 1);
+      expect(start.mock.invocationCallOrder[0]).toBeLessThan(move.mock.invocationCallOrder[0]);
+      expect(wrapper.find(".card-editor").exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    it("leaves the card in place when the editor's session cannot start or there is no In Progress column", async () => {
+      const store = seedBoard(["Backlog", "In Progress"]);
+      store.cards = [card("with-path", "Write docs", ["path-1"], 0)] as any;
+      const timer = useTimerStore();
+      const start = vi.spyOn(timer, "startSession").mockRejectedValueOnce(Object.assign(new Error("A timer is already running"), { status: 409 }));
+      const move = vi.spyOn(store, "moveCard").mockResolvedValue(null as never);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      await wrapper.find('.card-editor-header button[aria-label="Start a session for Write docs"]').trigger("click");
+      await flushPromises();
+      expect(start).toHaveBeenCalledTimes(1);
+      expect(move).not.toHaveBeenCalled();
+      await wrapper.unmount();
+
+      const other = seedBoard(["Backlog", "Done"]);
+      other.cards = [card("with-path", "Write docs", ["path-1"], 0)] as any;
+      start.mockResolvedValue(null as never);
+      const otherMove = vi.spyOn(other, "moveCard").mockResolvedValue(null as never);
+      const noColumn = mountBoard();
+      await flushPromises();
+      await noColumn.find(".board-card").trigger("click");
+      await noColumn.find('.card-editor-header button[aria-label="Start a session for Write docs"]').trigger("click");
+      await flushPromises();
+      expect(start).toHaveBeenCalledTimes(2);
+      expect(otherMove).not.toHaveBeenCalled();
+      await noColumn.unmount();
+    });
+
     // CT-04
     it("starts a session from a card without opening it", async () => {
       seedCustom();
