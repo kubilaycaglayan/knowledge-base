@@ -47,6 +47,7 @@ const open = ref(Boolean(props.inline)),
   labelsOpen = ref(false);
 const activeLabelIndex = ref(-1);
 const trackerHost = ref<HTMLElement | null>(null);
+const promptHost = ref<HTMLElement | null>(null);
 const labelPicker = ref<HTMLElement | null>(null);
 const trackerViewportHeight = ref(0);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
@@ -203,8 +204,16 @@ function closeLabelsOnFocusOut(event: FocusEvent) {
     labelsOpen.value = false;
 }
 function closeFloatingOnOutside(event: PointerEvent) {
-  if (!props.inline && open.value && !trackerHost.value?.contains(event.target as Node))
-    open.value = false;
+  if (props.inline || !open.value) return;
+  const target = event.target as Node;
+  // The path menu and prompt dialog belong to the tracker but render outside it.
+  if (
+    trackerHost.value?.contains(target) ||
+    promptHost.value?.contains(target) ||
+    (target instanceof Element && target.closest(".tracker-path-menu"))
+  )
+    return;
+  open.value = false;
 }
 function expandFromBar(event: MouseEvent) {
   if (props.inline || !window.matchMedia("(min-width: 641px)").matches)
@@ -278,7 +287,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <PromptDialog ref="promptDialog" />
+  <div ref="promptHost" class="tracker-prompt-host">
+    <PromptDialog ref="promptDialog" />
+  </div>
   <div
     ref="trackerHost"
     class="floating-tracker-host"
@@ -533,6 +544,9 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.tracker-prompt-host {
+  display: contents;
+}
 .floating-tracker-host {
   position: fixed;
   inset-inline: 0;
