@@ -119,6 +119,12 @@ const checks = [
     "production deployments tag images with the git commit they were built from",
   ],
   [
+    [deployProduction, deployProductionNoCache].every((script) =>
+      script.includes("./scripts/prune-production-images.sh"),
+    ),
+    "production deployments prune old commit-tagged images",
+  ],
+  [
     smokeCompose.includes("image: knowledge-base-api:test-only") &&
       smokeCompose.includes("image: knowledge-base-web:test-only"),
     "smoke and board E2E stacks build test-only images, never production tags",
