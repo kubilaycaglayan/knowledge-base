@@ -22,6 +22,16 @@ export API_PROD_PORT="${API_PROD_PORT:-18082}"
 export PROXY_PROD_PORT="${PROXY_PROD_PORT:-19080}"
 compose_args=(--project-name knowledge-base-production -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.cloudflare.yml)
 
+# Tag images with the commit they were built from, so the running containers
+# name their build and earlier builds stay available. Uncommitted changes get a
+# timestamped -dirty tag instead of reusing the commit's tag.
+image_tag="$(git rev-parse --short=12 HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then
+  image_tag="${image_tag}-dirty-$(date -u +%Y%m%d%H%M%S)"
+fi
+export KNOWLEDGE_BASE_IMAGE_TAG="$image_tag"
+echo "Production image tag: ${image_tag}"
+
 docker volume inspect knowledge-base_know-db >/dev/null 2>&1 || {
   echo 'Refusing production deployment: protected database volume knowledge-base_know-db does not exist.' >&2
   exit 1
@@ -39,6 +49,9 @@ else
   echo 'Building production images using cached base images (set PULL_BASE_IMAGES=1 to refresh)...'
 fi
 docker compose "${compose_args[@]}" build "${build_args[@]}"
+for image in knowledge-base-api knowledge-base-web; do
+  docker tag "$image:$image_tag" "$image:latest"
+done
 
 echo 'Updating the production stack (persistent volumes are preserved)...'
 # Keep the database stable across application deployments. The backup service

@@ -6,8 +6,13 @@ services:
     healthcheck:
       start_period: 60s
       retries: 12
+  # Disposable stacks build test-only images so they never move the tags that
+  # production containers are created from.
   api:
+    image: knowledge-base-api:test-only
     ports: !override []
+  web:
+    image: knowledge-base-web:test-only
   proxy:
     ports: !override
       [
