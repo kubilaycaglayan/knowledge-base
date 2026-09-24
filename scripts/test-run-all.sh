@@ -145,14 +145,20 @@ main() {
   run_step "Shell script syntax" \
     bash -c 'bash -n scripts/*.sh deployment/backup.sh deployment/preflight.sh && sh -n deployment/backup-loop.sh deployment/backup-db-refresh.sh'
 
+  # One container validates every config: container start-up, not Caddy, is
+  # the slow part on this host.
   validate_proxy_configs() {
-    local config invalid=0
-    for config in deployment/Caddyfile deployment/Caddyfile.cloudflare frontend/Caddyfile; do
-      echo "Validating ${config}"
-      docker run --rm -e DOMAIN=localhost -v "$PWD/$config:/etc/caddy/Caddyfile:ro" caddy:2-alpine \
-        caddy validate --config /etc/caddy/Caddyfile || invalid=1
-    done
-    return "$invalid"
+    docker run --rm -e DOMAIN=localhost \
+      -v "$PWD/deployment/Caddyfile:/configs/deployment/Caddyfile:ro" \
+      -v "$PWD/deployment/Caddyfile.cloudflare:/configs/deployment/Caddyfile.cloudflare:ro" \
+      -v "$PWD/frontend/Caddyfile:/configs/frontend/Caddyfile:ro" \
+      caddy:2-alpine sh -c '
+        invalid=0
+        for config in deployment/Caddyfile deployment/Caddyfile.cloudflare frontend/Caddyfile; do
+          echo "Validating ${config}"
+          caddy validate --adapter caddyfile --config "/configs/${config}" || invalid=1
+        done
+        exit "$invalid"'
   }
   run_step "Proxy configs" validate_proxy_configs
 
