@@ -202,6 +202,19 @@ const checks = [
     "Vite hot reload proxies API requests to the local backend",
   ],
   [
+    /["']\/ws["']:\s*\{\s*target:\s*["']ws:\/\/localhost:8080["'],\s*ws:\s*true/.test(
+      viteConfig,
+    ),
+    "Vite hot reload proxies timer WebSockets to the local backend",
+  ],
+  ...[
+    ["local proxy", proxy],
+    ["production proxy", productionProxy],
+  ].map(([name, caddyfile]) => [
+    /handle \/ws\/\* \{\s*reverse_proxy api:8080\s*\}/.test(caddyfile),
+    `${name} routes timer WebSockets to the API`,
+  ]),
+  [
     developmentDocs.includes("http://localhost:3000") &&
       developmentDocs.includes("0.0.0.0:5177") &&
       developmentDocs.includes("ssh -L 3000:localhost:3000"),
