@@ -90,6 +90,20 @@ describe("PromptDialog", () => {
     expect(await pending).toBeNull();
   });
 
+  it("stays open when a selection drag inside the dialog ends over the backdrop", async () => {
+    const wrapper = mount(PromptDialog, { attachTo: document.body });
+    const pending = wrapper.vm.open("Drag select", "Some text");
+    await nextTick();
+    const input = wrapper.get('input[aria-label="Drag select"]');
+    await input.trigger("pointerdown");
+    await input.trigger("mousedown");
+    await wrapper.get(".prompt-dialog-backdrop").trigger("click");
+    expect(wrapper.find(".prompt-dialog").exists()).toBe(true);
+    await wrapper.get("button.primary").trigger("click");
+    expect(await pending).toBe("Some text");
+    wrapper.unmount();
+  });
+
   it("cancels a pending prompt when a newer prompt opens or the component unmounts", async () => {
     const wrapper = mount(PromptDialog);
     const first = wrapper.vm.open("First");

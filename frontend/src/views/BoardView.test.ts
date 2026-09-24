@@ -860,6 +860,32 @@ describe("BoardView", () => {
       expect(wrapper.find(".card-editor").exists()).toBe(false);
       await wrapper.unmount();
     });
+    it("stays open when a text selection started inside the editor is released over the backdrop", async () => {
+      const { wrapper } = await openCard();
+      const title = wrapper.find('textarea[name="title"]');
+      await title.trigger("pointerdown");
+      await title.trigger("mousedown");
+      // The browser dispatches the click on the closest common ancestor: the backdrop.
+      await wrapper.find(".dialog-backdrop").trigger("pointerup");
+      await wrapper.find(".dialog-backdrop").trigger("mouseup");
+      await wrapper.find(".dialog-backdrop").trigger("click");
+      await flushPromises();
+      expect(wrapper.find(".card-editor").exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    it("closes when the backdrop itself is pressed and released", async () => {
+      const { wrapper } = await openCard();
+      const backdrop = wrapper.find(".dialog-backdrop");
+      await backdrop.trigger("pointerdown");
+      await backdrop.trigger("mousedown");
+      await backdrop.trigger("pointerup");
+      await backdrop.trigger("mouseup");
+      await backdrop.trigger("click");
+      await flushPromises();
+      expect(wrapper.find(".card-editor").exists()).toBe(false);
+      await wrapper.unmount();
+    });
   });
 
   describe("board settings dialog", () => {
