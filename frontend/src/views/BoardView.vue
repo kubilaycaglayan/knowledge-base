@@ -96,8 +96,9 @@ const cardsFor = (statusId: string) => cards.value.filter((card) => card.statusI
 // A merged column mixes its boards' cards: by position with tab order breaking ties, or by priority.
 const cardsForMerged = (column: MergedColumn) => { const rank = (statusId: string) => column.statusIds.indexOf(statusId); return cards.value.filter((card) => !card.archived && column.statusIds.includes(card.statusId)).sort(compareCards(column.cardSort, rank)); };
 type KanbanColumn = { id: string; name: string; sort: BoardCardSort; cursor: string; status?: BoardStatus; merged?: MergedColumn & { statuses: BoardStatus[] } };
+// Merged column ids encode the name's key: an id with spaces would split into several aria IDREFs.
 const kanbanColumns = computed<KanbanColumn[]>(() => isAll.value
-  ? mergedColumns.value.map((column) => ({ id: `column-${column.key}`, name: column.name, sort: column.cardSort, cursor: columnCursor(column.key), merged: column }))
+  ? mergedColumns.value.map((column) => ({ id: `column-${encodeURIComponent(column.key)}`, name: column.name, sort: column.cardSort, cursor: columnCursor(column.key), merged: column }))
   : activeStatuses.value.map((status) => ({ id: status.id, name: status.name, sort: status.cardSort || "MANUAL", cursor: status.id, status })));
 const columnCards = (column: KanbanColumn) => column.merged ? cardsForMerged(column.merged) : cardsFor(column.status!.id);
 const SORT_LABELS: Record<BoardCardSort, string> = { MANUAL: "unsorted", PRIORITY: "priority first", PRIORITY_LAST: "priority last" };
