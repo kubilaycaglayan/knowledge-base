@@ -224,7 +224,7 @@ if [[ "${SMOKE_FULL_STACK:-0}" == "1" ]]; then
     exit 1
   fi
   proxy_email="proxy-$(date +%s%N)@example.com"
-  curl -kfsSL "${content_json[@]}" \
+  curl -kfsSL -H 'Content-Type: application/json' \
     --data "{\"email\":\"$proxy_email\",\"password\":\"correct-horse-battery\"}" \
     "https://localhost:${PROXY_HTTPS_PORT}/api/v1/auth/register" \
     | grep -q '"token"'
@@ -495,7 +495,8 @@ merged_seconds="$(printf '%s' "$merged_summary" | sed -n 's/.*"trackedSeconds":\
 if [[ "${SMOKE_BACKUP_RESTORE:-0}" == "1" ]]; then
   backup_dir="$(mktemp -d)"
   backup_file="$backup_dir/knowledge-base.sql"
-  ./deployment/backup.sh "$backup_file" >/dev/null
+  # Back up this disposable stack, never the production project.
+  BACKUP_COMPOSE_PROJECT="$COMPOSE_PROJECT_NAME" ./deployment/backup.sh "$backup_file" >/dev/null
   restore_db="restore_check_$(date +%s%N)"
   compose exec -T db createdb -U "${POSTGRES_USER:-know}" "$restore_db"
   compose exec -T db psql -v ON_ERROR_STOP=1 \

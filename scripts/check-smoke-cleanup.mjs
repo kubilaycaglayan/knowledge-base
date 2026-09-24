@@ -51,6 +51,10 @@ const required = [
     "warm web BuildKit cache overlay",
   ],
   ['rm -rf "$backup_dir"', "temporary backup directory cleanup"],
+  [
+    'BACKUP_COMPOSE_PROJECT="$COMPOSE_PROJECT_NAME" ./deployment/backup.sh',
+    "backup check targets the disposable smoke project, never production",
+  ],
 ];
 for (const [fragment, description] of required)
 if (!smoke.includes(fragment))
