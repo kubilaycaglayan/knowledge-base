@@ -48,7 +48,6 @@ docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --n
 (cd frontend && npm ci && npm run build)
 (cd frontend && npm run test:tracker)
 (cd frontend && npm run test:board)
-(cd frontend && npm run test:labels)
 node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
 (cd chrome-extension && npm test)

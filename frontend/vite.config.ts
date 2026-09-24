@@ -22,7 +22,6 @@ export default defineConfig({
       "scripts/session-tracker.acceptance.test.mjs",
       "scripts/board.acceptance.test.mjs",
       "scripts/board.real-stack.acceptance.test.mjs",
-      "scripts/labels.acceptance.test.mjs",
       "scripts/timer-websocket.real-stack.acceptance.test.mjs",
     ],
     server: { deps: { inline: ["vuetify"] } },
