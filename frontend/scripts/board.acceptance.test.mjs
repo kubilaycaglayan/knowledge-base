@@ -783,6 +783,8 @@ describe("board browser acceptance", () => {
 
   it("archives a card and restores it from the archive page", async (t) => {
     const { page } = await fixture(t);
+    // evaluateAll does not wait, so let the card render first.
+    await page.locator(".board-card", { hasText: "Ship timeline" }).waitFor();
     assert.deepEqual(await page.locator(".board-card").getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline"], "Cards carry only their play button");
     await page.locator(".board-card", { hasText: "Ship timeline" }).click();
     await page.getByRole("button", { name: "Archive card" }).click();

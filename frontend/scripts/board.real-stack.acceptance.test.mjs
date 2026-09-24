@@ -415,7 +415,7 @@ describe("board real-stack acceptance", () => {
     const column = page.locator(".kanban-column").first();
     await column.waitFor();
     const original = (await column.locator("h2").textContent()).trim();
-    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [`Sort ${original} by priority`, `Add card to ${original}`], "Columns only offer sorting and adding a card");
+    assert.deepEqual(await column.locator("header button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), [`Sort ${original}: unsorted`, `Add card to ${original}`], "Columns only offer sorting and adding a card");
 
     await openSettingsFor(activeBoardName);
     const settings = page.getByRole("dialog", { name: "Board settings" });
@@ -453,7 +453,8 @@ describe("board real-stack acceptance", () => {
     await column.getByRole("heading", { name: "Calm card 0" }).waitFor();
     assert.equal(await column.getByRole("heading", { name: /^Fire card/ }).count(), 0, "Urgent cards start beyond the first manual page");
 
-    const toggle = column.getByRole("button", { name: /^Sort .* by priority$/ });
+    const toggle = column.locator("button.column-sort");
+    assert.match(await toggle.getAttribute("aria-label"), /: unsorted$/);
     await Promise.all([
       page.waitForResponse((response) => response.url().endsWith("/sort") && response.request().method() === "PUT" && response.status() === 200),
       toggle.click(),
@@ -461,12 +462,12 @@ describe("board real-stack acceptance", () => {
     await column.getByRole("heading", { name: "Fire card 0" }).waitFor();
     const firstTitles = async () => (await column.locator(".board-card h3").allTextContents()).slice(0, 3);
     assert.deepEqual(await firstTitles(), ["Fire card 0", "Fire card 1", "Calm card 0"]);
-    assert.equal(await toggle.getAttribute("aria-pressed"), "true");
+    assert.match(await toggle.getAttribute("aria-label"), /: priority first$/);
 
     await page.reload();
     await column.getByRole("heading", { name: "Fire card 0" }).waitFor();
     assert.deepEqual(await firstTitles(), ["Fire card 0", "Fire card 1", "Calm card 0"], "The sort is stored on the column");
-    assert.equal(await toggle.getAttribute("aria-pressed"), "true");
+    assert.match(await toggle.getAttribute("aria-label"), /: priority first$/);
   });
 
   it("lazy loads past the first page with a sentinel instead of a Load more button", async () => {
