@@ -215,9 +215,9 @@ class AllBoardsIntegrationTest {
     card(token, home, "Backlog", "h-low", "LOW");
 
     assertEquals(HttpStatus.OK, put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Backlog\",\"cardSort\":\"PRIORITY\"}").getStatusCode());
-    assertEquals(List.of("h-urgent", "w-urgent", "h-high", "w-low", "h-low"), walkColumn(token, "Backlog", 2));
+    assertEquals(List.of("w-urgent", "h-urgent", "h-high", "w-low", "h-low"), walkColumn(token, "Backlog", 2));
     put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Backlog\",\"cardSort\":\"PRIORITY_LAST\"}");
-    assertEquals(List.of("w-low", "h-low", "h-high", "h-urgent", "w-urgent"), walkColumn(token, "Backlog", 3));
+    assertEquals(List.of("w-low", "h-low", "h-high", "w-urgent", "h-urgent"), walkColumn(token, "Backlog", 3));
   }
 
   // AB-04

@@ -127,8 +127,66 @@ public class BoardService {
     boards.save(from);
   }
 
-  private static String key(String name) {
+  /** The name columns merge by: trimmed and case-insensitive. */
+  public static String key(String name) {
     return name.trim().toLowerCase(Locale.ROOT);
+  }
+
+  /** A column a card was placed in, and whether placing it created that column. */
+  public record Placement(BoardStatus status, boolean created) {}
+
+  /**
+   * The board's first active column with this name (trimmed, case-insensitive), or a new column
+   * added after the board's existing ones.
+   */
+  @Transactional
+  public Placement findOrCreateStatus(Board board, String name) {
+    List<BoardStatus> all = statuses.findAllByBoardIdOrderByPosition(board.getId());
+    String wanted = key(name);
+    Optional<BoardStatus> existing = all.stream().filter(status -> !status.isArchived() && key(status.getName()).equals(wanted)).findFirst();
+    if (existing.isPresent()) return new Placement(existing.get(), false);
+    return new Placement(statuses.save(new BoardStatus(board.getId(), name.trim(), all.size())), true);
+  }
+
+  /**
+   * Moves a card to a position in one of its board's columns, renumbering the source and the
+   * destination columns.
+   */
+  @Transactional
+  public BoardCard move(Board board, BoardCard card, BoardStatus target, int position) {
+    UUID sourceId = card.getStatusId();
+    List<BoardCard> destination = new ArrayList<>(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(board.getId(), target.getId()));
+    List<BoardCard> source = sourceId.equals(target.getId()) ? destination : new ArrayList<>(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(board.getId(), sourceId));
+    source.removeIf(item -> item.getId().equals(card.getId()));
+    if (!sourceId.equals(target.getId())) destination.removeIf(item -> item.getId().equals(card.getId()));
+    destination.add(Math.min(position, destination.size()), card);
+    for (int i = 0; i < source.size(); i++) source.get(i).move(sourceId, i);
+    for (int i = 0; i < destination.size(); i++) destination.get(i).move(target.getId(), i);
+    Map<UUID, BoardCard> changed = new LinkedHashMap<>();
+    source.forEach(item -> changed.put(item.getId(), item));
+    destination.forEach(item -> changed.put(item.getId(), item));
+    cards.saveAll(changed.values());
+    return card;
+  }
+
+  /**
+   * Moves a card to the end of the same-named column on another board, creating that column when
+   * needed. A path board's cards belong to its path; a card leaving a path board keeps its paths.
+   */
+  @Transactional
+  public Placement transfer(Board from, BoardCard card, Board to) {
+    BoardStatus current = statuses.findByIdAndBoardId(card.getStatusId(), from.getId()).orElseThrow();
+    Placement placement = findOrCreateStatus(to, current.getName());
+    if (from.getId().equals(to.getId())) return placement;
+    List<BoardCard> left = new ArrayList<>(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(from.getId(), current.getId()));
+    left.removeIf(item -> item.getId().equals(card.getId()));
+    for (int i = 0; i < left.size(); i++) left.get(i).move(current.getId(), i);
+    int end = cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(to.getId(), placement.status().getId()).size();
+    card.moveToBoard(to.getId(), placement.status().getId(), end);
+    if (to.isPathBoard()) paths.findById(to.getPathId()).ifPresent(path -> card.setPaths(List.of(path)));
+    cards.saveAll(left);
+    cards.save(card);
+    return placement;
   }
 
   private Board seed(Board board) {

@@ -17,7 +17,7 @@ public class PreferencesController {
   }
 
   /** Omitted fields keep their stored value. */
-  record Request(@Pattern(regexp = "auto|light|dark") String theme, Boolean kanbanWide) {}
+  record Request(@Pattern(regexp = "auto|light|dark") String theme, Boolean kanbanWide, UUID lastCardBoardId) {}
 
   private UUID user(Authentication a) {
     return UUID.fromString(a.getName());
@@ -30,6 +30,6 @@ public class PreferencesController {
 
   @PutMapping
   public UserPreferencesService.View update(Authentication a, @Valid @RequestBody Request r) {
-    return service.update(user(a), r.theme(), r.kanbanWide());
+    return service.update(user(a), r.theme(), r.kanbanWide(), r.lastCardBoardId());
   }
 }

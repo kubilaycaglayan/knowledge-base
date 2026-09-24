@@ -1,0 +1,9 @@
+package com.know.domain;
+
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface BoardColumnSortRepository extends JpaRepository<BoardColumnSort, BoardColumnSort.Key> {
+  List<BoardColumnSort> findAllByUserId(UUID userId);
+}
