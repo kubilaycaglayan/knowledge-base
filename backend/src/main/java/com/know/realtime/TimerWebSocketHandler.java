@@ -4,14 +4,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.know.security.JwtTokenService;
 import com.know.service.TimerChangedEvent;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
@@ -56,15 +60,29 @@ public class TimerWebSocketHandler extends TextWebSocketHandler {
     } catch (IOException ex) {
       return;
     }
-    userSessions.values().removeIf(session -> !send(session, payload));
+    TextMessage message = new TextMessage(payload);
+    userSessions.values().removeIf(session -> !send(session, message));
     if (userSessions.isEmpty()) sessions.remove(userId, userSessions);
   }
 
-  private boolean send(WebSocketSession session, String payload) {
+  // Proxies such as Cloudflare close WebSockets that carry no traffic for
+  // about 100 seconds; a ping keeps quiet timer connections open.
+  @Scheduled(fixedRate = 30_000, initialDelay = 30_000)
+  public void sendHeartbeats() {
+    sessions.forEach(
+        (userId, userSessions) -> {
+          userSessions
+              .values()
+              .removeIf(session -> !send(session, new PingMessage(ByteBuffer.allocate(0))));
+          if (userSessions.isEmpty()) sessions.remove(userId, userSessions);
+        });
+  }
+
+  private boolean send(WebSocketSession session, WebSocketMessage<?> message) {
     try {
       if (!session.isOpen()) return false;
       synchronized (session) {
-        session.sendMessage(new TextMessage(payload));
+        session.sendMessage(message);
       }
       return true;
     } catch (IOException ex) {

@@ -29,6 +29,9 @@ the backend publishes a user-scoped full timer snapshot over the native `/ws/tim
 WebSocket. Connected clients update directly from that snapshot and do not issue a
 follow-up `/timers/current` request for each event. Web clients fall back to two-second
 polling when the socket is unavailable; the extension retains its polling implementation
-for compatibility. Clients should also refresh from `/timers/current` on initial load,
-reconnect, and mobile foreground/resume. The elapsed clock is derived locally from the
+for compatibility. Clients should also refresh from `/timers/current` on initial load and
+reconnect; the web client refreshes on focus or tab visibility only while the socket is
+down. The server pings authenticated sockets every 30 seconds so idle proxies such as
+Cloudflare keep them open. Every proxy that serves the web app must route `/ws/*` to the
+API. The elapsed clock is derived locally from the
 server-provided `startedAt`; timer existence and ownership remain server-authoritative.

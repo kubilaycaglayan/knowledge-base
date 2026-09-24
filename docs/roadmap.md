@@ -144,3 +144,7 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   Column sort cycles Unsorted, Priority first, and Priority last (V49), and
   the Boards page serves boards it already loaded from the Pinia cache.
   Acceptance: `docs/all-boards-view-acceptance-checklist.md`.
+- [x] Keep the timer WebSocket as the web's live channel in production: route
+  `/ws/*` through the Cloudflare proxy (and standalone Vite), ping idle
+  sockets every 30 seconds, and skip focus/visibility refetches while the
+  socket is connected.
