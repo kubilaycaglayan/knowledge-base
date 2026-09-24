@@ -6,9 +6,11 @@ import com.know.domain.BoardCardRepository;
 import com.know.domain.BoardStatusRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.know.realtime.TimerWebSocketHandler;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -16,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.springframework.scheduling.config.FixedRateTask;
+import org.springframework.scheduling.config.ScheduledTaskHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +75,10 @@ class KnowIntegrationTest {
   @Autowired TestRestTemplate rest;
 
   @Autowired ObjectMapper mapper;
+
+  @Autowired TimerWebSocketHandler timerSockets;
+
+  @Autowired ScheduledTaskHolder scheduledTasks;
 
   @Autowired BoardCardRepository boardCards;
 
@@ -1004,6 +1012,96 @@ class KnowIntegrationTest {
     assertEquals("TIMER_STATE", cleared.get("type").asText());
     assertTrue(cleared.get("timer").isNull());
     socket.sendClose(WebSocket.NORMAL_CLOSURE, "done").get(5, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void timerWebSocketPingsAuthenticatedClientsOftenEnoughForIdleProxies() throws Exception {
+    // Cloudflare closes WebSockets idle for ~100 seconds; the heartbeat must
+    // be scheduled well inside that window.
+    FixedRateTask heartbeat =
+        scheduledTasks.getScheduledTasks().stream()
+            .map(scheduled -> scheduled.getTask())
+            .filter(FixedRateTask.class::isInstance)
+            .map(FixedRateTask.class::cast)
+            // Spring wraps the method runnable; the task names the method.
+            .filter(
+                task ->
+                    task.toString()
+                        .equals(TimerWebSocketHandler.class.getName() + ".sendHeartbeats"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("timer WebSocket heartbeat is not scheduled"));
+    assertTrue(heartbeat.getIntervalDuration().toSeconds() <= 60);
+
+    String token = freshToken();
+    LinkedBlockingQueue<String> messages = new LinkedBlockingQueue<>();
+    LinkedBlockingQueue<Boolean> pings = new LinkedBlockingQueue<>();
+    WebSocket socket =
+        HttpClient.newHttpClient()
+            .newWebSocketBuilder()
+            .buildAsync(
+                URI.create("ws://localhost:" + port + "/ws/timers"),
+                new WebSocket.Listener() {
+                  @Override
+                  public void onOpen(WebSocket webSocket) {
+                    webSocket.sendText("{\"type\":\"AUTH\",\"token\":\"" + token + "\"}", true);
+                    WebSocket.Listener.super.onOpen(webSocket);
+                  }
+
+                  @Override
+                  public CompletionStage<?> onText(
+                      WebSocket webSocket, CharSequence data, boolean last) {
+                    if (last) messages.offer(data.toString());
+                    webSocket.request(1);
+                    return CompletableFuture.completedFuture(null);
+                  }
+
+                  @Override
+                  public CompletionStage<?> onPing(WebSocket webSocket, ByteBuffer message) {
+                    pings.offer(true);
+                    return WebSocket.Listener.super.onPing(webSocket, message);
+                  }
+                })
+            .get(5, TimeUnit.SECONDS);
+    assertEquals("READY", mapper.readTree(messages.poll(5, TimeUnit.SECONDS)).get("type").asText());
+
+    timerSockets.sendHeartbeats();
+
+    assertEquals(Boolean.TRUE, pings.poll(5, TimeUnit.SECONDS));
+    // The connection stays usable after a heartbeat.
+    ResponseEntity<JsonNode> started =
+        post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"After ping\"}");
+    assertEquals(HttpStatus.CREATED, started.getStatusCode());
+    assertEquals(
+        "TIMER_STATE", mapper.readTree(messages.poll(5, TimeUnit.SECONDS)).get("type").asText());
+    post("/api/v1/timers/stop", token, "{}");
+    socket.sendClose(WebSocket.NORMAL_CLOSURE, "done").get(5, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void timerWebSocketClosesAnInvalidAuthenticationWithPolicyViolation() throws Exception {
+    // The deploy-time probe (scripts/check-timer-websocket.mjs) relies on this
+    // close code to prove that /ws/timers reached the API without an account.
+    LinkedBlockingQueue<Integer> closes = new LinkedBlockingQueue<>();
+    HttpClient.newHttpClient()
+        .newWebSocketBuilder()
+        .buildAsync(
+            URI.create("ws://localhost:" + port + "/ws/timers"),
+            new WebSocket.Listener() {
+              @Override
+              public void onOpen(WebSocket webSocket) {
+                webSocket.sendText("{\"type\":\"AUTH\",\"token\":\"not-a-valid-token\"}", true);
+                WebSocket.Listener.super.onOpen(webSocket);
+              }
+
+              @Override
+              public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+                closes.offer(statusCode);
+                return null;
+              }
+            })
+        .get(5, TimeUnit.SECONDS);
+
+    assertEquals(1008, closes.poll(5, TimeUnit.SECONDS));
   }
 
   @Test
