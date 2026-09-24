@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, watch } from "vue";
 import { vDialogFocus } from "../lib/dialog-focus";
+import { vBackdropClose } from "../lib/backdrop-close";
 
 defineProps<{ appearance?: "flat" }>();
 
@@ -76,7 +77,7 @@ defineExpose({ open });
     v-if="visible"
     class="prompt-dialog-backdrop"
     :class="{ flat: appearance === 'flat' }"
-    @click.self="finish(null)"
+    v-backdrop-close="() => finish(null)"
   >
     <section
       v-dialog-focus

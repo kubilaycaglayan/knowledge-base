@@ -9,6 +9,7 @@ import MergePathDialog from "../components/MergePathDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import { paletteColors } from "../lib/color-palette";
 import { vDialogFocus } from "../lib/dialog-focus";
+import { vBackdropClose } from "../lib/backdrop-close";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore, type Path as StorePath } from "../stores/paths";
 import { useReportsStore } from "../stores/reports";
@@ -698,7 +699,7 @@ onBeforeUnmount(() => {
     <div
       v-if="addDialogOpen"
       class="prompt-dialog-backdrop"
-      @click.self="closeAddDialog"
+      v-backdrop-close="closeAddDialog"
     >
       <section
         v-dialog-focus
@@ -759,7 +760,7 @@ onBeforeUnmount(() => {
     <div
       v-if="historyPath && summaries[historyPath.id]"
       class="prompt-dialog-backdrop"
-      @click.self="closeHistory"
+      v-backdrop-close="closeHistory"
     >
       <section
         v-dialog-focus
@@ -860,7 +861,7 @@ onBeforeUnmount(() => {
     <div
       v-if="editingSession && sessionDraft"
       class="prompt-dialog-backdrop"
-      @click.self="closeSessionEdit"
+      v-backdrop-close="closeSessionEdit"
     >
       <section
         v-dialog-focus

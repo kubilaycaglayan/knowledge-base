@@ -6,6 +6,7 @@ import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import { vDialogFocus } from "../lib/dialog-focus";
+import { vBackdropClose } from "../lib/backdrop-close";
 import { useLabelsStore, type Label, type LabelScope } from "../stores/labels";
 import { useReportsStore } from "../stores/reports";
 
@@ -281,7 +282,7 @@ onMounted(load);
     <div
       v-if="addDialogOpen"
       class="prompt-dialog-backdrop"
-      @click.self="closeAddDialog"
+      v-backdrop-close="closeAddDialog"
     >
       <section
         v-dialog-focus

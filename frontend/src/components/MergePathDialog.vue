@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { vDialogFocus } from "../lib/dialog-focus";
+import { vBackdropClose } from "../lib/backdrop-close";
 
 type Path = { id: string; name: string; description?: string; status: string };
 
@@ -40,7 +41,7 @@ function confirm() {
   <div
     v-if="visible"
     class="prompt-dialog-backdrop"
-    @click.self="emit('cancel')"
+    v-backdrop-close="() => emit('cancel')"
   >
     <section
       v-dialog-focus

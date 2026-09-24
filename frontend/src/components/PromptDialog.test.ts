@@ -86,6 +86,7 @@ describe("PromptDialog", () => {
     const wrapper = mount(PromptDialog);
     const pending = wrapper.vm.open("Click outside");
     await nextTick();
+    await wrapper.get(".prompt-dialog-backdrop").trigger("pointerdown");
     await wrapper.get(".prompt-dialog-backdrop").trigger("click");
     expect(await pending).toBeNull();
   });
