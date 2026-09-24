@@ -128,12 +128,14 @@ main() {
       (cd chrome-extension && npm test)
   }
 
-  # The Gradle dependency cache lives in a volume used only by this script.
+  # Gradle's dependency and project caches live in a volume used only by this
+  # script (never the development container's), so unchanged sources are not
+  # recompiled; --rerun still executes every test.
   run_step "Backend unit and integration tests" \
     docker run --rm -v "$PWD/backend:/app" -w /app \
     -e GRADLE_USER_HOME=/gradle-home -v knowledge-base-test-gradle:/gradle-home \
-    gradle:8.13-jdk21 gradle test --no-daemon \
-    --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-$$"
+    gradle:8.13-jdk21 gradle test --rerun --no-daemon \
+    --project-cache-dir /gradle-home/project-cache-test-run-all
 
   run_step "Web unit tests, build, and mocked browser acceptance" web_tests
 
