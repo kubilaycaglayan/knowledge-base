@@ -626,11 +626,11 @@ describe("BoardView", () => {
   });
 
   describe("card play button", () => {
-    const card = (id: string, title: string, pathIds: string[], position: number) => ({ id, statusId: "status-1", title, body: "{}", priority: "MEDIUM", position, archived: false, pathIds, labelIds: [], createdAt: "", updatedAt: "t1" });
+    const card = (id: string, title: string, pathIds: string[], position: number, labelIds: string[] = []) => ({ id, statusId: "status-1", title, body: "{}", priority: "MEDIUM", position, archived: false, pathIds, labelIds, createdAt: "", updatedAt: "t1" });
     // Card play buttons only show in the In Progress column (CT-06).
     function seedCustom() {
       const store = seedBoard(["In Progress"]);
-      store.cards = [card("with-path", "Write docs", ["path-1"], 0), card("no-path", "Loose", [], 1)] as any;
+      store.cards = [card("with-path", "Write docs", ["path-1"], 0, ["label-1", "label-2"]), card("no-path", "Loose", [], 1)] as any;
       return store;
     }
     const playFor = (wrapper: ReturnType<typeof mountBoard>, title: string) => wrapper.find(`.board-card button[aria-label="Start a session for ${title}"]`);
@@ -706,7 +706,7 @@ describe("BoardView", () => {
     // CT-08
     it("moves the card to In Progress when its session starts from the editor", async () => {
       const store = seedBoard(["Backlog", "In Progress"]);
-      store.cards = [card("with-path", "Write docs", ["path-1"], 0), { ...card("doing", "Doing", [], 0), statusId: "status-2" }] as any;
+      store.cards = [card("with-path", "Write docs", ["path-1"], 0, ["label-1", "label-2"]), { ...card("doing", "Doing", [], 0), statusId: "status-2" }] as any;
       const start = vi.spyOn(useTimerStore(), "startSession").mockResolvedValue(null as never);
       const move = vi.spyOn(store, "moveCard").mockResolvedValue(null as never);
       const wrapper = mountBoard();
@@ -714,7 +714,7 @@ describe("BoardView", () => {
       await wrapper.findAll(".board-card")[0].trigger("click");
       await wrapper.find('.card-editor-header button[aria-label="Start a session for Write docs"]').trigger("click");
       await flushPromises();
-      expect(start).toHaveBeenCalledWith({ pathId: "path-1", description: "Write docs" });
+      expect(start).toHaveBeenCalledWith({ pathId: "path-1", labelIds: ["label-1", "label-2"], description: "Write docs" });
       expect(move).toHaveBeenCalledWith(expect.objectContaining({ id: "with-path" }), "status-2", 1);
       expect(start.mock.invocationCallOrder[0]).toBeLessThan(move.mock.invocationCallOrder[0]);
       expect(wrapper.find(".card-editor").exists()).toBe(true);
@@ -759,7 +759,7 @@ describe("BoardView", () => {
       await flushPromises();
       await playFor(wrapper, "Write docs").trigger("click");
       await playFor(wrapper, "Write docs").trigger("keydown", { key: "Enter" });
-      expect(start).toHaveBeenCalledWith({ pathId: "path-1", description: "Write docs" });
+      expect(start).toHaveBeenCalledWith({ pathId: "path-1", labelIds: ["label-1", "label-2"], description: "Write docs" });
       expect(wrapper.find(".card-editor").exists()).toBe(false);
       await wrapper.unmount();
     });
@@ -796,7 +796,7 @@ describe("BoardView", () => {
       const header = wrapper.find(".card-editor-header");
       expect(header.findAll("button").map((button) => button.attributes("aria-label"))).toEqual(["Start a session for Write docs", "Close card"]);
       await header.find('button[aria-label="Start a session for Write docs"]').trigger("click");
-      expect(start).toHaveBeenCalledWith({ pathId: "path-1", description: "Write docs" });
+      expect(start).toHaveBeenCalledWith({ pathId: "path-1", labelIds: ["label-1", "label-2"], description: "Write docs" });
       expect(wrapper.find(".card-editor").exists()).toBe(true);
       await wrapper.unmount();
 
