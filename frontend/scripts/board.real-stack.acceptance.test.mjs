@@ -681,7 +681,8 @@ describe("board real-stack acceptance", () => {
 
     await page.goto(`${baseUrl}/board`);
     await page.getByRole("heading", { name: "Boards" }).waitFor();
-    await boardTab(name).waitFor();
+    // /board reopens the remembered board (BS-04), so the new tab may sit under More.
+    await page.locator(".board-tab").first().waitFor();
     await selectBoard(name);
     assert.equal(await page.locator(".kanban-column h2").allInnerTexts().then((names) => names.join("|")), "Backlog|Pending|In Progress|Done");
     await clickAddCard();
