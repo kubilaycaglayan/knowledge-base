@@ -129,8 +129,8 @@
 .board-tab-measure-row { position:absolute; top:0; left:0; display:flex; gap:.5rem; height:0; overflow:hidden; visibility:hidden; pointer-events:none; white-space:nowrap; } .board-tab-measure { display:inline-flex; align-items:center; flex:0 0 auto; box-sizing:border-box; } .board-tab-measure-dot { display:inline-block; width:.5rem; margin-right:.4rem; }
 @media (max-width: 700px) { .board-tab-current { flex-basis:8.5rem; } }
 
-/* A path card's play button sits at its top right, beside the priority. */
-.board-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; min-height:1.2rem; } .board-card-top .board-card-play { flex:0 0 auto; margin:-.35rem -.35rem 0 0; }
+/* A path card's play button floats at its top right: the priority, labels, and title flow beside it, so it reserves width without adding height. */
+.board-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; min-height:1.2rem; } .board-card { display:flow-root; } .board-card > .board-card-play { float:right; margin:-.35rem -.35rem .25rem .5rem; }
 .card-editor-header .board-card-play { flex:0 0 auto; } .board-card-play.play-hidden { visibility:hidden; }
 .card-path-picker { flex:0 0 10rem; min-width:0; } @media (max-width: 700px) { .card-path-picker { flex-basis:8rem; } .card-path-picker :deep(.v-field__input) { padding-inline:8px 0; } .card-path-picker :deep(.v-field__append-inner) { padding-inline:0 4px; } }
 .card-path-picker :deep(.v-field) { min-height:36px; border-radius:6px; background:var(--workspace-hover); box-shadow:none; font-size:.85rem; } .card-path-picker :deep(.v-field__input) { min-height:36px; padding-block:0; flex-wrap:nowrap; } .card-path-picker :deep(.v-select__selection) { min-width:0; } .card-path-picker :deep(.v-select__selection-text) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .card-path-picker :deep(.v-field__input input) { font-size:max(16px, .85rem); }
