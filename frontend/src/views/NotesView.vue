@@ -317,6 +317,7 @@ function scheduleSave() {
 }
 async function save() {
   if (!selected.value || !editor.value) return;
+  const noteId = selected.value.id;
   if (saveInFlight) {
     saveQueued = true;
     return;
@@ -332,22 +333,24 @@ async function save() {
   try {
     let saved: Note;
     try {
-      saved = await api<Note>(`/notes/${selected.value.id}`, {
+      saved = await api<Note>(`/notes/${noteId}`, {
         method: "PUT",
         body: JSON.stringify({ ...snapshot, version: selected.value.version }),
       });
     } catch (cause) {
       if (!String(cause).includes("Note changed in another window"))
         throw cause;
-      const latest = await api<Note>(`/notes/${selected.value.id}`);
-      notesStore.setSelected(latest);
-      saved = await api<Note>(`/notes/${selected.value.id}`, {
+      const latest = await api<Note>(`/notes/${noteId}`);
+      if (selected.value?.id === noteId) notesStore.setSelected(latest);
+      saved = await api<Note>(`/notes/${noteId}`, {
         method: "PUT",
         body: JSON.stringify({ ...snapshot, version: latest.version }),
       });
     }
     notesStore.upsert(saved);
     notesStore.clearPages();
+    // The user may have opened another note while this save was in flight.
+    if (selected.value?.id !== noteId || !editor.value) return;
     notesStore.setSelected(saved);
     const stillOnSnapshot =
       title.value.trim() === snapshot.title &&
@@ -388,6 +391,8 @@ async function loadEditor() {
   if (!id || typeof id !== "string") return;
   try {
     const fromList = await api<Note>(`/notes/${id}`);
+    // Ignore a late response for a note the user has already left.
+    if (route.params.id !== id) return;
     notesStore.upsert(fromList);
     notesStore.setSelected(fromList);
     title.value = fromList.title;
@@ -397,6 +402,7 @@ async function loadEditor() {
     } catch {
       notesStore.setLabels([]);
     }
+    if (route.params.id !== id) return;
     editor.value?.destroy();
     editor.value = new Editor({
       extensions: richTextExtensions(),
@@ -413,7 +419,7 @@ async function loadEditor() {
       onFocus: keepEditorVisible,
     });
   } catch {
-    error.value = "Unable to open this note.";
+    if (route.params.id === id) error.value = "Unable to open this note.";
   }
 }
 async function closeEditor() {
