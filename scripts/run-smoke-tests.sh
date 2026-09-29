@@ -297,6 +297,10 @@ path="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke path
 path_id="$(printf '%s' "$path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 other_path="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Other smoke path"}' http://localhost:8080/api/v1/paths)"
 other_path_id="$(printf '%s' "$other_path" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+# A newly pinned path joins the end of the pinned paths.
+api "${header[@]}" "${content_json[@]}" --post-data='{"pinned":true}' "http://localhost:8080/api/v1/paths/$other_path_id/pin" >/dev/null
+api "${header[@]}" "${content_json[@]}" --post-data='{"pinned":true}' "http://localhost:8080/api/v1/paths/$path_id/pin" >/dev/null
+[[ "$(api "${header[@]}" http://localhost:8080/api/v1/paths | grep -o '"name":"[^"]*smoke path"\|"name":"Smoke path"' | head -2 | tr '\n' ' ')" == '"name":"Other smoke path" "name":"Smoke path" ' ]]
 # Every path owns a board from birth.
 path_boards="$(api "${header[@]}" http://localhost:8080/api/v1/boards)"
 if [[ "$path_boards" != *"\"pathId\":\"$path_id\""* ]]; then

@@ -32,7 +32,10 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
               + " where p.user_id=:userId"
               + " and p.deleted_at is null"
               + " group by p.id"
-              + " order by p.pinned desc, case when p.sort_order is null then 1 else 0 end,"
+              + " order by p.pinned desc,"
+              + " case when p.sort_order is null and p.pinned_at is not null then 1 else 0 end,"
+              + " case when p.sort_order is null then p.pinned_at end asc,"
+              + " case when p.sort_order is null then 1 else 0 end,"
               + " p.sort_order asc, coalesce(max(t.started_at), p.updated_at) desc",
       nativeQuery = true)
   List<Path> findAllByUserIdOrderByUpdatedAtDesc(@Param("userId") UUID userId, Pageable page);

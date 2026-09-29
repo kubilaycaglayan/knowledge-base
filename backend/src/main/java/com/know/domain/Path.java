@@ -38,6 +38,9 @@ public class Path {
   @Column(name = "sort_order")
   private Long sortOrder;
 
+  @Column(name = "pinned_at")
+  private Instant pinnedAt;
+
   @Column(name = "archived_at")
   private Instant archivedAt;
 
@@ -117,7 +120,17 @@ public class Path {
     return sortOrder;
   }
 
+  public Instant getPinnedAt() {
+    return pinnedAt;
+  }
+
+  // Pinning drops the manual slot so the item joins the end of the pinned items.
   public void setPinned(boolean pinned) {
+    if (pinned && !this.pinned) {
+      sortOrder = null;
+      pinnedAt = Instant.now();
+    }
+    if (!pinned) pinnedAt = null;
     this.pinned = pinned;
     this.updatedAt = Instant.now();
   }

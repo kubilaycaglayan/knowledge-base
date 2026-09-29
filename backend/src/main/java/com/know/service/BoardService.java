@@ -1,6 +1,7 @@
 package com.know.service;
 
 import com.know.domain.*;
+import java.time.Instant;
 import java.util.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -58,8 +59,8 @@ public class BoardService {
   /**
    * Active boards in tab order: pinned boards, then the rest. Within each group path and custom
    * boards share one manual order; boards never placed by hand follow, path boards in Paths page
-   * order and then custom boards in creation order. Path boards only appear while their path is
-   * active.
+   * order and then custom boards in creation order. Boards pinned since then come last, in pin
+   * order. Path boards only appear while their path is active.
    */
   @Transactional(readOnly = true)
   public List<Board> tabs(UUID userId, boolean includeHidden) {
@@ -85,7 +86,9 @@ public class BoardService {
     // Until a path board has been placed by hand, keep the earlier layout: path boards (Paths page
     // order) ahead of the custom boards, whose manual order only ranked them among themselves.
     boolean pathBoardPlaced = group.stream().anyMatch(board -> board.isPathBoard() && board.getSortOrder() != null);
-    return group.stream().sorted(pathBoardPlaced ? manual.thenComparing(unplaced) : pathBoardsFirst.thenComparing(manual).thenComparing(unplaced)).toList();
+    // Boards pinned but not yet placed by hand follow every other pinned board, in pin order.
+    Comparator<Board> newlyPinnedLast = Comparator.comparing(board -> board.getSortOrder() == null ? board.getPinnedAt() : null, Comparator.nullsFirst(Comparator.<Instant>naturalOrder()));
+    return group.stream().sorted(newlyPinnedLast.thenComparing(pathBoardPlaced ? manual.thenComparing(unplaced) : pathBoardsFirst.thenComparing(manual).thenComparing(unplaced))).toList();
   }
 
   /**

@@ -49,6 +49,9 @@ public class Note {
   @Column(name = "sort_order")
   private Long sortOrder;
 
+  @Column(name = "pinned_at")
+  private Instant pinnedAt;
+
   @Column(name = "import_batch_id")
   private UUID importBatchId;
 
@@ -140,7 +143,17 @@ public class Note {
     return sortOrder;
   }
 
+  public Instant getPinnedAt() {
+    return pinnedAt;
+  }
+
+  // Pinning drops the manual slot so the item joins the end of the pinned items.
   public void setPinned(boolean pinned) {
+    if (pinned && !this.pinned) {
+      sortOrder = null;
+      pinnedAt = Instant.now();
+    }
+    if (!pinned) pinnedAt = null;
     this.pinned = pinned;
     this.updatedAt = Instant.now();
   }

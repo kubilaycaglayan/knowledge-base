@@ -158,3 +158,6 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   `/ws/*` through the Cloudflare proxy (and standalone Vite), ping idle
   sockets every 30 seconds, and skip focus/visibility refetches while the
   socket is connected.
+- [x] Pinning a note, path, or board puts it at the end of the pinned items
+  (V52 `pinned_at`); pinning drops the manual slot and unplaced pins sort
+  after placed ones in pin order.

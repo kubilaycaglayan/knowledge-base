@@ -14,6 +14,7 @@ public class Board {
   @Column(nullable = false) private boolean hidden;
   @Column(nullable = false) private boolean pinned;
   @Column(name = "sort_order") private Long sortOrder;
+  @Column(name = "pinned_at") private Instant pinnedAt;
   @Column(name = "archived_at") private Instant archivedAt;
   @Column(name = "created_at", nullable = false) private Instant createdAt = Instant.now();
   @Column(name = "updated_at", nullable = false) private Instant updatedAt = Instant.now();
@@ -34,10 +35,11 @@ public class Board {
   public boolean isHidden() { return hidden; }
   public boolean isPinned() { return pinned; }
   public Long getSortOrder() { return sortOrder; }
+  public Instant getPinnedAt() { return pinnedAt; }
   public boolean isArchived() { return archivedAt != null; }
   public void setHidden(boolean hidden) { this.hidden = hidden; updatedAt = Instant.now(); }
   // Moving between the pinned and unpinned groups drops the manual slot, so the board joins the end of its new group.
-  public void setPinned(boolean pinned) { if (this.pinned != pinned) sortOrder = null; this.pinned = pinned; updatedAt = Instant.now(); }
+  public void setPinned(boolean pinned) { if (this.pinned != pinned) { sortOrder = null; pinnedAt = pinned ? Instant.now() : null; } this.pinned = pinned; updatedAt = Instant.now(); }
   public void setSortOrder(long sortOrder) { this.sortOrder = sortOrder; }
   public void rename(String name) { this.name = name.trim(); this.updatedAt = Instant.now(); }
   public void archive() { archivedAt = Instant.now(); updatedAt = Instant.now(); }
