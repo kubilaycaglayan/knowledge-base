@@ -13,6 +13,13 @@
 - [x] ⌘/Ctrl+Enter in the web tracker's description starts the session with the
   typed text, or saves it and stops the running session; plain Enter adds a newline.
 
+- [x] Pause a running session and resume it later from the web tracker. Pausing
+  records the worked segment; the server keeps the paused total and context, and
+  the resumed segment carries that total so the clock counts on
+  (`docs/session-pause-acceptance-checklist.md`).
+- [ ] Show paused sessions with Pause/Resume controls in the iOS app and the
+  Chrome extension; they currently show a paused session as idle.
+
 - [x] Rebuild native iOS authentication from the web design with password login,
   registration, Google SDK token exchange, and Keychain session persistence.
 - [ ] Milestone 2: bring the iOS sign-in and unauthenticated flows to one-to-one

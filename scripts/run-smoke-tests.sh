@@ -423,7 +423,21 @@ if api "${header[@]}" "${content_json[@]}" \
   exit 1
 fi
 api "${header[@]}" http://localhost:8080/api/v1/timers/current | grep -q '"running":true'
-api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/stop >/dev/null
+# Pausing records the running segment; resuming continues the session from its
+# total, and finishing ends it while paused.
+paused_draft="$(api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/pause)"
+printf '%s' "$paused_draft" | grep -q '"pausedSeconds":[1-9]'
+printf '%s' "$paused_draft" | grep -q 'Reconfigured smoke session'
+if [[ -n "$(api "${header[@]}" http://localhost:8080/api/v1/timers/current)" ]]; then
+  echo "paused session is still running" >&2
+  exit 1
+fi
+api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/resume \
+  | grep -q '"carriedSeconds":[1-9]'
+api "${header[@]}" http://localhost:8080/api/v1/timers/current | grep -q 'Reconfigured smoke session'
+api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/pause >/dev/null
+api "${header[@]}" --post-data='' "${content_json[@]}" http://localhost:8080/api/v1/timers/finish \
+  | grep -q '"pausedSeconds":null'
 api "${header[@]}" "${content_json[@]}" \
   --post-data="{\"pathId\":\"$path_id\",\"labelIds\":[],\"description\":\"cancelled smoke timer\"}" \
   http://localhost:8080/api/v1/timers >/dev/null
