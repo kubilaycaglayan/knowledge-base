@@ -233,6 +233,7 @@ public class ReportService {
               day -> {
                 List<CalendarLabel> labels =
                     day.labels().stream()
+                        .filter(label -> label.portion() == null || label.portion().signum() > 0)
                         .map(
                             label ->
                                 new CalendarLabel(

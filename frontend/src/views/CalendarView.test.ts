@@ -68,6 +68,23 @@ describe("CalendarView", () => {
     );
   });
 
+  it("defaults to Marker and saves No marker with a zero portion", async () => {
+    const wrapper = mount(CalendarView);
+    await flushPromises();
+    await wrapper.get('input[type="checkbox"]').setValue(true);
+    const select = wrapper.get('select[aria-label="Sick leave day portion"]');
+    expect((select.element as HTMLSelectElement).value).toBe("");
+    expect(select.get('option[value=""]').text()).toBe("Marker");
+    await select.setValue("0");
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/calendar\/days\//),
+      expect.objectContaining({ body: expect.stringContaining('"portion":0') }),
+    );
+    wrapper.unmount();
+  });
+
   it("loads labels and a month range, then saves a selected day with a full-day label", async () => {
     const wrapper = mount(CalendarView);
     await flushPromises();

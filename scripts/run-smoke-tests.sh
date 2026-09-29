@@ -464,6 +464,11 @@ calendar_day="$(api "${header[@]}" "${content_json[@]}" --method=PUT \
 api "${header[@]}" "http://localhost:8080/api/v1/calendar/days?startDate=$smoke_date&endDate=$smoke_date" | grep -q 'Smoke leave'
 calendar_range_end="$(date -u -d "$smoke_date + 1 day" +%Y-%m-%d)"
 api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"labels\":[{\"labelId\":\"$calendar_label_id\",\"portion\":0}]}" \
+  "http://localhost:8080/api/v1/calendar/days/$smoke_date" | grep -q 'Smoke leave'
+no_marker_report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?startDate=$smoke_date&endDate=$smoke_date")"
+[[ "$no_marker_report" != *'Smoke leave'* ]]
+api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data="{\"startDate\":\"$smoke_date\",\"endDate\":\"$calendar_range_end\",\"labels\":[{\"labelId\":\"$calendar_label_id\",\"portion\":1.0}]}" \
   http://localhost:8080/api/v1/calendar/days/range | grep -q "$calendar_range_end"
 manual_start="$(date -u -d '2 hours ago' +%Y-%m-%dT%H:00:00Z)"

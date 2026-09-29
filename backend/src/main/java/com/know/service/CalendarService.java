@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class CalendarService {
   private static final Set<BigDecimal> VALID_PORTIONS =
       Set.of(
+          BigDecimal.ZERO,
           new BigDecimal("0.25"),
           new BigDecimal("0.50"),
           new BigDecimal("0.75"),
@@ -109,7 +110,7 @@ public class CalendarService {
       if (input.labelId() == null || !ids.add(input.labelId()))
         badRequest("Each calendar label can be selected only once");
       if (input.portion() != null && !isValidPortion(input.portion()))
-        badRequest("Portion must be 0.25, 0.50, 0.75, or 1.00");
+        badRequest("Portion must be 0, 0.25, 0.50, 0.75, or 1.00");
     }
     Map<UUID, Label> owned = new HashMap<>();
     for (UUID id : ids) owned.put(id, label(userId, id));
@@ -213,7 +214,7 @@ public class CalendarService {
       if (input.labelId() == null || !ids.add(input.labelId()))
         badRequest("Each calendar label can be selected only once");
       if (input.portion() != null && !isValidPortion(input.portion()))
-        badRequest("Portion must be 0.25, 0.50, 0.75, or 1.00");
+        badRequest("Portion must be 0, 0.25, 0.50, 0.75, or 1.00");
     }
     ids.forEach(id -> label(userId, id));
   }

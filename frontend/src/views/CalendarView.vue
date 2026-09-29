@@ -477,7 +477,8 @@ onMounted(load);
                 }
               "
             >
-              <option value="">Marker only</option>
+              <option value="">Marker</option>
+              <option value="0">No marker</option>
               <option value="0.25">¼ day</option>
               <option value="0.5">½ day</option>
               <option value="0.75">¾ day</option>

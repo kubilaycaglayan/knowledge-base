@@ -1702,6 +1702,47 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void noMarkerCalendarLabelsPersistButDoNotAppearInReports() {
+    String token = freshToken();
+    String labelId =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Calendar only\",\"color\":\"#805AD5\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    String assignment = "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0}]}";
+    assertEquals(
+        HttpStatus.OK,
+        put("/api/v1/calendar/days/2026-09-01", token, assignment).getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/calendar/days/range",
+                token,
+                "{\"startDate\":\"2026-09-02\",\"endDate\":\"2026-09-03\","
+                    + assignment.substring(1))
+            .getStatusCode());
+    JsonNode days =
+        get("/api/v1/calendar/days?startDate=2026-09-01&endDate=2026-09-03", token).getBody();
+    assertEquals(3, days.size());
+    for (JsonNode day : days) {
+      assertEquals(labelId, day.get("labels").get(0).get("labelId").asText());
+      assertEquals(0.0, day.get("labels").get(0).get("portion").asDouble());
+    }
+    JsonNode report = get("/api/v1/reports?startDate=2026-09-01&endDate=2026-09-03", token).getBody();
+    assertTrue(report.get("calendarLabels").isEmpty());
+    for (JsonNode day : report.get("days")) assertTrue(day.get("calendarLabels").isEmpty());
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/calendar/days/2026-09-01",
+                token,
+                "{\"labels\":[{\"labelId\":\"" + labelId + "\"}]}")
+            .getStatusCode());
+    report = get("/api/v1/reports?startDate=2026-09-01&endDate=2026-09-03", token).getBody();
+    assertEquals(1, report.get("calendarLabels").get(0).get("markers").asInt());
+  }
+
+  @Test
   void calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd() {
     String token = freshToken();
     String labelId =
