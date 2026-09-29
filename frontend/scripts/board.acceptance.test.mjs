@@ -697,6 +697,28 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.locator(".board-card-play").count(), 0);
   });
 
+  // CT-07: the play slot keeps its space without pushing the labels down.
+  it("keeps labels right under the priority on cards with a play button", async (t) => {
+    const { page } = await inProgressFixture(t, 1280);
+    const card = page.locator(".board-card").filter({ has: page.locator(".board-card-play") }).filter({ has: page.locator(".board-card-labels") }).first();
+    await card.waitFor();
+    const gap = async () => {
+      const [priority, labels, play] = await Promise.all([card.locator(".priority").boundingBox(), card.locator(".board-card-labels").boundingBox(), card.locator(".board-card-play").boundingBox()]);
+      return { gap: labels.y - (priority.y + priority.height), labels, play };
+    };
+    // Without a play button the top row is its min-height and the labels follow at their own margin.
+    const expected = await card.evaluate((element) => {
+      const [top, priority, labels] = [".board-card-top", ".priority", ".board-card-labels"].map((selector) => element.querySelector(selector));
+      return parseFloat(getComputedStyle(top).minHeight) - priority.getBoundingClientRect().height + parseFloat(getComputedStyle(labels).marginTop);
+    });
+    const shown = await gap();
+    assert.ok(Math.abs(shown.gap - expected) < 0.5, `Labels sit right under the priority (${shown.gap}px, expected ${expected}px)`);
+    assert.ok(shown.labels.y >= shown.play.y + shown.play.height || shown.labels.x + shown.labels.width <= shown.play.x, "Labels never run under the play button");
+    await card.locator(".board-card-play").click();
+    await page.getByRole("button", { name: "Stop timer" }).waitFor();
+    assert.deepEqual(await gap().then(({ gap }) => gap), shown.gap, "Hiding the play button keeps the labels in place");
+  });
+
   it("darkens the play button in dark theme, on cards and in the tracker", async (t) => {
     const { page } = await inProgressFixture(t, 1280);
     await page.locator(".board-card-play").first().waitFor();
