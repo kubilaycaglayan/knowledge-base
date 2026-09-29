@@ -103,7 +103,11 @@ const kanbanColumns = computed<KanbanColumn[]>(() => isAll.value
   ? mergedColumns.value.map((column) => ({ id: `column-${encodeURIComponent(column.key)}`, name: column.name, sort: column.cardSort, cursor: columnCursor(column.key), merged: column }))
   : activeStatuses.value.map((status) => ({ id: status.id, name: status.name, sort: status.cardSort || "MANUAL", cursor: status.id, status })));
 const boardSearchOpen = ref(false), boardSearch = ref(""), boardSearchInput = ref<HTMLInputElement | null>(null);
-const matchesBoardSearch = (card: BoardCard) => !boardSearch.value.trim() || card.title.toLocaleLowerCase().includes(boardSearch.value.trim().toLocaleLowerCase());
+const boardLabels = computed(() => labelsStore.forScope("BOARD"));
+const matchesBoardSearch = (card: BoardCard) => {
+  const query = boardSearch.value.trim().toLocaleLowerCase();
+  return !query || card.title.toLocaleLowerCase().includes(query) || card.labelIds.some((id) => boardLabels.value.find((label) => label.id === id)?.name.toLocaleLowerCase().includes(query));
+};
 const ganttCards = computed(() => rawGanttCards.value.filter(matchesBoardSearch));
 const columnCards = (column: KanbanColumn) => (column.merged ? cardsForMerged(column.merged) : cardsFor(column.status!.id)).filter(matchesBoardSearch);
 const visibleColumnCards = columnCards;
@@ -124,7 +128,6 @@ function selectBoard(id: string) { dismissError(); store.selectedId = id; void r
 const timerStore = useTimerStore();
 // Board labels: a searchable chip picker in the card editor and one row of
 // chips on each card. Escape first closes the picker's menu, then the editor.
-const boardLabels = computed(() => labelsStore.forScope("BOARD"));
 const cardLabels = (card: BoardCard) => card.labelIds.map((id) => boardLabels.value.find((label) => label.id === id)).filter((label): label is NonNullable<typeof label> => Boolean(label));
 const labelsMenuOpen = ref(false);
 // The picker never grows past one row: it shows the chips that fit and a +N
