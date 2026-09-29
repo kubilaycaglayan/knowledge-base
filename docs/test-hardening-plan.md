@@ -9,7 +9,7 @@ the failing test committed first (see the bug-fix workflow).
 ## Gap survey (2026-09-29)
 
 Backend classes with no direct tests: `JwtTokenService`, `LogService` (only a
-single ownership case inside `KnowIntegrationTest`), `NoteArchiveCleanup`, and
+single ownership case inside `KnowIntegrationTest`), and
 the `SecurityConfig.JwtFilter` edge cases (only "garbage token" is covered).
 Unauthenticated access is checked endpoint by endpoint in a few `*ApiTest`
 classes, so a newly added controller is not covered automatically. Cross-user
@@ -71,8 +71,9 @@ Each ID names the test that covers it. Backend tests run with the Dockerized
 - [x] **TH-12** `JwtTokenService`: reads the subject of a valid token and
   rejects wrong-key, expired, and non-UUID-subject tokens with
   `IllegalArgumentException`. (`security/JwtTokenServiceTest`)
-- [ ] **TH-13** `NoteArchiveCleanup` purges notes archived more than 30 days
-  ago. (`service/NoteArchiveCleanupTest`)
+- [x] **TH-13** Archived notes are kept indefinitely: no scheduled job deletes a
+  note archived long ago, and it can still be restored.
+  (`integration/NoteArchiveRetentionIntegrationTest`)
 
 ### Frontend — stores and libs (Vitest)
 

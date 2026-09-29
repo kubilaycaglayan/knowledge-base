@@ -167,3 +167,6 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Pinning a note, path, or board puts it at the end of the pinned items
   (V52 `pinned_at`); pinning drops the manual slot and unplaced pins sort
   after placed ones in pin order.
+- [x] Keep archived notes indefinitely: the nightly 30-day archive purge is
+  removed, so no background job deletes notes and any archived note can be
+  restored.

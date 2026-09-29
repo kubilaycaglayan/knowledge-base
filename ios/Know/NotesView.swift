@@ -120,7 +120,7 @@ struct NotesView: View {
       }
       Button("Cancel", role: .cancel) { archiveCandidate = nil }
     } message: {
-      Text("Archived notes are permanently deleted after 30 days.")
+      Text("You can restore archived notes at any time.")
     }
     .confirmationDialog(
       "Discard unsaved note changes?", isPresented: $leaveConfirmation, titleVisibility: .visible

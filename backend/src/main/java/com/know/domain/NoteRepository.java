@@ -4,7 +4,6 @@ import java.util.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -79,8 +78,4 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
   @Query("select n from Note n where n.id = :id and n.userId = :userId")
   Optional<Note> findByIdAndUserIdIncludingArchived(
       @Param("id") UUID id, @Param("userId") UUID userId);
-
-  @Modifying
-  @Query("delete from Note n where n.deletedAt is not null and n.deletedAt < :cutoff")
-  int purgeArchivedBefore(@Param("cutoff") java.time.Instant cutoff);
 }

@@ -171,7 +171,7 @@ async function loadNotes(force = false) {
 async function archiveNote(note: Note) {
   if (
     !window.confirm(
-      `Move “${note.title}” to Archive? Archived notes are permanently deleted after 30 days.`,
+      `Move “${note.title}” to Archive? You can restore it from the archive at any time.`,
     )
   )
     return;
