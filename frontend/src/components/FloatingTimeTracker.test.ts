@@ -162,6 +162,78 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("starts the session with the typed description on Cmd+Enter in the description", async () => {
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+    const description = wrapper.get('textarea[aria-label="Timer description"]');
+    await description.setValue("Read a chapter");
+    await description.trigger("keydown", { key: "Enter", metaKey: true });
+    await flushPromises();
+
+    const start = vi
+      .mocked(api)
+      .mock.calls.find(([path, init]) => path === "/timers" && init?.method === "POST");
+    expect(JSON.parse(start?.[1]?.body as string).description).toBe("Read a chapter");
+    wrapper.unmount();
+  });
+
+  it("saves the typed description and stops the session on Ctrl+Enter in the description", async () => {
+    const calls: string[] = [];
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (options.method) calls.push(`${options.method} ${path}`);
+        if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+        if (path === "/timers/current")
+          return { id: "timer-1", startedAt: new Date().toISOString(), running: true };
+        if (path === "/timers/timer-1" && options.method === "PUT")
+          return {
+            id: "timer-1",
+            startedAt: new Date().toISOString(),
+            running: true,
+            ...JSON.parse(options.body as string),
+          };
+        return undefined;
+      },
+    );
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+    const description = wrapper.get('textarea[aria-label="Timer description"]');
+    await description.setValue("Finished the chapter");
+    await description.trigger("keydown", { key: "Enter", ctrlKey: true });
+    await flushPromises();
+
+    expect(calls).toEqual(["PUT /timers/timer-1", "POST /timers/timer-1/stop"]);
+    const save = vi
+      .mocked(api)
+      .mock.calls.find(([path, init]) => path === "/timers/timer-1" && init?.method === "PUT");
+    expect(JSON.parse(save?.[1]?.body as string).description).toBe("Finished the chapter");
+    wrapper.unmount();
+  });
+
+  it("keeps plain Enter in the description as a newline without starting", async () => {
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+    const description = wrapper.get('textarea[aria-label="Timer description"]');
+    await description.setValue("Read");
+    await description.trigger("keydown", { key: "Enter" });
+    await flushPromises();
+
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      "/timers",
+      expect.objectContaining({ method: "POST" }),
+    );
+    wrapper.unmount();
+  });
+
   it("clears the form when the WebSocket stop event wins the stop request race", async () => {
     const originalWebSocket = globalThis.WebSocket;
     const sockets: MockSocket[] = [];
