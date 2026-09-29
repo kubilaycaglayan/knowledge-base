@@ -3,7 +3,11 @@
    page reserves room below its last row (the archive footer) to keep it tappable. */
 /* The shared shell header already leaves a gap above main, so the board
    pulls up to sit close under the navigation. */
-.board-page { max-width: 1500px; margin: -.75rem auto 0; padding: 0 1.25rem 7.5rem; }
+.board-page { position:relative; max-width: 1500px; margin: -.75rem auto 0; padding: 0 1.25rem 7.5rem; }
+.board-search-overlay { position:absolute; z-index:5; top:0; right:1.25rem; display:flex; align-items:center; gap:.5rem; min-width:min(420px, calc(100vw - 2rem)); padding:.35rem .5rem .35rem .8rem; border:1px solid var(--border-color); border-radius:12px; background:var(--surface-color); box-shadow:0 8px 28px #0003; }
+.board-search-overlay input { flex:1; min-width:0; border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
+.board-search-overlay input:focus-visible { outline:3px solid #e8754e; outline-offset:2px; border-radius:4px; }
+.board-search-hint { color:var(--muted-text); font-size:.75rem; white-space:nowrap; }
 .board-header, .board-toolbar, .editor-actions { display:flex; align-items:center; gap:.75rem; }
 .board-header { justify-content:space-between; margin-bottom:1rem; } h1 { margin:.15rem 0 0; } .eyebrow,.muted { color:var(--muted-text); font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; margin:0; }
 .board-actions { display:flex; gap:.5rem; flex-wrap:wrap; } .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; } button, input, select, textarea { min-height:44px; font:inherit; } button { border:0; border-radius:8px; padding:.65rem .9rem; background:#334155; color:#fff; cursor:pointer; } button.secondary { background:transparent; color:inherit; border:1px solid var(--border-color); } button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px solid #e8754e; outline-offset:2px; }
