@@ -1,7 +1,12 @@
 /* Shared formatting for rich-text bodies (notes and board cards). See src/lib/rich-text.ts. */
 /* Paragraphs sit one line apart, so Enter reads like Shift+Enter. */
+/* Typing starts right at the top: a small shared inset, and no margin above the first block. */
 .rich-text .ProseMirror {
   line-height: 1.35;
+  padding-top: 6px;
+}
+.rich-text .ProseMirror > :first-child {
+  margin-top: 0;
 }
 .rich-text .ProseMirror p {
   margin: 0;

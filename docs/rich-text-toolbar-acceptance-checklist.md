@@ -38,7 +38,7 @@ that cover it. Tick an item only once those tests pass.
   _Tests:_ `board.acceptance.test.mjs` "uses the note body line height and paragraph spacing in the card body",
   `rich-text.test.ts` "keeps paragraphs gapless with a 1.35 line height"
 
-- [ ] **RT-07** The first line of a body starts right at the top: the
+- [x] **RT-07** The first line of a body starts right at the top: the
   editable area has the same 6px top padding in cards and notes, and the first
   block (paragraph, heading, list, or quote) adds no top margin, so
   typing never starts more than half a line down (was up to 28px in cards).
