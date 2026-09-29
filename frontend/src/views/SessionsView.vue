@@ -221,8 +221,36 @@ function moveLabelHighlight(direction: 1 | -1) {
     matchingLabels.value.length;
 }
 function selectHighlightedLabel(event: KeyboardEvent) {
-  const label = matchingLabels.value[activeLabelIndex.value < 0 ? 0 : activeLabelIndex.value];
-  if (label) { event.preventDefault(); chooseLabel(label.id); }
+  if (event.isComposing || !labelQuery.value.trim()) return;
+  event.preventDefault();
+  void commitLabelQuery();
+}
+// Attaches the typed label: the highlighted match, an exact name match, or a
+// newly created TIME_ENTRY label. Returns false when creating it failed.
+async function commitLabelQuery() {
+  const name = labelQuery.value.trim();
+  if (!name || !draft.value) return true;
+  const match =
+    matchingLabels.value[activeLabelIndex.value < 0 ? 0 : activeLabelIndex.value] ||
+    sessionLabels.value.find(
+      (label) => label.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+    );
+  if (match) {
+    chooseLabel(match.id);
+    return true;
+  }
+  try {
+    const created = await api<Label>("/labels", {
+      method: "POST",
+      body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }),
+    });
+    labelsStore.add({ ...created, scopes: created.scopes || ["TIME_ENTRY"] });
+    chooseLabel(created.id);
+    return true;
+  } catch {
+    error.value = "Could not create the session label.";
+    return false;
+  }
 }
 function highlightedLabel(name: string) {
   const query = labelQuery.value.trim();
@@ -245,8 +273,10 @@ async function save(session: Session) {
     error.value = "A session needs both a start and an end time.";
     return;
   }
+  if (saving.value) return;
   saving.value = true;
   try {
+    if (!(await commitLabelQuery())) return;
     await api(`/time-entries/${session.id}`, {
       method: "PUT",
       body: JSON.stringify({
@@ -466,7 +496,7 @@ onMounted(load);
                       </button>
                     </div>
                     <div class="session-label-combobox">
-                      <input v-model="labelQuery" name="session-labels" type="text" autocomplete="off" aria-label="Add session label" role="combobox" aria-autocomplete="list" aria-controls="session-label-suggestions" :aria-expanded="String(matchingLabels.length > 0)" placeholder="Add a label…" @keydown.arrow-down.prevent="moveLabelHighlight(1)" @keydown.arrow-up.prevent="moveLabelHighlight(-1)" @keydown.enter="selectHighlightedLabel" @keydown.escape="labelQuery = ''; activeLabelIndex = -1" />
+                      <input v-model="labelQuery" name="session-labels" type="text" autocomplete="off" aria-label="Add session label" role="combobox" aria-autocomplete="list" aria-controls="session-label-suggestions" :aria-expanded="String(matchingLabels.length > 0)" placeholder="Add a label…" @keydown.arrow-down.prevent="moveLabelHighlight(1)" @keydown.arrow-up.prevent="moveLabelHighlight(-1)" @keydown.enter.exact="selectHighlightedLabel" @keydown.escape="labelQuery = ''; activeLabelIndex = -1" />
                       <ul v-if="matchingLabels.length" id="session-label-suggestions" class="session-label-suggestions" role="listbox" aria-label="Matching labels">
                         <li v-for="(label, index) in matchingLabels" :key="label.id" role="option" :aria-selected="activeLabelIndex === index" :class="{ active: activeLabelIndex === index }" @mousedown.prevent="chooseLabel(label.id)">
                           <span v-for="(part, partName) in highlightedLabel(label.name)" :key="partName" :class="{ 'session-label-match': partName === 'match' }">{{ part }}</span>

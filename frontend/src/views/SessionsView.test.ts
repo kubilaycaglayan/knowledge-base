@@ -324,6 +324,51 @@ describe("SessionsView", () => {
     ]);
   });
 
+  it("adds a typed new label on plain Enter without saving the session", async () => {
+    const defaultApi = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) =>
+      path === "/labels" && init?.method === "POST"
+        ? { id: "label-new", name: "Deep work", color: null, scopes: ["TIME_ENTRY"] }
+        : defaultApi(path, init),
+    );
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+    const input = wrapper.get<HTMLInputElement>('[aria-label="Add session label"]');
+    await input.setValue("Deep work");
+    await input.trigger("keydown", { key: "Enter" });
+    await flushPromises();
+
+    expect(wrapper.get(".session-label-chips").text()).toContain("Deep work");
+    expect(input.element.value).toBe("");
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      "/time-entries/new",
+      expect.objectContaining({ method: "PUT" }),
+    );
+  });
+
+  it("keeps the editor open when creating the typed label fails", async () => {
+    const defaultApi = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === "/labels" && init?.method === "POST") throw new Error("taken");
+      return defaultApi(path, init);
+    });
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+    const input = wrapper.get('[aria-label="Add session label"]');
+    await input.setValue("Taken");
+    await input.trigger("keydown", { key: "Enter", metaKey: true });
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain("Could not create the session label.");
+    expect(wrapper.find("form.session-edit").exists()).toBe(true);
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      "/time-entries/new",
+      expect.objectContaining({ method: "PUT" }),
+    );
+  });
+
   it("saves a typed existing label on Ctrl+Enter without creating one", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
