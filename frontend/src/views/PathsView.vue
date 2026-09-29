@@ -664,6 +664,7 @@ onBeforeUnmount(() => {
               >
                 <a
                   v-if="part.url"
+                  class="plain-link"
                   :href="part.url"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -990,6 +991,12 @@ onBeforeUnmount(() => {
 .paths-page {
   max-width: 1200px;
   margin: 0 auto;
+}
+.plain-link,
+.plain-link:hover {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
 }
 .path-pin-button {
   position: absolute;
