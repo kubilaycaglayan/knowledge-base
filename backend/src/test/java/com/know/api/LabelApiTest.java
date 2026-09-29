@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.know.service.LabelHistoryService;
 import com.know.service.LabelManagementService;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class LabelApiTest {
   @Autowired MockMvc mvc;
   @MockBean LabelManagementService service;
+  @MockBean LabelHistoryService history;
 
   @Test
   void unauthenticatedLabelCatalogIsRejected() throws Exception {

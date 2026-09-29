@@ -1,6 +1,7 @@
 package com.know.api;
 
 import com.know.domain.LabelScopeType;
+import com.know.service.LabelHistoryService;
 import com.know.service.LabelManagementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -13,9 +14,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/labels")
 public class LabelController {
   private final LabelManagementService service;
+  private final LabelHistoryService history;
 
-  public LabelController(LabelManagementService service) {
+  public LabelController(LabelManagementService service, LabelHistoryService history) {
     this.service = service;
+    this.history = history;
   }
 
   record Request(
@@ -31,6 +34,12 @@ public class LabelController {
   public List<LabelManagementService.View> list(
       Authentication a, @RequestParam(required = false) LabelScopeType scope) {
     return scope == null ? service.list(user(a)) : service.list(user(a), scope);
+  }
+
+  @GetMapping("/{id}/history")
+  public LabelHistoryService.History history(
+      Authentication a, @PathVariable UUID id, @RequestParam(required = false) String zone) {
+    return history.history(user(a), id, zone);
   }
 
   @PostMapping
