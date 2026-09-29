@@ -105,12 +105,14 @@ public class SecurityConfig {
                   .parseSignedClaims(h.substring(7))
                   .getPayload()
                   .getSubject();
+          // Controllers read the principal as a user id; a token without one is not a login.
+          UUID.fromString(Objects.requireNonNull(id));
           var auth =
               new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                   id, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
           org.springframework.security.core.context.SecurityContextHolder.getContext()
               .setAuthentication(auth);
-        } catch (JwtException ignored) {
+        } catch (JwtException | IllegalArgumentException | NullPointerException ignored) {
         }
       f.doFilter(r, res);
     }
