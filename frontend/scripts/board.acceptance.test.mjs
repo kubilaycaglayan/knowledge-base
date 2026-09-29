@@ -407,13 +407,13 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(new URL(page.url()).searchParams.get("view"), "gantt");
   });
 
-  it("resolves an invalid board query to the available board", async (t) => {
+  // BS-01
+  it("resolves an invalid board query to the All boards view", async (t) => {
     const { page } = await fixture(t);
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=missing-board&view=kanban`);
     await page.getByRole("heading", { name: "Boards" }).waitFor();
-    await selectedTab(page).waitFor();
-    assert.equal(await selectedTab(page).textContent(), "Product");
-    assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
+    await page.waitForURL((url) => url.searchParams.get("board") === "all");
+    assert.equal(await page.getByRole("button", { name: "All boards" }).getAttribute("aria-current"), "true");
   });
 
   it("shows an explicit empty state for an archived board query with no active boards", async (t) => {
@@ -1428,7 +1428,7 @@ describe("board tab overflow", { concurrency: 4 }, () => {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     });
     const page = await context.newPage();
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board`);
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board?board=board-0`);
     await page.locator(".board-tab-current .board-tab").waitFor();
     return page;
   }

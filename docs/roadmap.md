@@ -170,3 +170,9 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Keep archived notes indefinitely: the nightly 30-day archive purge is
   removed, so no background job deletes notes and any archived note can be
   restored.
+- [x] Remember the Boards page state on the server: the open board, the
+  Kanban/Gantt view and range, and the card search are stored in
+  `user_preferences` (V53) and restored on `/board` after other pages,
+  reloads, and new sign-ins; URL parameters still win. All boards is the
+  default and the fallback for a board that left the tabs.
+  Acceptance: `docs/board-state-acceptance-checklist.md`.

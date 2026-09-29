@@ -11,7 +11,8 @@ const error = ref(""), restoring = ref("");
 function dismissError() { error.value = ""; store.error = ""; }
 const archivedStatuses = computed(() => statuses.value.filter((status) => status.archived));
 const boardName = computed(() => store.selected?.name || "");
-const backTo = computed(() => ({ path: "/board", query: store.selectedId ? { board: store.selectedId } : {} }));
+// A bare /board reopens the remembered board state, with the board chosen here.
+const backTo = { path: "/board" };
 async function loadArchive() { await store.loadArchivedCards().catch(() => { error.value = "Could not load archived cards."; }); }
 async function restoreBoard(id: string) { if (restoring.value) return; restoring.value = id; dismissError(); try { await store.archiveBoard(id, true); await store.loadBoards(true); } catch { error.value = "Could not restore board."; } finally { restoring.value = ""; } }
 async function restoreStatus(status: BoardStatus) { if (restoring.value) return; restoring.value = status.id; dismissError(); try { await store.archiveStatus(status, true); await loadArchive(); } catch { error.value = "Could not restore status."; } finally { restoring.value = ""; } }

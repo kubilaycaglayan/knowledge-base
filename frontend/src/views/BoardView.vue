@@ -13,7 +13,7 @@ import { fitTabs } from "../lib/fit-tabs";
 import TimerRunButton from "../components/TimerRunButton.vue";
 import { useTimerStore } from "../stores/timer";
 import { useNoticesStore } from "../stores/notices";
-import { usePreferencesStore } from "../stores/preferences";
+import { usePreferencesStore, type BoardViewState } from "../stores/preferences";
 import { useBoardsStore, type Board, type BoardCard, type BoardCardSort, type BoardStatus, type MergedColumn } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
@@ -103,9 +103,11 @@ const kanbanColumns = computed<KanbanColumn[]>(() => isAll.value
   ? mergedColumns.value.map((column) => ({ id: `column-${encodeURIComponent(column.key)}`, name: column.name, sort: column.cardSort, cursor: columnCursor(column.key), merged: column }))
   : activeStatuses.value.map((status) => ({ id: status.id, name: status.name, sort: status.cardSort || "MANUAL", cursor: status.id, status })));
 const boardSearchOpen = ref(false), boardSearch = ref(""), boardSearchInput = ref<HTMLInputElement | null>(null);
+// A closed search filters nothing; the open one is remembered with the board state (BS-03).
+const activeSearch = computed(() => (boardSearchOpen.value ? boardSearch.value : "").slice(0, 200));
 const boardLabels = computed(() => labelsStore.forScope("BOARD"));
 const matchesBoardSearch = (card: BoardCard) => {
-  const query = boardSearch.value.trim().toLocaleLowerCase();
+  const query = activeSearch.value.trim().toLocaleLowerCase();
   if (!query) return true;
   const pathIds = new Set([...card.pathIds, cardBoard(card)?.pathId].filter((id): id is string => Boolean(id)));
   const searchableText = [
@@ -333,8 +335,35 @@ function requestArchiveBoard() { if (settingsBoardId.value) archiveConfirmOpen.v
 function requestArchiveCard(card: BoardCard) { archiveCardConfirm.value = card; }
 async function confirmArchiveCard() { const card = archiveCardConfirm.value; archiveCardConfirm.value = null; if (!card) return; try { if (editing.value?.id === card.id) { await queueSave(); clearTimeout(saveTimer); destroyCardEditor(); editing.value = null; } await store.archiveCard(card); } catch { notices.notify("Could not archive card."); } }
 async function archiveBoard() { const id = settingsBoardId.value; if (!id) return; const wasOpen = id === store.selectedId; archiveConfirmOpen.value = false; settingsOpen.value = false; dismissError(); try { await store.archiveBoard(id); if (wasOpen) await router.replace({ query: {} }); } catch { notices.notify("Could not archive board."); } }
-onMounted(async () => { phoneQuery = typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : undefined; phone.value = Boolean(phoneQuery?.matches); phoneQuery?.addEventListener("change", onPhoneChange); document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureKanbanHeight); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); document.addEventListener("keydown", boardSearchKeydown); window.addEventListener("beforeunload", warnBeforeUnload); // The URL's board is selected before the list loads, so loading never falls back to the first tab first.
-  const requested = typeof route.query.board === "string" ? route.query.board : ""; if (requested) store.selectedId = requested; await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
+onMounted(async () => { phoneQuery = typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : undefined; phone.value = Boolean(phoneQuery?.matches); phoneQuery?.addEventListener("change", onPhoneChange); document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureKanbanHeight); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); document.addEventListener("keydown", boardSearchKeydown); window.addEventListener("beforeunload", warnBeforeUnload); // The board is selected before the list loads, so loading never falls back to All boards first.
+  await restoreBoardState(); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
+// The Boards page state (BS-01 to BS-04): a URL without board parameters (the nav link, a new session)
+// opens the remembered state and writes it into the URL; explicit parameters win. Every change is remembered.
+const BOARD_QUERY_KEYS = ["board", "view", "from", "to", "q"];
+const hasBoardQuery = () => BOARD_QUERY_KEYS.some((key) => typeof route.query[key] === "string");
+let boardStateReady = false;
+function boardStateQuery(state: BoardViewState) { return { ...(state.boardId ? { board: state.boardId } : {}), ...(state.view === "gantt" ? { view: "gantt", from: ganttFrom.value, to: ganttTo.value } : {}), ...(state.search ? { q: state.search } : {}) }; }
+async function restoreBoardState() {
+  await preferences.ready();
+  const saved = preferences.board;
+  if (!hasBoardQuery()) {
+    // With no boards left there is nothing to open, not even All boards.
+    const boardId = store.selectedId || (store.boardsLoaded && !store.boards.length ? "" : saved.boardId);
+    if (saved.view === "gantt" && saved.ganttFrom && saved.ganttTo) { ganttFrom.value = saved.ganttFrom; ganttTo.value = saved.ganttTo; }
+    boardSearch.value = saved.search; boardSearchOpen.value = Boolean(saved.search);
+    // The URL goes first: selecting a board also writes it into the URL, which would drop the rest of the state.
+    await router.replace({ query: boardStateQuery({ ...saved, boardId }) });
+    store.selectedId = boardId;
+  } else {
+    store.selectedId = typeof route.query.board === "string" ? route.query.board : store.selectedId || saved.boardId;
+    if (typeof route.query.q === "string") { boardSearch.value = route.query.q; boardSearchOpen.value = Boolean(route.query.q); }
+  }
+  boardStateReady = true;
+}
+const boardState = computed<BoardViewState>(() => { const gantt = view.value === "gantt"; const from = route.query.from, to = route.query.to; return { boardId: store.selectedId, view: view.value, ganttFrom: gantt && typeof from === "string" ? from : preferences.board.ganttFrom, ganttTo: gantt && typeof to === "string" ? to : preferences.board.ganttTo, search: activeSearch.value }; });
+watch(boardState, (state) => { if (boardStateReady && state.boardId && hasBoardQuery()) preferences.setBoardState(state); });
+watch(activeSearch, (search) => { if (!boardStateReady || (route.query.q ?? "") === search) return; const { q: _previous, ...query } = route.query; void router.replace({ query: search ? { ...query, q: search } : query }); });
+watch(hasBoardQuery, (present) => { if (!present && boardStateReady) { boardStateReady = false; void restoreBoardState(); } });
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });

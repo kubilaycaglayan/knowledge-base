@@ -821,6 +821,15 @@ describe("All boards view and cached views (AB-19, AB-20)", () => {
     expect(store.selectedId).toBe("b");
   });
 
+  // BS-01
+  it("selects nothing when there are no boards, not even All boards", async () => {
+    serve({ "/boards?archived=false": [] });
+    const store = await storeWith();
+    store.selectedId = "all";
+    await store.loadBoards();
+    expect(store.selectedId).toBe("");
+  });
+
   it("keeps All boards selected when the board list loads", async () => {
     serve();
     const store = await storeWith();
