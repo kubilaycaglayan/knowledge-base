@@ -21,7 +21,7 @@ public class JwtTokenService {
     try {
       return UUID.fromString(
           Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload().getSubject());
-    } catch (JwtException | IllegalArgumentException ex) {
+    } catch (JwtException | IllegalArgumentException | NullPointerException ex) {
       throw new IllegalArgumentException("Invalid JWT", ex);
     }
   }
