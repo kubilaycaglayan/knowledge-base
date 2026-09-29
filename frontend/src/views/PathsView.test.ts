@@ -318,9 +318,9 @@ describe("PathsView", () => {
 
     const wrapper = mount(PathsView);
     await flushPromises();
-    expect(
-      wrapper.get('a[href="https://example.com/guide"]').attributes("target"),
-    ).toBe("_blank");
+    const descriptionLink = wrapper.get('a[href="https://example.com/guide"]');
+    expect(descriptionLink.attributes("target")).toBe("_blank");
+    expect(descriptionLink.classes()).toContain("plain-link");
     await wrapper.get("button.text-button").trigger("click");
     await flushPromises();
     expect(
