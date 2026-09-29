@@ -218,6 +218,78 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  // SP-07
+  it("shows pause while running and resume while paused", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return { id: "timer-1", pathId: "path-1", labelIds: [], startedAt: new Date(Date.now() - 65_000).toISOString(), carriedSeconds: 3600, running: true };
+      if (path === "/timers/pause" && options.method === "POST")
+        return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: 3665 };
+      if (path === "/timers/resume" && options.method === "POST")
+        return { id: "timer-2", pathId: "path-1", labelIds: [], startedAt: new Date().toISOString(), carriedSeconds: 3665, running: true };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+    const pause = wrapper.get("button.floating-tracker-pause");
+    expect(pause.attributes("aria-label")).toBe("Pause session");
+    expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
+    await pause.trigger("click");
+    await flushPromises();
+
+    expect(api).toHaveBeenCalledWith("/timers/pause", expect.objectContaining({ method: "POST" }));
+    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+    expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
+    expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
+    expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
+    expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Resume session");
+    expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
+
+    await wrapper.get("button.floating-tracker-pause").trigger("click");
+    await flushPromises();
+    expect(api).toHaveBeenCalledWith("/timers/resume", expect.objectContaining({ method: "POST" }));
+    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+    expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Pause session");
+    wrapper.unmount();
+  });
+
+  // SP-07
+  it("hides the pause button while idle", async () => {
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    expect(wrapper.find("button.floating-tracker-pause").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  // SP-10
+  it("resumes a paused session with Cmd+Enter", async () => {
+    const calls: string[] = [];
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (options.method) calls.push(`${options.method} ${path}`);
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft" && !options.method) return { labelIds: [], description: "Paused work", pausedSeconds: 120 };
+      if (path === "/timers/draft") return { ...JSON.parse(options.body as string), pausedSeconds: 120 };
+      if (path === "/timers/resume")
+        return { id: "timer-2", labelIds: [], description: "Paused work", startedAt: new Date().toISOString(), carriedSeconds: 120, running: true };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    const description = wrapper.get('textarea[aria-label="Timer description"]');
+    await description.trigger("keydown", { key: "Enter", metaKey: true });
+    await flushPromises();
+
+    expect(calls).toContain("POST /timers/resume");
+    expect(calls).not.toContain("POST /timers");
+    expect(calls).not.toContain("POST /timers/finish");
+    wrapper.unmount();
+  });
+
   it("keeps plain Enter in the description as a newline without starting", async () => {
     const wrapper = mount(FloatingTimeTracker, {
       props: { inline: true },
