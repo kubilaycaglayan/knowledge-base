@@ -307,6 +307,7 @@ onUnmounted(() => {
         />
         <button
           class="floating-tracker-clock"
+          :class="{ 'is-running': timer }"
           type="button"
           :disabled="!timer"
           aria-label="Edit timer start time; elapsed session time"
@@ -600,6 +601,9 @@ onUnmounted(() => {
     monospace;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.floating-tracker-clock.is-running {
+  color: var(--workspace-success);
 }
 .floating-tracker-clock:disabled {
   cursor: default;

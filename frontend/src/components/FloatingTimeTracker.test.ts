@@ -342,6 +342,9 @@ describe("FloatingTimeTracker", () => {
     expect(
       floating.get("button.floating-tracker-action").attributes("aria-label"),
     ).toBe("Start timer");
+    expect(floating.get(".floating-tracker-clock").classes()).not.toContain(
+      "is-running",
+    );
 
     await floating.get(".floating-tracker-toggle").trigger("click");
     expect(floating.find("#floating-tracker-panel").exists()).toBe(true);
@@ -745,6 +748,9 @@ describe("FloatingTimeTracker", () => {
     expect(
       wrapper.get("button.floating-tracker-action").attributes("aria-label"),
     ).toBe("Stop timer");
+    expect(wrapper.get(".floating-tracker-clock").classes()).toContain(
+      "is-running",
+    );
     expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
     expect(wrapper.get(".floating-tracker-context").text()).toContain(
       "Focus, Review",
