@@ -350,7 +350,7 @@ describe("boards store concurrency", () => {
     expect(store.boards[0].name).toBe("Restored");
   });
 
-  it("reconciles edited dates with the active Gantt window", async () => {
+  it("keeps an active Gantt card when edited dates move it outside the visible window", async () => {
     const saved = { id: "card", statusId: "backlog", title: "Dated", body: "{}", priority: "MEDIUM" as const, startDate: "2026-10-01", dueDate: "2026-10-02", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
     apiMock.mockResolvedValue(saved);
     const { useBoardsStore } = await import("./boards");
@@ -365,7 +365,8 @@ describe("boards store concurrency", () => {
     await store.updateCard(card, { title: "Dated", body: "{}", priority: "MEDIUM", startDate: "2026-10-01", dueDate: "2026-10-02" });
 
     expect(store.cards[0].startDate).toBe("2026-10-01");
-    expect(store.ganttCards).toEqual([]);
+    expect(store.ganttCards).toHaveLength(1);
+    expect(store.ganttCards[0].id).toBe("card");
   });
 
   it("re-adds a restored dated card only when it overlaps the Gantt window", async () => {

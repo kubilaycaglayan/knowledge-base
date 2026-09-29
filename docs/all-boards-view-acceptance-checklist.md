@@ -20,7 +20,7 @@ pass.
   _Tests:_ `AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`, `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`
 - [x] **AB-04** `PUT /boards/all/columns/sort {name, cardSort}` stores the merged column's sort for the user only. The boards' own statuses stay unchanged.
   _Tests:_ `AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
-- [x] **AB-05** `GET /boards/all/gantt?from&to` returns the dated active cards of every tab board.
+- [x] **AB-05** `GET /boards/all/gantt?from&to` returns all active cards of every tab board, including undated and out-of-window cards.
   _Tests:_ `AllBoardsIntegrationTest.ganttCoversEveryTabBoard`
 - [x] **AB-06** `POST /boards/{id}/cards/in-column {columnName, …}` creates a card in that column. If the board has no column with that name, it is created at the end. The response is `{ card, status, statusCreated }`.
   _Tests:_ `AllBoardsIntegrationTest.createInColumnCreatesAMissingColumn`

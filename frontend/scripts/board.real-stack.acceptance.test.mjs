@@ -295,6 +295,28 @@ describe("board real-stack acceptance", () => {
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     await page.locator(".timeline-bar", { hasText: "Real timeline card" }).waitFor();
     assert.equal(await page.locator(".timeline-bar", { hasText: "Real timeline card" }).count(), 1);
+    // Exercise the same card PUT used by a timeline move against the real API.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const bar = page.locator(".timeline-bar", { hasText: "Real timeline card" });
+    await bar.scrollIntoViewIfNeeded();
+    const box = await bar.boundingBox();
+    const track = await page.locator(".timeline-track").first().boundingBox();
+    const dayCount = await page.locator(".timeline-days > span").count();
+    const dateSave = page.waitForResponse((response) => response.request().method() === "PUT" && response.url().includes("/cards/"));
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + track.width / dayCount, box.y + box.height / 2, { steps: 5 });
+    await page.mouse.up();
+    const saved = await dateSave;
+    assert.equal(saved.status(), 200);
+    const shifted = await saved.json();
+    const nextDay = (date) => isoDate(new Date(new Date(`${date}T00:00:00Z`).getTime() + 86_400_000));
+    assert.equal(shifted.startDate, nextDay(timelineStart));
+    assert.equal(shifted.dueDate, nextDay(timelineEnd));
+    await page.reload();
+    await page.locator(".timeline-card").waitFor();
+    assert.equal(await page.locator(".timeline-today-line").count(), 1);
+    await page.setViewportSize({ width: 390, height: 844 });
   });
 
   it("passes Axe on the primary mobile board view", async () => {

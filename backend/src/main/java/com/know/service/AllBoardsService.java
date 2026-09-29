@@ -85,13 +85,13 @@ public class AllBoardsService {
     return cardSort;
   }
 
-  /** Dated active cards of every tab board overlapping the window, by start date then tab order. */
+  /** All active cards of every tab board, by date then tab order. */
   @Transactional(readOnly = true)
   public List<BoardCard> gantt(UUID userId, LocalDate from, LocalDate to) {
     List<BoardCard> result = new ArrayList<>();
-    for (Board board : boardService.tabs(userId, false)) result.addAll(cards.findGanttCards(board.getId(), from, to));
+    for (Board board : boardService.tabs(userId, false)) result.addAll(cards.findGanttCards(board.getId()));
     List<BoardCard> byTab = List.copyOf(result);
-    result.sort(Comparator.comparing((BoardCard card) -> card.getStartDate() != null ? card.getStartDate() : card.getDueDate()).thenComparing(byTab::indexOf));
+    result.sort(Comparator.comparing((BoardCard card) -> card.getStartDate() != null ? card.getStartDate() : card.getDueDate(), Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(byTab::indexOf));
     return result;
   }
 

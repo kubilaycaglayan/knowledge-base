@@ -305,7 +305,7 @@ class BoardControllerApiTest {
     verify(cards, never()).save(any(BoardCard.class));
   }
 
-  @Test void ganttAcceptsSingleDayAndOpenEndedCardsThatOverlapTheWindow() throws Exception {
+  @Test void ganttIncludesUndatedAndOutOfWindowActiveCards() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
     BoardStatus oneStatus = new BoardStatus(boardId, "One", 0);
@@ -315,11 +315,17 @@ class BoardControllerApiTest {
     oneDay.update("One day", "{}", BoardPriority.HIGH, LocalDate.of(2026, 4, 5), LocalDate.of(2026, 4, 5));
     BoardCard openEnd = new BoardCard(boardId, openStatus.getId(), 1);
     openEnd.update("Open end", "{}", BoardPriority.MEDIUM, LocalDate.of(2026, 4, 1), null);
+    BoardCard undated = new BoardCard(boardId, oneStatus.getId(), 2);
+    undated.update("Undated", "{}", BoardPriority.LOW, null, null);
+    BoardCard outsideWindow = new BoardCard(boardId, oneStatus.getId(), 3);
+    outsideWindow.update("Outside window", "{}", BoardPriority.LOW, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 2));
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
-    when(cards.findGanttCards(boardId, LocalDate.of(2026, 4, 5), LocalDate.of(2026, 4, 5))).thenReturn(List.of(oneDay, openEnd));
+    when(cards.findGanttCards(boardId)).thenReturn(List.of(oneDay, openEnd, undated, outsideWindow));
     mvc.perform(get("/api/v1/boards/" + boardId + "/gantt?from=2026-04-05&to=2026-04-05").with(authentication(auth())))
-        .andExpect(status().isOk()).andExpect(jsonPath("$[0].title").value("One day"));
-    verify(cards).findGanttCards(boardId, LocalDate.of(2026, 4, 5), LocalDate.of(2026, 4, 5));
+        .andExpect(status().isOk()).andExpect(jsonPath("$[0].title").value("One day"))
+        .andExpect(jsonPath("$[?(@.title == 'Undated')]" ).isNotEmpty())
+        .andExpect(jsonPath("$[?(@.title == 'Outside window')]" ).isNotEmpty());
+    verify(cards).findGanttCards(boardId);
   }
 
   @Test void ganttRejectsReversedDateWindows() throws Exception {

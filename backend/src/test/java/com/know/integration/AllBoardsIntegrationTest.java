@@ -235,8 +235,8 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
 
     JsonNode items = get("/api/v1/boards/all/gantt?from=2026-09-01&to=2026-09-10", token).getBody();
     List<String> titles = titles(items);
-    assertTrue(titles.containsAll(List.of("work-dated", "home-dated")));
-    assertEquals(2, titles.size());
+    assertTrue(titles.containsAll(List.of("work-dated", "home-dated", "undated")));
+    assertEquals(3, titles.size());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/gantt?from=2026-09-10&to=2026-09-01", token).getStatusCode());
   }
 

@@ -233,9 +233,73 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t);
     await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "Ship timeline" }).count(), 1);
+    assert.equal(await page.getByRole("button", { name: "Ship timeline", exact: true }).count(), 1);
     assert.match(await page.locator(".timeline-bar").innerText(), /Ship timeline/);
     assert.equal(new URL(page.url()).searchParams.get("view"), "gantt");
+  });
+
+  it("moves and resizes Gantt dates and marks today across the chart", async (t) => {
+    const { page, getCardUpdateRequests } = await fixture(t, 1440);
+    await boardAction(page, "Gantt");
+    await page.locator(".timeline-card").waitFor();
+    const line = await page.locator(".timeline-today-line").boundingBox();
+    const chart = await page.locator(".timeline").boundingBox();
+    assert.ok(line.height >= chart.height - 1);
+    const drag = async (selector, days) => {
+      const element = page.locator(selector);
+      const box = await element.boundingBox();
+      const track = await page.locator(".timeline-track").boundingBox();
+      const response = page.waitForResponse((r) => r.request().method() === "PUT" && r.url().includes("/cards/card-1"));
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2 + days * track.width / 14, box.y + box.height / 2, { steps: 6 });
+      await page.mouse.up();
+      const result = await response;
+      await page.waitForFunction(() => document.querySelector('.timeline-card')?.getAttribute('aria-busy') === 'false');
+      assert.equal(await page.getByRole("dialog").count(), 0);
+      return result.request().postDataJSON();
+    };
+    let input = await drag(".timeline-bar", 2);
+    assert.equal(input.startDate, dateOnly(2));
+    assert.equal(input.dueDate, dateOnly(4));
+    input = await drag(".timeline-resize:first-child", -1);
+    assert.equal(input.startDate, dateOnly(1));
+    assert.equal(input.dueDate, dateOnly(4));
+    input = await drag(".timeline-resize:last-child", 2);
+    assert.equal(input.dueDate, dateOnly(6));
+    input = await drag(".timeline-resize:last-child", -1);
+    assert.equal(input.dueDate, dateOnly(5));
+    input = await drag(".timeline-resize:first-child", 1);
+    assert.equal(input.startDate, dateOnly(2));
+    assert.equal(getCardUpdateRequests(), 5);
+    await page.locator(".timeline-bar").focus();
+    await page.keyboard.press("Enter");
+    await page.getByRole("dialog").waitFor();
+  });
+
+  it("cancels a Gantt drag and restores dates after a failed save", async (t) => {
+    const { page, getCardUpdateRequests } = await fixture(t, 1440, false, false, false, false, true, 503);
+    await boardAction(page, "Gantt");
+    await page.locator(".timeline-card").waitFor();
+    const original = await page.locator(".timeline-card").getAttribute("style");
+    const box = await page.locator(".timeline-bar").boundingBox();
+    const track = await page.locator(".timeline-track").boundingBox();
+    const start = async () => {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2 + track.width / 14, box.y + box.height / 2, { steps: 5 });
+    };
+    await start();
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    assert.equal(getCardUpdateRequests(), 0);
+    assert.equal(await page.locator(".timeline-card").getAttribute("style"), original);
+    await start();
+    await page.mouse.up();
+    await page.locator(".timeline-track [role=status]").filter({ hasText: "Could not save dates" }).waitFor({ state: "attached" });
+    assert.equal(getCardUpdateRequests(), 1);
+    assert.equal(await page.locator(".timeline-card").getAttribute("style"), original);
+    assert.equal(await page.getByRole("dialog").count(), 0);
   });
 
   it("writes the default timeline window into URL state when switching to Gantt", async (t) => {
@@ -350,6 +414,16 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t, 1280);
     await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
+    await page.getByLabel("Timeline start date").fill("2020-01-01");
+    await page.getByLabel("Timeline end date").fill("2020-01-07");
+    await page.getByRole("button", { name: "Today", exact: true }).click();
+    const today = await page.evaluate(() => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; });
+    assert.equal(await page.getByLabel("Timeline start date").inputValue(), today);
+    const end = new Date(`${today}T12:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + 6);
+    assert.equal(await page.getByLabel("Timeline end date").inputValue(), end.toISOString().slice(0, 10));
+    await page.waitForFunction((date) => new URL(location.href).searchParams.get("from") === date, today);
+    assert.equal(await page.getByText("The timeline uses the same active cards as Kanban. Date ranges are inclusive.").count(), 0);
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
   });
@@ -1740,4 +1814,3 @@ describe("All boards view", { concurrency: 4 }, () => {
     await page.locator(".kanban-column").nth(1).locator(".board-card").first().waitFor();
   });
 });
-

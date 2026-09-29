@@ -112,6 +112,28 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("keeps all active cards in the Gantt gutter while limiting bars to the visible dates", async () => {
+    const store = seedBoard(["Backlog"]);
+    const card = (id: string, dates: Record<string, string> = {}) => ({
+      id, boardId: "test-id", statusId: "status-1", title: id, body: "{}", priority: "MEDIUM" as const,
+      position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", ...dates,
+    });
+    store.ganttCards = [
+      card("in-range", { startDate: "2026-09-03", dueDate: "2026-09-05" }),
+      card("undated"),
+      card("outside-range", { startDate: "2026-10-01", dueDate: "2026-10-02" }),
+    ];
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
+      .toEqual(["in-range", "undated", "outside-range"]);
+    expect(wrapper.findAll(".timeline-card")).toHaveLength(1);
+    await wrapper.unmount();
+  });
+
   // Add board lives only in the Boards dialog behind the Manage boards gear.
   async function openAddBoard(wrapper: ReturnType<typeof mountBoard>) {
     await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
