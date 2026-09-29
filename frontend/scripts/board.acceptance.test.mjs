@@ -511,6 +511,24 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.ok(Math.abs(second - first - lineHeight) < 1, `Paragraphs are one line apart (${second - first}px)`);
   });
 
+  // RT-07
+  it("starts the card body's first line at the top for every block type", async (t) => {
+    const { page } = await fixture(t);
+    await page.locator(".board-card").first().click();
+    const body = page.locator(".card-editor .ProseMirror");
+    for (const [block, shortcut] of [["P", ""], ["H1", "# "], ["H2", "## "], ["H3", "### "], ["UL", "- "], ["OL", "1. "], ["BLOCKQUOTE", "> "]]) {
+      await body.click();
+      await page.keyboard.press("ControlOrMeta+a");
+      await page.keyboard.press("Delete");
+      await page.keyboard.type(`${shortcut}Text`);
+      const [tag, hostTop, bodyTop, paddingTop, blockTop] = await body.evaluate((element) => [element.firstElementChild.tagName, element.closest(".card-body-editor").getBoundingClientRect().top, element.getBoundingClientRect().top, parseFloat(getComputedStyle(element).paddingTop), element.firstElementChild.getBoundingClientRect().top]);
+      assert.equal(tag, block, `"${shortcut}" starts a ${block}`);
+      assert.ok(Math.abs(bodyTop - hostTop) < 1, `The editable area fills the text box from its top (${bodyTop - hostTop}px)`);
+      assert.equal(paddingTop, 6, "Cards use the shared body top padding");
+      assert.ok(Math.abs(blockTop - bodyTop - paddingTop) < 1, `A first ${block} adds no top gap (${blockTop - bodyTop}px)`);
+    }
+  });
+
   // RT-03, RT-05
   it("formats a card body from the toolbar on desktop and phone", async (t) => {
     for (const width of [1280, 390]) {

@@ -20,6 +20,15 @@ describe("shared rich-text body", () => {
     document.body.innerHTML = "";
   });
 
+  // RT-07
+  it("starts the first block at the shared top padding", () => {
+    document.body.innerHTML = `<style>h2 { margin-top: 20px; }</style><div class="${RICH_TEXT_CLASS}"><div class="ProseMirror"><h2>Heading</h2><p>Text</p></div></div>`;
+    const [body, first] = [document.querySelector<HTMLElement>(".ProseMirror")!, document.querySelector<HTMLElement>("h2")!];
+    expect(getComputedStyle(body).paddingTop).toBe("6px");
+    expect(getComputedStyle(first).marginTop).toBe("0px");
+    document.body.innerHTML = "";
+  });
+
   it("copies blocks as plain lines", () => {
     const editor = new Editor({ extensions: richTextExtensions(), content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "One" }] }, { type: "paragraph", content: [{ type: "text", text: "Two" }] }] } });
     const slice = editor.state.doc.slice(0, editor.state.doc.content.size);
