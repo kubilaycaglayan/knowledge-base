@@ -1,7 +1,13 @@
 <script setup lang="ts">
 // The time tracker's play/stop button, shared by the floating tracker and
-// board cards. Callers own what a click starts or stops.
-defineProps<{ label: string; running?: boolean; busy?: boolean }>();
+// board cards. Callers own what a click starts or stops. `pause` shows the
+// pause icon for the tracker's pause button.
+defineProps<{
+  label: string;
+  running?: boolean;
+  busy?: boolean;
+  pause?: boolean;
+}>();
 defineEmits<{ click: [event: MouseEvent] }>();
 </script>
 
@@ -16,7 +22,11 @@ defineEmits<{ click: [event: MouseEvent] }>();
     :title="label"
     @click="$emit('click', $event)"
   >
-    <span class="timer-action-icon" :class="{ stop: running }" aria-hidden="true"></span>
+    <span
+      class="timer-action-icon"
+      :class="{ stop: running, pause: pause && !running }"
+      aria-hidden="true"
+    ></span>
   </button>
 </template>
 
@@ -85,6 +95,12 @@ defineEmits<{ click: [event: MouseEvent] }>();
   height: 8px;
   border: 0;
   background: currentColor;
+}
+.timer-action-icon.pause {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-inline: 3px solid currentColor;
 }
 @media (pointer: coarse) {
   .timer-run-button {

@@ -36,13 +36,21 @@ const {
   newLabel,
   selectedLabelIds,
   recentPathIds,
-  now,
   busy,
   actionBusy,
   error,
   timerStartedAt,
+  isPaused,
+  elapsedSeconds: elapsed,
 } = storeToRefs(timerStore);
-const { toggleRun, updateTimer, createLabel, rememberPath } = timerStore;
+const {
+  toggleRun,
+  updateTimer,
+  createLabel,
+  rememberPath,
+  pauseSession,
+  resumeSession,
+} = timerStore;
 const open = ref(Boolean(props.inline)),
   labelsOpen = ref(false);
 const activeLabelIndex = ref(-1);
@@ -55,16 +63,21 @@ watch(
   () => timerStore.historyVersion,
   () => emit("changed"),
 );
-// Cmd/Ctrl+Enter in the description starts the session, or saves the typed
-// description and stops the running one. Plain Enter keeps adding a newline.
+// Cmd/Ctrl+Enter in the description starts the session, resumes a paused
+// one, or saves the typed description and stops the running one. Plain Enter
+// keeps adding a newline.
 async function runFromDescription(event: KeyboardEvent) {
   if (event.isComposing || !(event.metaKey || event.ctrlKey)) return;
   event.preventDefault();
-  if (timer.value) {
+  if (timer.value || isPaused.value) {
     await updateTimer();
     if (error.value) return;
   }
-  await toggleRun();
+  if (isPaused.value) await resumeSession();
+  else await toggleRun();
+}
+function togglePause() {
+  return timer.value ? pauseSession() : resumeSession();
 }
 async function toggleLabel(id: string) {
   labelsOpen.value = true;
@@ -114,14 +127,6 @@ const recentPaths = computed(() =>
     .map((id) => paths.value.find((path) => path.id === id))
     .filter((path): path is Path => Boolean(path && path.status === "ACTIVE"))
     .slice(0, 5),
-);
-const elapsed = computed(() =>
-  timer.value
-    ? Math.max(
-        0,
-        Math.floor((now.value - Date.parse(timer.value.startedAt)) / 1000),
-      )
-    : 0,
 );
 const clock = (seconds: number) =>
   [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60]
@@ -310,15 +315,23 @@ onUnmounted(() => {
     <section class="floating-tracker session-grid" aria-label="Focus today">
       <div class="floating-tracker-bar focus" @click="expandFromBar">
         <TimerRunButton
-          class="floating-tracker-action primary"
-          :running="Boolean(timer)"
+          v-if="timer || isPaused"
+          class="floating-tracker-pause"
+          :pause="Boolean(timer)"
           :busy="actionBusy"
-          :label="timer ? 'Stop timer' : 'Start timer'"
+          :label="timer ? 'Pause session' : 'Resume session'"
+          @click="togglePause"
+        />
+        <TimerRunButton
+          class="floating-tracker-action primary"
+          :running="Boolean(timer || isPaused)"
+          :busy="actionBusy"
+          :label="timer || isPaused ? 'Stop timer' : 'Start timer'"
           @click="toggleRun"
         />
         <button
           class="floating-tracker-clock"
-          :class="{ 'is-running': timer }"
+          :class="{ 'is-running': timer, 'is-paused': isPaused }"
           type="button"
           :disabled="!timer"
           aria-label="Edit timer start time; elapsed session time"
@@ -330,7 +343,7 @@ onUnmounted(() => {
           pathName
         }}</span>
         <span v-if="!timer" class="floating-tracker-summary">{{
-          timerSummary
+          isPaused ? "Paused" : timerSummary
         }}</span>
         <span
           v-if="selectedLabelNames.length"
@@ -601,6 +614,13 @@ onUnmounted(() => {
   margin: 0 0 0 auto;
   order: 2;
 }
+.floating-tracker-pause {
+  margin: 0 0 0 auto;
+  order: 2;
+}
+.floating-tracker-pause + .floating-tracker-action {
+  margin-left: 0;
+}
 .floating-tracker-clock {
   border: 0;
   padding: 0;
@@ -616,6 +636,9 @@ onUnmounted(() => {
 }
 .floating-tracker-clock.is-running {
   color: var(--workspace-success);
+}
+.floating-tracker-clock.is-paused {
+  color: var(--workspace-muted);
 }
 .floating-tracker-clock:disabled {
   cursor: default;
@@ -1011,7 +1034,8 @@ onUnmounted(() => {
     gap: 8px;
     padding-inline: 10px;
   }
-  .floating-tracker-action {
+  .floating-tracker-action,
+  .floating-tracker-pause {
     width: 44px;
     min-width: 44px;
     min-height: 44px;

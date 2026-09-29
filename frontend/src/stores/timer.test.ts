@@ -368,16 +368,18 @@ describe("timer store", () => {
   // SP-07
   it("pauses the running session and keeps its context", async () => {
     const store = useTimerStore();
+    vi.mocked(api).mockImplementation(async (path, options = {}) =>
+      path === "/timers/pause" && options.method === "POST"
+        ? { pathId: "path-1", labelIds: ["label-1"], description: "Read chapter", pausedSeconds: 754 }
+        : path === "/paths" || path.startsWith("/labels")
+          ? []
+          : null,
+    );
     store.setCurrent({ id: "timer", pathId: "path-1", labelIds: ["label-1"], startedAt: "2026-09-12T10:00:00Z", description: "Read chapter", running: true });
     store.pathId = "path-1";
     store.selectedLabelIds = ["label-1"];
     store.description = "Read chapter";
     const historyVersion = store.historyVersion;
-    vi.mocked(api).mockImplementation(async (path, options = {}) =>
-      path === "/timers/pause" && options.method === "POST"
-        ? { pathId: "path-1", labelIds: ["label-1"], description: "Read chapter", pausedSeconds: 754 }
-        : null,
-    );
 
     await store.pauseSession();
 
@@ -401,7 +403,7 @@ describe("timer store", () => {
       if (path === "/timers/pause") return { pathId: "path-1", labelIds: [], description: "Draft", pausedSeconds: 600 };
       if (path === "/timers/resume" && options.method === "POST")
         return { id: "timer-2", pathId: "path-1", labelIds: [], description: "Draft", startedAt: "2026-09-12T11:00:00Z", carriedSeconds: 600, running: true };
-      return null;
+      return path === "/paths" || path.startsWith("/labels") ? [] : null;
     });
     store.setCurrent({ id: "timer-1", startedAt: "2026-09-12T10:50:00Z", running: true });
     await store.pauseSession();
@@ -422,7 +424,7 @@ describe("timer store", () => {
       if (path === "/timers/pause") return { pathId: "path-1", labelIds: [], description: "Draft", pausedSeconds: 60 };
       if (path === "/timers/finish") return { pathId: "path-1", labelIds: [], description: "Draft", pausedSeconds: null };
       if (path === "/timers/draft" && options.method === "PUT") return JSON.parse(options.body as string);
-      return null;
+      return path === "/paths" || path.startsWith("/labels") ? [] : null;
     });
     store.setCurrent({ id: "timer-1", pathId: "path-1", startedAt: "2026-09-12T10:50:00Z", description: "Draft", running: true });
     store.pathId = "path-1";
@@ -442,12 +444,12 @@ describe("timer store", () => {
   // SP-09
   it("picks up a pause made elsewhere", async () => {
     const store = useTimerStore();
-    store.setCurrent({ id: "timer", pathId: "path-1", startedAt: "2026-09-12T10:00:00Z", description: "Remote", running: true });
     vi.mocked(api).mockImplementation(async (path, options = {}) => {
       if (path === "/timers/current") return null;
       if (path === "/timers/draft" && !options.method) return { pathId: "path-1", labelIds: [], description: "Remote", pausedSeconds: 90 };
-      return null;
+      return path === "/paths" || path.startsWith("/labels") ? [] : null;
     });
+    store.setCurrent({ id: "timer", pathId: "path-1", startedAt: "2026-09-12T10:00:00Z", description: "Remote", running: true });
 
     await store.sync();
 
@@ -460,7 +462,9 @@ describe("timer store", () => {
     vi.mocked(api).mockImplementation(async (path) =>
       path === "/timers/current"
         ? { id: "timer-2", pathId: "path-1", startedAt: "2026-09-12T10:10:00Z", description: "Remote", carriedSeconds: 90, running: true }
-        : null,
+        : path === "/paths" || path.startsWith("/labels")
+          ? []
+          : null,
     );
     await store.sync();
     expect(store.isPaused).toBe(false);

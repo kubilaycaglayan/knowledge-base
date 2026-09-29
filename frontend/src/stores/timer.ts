@@ -14,8 +14,16 @@ export type Timer = {
   startedAt: string;
   description?: string;
   running?: boolean;
+  // Recorded seconds of the session's earlier segments when it was resumed.
+  carriedSeconds?: number;
 };
-type Draft = { pathId?: string; labelIds?: string[]; description?: string };
+type Draft = {
+  pathId?: string;
+  labelIds?: string[];
+  description?: string;
+  // The paused session's total; null or missing when nothing is paused.
+  pausedSeconds?: number | null;
+};
 type Label = {
   id: string;
   name: string;
@@ -33,6 +41,10 @@ export const useTimerStore = defineStore("timer", () => {
     version = ref(0),
     historyVersion = ref(0);
   const isRunning = computed(() => Boolean(current.value));
+  const pausedSeconds = ref<number | null>(null);
+  const isPaused = computed(
+    () => !current.value && pausedSeconds.value !== null,
+  );
   const pathId = ref(""),
     description = ref(""),
     selectedLabelIds = ref<string[]>([]),
@@ -55,6 +67,14 @@ export const useTimerStore = defineStore("timer", () => {
     actionBusy = ref(false),
     error = ref(""),
     socketConnected = ref(false);
+  // The session clock: earlier segments of a resumed session count too, and a
+  // paused session shows its frozen total.
+  const elapsedSeconds = computed(() => {
+    const running = current.value;
+    if (!running) return pausedSeconds.value ?? 0;
+    const segment = Math.floor((now.value - Date.parse(running.startedAt)) / 1000);
+    return (running.carriedSeconds || 0) + Math.max(0, segment);
+  });
   let ticker: number | undefined,
     syncTicker: number | undefined,
     reconnectTicker: number | undefined;
@@ -146,11 +166,16 @@ export const useTimerStore = defineStore("timer", () => {
     draftHydrated = true;
     refreshTargets(next);
   }
+  function applyPause(draft: Draft | null) {
+    pausedSeconds.value = draft?.pausedSeconds ?? null;
+  }
   async function syncDraft() {
     const revision = timerStateVersion;
     const draft = await api<Draft>("/timers/draft");
-    if (revision === timerStateVersion && !current.value && !busy.value)
+    if (revision === timerStateVersion && !current.value && !busy.value) {
       applyDraft(draft);
+      applyPause(draft);
+    }
   }
   function applyTimer(
     value: Timer | null,
@@ -180,6 +205,7 @@ export const useTimerStore = defineStore("timer", () => {
     // older servers or delayed messages from making the counter appear active.
     if (value?.running === false) value = null;
     current.value = value;
+    if (value) pausedSeconds.value = null;
     version.value++;
     now.value = Date.now();
     if (!value) {
@@ -234,7 +260,10 @@ export const useTimerStore = defineStore("timer", () => {
   async function resetAfterStop() {
     // Clear the local controls immediately after a successful stop. The
     // server draft is cleared as well so another client cannot rehydrate the
-    // completed session into a fresh timer form.
+    // completed session into a fresh timer form. Draft responses already in
+    // flight describe the session that just ended.
+    timerStateVersion++;
+    pausedSeconds.value = null;
     resetForm();
     await api("/timers/draft", {
       method: "PUT",
@@ -285,6 +314,13 @@ export const useTimerStore = defineStore("timer", () => {
         // guarded branch above is skipped, but the completed form still must
         // be cleared.
         if (!timer.value) await resetAfterStop();
+      } else if (isPaused.value) {
+        // Stop while paused finishes the session; its time is already recorded.
+        ++timerStateVersion;
+        await api<Draft>("/timers/finish", { method: "POST", body: "{}" });
+        reportsStore.clear();
+        sessionsStore.clearPages();
+        await resetAfterStop();
       } else {
         const versionAtRequest = ++timerStateVersion;
         const submitted = formState();
@@ -350,7 +386,10 @@ export const useTimerStore = defineStore("timer", () => {
       );
       if (versionAtRequest === timerStateVersion) {
         if (target) applyTimer(updated, false, submitted);
-        else applyDraft(updated || submitted, submitted);
+        else {
+          applyDraft(updated || submitted, submitted);
+          if (updated) applyPause(updated);
+        }
       }
       if (target && updated.running === false)
         applyDraft(
@@ -422,8 +461,14 @@ export const useTimerStore = defineStore("timer", () => {
       if (!busy.value && versionAtRequest === timerStateVersion) {
         const stoppedExternally = Boolean(timer.value && !current);
         applyTimer(current, true);
-        if (stoppedExternally) await resetAfterStop();
-        else if (!current) await syncDraft();
+        if (stoppedExternally) {
+          // A pause elsewhere also ends the running segment; keep its context.
+          const draft = await api<Draft | null>("/timers/draft");
+          if (draft?.pausedSeconds != null) {
+            applyDraft(draft);
+            applyPause(draft);
+          } else await resetAfterStop();
+        } else if (!current) await syncDraft();
       }
     } catch {
       /* Best-effort polling. */
@@ -481,6 +526,9 @@ export const useTimerStore = defineStore("timer", () => {
         } else if (message.type === "TIMER_STATE") {
           timerStateVersion++;
           applyTimer(message.timer || null, true, pendingSubmission);
+          // Pause and finish arrive as "no running timer"; the draft says
+          // whether the session is paused.
+          if (!message.timer) void syncDraft().catch(() => {});
         }
       };
       candidate.onclose = () => {
@@ -558,6 +606,54 @@ export const useTimerStore = defineStore("timer", () => {
       actionBusy.value = false;
     }
   }
+  // Pausing records the running segment; the server keeps the session's
+  // context and total on the draft until it is resumed or finished.
+  async function pauseSession() {
+    if (actionBusy.value || busy.value || !current.value) return;
+    actionBusy.value = true;
+    busy.value = true;
+    error.value = "";
+    try {
+      const versionAtRequest = ++timerStateVersion;
+      const paused = await api<Draft>("/timers/pause", {
+        method: "POST",
+        body: "{}",
+      });
+      reportsStore.clear();
+      sessionsStore.clearPages();
+      if (versionAtRequest === timerStateVersion) applyTimer(null);
+      applyPause(paused);
+      applyDraft(paused);
+      historyVersion.value++;
+    } catch {
+      error.value = "Could not pause the session.";
+    } finally {
+      busy.value = false;
+      actionBusy.value = false;
+    }
+  }
+  async function resumeSession() {
+    if (actionBusy.value || busy.value || !isPaused.value) return;
+    actionBusy.value = true;
+    busy.value = true;
+    error.value = "";
+    try {
+      const versionAtRequest = ++timerStateVersion;
+      const resumed = await api<Timer>("/timers/resume", {
+        method: "POST",
+        body: "{}",
+      });
+      if (versionAtRequest === timerStateVersion) applyTimer(resumed);
+      rememberPath(resumed.pathId || "");
+      historyVersion.value++;
+    } catch {
+      error.value =
+        "Could not resume the session. Its path may no longer be active.";
+    } finally {
+      busy.value = false;
+      actionBusy.value = false;
+    }
+  }
   function setCurrent(value: Timer | null) {
     timerStateVersion++;
     applyTimer(value);
@@ -565,6 +661,7 @@ export const useTimerStore = defineStore("timer", () => {
   function clear() {
     timerStateVersion++;
     current.value = null;
+    pausedSeconds.value = null;
     pathId.value = "";
     description.value = "";
     selectedLabelIds.value = [];
@@ -599,6 +696,9 @@ export const useTimerStore = defineStore("timer", () => {
     version,
     historyVersion,
     isRunning,
+    isPaused,
+    pausedSeconds,
+    elapsedSeconds,
     pathId,
     description,
     selectedLabelIds,
@@ -615,6 +715,8 @@ export const useTimerStore = defineStore("timer", () => {
     setCurrent,
     clear,
     toggleRun,
+    pauseSession,
+    resumeSession,
     startSession,
     updateTimer,
     toggleLabel,
