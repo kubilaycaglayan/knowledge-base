@@ -243,6 +243,97 @@ describe("NotesView", () => {
     expect(wrapper.find('button[aria-label="Undo"]').exists()).toBe(true);
   });
 
+  it("keeps the clicked note open when an earlier note loads late", async () => {
+    const second = {
+      ...note,
+      id: "note-2",
+      title: "Writing",
+      content: JSON.stringify({
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Essays" }] },
+        ],
+      }),
+    };
+    let releaseFirst: () => void = () => {};
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path.startsWith("/notes?")) return page([note, second]);
+      if (path === "/notes/note-1")
+        return new Promise((resolve) => {
+          releaseFirst = () => resolve(note);
+        });
+      if (path === "/notes/note-2") return second;
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+
+    await wrapper.findAll(".note-card-link")[0].trigger("click");
+    await flushPromises();
+    await r.push("/notes");
+    await flushPromises();
+    await wrapper.findAll(".note-card-link")[1].trigger("click");
+    await flushPromises();
+    releaseFirst();
+    await flushPromises();
+
+    expect(r.currentRoute.value.params.id).toBe("note-2");
+    expect(
+      (wrapper.get('input[aria-label="Note title"]').element as HTMLInputElement)
+        .value,
+    ).toBe("Writing");
+    expect(wrapper.get('[aria-label="Note content"]').text()).toBe("Essays");
+  });
+
+  it("saves edits to the open note when an earlier note's save finishes late", async () => {
+    const second = { ...note, id: "note-2", title: "Writing" };
+    let releaseFirstSave: () => void = () => {};
+    vi.mocked(api).mockImplementation(
+      async (path: string, options?: RequestInit) => {
+        if (path.startsWith("/notes?")) return page([note, second]);
+        if (path === "/notes/note-1" && options?.method === "PUT")
+          return new Promise((resolve) => {
+            releaseFirstSave = () => resolve({ ...note, title: "Learning 2" });
+          });
+        if (path === "/notes/note-1") return note;
+        if (path === "/notes/note-2" && options?.method === "PUT")
+          return { ...second, title: "Writing 2", version: 1 };
+        if (path === "/notes/note-2") return second;
+        return undefined;
+      },
+    );
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Learning 2");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+
+    await r.push("/notes");
+    await flushPromises();
+    await r.push("/notes/note-2");
+    await flushPromises();
+    releaseFirstSave();
+    await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Writing 2");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+
+    const puts = vi
+      .mocked(api)
+      .mock.calls.filter(([, options]) => options?.method === "PUT");
+    expect(puts.map(([path]) => path)).toEqual([
+      "/notes/note-1",
+      "/notes/note-2",
+    ]);
+    expect(String(puts[1][1]?.body)).toContain('"title":"Writing 2"');
+  });
+
   // RT-01
   it("puts the formatting toolbar under the note body", async () => {
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => (path === "/notes/note-1" && !options ? note : undefined));
