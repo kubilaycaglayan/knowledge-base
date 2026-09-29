@@ -766,5 +766,47 @@ describe("board real-stack acceptance", () => {
     page.off("request", track);
     assert.deepEqual(boardRequests, [], "Coming back to the All boards view fetches nothing");
   });
-});
 
+  // BS-05
+  it("restores the board state in a new session", async () => {
+    const token = await page.evaluate(() => localStorage.getItem("know_token"));
+    const signedIn = async () => {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
+      context.setDefaultTimeout(10000);
+      await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
+      return context;
+    };
+    const api = (target, path, init = {}) => target.evaluate(async ({ path, init }) => (await fetch(`/api/v1${path}`, { ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` } })).json(), { path, init });
+    const first = await signedIn();
+    try {
+      const tab = await first.newPage();
+      await tab.goto(`${baseUrl}/board?board=all&view=kanban`);
+      await tab.getByRole("heading", { name: "Boards" }).waitFor();
+      const [board] = await api(tab, "/boards");
+      await tab.goto(`${baseUrl}/board?board=${board.id}`);
+      await tab.getByRole("button", { name: "Gantt" }).click();
+      await tab.getByRole("button", { name: "Search cards" }).click();
+      await tab.locator("#board-search-input").fill("needle");
+      let stored = null;
+      for (let attempt = 0; attempt < 30 && stored?.search !== "needle"; attempt += 1) { stored = (await api(tab, "/preferences")).board; if (stored?.search !== "needle") await tab.waitForTimeout(100); }
+      assert.equal(stored.boardId, board.id);
+      assert.equal(stored.view, "gantt");
+
+      const second = await signedIn();
+      try {
+        const fresh = await second.newPage();
+        await fresh.goto(`${baseUrl}/board`);
+        await fresh.waitForURL((url) => url.searchParams.get("q") === "needle");
+        const query = Object.fromEntries(new URL(fresh.url()).searchParams);
+        assert.deepEqual(query, { board: board.id, view: "gantt", from: stored.ganttFrom, to: stored.ganttTo, q: "needle" });
+        assert.equal(await fresh.locator("#board-search-input").inputValue(), "needle");
+        assert.ok((await fresh.locator(".board-tab.selected").textContent()).includes(board.name));
+      } finally {
+        await second.close();
+      }
+    } finally {
+      await api(page, "/preferences", { method: "PUT", body: JSON.stringify({ board: { boardId: null, view: "kanban", search: "" } }) });
+      await first.close();
+    }
+  });
+});

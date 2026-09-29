@@ -121,4 +121,44 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     assertEquals(boardId, preferences(token).getBody().get("lastCardBoardId").asText());
     assertTrue(preferences(other).getBody().get("lastCardBoardId").isNull());
   }
+
+  // BS-01, BS-02
+  @Test
+  void boardStateDefaultsAndIsValidated() {
+    String token = token(), other = token();
+    JsonNode board = preferences(token).getBody().get("board");
+    assertTrue(board.get("boardId").isNull(), "No stored board means All boards");
+    assertEquals("kanban", board.get("view").asText());
+    assertTrue(board.get("ganttFrom").isNull());
+    assertTrue(board.get("ganttTo").isNull());
+    assertEquals("", board.get("search").asText());
+
+    String foreign = exchange(HttpMethod.POST, "/api/v1/boards", other, "{\"name\":\"Theirs\"}").getBody().get("id").asText();
+    assertEquals(HttpStatus.NOT_FOUND, update(token, "{\"board\":{\"boardId\":\"" + foreign + "\",\"view\":\"kanban\"}}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, update(token, "{\"board\":{\"view\":\"list\"}}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, update(token, "{\"board\":{\"view\":\"gantt\",\"ganttFrom\":\"2026-09-10\",\"ganttTo\":\"2026-09-01\"}}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, update(token, "{\"board\":{\"view\":\"kanban\",\"search\":\"" + "x".repeat(201) + "\"}}").getStatusCode());
+    assertTrue(preferences(token).getBody().get("board").get("boardId").isNull());
+  }
+
+  // BS-02
+  @Test
+  void boardStateIsStoredPerUser() {
+    String token = token(), other = token();
+    String boardId = exchange(HttpMethod.POST, "/api/v1/boards", token, "{\"name\":\"Work\"}").getBody().get("id").asText();
+    String body = "{\"board\":{\"boardId\":\"" + boardId + "\",\"view\":\"gantt\",\"ganttFrom\":\"2026-09-01\",\"ganttTo\":\"2026-09-14\",\"search\":\"release\"}}";
+    JsonNode saved = update(token, body).getBody().get("board");
+    assertEquals(boardId, saved.get("boardId").asText());
+    assertEquals("gantt", saved.get("view").asText());
+    assertEquals("2026-09-01", saved.get("ganttFrom").asText());
+    assertEquals("2026-09-14", saved.get("ganttTo").asText());
+    assertEquals("release", saved.get("search").asText());
+    assertEquals("release", update(token, "{\"theme\":\"dark\"}").getBody().get("board").get("search").asText(), "Omitted fields keep their value");
+    assertTrue(preferences(other).getBody().get("board").get("boardId").isNull());
+
+    JsonNode all = update(token, "{\"board\":{\"boardId\":null,\"view\":\"kanban\",\"search\":\"\"}}").getBody().get("board");
+    assertTrue(all.get("boardId").isNull(), "A null board selects All boards");
+    assertEquals("kanban", all.get("view").asText());
+    assertTrue(all.get("ganttFrom").isNull());
+  }
 }

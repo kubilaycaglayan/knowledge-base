@@ -1689,6 +1689,33 @@ describe("All boards view", { concurrency: 4 }, () => {
     await page.screenshot({ path: join(screenshotDir, "all-boards-mobile.png"), fullPage: true });
   });
 
+  // BS-03, BS-04
+  it("keeps the board state across pages and reloads", async (t) => {
+    const { page, preferences } = await allBoardsFixture(t);
+    await page.getByRole("button", { name: "All boards" }).click();
+    await page.getByRole("button", { name: "Gantt" }).click();
+    await page.getByRole("button", { name: "Search cards" }).click();
+    await page.locator("#board-search-input").fill("Home");
+    for (let attempt = 0; attempt < 40 && preferences.board?.search !== "Home"; attempt += 1) await page.waitForTimeout(50);
+    assert.deepEqual({ ...preferences.board, ganttFrom: Boolean(preferences.board.ganttFrom), ganttTo: Boolean(preferences.board.ganttTo) }, { boardId: null, view: "gantt", ganttFrom: true, ganttTo: true, search: "Home" });
+    const expected = { board: "all", view: "gantt", from: preferences.board.ganttFrom, to: preferences.board.ganttTo, q: "Home" };
+    const query = () => Object.fromEntries(new URL(page.url()).searchParams);
+
+    await page.getByRole("link", { name: "Reports", exact: true }).click();
+    await page.waitForURL(/\/reports/);
+    await page.getByRole("link", { name: "Board", exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get("q") === "Home");
+    assert.deepEqual(query(), expected);
+    assert.equal(await page.locator("#board-search-input").inputValue(), "Home");
+    assert.equal(await page.getByRole("button", { name: "All boards" }).getAttribute("aria-current"), "true");
+
+    // A fresh app load (a new session) restores the state the server stored.
+    await page.goto(new URL("/board", page.url()).href);
+    await page.waitForURL((url) => url.searchParams.get("q") === "Home");
+    assert.deepEqual(query(), expected);
+    assert.equal(await page.locator(".view-switch button.selected").textContent(), "Gantt");
+  });
+
   // AB-16, AB-17
   it("adds and moves cards across boards from the All boards view", async (t) => {
     const { page, preferences } = await allBoardsFixture(t);

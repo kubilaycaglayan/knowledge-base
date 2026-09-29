@@ -29,7 +29,7 @@ describe("boards store concurrency", () => {
     await stale;
 
     expect(store.boards.map((board) => board.id)).toEqual(["board-b"]);
-    expect(store.selectedId).toBe("board-b");
+    expect(store.selectedId).toBe("all");
   });
 
   it("does not let a stale board response replace the currently selected board", async () => {
@@ -306,12 +306,12 @@ describe("boards store concurrency", () => {
     expect(store.cards[0].title).toBe("Retained");
   });
 
-  it("clears the archived board cards before loading the replacement board", async () => {
+  it("clears the archived board cards before loading All boards", async () => {
     const archived = { id: "board-a", name: "Archived", archived: true, createdAt: "", updatedAt: "" };
     const replacement = { id: "board-b", name: "Replacement", archived: false, createdAt: "", updatedAt: "" };
     apiMock.mockImplementation((path: string) => {
       if (path === "/boards/board-a/archive") return Promise.resolve(archived);
-      if (path === "/boards/board-b/statuses") return Promise.resolve([]);
+      if (path === "/boards/board-b/statuses" || path === "/boards/all/columns") return Promise.resolve([]);
       if (path.includes("/cards/page")) return Promise.resolve({ items: [], nextCursor: null });
       return Promise.resolve(replacement);
     });
@@ -327,7 +327,8 @@ describe("boards store concurrency", () => {
 
     await store.archiveBoard("board-a");
 
-    expect(store.selectedId).toBe("board-b");
+    // BS-01: archiving the open board falls back to All boards.
+    expect(store.selectedId).toBe("all");
     expect(store.cards).toEqual([]);
     expect(store.statuses).toEqual([]);
   });
@@ -804,6 +805,20 @@ describe("All boards view and cached views (AB-19, AB-20)", () => {
     const calls = apiMock.mock.calls.length;
     store.selectedId = "all"; await store.loadBoard();
     expect(apiMock.mock.calls.slice(calls).map(([path]) => path)).toContain("/boards/all/columns");
+  });
+
+  // BS-01
+  it("falls back to All boards when no board, or a board missing from the tabs, is selected", async () => {
+    serve();
+    const store = await storeWith();
+    await store.loadBoards();
+    expect(store.selectedId).toBe("all");
+    store.selectedId = "gone";
+    await store.loadBoards(false, true);
+    expect(store.selectedId).toBe("all");
+    store.selectedId = "b";
+    await store.loadBoards(false, true);
+    expect(store.selectedId).toBe("b");
   });
 
   it("keeps All boards selected when the board list loads", async () => {

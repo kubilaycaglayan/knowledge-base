@@ -10,6 +10,7 @@ import { useLabelsStore } from "../stores/labels";
 import { useRouter, useRoute } from "vue-router";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, describe, vi } from "vitest";
+import { reactive } from "vue";
 
 vi.mock("vue-router", () => ({
   useRouter: vi.fn(),
@@ -1563,6 +1564,107 @@ describe("BoardView", () => {
       const link = wrapper.find(".board-footer a");
       expect(link.attributes("href")).toBe("/board/archive");
       expect(link.attributes("data-query")).toBe("{}");
+      await wrapper.unmount();
+    });
+  });
+
+  describe("board state persistence", () => {
+    // A reactive route that the mocked router updates, so the view follows the URL.
+    function liveRoute(query: Record<string, string> = {}) {
+      mockRoute = reactive({ query });
+      vi.mocked(useRoute).mockReturnValue(mockRoute);
+      const navigate = vi.fn((to: { query: Record<string, string> }) => { mockRoute.query = to.query; return Promise.resolve(); });
+      mockRouter.replace = navigate;
+      mockRouter.push = navigate;
+    }
+    const board = (id: string, name: string) => ({ id, name, archived: false, createdAt: "", updatedAt: "" });
+
+    // BS-01
+    it("opens All boards by default", async () => {
+      liveRoute();
+      const store = useBoardsStore();
+      store.boards = [board("work", "Work")];
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(store.selectedId).toBe("all");
+      expect(mockRoute.query).toEqual({ board: "all" });
+      await wrapper.unmount();
+    });
+
+    // BS-04
+    it("restores the stored state when the URL has none", async () => {
+      liveRoute();
+      const store = useBoardsStore();
+      store.boards = [board("work", "Work")];
+      const preferences = usePreferencesStore();
+      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" };
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(store.selectedId).toBe("work");
+      expect(mockRoute.query).toEqual({ board: "work", view: "gantt", from: "2026-09-01", to: "2026-09-14", q: "release" });
+      expect(store.loadGantt).toHaveBeenCalledWith("2026-09-01", "2026-09-14");
+      expect((wrapper.find("#board-search-input").element as HTMLInputElement).value).toBe("release");
+      await wrapper.unmount();
+    });
+
+    // BS-04
+    it("lets the URL override the stored state", async () => {
+      liveRoute({ board: "home", q: "urgent" });
+      const store = useBoardsStore();
+      store.boards = [board("work", "Work"), board("home", "Home")];
+      const preferences = usePreferencesStore();
+      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" };
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(store.selectedId).toBe("home");
+      expect(mockRoute.query.view).toBeUndefined();
+      expect((wrapper.find("#board-search-input").element as HTMLInputElement).value).toBe("urgent");
+      await wrapper.unmount();
+    });
+
+    // BS-04
+    it("puts the state back into the URL when the Board link clears it", async () => {
+      liveRoute({ board: "work", view: "gantt", from: "2026-09-01", to: "2026-09-14" });
+      const store = useBoardsStore();
+      store.boards = [board("work", "Work")];
+      const wrapper = mountBoard();
+      await flushPromises();
+      mockRoute.query = {};
+      await flushPromises();
+      expect(mockRoute.query).toEqual({ board: "work", view: "gantt", from: "2026-09-01", to: "2026-09-14" });
+      await wrapper.unmount();
+    });
+
+    // BS-03
+    it("remembers the board, view, range, and search", async () => {
+      liveRoute({ board: "work" });
+      const store = useBoardsStore();
+      store.boards = [board("work", "Work")];
+      const preferences = usePreferencesStore();
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(preferences.board).toMatchObject({ boardId: "work", view: "kanban", search: "" });
+
+      await wrapper.find('button[aria-label="All boards"]').trigger("click");
+      await flushPromises();
+      expect(preferences.board.boardId).toBe("all");
+
+      await wrapper.findAll(".view-switch button")[1].trigger("click");
+      await flushPromises();
+      expect(preferences.board.view).toBe("gantt");
+      expect(preferences.board.ganttFrom).toBe(mockRoute.query.from);
+      expect(preferences.board.ganttTo).toBe(mockRoute.query.to);
+
+      await wrapper.find('button[aria-label="Search cards"]').trigger("click");
+      await wrapper.find("#board-search-input").setValue("release");
+      await flushPromises();
+      expect(preferences.board.search).toBe("release");
+      expect(mockRoute.query.q).toBe("release");
+
+      await wrapper.find('button[aria-label="Close search"]').trigger("click");
+      await flushPromises();
+      expect(preferences.board.search).toBe("");
+      expect(mockRoute.query.q).toBeUndefined();
       await wrapper.unmount();
     });
   });

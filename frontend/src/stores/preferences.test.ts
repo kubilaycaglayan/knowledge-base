@@ -68,4 +68,51 @@ describe("preferences store", () => {
     await preferences.load();
     expect(preferences.kanbanWide).toBe(true);
   });
+
+  // BS-01, BS-02
+  it("loads the board state, reading a null board as All boards", async () => {
+    const preferences = usePreferencesStore();
+    expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", search: "" });
+    vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [], board: { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" } });
+    await preferences.load();
+    expect(preferences.board).toEqual({ boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" });
+    vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [], board: { boardId: null, view: "kanban", ganttFrom: null, ganttTo: null, search: "" } });
+    await preferences.load();
+    expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", search: "" });
+  });
+
+  // BS-03
+  it("saves the board state once, after changes settle", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [] });
+      const preferences = usePreferencesStore();
+      await preferences.load();
+      preferences.setBoardState({ boardId: "work", view: "kanban", ganttFrom: "", ganttTo: "", search: "rel" });
+      preferences.setBoardState({ boardId: "all", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" });
+      expect(preferences.board.search).toBe("release");
+      expect(api).not.toHaveBeenCalledWith("/preferences", expect.objectContaining({ method: "PUT" }));
+      await vi.runAllTimersAsync();
+      const puts = vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT");
+      expect(puts).toHaveLength(1);
+      expect(JSON.parse(String(puts[0][1]!.body))).toEqual({ board: { boardId: null, view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // BS-03
+  it("does not save the board state while signed out", async () => {
+    vi.useFakeTimers();
+    try {
+      const preferences = usePreferencesStore();
+      preferences.setBoardState({ boardId: "work", view: "kanban", ganttFrom: "", ganttTo: "", search: "" });
+      await vi.runAllTimersAsync();
+      expect(api).not.toHaveBeenCalled();
+      preferences.reset();
+      expect(preferences.board.boardId).toBe("all");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

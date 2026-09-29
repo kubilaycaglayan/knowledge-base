@@ -17,7 +17,7 @@ column) and stay that way.
   ganttTo, search }` (`boardId` `null` means All boards); `PUT /preferences
   {"board": …}` replaces it. Another user's board returns `404`; an unknown
   view, an inverted range, or a search over 200 characters returns `400`.
-  Deleting the board clears `boardId`.
+  The stored board references `boards(id)` with `on delete set null`.
   Tests: `UserPreferencesIntegrationTest.boardStateDefaultsAndIsValidated`,
   `UserPreferencesIntegrationTest.boardStateIsStoredPerUser`.
 - [ ] **BS-03** Choosing a board, switching view, changing the Gantt range, or
