@@ -207,7 +207,7 @@ struct SessionsAPI: SessionsTransport {
     try await client.request(
       "/labels", method: "POST",
       body: JSONSerialization.data(withJSONObject: [
-        "name": name, "scopes": ["TIME_ENTRY"], "color": NSNull(),
+        "name": name, "scopes": ["BOARD", "LOG", "NOTE", "TIME_ENTRY"], "color": NSNull(),
       ]), token: token)
   }
 }

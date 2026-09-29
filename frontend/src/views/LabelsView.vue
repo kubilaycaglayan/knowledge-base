@@ -7,7 +7,12 @@ import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
-import { useLabelsStore, type Label, type LabelScope } from "../stores/labels";
+import {
+  defaultLabelScopes as defaultScopes,
+  useLabelsStore,
+  type Label,
+  type LabelScope,
+} from "../stores/labels";
 import { useReportsStore } from "../stores/reports";
 
 type Scope = LabelScope;
@@ -18,11 +23,6 @@ const scopeOptions: { value: Scope; label: string }[] = [
   { value: "LOG", label: "Logs" },
   { value: "BOARD", label: "Boards" },
 ];
-// New labels show everywhere except the Calendar, including on Boards.
-const defaultScopes = (): Scope[] =>
-  scopeOptions
-    .filter((option) => option.value !== "CALENDAR")
-    .map((option) => option.value);
 const colors = labelColors;
 const labelStore = useLabelsStore();
 const reportsStore = useReportsStore();

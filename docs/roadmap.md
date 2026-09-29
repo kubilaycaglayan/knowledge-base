@@ -41,6 +41,8 @@
   regression coverage (see `docs/ios-milestone-4-labels-parity.md`).
 - [x] Present label visibility as “Don’t show in” in web and iOS label editors,
   with Calendar hidden for newly created labels and no existing-label migration.
+- [x] Give labels created outside the Labels page (session tracker, Sessions,
+  note tagging, extension, iOS Sessions) the same default: everywhere except Calendar.
 - [x] Milestone 5: bring the iOS `/notes` page to parity with the current web
   behavior, rich-text editing, autosave/conflict recovery, labels,
   archive/restore, accessibility, and regression coverage (see

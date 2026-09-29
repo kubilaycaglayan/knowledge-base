@@ -6,7 +6,11 @@ import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
-import { useLabelsStore } from "../stores/labels";
+import {
+  defaultLabelScopes,
+  useLabelsStore,
+  type LabelScope,
+} from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 import {
   useSessionsStore,
@@ -27,7 +31,7 @@ type Label = {
   id: string;
   name: string;
   color?: string | null;
-  scopes: ("NOTE" | "CALENDAR" | "TIME_ENTRY")[];
+  scopes: LabelScope[];
 };
 type Draft = {
   pathId: string;
@@ -242,9 +246,16 @@ async function commitLabelQuery() {
   try {
     const created = await api<Label>("/labels", {
       method: "POST",
-      body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }),
+      body: JSON.stringify({
+        name,
+        scopes: defaultLabelScopes(),
+        color: null,
+      }),
     });
-    labelsStore.add({ ...created, scopes: created.scopes || ["TIME_ENTRY"] });
+    labelsStore.add({
+      ...created,
+      scopes: created.scopes || defaultLabelScopes(),
+    });
     chooseLabel(created.id);
     return true;
   } catch {

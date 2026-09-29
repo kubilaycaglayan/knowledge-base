@@ -915,7 +915,12 @@ async function createSessionLabel() {
   try {
     const created = await request("/labels", {
       method: "POST",
-      body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }),
+      body: JSON.stringify({
+        name,
+        // New labels show everywhere except the Calendar.
+        scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
+        color: null,
+      }),
     });
     labels = [...labels.filter((label) => label.id !== created.id), created];
     timerLabelIds = [...new Set([...timerLabelIds, created.id])];

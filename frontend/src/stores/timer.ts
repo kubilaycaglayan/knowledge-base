@@ -2,7 +2,7 @@ import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
 import { api } from "../lib/api";
 import { usePathsStore } from "./paths";
-import { useLabelsStore } from "./labels";
+import { defaultLabelScopes, useLabelsStore, type LabelScope } from "./labels";
 import { useReportsStore } from "./reports";
 import { useSessionsStore } from "./sessions";
 import { usePreferencesStore } from "./preferences";
@@ -28,7 +28,7 @@ type Label = {
   id: string;
   name: string;
   color?: string | null;
-  scopes?: ("NOTE" | "CALENDAR" | "TIME_ENTRY")[];
+  scopes?: LabelScope[];
 };
 
 export const useTimerStore = defineStore("timer", () => {
@@ -434,9 +434,16 @@ export const useTimerStore = defineStore("timer", () => {
     try {
       const created = await api<Label>("/labels", {
         method: "POST",
-        body: JSON.stringify({ name, scopes: ["TIME_ENTRY"], color: null }),
+        body: JSON.stringify({
+          name,
+          scopes: defaultLabelScopes(),
+          color: null,
+        }),
       });
-      labelsStore.add({ ...created, scopes: created.scopes || ["TIME_ENTRY"] });
+      labelsStore.add({
+        ...created,
+        scopes: created.scopes || defaultLabelScopes(),
+      });
       selectedLabelIds.value = [
         ...new Set([...selectedLabelIds.value, created.id]),
       ];

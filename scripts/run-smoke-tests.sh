@@ -358,6 +358,10 @@ note_payload="$(printf '{"pathId":"%s","title":"Smoke note","content":"{\\\"type
 note="$(api "${header[@]}" "${content_json[@]}" --post-data="$note_payload" http://localhost:8080/api/v1/notes)"
 note_id="$(printf '%s' "$note" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
 [[ -n "$note_id" ]]
+# A label created by tagging a note shows everywhere except the Calendar.
+api "${header[@]}" http://localhost:8080/api/v1/labels \
+  | grep -o '"name":"Smoke"[^]]*]' \
+  | grep -q '"scopes":\["NOTE","TIME_ENTRY","LOG","BOARD"\]'
 api "${header[@]}" http://localhost:8080/api/v1/notes?page=0\&size=20\&q=Smoke | grep -q 'Smoke note'
 api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data='{"title":"Edited smoke note","content":"{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Updated knowledge\"}]}]}","contentText":"Updated knowledge","tags":["Smoke"]}' \

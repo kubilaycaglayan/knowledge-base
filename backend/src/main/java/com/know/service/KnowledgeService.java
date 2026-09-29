@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -318,10 +319,12 @@ public class KnowledgeService {
         .filter(value -> !value.isBlank())
         .forEach(names::add);
     for (String name : names) {
-      Label tag =
-          tags.findByUserIdAndNameIgnoreCase(userId, name)
-              .orElseGet(() -> tags.save(new Label(userId, name, null)));
-      if (!labelScopes.existsByIdLabelIdAndIdScope(tag.getId(), LabelScopeType.NOTE))
+      Optional<Label> existing = tags.findByUserIdAndNameIgnoreCase(userId, name);
+      Label tag = existing.orElseGet(() -> tags.save(new Label(userId, name, null)));
+      if (existing.isEmpty()) {
+        for (LabelScopeType scope : LabelScopeType.defaults())
+          labelScopes.save(new LabelScope(new LabelScopeId(tag.getId(), scope)));
+      } else if (!labelScopes.existsByIdLabelIdAndIdScope(tag.getId(), LabelScopeType.NOTE))
         labelScopes.save(new LabelScope(new LabelScopeId(tag.getId(), LabelScopeType.NOTE)));
       noteTags.save(new NoteTag(new NoteTagId(note.getId(), tag.getId())));
     }

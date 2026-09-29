@@ -2,6 +2,13 @@ import { defineStore } from "pinia";
 import { api } from "../lib/api";
 
 export type LabelScope = "NOTE" | "CALENDAR" | "TIME_ENTRY" | "LOG" | "BOARD";
+// New labels show everywhere except the Calendar, including on Boards.
+export const defaultLabelScopes = (): LabelScope[] => [
+  "NOTE",
+  "TIME_ENTRY",
+  "LOG",
+  "BOARD",
+];
 export type Label = {
   id: string;
   name: string;
