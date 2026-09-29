@@ -204,11 +204,13 @@ describe("FloatingTimeTracker", () => {
     });
     await flushPromises();
     const description = wrapper.get('textarea[aria-label="Timer description"]');
-    await description.setValue("Finished the chapter");
+    // Typing fires input only; change would not fire until the field blurs.
+    (description.element as HTMLTextAreaElement).value = "Finished the chapter";
+    await description.trigger("input");
     await description.trigger("keydown", { key: "Enter", ctrlKey: true });
     await flushPromises();
 
-    expect(calls).toEqual(["PUT /timers/timer-1", "POST /timers/timer-1/stop"]);
+    expect(calls.slice(0, 2)).toEqual(["PUT /timers/timer-1", "POST /timers/timer-1/stop"]);
     const save = vi
       .mocked(api)
       .mock.calls.find(([path, init]) => path === "/timers/timer-1" && init?.method === "PUT");

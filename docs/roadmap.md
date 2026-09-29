@@ -10,6 +10,9 @@
 
 - [x] Preserve unfinished timer drafts across live snapshots and queue edits made during active saves.
 
+- [x] ⌘/Ctrl+Enter in the web tracker's description starts the session with the
+  typed text, or saves it and stops the running session; plain Enter adds a newline.
+
 - [x] Rebuild native iOS authentication from the web design with password login,
   registration, Google SDK token exchange, and Keychain session persistence.
 - [ ] Milestone 2: bring the iOS sign-in and unauthenticated flows to one-to-one

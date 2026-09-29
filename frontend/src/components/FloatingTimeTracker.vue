@@ -55,6 +55,17 @@ watch(
   () => timerStore.historyVersion,
   () => emit("changed"),
 );
+// Cmd/Ctrl+Enter in the description starts the session, or saves the typed
+// description and stops the running one. Plain Enter keeps adding a newline.
+async function runFromDescription(event: KeyboardEvent) {
+  if (event.isComposing || !(event.metaKey || event.ctrlKey)) return;
+  event.preventDefault();
+  if (timer.value) {
+    await updateTimer();
+    if (error.value) return;
+  }
+  await toggleRun();
+}
 async function toggleLabel(id: string) {
   labelsOpen.value = true;
   await timerStore.toggleLabel(id);
@@ -534,6 +545,7 @@ onUnmounted(() => {
             placeholder="What are you working on…"
             @focus="keepFocusedControlVisible"
             @change="updateTimer"
+            @keydown.enter="runFromDescription"
           ></textarea>
         </div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">
