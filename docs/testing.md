@@ -2,6 +2,17 @@
 
 The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, boards, and Flyway migrations. Board checks should cover default statuses, nested ownership, invalid date ranges, status archive safeguards, card archive/restore, cursor pages, and Gantt overlap filtering for single, open-ended, and inclusive ranges.
 
+Three backend integration suites guard the API as a whole (see
+[the test hardening plan](test-hardening-plan.md)):
+`SecurityHardeningIntegrationTest` reads every route from Spring MVC and
+expects 401 without a token, so new controllers are covered automatically
+(only list a route in its `PUBLIC_ROUTES` when `SecurityConfig` deliberately
+permits it); `CrossUserIsolationIntegrationTest` checks that a second user can
+neither read, change, delete, nor reference another user's paths, notes, logs,
+labels, boards, cards, time entries, or calendar data; and
+`InputValidationIntegrationTest` checks that malformed or oversized input
+answers 400 rather than 500.
+
 Board browser coverage has two layers: `(cd frontend && npm run test:board)` runs
 `frontend/scripts/board.acceptance.test.mjs`, which uses fast isolated API
 fixtures for deterministic mobile, keyboard, Gantt, archive, and pagination
