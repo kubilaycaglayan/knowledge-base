@@ -106,7 +106,18 @@ const boardSearchOpen = ref(false), boardSearch = ref(""), boardSearchInput = re
 const boardLabels = computed(() => labelsStore.forScope("BOARD"));
 const matchesBoardSearch = (card: BoardCard) => {
   const query = boardSearch.value.trim().toLocaleLowerCase();
-  return !query || card.title.toLocaleLowerCase().includes(query) || card.labelIds.some((id) => boardLabels.value.find((label) => label.id === id)?.name.toLocaleLowerCase().includes(query));
+  if (!query) return true;
+  const pathIds = new Set([...card.pathIds, cardBoard(card)?.pathId].filter((id): id is string => Boolean(id)));
+  const searchableText = [
+    card.title,
+    card.priority,
+    card.startDate,
+    card.dueDate,
+    formatCardDates(card.startDate, card.dueDate),
+    ...card.labelIds.map((id) => boardLabels.value.find((label) => label.id === id)?.name || ""),
+    ...[...pathIds].map((id) => pathsStore.byId(id)?.name || ""),
+  ];
+  return searchableText.some((value) => value?.toLocaleLowerCase().includes(query));
 };
 const ganttCards = computed(() => rawGanttCards.value.filter(matchesBoardSearch));
 const columnCards = (column: KanbanColumn) => (column.merged ? cardsForMerged(column.merged) : cardsFor(column.status!.id)).filter(matchesBoardSearch);
