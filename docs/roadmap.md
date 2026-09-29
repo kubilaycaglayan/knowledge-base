@@ -1,5 +1,9 @@
 # Knowledge Base UI roadmap
 
+- [x] Simplify the timeline heading and add a Today icon between its date fields, preserving the visible window length.
+
+- [x] Add “No marker” to web calendar label assignments to omit them from reports; keep “Marker” as the default.
+
 - [x] Search labels by name with ⌘K/Ctrl+K focus, Escape to clear, and a shareable `q` URL filter.
 
 - [x] Share tracker fields, queued saves, and synchronization across web routes;
@@ -108,6 +112,11 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   cursor pagination and explicit page retry, stale-response protection,
   ownership/error tests, mobile/desktop Axe coverage, and disposable visual
   evidence.
+- [x] Mark today across the Gantt chart and support dragging cards and resizing
+  either date, with whole-day snapping, save failure feedback, and accessible
+  date editing through the card dialog.
+- [x] Keep every active board card in the Gantt name gutter regardless of dates
+  or selected window, and keep the gutter sticky during horizontal scrolling.
 - [x] Refine the web board: dialog-based board creation, flat single-row
   board tabs, per-column card creation through an optional card-create
   `statusId`, and a per-board settings dialog for the board name, status
