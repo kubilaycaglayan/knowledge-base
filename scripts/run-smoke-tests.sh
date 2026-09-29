@@ -474,6 +474,9 @@ manual="$(
     http://localhost:8080/api/v1/time-entries
 )"
 time_id="$(printf '%s' "$manual" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+# Label history runs its usage queries on PostgreSQL (docs/label-history-acceptance-checklist.md).
+label_history="$(api "${header[@]}" "http://localhost:8080/api/v1/labels/$calendar_label_id/history?zone=Europe/Istanbul")"
+[[ "$label_history" == *'"sessions":1'* && "$label_history" == *'"calendarDays":2'* && "$label_history" == *'"firstUsedAt":"'* ]]
 edited_start="$(date -u -d '105 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 edited_end="$(date -u -d '60 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 api "${header[@]}" "${content_json[@]}" --method=PUT \

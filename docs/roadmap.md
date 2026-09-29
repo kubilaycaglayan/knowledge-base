@@ -43,6 +43,10 @@
   with Calendar hidden for newly created labels and no existing-label migration.
 - [x] Give labels created outside the Labels page (session tracker, Sessions,
   note tagging, extension, iOS Sessions) the same default: everywhere except Calendar.
+- [x] Show each label's history on the web Labels page (History icon button):
+  first and last use, uses per kind, monthly tracked hours, hours of day, and
+  related labels (see `docs/label-history-acceptance-checklist.md`).
+- [ ] Show label history in the iOS app (the API is ready).
 - [x] Milestone 5: bring the iOS `/notes` page to parity with the current web
   behavior, rich-text editing, autosave/conflict recovery, labels,
   archive/restore, accessibility, and regression coverage (see
