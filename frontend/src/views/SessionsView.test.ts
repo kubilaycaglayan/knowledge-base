@@ -296,6 +296,52 @@ describe("SessionsView", () => {
     );
   });
 
+  it("creates a typed new label and saves the session on Cmd+Enter", async () => {
+    const defaultApi = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) =>
+      path === "/labels" && init?.method === "POST"
+        ? { id: "label-new", name: "Deep work", color: null, scopes: ["TIME_ENTRY"] }
+        : defaultApi(path, init),
+    );
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+    const input = wrapper.get('[aria-label="Add session label"]');
+    await input.setValue("  Deep work ");
+    await input.trigger("keydown", { key: "Enter", metaKey: true });
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", {
+      method: "POST",
+      body: JSON.stringify({ name: "Deep work", scopes: ["TIME_ENTRY"], color: null }),
+    });
+    const update = vi
+      .mocked(api)
+      .mock.calls.find(([path, init]) => path === "/time-entries/new" && init?.method === "PUT");
+    expect(JSON.parse(String(update?.[1]?.body)).labelIds).toEqual([
+      "label-1",
+      "label-new",
+    ]);
+  });
+
+  it("saves a typed existing label on Ctrl+Enter without creating one", async () => {
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    await wrapper.get("button.text-button").trigger("click");
+    await wrapper.get('[aria-label="Remove Vue"]').trigger("click");
+    const input = wrapper.get('[aria-label="Add session label"]');
+    await input.setValue("vue");
+    await input.trigger("keydown", { key: "Enter", ctrlKey: true });
+    await flushPromises();
+
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith("/labels", expect.anything());
+    const updates = vi
+      .mocked(api)
+      .mock.calls.filter(([path, init]) => path === "/time-entries/new" && init?.method === "PUT");
+    expect(updates).toHaveLength(1);
+    expect(JSON.parse(String(updates[0][1]?.body)).labelIds).toEqual(["label-1"]);
+  });
+
   it("uses a capped scrollable textarea for session descriptions", async () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
