@@ -198,4 +198,43 @@ describe("LabelsView", () => {
       wrapper.get(".label-row button.danger").attributes("disabled"),
     ).toBeUndefined();
   });
+  // LH-06
+  it("opens a label's history from its icon button", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) =>
+      path === "/labels"
+        ? [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }]
+        : {
+            labelId: "one",
+            name: "Study",
+            color: "#2878D5",
+            firstUsedAt: null,
+            lastUsedAt: null,
+            totalUses: 0,
+            trackedSeconds: 0,
+            uses: { sessions: 0, logs: 0, notes: 0, calendarDays: 0, cards: 0 },
+            timeline: [],
+            hours: [],
+            related: [],
+          },
+    );
+    const wrapper = mount(LabelsView, {
+      global: { stubs: { PromptDialog: true } },
+      attachTo: document.body,
+    });
+    await flushPromises();
+
+    const button = wrapper.get('button[aria-label="Show history of Study"]');
+    expect(button.text()).toBe("");
+    expect(button.find("svg").exists()).toBe(true);
+    await button.trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toMatch(
+      /^\/labels\/one\/history\?zone=/,
+    );
+    expect(wrapper.find('[role="dialog"].label-history-dialog').exists()).toBe(
+      true,
+    );
+    wrapper.unmount();
+  });
 });

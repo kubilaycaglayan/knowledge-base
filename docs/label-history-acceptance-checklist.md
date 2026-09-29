@@ -10,7 +10,7 @@ names the tests that cover it. Tick an item only once those tests pass.
 
 ## API
 
-- [ ] **LH-01** `GET /api/v1/labels/{id}/history` returns `firstUsedAt`, `lastUsedAt`, `totalUses`, `trackedSeconds`, and `uses` counts for `sessions`, `logs`, `notes`, `calendarDays`, and `cards`. A use happens at a session's start, a log's `occurredAt`, a note's or card's creation time, or the start of a calendar day. Tracked seconds are the label's sessions' durations (a running session counts up to now).
+- [ ] **LH-01** `GET /api/v1/labels/{id}/history` returns the label's `labelId`, `name`, and `color` with `firstUsedAt`, `lastUsedAt`, `totalUses`, `trackedSeconds`, and `uses` counts for `sessions`, `logs`, `notes`, `calendarDays`, and `cards`. A use happens at a session's start, a log's `occurredAt`, a note's or card's creation time, or the start of a calendar day. Tracked seconds are the label's sessions' durations (a running session counts up to now).
   _Tests:_ `LabelHistoryIntegrationTest.historySummarisesEveryKindOfUse`
 - [ ] **LH-02** An unused label returns `null` first/last use, zero counts, an empty `timeline`, 24 empty `hours`, and no `related` labels.
   _Tests:_ `LabelHistoryIntegrationTest.unusedLabelHasAnEmptyHistory`
