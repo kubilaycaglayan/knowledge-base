@@ -5,6 +5,8 @@ import { api } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
+import LabelHistoryDialog from "../components/LabelHistoryDialog.vue";
+import { mdiHistory } from "@mdi/js";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
 import {
@@ -39,6 +41,7 @@ const draft = ref<{ name: string; color: string; scopes: Scope[] } | null>(
 const saving = ref(false);
 const error = ref("");
 const addDialogOpen = ref(false);
+const historyLabelId = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const sortedLabels = computed(() =>
   [...labels.value].sort((a, b) => a.name.localeCompare(b.name)),
@@ -238,6 +241,17 @@ onMounted(load);
               )
               .join(" · ")
           }}</span
+          ><button
+            class="history-button"
+            type="button"
+            :aria-label="`Show history of ${label.name}`"
+            title="History"
+            aria-haspopup="dialog"
+            @click="historyLabelId = label.id"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+              <path :d="mdiHistory" fill="currentColor" />
+            </svg></button
           ><button class="ghost" type="button" @click="beginEdit(label)">
             Edit</button
           ><button class="ghost danger" type="button" @click="remove(label)">
@@ -279,6 +293,11 @@ onMounted(load);
         >
       </div>
     </section>
+    <LabelHistoryDialog
+      v-if="historyLabelId"
+      :label-id="historyLabelId"
+      @close="historyLabelId = ''"
+    />
     <div
       v-if="addDialogOpen"
       class="prompt-dialog-backdrop"
@@ -487,6 +506,25 @@ onMounted(load);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.history-button {
+  display: inline-flex;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--workspace-radius);
+  background: transparent;
+  color: var(--workspace-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.history-button:hover,
+.history-button:focus-visible {
+  background: var(--workspace-hover);
+  color: var(--workspace-text);
+}
 .label-row > .ghost {
   min-height: 32px;
   padding: 5px 8px;
@@ -547,6 +585,10 @@ onMounted(load);
   }
 }
 @media (max-width: 700px) {
+  .history-button {
+    width: 44px;
+    height: 44px;
+  }
   .label-create-form :deep(.color-palette),
   .label-list :deep(.color-palette) {
     grid-template-columns: repeat(5, 44px);
