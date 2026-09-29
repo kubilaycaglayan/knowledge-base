@@ -175,7 +175,7 @@ class SecurityHardeningIntegrationTest extends IntegrationTestSupport {
   // TH-03
   @Test
   void malformedTokensAreRejectedWithoutServerErrors() throws Exception {
-    String userId = register().get("id").asText();
+    String userId = register().get("userId").asText();
     Instant future = Instant.now().plusSeconds(3600);
     Map<String, String> tokens = new LinkedHashMap<>();
     tokens.put("empty", "");
