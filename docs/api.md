@@ -1,5 +1,9 @@
 # API
 
+The web Labels page filters the authenticated user's loaded `GET /labels` results
+by name locally (case-insensitive). Its `q` URL parameter is client state; label
+search does not add an API parameter or change ownership checks.
+
 Bearer tokens remain valid across API restarts with the same `JWT_SECRET`, until
 their existing 30-day expiry. Error dispatches preserve the original HTTP status
 (such as 404 or 503), rather than returning a misleading 401. Clients should

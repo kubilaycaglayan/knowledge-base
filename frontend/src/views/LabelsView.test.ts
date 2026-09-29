@@ -2,10 +2,35 @@ import { flushPromises, mount } from "@vue/test-utils";
 import LabelsView from "./LabelsView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
+import { createMemoryHistory, createRouter } from "vue-router";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("LabelsView", () => {
+  it("restores and updates the label query in the URL", async () => {
+    vi.mocked(api).mockResolvedValue([
+      { id: "one", name: "Study", color: null, scopes: ["NOTE"] },
+      { id: "two", name: "Work", color: null, scopes: ["NOTE"] },
+    ]);
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/labels", component: LabelsView }] });
+    await router.push("/labels?q=Study");
+    const wrapper = mount(LabelsView, { global: { plugins: [router], stubs: { PromptDialog: true } } });
+    try {
+      await flushPromises();
+      expect(wrapper.findAll(".label-row")).toHaveLength(1);
+      const search = wrapper.get('input[aria-label="Search labels"]');
+      expect(search.element).toHaveProperty("value", "Study");
+      await search.setValue("Work");
+      await flushPromises();
+      expect(router.currentRoute.value.query.q).toBe("Work");
+      await router.push("/labels?q=Study");
+      await flushPromises();
+      expect(search.element).toHaveProperty("value", "Study");
+      await search.trigger("keydown", { key: "Escape" });
+      await flushPromises();
+      expect(router.currentRoute.value.query.q).toBeUndefined();
+    } finally { wrapper.unmount(); }
+  });
   it.each(["metaKey", "ctrlKey"])("focuses label search with %s+K and filters names", async (modifier) => {
     vi.mocked(api).mockResolvedValue([
       { id: "one", name: "Study", color: null, scopes: ["NOTE"] },

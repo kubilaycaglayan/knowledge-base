@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { routerKey, routeLocationKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
@@ -43,9 +44,28 @@ const error = ref("");
 const addDialogOpen = ref(false);
 const historyLabelId = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
+const router = inject(routerKey, undefined);
+const route = inject(routeLocationKey, undefined);
+const search = ref(typeof route?.query.q === "string" ? route.query.q : "");
+const searchInput = ref<HTMLInputElement | null>(null);
+watch(search, (q) => {
+  if (router && route && q !== (route.query.q || "")) {
+    void router.replace({ query: { ...route.query, q: q || undefined } });
+  }
+});
+watch(() => route?.query.q, (q) => { search.value = typeof q === "string" ? q : ""; });
 const sortedLabels = computed(() =>
-  [...labels.value].sort((a, b) => a.name.localeCompare(b.name)),
+  labels.value.filter(label => label.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name)),
 );
+function searchKeydown(event: KeyboardEvent) {
+  if (event.defaultPrevented || event.isComposing || document.querySelector('[aria-modal="true"]')) return;
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    searchInput.value?.focus();
+    searchInput.value?.select();
+  }
+}
 
 async function load() {
   try {
@@ -165,13 +185,20 @@ async function remove(label: Label) {
     }
   }
 }
-onMounted(load);
+onMounted(() => {
+  void load();
+  document.addEventListener("keydown", searchKeydown);
+});
+onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
 </script>
 
 <template>
   <PromptDialog ref="promptDialog" />
   <section class="labels-view">
     <header class="labels-heading">
+      <input ref="searchInput" v-model="search" class="label-search" type="search"
+        name="label-search" aria-label="Search labels" aria-keyshortcuts="Meta+K Control+K"
+        placeholder="Search labels…" autocomplete="off" @keydown.esc.prevent="search = ''" />
       <div>
         <p class="eyebrow">WORKSPACE</p>
         <h1>Labels</h1>
@@ -212,11 +239,11 @@ onMounted(load);
     <section class="card label-list" aria-labelledby="label-list-title">
       <div class="label-list-heading">
         <h2 id="label-list-title">Your labels</h2>
-        <span class="muted">{{ labels.length }} total</span>
+        <span class="muted" role="status">{{ search.trim() ? `${sortedLabels.length} of ${labels.length}` : `${labels.length} total` }}</span>
       </div>
       <p v-if="loading" class="muted">Loading labels…</p>
       <p v-else-if="!sortedLabels.length" class="muted">
-        No labels yet. Add one above to get started.
+        {{ search.trim() ? "No labels match your search." : "No labels yet. Add one above to get started." }}
       </p>
       <div
         v-for="label in sortedLabels"
@@ -397,6 +424,12 @@ onMounted(load);
 }
 .labels-heading h1 {
   margin: 8px 0 0;
+}
+.label-search {
+  flex: 1;
+  min-width: 0;
+  max-width: 420px;
+  font-size: 16px;
 }
 .icon-button {
   display: inline-flex;

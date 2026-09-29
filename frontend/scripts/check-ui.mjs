@@ -25,6 +25,7 @@ const routes = process.env.UI_ROUTES?.split(",") || [
   "/",
   "/sessions",
   "/paths",
+  "/labels",
   "/timeline",
   "/calendar",
   "/notes",
@@ -367,7 +368,7 @@ try {
           await page.locator(".auth").waitFor();
         } else await page.goto(`http://127.0.0.1:5191${path}`);
         if (path !== "/" && path !== "/sessions" && path !== "/auth")
-          await page.locator("main h1").waitFor();
+          await page.locator(path === "/labels" ? "#label-list-title" : "main h1").waitFor();
         await page.waitForLoadState("networkidle");
         const widths =
           state === "populated" || state === "long"
@@ -453,6 +454,17 @@ try {
         }
         if (state === "populated") {
           await page.setViewportSize({ width: 390, height: 844 });
+          if (path === "/labels") {
+            await page.keyboard.press("Meta+k");
+            const search = page.getByRole("searchbox", { name: "Search labels" });
+            assert.equal(await search.evaluate(el => el === document.activeElement), true);
+            await search.fill("no-matching-label-smoke");
+            await page.getByText("No labels match your search.").waitFor();
+            await page.waitForURL(url => url.searchParams.get("q") === "no-matching-label-smoke");
+            await search.press("Escape");
+            await page.locator(".label-row").first().waitFor();
+            await page.waitForURL(url => !url.searchParams.has("q"));
+          }
           if (path === "/paths") {
             await page
               .getByRole("button", { name: "History", exact: true })

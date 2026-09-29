@@ -1,5 +1,7 @@
 # Knowledge Base UI roadmap
 
+- [x] Search labels by name with ⌘K/Ctrl+K focus, Escape to clear, and a shareable `q` URL filter.
+
 - [x] Share tracker fields, queued saves, and synchronization across web routes;
   persist idle selections per account and reconcile them in web, extension,
   and iOS clients, including reconnects and labels created on another client.
