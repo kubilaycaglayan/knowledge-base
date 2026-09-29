@@ -6,7 +6,7 @@ import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import LabelHistoryDialog from "../components/LabelHistoryDialog.vue";
-import { mdiHistory } from "@mdi/js";
+import { mdiHistory, mdiPencilOutline, mdiTrashCanOutline } from "@mdi/js";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
 import {
@@ -252,11 +252,20 @@ onMounted(load);
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
               <path :d="mdiHistory" fill="currentColor" />
             </svg></button
-          ><button class="ghost" type="button" @click="beginEdit(label)">
-            Edit</button
-          ><button class="ghost danger" type="button" @click="remove(label)">
-            Remove
-          </button></template
+          ><button
+            class="icon-button quiet label-action-button"
+            type="button"
+            :aria-label="`Edit ${label.name}`"
+            :title="`Edit ${label.name}`"
+            @click="beginEdit(label)"
+          ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiPencilOutline" fill="currentColor" /></svg></button
+          ><button
+            class="icon-button quiet danger label-action-button"
+            type="button"
+            :aria-label="`Remove ${label.name}`"
+            :title="`Remove ${label.name}`"
+            @click="remove(label)"
+          ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiTrashCanOutline" fill="currentColor" /></svg></button></template
         >
         <template v-else-if="draft"
           ><input
@@ -525,9 +534,29 @@ onMounted(load);
   background: var(--workspace-hover);
   color: var(--workspace-text);
 }
-.label-row > .ghost {
-  min-height: 32px;
-  padding: 5px 8px;
+.label-action-button {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--workspace-radius);
+  background: transparent;
+  color: var(--workspace-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.label-action-button:hover,
+.label-action-button:focus-visible {
+  background: var(--workspace-hover);
+  color: var(--workspace-text);
+}
+.label-action-button.danger {
+  color: var(--workspace-danger);
+}
+.label-action-button.danger:hover,
+.label-action-button.danger:focus-visible {
+  background: var(--workspace-hover);
+  color: var(--workspace-danger);
 }
 .system-label {
   color: var(--workspace-muted);

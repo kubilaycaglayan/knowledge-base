@@ -23,7 +23,9 @@ describe("LabelsView", () => {
     expect(
       wrapper.findAll(".label-create-dialog .color-palette button"),
     ).toHaveLength(15);
-    await wrapper.get(".label-row button.ghost").trigger("click");
+    expect(wrapper.get('button[aria-label="Edit Study"]').find("svg").exists()).toBe(true);
+    expect(wrapper.get('button[aria-label="Remove Study"]').find("svg").exists()).toBe(true);
+    await wrapper.get('button[aria-label="Edit Study"]').trigger("click");
     expect(wrapper.findAll(".label-edit-colors button")).toHaveLength(15);
   });
 
@@ -76,7 +78,7 @@ describe("LabelsView", () => {
       },
     });
     await flushPromises();
-    await wrapper.get("button.danger").trigger("click");
+    await wrapper.get('button[aria-label="Remove Study"]').trigger("click");
     await flushPromises();
 
     expect(confirmations).toEqual([
@@ -149,7 +151,9 @@ describe("LabelsView", () => {
         }),
       }),
     );
-    await wrapper.findAll(".label-row")[1].get("button.ghost").trigger("click");
+    await wrapper.findAll(".label-row")[1]
+      .get('button[aria-label="Edit Study"]')
+      .trigger("click");
     await wrapper
       .get('input[aria-label="Edit Study name"]')
       .setValue("Study time");
