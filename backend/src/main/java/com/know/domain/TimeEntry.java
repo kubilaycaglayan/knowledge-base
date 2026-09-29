@@ -28,6 +28,10 @@ public class TimeEntry {
 
   private String description;
 
+  // Recorded seconds of the earlier segments of a paused and resumed session.
+  @Column(name = "carried_seconds", nullable = false)
+  private long carriedSeconds;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private TimeSource source;
@@ -106,6 +110,14 @@ public class TimeEntry {
 
   public Long getDurationSeconds() {
     return durationSeconds;
+  }
+
+  public long getCarriedSeconds() {
+    return carriedSeconds;
+  }
+
+  public void carry(long seconds) {
+    carriedSeconds = Math.max(0, seconds);
   }
 
   public String getDescription() {

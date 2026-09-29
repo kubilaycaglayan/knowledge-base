@@ -21,6 +21,10 @@ public class TrackerDraft {
   @Column(name = "label_id", nullable = false)
   private Set<UUID> labelIds = new HashSet<>();
 
+  // The total of a paused session's recorded segments; null when not paused.
+  @Column(name = "paused_seconds")
+  private Long pausedSeconds;
+
   protected TrackerDraft() {}
 
   public TrackerDraft(UUID userId) {
@@ -37,6 +41,22 @@ public class TrackerDraft {
 
   public List<UUID> getLabelIds() {
     return labelIds.stream().sorted().toList();
+  }
+
+  public Long getPausedSeconds() {
+    return pausedSeconds;
+  }
+
+  public boolean paused() {
+    return pausedSeconds != null;
+  }
+
+  public void pause(long totalSeconds) {
+    pausedSeconds = Math.max(0, totalSeconds);
+  }
+
+  public void clearPause() {
+    pausedSeconds = null;
   }
 
   public void configure(UUID pathId, Collection<UUID> labels, String description) {

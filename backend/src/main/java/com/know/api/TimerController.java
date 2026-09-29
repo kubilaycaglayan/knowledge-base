@@ -83,6 +83,25 @@ public class TimerController {
     return service.stop(user(a), id == null ? current.id() : id);
   }
 
+  record ResumeRequest(TimeSource source) {}
+
+  @PostMapping("/timers/pause")
+  public TimerService.DraftView pause(Authentication a) {
+    return service.pause(user(a));
+  }
+
+  @PostMapping("/timers/resume")
+  public ResponseEntity<TimerService.TimeView> resume(
+      Authentication a, @RequestBody(required = false) ResumeRequest r) {
+    TimerService.TimeView result = service.resume(user(a), r == null ? null : r.source());
+    return ResponseEntity.status(HttpStatus.CREATED).body(result);
+  }
+
+  @PostMapping("/timers/finish")
+  public TimerService.DraftView finish(Authentication a) {
+    return service.finish(user(a));
+  }
+
   @PostMapping({"/timers/cancel", "/timers/{id}/cancel"})
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void cancel(Authentication a, @PathVariable(required = false) UUID id) {

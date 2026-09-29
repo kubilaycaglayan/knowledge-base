@@ -22,14 +22,22 @@ public class TimerService {
   @Autowired private TrackerDraftRepository drafts;
   @Autowired private UserRepository users;
 
-  public record DraftView(UUID pathId, List<UUID> labelIds, String description) {}
+  /** The idle tracker context; {@code pausedSeconds} is set while a session is paused. */
+  public record DraftView(
+      UUID pathId, List<UUID> labelIds, String description, Long pausedSeconds) {}
 
   @Transactional(readOnly = true)
   public DraftView draft(UUID userId) {
     return drafts
         .findById(userId)
-        .map(draft -> new DraftView(draft.getPathId(), draft.getLabelIds(), draft.getDescription()))
-        .orElse(new DraftView(null, List.of(), null));
+        .map(
+            draft ->
+                new DraftView(
+                    draft.getPathId(),
+                    draft.getLabelIds(),
+                    draft.getDescription(),
+                    draft.getPausedSeconds()))
+        .orElse(new DraftView(null, List.of(), null, null));
   }
 
   @Transactional
@@ -56,6 +64,8 @@ public class TimerService {
     if (drafts == null) return;
     TrackerDraft draft = drafts.findById(userId).orElseGet(() -> new TrackerDraft(userId));
     draft.configure(entry.getPathId(), labelIds(entry), entry.getDescription());
+    // Stopping or cancelling ends the session, so it is no longer paused.
+    draft.clearPause();
     drafts.save(draft);
   }
 
@@ -93,7 +103,23 @@ public class TimerService {
       Long durationSeconds,
       String description,
       TimeSource source,
-      boolean running) {
+      boolean running,
+      long carriedSeconds) {
+    public TimeView(
+        UUID id,
+        UUID pathId,
+        List<UUID> labelIds,
+        Instant startedAt,
+        Instant endedAt,
+        Long durationSeconds,
+        String description,
+        TimeSource source,
+        boolean running) {
+      this(
+          id, pathId, labelIds, startedAt, endedAt, durationSeconds, description, source, running,
+          0);
+    }
+
     static TimeView of(TimeEntry e, List<UUID> labelIds) {
       return new TimeView(
           e.getId(),
@@ -104,7 +130,8 @@ public class TimerService {
           e.getDurationSeconds(),
           e.getDescription(),
           e.getSource(),
-          e.running());
+          e.running(),
+          e.getCarriedSeconds());
     }
   }
 
@@ -202,6 +229,81 @@ public class TimerService {
     // history row returned to the command caller.
     publishChanged(userId, null);
     return stopped;
+  }
+
+  /**
+   * Pauses the running session: its segment is recorded like a stop, and the draft keeps the
+   * session's context and total until it is resumed or finished.
+   */
+  @Transactional
+  public DraftView pause(UUID userId) {
+    lockUser(userId);
+    TimeEntry e =
+        entries
+            .findByUserIdAndEndedAtIsNull(userId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.CONFLICT, "No timer is running"));
+    e.stop(Instant.now());
+    rememberDraft(userId, e);
+    long recorded = e.getDurationSeconds();
+    if (recorded < MINIMUM_SAVED_TIMER_SECONDS) {
+      entries.delete(e);
+      recorded = 0;
+    } else entries.save(e);
+    TrackerDraft draft = drafts.findById(userId).orElseThrow();
+    draft.pause(e.getCarriedSeconds() + recorded);
+    drafts.save(draft);
+    publishChanged(userId, null);
+    return draft(userId);
+  }
+
+  /** Continues the paused session in a new running segment with the draft's context. */
+  @Transactional
+  public TimeView resume(UUID userId, TimeSource source) {
+    lockUser(userId);
+    if (entries.findByUserIdAndEndedAtIsNull(userId).isPresent())
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running");
+    TrackerDraft draft =
+        drafts
+            .findById(userId)
+            .filter(TrackerDraft::paused)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.CONFLICT, "No session is paused"));
+    validateTargets(userId, draft.getPathId(), draft.getLabelIds());
+    TimeEntry e =
+        new TimeEntry(
+            userId,
+            draft.getPathId(),
+            Instant.now(),
+            draft.getDescription(),
+            source == null ? TimeSource.WEB : source);
+    e.carry(draft.getPausedSeconds());
+    try {
+      e = entries.save(e);
+    } catch (DataIntegrityViolationException ex) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "A timer is already running");
+    }
+    replaceLabels(e.getId(), draft.getLabelIds());
+    drafts.delete(draft);
+    TimeView resumed = view(e);
+    publishChanged(userId, resumed);
+    return resumed;
+  }
+
+  /** Ends a paused session without recording more time; the draft keeps its context. */
+  @Transactional
+  public DraftView finish(UUID userId) {
+    lockUser(userId);
+    TrackerDraft draft =
+        drafts
+            .findById(userId)
+            .filter(TrackerDraft::paused)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.CONFLICT, "No session is paused"));
+    draft.clearPause();
+    drafts.save(draft);
+    publishChanged(userId, null);
+    return draft(userId);
   }
 
   @Transactional
