@@ -342,7 +342,7 @@ for (const open of [false, true])
     );
     assert.deepEqual(JSON.parse(created.options.body), {
       name: "Review",
-      scopes: ["TIME_ENTRY"],
+      scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
       color: null,
     });
     assert.equal(popup.elements["new-label"].value, "");
