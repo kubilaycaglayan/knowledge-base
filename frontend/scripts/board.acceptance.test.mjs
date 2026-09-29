@@ -1703,6 +1703,8 @@ describe("All boards view", { concurrency: 4 }, () => {
 
     await page.getByRole("link", { name: "Reports", exact: true }).click();
     await page.waitForURL(/\/reports/);
+    await page.waitForTimeout(300);
+    assert.equal(new URL(page.url()).search, "", "Leaving the board keeps its state off other pages");
     await page.getByRole("link", { name: "Board", exact: true }).click();
     await page.waitForURL((url) => url.searchParams.get("q") === "Home");
     assert.deepEqual(query(), expected);

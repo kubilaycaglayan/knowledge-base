@@ -363,7 +363,8 @@ async function restoreBoardState() {
 const boardState = computed<BoardViewState>(() => { const gantt = view.value === "gantt"; const from = route.query.from, to = route.query.to; return { boardId: store.selectedId, view: view.value, ganttFrom: gantt && typeof from === "string" ? from : preferences.board.ganttFrom, ganttTo: gantt && typeof to === "string" ? to : preferences.board.ganttTo, search: activeSearch.value }; });
 watch(boardState, (state) => { if (boardStateReady && state.boardId && hasBoardQuery()) preferences.setBoardState(state); });
 watch(activeSearch, (search) => { if (!boardStateReady || (route.query.q ?? "") === search) return; const { q: _previous, ...query } = route.query; void router.replace({ query: search ? { ...query, q: search } : query }); });
-watch(hasBoardQuery, (present) => { if (!present && boardStateReady) { boardStateReady = false; void restoreBoardState(); } });
+// Leaving the page also empties the query; only a bare /board restores.
+watch(hasBoardQuery, (present) => { if (!present && boardStateReady && route.path === "/board") { boardStateReady = false; void restoreBoardState(); } });
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });

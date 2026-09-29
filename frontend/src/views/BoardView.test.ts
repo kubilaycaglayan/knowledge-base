@@ -1571,7 +1571,7 @@ describe("BoardView", () => {
   describe("board state persistence", () => {
     // A reactive route that the mocked router updates, so the view follows the URL.
     function liveRoute(query: Record<string, string> = {}) {
-      mockRoute = reactive({ query });
+      mockRoute = reactive({ path: "/board", query });
       vi.mocked(useRoute).mockReturnValue(mockRoute);
       const navigate = vi.fn((to: { query: Record<string, string> }) => { mockRoute.query = to.query; return Promise.resolve(); });
       mockRouter.replace = navigate;
@@ -1632,6 +1632,13 @@ describe("BoardView", () => {
       mockRoute.query = {};
       await flushPromises();
       expect(mockRoute.query).toEqual({ board: "work", view: "gantt", from: "2026-09-01", to: "2026-09-14" });
+
+      // Leaving for another page empties the query too, and must not restore onto that page.
+      mockRouter.replace.mockClear();
+      mockRoute.path = "/reports";
+      mockRoute.query = {};
+      await flushPromises();
+      expect(mockRouter.replace).not.toHaveBeenCalled();
       await wrapper.unmount();
     });
 
