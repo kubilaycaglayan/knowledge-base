@@ -313,7 +313,11 @@ describe("SessionsView", () => {
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", {
       method: "POST",
-      body: JSON.stringify({ name: "Deep work", scopes: ["TIME_ENTRY"], color: null }),
+      body: JSON.stringify({
+        name: "Deep work",
+        scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
+        color: null,
+      }),
     });
     const update = vi
       .mocked(api)

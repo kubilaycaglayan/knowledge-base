@@ -128,7 +128,7 @@ describe("session tracker acceptance", () => {
           method: "POST",
           body: JSON.stringify({
             name: "New label",
-            scopes: ["TIME_ENTRY"],
+            scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
             color: null,
           }),
         }),
