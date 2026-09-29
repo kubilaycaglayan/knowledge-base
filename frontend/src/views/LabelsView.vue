@@ -199,10 +199,6 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
       <input ref="searchInput" v-model="search" class="label-search" type="search"
         name="label-search" aria-label="Search labels" aria-keyshortcuts="Meta+K Control+K"
         placeholder="Search labels…" autocomplete="off" @keydown.esc.prevent="search = ''" />
-      <div>
-        <p class="eyebrow">WORKSPACE</p>
-        <h1>Labels</h1>
-      </div>
       <button
         class="icon-button"
         type="button"
@@ -224,10 +220,6 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
         </svg>
       </button>
     </header>
-    <p class="lede">
-      Create reusable labels and choose where they don’t appear. A label can be
-      used in more than one place.
-    </p>
     <p
       v-if="error && !addDialogOpen"
       class="notice"
@@ -279,20 +271,21 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
               <path :d="mdiHistory" fill="currentColor" />
             </svg></button
-          ><button
-            class="icon-button quiet label-action-button"
-            type="button"
-            :aria-label="`Edit ${label.name}`"
-            :title="`Edit ${label.name}`"
-            @click="beginEdit(label)"
-          ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiPencilOutline" fill="currentColor" /></svg></button
-          ><button
-            class="icon-button quiet danger label-action-button"
-            type="button"
-            :aria-label="`Remove ${label.name}`"
-            :title="`Remove ${label.name}`"
-            @click="remove(label)"
-          ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiTrashCanOutline" fill="currentColor" /></svg></button></template
+          ><span class="label-actions"
+            ><button
+              class="icon-button quiet label-action-button"
+              type="button"
+              :aria-label="`Edit ${label.name}`"
+              :title="`Edit ${label.name}`"
+              @click="beginEdit(label)"
+            ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiPencilOutline" fill="currentColor" /></svg></button
+            ><button
+              class="icon-button quiet danger label-action-button"
+              type="button"
+              :aria-label="`Remove ${label.name}`"
+              :title="`Remove ${label.name}`"
+              @click="remove(label)"
+            ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiTrashCanOutline" fill="currentColor" /></svg></button></span></template
         >
         <template v-else-if="draft"
           ><input
@@ -566,6 +559,11 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
 .history-button:focus-visible {
   background: var(--workspace-hover);
   color: var(--workspace-text);
+}
+.label-actions {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
 }
 .label-action-button {
   flex: none;
