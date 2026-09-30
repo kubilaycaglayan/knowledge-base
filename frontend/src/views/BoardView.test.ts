@@ -156,6 +156,24 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("moves the Gantt date controls into the toolbar and lists paths in the board dropdown", async () => {
+    const store = seedBoard(["Backlog"]);
+    usePathsStore().setAll([{ id: "path-1", name: "Research", status: "ACTIVE", boardId: "path-board" }]);
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    expect(wrapper.find(".board-tabs-gantt").exists()).toBe(true);
+    expect(wrapper.find('.board-tabs-gantt input[aria-label="Timeline start date"]').exists()).toBe(true);
+    expect(wrapper.find(".gantt-heading").exists()).toBe(false);
+    const chooseBoard = wrapper.find('button[aria-label="Choose board: Test Board"]');
+    await chooseBoard.trigger("click");
+    expect(wrapper.find('[role="menu"][aria-label="Choose board"]').text()).toContain("Research");
+    await wrapper.findAll('[role="menu"][aria-label="Choose board"] button').find((button) => button.text().includes("Research"))!.trigger("click");
+    expect(store.selectedId).toBe("path-board");
+    await wrapper.unmount();
+  });
+
   // Add board lives only in the Boards dialog behind the Manage boards gear.
   async function openAddBoard(wrapper: ReturnType<typeof mountBoard>) {
     await wrapper.find('button[aria-label="Manage boards"]').trigger("click");

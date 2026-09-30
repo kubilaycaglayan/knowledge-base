@@ -40,3 +40,7 @@ column) and stay that way.
   state. Date order is earlier first and cards without dates sort last.
   Tests: `BoardView.test.ts`, `preferences.test.ts`, and
   `UserPreferencesIntegrationTest`.
+- [x] **BS-07** In Gantt view, board and path selection is available from the
+  All boards dropdown, and the date range controls use the toolbar row so the
+  timeline starts directly below it.
+  Tests: `BoardView.test.ts` "moves the Gantt date controls into the toolbar…".
