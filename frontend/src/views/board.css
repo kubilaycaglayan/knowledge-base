@@ -43,7 +43,7 @@
 .board-gantt-controls label { min-width:0; }
 .board-gantt-controls input { width:clamp(8.5rem, 12vw, 11rem); }
 .board-gantt-menu { z-index:6; top:calc(100% + .25rem); left:0; max-height:min(65vh, 28rem); overflow-y:auto; overscroll-behavior:contain; }
-.gantt-sort { display:flex; gap:.35rem; margin-bottom:.55rem; }
+.gantt-sort { display:flex; align-self:flex-end; gap:.35rem; margin-left:auto; }
 .gantt-sort button[aria-pressed="true"] { border-color:var(--accent-color); background:color-mix(in srgb, var(--accent-color) 12%, var(--workspace-surface)); }
 .gantt-controls label { display:grid; gap:.2rem; color:var(--workspace-muted); font-size:.75rem; }
 .gantt-controls input { min-height:40px; padding:.35rem; border:1px solid var(--workspace-control-border); border-radius:8px; background:var(--workspace-surface); color:inherit; }
@@ -71,7 +71,7 @@
 .timeline-track { display:flex; align-items:center; position:relative; }
 .timeline-cell { flex:1 1 0; min-width:0; height:100%; border-right:1px solid color-mix(in srgb, var(--workspace-border) 55%, transparent); }
 .timeline-cell.weekend { background:color-mix(in srgb, var(--workspace-hover) 55%, transparent); }
-@media (max-width:700px) { .timeline { --timeline-label-width:140px; } .gantt.wide { width:auto; margin-left:0; } .gantt-width-toggle { display:none; } .board-tabs-gantt { align-items:flex-start; } .board-gantt-controls { display:flex; justify-content:flex-start; flex-wrap:wrap; } .board-gantt-controls input { width:100%; } }
+@media (max-width:700px) { .timeline { --timeline-label-width:140px; } .gantt.wide { width:auto; margin-left:0; } .gantt-width-toggle { display:none; } .board-tabs-gantt { align-items:flex-start; flex-wrap:wrap; } .board-gantt-controls { display:grid; flex-basis:100%; grid-template-columns:minmax(0, 1fr) 44px minmax(0, 1fr); align-items:end; gap:.35rem; } .board-gantt-controls label:first-of-type { grid-row:1; grid-column:1; } .board-gantt-controls label:last-of-type { grid-row:1; grid-column:3; } .board-gantt-controls .board-gantt-prev { grid-row:2; grid-column:1; justify-self:start; } .board-gantt-controls .board-gantt-today { grid-row:1; grid-column:2; justify-self:center; } .board-gantt-controls .board-gantt-next { grid-row:2; grid-column:3; justify-self:end; } .board-gantt-controls input { width:100%; } .board-gantt-controls .gantt-sort { grid-row:2; grid-column:2; justify-self:center; gap:0; } .board-gantt-controls .gantt-sort button { min-width:0; padding-inline:.4rem; } }
 /* Above the floating time tracker (z-index 15), in line with the app's other dialogs. */
 .dialog-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:1rem; background:#11182799; } .dialog-backdrop.confirm-layer { z-index:101; } .editor-actions { justify-content:flex-end; }
 /* Flat card editor: a meta row (path, priority, status, dates, labels), then

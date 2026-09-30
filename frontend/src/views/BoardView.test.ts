@@ -165,6 +165,7 @@ describe("BoardView", () => {
 
     expect(wrapper.find(".board-tabs-gantt").exists()).toBe(true);
     expect(wrapper.find('.board-tabs-gantt input[aria-label="Timeline start date"]').exists()).toBe(true);
+    expect(wrapper.find('.board-tabs-gantt [aria-label="Timeline sort rules"]').exists()).toBe(true);
     expect(wrapper.find(".gantt-heading").exists()).toBe(false);
     const chooseBoard = wrapper.find('button[aria-label="Choose board: Test Board"]');
     await chooseBoard.trigger("click");
