@@ -131,6 +131,7 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     assertEquals("kanban", board.get("view").asText());
     assertTrue(board.get("ganttFrom").isNull());
     assertTrue(board.get("ganttTo").isNull());
+    assertEquals(0, board.get("ganttSorts").size());
     assertEquals("", board.get("search").asText());
 
     String foreign = exchange(HttpMethod.POST, "/api/v1/boards", other, "{\"name\":\"Theirs\"}").getBody().get("id").asText();
@@ -146,13 +147,14 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
   void boardStateIsStoredPerUser() {
     String token = token(), other = token();
     String boardId = exchange(HttpMethod.POST, "/api/v1/boards", token, "{\"name\":\"Work\"}").getBody().get("id").asText();
-    String body = "{\"board\":{\"boardId\":\"" + boardId + "\",\"view\":\"gantt\",\"ganttFrom\":\"2026-09-01\",\"ganttTo\":\"2026-09-14\",\"search\":\"release\"}}";
+    String body = "{\"board\":{\"boardId\":\"" + boardId + "\",\"view\":\"gantt\",\"ganttFrom\":\"2026-09-01\",\"ganttTo\":\"2026-09-14\",\"ganttSorts\":[\"PRIORITY\",\"DATE\"],\"search\":\"release\"}}";
     JsonNode saved = update(token, body).getBody().get("board");
     assertEquals(boardId, saved.get("boardId").asText());
     assertEquals("gantt", saved.get("view").asText());
     assertEquals("2026-09-01", saved.get("ganttFrom").asText());
     assertEquals("2026-09-14", saved.get("ganttTo").asText());
     assertEquals("release", saved.get("search").asText());
+    assertEquals(List.of("PRIORITY", "DATE"), List.of(saved.get("ganttSorts").get(0).asText(), saved.get("ganttSorts").get(1).asText()));
     assertEquals("release", update(token, "{\"theme\":\"dark\"}").getBody().get("board").get("search").asText(), "Omitted fields keep their value");
     assertTrue(preferences(other).getBody().get("board").get("boardId").isNull());
 

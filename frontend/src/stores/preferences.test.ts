@@ -72,13 +72,13 @@ describe("preferences store", () => {
   // BS-01, BS-02
   it("loads the board state, reading a null board as All boards", async () => {
     const preferences = usePreferencesStore();
-    expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", search: "" });
-    vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [], board: { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" } });
+    expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "" });
+    vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [], board: { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" } });
     await preferences.load();
-    expect(preferences.board).toEqual({ boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" });
+    expect(preferences.board).toEqual({ boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" });
     vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [], board: { boardId: null, view: "kanban", ganttFrom: null, ganttTo: null, search: "" } });
     await preferences.load();
-    expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", search: "" });
+    expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "" });
   });
 
   // BS-03
@@ -88,14 +88,14 @@ describe("preferences store", () => {
       vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [] });
       const preferences = usePreferencesStore();
       await preferences.load();
-      preferences.setBoardState({ boardId: "work", view: "kanban", ganttFrom: "", ganttTo: "", search: "rel" });
-      preferences.setBoardState({ boardId: "all", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" });
+      preferences.setBoardState({ boardId: "work", view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "rel" });
+      preferences.setBoardState({ boardId: "all", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" });
       expect(preferences.board.search).toBe("release");
       expect(api).not.toHaveBeenCalledWith("/preferences", expect.objectContaining({ method: "PUT" }));
       await vi.runAllTimersAsync();
       const puts = vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT");
       expect(puts).toHaveLength(1);
-      expect(JSON.parse(String(puts[0][1]!.body))).toEqual({ board: { boardId: null, view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" } });
+      expect(JSON.parse(String(puts[0][1]!.body))).toEqual({ board: { boardId: null, view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" } });
     } finally {
       vi.useRealTimers();
     }
@@ -106,7 +106,7 @@ describe("preferences store", () => {
     vi.useFakeTimers();
     try {
       const preferences = usePreferencesStore();
-      preferences.setBoardState({ boardId: "work", view: "kanban", ganttFrom: "", ganttTo: "", search: "" });
+      preferences.setBoardState({ boardId: "work", view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "" });
       await vi.runAllTimersAsync();
       expect(api).not.toHaveBeenCalled();
       preferences.reset();

@@ -36,6 +36,8 @@
 .gantt-width-toggle { top:0; right:0; }
 .gantt.wide .gantt-width-toggle { right:0; }
 .gantt-controls { display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; }
+.gantt-sort { display:flex; gap:.35rem; }
+.gantt-sort button[aria-pressed="true"] { border-color:var(--accent-color); background:color-mix(in srgb, var(--accent-color) 12%, var(--workspace-surface)); }
 .gantt-controls label { display:grid; gap:.2rem; color:var(--workspace-muted); font-size:.75rem; }
 .gantt-controls input { min-height:40px; padding:.35rem; border:1px solid var(--workspace-control-border); border-radius:8px; background:var(--workspace-surface); color:inherit; }
 @media (max-width: 700px) {

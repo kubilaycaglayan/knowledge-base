@@ -17,6 +17,7 @@ public class UserPreferences {
   @Column(name = "board_gantt_from") private LocalDate boardGanttFrom;
   @Column(name = "board_gantt_to") private LocalDate boardGanttTo;
   @Column(name = "board_search", nullable = false, length = 200) private String boardSearch = "";
+  @Column(name = "board_gantt_sorts", nullable = false, length = 32) private String boardGanttSorts = "";
   @Column(name = "updated_at", nullable = false) private Instant updatedAt = Instant.now();
   protected UserPreferences() {}
   public UserPreferences(UUID userId) { this.userId = userId; }
@@ -29,13 +30,15 @@ public class UserPreferences {
   public LocalDate getBoardGanttFrom() { return boardGanttFrom; }
   public LocalDate getBoardGanttTo() { return boardGanttTo; }
   public String getBoardSearch() { return boardSearch; }
+  public String getBoardGanttSorts() { return boardGanttSorts; }
   /** A null board is the All boards view. */
-  public void rememberBoardState(UUID boardId, String view, LocalDate ganttFrom, LocalDate ganttTo, String search) {
+  public void rememberBoardState(UUID boardId, String view, LocalDate ganttFrom, LocalDate ganttTo, String search, String ganttSorts) {
     this.boardId = boardId;
     boardView = view;
     boardGanttFrom = ganttFrom;
     boardGanttTo = ganttTo;
     boardSearch = search;
+    boardGanttSorts = ganttSorts;
     updatedAt = Instant.now();
   }
   public void chooseCardBoard(UUID boardId) { lastCardBoardId = boardId; updatedAt = Instant.now(); }

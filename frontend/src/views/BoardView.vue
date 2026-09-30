@@ -13,7 +13,7 @@ import { fitTabs } from "../lib/fit-tabs";
 import TimerRunButton from "../components/TimerRunButton.vue";
 import { useTimerStore } from "../stores/timer";
 import { useNoticesStore } from "../stores/notices";
-import { usePreferencesStore, type BoardViewState } from "../stores/preferences";
+import { usePreferencesStore, type BoardViewState, type GanttSortRule } from "../stores/preferences";
 import { useBoardsStore, type Board, type BoardCard, type BoardCardSort, type BoardStatus, type MergedColumn } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
@@ -124,7 +124,20 @@ const matchesBoardSearch = (card: BoardCard) => {
   ];
   return searchableText.some((value) => value?.toLocaleLowerCase().includes(query));
 };
-const ganttCards = computed(() => rawGanttCards.value.filter(matchesBoardSearch));
+const GANTT_PRIORITY_RANK: Record<BoardCard["priority"], number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+const ganttSorts = computed(() => preferences.board.ganttSorts);
+const ganttCards = computed(() => rawGanttCards.value.filter(matchesBoardSearch).slice().sort((a, b) => {
+  for (const rule of ganttSorts.value) {
+    if (rule === "PRIORITY") { const priority = GANTT_PRIORITY_RANK[a.priority] - GANTT_PRIORITY_RANK[b.priority]; if (priority) return priority; }
+    if (rule === "DATE") { const aDate = a.startDate || a.dueDate, bDate = b.startDate || b.dueDate; if (aDate && !bDate) return -1; if (!aDate && bDate) return 1; if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate); }
+  }
+  return 0;
+}));
+function toggleGanttSort(rule: GanttSortRule) {
+  const current = preferences.board.ganttSorts;
+  const next = current.includes(rule) ? current.filter((item) => item !== rule) : [...current, rule];
+  preferences.setBoardState({ ...preferences.board, ganttSorts: next });
+}
 const columnCards = (column: KanbanColumn) => (column.merged ? cardsForMerged(column.merged) : cardsFor(column.status!.id)).filter(matchesBoardSearch);
 const visibleColumnCards = columnCards;
 function toggleBoardSearch() { boardSearchOpen.value = !boardSearchOpen.value; if (boardSearchOpen.value) void nextTick(() => { boardSearchInput.value?.focus(); boardSearchInput.value?.select(); }); }
@@ -368,7 +381,7 @@ async function restoreBoardState() {
   }
   boardStateReady = true;
 }
-const boardState = computed<BoardViewState>(() => { const gantt = view.value === "gantt"; const from = route.query.from, to = route.query.to; return { boardId: store.selectedId, view: view.value, ganttFrom: gantt && typeof from === "string" ? from : preferences.board.ganttFrom, ganttTo: gantt && typeof to === "string" ? to : preferences.board.ganttTo, search: activeSearch.value }; });
+const boardState = computed<BoardViewState>(() => { const gantt = view.value === "gantt"; const from = route.query.from, to = route.query.to; return { boardId: store.selectedId, view: view.value, ganttFrom: gantt && typeof from === "string" ? from : preferences.board.ganttFrom, ganttTo: gantt && typeof to === "string" ? to : preferences.board.ganttTo, ganttSorts: preferences.board.ganttSorts, search: activeSearch.value }; });
 watch(boardState, (state) => { if (boardStateReady && state.boardId && hasBoardQuery()) preferences.setBoardState(state); });
 watch(activeSearch, (search) => { if (!boardStateReady || (route.query.q ?? "") === search) return; const { q: _previous, ...query } = route.query; void router.replace({ query: search ? { ...query, q: search } : query }); });
 // Leaving the page also empties the query; only a bare /board restores.
@@ -448,7 +461,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
     </template>
     <section v-else class="gantt" :class="{ wide: kanbanWide }" :style="kanbanWide && viewportWidth ? { '--viewport-width': `${viewportWidth}px`, '--content-left': `${contentLeft}px` } : undefined" aria-labelledby="gantt-heading">
       <button class="kanban-width-toggle gantt-width-toggle" type="button" :aria-pressed="kanbanWide" :aria-label="kanbanWide ? 'Collapse timeline to page width' : 'Expand timeline to full width'" :title="kanbanWide ? 'Collapse to page width' : 'Expand to full width'" @click="toggleKanbanWide"><v-icon :icon="kanbanWide ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal" size="16" aria-hidden="true" /></button>
-      <div class="gantt-heading"><h2 id="gantt-heading">Timeline</h2><div class="gantt-controls"><button class="secondary" type="button" aria-label="Previous timeline window" @click="shiftGantt(-visibleDays.length)">←</button><label>From<input v-model="ganttFrom" type="date" aria-label="Timeline start date" @change="updateGanttRange" /></label><button class="secondary icon-button" type="button" aria-label="Today" title="Today" @click="showToday"><v-icon :icon="mdiCalendarToday" size="20" aria-hidden="true" /></button><label>To<input v-model="ganttTo" type="date" aria-label="Timeline end date" @change="updateGanttRange" /></label><button class="secondary" type="button" aria-label="Next timeline window" @click="shiftGantt(visibleDays.length)">→</button></div></div>
+      <div class="gantt-heading"><h2 id="gantt-heading">Timeline</h2><div class="gantt-controls"><button class="secondary" type="button" aria-label="Previous timeline window" @click="shiftGantt(-visibleDays.length)">←</button><label>From<input v-model="ganttFrom" type="date" aria-label="Timeline start date" @change="updateGanttRange" /></label><button class="secondary icon-button" type="button" aria-label="Today" title="Today" @click="showToday"><v-icon :icon="mdiCalendarToday" size="20" aria-hidden="true" /></button><label>To<input v-model="ganttTo" type="date" aria-label="Timeline end date" @change="updateGanttRange" /></label><button class="secondary" type="button" aria-label="Next timeline window" @click="shiftGantt(visibleDays.length)">→</button><span class="gantt-sort" role="group" aria-label="Timeline sort rules"><button class="secondary" type="button" :aria-pressed="ganttSorts.includes('PRIORITY')" @click="toggleGanttSort('PRIORITY')">Priority</button><button class="secondary" type="button" :aria-pressed="ganttSorts.includes('DATE')" @click="toggleGanttSort('DATE')">Date</button></span></div></div>
       <div class="timeline-scroll" tabindex="0" aria-label="Board card timeline"><div class="timeline" :style="{ minWidth: `${timelineWidth}px` }"><div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div><div class="timeline-header"><span class="timeline-label">Card</span><div class="timeline-days" :style="{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day">{{ day.slice(5) }}</span></div></div><div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-label"><strong>{{ card.title }}</strong><small>{{ timelineLabel(card) }}</small></div><div class="timeline-track"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div><p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p></div></div>
     </section>
     <footer class="board-footer"><RouterLink class="link-button secondary with-icon" :to="{ path: '/board/archive', query: store.selectedId && !isAll ? { board: store.selectedId } : {} }"><v-icon :icon="mdiArchiveOutline" size="18" aria-hidden="true" />Archived items</RouterLink></footer>

@@ -5,20 +5,21 @@ import { ALL_BOARDS } from "../lib/board-merge";
 import { setThemePreference, themePreference, type ThemePreference } from "../lib/theme";
 
 /** The Boards page state: the open board (ALL_BOARDS for All boards), view, Gantt range ("" when unset), and card search. */
-export type BoardViewState = { boardId: string; view: "kanban" | "gantt"; ganttFrom: string; ganttTo: string; search: string };
-type StoredBoardState = { boardId: string | null; view: "kanban" | "gantt"; ganttFrom: string | null; ganttTo: string | null; search: string };
+export type GanttSortRule = "PRIORITY" | "DATE";
+export type BoardViewState = { boardId: string; view: "kanban" | "gantt"; ganttFrom: string; ganttTo: string; ganttSorts: GanttSortRule[]; search: string };
+type StoredBoardState = { boardId: string | null; view: "kanban" | "gantt"; ganttFrom: string | null; ganttTo: string | null; ganttSorts?: GanttSortRule[]; search: string };
 type Preferences = { theme: ThemePreference; kanbanWide: boolean; recentPathIds: string[]; lastCardBoardId?: string | null; board?: StoredBoardState };
 type PreferenceChanges = Partial<Omit<Preferences, "recentPathIds">>;
 // Typing a search saves once the user pauses, not on every keystroke.
 const BOARD_SAVE_DELAY_MS = 400;
-const defaultBoardState = (): BoardViewState => ({ boardId: ALL_BOARDS, view: "kanban", ganttFrom: "", ganttTo: "", search: "" });
-const sameBoardState = (a: BoardViewState, b: BoardViewState) => a.boardId === b.boardId && a.view === b.view && a.ganttFrom === b.ganttFrom && a.ganttTo === b.ganttTo && a.search === b.search;
+const defaultBoardState = (): BoardViewState => ({ boardId: ALL_BOARDS, view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "" });
+const sameBoardState = (a: BoardViewState, b: BoardViewState) => a.boardId === b.boardId && a.view === b.view && a.ganttFrom === b.ganttFrom && a.ganttTo === b.ganttTo && a.ganttSorts.join(",") === b.ganttSorts.join(",") && a.search === b.search;
 function fromStored(stored?: StoredBoardState): BoardViewState {
   if (!stored) return defaultBoardState();
-  return { boardId: stored.boardId || ALL_BOARDS, view: stored.view === "gantt" ? "gantt" : "kanban", ganttFrom: stored.ganttFrom || "", ganttTo: stored.ganttTo || "", search: stored.search || "" };
+  return { boardId: stored.boardId || ALL_BOARDS, view: stored.view === "gantt" ? "gantt" : "kanban", ganttFrom: stored.ganttFrom || "", ganttTo: stored.ganttTo || "", ganttSorts: (stored.ganttSorts || []).filter((rule): rule is GanttSortRule => rule === "PRIORITY" || rule === "DATE"), search: stored.search || "" };
 }
 function toStored(state: BoardViewState): StoredBoardState {
-  return { boardId: state.boardId === ALL_BOARDS ? null : state.boardId, view: state.view, ganttFrom: state.ganttFrom || null, ganttTo: state.ganttTo || null, search: state.search };
+  return { boardId: state.boardId === ALL_BOARDS ? null : state.boardId, view: state.view, ganttFrom: state.ganttFrom || null, ganttTo: state.ganttTo || null, ganttSorts: state.ganttSorts, search: state.search };
 }
 const KANBAN_WIDE_CACHE = "board.kanbanWide";
 

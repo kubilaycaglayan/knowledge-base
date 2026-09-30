@@ -134,6 +134,28 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("applies and remembers multiple Gantt sort rules with undated cards last", async () => {
+    const store = seedBoard(["Backlog"]);
+    const card = (id: string, priority: "URGENT" | "MEDIUM", startDate?: string) => ({
+      id, boardId: "test-id", statusId: "status-1", title: id, body: "{}", priority,
+      position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", startDate,
+    });
+    store.ganttCards = [card("later", "MEDIUM", "2026-09-09"), card("no-date", "MEDIUM"), card("earlier", "MEDIUM", "2026-09-02"), card("urgent", "URGENT")];
+    const preferences = usePreferencesStore();
+    preferences.board = { ...preferences.board, boardId: "test-id", view: "gantt", ganttSorts: ["PRIORITY", "DATE"] };
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+
+    const wrapper = mountBoard();
+    await flushPromises();
+    expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
+      .toEqual(["urgent", "earlier", "later", "no-date"]);
+    const sortControls = wrapper.find('[aria-label="Timeline sort rules"]');
+    expect(sortControls.findAll('button[aria-pressed="true"]')).toHaveLength(2);
+    await sortControls.findAll("button")[0].trigger("click");
+    expect(preferences.board.ganttSorts).toEqual(["DATE"]);
+    await wrapper.unmount();
+  });
+
   // Add board lives only in the Boards dialog behind the Manage boards gear.
   async function openAddBoard(wrapper: ReturnType<typeof mountBoard>) {
     await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
@@ -1619,7 +1641,7 @@ describe("BoardView", () => {
       const store = useBoardsStore();
       store.boards = [board("work", "Work")];
       const preferences = usePreferencesStore();
-      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" };
+      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: [], search: "release" };
       const wrapper = mountBoard();
       await flushPromises();
       expect(store.selectedId).toBe("work");
@@ -1635,7 +1657,7 @@ describe("BoardView", () => {
       const store = useBoardsStore();
       store.boards = [board("work", "Work"), board("home", "Home")];
       const preferences = usePreferencesStore();
-      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", search: "release" };
+      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: [], search: "release" };
       const wrapper = mountBoard();
       await flushPromises();
       expect(store.selectedId).toBe("home");

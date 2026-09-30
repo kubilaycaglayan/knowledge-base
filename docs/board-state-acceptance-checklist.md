@@ -14,7 +14,7 @@ column) and stay that way.
   Tests: `boards.test.ts` "falls back to All boards…", `BoardView.test.ts`
   "opens All boards by default", `UserPreferencesIntegrationTest.boardStateDefaultsAndIsValidated`.
 - [x] **BS-02** `GET /preferences` returns `board: { boardId, view, ganttFrom,
-  ganttTo, search }` (`boardId` `null` means All boards); `PUT /preferences
+  ganttTo, ganttSorts, search }` (`boardId` `null` means All boards); `PUT /preferences
   {"board": …}` replaces it. Another user's board returns `404`; an unknown
   view, an inverted range, or a search over 200 characters returns `400`.
   The stored board references `boards(id)` with `on delete set null`.
@@ -35,3 +35,8 @@ column) and stay that way.
   browser session.
   Tests: `board.real-stack.acceptance.test.mjs` "restores the board state in a
   new session".
+- [x] **BS-06** Gantt priority and date rules can be enabled together, their
+  activation order controls precedence, and the setup is remembered with board
+  state. Date order is earlier first and cards without dates sort last.
+  Tests: `BoardView.test.ts`, `preferences.test.ts`, and
+  `UserPreferencesIntegrationTest`.
