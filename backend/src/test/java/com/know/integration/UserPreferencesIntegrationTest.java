@@ -66,6 +66,7 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     JsonNode body = preferences(token()).getBody();
     assertEquals("auto", body.get("theme").asText());
     assertFalse(body.get("kanbanWide").asBoolean());
+    assertFalse(body.get("ganttWide").asBoolean());
     assertEquals(0, body.get("recentPathIds").size());
     assertEquals(HttpStatus.UNAUTHORIZED, preferences(null).getStatusCode());
   }
@@ -80,6 +81,10 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     JsonNode wide = update(owner, "{\"kanbanWide\":true}").getBody();
     assertEquals("dark", wide.get("theme").asText(), "Omitted fields keep their value");
     assertTrue(wide.get("kanbanWide").asBoolean());
+    JsonNode timelineWide = update(owner, "{\"ganttWide\":true}").getBody();
+    assertTrue(timelineWide.get("ganttWide").asBoolean());
+    assertTrue(timelineWide.get("kanbanWide").asBoolean(), "The Gantt width update keeps the Kanban width");
+    assertFalse(preferences(other).getBody().get("ganttWide").asBoolean());
     assertEquals("dark", preferences(owner).getBody().get("theme").asText());
     assertEquals("auto", preferences(other).getBody().get("theme").asText());
   }

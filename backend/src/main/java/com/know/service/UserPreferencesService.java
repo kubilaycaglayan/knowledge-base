@@ -34,7 +34,7 @@ public class UserPreferencesService {
   /** The Boards page state: the open board (null for All boards), view, Gantt range, and card search. */
   public record BoardState(UUID boardId, String view, LocalDate ganttFrom, LocalDate ganttTo, String search, List<String> ganttSorts) {}
 
-  public record View(String theme, boolean kanbanWide, List<UUID> recentPathIds, UUID lastCardBoardId, BoardState board) {}
+  public record View(String theme, boolean kanbanWide, boolean ganttWide, List<UUID> recentPathIds, UUID lastCardBoardId, BoardState board) {}
 
   @Transactional(readOnly = true)
   public View get(UUID userId) {
@@ -42,9 +42,9 @@ public class UserPreferencesService {
   }
 
   @Transactional
-  public View update(UUID userId, String theme, Boolean kanbanWide, UUID lastCardBoardId, BoardState board) {
+  public View update(UUID userId, String theme, Boolean kanbanWide, Boolean ganttWide, UUID lastCardBoardId, BoardState board) {
     UserPreferences stored = preferences.findById(userId).orElseGet(() -> new UserPreferences(userId));
-    stored.update(theme, kanbanWide);
+    stored.update(theme, kanbanWide, ganttWide);
     if (lastCardBoardId != null) {
       if (boards.findByIdAndUserId(lastCardBoardId, userId).isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Board not found");
       stored.chooseCardBoard(lastCardBoardId);
@@ -63,6 +63,6 @@ public class UserPreferencesService {
   private View view(UUID userId, UserPreferences stored) {
     List<UUID> recent = entries.findRecentPathIds(userId, RECENT_PATHS).stream().map(UUID::fromString).toList();
     BoardState board = new BoardState(stored.getBoardId(), stored.getBoardView(), stored.getBoardGanttFrom(), stored.getBoardGanttTo(), stored.getBoardSearch(), stored.getBoardGanttSorts().isBlank() ? List.of() : List.of(stored.getBoardGanttSorts().split(",")));
-    return new View(stored.getTheme(), stored.isKanbanWide(), recent, stored.getLastCardBoardId(), board);
+    return new View(stored.getTheme(), stored.isKanbanWide(), stored.isGanttWide(), recent, stored.getLastCardBoardId(), board);
   }
 }

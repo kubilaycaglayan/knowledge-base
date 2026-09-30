@@ -11,6 +11,7 @@ public class UserPreferences {
   @Id @Column(name = "user_id") private UUID userId;
   @Column(nullable = false, length = 8) private String theme = "auto";
   @Column(name = "kanban_wide", nullable = false) private boolean kanbanWide;
+  @Column(name = "gantt_wide", nullable = false) private boolean ganttWide;
   @Column(name = "last_card_board_id") private UUID lastCardBoardId;
   @Column(name = "board_id") private UUID boardId;
   @Column(name = "board_view", nullable = false, length = 8) private String boardView = "kanban";
@@ -24,6 +25,7 @@ public class UserPreferences {
   public UUID getUserId() { return userId; }
   public String getTheme() { return theme; }
   public boolean isKanbanWide() { return kanbanWide; }
+  public boolean isGanttWide() { return ganttWide; }
   public UUID getLastCardBoardId() { return lastCardBoardId; }
   public UUID getBoardId() { return boardId; }
   public String getBoardView() { return boardView; }
@@ -42,9 +44,10 @@ public class UserPreferences {
     updatedAt = Instant.now();
   }
   public void chooseCardBoard(UUID boardId) { lastCardBoardId = boardId; updatedAt = Instant.now(); }
-  public void update(String theme, Boolean kanbanWide) {
+  public void update(String theme, Boolean kanbanWide, Boolean ganttWide) {
     if (theme != null) this.theme = theme;
     if (kanbanWide != null) this.kanbanWide = kanbanWide;
+    if (ganttWide != null) this.ganttWide = ganttWide;
     updatedAt = Instant.now();
   }
 }

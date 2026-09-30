@@ -26,3 +26,7 @@ names the tests that cover it. Tick an item only once those tests pass.
 - [x] **UP-06** The time tracker's recent paths come from the server's `recentPathIds`, and `know_recent_timer_paths` is no longer written to browser storage.
   _Tests:_ `timer.test.ts` "takes recent paths from the server's preferences"
 - [x] **UP-07** `docs/api.md` documents the preferences endpoints.
+- [x] **UP-08** The Gantt full-width toggle uses `ganttWide`, stored separately
+  from `kanbanWide` in V56 and cached independently for first paint.
+  _Tests:_ `preferences.test.ts`, `BoardView.test.ts`, and
+  `UserPreferencesIntegrationTest.preferencesArePartialUpdatesPerUser`

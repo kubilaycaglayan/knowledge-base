@@ -28,6 +28,7 @@ describe("preferences store", () => {
     expect(themePreference.value).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(preferences.kanbanWide).toBe(true);
+    expect(preferences.ganttWide).toBe(false);
     expect(preferences.recentPathIds).toEqual(["path-2", "path-1"]);
     expect(api).not.toHaveBeenCalledWith("/preferences", expect.objectContaining({ method: "PUT" }));
   });
@@ -59,6 +60,17 @@ describe("preferences store", () => {
     await preferences.setKanbanWide(true);
     expect(preferences.kanbanWide).toBe(true);
     expect(api).toHaveBeenCalledWith("/preferences", expect.objectContaining({ method: "PUT", body: JSON.stringify({ kanbanWide: true }) }));
+  });
+
+  it("saves Gantt width independently from Kanban width", async () => {
+    vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: true, ganttWide: false, recentPathIds: [] });
+    const preferences = usePreferencesStore();
+    await preferences.load();
+    await preferences.setGanttWide(true);
+    expect(preferences.kanbanWide).toBe(true);
+    expect(preferences.ganttWide).toBe(true);
+    expect(localStorage.getItem("board.ganttWide")).toBe("1");
+    expect(api).toHaveBeenCalledWith("/preferences", expect.objectContaining({ method: "PUT", body: JSON.stringify({ ganttWide: true }) }));
   });
 
   it("keeps cached values when loading fails", async () => {

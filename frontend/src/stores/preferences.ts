@@ -8,7 +8,7 @@ import { setThemePreference, themePreference, type ThemePreference } from "../li
 export type GanttSortRule = "PRIORITY" | "DATE";
 export type BoardViewState = { boardId: string; view: "kanban" | "gantt"; ganttFrom: string; ganttTo: string; ganttSorts: GanttSortRule[]; search: string };
 type StoredBoardState = { boardId: string | null; view: "kanban" | "gantt"; ganttFrom: string | null; ganttTo: string | null; ganttSorts?: GanttSortRule[]; search: string };
-type Preferences = { theme: ThemePreference; kanbanWide: boolean; recentPathIds: string[]; lastCardBoardId?: string | null; board?: StoredBoardState };
+type Preferences = { theme: ThemePreference; kanbanWide: boolean; ganttWide?: boolean; recentPathIds: string[]; lastCardBoardId?: string | null; board?: StoredBoardState };
 type PreferenceChanges = Partial<Omit<Preferences, "recentPathIds">>;
 // Typing a search saves once the user pauses, not on every keystroke.
 const BOARD_SAVE_DELAY_MS = 400;
@@ -22,12 +22,19 @@ function toStored(state: BoardViewState): StoredBoardState {
   return { boardId: state.boardId === ALL_BOARDS ? null : state.boardId, view: state.view, ganttFrom: state.ganttFrom || null, ganttTo: state.ganttTo || null, ganttSorts: state.ganttSorts, search: state.search };
 }
 const KANBAN_WIDE_CACHE = "board.kanbanWide";
+const GANTT_WIDE_CACHE = "board.ganttWide";
 
 function cachedKanbanWide() {
   try { return localStorage.getItem(KANBAN_WIDE_CACHE) === "1"; } catch { return false; }
 }
 function cacheKanbanWide(value: boolean) {
   try { localStorage.setItem(KANBAN_WIDE_CACHE, value ? "1" : "0"); } catch { /* The cache only speeds up first paint. */ }
+}
+function cachedGanttWide() {
+  try { return localStorage.getItem(GANTT_WIDE_CACHE) === "1"; } catch { return false; }
+}
+function cacheGanttWide(value: boolean) {
+  try { localStorage.setItem(GANTT_WIDE_CACHE, value ? "1" : "0"); } catch { /* The cache only speeds up first paint. */ }
 }
 
 /**
@@ -38,6 +45,7 @@ function cacheKanbanWide(value: boolean) {
  */
 export const usePreferencesStore = defineStore("preferences", () => {
   const kanbanWide = ref(cachedKanbanWide());
+  const ganttWide = ref(cachedGanttWide());
   const recentPathIds = ref<string[]>([]);
   // The board a card added from the All boards view goes to.
   const lastCardBoardId = ref("");
@@ -69,6 +77,8 @@ export const usePreferencesStore = defineStore("preferences", () => {
       setThemePreference(stored.theme);
       kanbanWide.value = stored.kanbanWide;
       cacheKanbanWide(stored.kanbanWide);
+      ganttWide.value = stored.ganttWide ?? false;
+      cacheGanttWide(ganttWide.value);
       recentPathIds.value = [...(stored.recentPathIds || [])];
       lastCardBoardId.value = stored.lastCardBoardId || "";
       clearTimeout(boardSaveTimer);
@@ -91,6 +101,12 @@ export const usePreferencesStore = defineStore("preferences", () => {
     kanbanWide.value = value;
     cacheKanbanWide(value);
     if (loaded.value) await save({ kanbanWide: value }).catch(() => undefined);
+  }
+
+  async function setGanttWide(value: boolean) {
+    ganttWide.value = value;
+    cacheGanttWide(value);
+    if (loaded.value) await save({ ganttWide: value }).catch(() => undefined);
   }
 
   async function setLastCardBoard(boardId: string) {
@@ -116,7 +132,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
     lastCardBoardId.value = "";
   }
 
-  return { kanbanWide, recentPathIds, lastCardBoardId, board, loaded, load, ready, setKanbanWide, setLastCardBoard, setBoardState, reset };
+  return { kanbanWide, ganttWide, recentPathIds, lastCardBoardId, board, loaded, load, ready, setKanbanWide, setGanttWide, setLastCardBoard, setBoardState, reset };
 });
 
 if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(usePreferencesStore, import.meta.hot));

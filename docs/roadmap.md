@@ -190,3 +190,4 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Remember ordered Gantt sort rules (priority and earlier dates, with
   undated cards last) in the user's board state (V55).
   Acceptance: `docs/board-state-acceptance-checklist.md`.
+- [x] Store Gantt full-width state independently from Kanban width (V56).

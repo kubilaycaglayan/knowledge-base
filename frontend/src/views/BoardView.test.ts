@@ -997,6 +997,24 @@ describe("BoardView", () => {
     await again.unmount();
   });
 
+  it("keeps the Gantt width toggle independent from Kanban", async () => {
+    seedBoard(["Backlog"]);
+    const preferences = usePreferencesStore();
+    preferences.kanbanWide = true;
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+    const save = vi.spyOn(preferences, "setGanttWide");
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    const timeline = wrapper.find(".gantt");
+    expect(timeline.classes()).not.toContain("wide");
+    await timeline.find(".gantt-width-toggle").trigger("click");
+    expect(save).toHaveBeenCalledWith(true);
+    expect(preferences.kanbanWide).toBe(true);
+    expect(timeline.classes()).toContain("wide");
+    await wrapper.unmount();
+  });
+
   describe("card editor", () => {
     const baseCard = { id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" };
     async function openCard() {
