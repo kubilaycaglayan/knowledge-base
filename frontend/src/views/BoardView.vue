@@ -528,7 +528,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
           <div class="timeline-label-content">
             <div class="timeline-header"><div class="timeline-label timeline-label-heading">Card</div></div>
             <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
-              <div class="timeline-label" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null"><strong>{{ card.title }}</strong></div>
+              <button class="timeline-label" type="button" :aria-label="`Open card: ${card.title || 'Untitled card'}`" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null" @click="editCard(card)"><strong>{{ card.title }}</strong></button>
             </div>
           </div>
         </div>

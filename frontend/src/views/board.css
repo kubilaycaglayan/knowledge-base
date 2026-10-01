@@ -76,7 +76,7 @@
 .timeline-today-line::before { content:""; position:absolute; top:0; left:-4px; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #e32636; }
 .timeline-header { display:block; }
 .timeline-header { position:sticky; top:0; z-index:4; min-height:42px; border-bottom:1px solid var(--workspace-border); background:var(--workspace-hover); }
-.timeline-label { position:relative; z-index:3; display:flex; align-items:center; width:100%; height:100%; min-width:0; box-sizing:border-box; padding:0 .75rem; background:var(--workspace-surface); overflow:visible; white-space:nowrap; }
+.timeline-label { position:relative; z-index:3; display:flex; align-items:center; width:100%; height:100%; min-width:0; box-sizing:border-box; padding:0 .75rem; border:0; background:var(--workspace-surface); color:var(--workspace-text); font:inherit; text-align:left; cursor:pointer; overflow:visible; white-space:nowrap; }
 .timeline-label-heading { min-height:41px; padding-top:.65rem; padding-bottom:.65rem; }
 .timeline-header .timeline-label { background:var(--workspace-hover); }
 .timeline-label strong, .timeline-label small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
