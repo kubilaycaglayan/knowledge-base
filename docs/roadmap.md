@@ -50,9 +50,10 @@
 - [x] Give labels created outside the Labels page (session tracker, Sessions,
   note tagging, extension, iOS Sessions) the same default: everywhere except Calendar.
 - [x] Add a Notes tab to the Chrome extension with a title-only list, note
-  creation, plain-text editing, focused editor layout, editor-local scrolling,
+  creation, Markdown and plain-text editing, focused editor layout, editor-local scrolling,
   restoration of the open note when the popup is reopened, and a visible back
-  button plus adjustable, remembered height in the note editor.
+  button plus adjustable, remembered height in the note editor. Markdown
+  shortcuts cover bold, inline and block code, lists, and quotes.
 - [x] Show each label's history on the web Labels page (History icon button):
   first and last use, uses per kind, monthly tracked hours, hours of day, and
   related labels (see `docs/label-history-acceptance-checklist.md`).

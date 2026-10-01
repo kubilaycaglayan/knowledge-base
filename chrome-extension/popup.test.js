@@ -14,6 +14,8 @@ class Element {
   constructor(id) {
     this.id = id;
     this.value = "";
+    this.selectionStart = 0;
+    this.selectionEnd = 0;
     this.textContent = "";
     this.hidden = id === "settings-menu" || id === "timer-start-editor";
     this.disabled = false;
@@ -763,6 +765,52 @@ test("shows the back button immediately and restores the editor popup height", a
   await flush();
   assert.equal(popup.body.style.height, "600px");
   assert.equal(popup.state.noteEditorHeight, 600);
+
+  popup.elements["note-popup-resize"].onkeydown({
+    key: "Home",
+    preventDefault() {},
+  });
+  await flush();
+  assert.equal(popup.body.style.height, "160px");
+  assert.equal(popup.state.noteEditorHeight, 160);
+});
+
+test("supports Markdown shortcuts and saves formatted note structure", async () => {
+  const popup = await readyPopup({
+    token: "token",
+    fixtureNotes: [{ id: "note-markdown", title: "Format", contentText: "", tags: [], version: 1 }],
+    openNoteId: "note-markdown",
+  });
+  const editor = popup.elements["note-content"];
+  editor.value = "bold";
+  editor.selectionStart = 0;
+  editor.selectionEnd = 4;
+  editor.onkeydown({ key: "b", metaKey: true, preventDefault() {} });
+  assert.equal(editor.value, "**bold**");
+
+  editor.selectionStart = editor.value.length;
+  editor.selectionEnd = editor.value.length;
+  editor.onkeydown({ key: "8", code: "Digit8", ctrlKey: true, shiftKey: true, preventDefault() {} });
+  assert.equal(editor.value, "- **bold**");
+
+  editor.value = "1. First";
+  editor.selectionStart = editor.value.length;
+  editor.selectionEnd = editor.value.length;
+  editor.onkeydown({ key: "Enter", preventDefault() {} });
+  assert.equal(editor.value, "1. First\n2. ");
+
+  editor.value = "**bold**\n- First\n- Second\n1. One\n2. Two\n> Quote\nInline `code`\n```\ncode block\n```";
+  editor.oninput();
+  await popup.elements["notes-back"].onclick();
+  await flush();
+  const saved = JSON.parse(popup.state.calls.find((call) => call.path === "/notes/note-markdown" && call.options.method === "PUT").options.body);
+  const document = JSON.parse(saved.content);
+  assert.equal(document.content[0].content[0].marks[0].type, "bold");
+  assert.equal(document.content[1].type, "bulletList");
+  assert.equal(document.content[2].type, "orderedList");
+  assert.equal(document.content[3].type, "blockquote");
+  assert.equal(document.content[4].content[1].marks[0].type, "code");
+  assert.equal(document.content[5].type, "codeBlock");
 });
 
 test("shows an empty-state message when the notes list is empty", async () => {

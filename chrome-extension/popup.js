@@ -52,7 +52,7 @@ const timerSelectionKey = "timerSelection";
 const openNoteStorageKey = "openNoteId";
 const noteEditorHeightStorageKey = "noteEditorHeight";
 const defaultNoteEditorHeight = 560;
-const minNoteEditorHeight = 320;
+const minNoteEditorHeight = 160;
 const maxNoteEditorHeight = 600;
 const noteEditorHeightStep = 20;
 let notePopupResize = null;
@@ -684,6 +684,161 @@ function notePlainText(note) {
   }
 }
 
+function markdownInlineContent(text) {
+  const content = [];
+  const pattern = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let offset = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index > offset) content.push({ type: "text", text: text.slice(offset, match.index) });
+    const isCode = match[0].startsWith("`");
+    content.push({
+      type: "text",
+      text: match[0].slice(isCode ? 1 : 2, isCode ? -1 : -2),
+      marks: [{ type: isCode ? "code" : "bold" }],
+    });
+    offset = match.index + match[0].length;
+  }
+  if (offset < text.length) content.push({ type: "text", text: text.slice(offset) });
+  return content;
+}
+
+function markdownNoteDocument(markdown) {
+  const lines = markdown.split("\n");
+  const blocks = [];
+  const paragraph = (text) => ({ type: "paragraph", ...(text ? { content: markdownInlineContent(text) } : {}) });
+  for (let index = 0; index < lines.length;) {
+    if (/^\s*```/.test(lines[index])) {
+      const codeLines = [];
+      index += 1;
+      while (index < lines.length && !/^\s*```/.test(lines[index])) codeLines.push(lines[index++]);
+      if (index < lines.length) index += 1;
+      blocks.push({ type: "codeBlock", ...(codeLines.length ? { content: [{ type: "text", text: codeLines.join("\n") }] } : {}) });
+      continue;
+    }
+    const bullet = lines[index].match(/^\s*[-*+]\s+(.*)$/);
+    const ordered = lines[index].match(/^\s*\d+[.)]\s+(.*)$/);
+    if (bullet || ordered) {
+      const isOrdered = Boolean(ordered);
+      const items = [];
+      while (index < lines.length) {
+        const match = lines[index].match(isOrdered ? /^\s*\d+[.)]\s+(.*)$/ : /^\s*[-*+]\s+(.*)$/);
+        if (!match) break;
+        items.push({ type: "listItem", content: [paragraph(match[1])] });
+        index += 1;
+      }
+      blocks.push({ type: isOrdered ? "orderedList" : "bulletList", content: items });
+      continue;
+    }
+    if (/^\s*>\s?/.test(lines[index])) {
+      const quoted = [];
+      while (index < lines.length && /^\s*>\s?/.test(lines[index])) {
+        quoted.push(paragraph(lines[index].replace(/^\s*>\s?/, "")));
+        index += 1;
+      }
+      blocks.push({ type: "blockquote", content: quoted });
+      continue;
+    }
+    blocks.push(paragraph(lines[index]));
+    index += 1;
+  }
+  return { type: "doc", content: blocks.length ? blocks : [paragraph("")] };
+}
+
+function replaceNoteEditorText(textarea, value, selectionStart, selectionEnd = selectionStart) {
+  textarea.value = value;
+  textarea.selectionStart = selectionStart;
+  textarea.selectionEnd = selectionEnd;
+  textarea.focus();
+  scheduleNoteSave();
+}
+
+function wrapNoteSelection(textarea, marker) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selected = textarea.value.slice(start, end);
+  const before = textarea.value.slice(Math.max(0, start - marker.length), start);
+  const after = textarea.value.slice(end, end + marker.length);
+  if (selected && before === marker && after === marker) {
+    const value = textarea.value.slice(0, start - marker.length) + selected + textarea.value.slice(end + marker.length);
+    replaceNoteEditorText(textarea, value, start - marker.length, end - marker.length);
+  } else if (selected) {
+    const value = textarea.value.slice(0, start) + marker + selected + marker + textarea.value.slice(end);
+    replaceNoteEditorText(textarea, value, start + marker.length, end + marker.length);
+  } else if (!selected && before === marker && after === marker) {
+    const value = textarea.value.slice(0, start - marker.length) + textarea.value.slice(end + marker.length);
+    replaceNoteEditorText(textarea, value, start - marker.length);
+  } else {
+    const pair = marker + marker;
+    replaceNoteEditorText(textarea, textarea.value.slice(0, start) + pair + textarea.value.slice(end), start + marker.length);
+  }
+}
+
+function prefixSelectedLines(textarea, prefix, pattern) {
+  const value = textarea.value;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+  const nextNewline = value.indexOf("\n", end);
+  const lineEnd = nextNewline < 0 ? value.length : nextNewline;
+  const selectedLines = value.slice(lineStart, lineEnd).split("\n");
+  const removePrefix = selectedLines.every((line) => pattern.test(line));
+  pattern.lastIndex = 0;
+  let number = 1;
+  const transformed = selectedLines.map((line) => {
+    const unprefixed = line.replace(pattern, "");
+    pattern.lastIndex = 0;
+    if (removePrefix) return unprefixed;
+    const linePrefix = typeof prefix === "function" ? prefix(number++, line) : prefix;
+    return linePrefix + line;
+  }).join("\n");
+  const updated = value.slice(0, lineStart) + transformed + value.slice(lineEnd);
+  replaceNoteEditorText(textarea, updated, lineStart, lineStart + transformed.length);
+}
+
+function continueNoteMarkdownList(textarea, event) {
+  if (textarea.selectionStart !== textarea.selectionEnd) return false;
+  const caret = textarea.selectionStart;
+  const lineStart = textarea.value.lastIndexOf("\n", caret - 1) + 1;
+  const lineEnd = textarea.value.indexOf("\n", caret);
+  const line = textarea.value.slice(lineStart, lineEnd < 0 ? textarea.value.length : lineEnd);
+  const empty = line.match(/^(\s*)([-*+] |\d+[.)] |> )$/);
+  if (empty) {
+    event.preventDefault();
+    const end = lineEnd < 0 ? textarea.value.length : lineEnd;
+    replaceNoteEditorText(textarea, textarea.value.slice(0, lineStart) + empty[1] + textarea.value.slice(end), lineStart + empty[1].length);
+    return true;
+  }
+  const item = line.match(/^(\s*)([-*+] |(\d+)[.)] |> )(.*)$/);
+  if (!item) return false;
+  event.preventDefault();
+  const prefix = item[3] ? `${Number(item[3]) + 1}. ` : item[2];
+  const insertion = `\n${item[1]}${prefix}`;
+  replaceNoteEditorText(textarea, textarea.value.slice(0, caret) + insertion + textarea.value.slice(caret), caret + insertion.length);
+  return true;
+}
+
+function handleNoteEditorKeydown(event) {
+  const textarea = $("note-content");
+  if (event.key === "Enter" && continueNoteMarkdownList(textarea, event)) return;
+  if (!(event.metaKey || event.ctrlKey)) return;
+  if (!event.shiftKey && event.key.toLowerCase() === "b") {
+    event.preventDefault();
+    wrapNoteSelection(textarea, "**");
+  } else if (event.code === "Backquote") {
+    event.preventDefault();
+    wrapNoteSelection(textarea, "`");
+  } else if (event.shiftKey && ["Digit7", "Digit8", "Digit9"].includes(event.code)) {
+    event.preventDefault();
+    const shortcuts = {
+      Digit7: [(index) => `${index}. `, /^\s*\d+[.)]\s+/],
+      Digit8: ["- ", /^\s*[-*+]\s+/],
+      Digit9: ["> ", /^\s*>\s?/],
+    };
+    const [prefix, pattern] = shortcuts[event.code];
+    prefixSelectedLines(textarea, prefix, pattern);
+  }
+}
+
 function renderNotes() {
   const list = $("notes-list");
   list.replaceChildren();
@@ -855,7 +1010,7 @@ async function saveNote() {
   const noteId = activeNote.id;
   const title = $("note-title").value.trim();
   const contentText = $("note-content").value;
-  const content = JSON.stringify({ type: "doc", content: contentText.split("\n").map((line) => ({ type: "paragraph", ...(line ? { content: [{ type: "text", text: line }] } : {}) })) });
+  const content = JSON.stringify(markdownNoteDocument(contentText));
   try {
     let saved;
     try {
@@ -1029,6 +1184,7 @@ $("note-popup-resize").onpointercancel = finishNotePopupResize;
 $("note-popup-resize").onkeydown = resizeNotePopupByKey;
 $("note-title").oninput = scheduleNoteSave;
 $("note-content").oninput = scheduleNoteSave;
+$("note-content").onkeydown = handleNoteEditorKeydown;
 async function login() {
   const button = $("login");
   const email = $("email").value;
