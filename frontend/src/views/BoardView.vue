@@ -79,6 +79,7 @@ const pageObservers = new Map<string, IntersectionObserver>();
 // breakout never adds a horizontal scrollbar.
 const preferences = usePreferencesStore(), kanbanWide = computed(() => preferences.kanbanWide), ganttWide = computed(() => preferences.ganttWide), viewportWidth = ref(0), contentLeft = ref(0), boardPage = ref<HTMLElement | null>(null);
 const timelineScroll = ref<HTMLElement | null>(null), timelineLabelPane = ref<HTMLElement | null>(null);
+const timelineLoadingEdge = ref(false);
 const ganttTitleOverflow = ref<{ title: string; left: number; top: number; maxWidth: number; font: string; letterSpacing: string } | null>(null);
 
 function toggleKanbanWide() { measureViewport(); void preferences.setKanbanWide(!kanbanWide.value); }
@@ -92,7 +93,7 @@ function measureKanbanHeight() { const kanban = kanbanEl.value; if (!kanban) ret
 const kanbanResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureKanbanHeight());
 watch(kanbanEl, (kanban) => { kanbanResize?.disconnect(); if (kanban) { if (boardPage.value) kanbanResize?.observe(boardPage.value); void nextTick(measureKanbanHeight); } });
 function measureViewport() { measureKanbanHeight(); viewportWidth.value = document.documentElement.clientWidth; const page = boardPage.value; if (page) contentLeft.value = page.getBoundingClientRect().left + parseFloat(getComputedStyle(page).paddingLeft || "0"); }
-function syncTimelineLabels() { if (timelineScroll.value && timelineLabelPane.value) timelineLabelPane.value.scrollTop = timelineScroll.value.scrollTop; ganttTitleOverflow.value = null; }
+function syncTimelineLabels() { if (timelineScroll.value && timelineLabelPane.value) timelineLabelPane.value.scrollTop = timelineScroll.value.scrollTop; ganttTitleOverflow.value = null; void extendTimelineAtEdge(); }
 function showGanttTitleOverflow(event: MouseEvent, title: string) {
   const label = (event.currentTarget as HTMLElement).querySelector("strong");
   if (!label || label.scrollWidth <= label.clientWidth + 1) { ganttTitleOverflow.value = null; return; }
@@ -107,6 +108,26 @@ const today = format(new Date(), "yyyy-MM-dd");
 const ganttFrom = ref(typeof route.query.from === "string" ? route.query.from : today);
 const ganttTo = ref(typeof route.query.to === "string" ? route.query.to : addCalendarDays(ganttFrom.value, 13));
 const visibleDays = computed(() => timelineDays(ganttFrom.value, ganttTo.value));
+const GANTT_CHUNK_DAYS = 14;
+async function extendTimelineAtEdge() {
+  const scroller = timelineScroll.value;
+  if (!scroller || timelineLoadingEdge.value || view.value !== "gantt") return;
+  if (scroller.scrollWidth <= scroller.clientWidth) return;
+  const dayWidth = scroller.scrollWidth / Math.max(visibleDays.value.length, 1);
+  const extendLeft = scroller.scrollLeft < dayWidth * 2;
+  const extendRight = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft < dayWidth * 2;
+  if (!extendLeft && !extendRight) return;
+  timelineLoadingEdge.value = true;
+  const oldFrom = ganttFrom.value, oldTo = ganttTo.value;
+  ganttFrom.value = extendLeft ? addCalendarDays(oldFrom, -GANTT_CHUNK_DAYS) : oldFrom;
+  ganttTo.value = extendRight ? addCalendarDays(oldTo, GANTT_CHUNK_DAYS) : oldTo;
+  const prependPixels = extendLeft ? dayWidth * GANTT_CHUNK_DAYS : 0;
+  void router.replace({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } });
+  try {
+    await nextTick();
+    if (timelineScroll.value && prependPixels) timelineScroll.value.scrollLeft += prependPixels;
+  } finally { timelineLoadingEdge.value = false; }
+}
 const formatTimelineDay = (day: string) => `${day.slice(8, 10)}-${day.slice(5, 7)}`;
 const timelineWidth = computed(() => Math.max(100, visibleDays.value.length * (phone.value ? 132 : 80)));
 const todayPosition = computed(() => { const index = visibleDays.value.indexOf(today); return index < 0 ? undefined : `${(index + 0.5) / visibleDays.value.length * 100}%`; });
