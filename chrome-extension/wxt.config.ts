@@ -29,7 +29,7 @@ export default defineConfig({
   },
   manifest: {
     name: "Knowledge Base",
-    version: "0.1.22",
+    version: "0.1.23",
     description:
       "Explicitly track time against your Knowledge Base paths and labels.",
     icons: {
