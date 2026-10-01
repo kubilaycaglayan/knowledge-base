@@ -60,9 +60,9 @@
   .gantt-controls > button:last-child { grid-row:2; grid-column:3; justify-self:end; }
 }
 .board-page-gantt .board-toolbar { flex:0 0 auto; }
-.board-page-gantt .gantt { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
-.board-page-gantt .timeline-scroll { flex:1 1 auto; min-height:0; height:100%; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
-.timeline-scroll { overflow:auto; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
+.board-page-gantt .gantt { flex:1 1 auto; min-width:0; min-height:0; overflow:clip; display:flex; flex-direction:column; }
+.board-page-gantt .timeline-scroll { flex:1 1 auto; min-width:0; min-height:0; height:100%; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.timeline-scroll { min-width:0; overflow:auto; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
 .timeline-scroll { scrollbar-width:auto; scrollbar-color:var(--workspace-muted) var(--workspace-hover); }
 .timeline-scroll::-webkit-scrollbar:horizontal { height:12px; }
 .timeline-scroll::-webkit-scrollbar-track { background:var(--workspace-hover); }
