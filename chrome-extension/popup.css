@@ -63,6 +63,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   background: var(--workspace-background);
 }
@@ -400,6 +404,117 @@ small {
   margin-top: 24px;
   padding-top: 20px;
   border-top: 1px solid var(--workspace-border);
+}
+
+.workspace-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: -4px 0 18px;
+  padding: 3px;
+  border: 1px solid var(--workspace-border);
+  border-radius: 6px;
+  background: var(--workspace-surface);
+}
+
+.workspace-tabs .workspace-tab {
+  min-height: 36px;
+  margin: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--workspace-muted);
+}
+
+.workspace-tabs .workspace-tab.is-active {
+  border-color: var(--workspace-border);
+  background: var(--workspace-selected);
+  color: var(--workspace-selected-text);
+}
+
+.notes-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.notes-heading h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 19px;
+}
+
+.notes-heading .icon-button {
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.notes-status {
+  min-height: 18px;
+  margin: 0 0 4px;
+  color: var(--workspace-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.notes-list {
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.notes-list .note-row {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--workspace-border);
+  border-radius: 0;
+  padding: 10px 4px;
+  background: transparent;
+  color: var(--workspace-text);
+  font-size: 14px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notes-list .note-row:hover { background: var(--workspace-hover); }
+
+.note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-editor label:not(.sr-only) { margin: 4px 0 0; }
+
+.note-editor input {
+  min-height: 40px;
+  font-size: 16px;
+}
+
+.note-editor textarea {
+  height: min(52vh, 400px);
+  min-height: 180px;
+  max-height: min(58vh, 440px);
+  resize: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .session-list,

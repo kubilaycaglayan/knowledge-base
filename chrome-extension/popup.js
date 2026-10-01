@@ -13,6 +13,7 @@ function keepFocusedControlVisible(event) {
   const candidate = event?.target;
   const control = candidate instanceof HTMLElement ? candidate : document.activeElement;
   if (!(control instanceof HTMLElement)) return;
+  if (control.closest?.("#note-editor")) return;
   requestAnimationFrame(() => {
     control.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
     if (control instanceof HTMLTextAreaElement && control.selectionEnd !== null) {
@@ -39,6 +40,13 @@ let labelSuggestionIndex = -1;
 let timerRevision = 0;
 let savingTimer = false;
 let timerSaveQueued = false;
+let notes = [];
+let activeNote = null;
+let noteSaveTimer = null;
+let noteSaveInFlight = false;
+let noteSaveQueued = false;
+let noteSaveSettled = Promise.resolve();
+let notesLoading = false;
 let selectionBaseline = { pathId: "", labelIds: [], description: "" };
 const timerSelectionKey = "timerSelection";
 
@@ -643,6 +651,174 @@ async function loadSessions() {
   }
 }
 
+function setWorkspacePage(page) {
+  const isNotes = page === "notes";
+  document.title = `${isNotes ? "Notes" : "Timer"} · Knowledge Base`;
+  $("timer-page").hidden = isNotes;
+  $("notes-page").hidden = !isNotes;
+  $("timer-tab").classList.toggle("is-active", !isNotes);
+  $("notes-tab").classList.toggle("is-active", isNotes);
+  $("timer-tab").toggleAttribute("aria-current", !isNotes);
+  $("notes-tab").toggleAttribute("aria-current", isNotes);
+  if (isNotes) void loadNotes();
+}
+
+function notePlainText(note) {
+  if (typeof note.contentText === "string" && note.contentText) return note.contentText;
+  try {
+    const doc = JSON.parse(note.content || "{}");
+    const textFrom = (node) => !node || typeof node !== "object" ? "" :
+      `${typeof node.text === "string" ? node.text : ""}${Array.isArray(node.content) ? node.content.map(textFrom).join("") : ""}${node.type === "paragraph" ? "\n" : ""}`;
+    return textFrom(doc).replace(/\n$/, "");
+  } catch (_) {
+    return note.content || "";
+  }
+}
+
+function renderNotes() {
+  const list = $("notes-list");
+  list.replaceChildren();
+  notes.forEach((note) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "note-row";
+    button.textContent = note.title?.trim() || "Untitled";
+    button.setAttribute("aria-label", `Open note: ${button.textContent}`);
+    button.onclick = () => openNote(note.id);
+    list.append(button);
+  });
+  if (!notes.length && !notesLoading) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "Your notes will appear here.";
+    list.append(empty);
+  }
+}
+
+async function loadNotes() {
+  if (notesLoading) return;
+  notesLoading = true;
+  let loaded = false;
+  $("notes-status").textContent = "Loading…";
+  try {
+    const result = await request("/notes");
+    notes = Array.isArray(result) ? result : result?.items || [];
+    loaded = true;
+    $("notes-status").textContent = "";
+  } catch (error) {
+    $("notes-status").textContent = userError("Unable to load notes.", error);
+  } finally {
+    notesLoading = false;
+    if (loaded) renderNotes();
+  }
+}
+
+function showNoteEditor(note) {
+  activeNote = note;
+  $("notes-title").hidden = true;
+  $("notes-back").hidden = false;
+  $("new-note").hidden = true;
+  $("notes-list").hidden = true;
+  $("note-editor").hidden = false;
+  $("note-title").value = note.title || "";
+  $("note-content").value = notePlainText(note);
+  $("notes-status").textContent = "";
+  $("note-title").focus();
+}
+
+async function openNote(id) {
+  try {
+    const note = await request(`/notes/${encodeURIComponent(id)}`);
+    showNoteEditor(note);
+  } catch (error) {
+    $("notes-status").textContent = userError("Unable to open this note.", error);
+  }
+}
+
+async function createNote() {
+  const button = $("new-note");
+  setButtonBusy(button, true);
+  try {
+    const note = await request("/notes", {
+      method: "POST",
+      body: JSON.stringify({ title: "", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }), contentText: "", tags: [] }),
+    });
+    notes = [note, ...notes.filter((value) => value.id !== note.id)];
+    renderNotes();
+    showNoteEditor(note);
+  } catch (error) {
+    $("notes-status").textContent = userError("Unable to create a note.", error);
+  } finally {
+    setButtonBusy(button, false);
+  }
+}
+
+function scheduleNoteSave() {
+  $("notes-status").textContent = "Saving…";
+  if (noteSaveTimer) clearTimeout(noteSaveTimer);
+  noteSaveTimer = setTimeout(() => { noteSaveTimer = null; void saveNote(); }, 600);
+}
+
+async function saveNote() {
+  if (!activeNote) return;
+  if (noteSaveInFlight) { noteSaveQueued = true; return noteSaveSettled; }
+  noteSaveInFlight = true;
+  let resolveSave;
+  noteSaveSettled = new Promise((resolve) => { resolveSave = resolve; });
+  const noteId = activeNote.id;
+  const title = $("note-title").value.trim();
+  const contentText = $("note-content").value;
+  const content = JSON.stringify({ type: "doc", content: contentText.split("\n").map((line) => ({ type: "paragraph", ...(line ? { content: [{ type: "text", text: line }] } : {}) })) });
+  try {
+    let saved;
+    try {
+      saved = await request(`/notes/${encodeURIComponent(noteId)}`, { method: "PUT", body: JSON.stringify({ title, content, contentText, tags: activeNote.tags || [], version: activeNote.version }) });
+    } catch (error) {
+      if (!errorDetails(error).includes("Note changed in another window")) throw error;
+      const latest = await request(`/notes/${encodeURIComponent(noteId)}`);
+      saved = await request(`/notes/${encodeURIComponent(noteId)}`, { method: "PUT", body: JSON.stringify({ title, content, contentText, tags: activeNote.tags || [], version: latest.version }) });
+    }
+    notes = [saved, ...notes.filter((note) => note.id !== saved.id)];
+    if (activeNote?.id === noteId) activeNote = saved;
+    $("notes-status").textContent = "Saved";
+  } catch (error) {
+    $("notes-status").textContent = userError("Could not save note.", error);
+  } finally {
+    noteSaveInFlight = false;
+    if (noteSaveQueued) { noteSaveQueued = false; scheduleNoteSave(); }
+    resolveSave();
+  }
+}
+
+async function closeNote() {
+  if (noteSaveTimer) {
+    clearTimeout(noteSaveTimer);
+    noteSaveTimer = null;
+    await saveNote();
+  }
+  while (noteSaveInFlight || noteSaveTimer) {
+    if (noteSaveTimer) {
+      clearTimeout(noteSaveTimer);
+      noteSaveTimer = null;
+      await saveNote();
+    } else {
+      await noteSaveSettled;
+    }
+  }
+  if ($("notes-status").textContent.startsWith("Could not save note")) {
+    $("note-title").focus();
+    return;
+  }
+  activeNote = null;
+  $("note-editor").hidden = true;
+  $("notes-list").hidden = false;
+  $("notes-title").hidden = false;
+  $("notes-back").hidden = true;
+  $("new-note").hidden = false;
+  $("notes-status").textContent = "";
+  renderNotes();
+}
+
 function renderSessionEditor(article, session) {
   const selectedIds = sessionLabelIds(session);
   article.insertAdjacentHTML(
@@ -726,6 +902,7 @@ async function load() {
       selectionBaseline = timerSelection(selection);
     }
     showWorkspace();
+    setWorkspacePage("timer");
     startLiveTimerSync();
     void loadSessions();
   } catch (error) {
@@ -737,6 +914,13 @@ async function load() {
         : userError(fallback, error);
   }
 }
+
+$("timer-tab").onclick = () => setWorkspacePage("timer");
+$("notes-tab").onclick = () => setWorkspacePage("notes");
+$("new-note").onclick = createNote;
+$("notes-back").onclick = closeNote;
+$("note-title").oninput = scheduleNoteSave;
+$("note-content").oninput = scheduleNoteSave;
 async function login() {
   const button = $("login");
   const email = $("email").value;

@@ -19,6 +19,10 @@ class Element {
     this.onclick = null;
     this.onchange = null;
     this.insertedHTML = [];
+    this.attributes = {};
+    this.classList = {
+      toggle: (name, enabled) => { this[name] = enabled; },
+    };
   }
   get selectedOptions() {
     return this.options.filter((option) => option.selected);
@@ -28,8 +32,10 @@ class Element {
     else this.children.push(...items);
   }
   setAttribute(name, value) {
+    this.attributes[name] = value;
     this[name] = value;
   }
+  toggleAttribute(name, enabled) { if (enabled) this.setAttribute(name, ""); else { delete this.attributes[name]; delete this[name]; } }
   getAttribute(name) {
     return this[name] ?? null;
   }
@@ -61,6 +67,7 @@ function createPopup({
   history = [],
   fixtureLabels,
   fixturePaths,
+  fixtureNotes = [],
   prompt = () => null,
 } = {}) {
   const elements = Object.fromEntries(
@@ -96,6 +103,18 @@ function createPopup({
       "labels-summary",
       "new-label",
       "create-label",
+      "timer-tab",
+      "notes-tab",
+      "timer-page",
+      "notes-page",
+      "notes-title",
+      "notes-back",
+      "new-note",
+      "notes-status",
+      "notes-list",
+      "note-editor",
+      "note-title",
+      "note-content",
     ].map((id) => [id, new Element(id)]),
   );
   const state = { token, activeTimer: null, calls: [] };
@@ -132,6 +151,7 @@ function createPopup({
       [{ id: "calendar-only", name: "Calendar only", color: "#999999" }],
     ],
     ["/timers/current", currentTimer],
+    ["/notes", fixtureNotes],
     ["/time-entries?page=0&size=20", history],
     [
       "/timers",
@@ -219,6 +239,12 @@ function createPopup({
       const value =
         options.method === "POST" && ["/paths", "/labels"].includes(path)
           ? { ...JSON.parse(options.body), id: "created", status: "ACTIVE" }
+          : path === "/notes" && options.method === "POST"
+            ? { ...JSON.parse(options.body), id: "note-new", version: 1 }
+            : path.startsWith("/notes/") && (!options.method || options.method === "GET")
+              ? fixtureNotes.find((note) => note.id === path.slice("/notes/".length)) || { id: path.slice("/notes/".length), title: "", contentText: "", tags: [], version: 1 }
+              : path.startsWith("/notes/") && options.method === "PUT"
+                ? { ...JSON.parse(options.body), id: path.slice("/notes/".length), version: 2 }
           : path === "/timers/draft" && options.method === "PUT"
             ? JSON.parse(options.body)
             : responses.get(path);
@@ -671,4 +697,43 @@ test("clears an expired token and reloads when the API returns unauthorized", as
     popup.elements.error.textContent,
     "Sign in failed or the API is unavailable.",
   );
+});
+
+test("shows title-only notes and opens the note editor", async () => {
+  const note = { id: "note-1", title: "Meeting notes", contentText: "First line\nSecond line", content: "", tags: [], version: 3 };
+  const popup = await readyPopup({ token: "token", fixtureNotes: [note] });
+  await popup.elements["notes-tab"].onclick();
+  await flush();
+  assert.equal(popup.elements["notes-list"].children[0].textContent, "Meeting notes");
+  assert.equal(popup.elements["notes-list"].children[0].className, "note-row");
+  await popup.elements["notes-list"].children[0].onclick();
+  assert.equal(popup.elements["note-title"].value, "Meeting notes");
+  assert.equal(popup.elements["note-content"].value, "First line\nSecond line");
+  assert.equal(popup.elements["note-editor"].hidden, false);
+});
+
+test("shows an empty-state message when the notes list is empty", async () => {
+  const popup = await readyPopup({ token: "token" });
+  await popup.elements["notes-tab"].onclick();
+  await flush();
+  assert.equal(popup.elements["notes-list"].children[0].textContent, "Your notes will appear here.");
+});
+
+test("creates a note and saves title and plain text through the notes API", async () => {
+  const popup = await readyPopup({ token: "token" });
+  await popup.elements["notes-tab"].onclick();
+  await flush();
+  await popup.elements["new-note"].onclick();
+  assert.equal(popup.elements["note-editor"].hidden, false);
+  popup.elements["note-title"].value = "Quick thought";
+  popup.elements["note-content"].value = "Line one\nLine two";
+  popup.elements["note-content"].oninput();
+  await popup.elements["notes-back"].onclick();
+  await flush();
+  const save = popup.state.calls.find((call) => call.path === "/notes/note-new" && call.options.method === "PUT");
+  assert.equal(JSON.parse(save.options.body).title, "Quick thought");
+  assert.equal(JSON.parse(save.options.body).contentText, "Line one\nLine two");
+  assert.equal(JSON.parse(save.options.body).version, 1);
+  assert.equal(popup.elements["note-editor"].hidden, true);
+  assert.equal(popup.elements["notes-list"].hidden, false);
 });
