@@ -1,5 +1,7 @@
 # Knowledge Base UI roadmap
 
+- [x] Keep the Gantt card list visible in full-width mode by allowing the timeline's clipping container to span the shell.
+
 - [x] Simplify the timeline heading and add a Today icon between its date fields, preserving the visible window length.
 
 - [x] Add “No marker” to web calendar label assignments to omit them from reports; keep “Marker” as the default.
