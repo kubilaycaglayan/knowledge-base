@@ -93,6 +93,7 @@ const today = format(new Date(), "yyyy-MM-dd");
 const ganttFrom = ref(typeof route.query.from === "string" ? route.query.from : today);
 const ganttTo = ref(typeof route.query.to === "string" ? route.query.to : addCalendarDays(ganttFrom.value, 13));
 const visibleDays = computed(() => timelineDays(ganttFrom.value, ganttTo.value));
+const formatTimelineDay = (day: string) => `${day.slice(8, 10)}-${day.slice(5, 7)}`;
 const timelineWidth = computed(() => (phone.value ? 140 : 180) + Math.max(100, visibleDays.value.length * (phone.value ? 132 : 80)));
 const todayPosition = computed(() => { const index = visibleDays.value.indexOf(today); return index < 0 ? undefined : `${(index + 0.5) / visibleDays.value.length * 100}%`; });
 const isWeekend = (value: string) => [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
@@ -133,15 +134,46 @@ const GANTT_PRIORITY_RANK: Record<BoardCard["priority"], number> = { URGENT: 0, 
 const ganttSorts = computed(() => preferences.board.ganttSorts);
 const ganttCards = computed(() => rawGanttCards.value.filter(matchesBoardSearch).slice().sort((a, b) => {
   for (const rule of ganttSorts.value) {
-    if (rule === "PRIORITY") { const priority = GANTT_PRIORITY_RANK[a.priority] - GANTT_PRIORITY_RANK[b.priority]; if (priority) return priority; }
-    if (rule === "DATE") { const aDate = a.startDate || a.dueDate, bDate = b.startDate || b.dueDate; if (aDate && !bDate) return -1; if (!aDate && bDate) return 1; if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate); }
+    const descending = rule.endsWith("_DESC");
+    if (rule.startsWith("PRIORITY")) {
+      const priority = GANTT_PRIORITY_RANK[a.priority] - GANTT_PRIORITY_RANK[b.priority];
+      if (priority) return descending ? -priority : priority;
+    }
+    if (rule.startsWith("DATE")) {
+      // Use the finish date when a card has a range, or its only date otherwise.
+      const aDate = a.dueDate || a.startDate, bDate = b.dueDate || b.startDate;
+      if (aDate && !bDate) return -1;
+      if (!aDate && bDate) return 1;
+      if (aDate && bDate && aDate !== bDate) {
+        const date = aDate.localeCompare(bDate);
+        return descending ? -date : date;
+      }
+    }
   }
   return 0;
 }));
-function toggleGanttSort(rule: GanttSortRule) {
-  const current = preferences.board.ganttSorts;
-  const next = current.includes(rule) ? current.filter((item) => item !== rule) : [...current, rule];
+type GanttSortField = "PRIORITY" | "DATE";
+function ganttSortDirection(field: GanttSortField) {
+  const rule = ganttSorts.value.find((item) => item.startsWith(field));
+  if (!rule) return "OFF";
+  return rule.endsWith("_DESC") ? "DESC" : "ASC";
+}
+function toggleGanttSort(field: GanttSortField) {
+  const current = preferences.board.ganttSorts.map((rule) =>
+    rule === "PRIORITY" ? "PRIORITY_ASC" : rule === "DATE" ? "DATE_ASC" : rule,
+  );
+  const direction = ganttSortDirection(field);
+  const index = current.findIndex((item) => item.startsWith(field));
+  const next = [...current];
+  if (direction === "OFF") next.push(`${field}_ASC` as GanttSortRule);
+  else if (direction === "ASC") next[index] = `${field}_DESC` as GanttSortRule;
+  else next.splice(index, 1);
   preferences.setBoardState({ ...preferences.board, ganttSorts: next });
+}
+function ganttSortLabel(field: GanttSortField) {
+  const direction = ganttSortDirection(field);
+  if (direction === "OFF") return `${field === "PRIORITY" ? "Priority" : "Date"} sorting is off; activate ascending`;
+  return `${field === "PRIORITY" ? "Priority" : "Date"} sorting ${direction.toLowerCase()}; select to ${direction === "ASC" ? "reverse or turn off" : "turn off"}`;
 }
 const columnCards = (column: KanbanColumn) => (column.merged ? cardsForMerged(column.merged) : cardsFor(column.status!.id)).filter(matchesBoardSearch);
 const visibleColumnCards = columnCards;
@@ -266,6 +298,11 @@ async function addCardToColumn(column: KanbanColumn) {
 }
 function defaultBoardDocument() { return { type: "doc", content: [{ type: "paragraph" }] }; }
 function parseBoardBody(body: string) { try { const parsed = JSON.parse(body); return parsed?.type === "doc" ? parsed : defaultBoardDocument(); } catch { return defaultBoardDocument(); } }
+function cardBodySummary(card: BoardCard) {
+  const text = (node: { text?: string; content?: unknown[] }): string =>
+    `${node.text || ""} ${(node.content || []).map((child) => child && typeof child === "object" ? text(child as { text?: string; content?: unknown[] }) : "").join(" ")}`;
+  return text(parseBoardBody(card.body)).replace(/\s+/g, " ").trim();
+}
 function destroyCardEditor() { cardEditor.value?.destroy(); cardEditor.value = null; }
 function rememberCardFocus(event: PointerEvent) { const card = (event.target as HTMLElement | null)?.closest<HTMLElement>(".board-card"); if (card) lastFocusedCard.value = card; }
 // The card whose dialog just closed wears a fading ring for a moment, so its place on the board is easy to spot.
@@ -399,7 +436,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
 </script>
 
 <template>
-  <section ref="boardPage" class="board-page" aria-labelledby="board-heading">
+  <section ref="boardPage" class="board-page" :class="{ 'board-page-gantt': view === 'gantt' }" aria-labelledby="board-heading">
     <h1 id="board-heading" class="sr-only">Boards</h1>
     <form v-if="boardSearchOpen" class="board-search-overlay" role="search" @submit.prevent><label class="sr-only" for="board-search-input">Search cards</label><input id="board-search-input" ref="boardSearchInput" v-model="boardSearch" type="search" name="boardSearch" placeholder="Search cards…" autocomplete="off" /><span class="board-search-hint">⌘ K to close</span><button class="icon-button quiet" type="button" aria-label="Close search" title="Close search" @click="toggleBoardSearch"><v-icon :icon="mdiClose" size="20" aria-hidden="true" /></button></form>
     <div v-if="newBoardOpen" class="dialog-backdrop" role="presentation" v-backdrop-close="closeNewBoard"><form v-dialog-focus class="confirm-dialog new-board-dialog" role="dialog" aria-modal="true" aria-labelledby="new-board-title" tabindex="-1" novalidate @submit.prevent="createBoard" @keydown.esc.prevent="closeNewBoard"><h2 id="new-board-title">New board</h2><label for="new-board-name" class="sr-only">New board name</label><input id="new-board-name" v-model="newBoard" name="boardName" placeholder="e.g. Product launch…" maxlength="120" autocomplete="off" :aria-invalid="Boolean(newBoardError)" :aria-describedby="newBoardError ? 'new-board-error' : undefined" /><p v-if="newBoardError" id="new-board-error" class="field-error" role="alert">{{ newBoardError }}</p><div class="editor-actions"><button class="secondary" type="button" :disabled="store.creatingBoard" @click="closeNewBoard">Cancel</button><button type="submit" :aria-busy="store.creatingBoard" :disabled="store.creatingBoard">{{ store.creatingBoard ? "Creating…" : "Create" }}</button></div></form></div>
@@ -443,7 +480,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
             <template v-if="phone"><li role="separator" class="board-more-separator"></li><li v-for="option in [{ value: 'kanban', label: 'Kanban' }, { value: 'gantt', label: 'Gantt' }]" :key="option.value" role="none"><button class="board-more-item" type="button" role="menuitemradio" tabindex="-1" :aria-checked="view === option.value" @click="pickView(option.value)"><v-icon class="board-more-check" :icon="mdiCheck" size="16" aria-hidden="true" />{{ option.label }}</button></li><li role="separator" class="board-more-separator"></li><li role="none"><button class="board-more-item" type="button" role="menuitem" tabindex="-1" @click="pickManageBoards"><v-icon class="board-more-check" :icon="mdiCogOutline" size="16" aria-hidden="true" />Manage boards…</button></li></template>
           </ul>
         </div>
-        <div class="gantt-controls board-gantt-controls"><button class="secondary board-gantt-prev" type="button" aria-label="Previous timeline window" @click="shiftGantt(-visibleDays.length)">←</button><label>From<input v-model="ganttFrom" type="date" aria-label="Timeline start date" @change="updateGanttRange" /></label><button class="secondary icon-button board-gantt-today" type="button" aria-label="Today" title="Today" @click="showToday"><v-icon :icon="mdiCalendarToday" size="20" aria-hidden="true" /></button><label>To<input v-model="ganttTo" type="date" aria-label="Timeline end date" @change="updateGanttRange" /></label><button class="secondary board-gantt-next" type="button" aria-label="Next timeline window" @click="shiftGantt(visibleDays.length)">→</button><span class="gantt-sort" role="group" aria-label="Timeline sort rules"><button class="secondary" type="button" :aria-pressed="ganttSorts.includes('PRIORITY')" @click="toggleGanttSort('PRIORITY')">Priority</button><button class="secondary" type="button" :aria-pressed="ganttSorts.includes('DATE')" @click="toggleGanttSort('DATE')">Date</button></span></div>
+        <div class="gantt-controls board-gantt-controls"><button class="secondary board-gantt-prev" type="button" aria-label="Previous timeline window" @click="shiftGantt(-visibleDays.length)">←</button><input class="board-gantt-start-date" v-model="ganttFrom" type="date" aria-label="Timeline start date" @change="updateGanttRange" /><button class="secondary icon-button board-gantt-today" type="button" aria-label="Today" title="Today" @click="showToday"><v-icon :icon="mdiCalendarToday" size="20" aria-hidden="true" /></button><input class="board-gantt-end-date" v-model="ganttTo" type="date" aria-label="Timeline end date" @change="updateGanttRange" /><button class="secondary board-gantt-next" type="button" aria-label="Next timeline window" @click="shiftGantt(visibleDays.length)">→</button><span class="gantt-sort" role="group" aria-label="Timeline sort rules"><button class="secondary" type="button" :aria-pressed="ganttSortDirection('PRIORITY') !== 'OFF'" :aria-label="ganttSortLabel('PRIORITY')" @click="toggleGanttSort('PRIORITY')">Priority <span aria-hidden="true">{{ ganttSortDirection('PRIORITY') === 'ASC' ? '↑' : ganttSortDirection('PRIORITY') === 'DESC' ? '↓' : '↕' }}</span></button><button class="secondary" type="button" :aria-pressed="ganttSortDirection('DATE') !== 'OFF'" :aria-label="ganttSortLabel('DATE')" @click="toggleGanttSort('DATE')">Date <span aria-hidden="true">{{ ganttSortDirection('DATE') === 'ASC' ? '↑' : ganttSortDirection('DATE') === 'DESC' ? '↓' : '↕' }}</span></button></span></div>
       </div>
       <div v-else ref="tabBar" class="board-tabs" role="group" aria-label="Boards">
         <button ref="allTab" class="board-all-tab" :class="{ selected: isAll }" type="button" aria-label="All boards" title="All boards" :aria-current="isAll ? 'true' : undefined" @click="activateBoardTab(ALL_BOARDS)"><v-icon :icon="mdiAllInclusive" size="20" aria-hidden="true" /></button>
@@ -478,7 +515,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
     <section v-else class="gantt" :class="{ wide: ganttWide }" :style="ganttWide && viewportWidth ? { '--viewport-width': `${viewportWidth}px`, '--content-left': `${contentLeft}px` } : undefined" aria-labelledby="gantt-heading">
       <button class="kanban-width-toggle gantt-width-toggle" type="button" :aria-pressed="ganttWide" :aria-label="ganttWide ? 'Collapse timeline to page width' : 'Expand timeline to full width'" :title="ganttWide ? 'Collapse to page width' : 'Expand to full width'" @click="toggleGanttWide"><v-icon :icon="ganttWide ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal" size="16" aria-hidden="true" /></button>
       <h2 id="gantt-heading" class="sr-only">Timeline</h2>
-      <div class="timeline-scroll" tabindex="0" aria-label="Board card timeline"><div class="timeline" :style="{ minWidth: `${timelineWidth}px` }"><div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div><div class="timeline-header"><span class="timeline-label">Card</span><div class="timeline-days" :style="{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day">{{ day.slice(5) }}</span></div></div><div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-label"><strong>{{ card.title }}</strong><small>{{ timelineLabel(card) }}</small></div><div class="timeline-track"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div><p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p></div></div>
+      <div class="timeline-scroll" tabindex="0" role="region" aria-label="Board card timeline"><div class="timeline" :style="{ minWidth: `${timelineWidth}px` }"><div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div><div class="timeline-header"><span class="timeline-label">Card</span><div class="timeline-days" :style="{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day">{{ formatTimelineDay(day) }}</span></div></div><div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-label" :title="card.title"><strong>{{ card.title }}</strong><small v-if="cardBodySummary(card)" class="timeline-summary">{{ cardBodySummary(card) }}</small><small>{{ timelineLabel(card) }}</small></div><div class="timeline-track"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div><p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p></div></div>
     </section>
     <footer class="board-footer"><RouterLink class="link-button secondary with-icon" :to="{ path: '/board/archive', query: store.selectedId && !isAll ? { board: store.selectedId } : {} }"><v-icon :icon="mdiArchiveOutline" size="18" aria-hidden="true" />Archived items</RouterLink></footer>
     <div v-if="editing" class="dialog-backdrop" role="presentation" v-backdrop-close="() => closeEditor()"><section v-dialog-focus class="card-editor" :class="{ accented: draftAccent }" :style="{ '--card-accent': draftAccent }" role="dialog" aria-modal="true" aria-label="Edit card" tabindex="-1" @keydown.capture="noteLabelsMenu" @keydown.esc.prevent="escapeEditor" @keydown.meta.enter.prevent="closeEditor()" @keydown.ctrl.enter.prevent="closeEditor()">

@@ -119,7 +119,7 @@ describe("BoardView", () => {
       position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", ...dates,
     });
     store.ganttCards = [
-      card("in-range", { startDate: "2026-09-03", dueDate: "2026-09-05" }),
+      { ...card("in-range", { startDate: "2026-09-03", dueDate: "2026-09-05" }), body: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Gantt summary line" }] }] }) },
       card("undated"),
       card("outside-range", { startDate: "2026-10-01", dueDate: "2026-10-02" }),
     ];
@@ -130,17 +130,20 @@ describe("BoardView", () => {
 
     expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
       .toEqual(["in-range", "undated", "outside-range"]);
+    expect(wrapper.find(".timeline-summary").text()).toBe("Gantt summary line");
+    expect(wrapper.find(".timeline-scroll").attributes("role")).toBe("region");
+    expect(wrapper.find(".timeline-days span").text()).toBe("01-09");
     expect(wrapper.findAll(".timeline-card")).toHaveLength(1);
     await wrapper.unmount();
   });
 
-  it("applies and remembers multiple Gantt sort rules with undated cards last", async () => {
+  it("sorts by due dates and priorities in both directions, then clears each rule", async () => {
     const store = seedBoard(["Backlog"]);
-    const card = (id: string, priority: "URGENT" | "MEDIUM", startDate?: string) => ({
+    const card = (id: string, priority: "URGENT" | "MEDIUM", startDate?: string, dueDate?: string) => ({
       id, boardId: "test-id", statusId: "status-1", title: id, body: "{}", priority,
-      position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", startDate,
+      position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", startDate, dueDate,
     });
-    store.ganttCards = [card("later", "MEDIUM", "2026-09-09"), card("no-date", "MEDIUM"), card("earlier", "MEDIUM", "2026-09-02"), card("urgent", "URGENT")];
+    store.ganttCards = [card("later", "MEDIUM", "2026-09-09", "2026-09-12"), card("no-date", "MEDIUM"), card("earlier finish", "MEDIUM", "2026-09-02", "2026-09-20"), card("urgent", "URGENT")];
     const preferences = usePreferencesStore();
     preferences.board = { ...preferences.board, boardId: "test-id", view: "gantt", ganttSorts: ["PRIORITY", "DATE"] };
     mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
@@ -148,11 +151,19 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
     expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
-      .toEqual(["urgent", "earlier", "later", "no-date"]);
+      .toEqual(["urgent", "later", "earlier finish", "no-date"]);
     const sortControls = wrapper.find('[aria-label="Timeline sort rules"]');
     expect(sortControls.findAll('button[aria-pressed="true"]')).toHaveLength(2);
     await sortControls.findAll("button")[0].trigger("click");
-    expect(preferences.board.ganttSorts).toEqual(["DATE"]);
+    expect(preferences.board.ganttSorts).toEqual(["PRIORITY_DESC", "DATE_ASC"]);
+    expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
+      .toEqual(["later", "earlier finish", "no-date", "urgent"]);
+    await sortControls.findAll("button")[0].trigger("click");
+    expect(preferences.board.ganttSorts).toEqual(["DATE_ASC"]);
+    await sortControls.findAll("button")[1].trigger("click");
+    expect(preferences.board.ganttSorts).toEqual(["DATE_DESC"]);
+    await sortControls.findAll("button")[1].trigger("click");
+    expect(preferences.board.ganttSorts).toEqual([]);
     await wrapper.unmount();
   });
 

@@ -87,7 +87,7 @@ describe("preferences store", () => {
     expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "" });
     vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [], board: { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" } });
     await preferences.load();
-    expect(preferences.board).toEqual({ boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" });
+    expect(preferences.board).toEqual({ boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY_ASC", "DATE_ASC"], search: "release" });
     vi.mocked(api).mockResolvedValue({ theme: "auto", kanbanWide: false, recentPathIds: [], board: { boardId: null, view: "kanban", ganttFrom: null, ganttTo: null, search: "" } });
     await preferences.load();
     expect(preferences.board).toEqual({ boardId: "all", view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "" });
@@ -101,13 +101,13 @@ describe("preferences store", () => {
       const preferences = usePreferencesStore();
       await preferences.load();
       preferences.setBoardState({ boardId: "work", view: "kanban", ganttFrom: "", ganttTo: "", ganttSorts: [], search: "rel" });
-      preferences.setBoardState({ boardId: "all", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" });
+      preferences.setBoardState({ boardId: "all", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY_ASC", "DATE_DESC"], search: "release" });
       expect(preferences.board.search).toBe("release");
       expect(api).not.toHaveBeenCalledWith("/preferences", expect.objectContaining({ method: "PUT" }));
       await vi.runAllTimersAsync();
       const puts = vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT");
       expect(puts).toHaveLength(1);
-      expect(JSON.parse(String(puts[0][1]!.body))).toEqual({ board: { boardId: null, view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY", "DATE"], search: "release" } });
+      expect(JSON.parse(String(puts[0][1]!.body))).toEqual({ board: { boardId: null, view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: ["PRIORITY_ASC", "DATE_DESC"], search: "release" } });
     } finally {
       vi.useRealTimers();
     }

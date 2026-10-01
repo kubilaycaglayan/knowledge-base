@@ -4,6 +4,12 @@
 /* The shared shell header already leaves a gap above main, so the board
    pulls up to sit close under the navigation. */
 .board-page { position:relative; max-width: 1500px; margin: -.75rem auto 0; padding: 0 1.25rem 7.5rem; }
+/* In Gantt mode, keep the shell and board controls in place while the timeline
+   owns both scroll axes. */
+:global(.dashboard-shell:has(.board-page-gantt)) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
+:global(.dashboard-shell:has(.board-page-gantt) > header) { flex:0 0 auto; }
+:global(.dashboard-shell:has(.board-page-gantt) > main) { flex:1 1 auto; min-height:0; padding-bottom:0; overflow:hidden; }
+.board-page-gantt { display:flex; flex-direction:column; height:100%; min-height:0; padding-bottom:0; }
 .board-search-overlay { position:absolute; z-index:5; top:0; right:1.25rem; display:flex; align-items:center; gap:.5rem; min-width:min(420px, calc(100vw - 2rem)); padding:.35rem .5rem .35rem .8rem; border:1px solid var(--border-color); border-radius:12px; background:var(--surface-color); box-shadow:0 8px 28px #0003; }
 .board-search-overlay input { flex:1; min-width:0; border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
 .board-search-overlay input:focus-visible { outline:3px solid #e8754e; outline-offset:2px; border-radius:4px; }
@@ -18,7 +24,7 @@
 .column-tools { display:flex; align-items:center; gap:.3rem; } .column-tools .add-card { min-width:32px; background:transparent; color:inherit; font-size:.95rem; } .column-tools .add-card:hover { background:var(--workspace-hover); } .column-tools button, .card-actions button { min-height:32px; padding:.25rem .45rem; font-size:.72rem; }
 .load-more-sentinel { height:12px; margin-top:.35rem; }
 .board-card { background:var(--surface-color); border:1px solid var(--border-color); border-radius:10px; padding:.75rem; margin-bottom:.65rem; cursor:pointer; box-shadow:0 2px 8px #0000000b; } .board-card h3 { margin:.35rem 0; overflow-wrap:anywhere; } .board-card p { color:var(--muted-text); font-size:.85rem; } .priority { display:inline-block; font-size:.7rem; letter-spacing:.05em; font-weight:700; } .priority.urgent { color:#b42318; } .priority.high { color:#c2410c; } .priority.low { color:#2563eb; } .card-archive { display:inline-flex; align-items:center; min-height:32px; padding:.25rem .45rem; background:transparent; color:#b42318; border:0; } .card-archive:hover { background:color-mix(in srgb, #b42318 10%, transparent); } .column-empty { color:var(--muted-text); text-align:center; padding:2rem .5rem; }
-.board-empty { padding:3rem 1rem; text-align:center; border:1px dashed var(--border-color); border-radius:12px; margin-top:1rem; } .board-empty h2 { margin-top:0; } .board-error { display:flex; align-items:center; justify-content:space-between; gap:.75rem; color:#b42318; } .error-dismiss { min-width:44px; min-height:44px; padding:.25rem; background:transparent; color:inherit; font-size:1.25rem; } .gantt { overflow-x:auto; min-width:0; } .gantt-row { display:flex; justify-content:space-between; gap:1rem; padding:1rem; border-bottom:1px solid var(--border-color); min-width:520px; } .gantt-row span { color:var(--muted-text); }
+.board-empty { padding:3rem 1rem; text-align:center; border:1px dashed var(--border-color); border-radius:12px; margin-top:1rem; } .board-empty h2 { margin-top:0; } .board-error { display:flex; align-items:center; justify-content:space-between; gap:.75rem; color:#b42318; } .error-dismiss { min-width:44px; min-height:44px; padding:.25rem; background:transparent; color:inherit; font-size:1.25rem; } .gantt { min-width:0; } .gantt-row { display:flex; justify-content:space-between; gap:1rem; padding:1rem; border-bottom:1px solid var(--border-color); min-width:520px; } .gantt-row span { color:var(--muted-text); }
 .archived-list { margin:.6rem 0; border:1px solid var(--border-color); border-radius:12px; padding:.5rem .6rem; }
 .archived-list h2 { margin:0 0 .35rem; font-size:.78rem; }
 .archive-row { display:flex; align-items:center; justify-content:space-between; gap:.6rem; padding:.3rem .1rem; border-bottom:1px solid var(--border-color); }
@@ -39,8 +45,7 @@
 .board-tabs-gantt { flex:1 1 auto; width:100%; gap:.6rem; }
 .board-gantt-selector { position:relative; flex:0 0 auto; }
 .board-all-menu { gap:.1rem; }
-.board-gantt-controls { flex:1 1 auto; min-width:0; flex-wrap:nowrap; }
-.board-gantt-controls label { min-width:0; }
+.board-gantt-controls { flex:1 1 auto; min-width:0; flex-wrap:nowrap; align-items:center; }
 .board-gantt-controls input { width:clamp(8.5rem, 12vw, 11rem); }
 .board-gantt-menu { z-index:6; top:calc(100% + .25rem); left:0; max-height:min(65vh, 28rem); overflow-y:auto; overscroll-behavior:contain; }
 .gantt-sort { display:flex; align-self:flex-end; gap:.35rem; margin-left:auto; }
@@ -54,24 +59,34 @@
   .gantt-controls > button:first-child { grid-row:2; grid-column:1; justify-self:start; }
   .gantt-controls > button:last-child { grid-row:2; grid-column:3; justify-self:end; }
 }
-.timeline-scroll { overflow-x:auto; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
+.board-page-gantt .board-toolbar { flex:0 0 auto; }
+.board-page-gantt .gantt { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+.board-page-gantt .timeline-scroll { flex:1 1 auto; min-height:0; height:100%; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.timeline-scroll { overflow:auto; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
+.timeline-scroll { scrollbar-width:auto; scrollbar-color:var(--workspace-muted) var(--workspace-hover); }
+.timeline-scroll::-webkit-scrollbar:horizontal { height:12px; }
+.timeline-scroll::-webkit-scrollbar-track { background:var(--workspace-hover); }
+.timeline-scroll::-webkit-scrollbar-thumb { border:3px solid var(--workspace-hover); border-radius:999px; background:var(--workspace-muted); }
 .timeline { width:100%; padding:0 0 .75rem; margin:0; border:0; position:relative; --timeline-label-width:180px; }
 .timeline-today-overlay { position:absolute; inset:0 0 0 var(--timeline-label-width); pointer-events:none; z-index:2; }
 .timeline-today-line { position:absolute; top:0; bottom:0; width:2px; background:#e32636; transform:translateX(-1px); }
 .timeline-today-line::before { content:""; position:absolute; top:0; left:-4px; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #e32636; }
 .timeline-header, .timeline-row { display:grid; grid-template-columns:var(--timeline-label-width) 1fr; min-height:58px; }
-.timeline-header { min-height:42px; border-bottom:1px solid var(--workspace-border); background:var(--workspace-hover); }
-.timeline-label { position:sticky; left:0; z-index:3; min-width:0; padding:.65rem .75rem; border-right:1px solid var(--workspace-border); background:var(--workspace-surface); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.timeline-header { position:sticky; top:0; z-index:4; min-height:42px; border-bottom:1px solid var(--workspace-border); background:var(--workspace-hover); }
+.timeline-label { position:sticky; left:0; z-index:3; min-width:0; padding:.65rem .75rem; border-right:1px solid var(--workspace-border); background:var(--workspace-surface); overflow:visible; white-space:nowrap; }
 .timeline-header .timeline-label { background:var(--workspace-hover); }
 .timeline-label strong, .timeline-label small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.timeline-row .timeline-label:hover { z-index:5; }
+.timeline-row .timeline-label:hover strong { position:relative; z-index:6; width:max-content; max-width:min(420px, 70vw); overflow:visible; padding:.2rem .35rem; border-radius:4px; background:var(--workspace-surface); box-shadow:0 2px 10px #0005; white-space:normal; }
 .timeline-label small { color:var(--workspace-muted); font-size:.75rem; }
+.timeline-label .timeline-summary { overflow:hidden; text-overflow:ellipsis; }
 .timeline-days, .timeline-track { display:grid; grid-template-columns:repeat(var(--timeline-days, 14), minmax(56px, 1fr)); position:relative; }
 .timeline-days span { padding:.65rem .25rem; text-align:center; color:var(--workspace-muted); font-variant-numeric:tabular-nums; font-size:.75rem; }
 .timeline-row { border-bottom:1px solid var(--workspace-border); }
 .timeline-track { display:flex; align-items:center; position:relative; }
 .timeline-cell { flex:1 1 0; min-width:0; height:100%; border-right:1px solid color-mix(in srgb, var(--workspace-border) 55%, transparent); }
 .timeline-cell.weekend { background:color-mix(in srgb, var(--workspace-hover) 55%, transparent); }
-@media (max-width:700px) { .timeline { --timeline-label-width:140px; } .gantt.wide { width:auto; margin-left:0; } .gantt-width-toggle { display:none; } .board-tabs-gantt { align-items:flex-start; flex-wrap:wrap; } .board-gantt-controls { display:grid; flex-basis:100%; grid-template-columns:minmax(0, 1fr) 44px minmax(0, 1fr); align-items:end; gap:.35rem; } .board-gantt-controls label:first-of-type { grid-row:1; grid-column:1; } .board-gantt-controls label:last-of-type { grid-row:1; grid-column:3; } .board-gantt-controls .board-gantt-prev { grid-row:2; grid-column:1; justify-self:start; } .board-gantt-controls .board-gantt-today { grid-row:1; grid-column:2; justify-self:center; } .board-gantt-controls .board-gantt-next { grid-row:2; grid-column:3; justify-self:end; } .board-gantt-controls input { width:100%; } .board-gantt-controls .gantt-sort { grid-row:2; grid-column:2; justify-self:center; gap:0; } .board-gantt-controls .gantt-sort button { min-width:0; padding-inline:.4rem; } }
+@media (max-width:700px) { .timeline { --timeline-label-width:140px; } .gantt.wide { width:auto; margin-left:0; } .gantt-width-toggle { display:none; } .board-tabs-gantt { align-items:flex-start; flex-wrap:wrap; } .board-gantt-controls { display:grid; flex-basis:100%; grid-template-columns:minmax(0, 1fr) 44px minmax(0, 1fr); align-items:center; gap:.35rem; } .board-gantt-controls .board-gantt-start-date { grid-row:1; grid-column:1; } .board-gantt-controls .board-gantt-end-date { grid-row:1; grid-column:3; } .board-gantt-controls .board-gantt-prev { grid-row:2; grid-column:1; justify-self:start; } .board-gantt-controls .board-gantt-today { grid-row:1; grid-column:2; justify-self:center; } .board-gantt-controls .board-gantt-next { grid-row:2; grid-column:3; justify-self:end; } .board-gantt-controls input { width:100%; min-width:0; } .board-gantt-controls .gantt-sort { grid-row:2; grid-column:2; justify-self:center; gap:0; } .board-gantt-controls .gantt-sort button { min-width:0; padding-inline:.3rem; } }
 /* Above the floating time tracker (z-index 15), in line with the app's other dialogs. */
 .dialog-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:1rem; background:#11182799; } .dialog-backdrop.confirm-layer { z-index:101; } .editor-actions { justify-content:flex-end; }
 /* Flat card editor: a meta row (path, priority, status, dates, labels), then
