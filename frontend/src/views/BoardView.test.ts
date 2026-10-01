@@ -130,7 +130,7 @@ describe("BoardView", () => {
 
     expect(wrapper.findAll(".timeline-label-row .timeline-label strong").map((name) => name.text()))
       .toEqual(["in-range", "undated", "outside-range"]);
-    expect(wrapper.find(".timeline-summary").text()).toBe("Gantt summary line");
+    expect(wrapper.find(".timeline-summary").exists()).toBe(false);
     expect(wrapper.find(".timeline-scroll").attributes("role")).toBe("region");
     expect(wrapper.find(".timeline-days span").text()).toBe("01-09");
     expect(wrapper.findAll(".timeline-card")).toHaveLength(1);
@@ -157,6 +157,11 @@ describe("BoardView", () => {
     expect(chart.element.parentElement).toBe(layout.element);
     expect(cardList.findAll(".timeline-label-row strong").map((name) => name.text()))
       .toEqual(["First card", "Second card"]);
+    const firstTitle = cardList.find<HTMLButtonElement>(".timeline-label-row button.timeline-label");
+    expect(firstTitle.attributes("type")).toBe("button");
+    expect(getComputedStyle(firstTitle.element).minHeight).toBe("0px");
+    await firstTitle.trigger("click");
+    expect(wrapper.find(".card-editor").exists()).toBe(true);
     expect(chart.find(".timeline-label").exists()).toBe(false);
     (chart.element as HTMLElement).scrollTop = 120;
     await chart.trigger("scroll");
