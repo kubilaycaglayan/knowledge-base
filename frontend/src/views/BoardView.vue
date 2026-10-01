@@ -25,10 +25,11 @@ import { vBackdropClose } from "../lib/backdrop-close";
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { format, parseISO } from "date-fns";
-import { theme } from "../lib/theme";
+import { isDarkTheme, theme as currentTheme } from "../lib/theme";
 import { mdiCalendarToday } from "@mdi/js";
 import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiCheck, mdiChevronDown, mdiClose, mdiDragVertical, mdiCogOutline, mdiAllInclusive, mdiMagnify, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortAscending, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
 
+const theme = computed(() => isDarkTheme(currentTheme.value) ? "dark" : "light");
 const store = useBoardsStore();
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
