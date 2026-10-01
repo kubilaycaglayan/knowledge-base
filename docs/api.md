@@ -36,8 +36,6 @@ arithmetic, so inclusive ranges remain stable across month, leap-day, and
 daylight-saving boundaries.
 The web timeline's Today control starts the window on the user's local current
 date, preserves its visible day count, and updates the `from`/`to` URL parameters.
-The timeline adds fourteen days at either end when horizontal scrolling reaches
-that edge; the URL and saved board range track the expanded window.
 The Gantt chart marks the local current day with a red vertical line when it is
 in view. Dragging a card shifts its dates by whole calendar days; dragging its
 start or end handle resizes its inclusive range, clamped to at least one day.

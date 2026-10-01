@@ -173,27 +173,6 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
-  it("adds fourteen earlier days at the left edge and keeps the visible dates anchored", async () => {
-    seedBoard(["Backlog"]);
-    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
-    const wrapper = mountBoard();
-    await flushPromises();
-    const scroller = wrapper.find(".timeline-scroll").element as HTMLElement;
-    Object.defineProperties(scroller, {
-      scrollWidth: { configurable: true, value: 1120 },
-      clientWidth: { configurable: true, value: 500 },
-    });
-    scroller.scrollLeft = 0;
-
-    await wrapper.find(".timeline-scroll").trigger("scroll");
-    await flushPromises();
-
-    expect(wrapper.findAll(".timeline-days span")[0].text()).toBe("18-08");
-    expect(scroller.scrollLeft).toBe(1120);
-    expect(mockRouter.replace).toHaveBeenCalledWith({ query: expect.objectContaining({ from: "2026-08-18", to: "2026-09-14" }) });
-    await wrapper.unmount();
-  });
-
   it("sorts by due dates and priorities in both directions, then clears each rule", async () => {
     const store = seedBoard(["Backlog"]);
     const card = (id: string, priority: "URGENT" | "MEDIUM", startDate?: string, dueDate?: string) => ({

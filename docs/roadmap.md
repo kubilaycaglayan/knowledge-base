@@ -198,7 +198,5 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   undated cards last) in the user's board state (V55).
   Acceptance: `docs/board-state-acceptance-checklist.md`.
 - [x] Store Gantt full-width state independently from Kanban width (V56).
-- [x] Extend the Gantt timeline in fourteen-day slices as horizontal scrolling
-  reaches either edge, preserving the scroll position when earlier dates load.
 - [x] Move Gantt date controls into the toolbar and combine path/board choices
   in its All boards dropdown.

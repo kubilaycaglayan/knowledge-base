@@ -19,7 +19,7 @@ export function inclusiveDayCount(start: string, end: string): number {
   return Math.floor((parseDateOnly(end).getTime() - parseDateOnly(start).getTime()) / DAY_MS) + 1;
 }
 
-export function timelineDays(start: string, end: string, maxDays = Number.MAX_SAFE_INTEGER): string[] {
+export function timelineDays(start: string, end: string, maxDays = 366): string[] {
   const count = Math.min(Math.max(0, inclusiveDayCount(start, end)), maxDays);
   return Array.from({ length: count }, (_, index) => addCalendarDays(start, index));
 }
