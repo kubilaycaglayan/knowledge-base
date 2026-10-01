@@ -25,6 +25,7 @@ describe("LogsView", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    window.history.replaceState({}, "", "/");
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-11T12:00:00"));
     vi.mocked(api).mockImplementation(async (path) =>
@@ -56,6 +57,40 @@ describe("LogsView", () => {
     );
     expect(wrapper.find(".log-group-day-break").exists()).toBe(true);
     expect(wrapper.findAll("time.log-time")[2].text()).toBe("Sept 10 11:00");
+  });
+
+  it("keeps search hidden until Cmd/Ctrl+K opens it", async () => {
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    expect(wrapper.find(".log-composer").exists()).toBe(true);
+    expect(wrapper.find(".logs-search-trigger").exists()).toBe(false);
+    expect(wrapper.find("#logs-search-input").exists()).toBe(false);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find("#logs-search-input").exists()).toBe(true);
+    await wrapper.unmount();
+  });
+
+  it("shows 100 logs per page and places pagination after the log list", async () => {
+    const manyLogs = Array.from({ length: 101 }, (_, index) => {
+      const occurredAt = new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString();
+      return log(`log-${index}`, `Thought ${index}`, occurredAt);
+    }).reverse();
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/labels?scope=LOG" ? [] : manyLogs,
+    );
+    const wrapper = mount(LogsView);
+    await flushPromises();
+
+    expect(wrapper.findAll(".log-entry")).toHaveLength(100);
+    expect(wrapper.find(".logs-pagination").element).toBe(
+      wrapper.find(".logs-page").element.lastElementChild,
+    );
+    await wrapper.get(".logs-pagination button:last-child").trigger("click");
+    expect(wrapper.findAll(".log-entry")).toHaveLength(1);
+    expect(wrapper.find(".logs-pagination").text()).toContain("Page 2 of 2");
+    await wrapper.unmount();
   });
 
   it("saves the browser timestamp and adds a new log to the store", async () => {

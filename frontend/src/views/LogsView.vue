@@ -386,31 +386,6 @@ onBeforeUnmount(() => {
   <section class="logs-page">
     <h1 class="sr-only">Logs</h1>
     <PromptDialog ref="promptDialog" />
-    <div class="logs-toolbar">
-      <div class="logs-search" v-if="searchOpen">
-        <label class="sr-only" for="logs-search-input">Search all logs</label>
-        <input
-          id="logs-search-input"
-          ref="searchInput"
-          v-model="searchQuery"
-          name="search"
-          type="search"
-          placeholder="Search all logs…"
-          autocomplete="off"
-        />
-        <button class="text-button" type="button" @click="toggleSearch">Close</button>
-      </div>
-      <button
-        v-else
-        class="text-button logs-search-trigger"
-        type="button"
-        aria-keyshortcuts="Meta+K Control+K"
-        @click="toggleSearch"
-      >
-        Search logs <kbd>⌘ / Ctrl K</kbd>
-      </button>
-      <span class="logs-result-count" aria-live="polite">{{ resultRange }}</span>
-    </div>
     <form
       class="log-composer"
       autocomplete="off"
@@ -471,6 +446,21 @@ onBeforeUnmount(() => {
         >Save
       </button>
     </form>
+    <div v-if="searchOpen" class="logs-toolbar">
+      <div class="logs-search">
+        <label class="sr-only" for="logs-search-input">Search all logs</label>
+        <input
+          id="logs-search-input"
+          ref="searchInput"
+          v-model="searchQuery"
+          name="search"
+          type="search"
+          placeholder="Search all logs…"
+          autocomplete="off"
+        />
+        <button class="text-button" type="button" @click="toggleSearch">Close</button>
+      </div>
+    </div>
     <p v-if="status === 'saved'" class="sr-only" aria-live="polite">
       Log saved.
     </p>
@@ -478,11 +468,6 @@ onBeforeUnmount(() => {
     <div v-if="!groupedLogs.length && !error" class="empty">
       {{ searchQuery ? 'No logs match this search.' : 'No logs yet. Capture a thought above.' }}
     </div>
-    <nav v-if="pageCount > 1" class="logs-pagination" aria-label="Log pages">
-      <button class="text-button" type="button" :disabled="currentPage === 1" @click="setPage(currentPage - 1)">Previous</button>
-      <span>Page {{ currentPage }} of {{ pageCount }}</span>
-      <button class="text-button" type="button" :disabled="currentPage === pageCount" @click="setPage(currentPage + 1)">Next</button>
-    </nav>
     <div
       v-for="group in groupedLogs"
       :key="group.label"
@@ -663,6 +648,12 @@ onBeforeUnmount(() => {
         </template>
       </article>
     </div>
+    <div v-if="searchOpen" class="logs-bottom-count" aria-live="polite">{{ resultRange }}</div>
+    <nav v-if="pageCount > 1" class="logs-pagination" aria-label="Log pages">
+      <button class="text-button" type="button" :disabled="currentPage === 1" @click="setPage(currentPage - 1)">Previous</button>
+      <span>Page {{ currentPage }} of {{ pageCount }}</span>
+      <button class="text-button" type="button" :disabled="currentPage === pageCount" @click="setPage(currentPage + 1)">Next</button>
+    </nav>
   </section>
 </template>
 
@@ -675,8 +666,7 @@ onBeforeUnmount(() => {
 .logs-search { display: flex; align-items: center; gap: 8px; flex: 1; }
 .logs-search input { width: min(100%, 420px); font-size: 16px; }
 .logs-result-count { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.logs-search-trigger { color: var(--workspace-muted); }
-.logs-search-trigger kbd { margin-left: 8px; padding: 2px 5px; border: 1px solid var(--workspace-border); border-radius: 4px; font: inherit; }
+.logs-bottom-count { margin-top: 20px; color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; text-align: center; }
 .logs-pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 28px 0; color: var(--workspace-muted); font-variant-numeric: tabular-nums; }
 .logs-pagination button { min-height: 40px; }
 .log-composer {
