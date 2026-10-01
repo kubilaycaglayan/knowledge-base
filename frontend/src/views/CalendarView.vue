@@ -130,8 +130,16 @@ function toggleLabel(label: Label) {
 async function load() {
   error.value = "";
   try {
-    const startDate = format(startOfMonth(month.value), "yyyy-MM-dd");
-    const endDate = format(endOfMonth(month.value), "yyyy-MM-dd");
+    // The visible calendar includes spillover days from adjacent months. Load
+    // the whole grid so saved entries in the previous month appear on first load.
+    const startDate = format(
+      startOfWeek(month.value, { weekStartsOn: 1 }),
+      "yyyy-MM-dd",
+    );
+    const endDate = format(
+      endOfWeek(endOfMonth(month.value), { weekStartsOn: 1 }),
+      "yyyy-MM-dd",
+    );
     const range = `${startDate}:${endDate}`;
     const [savedLabels, savedDays] = await Promise.all([
       labelsStore.loadScope("CALENDAR"),

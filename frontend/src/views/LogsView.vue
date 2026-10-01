@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { useLogsStore, type Log } from "../stores/logs";
@@ -24,6 +24,11 @@ const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const composerTextarea = ref<HTMLTextAreaElement | null>(null);
 const now = ref(new Date());
 const followsBrowserClock = ref(true);
+const searchQuery = ref("");
+const searchOpen = ref(false);
+const currentPage = ref(1);
+const searchInput = ref<HTMLInputElement | null>(null);
+const pageSize = 100;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -122,7 +127,7 @@ function groupLabel(value: string) {
 }
 const groupedLogs = computed<LogGroup[]>(() => {
   const groups: LogGroup[] = [];
-  for (const log of logs.value) {
+  for (const log of visiblePageLogs.value) {
     const label = groupLabel(log.occurredAt);
     const current = groups.at(-1);
     if (current?.label === label) current.logs.push(log);
@@ -138,6 +143,53 @@ const groupedLogs = computed<LogGroup[]>(() => {
   }
   return groups;
 });
+const matchingLogs = computed(() => {
+  const query = searchQuery.value.trim().toLocaleLowerCase();
+  if (!query) return logs.value;
+  return logs.value.filter((log) => log.body.toLocaleLowerCase().includes(query));
+});
+const pageCount = computed(() => Math.max(1, Math.ceil(matchingLogs.value.length / pageSize)));
+const visiblePageLogs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return matchingLogs.value.slice(start, start + pageSize);
+});
+const resultRange = computed(() => {
+  if (!matchingLogs.value.length) return "0 results";
+  const start = (currentPage.value - 1) * pageSize + 1;
+  return `${start}–${Math.min(currentPage.value * pageSize, matchingLogs.value.length)} of ${matchingLogs.value.length}`;
+});
+function syncUrl() {
+  const url = new URL(window.location.href);
+  if (searchQuery.value.trim()) url.searchParams.set("q", searchQuery.value.trim());
+  else url.searchParams.delete("q");
+  if (currentPage.value > 1) url.searchParams.set("page", String(currentPage.value));
+  else url.searchParams.delete("page");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+function readUrl() {
+  const params = new URLSearchParams(window.location.search);
+  searchQuery.value = params.get("q") || "";
+  currentPage.value = Math.max(1, Number(params.get("page")) || 1);
+}
+function setPage(page: number) {
+  currentPage.value = Math.min(pageCount.value, Math.max(1, page));
+}
+function toggleSearch() {
+  searchOpen.value = !searchOpen.value;
+  if (searchOpen.value) requestAnimationFrame(() => searchInput.value?.focus());
+  else searchQuery.value = "";
+}
+function onGlobalKeydown(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    searchOpen.value = true;
+    requestAnimationFrame(() => searchInput.value?.focus());
+  }
+  if (event.key === "Escape" && searchOpen.value) {
+    searchOpen.value = false;
+    searchQuery.value = "";
+  }
+}
 function logRowClass(logsInGroup: Log[], index: number) {
   const previous = logsInGroup[index - 1];
   if (!previous) return {};
@@ -307,6 +359,9 @@ function refreshVisibleList() {
   if (document.visibilityState === "visible" && !editingId.value) void load();
 }
 onMounted(async () => {
+  readUrl();
+  window.addEventListener("keydown", onGlobalKeydown);
+  window.addEventListener("popstate", readUrl);
   await Promise.all([load(), loadLogLabels()]);
   syncBrowserClock();
   refreshTimer = setInterval(refreshVisibleList, 15000);
@@ -314,11 +369,16 @@ onMounted(async () => {
   window.addEventListener("focus", refreshVisibleList);
   document.addEventListener("click", closeLabelMenuWhenClickingElsewhere);
 });
+watch(searchQuery, () => { currentPage.value = 1; });
+watch([searchQuery, currentPage], syncUrl);
+watch(pageCount, (count) => { if (currentPage.value > count) currentPage.value = count; });
 onBeforeUnmount(() => {
   if (refreshTimer) clearInterval(refreshTimer);
   if (clockTimer) clearInterval(clockTimer);
   window.removeEventListener("focus", refreshVisibleList);
   document.removeEventListener("click", closeLabelMenuWhenClickingElsewhere);
+  window.removeEventListener("keydown", onGlobalKeydown);
+  window.removeEventListener("popstate", readUrl);
 });
 </script>
 
@@ -326,6 +386,31 @@ onBeforeUnmount(() => {
   <section class="logs-page">
     <h1 class="sr-only">Logs</h1>
     <PromptDialog ref="promptDialog" />
+    <div class="logs-toolbar">
+      <div class="logs-search" v-if="searchOpen">
+        <label class="sr-only" for="logs-search-input">Search all logs</label>
+        <input
+          id="logs-search-input"
+          ref="searchInput"
+          v-model="searchQuery"
+          name="search"
+          type="search"
+          placeholder="Search all logs…"
+          autocomplete="off"
+        />
+        <button class="text-button" type="button" @click="toggleSearch">Close</button>
+      </div>
+      <button
+        v-else
+        class="text-button logs-search-trigger"
+        type="button"
+        aria-keyshortcuts="Meta+K Control+K"
+        @click="toggleSearch"
+      >
+        Search logs <kbd>⌘ / Ctrl K</kbd>
+      </button>
+      <span class="logs-result-count" aria-live="polite">{{ resultRange }}</span>
+    </div>
     <form
       class="log-composer"
       autocomplete="off"
@@ -391,8 +476,13 @@ onBeforeUnmount(() => {
     </p>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
     <div v-if="!groupedLogs.length && !error" class="empty">
-      No logs yet. Capture a thought above.
+      {{ searchQuery ? 'No logs match this search.' : 'No logs yet. Capture a thought above.' }}
     </div>
+    <nav v-if="pageCount > 1" class="logs-pagination" aria-label="Log pages">
+      <button class="text-button" type="button" :disabled="currentPage === 1" @click="setPage(currentPage - 1)">Previous</button>
+      <span>Page {{ currentPage }} of {{ pageCount }}</span>
+      <button class="text-button" type="button" :disabled="currentPage === pageCount" @click="setPage(currentPage + 1)">Next</button>
+    </nav>
     <div
       v-for="group in groupedLogs"
       :key="group.label"
@@ -581,6 +671,14 @@ onBeforeUnmount(() => {
   max-width: 1200px;
   margin: 0 auto;
 }
+.logs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -18px 0 18px; }
+.logs-search { display: flex; align-items: center; gap: 8px; flex: 1; }
+.logs-search input { width: min(100%, 420px); font-size: 16px; }
+.logs-result-count { color: var(--workspace-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.logs-search-trigger { color: var(--workspace-muted); }
+.logs-search-trigger kbd { margin-left: 8px; padding: 2px 5px; border: 1px solid var(--workspace-border); border-radius: 4px; font: inherit; }
+.logs-pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 28px 0; color: var(--workspace-muted); font-variant-numeric: tabular-nums; }
+.logs-pagination button { min-height: 40px; }
 .log-composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
