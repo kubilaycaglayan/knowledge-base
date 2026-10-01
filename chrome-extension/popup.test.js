@@ -75,6 +75,7 @@ function createPopup({
   fixtureLabels,
   fixturePaths,
   fixtureNotes = [],
+  openNoteId,
   prompt = () => null,
 } = {}) {
   const elements = Object.fromEntries(
@@ -125,7 +126,7 @@ function createPopup({
     ].map((id) => [id, new Element(id)]),
   );
   const body = new Element("body");
-  const state = { token, activeTimer: null, calls: [] };
+  const state = { token, openNoteId, activeTimer: null, calls: [] };
   const storage = {
     async get(keys) {
       const names = Array.isArray(keys) ? keys : [keys];
@@ -716,6 +717,7 @@ test("shows title-only notes and opens the note editor", async () => {
   assert.equal(popup.elements["notes-list"].children[0].textContent, "Meeting notes");
   assert.equal(popup.elements["notes-list"].children[0].className, "note-row");
   await popup.elements["notes-list"].children[0].onclick();
+  assert.equal(popup.state.openNoteId, "note-1");
   assert.equal(popup.elements["note-title"].value, "Meeting notes");
   assert.equal(popup.elements["note-content"].value, "First line\nSecond line");
   assert.equal(popup.elements["note-editor"].hidden, false);
@@ -747,4 +749,22 @@ test("creates a note and saves title and plain text through the notes API", asyn
   assert.equal(popup.elements["note-editor"].hidden, true);
   assert.equal(popup.elements["notes-list"].hidden, false);
   assert.equal(popup.body.classList.contains("note-editor-open"), false);
+  assert.equal(popup.state.openNoteId, undefined);
+});
+
+test("restores the note that was open when the popup was closed", async () => {
+  const note = { id: "note-restore", title: "Continue here", contentText: "Saved content", tags: [], version: 2 };
+  const popup = await readyPopup({
+    token: "token",
+    openNoteId: note.id,
+    fixtureNotes: [note],
+  });
+  await flush();
+  await flush();
+  await flush();
+  assert.equal(popup.elements["notes-page"].hidden, false);
+  assert.equal(popup.elements["note-editor"].hidden, false);
+  assert.equal(popup.elements["note-title"].value, "Continue here");
+  assert.equal(popup.elements["note-content"].value, "Saved content");
+  assert.equal(popup.state.openNoteId, note.id);
 });

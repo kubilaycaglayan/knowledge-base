@@ -49,6 +49,7 @@ let noteSaveSettled = Promise.resolve();
 let notesLoading = false;
 let selectionBaseline = { pathId: "", labelIds: [], description: "" };
 const timerSelectionKey = "timerSelection";
+const openNoteStorageKey = "openNoteId";
 
 function setLoading(loading) {
   const loadingElement = $("loading");
@@ -147,7 +148,7 @@ async function request(path, options = {}) {
   clearTimeout(timeout);
   const responseText = await r.text();
   if (r.status === 401 && token) {
-    await chrome.storage.local.remove(["token", "activeTimer"]);
+    await chrome.storage.local.remove(["token", "activeTimer", openNoteStorageKey]);
     location.reload();
     throw Error("Session expired");
   }
@@ -729,6 +730,7 @@ function showNoteEditor(note) {
 
 async function openNote(id) {
   try {
+    await chrome.storage.local.set({ [openNoteStorageKey]: id });
     const note = await request(`/notes/${encodeURIComponent(id)}`);
     showNoteEditor(note);
   } catch (error) {
@@ -744,6 +746,7 @@ async function createNote() {
       method: "POST",
       body: JSON.stringify({ title: "", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }), contentText: "", tags: [] }),
     });
+    await chrome.storage.local.set({ [openNoteStorageKey]: note.id });
     notes = [note, ...notes.filter((value) => value.id !== note.id)];
     renderNotes();
     showNoteEditor(note);
@@ -808,6 +811,15 @@ async function closeNote() {
   }
   if ($("notes-status").textContent.startsWith("Could not save note")) {
     $("note-title").focus();
+    return;
+  }
+  try {
+    await chrome.storage.local.remove(openNoteStorageKey);
+  } catch (error) {
+    $("notes-status").textContent = userError(
+      "Could not return to the notes list.",
+      error,
+    );
     return;
   }
   activeNote = null;
@@ -903,10 +915,14 @@ async function load() {
       await restoreTimerSelection(timerSelection(selection));
       selectionBaseline = timerSelection(selection);
     }
+    const { [openNoteStorageKey]: openNoteId } = await chrome.storage.local.get([
+      openNoteStorageKey,
+    ]);
     showWorkspace();
-    setWorkspacePage("timer");
+    setWorkspacePage(openNoteId ? "notes" : "timer");
     startLiveTimerSync();
     void loadSessions();
+    if (openNoteId) await openNote(openNoteId);
   } catch (error) {
     showAuth();
     const fallback = "Sign in failed or the API is unavailable.";
