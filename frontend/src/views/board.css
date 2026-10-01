@@ -63,7 +63,11 @@
 .board-page-gantt .board-toolbar { flex:0 0 auto; }
 .board-page-gantt .gantt { flex:1 1 auto; min-width:0; min-height:0; overflow:clip; display:flex; flex-direction:column; }
 .timeline-layout { --timeline-label-width:180px; display:grid; grid-template-columns:var(--timeline-label-width) minmax(0, 1fr); flex:1 1 auto; min-width:0; min-height:0; overflow:hidden; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
-.timeline-label-pane { min-width:0; min-height:0; overflow:hidden; border-right:1px solid var(--workspace-border); background:var(--workspace-surface); }
+/* Reserve the same native horizontal scrollbar space in both panes so their
+   vertical scroll ranges match, including at the last card. */
+.timeline-label-pane { min-width:0; min-height:0; overflow-x:scroll; overflow-y:hidden; scrollbar-width:auto; scrollbar-color:transparent transparent; border-right:1px solid var(--workspace-border); background:var(--workspace-surface); }
+.timeline-label-pane::-webkit-scrollbar:horizontal { height:12px; }
+.timeline-label-pane::-webkit-scrollbar-track, .timeline-label-pane::-webkit-scrollbar-thumb { background:transparent; }
 .timeline-label-content { padding-bottom:.75rem; }
 .timeline-scroll { min-width:0; min-height:0; overflow-x:scroll; overflow-y:auto; overscroll-behavior:contain; background:var(--workspace-surface); }
 .timeline-scroll { scrollbar-width:auto; scrollbar-color:var(--workspace-muted) var(--workspace-hover); }
