@@ -82,11 +82,9 @@
 .timeline-label strong, .timeline-label small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .timeline-label-row .timeline-label:hover { z-index:5; }
 .timeline-label-row .timeline-label:hover strong { position:relative; z-index:6; width:max-content; max-width:min(420px, 70vw); overflow:visible; padding:.2rem .35rem; border-radius:4px; background:var(--workspace-surface); box-shadow:0 2px 10px #0005; white-space:normal; }
-.timeline-label small { color:var(--workspace-muted); font-size:.75rem; }
-.timeline-label .timeline-summary { overflow:hidden; text-overflow:ellipsis; }
 .timeline-days, .timeline-track { display:grid; grid-template-columns:repeat(var(--timeline-days, 14), minmax(56px, 1fr)); position:relative; }
 .timeline-days span { padding:.65rem .25rem; text-align:center; color:var(--workspace-muted); font-variant-numeric:tabular-nums; font-size:.75rem; }
-.timeline-label-row, .timeline-row { height:68px; border-bottom:1px solid var(--workspace-border); }
+.timeline-label-row, .timeline-row { height:34px; border-bottom:1px solid var(--workspace-border); }
 .timeline-label-row { overflow:hidden; }
 .timeline-row { display:flex; min-width:0; }
 .timeline-track { display:flex; flex:1 1 auto; align-items:center; min-width:0; position:relative; }

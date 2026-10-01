@@ -189,7 +189,6 @@ const SORT_ICONS: Record<BoardCardSort, string> = { MANUAL: mdiSort, PRIORITY: m
 const sortTitle = (sort: BoardCardSort) => `${SORT_LABELS[sort][0].toUpperCase()}${SORT_LABELS[sort].slice(1)}; change to ${SORT_LABELS[nextSort(sort)]}`;
 async function cycleColumnSort(column: KanbanColumn) { dismissError(); try { if (column.merged) await store.setColumnSort(column.merged.key, nextSort(column.sort)); else await store.setStatusSort(column.status!, nextSort(column.sort)); } catch { notices.notify("Could not sort this column."); } }
 const statusName = (statusId: string) => statuses.value.find((status) => status.id === statusId)?.name || "Status";
-const timelineLabel = (card: BoardCard) => isAll.value && cardBoard(card) ? `${cardBoard(card)!.name} · ${statusName(card.statusId)}` : statusName(card.statusId);
 const cardAccent = (card: BoardCard) => cardBoard(card)?.pathId ? undefined : pathsStore.activePaths.find((path) => card.pathIds.includes(path.id))?.color || undefined;
 function selectBoard(id: string) { dismissError(); store.selectedId = id; void router.replace({ query: { ...route.query, board: id } }); void store.loadBoard(); }
 // Tabs only switch boards; renaming lives in board settings.
@@ -303,11 +302,6 @@ async function addCardToColumn(column: KanbanColumn) {
 }
 function defaultBoardDocument() { return { type: "doc", content: [{ type: "paragraph" }] }; }
 function parseBoardBody(body: string) { try { const parsed = JSON.parse(body); return parsed?.type === "doc" ? parsed : defaultBoardDocument(); } catch { return defaultBoardDocument(); } }
-function cardBodySummary(card: BoardCard) {
-  const text = (node: { text?: string; content?: unknown[] }): string =>
-    `${node.text || ""} ${(node.content || []).map((child) => child && typeof child === "object" ? text(child as { text?: string; content?: unknown[] }) : "").join(" ")}`;
-  return text(parseBoardBody(card.body)).replace(/\s+/g, " ").trim();
-}
 function destroyCardEditor() { cardEditor.value?.destroy(); cardEditor.value = null; }
 function rememberCardFocus(event: PointerEvent) { const card = (event.target as HTMLElement | null)?.closest<HTMLElement>(".board-card"); if (card) lastFocusedCard.value = card; }
 // The card whose dialog just closed wears a fading ring for a moment, so its place on the board is easy to spot.
@@ -525,7 +519,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
           <div class="timeline-label-content">
             <div class="timeline-header"><div class="timeline-label timeline-label-heading">Card</div></div>
             <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
-              <div class="timeline-label" :title="card.title"><strong>{{ card.title }}</strong><small v-if="cardBodySummary(card)" class="timeline-summary">{{ cardBodySummary(card) }}</small><small>{{ timelineLabel(card) }}</small></div>
+              <div class="timeline-label" :title="card.title"><strong>{{ card.title }}</strong></div>
             </div>
           </div>
         </div>

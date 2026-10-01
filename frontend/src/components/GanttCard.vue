@@ -81,9 +81,9 @@ function open(event: MouseEvent) { if (suppressClick && event.detail) { suppress
 </template>
 
 <style scoped>
-.timeline-card { position:absolute; display:flex; min-height:44px; border-radius:7px; background:#9f3f22; color:#fff; }
+.timeline-card { position:absolute; display:flex; min-height:24px; border-radius:7px; background:#9f3f22; color:#fff; }
 .timeline-card-dragging { user-select:none; box-shadow:0 3px 8px #0003; }
-.timeline-bar { position:relative; flex:1; min-width:0; min-height:44px; overflow:visible; padding:.3rem 0; border:0; border-radius:0; background:#9f3f22; color:#fff; text-align:left; font-size:.8rem; cursor:grab; touch-action:none; }
+.timeline-bar { position:relative; flex:1; min-width:0; min-height:24px; overflow:visible; padding:.15rem 0; border:0; border-radius:0; background:#9f3f22; color:#fff; text-align:left; font-size:.8rem; cursor:grab; touch-action:none; }
 .timeline-bar-title { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .timeline-card-tooltip { position:absolute; z-index:10; left:0; bottom:calc(100% + 4px); width:max-content; max-width:min(420px, 70vw); overflow-wrap:anywhere; white-space:normal; padding:.35rem .55rem; border:1px solid color-mix(in srgb, #fff 28%, #9f3f22); border-radius:6px; background:#7f311b; color:#fff; box-shadow:0 4px 12px #0005; text-align:left; pointer-events:none; }
 .timeline-bar:hover .timeline-card-tooltip, .timeline-bar:focus-visible .timeline-card-tooltip { display:block; }
