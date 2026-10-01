@@ -140,7 +140,7 @@ describe("BoardView", () => {
   it("keeps the Gantt card list in a separate left pane beside the scrolling chart", async () => {
     const store = seedBoard(["Backlog"]);
     store.ganttCards = [
-      { id: "first-card", boardId: "test-id", statusId: "status-1", title: "First card", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" },
+      { id: "first-card", boardId: "test-id", statusId: "status-1", title: "First card", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", startDate: "2026-09-01", dueDate: "2026-09-03" },
       { id: "second-card", boardId: "test-id", statusId: "status-1", title: "Second card", body: "{}", priority: "MEDIUM", position: 1, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" },
     ];
     mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
@@ -160,6 +160,10 @@ describe("BoardView", () => {
     const firstTitle = cardList.find<HTMLButtonElement>(".timeline-label-row button.timeline-label");
     expect(firstTitle.attributes("type")).toBe("button");
     expect(getComputedStyle(firstTitle.element).minHeight).toBe("0px");
+    expect(getComputedStyle(firstTitle.element).alignItems).toBe("center");
+    const firstBar = wrapper.find(".timeline-card");
+    expect(getComputedStyle(firstBar.element).top).toBe("50%");
+    expect(getComputedStyle(firstBar.element).transform).toBe("translateY(-50%)");
     await firstTitle.trigger("click");
     expect(wrapper.find(".card-editor").exists()).toBe(true);
     expect(chart.find(".timeline-label").exists()).toBe(false);
