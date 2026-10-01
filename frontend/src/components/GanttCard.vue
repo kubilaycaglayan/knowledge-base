@@ -81,7 +81,7 @@ function open(event: MouseEvent) { if (suppressClick && event.detail) { suppress
 </template>
 
 <style scoped>
-.timeline-card { position:absolute; display:flex; min-height:24px; border-radius:7px; background:#9f3f22; color:#fff; }
+.timeline-card { position:absolute; top:50%; transform:translateY(-50%); display:flex; min-height:24px; border-radius:7px; background:#9f3f22; color:#fff; }
 .timeline-card-dragging { user-select:none; box-shadow:0 3px 8px #0003; }
 .timeline-bar { position:relative; flex:1; min-width:0; min-height:24px; overflow:visible; padding:.15rem 0; border:0; border-radius:0; background:#9f3f22; color:#fff; text-align:left; font-size:.8rem; cursor:grab; touch-action:none; }
 .timeline-bar-title { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
