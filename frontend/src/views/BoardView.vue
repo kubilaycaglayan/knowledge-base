@@ -79,6 +79,7 @@ const pageObservers = new Map<string, IntersectionObserver>();
 // breakout never adds a horizontal scrollbar.
 const preferences = usePreferencesStore(), kanbanWide = computed(() => preferences.kanbanWide), ganttWide = computed(() => preferences.ganttWide), viewportWidth = ref(0), contentLeft = ref(0), boardPage = ref<HTMLElement | null>(null);
 const timelineScroll = ref<HTMLElement | null>(null), timelineLabelPane = ref<HTMLElement | null>(null);
+const ganttTitleOverflow = ref<{ title: string; left: number; top: number; maxWidth: number } | null>(null);
 
 function toggleKanbanWide() { measureViewport(); void preferences.setKanbanWide(!kanbanWide.value); }
 function toggleGanttWide() { measureViewport(); void preferences.setGanttWide(!ganttWide.value); }
@@ -91,7 +92,14 @@ function measureKanbanHeight() { const kanban = kanbanEl.value; if (!kanban) ret
 const kanbanResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureKanbanHeight());
 watch(kanbanEl, (kanban) => { kanbanResize?.disconnect(); if (kanban) { if (boardPage.value) kanbanResize?.observe(boardPage.value); void nextTick(measureKanbanHeight); } });
 function measureViewport() { measureKanbanHeight(); viewportWidth.value = document.documentElement.clientWidth; const page = boardPage.value; if (page) contentLeft.value = page.getBoundingClientRect().left + parseFloat(getComputedStyle(page).paddingLeft || "0"); }
-function syncTimelineLabels() { if (timelineScroll.value && timelineLabelPane.value) timelineLabelPane.value.scrollTop = timelineScroll.value.scrollTop; }
+function syncTimelineLabels() { if (timelineScroll.value && timelineLabelPane.value) timelineLabelPane.value.scrollTop = timelineScroll.value.scrollTop; ganttTitleOverflow.value = null; }
+function showGanttTitleOverflow(event: MouseEvent, title: string) {
+  const label = (event.currentTarget as HTMLElement).querySelector("strong");
+  if (!label || label.scrollWidth <= label.clientWidth + 1) { ganttTitleOverflow.value = null; return; }
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const left = bounds.left + 12;
+  ganttTitleOverflow.value = { title, left, top: bounds.top, maxWidth: Math.max(0, window.innerWidth - left - 12) };
+}
 function scrollTimelineHorizontally(event: WheelEvent) { const scroller = event.currentTarget as HTMLElement; if (event.shiftKey && !event.deltaX && event.deltaY) { event.preventDefault(); scroller.scrollLeft += event.deltaY; } }
 function scrollTimelineFromLabels(event: WheelEvent) { const scroller = timelineScroll.value; if (!scroller) return; const deltaX = event.shiftKey ? event.deltaX || event.deltaY : event.deltaX; const deltaY = event.shiftKey ? 0 : event.deltaY; if (!deltaX && !deltaY) return; event.preventDefault(); scroller.scrollLeft += deltaX; scroller.scrollTop += deltaY; syncTimelineLabels(); }
 const today = format(new Date(), "yyyy-MM-dd");
@@ -519,7 +527,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
           <div class="timeline-label-content">
             <div class="timeline-header"><div class="timeline-label timeline-label-heading">Card</div></div>
             <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
-              <div class="timeline-label" :title="card.title"><strong>{{ card.title }}</strong></div>
+              <div class="timeline-label" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null"><strong>{{ card.title }}</strong></div>
             </div>
           </div>
         </div>
@@ -533,6 +541,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
         </div>
       </div>
     </section>
+    <Teleport to="body"><div v-if="ganttTitleOverflow" class="gantt-title-overflow" aria-hidden="true" :style="{ left: `${ganttTitleOverflow.left}px`, top: `${ganttTitleOverflow.top}px`, maxWidth: `${ganttTitleOverflow.maxWidth}px` }">{{ ganttTitleOverflow.title }}</div></Teleport>
     <footer class="board-footer"><RouterLink class="link-button secondary with-icon" :to="{ path: '/board/archive', query: store.selectedId && !isAll ? { board: store.selectedId } : {} }"><v-icon :icon="mdiArchiveOutline" size="18" aria-hidden="true" />Archived items</RouterLink></footer>
     <div v-if="editing" class="dialog-backdrop" role="presentation" v-backdrop-close="() => closeEditor()"><section v-dialog-focus class="card-editor" :class="{ accented: draftAccent }" :style="{ '--card-accent': draftAccent }" role="dialog" aria-modal="true" aria-label="Edit card" tabindex="-1" @keydown.capture="noteLabelsMenu" @keydown.esc.prevent="escapeEditor" @keydown.meta.enter.prevent="closeEditor()" @keydown.ctrl.enter.prevent="closeEditor()">
       <div class="card-editor-header"><textarea v-model="draft.title" class="card-title-input" name="title" aria-label="Title" maxlength="240" rows="1" autocomplete="off" @keydown.enter.exact.prevent="cardEditor?.commands.focus('start')"></textarea><v-select v-if="!editingBoard?.pathId" v-model:menu="pathMenuOpen" class="card-path-picker" :model-value="draft.pathIds[0] || ''" :items="cardPathItems" item-title="name" item-value="id" name="cardPath" aria-label="Path" hide-details flat variant="solo-filled" density="compact" :menu-props="{ contentClass: 'card-path-menu', location: 'bottom start' }" @update:model-value="setDraftPath" /><TimerRunButton v-if="canStartSession(editing)" class="board-card-play" :label="startSessionLabel(draft.title)" :busy="timerStore.actionBusy" @click="onEditorPlay($event, editing, draft.title)" /><button class="icon-button quiet editor-close" type="button" aria-label="Close card" title="Close" @click="closeEditor()"><v-icon :icon="mdiClose" size="20" aria-hidden="true" /></button></div>
