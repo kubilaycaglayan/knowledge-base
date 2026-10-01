@@ -15,6 +15,38 @@ const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date
 const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"] }];
 const boardLabels = [["label-design", "Design"], ["label-docs", "Docs"], ["label-research", "Research"], ["label-backend", "Backend"], ["label-frontend", "Frontend"], ["label-ops", "Operations"], ["label-bug", "Bug"]].map(([id, name]) => ({ id, name, color: null, scopes: ["BOARD"] }));
 
+for (const width of [390, 1440]) it(`scrolls time continuously with native horizontal wheel input at ${width}px`, async (t) => {
+  const { page } = await fixture(t, width);
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `wheel-${i}`, title: `Wheel card ${i}`, position: i })) }));
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-row").nth(39).waitFor();
+  const scroller = page.locator(".timeline-scroll");
+  const markerText = `${dateOnly().slice(8, 10)}-${dateOnly().slice(5, 7)}`;
+  const marker = page.locator(".timeline-days span").filter({ hasText: markerText }).first();
+  const start = (await marker.boundingBox()).x;
+  const box = await scroller.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + 100);
+  await page.mouse.wheel(-37, 0);
+  await page.waitForTimeout(150);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start - 37) < 1, "Scrolling left must move time by exactly 37 pixels, including before the initial date");
+  await page.mouse.wheel(83, 0);
+  await page.waitForTimeout(150);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start + 46) < 1, "Small wheel movements must not snap to a day or window");
+  const dayWidth = width <= 700 ? 132 : 80;
+  await page.mouse.wheel(dayWidth * 600 + 13, 0);
+  await page.waitForTimeout(400);
+  assert.ok(await page.locator(".timeline-days span").count() < 100, "Only nearby dates should be rendered after travelling years");
+  await page.mouse.wheel(-dayWidth * 600 - 59, 0);
+  await page.waitForTimeout(400);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Returning must restore the same date position without drift");
+  await page.mouse.wheel(0, 83);
+  await page.waitForTimeout(150);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Vertical wheel input must keep time stationary");
+  assert.equal(await scroller.evaluate((el) => el.scrollTop), 83);
+  assert.equal(await page.locator(".timeline-label-pane").evaluate((el) => el.scrollTop), 83);
+  await page.screenshot({ path: join(screenshotDir, `gantt-native-wheel-${width}.png`) });
+});
+
 it("keeps the full-width Gantt card list inside the visible shell", async (t) => {
   const { page } = await fixture(t, 1600);
   await boardAction(page, "Gantt");
