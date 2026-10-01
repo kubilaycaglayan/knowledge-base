@@ -94,5 +94,5 @@ function open(event: MouseEvent) { if (suppressClick && event.detail) { suppress
 .gantt-saving { display:inline-block; margin-left:.3rem; animation:gantt-saving 1s linear infinite; }
 @keyframes gantt-saving { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gantt-saving { animation:none; } }
-@media (max-width:700px) { .timeline-label-row, .timeline-row { height:44px; } .timeline-resize { flex-basis:44px; min-width:44px; min-height:44px; } }
+@media (max-width:700px) { .timeline-resize { flex-basis:44px; min-width:44px; min-height:44px; } }
 </style>
