@@ -61,8 +61,8 @@
 }
 .board-page-gantt .board-toolbar { flex:0 0 auto; }
 .board-page-gantt .gantt { flex:1 1 auto; min-width:0; min-height:0; overflow:clip; display:flex; flex-direction:column; }
-.board-page-gantt .timeline-scroll { flex:1 1 auto; min-width:0; min-height:0; height:100%; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
-.timeline-scroll { min-width:0; overflow:auto; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
+.board-page-gantt .timeline-scroll { flex:1 1 auto; min-width:0; min-height:0; height:100%; overflow-x:scroll; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.timeline-scroll { min-width:0; overflow-x:scroll; overflow-y:auto; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
 .timeline-scroll { scrollbar-width:auto; scrollbar-color:var(--workspace-muted) var(--workspace-hover); }
 .timeline-scroll::-webkit-scrollbar:horizontal { height:12px; }
 .timeline-scroll::-webkit-scrollbar-track { background:var(--workspace-hover); }
@@ -71,9 +71,9 @@
 .timeline-today-overlay { position:absolute; inset:0 0 0 var(--timeline-label-width); pointer-events:none; z-index:2; }
 .timeline-today-line { position:absolute; top:0; bottom:0; width:2px; background:#e32636; transform:translateX(-1px); }
 .timeline-today-line::before { content:""; position:absolute; top:0; left:-4px; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #e32636; }
-.timeline-header, .timeline-row { display:grid; grid-template-columns:var(--timeline-label-width) 1fr; min-height:58px; }
+.timeline-header, .timeline-row { display:grid; grid-template-columns:var(--timeline-label-width) minmax(0, 1fr); min-height:58px; }
 .timeline-header { position:sticky; top:0; z-index:4; min-height:42px; border-bottom:1px solid var(--workspace-border); background:var(--workspace-hover); }
-.timeline-label { position:sticky; left:0; z-index:3; min-width:0; padding:.65rem .75rem; border-right:1px solid var(--workspace-border); background:var(--workspace-surface); overflow:visible; white-space:nowrap; }
+.timeline-label { position:sticky; left:0; z-index:3; width:var(--timeline-label-width); min-width:0; box-sizing:border-box; padding:.65rem .75rem; border-right:1px solid var(--workspace-border); background:var(--workspace-surface); overflow:visible; white-space:nowrap; }
 .timeline-header .timeline-label { background:var(--workspace-hover); }
 .timeline-label strong, .timeline-label small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .timeline-row .timeline-label:hover { z-index:5; }
