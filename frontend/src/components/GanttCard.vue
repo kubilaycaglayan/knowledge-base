@@ -88,11 +88,11 @@ function open(event: MouseEvent) { if (suppressClick && event.detail) { suppress
 .timeline-card-tooltip { position:absolute; z-index:10; left:0; bottom:calc(100% + 4px); width:max-content; max-width:min(420px, 70vw); overflow-wrap:anywhere; white-space:normal; padding:.35rem .55rem; border:1px solid color-mix(in srgb, #fff 28%, #9f3f22); border-radius:6px; background:#7f311b; color:#fff; box-shadow:0 4px 12px #0005; text-align:left; pointer-events:none; }
 .timeline-bar:hover .timeline-card-tooltip, .timeline-bar:focus-visible .timeline-card-tooltip { display:block; }
 .timeline-card-tooltip { display:none; }
-.timeline-resize { flex:0 0 24px; min-width:24px; padding:0; border:0; border-radius:7px; background:#9f3f22; color:#fff; cursor:ew-resize; touch-action:none; }
+.timeline-resize { flex:0 0 24px; min-width:24px; min-height:24px; padding:0; border:0; border-radius:7px; background:#9f3f22; color:#fff; cursor:ew-resize; touch-action:none; }
 .timeline-bar:hover, .timeline-bar:focus-visible, .timeline-resize:hover, .timeline-resize:focus-visible { background:#7f311b; }
 .timeline-bar:focus-visible, .timeline-resize:focus-visible { outline:2px solid var(--workspace-text, #172b4d); outline-offset:2px; }
 .gantt-saving { display:inline-block; margin-left:.3rem; animation:gantt-saving 1s linear infinite; }
 @keyframes gantt-saving { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gantt-saving { animation:none; } }
-@media (max-width:700px) { .timeline-resize { flex-basis:44px; min-width:44px; } }
+@media (max-width:700px) { .timeline-label-row, .timeline-row { height:44px; } .timeline-resize { flex-basis:44px; min-width:44px; min-height:44px; } }
 </style>
