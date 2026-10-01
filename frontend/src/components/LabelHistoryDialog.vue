@@ -297,25 +297,27 @@ watch(currentId, load, { immediate: true });
               <span>{{ timelineBars[0]?.label }}</span>
               <span>{{ timelineBars.at(-1)?.label }}</span>
             </div>
-            <table class="visually-hidden">
-              <caption>
-                Hours and uses per month
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Month</th>
-                  <th scope="col">Hours</th>
-                  <th scope="col">Uses</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="bucket in history.timeline" :key="bucket.month">
-                  <th scope="row">{{ monthLabel(bucket.month) }}</th>
-                  <td>{{ hoursOf(bucket.trackedSeconds) }}</td>
-                  <td>{{ count.format(bucket.uses) }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="visually-hidden">
+              <table>
+                <caption>
+                  Hours and uses per month
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Month</th>
+                    <th scope="col">Hours</th>
+                    <th scope="col">Uses</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="bucket in history.timeline" :key="bucket.month">
+                    <th scope="row">{{ monthLabel(bucket.month) }}</th>
+                    <td>{{ hoursOf(bucket.trackedSeconds) }}</td>
+                    <td>{{ count.format(bucket.uses) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </figure>
 
           <figure class="history-chart history-hours">
@@ -355,25 +357,27 @@ watch(currentId, load, { immediate: true });
               <span>{{ hourLabel(12) }}</span>
               <span>{{ hourLabel(23) }}</span>
             </div>
-            <table class="visually-hidden">
-              <caption>
-                Hours and uses by hour of day
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Hour</th>
-                  <th scope="col">Hours</th>
-                  <th scope="col">Uses</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="bucket in history.hours" :key="bucket.hour">
-                  <th scope="row">{{ hourLabel(bucket.hour) }}</th>
-                  <td>{{ hoursOf(bucket.trackedSeconds) }}</td>
-                  <td>{{ count.format(bucket.uses) }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="visually-hidden">
+              <table>
+                <caption>
+                  Hours and uses by hour of day
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Hour</th>
+                    <th scope="col">Hours</th>
+                    <th scope="col">Uses</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="bucket in history.hours" :key="bucket.hour">
+                    <th scope="row">{{ hourLabel(bucket.hour) }}</th>
+                    <td>{{ hoursOf(bucket.trackedSeconds) }}</td>
+                    <td>{{ count.format(bucket.uses) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </figure>
         </template>
 
