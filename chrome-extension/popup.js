@@ -50,6 +50,14 @@ let notesLoading = false;
 let selectionBaseline = { pathId: "", labelIds: [], description: "" };
 const timerSelectionKey = "timerSelection";
 const openNoteStorageKey = "openNoteId";
+const noteEditorHeightStorageKey = "noteEditorHeight";
+const defaultNoteEditorHeight = 560;
+const minNoteEditorHeight = 320;
+const maxNoteEditorHeight = 600;
+const noteEditorHeightStep = 20;
+let notePopupResize = null;
+let notePopupResizeStartY = 0;
+let notePopupResizeStartHeight = defaultNoteEditorHeight;
 
 function setLoading(loading) {
   const loadingElement = $("loading");
@@ -714,25 +722,100 @@ async function loadNotes() {
   }
 }
 
-function showNoteEditor(note) {
+function applyNoteEditorHeight(height) {
+  const normalized = Math.min(
+    maxNoteEditorHeight,
+    Math.max(minNoteEditorHeight, Math.round(Number(height) || defaultNoteEditorHeight)),
+  );
+  document.body.style.height = `${normalized}px`;
+  $("note-popup-resize").setAttribute("aria-valuenow", String(normalized));
+  return normalized;
+}
+
+async function saveNoteEditorHeight(height) {
+  try {
+    await chrome.storage.local.set({ [noteEditorHeightStorageKey]: height });
+  } catch (error) {
+    $("notes-status").textContent = userError(
+      "Could not remember the note popup size.",
+      error,
+    );
+  }
+}
+
+function beginNotePopupResize(event) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  notePopupResize = $("note-popup-resize");
+  notePopupResizeStartY = event.clientY;
+  notePopupResizeStartHeight = Number(
+    notePopupResize.getAttribute("aria-valuenow"),
+  ) || defaultNoteEditorHeight;
+  notePopupResize.setPointerCapture?.(event.pointerId);
+}
+
+function moveNotePopupResize(event) {
+  if (!notePopupResize) return;
+  applyNoteEditorHeight(
+    notePopupResizeStartHeight + event.clientY - notePopupResizeStartY,
+  );
+}
+
+function finishNotePopupResize() {
+  if (!notePopupResize) return;
+  const height = applyNoteEditorHeight(
+    Number(notePopupResize.getAttribute("aria-valuenow")),
+  );
+  notePopupResize = null;
+  void saveNoteEditorHeight(height);
+}
+
+function resizeNotePopupByKey(event) {
+  const current = Number($("note-popup-resize").getAttribute("aria-valuenow"));
+  let next;
+  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    next = current + (event.key === "ArrowDown" ? noteEditorHeightStep : -noteEditorHeightStep);
+  } else if (event.key === "Home") {
+    next = minNoteEditorHeight;
+  } else if (event.key === "End") {
+    next = maxNoteEditorHeight;
+  } else {
+    return;
+  }
+  event.preventDefault();
+  const height = applyNoteEditorHeight(next);
+  void saveNoteEditorHeight(height);
+}
+
+async function showNoteEditor(note) {
   activeNote = note;
   document.body.classList.add("note-editor-open");
+  applyNoteEditorHeight(defaultNoteEditorHeight);
   $("notes-title").hidden = true;
   $("notes-back").hidden = false;
   $("new-note").hidden = true;
   $("notes-list").hidden = true;
   $("note-editor").hidden = false;
+  $("note-popup-resize").hidden = false;
   $("note-title").value = note.title || "";
   $("note-content").value = notePlainText(note);
   $("notes-status").textContent = "";
   $("note-title").focus();
+  try {
+    const { [noteEditorHeightStorageKey]: savedHeight } = await chrome.storage.local.get([
+      noteEditorHeightStorageKey,
+    ]);
+    if (activeNote?.id === note.id) applyNoteEditorHeight(savedHeight);
+  } catch (error) {
+    console.warn("Could not load the saved note popup size.", error);
+  }
 }
 
 async function openNote(id) {
   try {
     await chrome.storage.local.set({ [openNoteStorageKey]: id });
     const note = await request(`/notes/${encodeURIComponent(id)}`);
-    showNoteEditor(note);
+    await showNoteEditor(note);
   } catch (error) {
     $("notes-status").textContent = userError("Unable to open this note.", error);
   }
@@ -749,7 +832,7 @@ async function createNote() {
     await chrome.storage.local.set({ [openNoteStorageKey]: note.id });
     notes = [note, ...notes.filter((value) => value.id !== note.id)];
     renderNotes();
-    showNoteEditor(note);
+    await showNoteEditor(note);
   } catch (error) {
     $("notes-status").textContent = userError("Unable to create a note.", error);
   } finally {
@@ -824,7 +907,9 @@ async function closeNote() {
   }
   activeNote = null;
   document.body.classList.remove("note-editor-open");
+  document.body.style.removeProperty("height");
   $("note-editor").hidden = true;
+  $("note-popup-resize").hidden = true;
   $("notes-list").hidden = false;
   $("notes-title").hidden = false;
   $("notes-back").hidden = true;
@@ -937,6 +1022,11 @@ $("timer-tab").onclick = () => setWorkspacePage("timer");
 $("notes-tab").onclick = () => setWorkspacePage("notes");
 $("new-note").onclick = createNote;
 $("notes-back").onclick = closeNote;
+$("note-popup-resize").onpointerdown = beginNotePopupResize;
+$("note-popup-resize").onpointermove = moveNotePopupResize;
+$("note-popup-resize").onpointerup = finishNotePopupResize;
+$("note-popup-resize").onpointercancel = finishNotePopupResize;
+$("note-popup-resize").onkeydown = resizeNotePopupByKey;
 $("note-title").oninput = scheduleNoteSave;
 $("note-content").oninput = scheduleNoteSave;
 async function login() {

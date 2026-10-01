@@ -203,18 +203,31 @@
         </section>
         <section id="notes-page" aria-label="Notes" hidden>
           <div class="notes-heading">
-            <button id="notes-back" class="icon-button" type="button" aria-label="Back to notes" hidden>←</button>
             <h1 id="notes-title">Notes</h1>
             <button id="new-note" class="icon-button" type="button" aria-label="Create note">＋</button>
           </div>
           <p id="notes-status" class="notes-status" role="status" aria-live="polite"></p>
           <div id="notes-list" class="notes-list" aria-label="Your notes"></div>
           <div id="note-editor" class="note-editor" hidden>
-            <label class="sr-only" for="note-title">Title</label>
-            <input id="note-title" name="noteTitle" maxlength="240" autocomplete="off" placeholder="Untitled…" />
+            <div class="note-editor-header">
+              <button id="notes-back" class="icon-button" type="button" aria-label="Back to notes" hidden>←</button>
+              <input id="note-title" name="noteTitle" aria-label="Note title" maxlength="240" autocomplete="off" placeholder="Untitled…" />
+            </div>
             <label class="sr-only" for="note-content">Note</label>
             <textarea id="note-content" name="noteContent" aria-label="Note" placeholder="Start writing…" spellcheck="true"></textarea>
           </div>
+          <div
+            id="note-popup-resize"
+            class="note-popup-resize"
+            role="separator"
+            aria-label="Resize note popup height"
+            aria-orientation="horizontal"
+            aria-valuemin="320"
+            aria-valuemax="600"
+            aria-valuenow="560"
+            tabindex="0"
+            hidden
+          ></div>
         </section>
       </section>
       <p id="error" role="alert" tabindex="-1"></p>

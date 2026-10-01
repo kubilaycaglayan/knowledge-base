@@ -5,6 +5,10 @@ const vm = require("node:vm");
 
 const source = fs.readFileSync(require.resolve("./popup.js"), "utf8");
 const styles = fs.readFileSync(require.resolve("./popup.css"), "utf8");
+const popupHtml = fs.readFileSync(
+  require.resolve("./entrypoints/popup/index.html"),
+  "utf8",
+);
 
 class Element {
   constructor(id) {
@@ -21,6 +25,7 @@ class Element {
     this.insertedHTML = [];
     this.attributes = {};
     this.classes = new Set();
+    this.style = { height: "", removeProperty(name) { this[name] = ""; } };
     this.classList = {
       toggle: (name, enabled) => {
         if (enabled) this.classes.add(name);
@@ -76,6 +81,7 @@ function createPopup({
   fixturePaths,
   fixtureNotes = [],
   openNoteId,
+  noteEditorHeight,
   prompt = () => null,
 } = {}) {
   const elements = Object.fromEntries(
@@ -123,10 +129,11 @@ function createPopup({
       "note-editor",
       "note-title",
       "note-content",
+      "note-popup-resize",
     ].map((id) => [id, new Element(id)]),
   );
   const body = new Element("body");
-  const state = { token, openNoteId, activeTimer: null, calls: [] };
+  const state = { token, openNoteId, noteEditorHeight, activeTimer: null, calls: [] };
   const storage = {
     async get(keys) {
       const names = Array.isArray(keys) ? keys : [keys];
@@ -722,6 +729,40 @@ test("shows title-only notes and opens the note editor", async () => {
   assert.equal(popup.elements["note-content"].value, "First line\nSecond line");
   assert.equal(popup.elements["note-editor"].hidden, false);
   assert.equal(popup.body.classList.contains("note-editor-open"), true);
+});
+
+test("names the note title input without a separate title caption", () => {
+  assert.match(popupHtml, /id="note-title"[^>]*aria-label="Note title"/);
+  assert.doesNotMatch(popupHtml, /<label[^>]*for="note-title"/);
+});
+
+test("shows the back button immediately and restores the editor popup height", async () => {
+  const popup = await readyPopup({
+    token: "token",
+    fixtureNotes: [{ id: "note-1", title: "Draft", contentText: "Body" }],
+    openNoteId: "note-1",
+    noteEditorHeight: 480,
+  });
+  assert.equal(popup.elements["notes-back"].hidden, false);
+  assert.equal(popup.elements["note-editor"].hidden, false);
+  assert.equal(popup.body.style.height, "480px");
+  assert.equal(popup.elements["note-popup-resize"].hidden, false);
+
+  popup.elements["note-popup-resize"].onkeydown({
+    key: "ArrowDown",
+    preventDefault() {},
+  });
+  await flush();
+  assert.equal(popup.body.style.height, "500px");
+  assert.equal(popup.state.noteEditorHeight, 500);
+
+  popup.elements["note-popup-resize"].onkeydown({
+    key: "End",
+    preventDefault() {},
+  });
+  await flush();
+  assert.equal(popup.body.style.height, "600px");
+  assert.equal(popup.state.noteEditorHeight, 600);
 });
 
 test("shows an empty-state message when the notes list is empty", async () => {
