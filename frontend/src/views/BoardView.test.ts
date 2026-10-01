@@ -128,7 +128,7 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
 
-    expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
+    expect(wrapper.findAll(".timeline-label-row .timeline-label strong").map((name) => name.text()))
       .toEqual(["in-range", "undated", "outside-range"]);
     expect(wrapper.find(".timeline-summary").text()).toBe("Gantt summary line");
     expect(wrapper.find(".timeline-scroll").attributes("role")).toBe("region");
@@ -158,6 +158,9 @@ describe("BoardView", () => {
     expect(cardList.findAll(".timeline-label-row strong").map((name) => name.text()))
       .toEqual(["First card", "Second card"]);
     expect(chart.find(".timeline-label").exists()).toBe(false);
+    (chart.element as HTMLElement).scrollTop = 120;
+    await chart.trigger("scroll");
+    expect((cardList.element as HTMLElement).scrollTop).toBe(120);
     await wrapper.unmount();
   });
 
@@ -174,13 +177,13 @@ describe("BoardView", () => {
 
     const wrapper = mountBoard();
     await flushPromises();
-    expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
+    expect(wrapper.findAll(".timeline-label-row .timeline-label strong").map((name) => name.text()))
       .toEqual(["urgent", "later", "earlier finish", "no-date"]);
     const sortControls = wrapper.find('[aria-label="Timeline sort rules"]');
     expect(sortControls.findAll('button[aria-pressed="true"]')).toHaveLength(2);
     await sortControls.findAll("button")[0].trigger("click");
     expect(preferences.board.ganttSorts).toEqual(["PRIORITY_DESC", "DATE_ASC"]);
-    expect(wrapper.findAll(".timeline-row .timeline-label strong").map((name) => name.text()))
+    expect(wrapper.findAll(".timeline-label-row .timeline-label strong").map((name) => name.text()))
       .toEqual(["later", "earlier finish", "no-date", "urgent"]);
     await sortControls.findAll("button")[0].trigger("click");
     expect(preferences.board.ganttSorts).toEqual(["DATE_ASC"]);

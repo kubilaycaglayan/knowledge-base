@@ -77,6 +77,7 @@ const pageObservers = new Map<string, IntersectionObserver>();
 // per-browser convenience, and the viewport width is measured so the
 // breakout never adds a horizontal scrollbar.
 const preferences = usePreferencesStore(), kanbanWide = computed(() => preferences.kanbanWide), ganttWide = computed(() => preferences.ganttWide), viewportWidth = ref(0), contentLeft = ref(0), boardPage = ref<HTMLElement | null>(null);
+const timelineScroll = ref<HTMLElement | null>(null), timelineLabelPane = ref<HTMLElement | null>(null);
 
 function toggleKanbanWide() { measureViewport(); void preferences.setKanbanWide(!kanbanWide.value); }
 function toggleGanttWide() { measureViewport(); void preferences.setGanttWide(!ganttWide.value); }
@@ -89,13 +90,15 @@ function measureKanbanHeight() { const kanban = kanbanEl.value; if (!kanban) ret
 const kanbanResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureKanbanHeight());
 watch(kanbanEl, (kanban) => { kanbanResize?.disconnect(); if (kanban) { if (boardPage.value) kanbanResize?.observe(boardPage.value); void nextTick(measureKanbanHeight); } });
 function measureViewport() { measureKanbanHeight(); viewportWidth.value = document.documentElement.clientWidth; const page = boardPage.value; if (page) contentLeft.value = page.getBoundingClientRect().left + parseFloat(getComputedStyle(page).paddingLeft || "0"); }
+function syncTimelineLabels() { if (timelineScroll.value && timelineLabelPane.value) timelineLabelPane.value.scrollTop = timelineScroll.value.scrollTop; }
 function scrollTimelineHorizontally(event: WheelEvent) { const scroller = event.currentTarget as HTMLElement; if (event.shiftKey && !event.deltaX && event.deltaY) { event.preventDefault(); scroller.scrollLeft += event.deltaY; } }
+function scrollTimelineFromLabels(event: WheelEvent) { const scroller = timelineScroll.value; if (!scroller) return; const deltaX = event.shiftKey ? event.deltaX || event.deltaY : event.deltaX; const deltaY = event.shiftKey ? 0 : event.deltaY; if (!deltaX && !deltaY) return; event.preventDefault(); scroller.scrollLeft += deltaX; scroller.scrollTop += deltaY; syncTimelineLabels(); }
 const today = format(new Date(), "yyyy-MM-dd");
 const ganttFrom = ref(typeof route.query.from === "string" ? route.query.from : today);
 const ganttTo = ref(typeof route.query.to === "string" ? route.query.to : addCalendarDays(ganttFrom.value, 13));
 const visibleDays = computed(() => timelineDays(ganttFrom.value, ganttTo.value));
 const formatTimelineDay = (day: string) => `${day.slice(8, 10)}-${day.slice(5, 7)}`;
-const timelineWidth = computed(() => (phone.value ? 140 : 180) + Math.max(100, visibleDays.value.length * (phone.value ? 132 : 80)));
+const timelineWidth = computed(() => Math.max(100, visibleDays.value.length * (phone.value ? 132 : 80)));
 const todayPosition = computed(() => { const index = visibleDays.value.indexOf(today); return index < 0 ? undefined : `${(index + 0.5) / visibleDays.value.length * 100}%`; });
 const isWeekend = (value: string) => [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
 const activeStatuses = computed(() => statuses.value.filter((status) => !status.archived));
@@ -516,7 +519,24 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
     <section v-else class="gantt" :class="{ wide: ganttWide }" :style="ganttWide && viewportWidth ? { '--viewport-width': `${viewportWidth}px`, '--content-left': `${contentLeft}px` } : undefined" aria-labelledby="gantt-heading">
       <button class="kanban-width-toggle gantt-width-toggle" type="button" :aria-pressed="ganttWide" :aria-label="ganttWide ? 'Collapse timeline to page width' : 'Expand timeline to full width'" :title="ganttWide ? 'Collapse to page width' : 'Expand to full width'" @click="toggleGanttWide"><v-icon :icon="ganttWide ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal" size="16" aria-hidden="true" /></button>
       <h2 id="gantt-heading" class="sr-only">Timeline</h2>
-      <div class="timeline-scroll" tabindex="0" role="region" aria-label="Board card timeline" @wheel="scrollTimelineHorizontally"><div class="timeline" :style="{ minWidth: `${timelineWidth}px` }"><div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div><div class="timeline-header"><span class="timeline-label">Card</span><div class="timeline-days" :style="{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day">{{ formatTimelineDay(day) }}</span></div></div><div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-label" :title="card.title"><strong>{{ card.title }}</strong><small v-if="cardBodySummary(card)" class="timeline-summary">{{ cardBodySummary(card) }}</small><small>{{ timelineLabel(card) }}</small></div><div class="timeline-track"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div><p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p></div></div>
+      <div class="timeline-layout">
+        <div ref="timelineLabelPane" class="timeline-label-pane" role="region" aria-label="Gantt card list" @wheel="scrollTimelineFromLabels">
+          <div class="timeline-label-content">
+            <div class="timeline-header"><div class="timeline-label timeline-label-heading">Card</div></div>
+            <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
+              <div class="timeline-label" :title="card.title"><strong>{{ card.title }}</strong><small v-if="cardBodySummary(card)" class="timeline-summary">{{ cardBodySummary(card) }}</small><small>{{ timelineLabel(card) }}</small></div>
+            </div>
+          </div>
+        </div>
+        <div ref="timelineScroll" class="timeline-scroll" tabindex="0" role="region" aria-label="Board card timeline" @scroll="syncTimelineLabels" @wheel="scrollTimelineHorizontally">
+          <div class="timeline" :style="{ minWidth: `${timelineWidth}px` }">
+            <div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div>
+            <div class="timeline-header"><div class="timeline-days" :style="{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day">{{ formatTimelineDay(day) }}</span></div></div>
+            <div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-track"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div>
+            <p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p>
+          </div>
+        </div>
+      </div>
     </section>
     <footer class="board-footer"><RouterLink class="link-button secondary with-icon" :to="{ path: '/board/archive', query: store.selectedId && !isAll ? { board: store.selectedId } : {} }"><v-icon :icon="mdiArchiveOutline" size="18" aria-hidden="true" />Archived items</RouterLink></footer>
     <div v-if="editing" class="dialog-backdrop" role="presentation" v-backdrop-close="() => closeEditor()"><section v-dialog-focus class="card-editor" :class="{ accented: draftAccent }" :style="{ '--card-accent': draftAccent }" role="dialog" aria-modal="true" aria-label="Edit card" tabindex="-1" @keydown.capture="noteLabelsMenu" @keydown.esc.prevent="escapeEditor" @keydown.meta.enter.prevent="closeEditor()" @keydown.ctrl.enter.prevent="closeEditor()">
