@@ -31,7 +31,7 @@ export function isDarkTheme(value: Theme): boolean {
   return value === "dark" || value === "neon" || value === "tokyo-neon";
 }
 
-function isTheme(value: string | null): value is Theme {
+function isTheme(value: string | null | undefined): value is Theme {
   return themes.includes(value as Theme);
 }
 
@@ -52,10 +52,9 @@ function systemTheme(): Theme {
 }
 
 export const themePreference = ref<ThemePreference>(savedPreference());
+const initialTheme = document.documentElement.dataset.theme ?? null;
 export const theme = ref<Theme>(
-  isTheme(document.documentElement.dataset.theme)
-    ? document.documentElement.dataset.theme
-    : "light",
+  isTheme(initialTheme) ? initialTheme : "light",
 );
 export function applyTheme(value: Theme) {
   theme.value = value;
@@ -85,19 +84,17 @@ export function setThemePreference(value: ThemePreference) {
   persistPreference(value);
 }
 export function toggleTheme() {
-  const next: ThemePreference = isTheme(themePreference.value)
-    ? themePreference.value === "light" || themePreference.value === "dark"
-      ? themePreference.value === "dark"
-        ? "light"
-        : "dark"
-      : isDarkTheme(themePreference.value)
-        ? "light"
-        : "dark"
-    : themePreference.value === "auto"
+  const current = themePreference.value;
+  const next: ThemePreference =
+    current === "auto"
       ? "dark"
-      : themePreference.value === "dark"
+      : current === "dark"
         ? "light"
-        : "auto";
+        : current === "light"
+          ? "auto"
+          : isDarkTheme(current)
+            ? "light"
+            : "dark";
   setThemePreference(next);
 }
 
