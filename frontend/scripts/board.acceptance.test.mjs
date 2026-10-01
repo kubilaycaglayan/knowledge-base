@@ -28,7 +28,23 @@ it("keeps the full-width Gantt card list inside the visible shell", async (t) =>
   assert.equal(visible, true, "Card heading must not be clipped by the page container in wide mode");
 });
 
-before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
+for (const width of [390, 1440]) it(`keeps Gantt rows aligned while scrolling at ${width}px`, async (t) => {
+  const { page } = await fixture(t, width);
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `scroll-${i}`, title: `Scroll card ${i}`, position: i })) }));
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-row").nth(39).waitFor();
+  for (const top of [0, 200, 100000]) {
+    await page.locator(".timeline-scroll").evaluate((el, top) => { el.scrollTop = top; el.dispatchEvent(new Event("scroll")); }, top);
+    const drift = await page.evaluate(() => {
+      const labels = [...document.querySelectorAll(".timeline-label-row")];
+      return [...document.querySelectorAll(".timeline-row")].map((row, i) => Math.abs(row.getBoundingClientRect().top - labels[i].getBoundingClientRect().top));
+    });
+    assert.ok(drift.every((delta) => delta < 1), `Rows drift at scroll ${top}: ${drift.slice(0, 3)}`);
+  }
+  await page.screenshot({ path: join(screenshotDir, `gantt-scroll-${width}.png`) });
+});
+
+before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: !process.env.BOARD_HEADED }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
 async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0") {
