@@ -15,6 +15,19 @@ const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date
 const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"] }];
 const boardLabels = [["label-design", "Design"], ["label-docs", "Docs"], ["label-research", "Research"], ["label-backend", "Backend"], ["label-frontend", "Frontend"], ["label-ops", "Operations"], ["label-bug", "Bug"]].map(([id, name]) => ({ id, name, color: null, scopes: ["BOARD"] }));
 
+it("keeps the full-width Gantt card list inside the visible shell", async (t) => {
+  const { page } = await fixture(t, 1600);
+  await boardAction(page, "Gantt");
+  await page.getByRole("button", { name: "Expand timeline to full width", exact: true }).click();
+  const heading = page.locator(".timeline-label-heading");
+  await heading.waitFor();
+  const visible = await heading.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return document.elementFromPoint(rect.left + 10, rect.top + 10) === element;
+  });
+  assert.equal(visible, true, "Card heading must not be clipped by the page container in wide mode");
+});
+
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
