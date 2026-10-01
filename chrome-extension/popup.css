@@ -508,6 +508,61 @@ small {
   line-height: 1.6;
 }
 
+body.note-editor-open {
+  height: 100vh;
+  overflow: hidden;
+}
+
+body.note-editor-open .extension-header,
+body.note-editor-open .workspace-tabs {
+  display: none;
+}
+
+body.note-editor-open main {
+  height: 100vh;
+  overflow: hidden;
+  padding: 8px 12px 12px;
+}
+
+body.note-editor-open #workspace,
+body.note-editor-open #notes-page {
+  height: 100%;
+  min-height: 0;
+}
+
+body.note-editor-open #notes-page {
+  display: flex;
+  flex-direction: column;
+}
+
+body.note-editor-open .notes-heading {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+}
+
+body.note-editor-open .notes-heading .icon-button {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+body.note-editor-open .notes-status {
+  flex: 0 0 auto;
+}
+
+body.note-editor-open .note-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.note-editor-open .note-editor textarea {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

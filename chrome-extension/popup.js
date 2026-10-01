@@ -715,6 +715,7 @@ async function loadNotes() {
 
 function showNoteEditor(note) {
   activeNote = note;
+  document.body.classList.add("note-editor-open");
   $("notes-title").hidden = true;
   $("notes-back").hidden = false;
   $("new-note").hidden = true;
@@ -810,6 +811,7 @@ async function closeNote() {
     return;
   }
   activeNote = null;
+  document.body.classList.remove("note-editor-open");
   $("note-editor").hidden = true;
   $("notes-list").hidden = false;
   $("notes-title").hidden = false;

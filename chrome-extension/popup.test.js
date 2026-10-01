@@ -20,8 +20,15 @@ class Element {
     this.onchange = null;
     this.insertedHTML = [];
     this.attributes = {};
+    this.classes = new Set();
     this.classList = {
-      toggle: (name, enabled) => { this[name] = enabled; },
+      toggle: (name, enabled) => {
+        if (enabled) this.classes.add(name);
+        else this.classes.delete(name);
+      },
+      add: (name) => this.classes.add(name),
+      remove: (name) => this.classes.delete(name),
+      contains: (name) => this.classes.has(name),
     };
   }
   get selectedOptions() {
@@ -117,6 +124,7 @@ function createPopup({
       "note-content",
     ].map((id) => [id, new Element(id)]),
   );
+  const body = new Element("body");
   const state = { token, activeTimer: null, calls: [] };
   const storage = {
     async get(keys) {
@@ -166,6 +174,7 @@ function createPopup({
   const context = {
     window: { prompt },
     document: {
+      body,
       addEventListener: (name, handler) => {
         state[name] = handler;
       },
@@ -273,7 +282,7 @@ function createPopup({
     console: { warn: () => {} },
   };
   vm.runInNewContext(source, context);
-  return { elements, state, storage };
+  return { elements, state, storage, body };
 }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -710,6 +719,7 @@ test("shows title-only notes and opens the note editor", async () => {
   assert.equal(popup.elements["note-title"].value, "Meeting notes");
   assert.equal(popup.elements["note-content"].value, "First line\nSecond line");
   assert.equal(popup.elements["note-editor"].hidden, false);
+  assert.equal(popup.body.classList.contains("note-editor-open"), true);
 });
 
 test("shows an empty-state message when the notes list is empty", async () => {
@@ -736,4 +746,5 @@ test("creates a note and saves title and plain text through the notes API", asyn
   assert.equal(JSON.parse(save.options.body).version, 1);
   assert.equal(popup.elements["note-editor"].hidden, true);
   assert.equal(popup.elements["notes-list"].hidden, false);
+  assert.equal(popup.body.classList.contains("note-editor-open"), false);
 });
