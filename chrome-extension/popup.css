@@ -583,6 +583,19 @@ body.note-editor-open .note-editor-header {
   flex: 0 0 auto;
 }
 
+body.note-editor-open .note-editor input,
+body.note-editor-open .note-editor textarea {
+  border-color: transparent;
+  border-radius: 4px;
+  background: transparent;
+}
+
+body.note-editor-open .note-editor input:focus-visible,
+body.note-editor-open .note-editor textarea:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px var(--workspace-focus);
+}
+
 body.note-editor-open .note-editor textarea {
   flex: 1 1 auto;
   height: auto;
