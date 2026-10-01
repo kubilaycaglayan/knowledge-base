@@ -137,6 +137,30 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("keeps the Gantt card list in a separate left pane beside the scrolling chart", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.ganttCards = [
+      { id: "first-card", boardId: "test-id", statusId: "status-1", title: "First card", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" },
+      { id: "second-card", boardId: "test-id", statusId: "status-1", title: "Second card", body: "{}", priority: "MEDIUM", position: 1, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" },
+    ];
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    const layout = wrapper.find(".timeline-layout");
+    const cardList = wrapper.find(".timeline-label-pane");
+    const chart = wrapper.find(".timeline-scroll");
+    expect(layout.exists()).toBe(true);
+    expect(cardList.exists()).toBe(true);
+    expect(cardList.element.parentElement).toBe(layout.element);
+    expect(chart.element.parentElement).toBe(layout.element);
+    expect(cardList.findAll(".timeline-label-row strong").map((name) => name.text()))
+      .toEqual(["First card", "Second card"]);
+    expect(chart.find(".timeline-label").exists()).toBe(false);
+    await wrapper.unmount();
+  });
+
   it("sorts by due dates and priorities in both directions, then clears each rule", async () => {
     const store = seedBoard(["Backlog"]);
     const card = (id: string, priority: "URGENT" | "MEDIUM", startDate?: string, dueDate?: string) => ({
