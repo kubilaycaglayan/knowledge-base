@@ -87,6 +87,8 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     assertFalse(preferences(other).getBody().get("ganttWide").asBoolean());
     assertEquals("dark", preferences(owner).getBody().get("theme").asText());
     assertEquals("auto", preferences(other).getBody().get("theme").asText());
+    assertEquals("tokyo-neon", update(owner, "{\"theme\":\"tokyo-neon\"}").getBody().get("theme").asText());
+    assertEquals("tokyo-neon", preferences(owner).getBody().get("theme").asText());
   }
 
   // UP-02

@@ -56,7 +56,7 @@ class InputValidationIntegrationTest extends IntegrationTestSupport {
                 new String[] {
                   "POST", "/api/v1/boards/" + board + "/cards", "{\"title\":\"Card\",\"priority\":\"NOPE\"}"
                 },
-                new String[] {"PUT", "/api/v1/preferences", "{\"theme\":\"neon\"}"},
+                new String[] {"PUT", "/api/v1/preferences", "{\"theme\":\"sepia\"}"},
                 new String[] {"POST", "/api/v1/paths", "{\"name\":\"Path\",\"color\":\"red\"}"},
                 new String[] {
                   "POST",

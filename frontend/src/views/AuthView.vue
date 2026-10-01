@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { api } from "../lib/api";
-import { theme } from "../lib/theme";
+import { isDarkTheme, theme } from "../lib/theme";
 import { useAuthStore } from "../stores/auth";
 
 type GoogleApi = {
@@ -106,7 +106,7 @@ function renderGoogleButton() {
   if (signature === renderedGoogleStyle) return;
   renderedGoogleStyle = signature;
   window.google.accounts.id.renderButton(googleButton.value, {
-    theme: theme.value === "dark" ? "filled_black" : "outline",
+    theme: isDarkTheme(theme.value) ? "filled_black" : "outline",
     size: "large",
     width,
   });

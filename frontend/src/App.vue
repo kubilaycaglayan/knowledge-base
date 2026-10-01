@@ -5,7 +5,7 @@ import { routeLocationKey, routerKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
 import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
 import AppSnackbar from "./components/AppSnackbar.vue";
-import { theme, themePreference, toggleTheme } from "./lib/theme";
+import { isDarkTheme, theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 import { useBoardsStore } from "./stores/boards";
 import { usePreferencesStore } from "./stores/preferences";
@@ -126,13 +126,13 @@ function authenticated() {
           class="theme-toggle ghost"
           type="button"
           :aria-label="
-            'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' theme'
+            'Switch to ' + (isDarkTheme(theme) ? 'light' : 'dark') + ' theme'
           "
           :title="`Theme: ${themePreference}`"
           @click="toggleTheme"
         >
           <svg
-            v-if="theme === 'dark'"
+            v-if="isDarkTheme(theme)"
             viewBox="0 0 24 24"
             width="18"
             height="18"

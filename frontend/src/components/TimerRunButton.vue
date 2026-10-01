@@ -60,12 +60,16 @@ defineEmits<{ click: [event: MouseEvent] }>();
   opacity: 0.4;
   cursor: not-allowed;
 }
-:global(:root[data-theme="dark"] .timer-run-button:not(.is-running)) {
+:global(:root[data-theme="dark"] .timer-run-button:not(.is-running)),
+:global(:root[data-theme="neon"] .timer-run-button:not(.is-running)),
+:global(:root[data-theme="tokyo-neon"] .timer-run-button:not(.is-running)) {
   border-color: #2f6b45;
   background: #15301f;
   color: #7fd49b;
 }
-:global(:root[data-theme="dark"] .timer-run-button:not(.is-running):hover) {
+:global(:root[data-theme="dark"] .timer-run-button:not(.is-running):hover),
+:global(:root[data-theme="neon"] .timer-run-button:not(.is-running):hover),
+:global(:root[data-theme="tokyo-neon"] .timer-run-button:not(.is-running):hover) {
   border-color: #4f9b6d;
   background: #1c3f29;
   color: #a3e4b7;

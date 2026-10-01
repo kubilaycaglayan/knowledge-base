@@ -1,5 +1,7 @@
 # API
 
+Theme preferences accept `auto`, `light`, `dark`, `solarized`, `banana`, `melon`, `fruity`, `neon`, `tokyo-neon`, and `beach`.
+
 The web Labels page filters the authenticated user's loaded `GET /labels` results
 by name locally (case-insensitive). Its `q` URL parameter is client state; label
 search does not add an API parameter or change ownership checks.

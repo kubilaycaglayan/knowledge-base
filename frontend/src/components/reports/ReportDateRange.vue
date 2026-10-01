@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { theme } from "../../lib/theme";
+import { isDarkTheme, theme } from "../../lib/theme";
 import { ref, watch } from "vue";
 import { VueDatePicker, type PresetDate } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -120,7 +120,7 @@ const formats = {
 <template>
   <div class="report-date-range">
     <VueDatePicker
-      :dark="theme === 'dark'"
+      :dark="isDarkTheme(theme)"
       :model-value="dates"
       :multi-calendars="false"
       :preset-dates="presets"

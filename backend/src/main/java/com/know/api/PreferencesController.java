@@ -19,7 +19,7 @@ public class PreferencesController {
   }
 
   /** Omitted fields keep their stored value. */
-  record Request(@Pattern(regexp = "auto|light|dark") String theme, Boolean kanbanWide, Boolean ganttWide, UUID lastCardBoardId, @Valid BoardState board) {}
+  record Request(@Pattern(regexp = "auto|light|dark|solarized|banana|melon|fruity|neon|tokyo-neon|beach") String theme, Boolean kanbanWide, Boolean ganttWide, UUID lastCardBoardId, @Valid BoardState board) {}
 
   /** Replaces the whole stored Boards page state; a null board is All boards. */
   record BoardState(UUID boardId, @Pattern(regexp = "kanban|gantt") String view, LocalDate ganttFrom, LocalDate ganttTo, @Size(max = 200) String search, java.util.List<@Pattern(regexp = "PRIORITY|DATE") String> ganttSorts) {}

@@ -9,7 +9,7 @@ import java.util.UUID;
 @Table(name = "user_preferences")
 public class UserPreferences {
   @Id @Column(name = "user_id") private UUID userId;
-  @Column(nullable = false, length = 8) private String theme = "auto";
+  @Column(nullable = false, length = 16) private String theme = "auto";
   @Column(name = "kanban_wide", nullable = false) private boolean kanbanWide;
   @Column(name = "gantt_wide", nullable = false) private boolean ganttWide;
   @Column(name = "last_card_board_id") private UUID lastCardBoardId;

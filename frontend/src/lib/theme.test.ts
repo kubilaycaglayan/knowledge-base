@@ -1,5 +1,5 @@
 import bootstrap from "../../public/theme.js?raw";
-import { applyTheme, theme, themePreference, toggleTheme } from "./theme";
+import { applyTheme, isDarkTheme, theme, themePreference, toggleTheme } from "./theme";
 
 function runBootstrap(context: {
   document: unknown;
@@ -61,5 +61,19 @@ describe("application theme", () => {
       window: { matchMedia: () => ({ matches: true }) },
     });
     expect(root.dataset).toEqual({ theme: "dark" });
+  });
+  it("boots and applies named palettes with the right browser color scheme", () => {
+    const root = { dataset: {}, style: {} };
+    runBootstrap({
+      document: { documentElement: root },
+      localStorage: { getItem: () => "tokyo-neon" },
+      window: { matchMedia: () => ({ matches: false }) },
+    });
+    expect(root.dataset).toEqual({ theme: "tokyo-neon" });
+    expect(root.style).toEqual({ colorScheme: "dark" });
+    applyTheme("banana");
+    expect(document.documentElement.dataset.theme).toBe("banana");
+    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(isDarkTheme("neon")).toBe(true);
   });
 });

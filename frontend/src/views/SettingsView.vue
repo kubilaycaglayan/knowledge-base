@@ -5,6 +5,7 @@ import ImportsView from "./ImportsView.vue";
 import {
   setThemePreference,
   themePreference,
+  themeOptions,
   type ThemePreference,
 } from "../lib/theme";
 
@@ -264,8 +265,7 @@ onMounted(load);
           <p class="section-kicker">APPEARANCE</p>
           <h3 id="appearance-title">Theme</h3>
           <p class="muted">
-            Choose whether Knowledge Base follows your system or stays light or
-            dark.
+            Pick a palette for your workspace. System default follows your device.
           </p>
         </div>
         <label class="theme-choice">
@@ -277,9 +277,9 @@ onMounted(load);
             :value="themePreference"
             @change="changeTheme"
           >
-            <option value="auto">System default</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
+            <option v-for="option in themeOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
           </select>
         </label>
       </section>

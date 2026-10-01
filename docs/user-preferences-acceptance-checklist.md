@@ -10,7 +10,7 @@ names the tests that cover it. Tick an item only once those tests pass.
 
 ## API
 
-- [x] **UP-01** `GET /api/v1/preferences` returns the signed-in user's `theme` (`auto`, `light`, or `dark`; default `auto`) and `kanbanWide` (default `false`). Migration `V48__user_preferences.sql` stores them per user.
+- [x] **UP-01** `GET /api/v1/preferences` returns the signed-in user's `theme` (`auto`, `light`, `dark`, `solarized`, `banana`, `melon`, `fruity`, `neon`, `tokyo-neon`, or `beach`; default `auto`) and `kanbanWide` (default `false`). `V48__user_preferences.sql` stores them per user and `V61__expand_user_theme_preferences.sql` extends the supported palette values.
   _Tests:_ `UserPreferencesIntegrationTest.preferencesDefaultForANewUser`, smoke `run-smoke-tests.sh` (Flyway on PostgreSQL)
 - [x] **UP-02** `PUT /api/v1/preferences` updates only the fields it sends and returns the full preferences. An unknown theme returns `400`, and one user's preferences never change another's.
   _Tests:_ `UserPreferencesIntegrationTest.preferencesArePartialUpdatesPerUser`, `UserPreferencesIntegrationTest.unknownThemeIsRejected`

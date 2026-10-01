@@ -61,6 +61,197 @@
   --workspace-overlay: #080d16b3;
 }
 
+/* Each palette keeps text, controls, and states on the same accessible token system. */
+:root[data-theme="solarized"] {
+  color-scheme: light;
+  --workspace-background: #fdf6e3;
+  --workspace-text: #073642;
+  --workspace-muted: #586e75;
+  --workspace-border: #d8cda9;
+  --workspace-control-border: #8a9b82;
+  --workspace-surface: #fffdf5;
+  --workspace-accent: #176b75;
+  --workspace-on-accent: #ffffff;
+  --workspace-accent-hover: #10525b;
+  --workspace-accent-active: #0a3e46;
+  --workspace-focus: #b04d00;
+  --workspace-hover: #f2e9cf;
+  --workspace-active: #e8ddb9;
+  --workspace-selected: #e9dfc2;
+  --workspace-selected-text: #073642;
+  --workspace-selected-border: #75856f;
+  --workspace-strong: #002b36;
+  --workspace-success: #287452;
+  --workspace-danger: #a12727;
+  --workspace-danger-hover: #861d1d;
+  --workspace-danger-surface: #fff0e8;
+  --workspace-danger-border: #d7a4a4;
+  --workspace-disabled: #f0ead9;
+  --workspace-overlay: #07364280;
+}
+:root[data-theme="banana"] {
+  color-scheme: light;
+  --workspace-background: #fff9dc;
+  --workspace-text: #382c08;
+  --workspace-muted: #65551f;
+  --workspace-border: #e7d99a;
+  --workspace-control-border: #a48a3e;
+  --workspace-surface: #fffdf1;
+  --workspace-accent: #684900;
+  --workspace-on-accent: #ffffff;
+  --workspace-accent-hover: #513800;
+  --workspace-accent-active: #3b2900;
+  --workspace-focus: #075985;
+  --workspace-hover: #f8edbd;
+  --workspace-active: #eedb91;
+  --workspace-selected: #f3e5ad;
+  --workspace-selected-text: #382c08;
+  --workspace-selected-border: #8d7026;
+  --workspace-strong: #2d2305;
+  --workspace-success: #286142;
+  --workspace-danger: #9c2525;
+  --workspace-danger-hover: #781b1b;
+  --workspace-danger-surface: #fff0e8;
+  --workspace-danger-border: #d7a4a4;
+  --workspace-disabled: #f4edcf;
+  --workspace-overlay: #382c0880;
+}
+:root[data-theme="melon"] {
+  color-scheme: light;
+  --workspace-background: #f0faf2;
+  --workspace-text: #17382a;
+  --workspace-muted: #496453;
+  --workspace-border: #c9dfce;
+  --workspace-control-border: #789783;
+  --workspace-surface: #fbfffb;
+  --workspace-accent: #176044;
+  --workspace-on-accent: #ffffff;
+  --workspace-accent-hover: #104b35;
+  --workspace-accent-active: #0b3928;
+  --workspace-focus: #a33a4b;
+  --workspace-hover: #e1f2e5;
+  --workspace-active: #cce8d3;
+  --workspace-selected: #d9eddc;
+  --workspace-selected-text: #17382a;
+  --workspace-selected-border: #648772;
+  --workspace-strong: #102d20;
+  --workspace-success: #176044;
+  --workspace-danger: #a12735;
+  --workspace-danger-hover: #861d2b;
+  --workspace-danger-surface: #fff0f1;
+  --workspace-danger-border: #d7a4a4;
+  --workspace-disabled: #eaf3eb;
+  --workspace-overlay: #17382a80;
+}
+:root[data-theme="fruity"] {
+  color-scheme: light;
+  --workspace-background: #fff4f1;
+  --workspace-text: #40212a;
+  --workspace-muted: #6c4a54;
+  --workspace-border: #e8cbd0;
+  --workspace-control-border: #aa7c87;
+  --workspace-surface: #fffafa;
+  --workspace-accent: #8b2944;
+  --workspace-on-accent: #ffffff;
+  --workspace-accent-hover: #702038;
+  --workspace-accent-active: #56172a;
+  --workspace-focus: #155c78;
+  --workspace-hover: #f7e5e7;
+  --workspace-active: #efd1d8;
+  --workspace-selected: #f1dce0;
+  --workspace-selected-text: #40212a;
+  --workspace-selected-border: #a86a79;
+  --workspace-strong: #35151f;
+  --workspace-success: #276148;
+  --workspace-danger: #a12727;
+  --workspace-danger-hover: #861d1d;
+  --workspace-danger-surface: #fff0ef;
+  --workspace-danger-border: #d7a4a4;
+  --workspace-disabled: #f3e9e9;
+  --workspace-overlay: #40212a80;
+}
+:root[data-theme="neon"] {
+  color-scheme: dark;
+  --workspace-background: #0b0d13;
+  --workspace-text: #f1f4ff;
+  --workspace-muted: #c1c9dd;
+  --workspace-border: #394151;
+  --workspace-control-border: #8592a8;
+  --workspace-surface: #141924;
+  --workspace-accent: #c7ff3d;
+  --workspace-on-accent: #172000;
+  --workspace-accent-hover: #d8ff79;
+  --workspace-accent-active: #e8ffaf;
+  --workspace-focus: #65dfff;
+  --workspace-hover: #252c39;
+  --workspace-active: #333d4e;
+  --workspace-selected: #293242;
+  --workspace-selected-text: #f4f7ff;
+  --workspace-selected-border: #9eacc5;
+  --workspace-strong: #ffffff;
+  --workspace-success: #82e9af;
+  --workspace-danger: #ffaaaa;
+  --workspace-danger-hover: #ffd0d0;
+  --workspace-danger-surface: #3a242b;
+  --workspace-danger-border: #925e68;
+  --workspace-disabled: #202633;
+  --workspace-overlay: #03050bb3;
+}
+:root[data-theme="tokyo-neon"] {
+  color-scheme: dark;
+  --workspace-background: #11111b;
+  --workspace-text: #f4f0ff;
+  --workspace-muted: #c3badf;
+  --workspace-border: #40394f;
+  --workspace-control-border: #8f82aa;
+  --workspace-surface: #1a1927;
+  --workspace-accent: #ff65a3;
+  --workspace-on-accent: #260b1a;
+  --workspace-accent-hover: #ff91bb;
+  --workspace-accent-active: #ffb2ce;
+  --workspace-focus: #78dce8;
+  --workspace-hover: #292638;
+  --workspace-active: #39334b;
+  --workspace-selected: #322c42;
+  --workspace-selected-text: #fbf8ff;
+  --workspace-selected-border: #a89cbd;
+  --workspace-strong: #ffffff;
+  --workspace-success: #9de6b1;
+  --workspace-danger: #ffabb5;
+  --workspace-danger-hover: #ffd0d5;
+  --workspace-danger-surface: #3c232c;
+  --workspace-danger-border: #99606d;
+  --workspace-disabled: #252331;
+  --workspace-overlay: #080711b3;
+}
+:root[data-theme="beach"] {
+  color-scheme: light;
+  --workspace-background: #eff9fc;
+  --workspace-text: #143448;
+  --workspace-muted: #456578;
+  --workspace-border: #c7dfe8;
+  --workspace-control-border: #7295a4;
+  --workspace-surface: #fbfeff;
+  --workspace-accent: #075d78;
+  --workspace-on-accent: #ffffff;
+  --workspace-accent-hover: #064b62;
+  --workspace-accent-active: #04384a;
+  --workspace-focus: #a54c21;
+  --workspace-hover: #def0f5;
+  --workspace-active: #c7e5ee;
+  --workspace-selected: #d4eaf0;
+  --workspace-selected-text: #143448;
+  --workspace-selected-border: #648b9b;
+  --workspace-strong: #102a3a;
+  --workspace-success: #286044;
+  --workspace-danger: #a12727;
+  --workspace-danger-hover: #861d1d;
+  --workspace-danger-surface: #fff1ef;
+  --workspace-danger-border: #d7a4a4;
+  --workspace-disabled: #eaf2f4;
+  --workspace-overlay: #14344880;
+}
+
 /* Menus are teleported outside the shell; theme tokens live on html. */
 :root .dp__theme_light,
 :root .dp__theme_dark {

@@ -6,12 +6,14 @@
   } catch {
     /* Storage may be unavailable. */
   }
+  const themes = ["light", "dark", "solarized", "banana", "melon", "fruity", "neon", "tokyo-neon", "beach"];
   const theme =
-    preference === "light" || preference === "dark"
+    themes.includes(preference)
       ? preference
       : window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
   document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
+  document.documentElement.style.colorScheme =
+    theme === "dark" || theme === "neon" || theme === "tokyo-neon" ? "dark" : "light";
 })();
