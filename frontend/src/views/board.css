@@ -85,6 +85,7 @@
 .timeline-days span { padding:.65rem .25rem; text-align:center; color:var(--workspace-muted); font-variant-numeric:tabular-nums; font-size:.75rem; }
 .timeline-label-row, .timeline-row { height:34px; border-bottom:1px solid var(--workspace-border); }
 .timeline-label-row { overflow:hidden; }
+.timeline-label-row .timeline-label { min-height:0; }
 .timeline-row { display:flex; min-width:0; }
 .timeline-track { display:flex; flex:1 1 auto; align-items:center; min-width:0; position:relative; }
 .timeline-cell { flex:1 1 0; min-width:0; height:100%; border-right:1px solid color-mix(in srgb, var(--workspace-border) 55%, transparent); }
