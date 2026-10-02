@@ -162,6 +162,41 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
 
   // LH-02
   @Test
+  void relatedRecordsArePagedScopedAndExcludeDeletedContent() {
+    String owner = token();
+    String labelId = label(owner, "Record list");
+    for (int i = 0; i < 11; i++)
+      session(owner, at("2026-05-02T09:00:00Z").plusSeconds(i),
+          at("2026-05-02T10:00:00Z").plusSeconds(i), labelId);
+    String endpoint = "/api/v1/labels/" + labelId + "/history/records";
+    JsonNode first = ok(HttpMethod.GET, endpoint + "?kind=sessions", owner, null);
+    assertEquals(10, first.get("items").size());
+    assertTrue(first.get("hasMore").asBoolean());
+    assertEquals("2026-05-02T09:00:10Z", first.get("items").get(0).get("date").asText());
+    JsonNode second = ok(HttpMethod.GET, endpoint + "?kind=sessions&page=1", owner, null);
+    assertEquals(1, second.get("items").size());
+    assertFalse(second.get("hasMore").asBoolean());
+    log(owner, at("2026-05-02T09:00:00Z"), labelId);
+    assertEquals("Log", ok(HttpMethod.GET, endpoint + "?kind=logs", owner, null)
+        .get("items").get(0).get("title").asText());
+    ok(HttpMethod.PUT, "/api/v1/calendar/days/2026-05-02", owner,
+        "{\"note\":\"A good day\",\"labels\":[{\"labelId\":\"" + labelId + "\"}]}");
+    assertEquals("2026-05-02", ok(HttpMethod.GET, endpoint + "?kind=dates", owner, null)
+        .get("items").get(0).get("date").asText());
+    String noteId = note(owner, "Record list");
+    assertEquals("Note", ok(HttpMethod.GET, endpoint + "?kind=notes", owner, null)
+        .get("items").get(0).get("title").asText());
+    exchange(HttpMethod.DELETE, "/api/v1/notes/" + noteId, owner, null);
+    assertEquals(0, ok(HttpMethod.GET, endpoint + "?kind=notes", owner, null).get("items").size());
+    String sessionId = first.get("items").get(0).get("id").asText();
+    exchange(HttpMethod.DELETE, "/api/v1/time-entries/" + sessionId, owner, null);
+    assertFalse(ok(HttpMethod.GET, endpoint + "?kind=sessions", owner, null).get("hasMore").asBoolean());
+    assertEquals(HttpStatus.NOT_FOUND, exchange(HttpMethod.GET, endpoint + "?kind=logs", token(), null).getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, exchange(HttpMethod.GET, endpoint + "?kind=sessions&page=-1", owner, null).getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, exchange(HttpMethod.GET, endpoint + "?kind=unknown", owner, null).getStatusCode());
+  }
+
+  @Test
   void unusedLabelHasAnEmptyHistory() {
     String token = token();
     String labelId = label(token, "Unused");

@@ -1,5 +1,15 @@
 # API
 
+`GET /labels/{id}/history/records?kind=sessions|dates|notes|logs&page=0`
+returns `{ items: [{ id, date, title, preview }], hasMore }`. Pages contain up to
+10 records, newest first with ID as the tie-breaker. `date` is an ISO instant
+except for calendar dates (`YYYY-MM-DD`); text previews are capped at 320
+characters plus an ellipsis. Page is zero-based (0–100000). Records and the
+label are scoped to the authenticated user; deleted sessions and archived notes
+are excluded. Unknown kinds and invalid pages return 400; foreign labels return
+404. The web history dialog displays these in a separated bottom section with
+category counts, empty/error states, retry, and Previous/Next pagination.
+
 Theme preferences accept `auto`, `light`, `dark`, `solarized`, `banana`, `melon`, `fruity`, `neon`, `tokyo-neon`, and `beach`.
 
 The web Labels page filters the authenticated user's loaded `GET /labels` results

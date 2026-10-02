@@ -36,6 +36,46 @@ public class LabelHistoryService {
 
   public record Related(UUID id, String name, String color, long together, long trackedSeconds) {}
 
+  public enum RecordKind { sessions, dates, notes, logs }
+
+  public record RecordView(UUID id, String date, String title, String preview) {}
+
+  public record Records(List<RecordView> items, boolean hasMore) {}
+
+  @Transactional(readOnly = true)
+  public Records records(UUID userId, UUID labelId, RecordKind kind, int page) {
+    if (!labels.findByIdAndUserId(labelId, userId).isPresent())
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Label not found");
+    if (page < 0 || page > 100000)
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid page");
+    String query = switch (kind) {
+      case sessions -> SESSIONS.replace("select t ",
+          "select t.id, t.startedAt, t.description, t.description ")
+          + " order by t.startedAt desc, t.id desc";
+      case dates -> DAYS.replace("select d.id, d.recordDate ",
+          "select d.id, d.recordDate, d.note, d.note ")
+          + " order by d.recordDate desc, d.id desc";
+      case notes -> NOTES.replace("select n.id, n.createdAt ",
+          "select n.id, n.createdAt, n.title, n.contentText ")
+          + " order by n.createdAt desc, n.id desc";
+      case logs -> LOGS.replace("select g.id, g.occurredAt ",
+          "select g.id, g.occurredAt, g.body, g.body ")
+          + " order by g.occurredAt desc, g.id desc";
+    };
+    List<Object[]> rows = entityManager.createQuery(query, Object[].class)
+        .setParameter("userId", userId).setParameter("labelId", labelId)
+        .setFirstResult(page * 10).setMaxResults(11).getResultList();
+    return new Records(rows.stream().limit(10)
+        .map(row -> new RecordView((UUID) row[0], row[1].toString(),
+            excerpt((String) row[2]), excerpt((String) row[3])))
+        .toList(), rows.size() > 10);
+  }
+
+  private static String excerpt(String value) {
+    if (value == null) return "";
+    return value.length() <= 320 ? value : value.substring(0, 320) + "…";
+  }
+
   public record History(
       UUID labelId,
       String name,

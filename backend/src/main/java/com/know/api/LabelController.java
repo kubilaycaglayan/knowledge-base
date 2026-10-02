@@ -42,6 +42,14 @@ public class LabelController {
     return history.history(user(a), id, zone);
   }
 
+  @GetMapping("/{id}/history/records")
+  public LabelHistoryService.Records records(
+      Authentication a, @PathVariable UUID id,
+      @RequestParam LabelHistoryService.RecordKind kind,
+      @RequestParam(defaultValue = "0") int page) {
+    return history.records(user(a), id, kind, page);
+  }
+
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public LabelManagementService.View create(Authentication a, @Valid @RequestBody Request r) {
