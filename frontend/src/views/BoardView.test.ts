@@ -1241,6 +1241,68 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("hides and shows the Gantt card list from the timeline's top-left toggle", async () => {
+    const store = seedBoard(["Backlog"]);
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+    store.ganttCards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", startDate: "2026-09-01", dueDate: "2026-09-03" }];
+    const preferences = usePreferencesStore();
+    const wrapper = mountBoard();
+    await flushPromises();
+    const setBoardState = vi.spyOn(preferences, "setBoardState"), setGanttWide = vi.spyOn(preferences, "setGanttWide");
+    mockRouter.push.mockClear(); mockRouter.replace.mockClear();
+    const layout = wrapper.find(".timeline-layout"), pane = wrapper.find(".timeline-label-pane");
+    const toggle = layout.find("button.gantt-labels-toggle");
+
+    expect(toggle.attributes("aria-label")).toBe("Hide card list");
+    expect(toggle.attributes("aria-expanded")).toBe("true");
+    expect(pane.attributes("id")).toBeTruthy();
+    expect(toggle.attributes("aria-controls")).toBe(pane.attributes("id"));
+    expect(pane.isVisible()).toBe(true);
+
+    await toggle.trigger("click");
+    expect(layout.classes()).toContain("labels-hidden");
+    expect(pane.attributes("style")).toContain("display: none");
+    expect(toggle.attributes("aria-label")).toBe("Show card list");
+    expect(toggle.attributes("aria-expanded")).toBe("false");
+    expect(wrapper.findAll(".timeline-row")).toHaveLength(1);
+    expect(wrapper.find(".gantt").classes()).not.toContain("wide");
+
+    await toggle.trigger("click");
+    expect(layout.classes()).not.toContain("labels-hidden");
+    expect(pane.attributes("style") ?? "").not.toContain("display: none");
+    expect(toggle.attributes("aria-expanded")).toBe("true");
+    expect(mockRouter.push).not.toHaveBeenCalled();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(setBoardState).not.toHaveBeenCalled();
+    expect(setGanttWide).not.toHaveBeenCalled();
+    await wrapper.unmount();
+  });
+
+  it("remembers the hidden Gantt card list in this browser", async () => {
+    seedBoard(["Backlog"]);
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".gantt-labels-toggle").trigger("click");
+    await wrapper.unmount();
+
+    const again = mountBoard();
+    await flushPromises();
+    expect(again.find(".timeline-layout").classes()).toContain("labels-hidden");
+    expect(again.find(".gantt-labels-toggle").attributes("aria-label")).toBe("Show card list");
+    await again.unmount();
+
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    const blocked = mountBoard();
+    await flushPromises();
+    expect(blocked.find(".timeline-layout").classes()).not.toContain("labels-hidden");
+    await blocked.find(".gantt-labels-toggle").trigger("click");
+    expect(blocked.find(".timeline-layout").classes()).toContain("labels-hidden");
+    getItem.mockRestore(); setItem.mockRestore();
+    await blocked.unmount();
+  });
+
   describe("card editor", () => {
     const baseCard = { id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1" };
     async function openCard() {

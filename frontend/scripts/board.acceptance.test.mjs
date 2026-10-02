@@ -137,6 +137,72 @@ for (const width of [1440, 1600]) it(`keeps the Gantt width toggle and vertical 
   }
 });
 
+// The card list toggle sits on the timeline's top-left edge, just right of the
+// card list; hiding the list gives the timeline the whole Gantt width.
+for (const width of [390, 1440]) it(`hides the Gantt card list from the timeline's top-left edge at ${width}px`, async (t) => {
+  const { page } = await fixture(t, width);
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `list-${i}`, title: `List card ${i}`, position: i })) }));
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-row").nth(39).waitFor();
+  const url = page.url();
+  const measure = () => page.evaluate(() => {
+    const gantt = document.querySelector(".gantt").getBoundingClientRect(), layout = document.querySelector(".timeline-layout").getBoundingClientRect();
+    const scroller = document.querySelector(".timeline-scroll"), box = scroller.getBoundingClientRect();
+    const header = scroller.querySelector(".timeline-header").getBoundingClientRect();
+    const toggleEl = document.querySelector(".gantt-labels-toggle"), toggle = toggleEl.getBoundingClientRect();
+    const hit = [toggleEl, ...toggleEl.querySelectorAll("*")];
+    const midX = toggle.left + toggle.width / 2, midY = toggle.top + toggle.height / 2;
+    const corners = [[midX, toggle.top + 2], [toggle.right - 2, midY], [midX, toggle.bottom - 2], [toggle.left + 2, midY]];
+    const pane = document.querySelector(".timeline-label-pane");
+    const target = getComputedStyle(toggleEl, "::after");
+    return {
+      label: toggleEl.getAttribute("aria-label"), expanded: toggleEl.getAttribute("aria-expanded"),
+      paneVisible: pane.getBoundingClientRect().width > 0, paneTop: pane.scrollTop, timelineTop: scroller.scrollTop,
+      offsetLeft: toggle.left - box.left, insideHeader: toggle.top >= header.top && toggle.bottom <= header.bottom,
+      insideGantt: toggle.left >= gantt.left && toggle.right <= gantt.right && toggle.top >= gantt.top && toggle.bottom <= gantt.bottom,
+      hit: corners.every(([x, y]) => hit.includes(document.elementFromPoint(x, y))),
+      timelineLeft: box.left - layout.left, timelineWidth: box.width, layoutWidth: layout.width,
+      touchTarget: Math.max(toggle.width, toggle.height, Math.abs(parseFloat(target.top) || 0) * 2 + toggle.height),
+    };
+  });
+  const shown = await measure();
+  assert.equal(shown.label, "Hide card list");
+  assert.equal(shown.expanded, "true");
+  assert.equal(shown.paneVisible, true);
+  assert.ok(shown.offsetLeft >= 0 && shown.offsetLeft <= 12, `The toggle must sit on the timeline's left edge (offset ${shown.offsetLeft})`);
+  assert.equal(shown.insideHeader, true, "The toggle must sit in the timeline's header row");
+  assert.equal(shown.insideGantt, true);
+  assert.equal(shown.hit, true, "The whole toggle must be visible and clickable");
+  if (width <= 700) assert.ok(shown.touchTarget >= 44, `The phone touch target must be at least 44px (${shown.touchTarget})`);
+  await page.screenshot({ path: join(screenshotDir, `gantt-card-list-shown-${width}.png`) });
+
+  await page.getByRole("button", { name: "Hide card list", exact: true }).click();
+  await page.getByRole("button", { name: "Show card list", exact: true }).waitFor();
+  await page.waitForTimeout(100);
+  const hidden = await measure();
+  assert.equal(hidden.expanded, "false");
+  assert.equal(hidden.paneVisible, false, "The card list must be hidden");
+  assert.ok(hidden.timelineLeft <= 2, `The timeline must start at the Gantt's left edge (${hidden.timelineLeft})`);
+  assert.ok(hidden.timelineWidth >= hidden.layoutWidth - 2, "The timeline must fill the whole Gantt width");
+  assert.ok(hidden.offsetLeft >= 0 && hidden.offsetLeft <= 12, `The toggle must stay on the timeline's left edge (offset ${hidden.offsetLeft})`);
+  assert.equal(hidden.insideHeader, true);
+  assert.equal(hidden.hit, true);
+  assert.equal(page.url(), url, "Toggling the card list must not change the URL");
+  assert.equal(await page.locator(".timeline-row").count(), 40);
+  const results = await new AxeBuilder({ page }).analyze();
+  assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
+  await page.screenshot({ path: join(screenshotDir, `gantt-card-list-hidden-${width}.png`) });
+
+  await page.locator(".timeline-scroll").evaluate((element) => { element.scrollTop = 300; element.dispatchEvent(new Event("scroll")); });
+  await page.getByRole("button", { name: "Show card list", exact: true }).click();
+  await page.getByRole("button", { name: "Hide card list", exact: true }).waitFor();
+  await page.waitForTimeout(100);
+  const again = await measure();
+  assert.equal(again.paneVisible, true);
+  assert.ok(again.timelineTop > 0 && Math.abs(again.paneTop - again.timelineTop) <= 1, `The card list must scroll with the timeline (${again.paneTop} vs ${again.timelineTop})`);
+  assert.equal(page.url(), url);
+});
+
 it("uses the standard 10px nav bar bottom margin in Kanban and Gantt", async (t) => {
   const { page } = await fixture(t, 1440);
   const headerMargin = () => page.locator(".dashboard-shell > header").evaluate((element) => getComputedStyle(element).marginBottom);
