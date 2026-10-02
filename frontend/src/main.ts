@@ -13,10 +13,10 @@ applyTheme(theme.value);
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/", redirect: "/sessions" },
+    { path: "/", component: () => import("./views/SessionsView.vue") },
     { path: "/paths", component: () => import("./views/PathsView.vue") },
     { path: "/timeline", component: () => import("./views/TimelineView.vue") },
-    { path: "/sessions", component: () => import("./views/SessionsView.vue") },
+    { path: "/sessions", redirect: "/" },
     { path: "/logs", component: () => import("./views/LogsView.vue") },
     { path: "/reports", component: () => import("./views/ReportsView.vue") },
     { path: "/calendar", component: () => import("./views/CalendarView.vue") },

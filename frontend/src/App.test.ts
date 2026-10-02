@@ -115,7 +115,7 @@ describe("App", () => {
     expect(wrapper.find("button.ghost").text()).toBe("Sign out");
   });
 
-  it("redirects sign-in to Sessions by default", async () => {
+  it("redirects sign-in to Sessions at the root by default", async () => {
     const replace = vi.fn();
     const wrapper = mount(App, {
       global: {
@@ -126,7 +126,7 @@ describe("App", () => {
 
     await wrapper.get('[data-test="authenticate"]').trigger("click");
 
-    expect(replace).toHaveBeenCalledWith("/sessions");
+    expect(replace).toHaveBeenCalledWith("/");
   });
 
   it("honors a safe internal redirect after sign-in", async () => {
@@ -166,7 +166,7 @@ describe("App", () => {
 
     await wrapper.get('[data-test="authenticate"]').trigger("click");
 
-    expect(replace).toHaveBeenCalledWith("/sessions");
+    expect(replace).toHaveBeenCalledWith("/");
   });
 
   it("shares the workspace appearance and skip link across every page and authentication", async () => {
@@ -205,7 +205,7 @@ describe("App", () => {
     wrapper.unmount();
   });
 
-  it("does not mount the floating tracker on the sessions page", async () => {
+  it("does not mount the floating tracker on the sessions route", async () => {
     const { reactive } = await import("vue");
     const route = reactive({ path: "/paths", query: {} });
     localStorage.setItem("know_token", "token");
@@ -216,6 +216,10 @@ describe("App", () => {
 
     expect(tracker.exists()).toBe(true);
     expect(tracker.attributes("style") || "").not.toContain("display: none");
+
+    route.path = "/";
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-test="floating-tracker"]').exists()).toBe(false);
 
     route.path = "/sessions";
     await wrapper.vm.$nextTick();

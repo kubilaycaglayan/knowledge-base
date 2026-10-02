@@ -76,14 +76,14 @@ watchEffect(() => {
     ? "Sign in"
     : path.startsWith("/notes/")
       ? "Note"
-      : path === "/"
+      : path === "/" || path === "/sessions"
         ? "Sessions"
         : path.slice(1);
   document.title = `Knowledge Base · ${page.charAt(0).toUpperCase()}${page.slice(1)}`;
 });
 function logout() {
   auth.clearToken();
-  void router?.replace("/sessions");
+  void router?.replace("/");
 }
 function authenticated() {
   auth.refresh();
@@ -93,7 +93,7 @@ function authenticated() {
     redirect.startsWith("/") &&
     !redirect.startsWith("//")
       ? redirect
-      : "/sessions";
+      : "/";
   void router?.replace(destination);
 }
 </script>
