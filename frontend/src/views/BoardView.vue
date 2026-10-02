@@ -472,7 +472,7 @@ async function restoreBoardState() {
   }
   boardStateReady = true;
 }
-const boardState = computed<BoardViewState>(() => { const gantt = view.value === "gantt"; const from = route.query.from, to = route.query.to; return { boardId: store.selectedId, view: view.value, ganttFrom: gantt && typeof from === "string" ? from : preferences.board.ganttFrom, ganttTo: gantt && typeof to === "string" ? to : preferences.board.ganttTo, ganttSorts: preferences.board.ganttSorts, search: activeSearch.value }; });
+const boardState = computed<BoardViewState>(() => { const gantt = view.value === "gantt"; const from = route.query.from, to = route.query.to; return { boardId: store.selectedId, view: view.value, ganttFrom: gantt && typeof from === "string" ? from : preferences.board.ganttFrom, ganttTo: gantt && typeof to === "string" ? to : preferences.board.ganttTo, ganttSorts: preferences.board.ganttSorts, ganttShowPriority: preferences.board.ganttShowPriority, ganttShowStatus: preferences.board.ganttShowStatus, ganttShowPath: preferences.board.ganttShowPath, search: activeSearch.value }; });
 watch(boardState, (state) => { if (boardStateReady && state.boardId && hasBoardQuery()) preferences.setBoardState(state); });
 watch(activeSearch, (search) => { if (!boardStateReady || (route.query.q ?? "") === search) return; const { q: _previous, ...query } = route.query; void router.replace({ query: search ? { ...query, q: search } : query }); });
 // Leaving the page also empties the query; only a bare /board restores.

@@ -104,6 +104,28 @@ describe("BoardView", () => {
     return store;
   }
 
+  it("offers Gantt detail switches in board settings and renders enabled chips", async () => {
+    const store = seedBoard(["In progress"]);
+    store.ganttCards = [{ id: "card-1", boardId: "test-id", statusId: "status-1", title: "Release", body: "{}", priority: "HIGH", startDate: "2026-09-03", dueDate: "2026-09-05", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    await openSettingsFor(wrapper, "Test Board");
+    const settings = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
+    expect(settings.text()).toContain("Show priority");
+    expect(settings.text()).toContain("Show status");
+    expect(settings.text()).toContain("Show path");
+    await settings.findAll(".settings-switch input")[0].setValue(true);
+    await settings.findAll(".settings-switch input")[1].setValue(true);
+    expect(usePreferencesStore().board.ganttShowPriority).toBe(true);
+    expect(usePreferencesStore().board.ganttShowStatus).toBe(true);
+    await settings.get(".board-settings-footer button:last-child").trigger("click");
+    await flushPromises();
+    expect(wrapper.findAll(".timeline-card-chip").map((chip) => chip.text())).toEqual(["HIGH", "In progress"]);
+    await wrapper.unmount();
+  });
+
   it("renders the board page with proper structure", async () => {
     const wrapper = mountBoard();
 
