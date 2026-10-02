@@ -183,7 +183,8 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   bars from board settings; save these display choices with the user's board
   preferences (V63).
 - [x] Show an arrow at the timeline edge on the row of each dated Gantt card
-  outside the visible dates; clicking it starts the timeline at that card.
+  outside the visible dates; a left arrow starts the timeline at that card
+  and a right arrow ends it at the card's end date.
   Acceptance: `docs/gantt-offscreen-arrows-acceptance-checklist.md`.
 - [x] Keep the timer WebSocket as the web's live channel in production: route
   `/ws/*` through the Cloudflare proxy (and standalone Vite), ping idle

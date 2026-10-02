@@ -35,7 +35,7 @@ that cover it. Tick an item only once those tests pass.
 - [x] **GO-06** Each arrow is a native button named "Show <title> on the
   timeline, starting <date>", with a hit target of at least 24px (44px on
   phones) and a visible focus ring.
-- [ ] **GO-07** Clicking a right arrow sets the timeline end date to the
+- [x] **GO-07** Clicking a right arrow sets the timeline end date to the
   card's end date (its start date when it has no due date), keeps the range
   length, puts the new range in the URL and loads it, and scrolls so the card's
   end day is the last visible day; the card's bar is then in view with no arrow.

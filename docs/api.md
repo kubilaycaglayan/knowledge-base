@@ -41,9 +41,11 @@ keeping the visible date in place. It renders nearby dates as the viewport moves
 URL parameters and saved board range follow the leftmost visible date. Today
 jumps to the local current date, and the date inputs remain available for
 direct navigation. A dated card whose days all lie before or after the scrolled
-viewport shows an arrow button pinned to that edge of its row; clicking it
-starts the timeline at the card's start date (its due date when it has none),
-keeping the range length.
+viewport shows an arrow button pinned to that edge of its row. Clicking a left
+arrow starts the timeline at the card's start date (its due date when it has
+none); clicking a right arrow ends the timeline at the card's end date (its
+start date when it has no due date) and scrolls that day to the right edge.
+Both keep the range length.
 The Gantt chart marks the local current day with a red vertical line when it is
 in view. Dragging a card shifts its dates by whole calendar days; dragging its
 start or end handle resizes its inclusive range, clamped to at least one day.
