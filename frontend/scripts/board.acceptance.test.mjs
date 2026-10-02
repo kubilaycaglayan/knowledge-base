@@ -95,6 +95,46 @@ it("keeps the full-width Gantt card list inside the visible shell", async (t) =>
   assert.equal(visible, true, "Card heading must not be clipped by the page container in wide mode");
 });
 
+// The width toggle sits on the timeline's top-right corner; the Gantt clips
+// overflow, so the whole button must stay inside it in both widths, and the
+// wide timeline must keep its vertical scrollbar inside the viewport.
+for (const width of [1440, 1600]) it(`keeps the Gantt width toggle and vertical scrollbar visible in both widths at ${width}px`, async (t) => {
+  // Headless Chromium hides scrollbars by default; this check needs real ones.
+  const shared = browser, scrollbarBrowser = await chromium.launch({ headless: !process.env.BOARD_HEADED, ignoreDefaultArgs: ["--hide-scrollbars"] });
+  t.after(() => scrollbarBrowser.close());
+  browser = scrollbarBrowser;
+  const { page } = await fixture(t, width).finally(() => { browser = shared; });
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `tall-${i}`, title: `Tall card ${i}`, position: i })) }));
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-row").nth(39).waitFor();
+  const check = () => page.evaluate(() => {
+    const gantt = document.querySelector(".gantt").getBoundingClientRect();
+    const toggleEl = document.querySelector(".gantt-width-toggle"), toggle = toggleEl.getBoundingClientRect();
+    const scroller = document.querySelector(".timeline-scroll"), box = scroller.getBoundingClientRect();
+    const corners = [[toggle.left + 2, toggle.top + 2], [toggle.right - 2, toggle.top + 2], [toggle.left + 2, toggle.bottom - 2], [toggle.right - 2, toggle.bottom - 2]];
+    const scrollbarX = box.right - (scroller.offsetWidth - scroller.clientWidth) / 2, scrollbarY = box.top + box.height / 2;
+    return {
+      toggleInside: toggle.top >= gantt.top && toggle.right <= gantt.right && toggle.left >= gantt.left && toggle.bottom <= gantt.bottom,
+      toggleHit: corners.every(([x, y]) => toggleEl.contains(document.elementFromPoint(x, y))),
+      toggleClearsScrollbar: toggle.right <= box.right - (scroller.offsetWidth - scroller.clientWidth),
+      scrollbarWidth: scroller.offsetWidth - scroller.clientWidth,
+      scrollerRight: box.right, viewport: document.documentElement.clientWidth,
+      scrollbarHit: document.elementFromPoint(scrollbarX, scrollbarY) === scroller,
+    };
+  });
+  for (const [mode, name] of [["page width", "Expand timeline to full width"], ["full width", "Collapse timeline to page width"]]) {
+    if (mode === "full width") { await page.getByRole("button", { name: "Expand timeline to full width", exact: true }).click(); await page.getByRole("button", { name, exact: true }).waitFor(); await page.waitForTimeout(100); }
+    const state = await check();
+    assert.equal(state.toggleInside, true, `The width toggle must sit inside the Gantt's clipping box at ${mode}`);
+    assert.equal(state.toggleHit, true, `The whole width toggle must be visible and clickable at ${mode}`);
+    assert.equal(state.toggleClearsScrollbar, true, `The width toggle must not cover the vertical scrollbar at ${mode}`);
+    assert.ok(state.scrollbarWidth > 0, `The timeline must show a vertical scrollbar at ${mode}`);
+    assert.ok(state.scrollerRight <= state.viewport, `The timeline's right edge (${state.scrollerRight}) must stay inside the viewport (${state.viewport}) at ${mode}`);
+    assert.equal(state.scrollbarHit, true, `The vertical scrollbar must not be covered or clipped at ${mode}`);
+    await page.screenshot({ path: join(screenshotDir, `gantt-width-toggle-${mode.replace(" ", "-")}-${width}.png`) });
+  }
+});
+
 it("uses the standard 10px nav bar bottom margin in Kanban and Gantt", async (t) => {
   const { page } = await fixture(t, 1440);
   const headerMargin = () => page.locator(".dashboard-shell > header").evaluate((element) => getComputedStyle(element).marginBottom);
