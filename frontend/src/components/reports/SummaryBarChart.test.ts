@@ -325,6 +325,9 @@ describe("SummaryBarChart", () => {
     expect(option.grid.bottom).toBeGreaterThanOrEqual(
       (slider?.bottom ?? 0) + 36 + 56,
     );
+    expect(wrapper.get(".chart-frame").classes()).toContain(
+      "has-range-selector",
+    );
   });
 
   it("RS-03: keeps short ranges without a range selector", () => {
@@ -337,6 +340,9 @@ describe("SummaryBarChart", () => {
 
     expect(option.dataZoom).toEqual([]);
     expect(option.grid.bottom).toBe(58);
+    expect(wrapper.get(".chart-frame").classes()).not.toContain(
+      "has-range-selector",
+    );
   });
 
   it("returns a safe empty tooltip when no day matches", () => {
