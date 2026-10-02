@@ -95,6 +95,41 @@ it("keeps the full-width Gantt card list inside the visible shell", async (t) =>
   assert.equal(visible, true, "Card heading must not be clipped by the page container in wide mode");
 });
 
+for (const width of [390, 1440]) it(`pins Gantt card titles to the visible left edge until the bar ends at ${width}px`, async (t) => {
+  const { page } = await fixture(t, width);
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-bar-title").waitFor();
+  const initial = await page.evaluate(() => {
+    const scroller = document.querySelector(".timeline-scroll");
+    const bar = document.querySelector(".timeline-bar");
+    if (!scroller || !bar) throw new Error("Expected a Gantt bar and timeline scroller");
+    return { scrollLeft: scroller.scrollLeft, scrollerLeft: scroller.getBoundingClientRect().left, barLeft: bar.getBoundingClientRect().left };
+  });
+  await page.locator(".timeline-scroll").evaluate((scroller, initial) => {
+    scroller.scrollLeft = initial.scrollLeft + initial.barLeft - initial.scrollerLeft + 20;
+  }, initial);
+  const pinned = await page.evaluate(() => {
+    const scroller = document.querySelector(".timeline-scroll");
+    const title = document.querySelector(".timeline-bar-title");
+    const barButton = title?.closest(".timeline-bar");
+    if (!scroller || !title || !barButton) throw new Error("Expected a Gantt title inside its card bar");
+    return { scrollerLeft: scroller.getBoundingClientRect().left, titleLeft: title.getBoundingClientRect().left, titleRight: title.getBoundingClientRect().right, barButtonRight: barButton.getBoundingClientRect().right };
+  });
+  assert.ok(Math.abs(pinned.titleLeft - pinned.scrollerLeft) < 1, "The title must stick to the visible left edge when its bar starts offscreen");
+  assert.ok(pinned.titleRight <= pinned.barButtonRight + 1, "The title must stay within the bar's available space");
+
+  await page.locator(".timeline-scroll").evaluate((scroller, pinned) => {
+    scroller.scrollLeft += pinned.barButtonRight - pinned.scrollerLeft + 10;
+  }, pinned);
+  const pastBar = await page.evaluate(() => {
+    const scroller = document.querySelector(".timeline-scroll");
+    const title = document.querySelector(".timeline-bar-title");
+    if (!scroller || !title) throw new Error("Expected the Gantt title to remain mounted");
+    return { scrollerLeft: scroller.getBoundingClientRect().left, titleLeft: title.getBoundingClientRect().left };
+  });
+  assert.ok(pastBar.titleLeft < pastBar.scrollerLeft, "The title must move out with the bar once its available space ends");
+});
+
 for (const width of [390, 1440]) it(`keeps Gantt rows aligned while scrolling at ${width}px`, async (t) => {
   const { page } = await fixture(t, width);
   await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `scroll-${i}`, title: `Scroll card ${i}`, position: i })) }));
