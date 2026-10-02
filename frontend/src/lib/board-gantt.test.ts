@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addCalendarDays, barPosition, inclusiveDayCount, timelineDays } from "./board-gantt";
+import { addCalendarDays, addCalendarMonths, barPosition, inclusiveDayCount, timelineDays } from "./board-gantt";
 
 describe("board gantt calendar math", () => {
   it("counts both endpoints for a single day and a range", () => {
@@ -12,6 +12,13 @@ describe("board gantt calendar math", () => {
     expect(addCalendarDays("2024-02-28", 1)).toBe("2024-02-29");
     expect(addCalendarDays("2024-02-29", 1)).toBe("2024-03-01");
     expect(addCalendarDays("2024-01-01", -1)).toBe("2023-12-31");
+  });
+
+  it("adds calendar months, clamping to the shorter month's last day", () => {
+    expect(addCalendarMonths("2026-10-02", -2)).toBe("2026-08-02");
+    expect(addCalendarMonths("2026-11-15", 2)).toBe("2027-01-15");
+    expect(addCalendarMonths("2024-12-31", 2)).toBe("2025-02-28");
+    expect(addCalendarMonths("2024-04-30", -2)).toBe("2024-02-29");
   });
 
   it("builds a bounded inclusive timeline without daylight-saving drift", () => {

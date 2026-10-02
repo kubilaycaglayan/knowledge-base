@@ -35,7 +35,9 @@ also lists undated and out-of-window cards. Date-only values use calendar
 arithmetic, so inclusive ranges remain stable across month, leap-day, and
 daylight-saving boundaries.
 The web timeline uses native horizontal scrolling to navigate calendar time
-pixel by pixel. It renders nearby dates as the viewport moves; the `from`/`to`
+pixel by pixel. Its scrollable range starts two calendar months either side of
+the initial date and grows by two months as the viewport nears either end,
+keeping the visible date in place. It renders nearby dates as the viewport moves; the `from`/`to`
 URL parameters and saved board range follow the leftmost visible date. Today
 jumps to the local current date, and the date inputs remain available for
 direct navigation.

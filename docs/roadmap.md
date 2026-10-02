@@ -200,5 +200,7 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Store Gantt full-width state independently from Kanban width (V56).
 - [x] Navigate Gantt time with native horizontal scrolling and render date cells
   only around the viewport, keeping the visible date stable across long journeys.
+- [x] Lazy-load the Gantt scroll range: start at ±2 months and extend by two
+  months near either end instead of a fixed multi-year scroll space.
 - [x] Move Gantt date controls into the toolbar and combine path/board choices
   in its All boards dropdown.

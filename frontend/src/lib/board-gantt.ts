@@ -15,6 +15,17 @@ export function addCalendarDays(value: string, amount: number): string {
   return formatDateOnly(date);
 }
 
+// Keeps the day of month, clamped to the target month's last day (Mar 31 - 1 month = Feb 28/29).
+export function addCalendarMonths(value: string, amount: number): string {
+  const date = parseDateOnly(value);
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + amount);
+  const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day, last));
+  return formatDateOnly(date);
+}
+
 export function inclusiveDayCount(start: string, end: string): number {
   return Math.floor((parseDateOnly(end).getTime() - parseDateOnly(start).getTime()) / DAY_MS) + 1;
 }
