@@ -180,4 +180,15 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     assertEquals("kanban", all.get("view").asText());
     assertTrue(all.get("ganttFrom").isNull());
   }
+
+  @Test
+  void ganttSortDirectionsAreStoredPerUser() {
+    String token = token(), other = token();
+    JsonNode saved = update(token, "{\"board\":{\"view\":\"gantt\",\"ganttSorts\":[\"PRIORITY_DESC\",\"DATE_ASC\"]}}").getBody().get("board");
+    assertEquals(List.of("PRIORITY_DESC", "DATE_ASC"), List.of(saved.get("ganttSorts").get(0).asText(), saved.get("ganttSorts").get(1).asText()));
+    JsonNode reloaded = preferences(token).getBody().get("board");
+    assertEquals(List.of("PRIORITY_DESC", "DATE_ASC"), List.of(reloaded.get("ganttSorts").get(0).asText(), reloaded.get("ganttSorts").get(1).asText()));
+    assertTrue(preferences(other).getBody().get("board").get("ganttSorts").isEmpty());
+    assertEquals(HttpStatus.BAD_REQUEST, update(token, "{\"board\":{\"ganttSorts\":[\"PRIORITY_ASC\",\"PRIORITY_DESC\"]}}").getStatusCode());
+  }
 }

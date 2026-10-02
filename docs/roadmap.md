@@ -220,8 +220,8 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   reloads, and new sign-ins; URL parameters still win. All boards is the
   default and the fallback for a board that left the tabs.
   Acceptance: `docs/board-state-acceptance-checklist.md`.
-- [x] Remember ordered Gantt sort rules (priority and earlier dates, with
-  undated cards last) in the user's board state (V55).
+- [x] Remember ordered Gantt sort rules, including ascending or descending
+  priority/date direction, in the user's board state (V55).
   Acceptance: `docs/board-state-acceptance-checklist.md`.
 - [x] Store Gantt full-width state independently from Kanban width (V56).
 - [x] Navigate Gantt time with native horizontal scrolling and render date cells

@@ -35,9 +35,10 @@ column) and stay that way.
   browser session.
   Tests: `board.real-stack.acceptance.test.mjs` "restores the board state in a
   new session".
-- [x] **BS-06** Gantt priority and date rules can be enabled together, their
-  activation order controls precedence, and the setup is remembered with board
-  state. Date order is earlier first and cards without dates sort last.
+- [x] **BS-06** Gantt priority and date rules can be enabled together, each can
+  be ascending or descending, activation order controls precedence, and the
+  exact setup is persisted per user in `user_preferences`. Date order is
+  earlier first by default and cards without dates sort last.
   Tests: `BoardView.test.ts`, `preferences.test.ts`, and
   `UserPreferencesIntegrationTest`.
 - [x] **BS-07** In Gantt view, board and path selection is available from the
