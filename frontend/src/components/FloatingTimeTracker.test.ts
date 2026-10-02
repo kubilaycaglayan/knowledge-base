@@ -742,11 +742,9 @@ describe("FloatingTimeTracker", () => {
     const closedLabelButtons = wrapper
       .get("#tt-label-options")
       .findAll("button");
-    expect(closedLabelButtons).toHaveLength(3);
+    expect(closedLabelButtons).toHaveLength(1);
     expect(closedLabelButtons.map((button) => button.text())).toEqual([
       "Review×",
-      "Focus",
-      "Planning",
     ]);
     expect(closedLabelButtons[0].classes()).toContain("selected");
 
@@ -784,9 +782,6 @@ describe("FloatingTimeTracker", () => {
     expect(wrapper.find('[role="listbox"]').exists()).toBe(true);
     expect(wrapper.get('[role="option"]').text()).toContain("Review");
     expect(wrapper.get(".label-match").text()).toBe("vie");
-    expect(wrapper.get("#tt-label-options .label-name-match").text()).toBe(
-      "vie",
-    );
     expect(wrapper.get(".label-picker").attributes("style")).toContain(
       "--label-match-color: #e85d75",
     );
@@ -824,6 +819,8 @@ describe("FloatingTimeTracker", () => {
 
     const picker = wrapper.get(".label-picker");
     expect(picker.classes()).not.toContain("is-open");
+    expect(wrapper.findAll("#tt-label-options button")).toHaveLength(0);
+    await wrapper.get(".label-picker-toggle").trigger("click");
     (
       wrapper.get("#tt-label-options button").element as HTMLButtonElement
     ).click();

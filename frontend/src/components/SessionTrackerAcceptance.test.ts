@@ -64,6 +64,8 @@ describe("session tracker acceptance", () => {
   it("L3–L4, L6–L10, L14–L15, L19–L20: preserves the selected set and prioritizes it when closed", async () => {
     await render();
     expect(summary()).toBe("3 available");
+    expect(chips()).toHaveLength(0);
+    await toggle().trigger("click");
     expect(
       chips().every((button) => button.attributes("aria-pressed") === "false"),
     ).toBe(true);
@@ -76,7 +78,6 @@ describe("session tracker acceptance", () => {
     expect(chips().map((button) => button.text())).toEqual([
       "Review×",
       "Planning×",
-      "Focus",
     ]);
     await chip("Review").trigger("click");
     expect(toggle().attributes("aria-expanded")).toBe("true");
@@ -114,6 +115,7 @@ describe("session tracker acceptance", () => {
     "L16–L17: creates a label while open=%s and preserves other selections",
     async (open) => {
       await render();
+      await toggle().trigger("click");
       await chip("Focus").trigger("click");
       if (!open) await toggle().trigger("click");
       const input = wrapper.get('input[aria-label="New session label name"]');
