@@ -4,6 +4,7 @@ import { mdiArrowLeft, mdiClose } from "@mdi/js";
 import { api } from "../lib/api";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
+import LabelHistoryRecords from "./LabelHistoryRecords.vue";
 
 type Bucket = { uses: number; trackedSeconds: number };
 export type LabelHistory = {
@@ -223,11 +224,11 @@ watch(currentId, load, { immediate: true });
           Retry
         </button>
       </div>
-      <p v-else-if="loading && !history" class="muted" aria-live="polite">
+      <p v-else-if="loading" class="muted" aria-live="polite">
         Loading history…
       </p>
 
-      <template v-if="history && !error">
+      <template v-if="history && !error && !loading">
         <p v-if="!used" class="history-empty muted">
           Not used yet. Add this label to a session, log, note, calendar day, or
           card and its history appears here.
@@ -410,6 +411,7 @@ watch(currentId, load, { immediate: true });
             </li>
           </ul>
         </section>
+        <LabelHistoryRecords :key="history.labelId" :label-id="history.labelId" :uses="history.uses" />
       </template>
     </section>
   </div>

@@ -37,6 +37,7 @@ const history = (overrides: Record<string, unknown> = {}) => ({
 const mountDialog = () =>
   mount(LabelHistoryDialog, {
     props: { labelId: "one" },
+    global: { stubs: { LabelHistoryRecords: true } },
     attachTo: document.body,
   });
 

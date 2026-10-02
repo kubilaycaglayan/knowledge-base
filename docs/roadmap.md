@@ -66,6 +66,8 @@
   first and last use, uses per kind, monthly tracked hours, hours of day, and
   related labels (see `docs/label-history-acceptance-checklist.md`).
 - [ ] Show label history in the iOS app (the API is ready).
+- [x] Add a separated related-records section to web label history, with paginated
+  sessions, calendar dates, note excerpts, and logs.
 - [x] Milestone 5: bring the iOS `/notes` page to parity with the current web
   behavior, rich-text editing, autosave/conflict recovery, labels,
   archive/restore, accessibility, and regression coverage (see

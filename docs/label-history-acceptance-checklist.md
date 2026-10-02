@@ -33,3 +33,12 @@ names the tests that cover it. Tick an item only once those tests pass.
   _Tests:_ `LabelHistoryDialog.test.ts` "closes with Escape and the close button", `LabelHistoryDialog.test.ts` "retries after a failed load"
 - [x] **LH-10** `docs/api.md` documents the endpoint; the roadmap notes that iOS does not show label history yet.
   _Tests:_ smoke `run-smoke-tests.sh` (history of the smoke calendar label on PostgreSQL)
+# Related record browsing
+
+- The bottom section separates Sessions, Dates, Notes, and Logs with counts.
+- Each category lists the owner's latest records, ten per page, with readable
+  dates and plain-text previews. Calendar dates do not shift with time zone.
+- Changing category or label resets pagination; late responses cannot replace
+  the selected category. Failed requests offer Retry and empty categories explain
+  how records appear. Deleted sessions and archived notes are excluded.
+- Verify mobile, laptop, and ultra-wide layouts have no horizontal overflow.
