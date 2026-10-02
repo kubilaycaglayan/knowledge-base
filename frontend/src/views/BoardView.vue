@@ -83,13 +83,6 @@ const pageObservers = new Map<string, IntersectionObserver>();
 const preferences = usePreferencesStore(), kanbanWide = computed(() => preferences.kanbanWide), ganttWide = computed(() => preferences.ganttWide), viewportWidth = ref(0), contentLeft = ref(0), boardPage = ref<HTMLElement | null>(null);
 const timelineScroll = ref<HTMLElement | null>(null), timelineLabelPane = ref<HTMLElement | null>(null);
 const ganttTitleOverflow = ref<{ title: string; left: number; top: number; maxWidth: number; font: string; letterSpacing: string } | null>(null);
-const lastChangedGanttCardId = ref("");
-let ganttHighlightTimer: ReturnType<typeof setTimeout> | undefined;
-function highlightGanttCard(cardId: string) {
-  lastChangedGanttCardId.value = cardId;
-  clearTimeout(ganttHighlightTimer);
-  ganttHighlightTimer = setTimeout(() => { lastChangedGanttCardId.value = ""; }, 4000);
-}
 
 function toggleKanbanWide() { measureViewport(); void preferences.setKanbanWide(!kanbanWide.value); }
 function toggleGanttWide() { measureViewport(); void preferences.setGanttWide(!ganttWide.value); }
@@ -379,7 +372,7 @@ function editCard(card: BoardCard) { clearTimeout(saveTimer); destroyCardEditor(
 // A single confirmed day is both the start and the due date.
 function setDraftDates(value: Date[] | null) { const [start, due] = value || []; draft.value.startDate = start ? format(start, "yyyy-MM-dd") : ""; draft.value.dueDate = start ? format(due || start, "yyyy-MM-dd") : ""; }
 function queueSave() { clearTimeout(saveTimer); saveChain = saveChain.then(persistDraft); return saveChain; }
-async function persistDraft() { const card = editing.value; if (!card) return; const snapshot = JSON.stringify(draft.value); if (snapshot === savedSnapshot.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; saveState.value = "saving"; try { const saved = await store.updateCard(card, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); if (editing.value?.id === card.id) editing.value = saved; highlightGanttCard(card.id); savedSnapshot.value = snapshot; saveState.value = "saved"; saveError.value = ""; closeAnyway.value = false; } catch (saveFailure) { saveState.value = "error"; saveError.value = saveFailure instanceof ApiError && saveFailure.status === 408 ? "The request timed out. Your edits are kept." : saveFailure instanceof ApiError && saveFailure.status === 409 ? "This card changed elsewhere. Retry to save your version." : "Could not save card. Your edits are kept."; } }
+async function persistDraft() { const card = editing.value; if (!card) return; const snapshot = JSON.stringify(draft.value); if (snapshot === savedSnapshot.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; saveState.value = "saving"; try { const saved = await store.updateCard(card, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); if (editing.value?.id === card.id) editing.value = saved; savedSnapshot.value = snapshot; saveState.value = "saved"; saveError.value = ""; closeAnyway.value = false; } catch (saveFailure) { saveState.value = "error"; saveError.value = saveFailure instanceof ApiError && saveFailure.status === 408 ? "The request timed out. Your edits are kept." : saveFailure instanceof ApiError && saveFailure.status === 409 ? "This card changed elsewhere. Retry to save your version." : "Could not save card. Your edits are kept."; } }
 // In the All boards view the status list also offers other boards' column
 // names ("column:<key>"); picking one adds that column to the card's board.
 const COLUMN_OPTION = "column:";
@@ -389,8 +382,8 @@ async function changeCardStatus(value: string) {
   const card = editing.value; if (!card || card.statusId === value) return;
   saveChain = saveChain.then(async () => {
     try {
-      if (value.startsWith(COLUMN_OPTION)) { const column = mergedColumns.value.find((item) => item.key === value.slice(COLUMN_OPTION.length)); if (!column) return; const placed = await store.moveCardToColumn(card, column.name, 0); announceColumn(placed.status, placed.statusCreated); highlightGanttCard(card.id); return; }
-      await store.moveCard(card, value, cardsFor(value).length); highlightGanttCard(card.id);
+      if (value.startsWith(COLUMN_OPTION)) { const column = mergedColumns.value.find((item) => item.key === value.slice(COLUMN_OPTION.length)); if (!column) return; const placed = await store.moveCardToColumn(card, column.name, 0); announceColumn(placed.status, placed.statusCreated); return; }
+      await store.moveCard(card, value, cardsFor(value).length);
     } catch { notices.notify("Could not move card. The change was rolled back."); }
   });
   await saveChain;
@@ -399,7 +392,7 @@ async function changeCardStatus(value: string) {
 async function changeCardBoard(boardId: string) {
   const card = editing.value; if (!card || cardBoardId(card) === boardId) return;
   saveChain = saveChain.then(async () => {
-    try { const placed = await store.transferCard(card, boardId); announceColumn(placed.status, placed.statusCreated); highlightGanttCard(card.id); void preferences.setLastCardBoard(boardId); } catch { notices.notify("Could not move the card to that board."); }
+    try { const placed = await store.transferCard(card, boardId); announceColumn(placed.status, placed.statusCreated); void preferences.setLastCardBoard(boardId); } catch { notices.notify("Could not move the card to that board."); }
   });
   await saveChain;
 }
@@ -496,7 +489,7 @@ watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => [route.query.from, route.query.to], ([from, to]) => { if (`${from}/${to}` === pendingTimelineQuery) { pendingTimelineQuery = ""; return; } if (view.value !== "gantt" || typeof from !== "string" || typeof to !== "string" || from === ganttFrom.value && to === ganttTo.value) return; clearTimeout(timelineQueryTimer); ganttFrom.value = from; ganttTo.value = to; jumpTimeline(from); void store.loadGantt(from, to); });
-onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQueryTimer); clearTimeout(ganttHighlightTimer); phoneQuery?.removeEventListener("change", onPhoneChange); document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); document.removeEventListener("keydown", boardSearchKeydown); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
+onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQueryTimer); phoneQuery?.removeEventListener("change", onPhoneChange); document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); document.removeEventListener("keydown", boardSearchKeydown); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
 </script>
 
 <template>
@@ -590,7 +583,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
           <div class="timeline-label-content">
             <div class="timeline-header"><div class="timeline-label-heading"><span>Card</span><button class="secondary icon-button timeline-add-card" type="button" aria-label="Add card" title="Add card" :disabled="store.creatingCard || !boards.length" @click="addGanttCard"><v-icon :icon="mdiPlus" size="18" aria-hidden="true" /></button></div></div>
             <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
-              <button class="timeline-label" :class="{ 'last-changed': lastChangedGanttCardId === card.id }" type="button" :aria-label="`Open card: ${card.title || 'Untitled card'}`" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null" @click="editCard(card)"><strong>{{ card.title }}</strong></button>
+              <button class="timeline-label" :class="{ 'last-changed': store.changedCards[card.id] }" type="button" :aria-label="`Open card: ${card.title || 'Untitled card'}`" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null" @click="editCard(card)"><strong>{{ card.title }}</strong></button>
             </div>
           </div>
         </div>
@@ -598,7 +591,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
           <div class="timeline" :style="{ minWidth: `${timelineWidth}px` }">
             <div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div>
             <div class="timeline-header"><div class="timeline-days" :style="{ ...timelineWindowStyle, gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day" :data-date="day">{{ formatTimelineDay(day) }}</span></div></div>
-            <div v-for="card in ganttCards" :key="card.id" class="timeline-row" :data-card-id="card.id"><button v-if="ganttOffscreen.get(card.id)" class="timeline-offscreen-arrow" :class="`timeline-offscreen-${ganttOffscreen.get(card.id)}`" type="button" :aria-label="`Show ${card.title || 'Untitled card'} on the timeline, starting ${card.startDate || card.dueDate}`" :title="`Go to ${card.startDate || card.dueDate}`" @click="showCardOnTimeline(card)"><v-icon :icon="ganttOffscreen.get(card.id) === 'before' ? mdiChevronLeft : mdiChevronRight" size="18" aria-hidden="true" /></button><div class="timeline-track" :style="timelineWindowStyle"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" :color="ganttCardColor(card)" :text-color="ganttCardTextColor(card)" :show-priority="ganttDisplay.ganttShowPriority" :show-status="ganttDisplay.ganttShowStatus" :show-path="ganttDisplay.ganttShowPath" :status-name="ganttCardStatus(card)" :path-name="ganttCardPathName(card)" @edit="editCard" /></div></div>
+            <div v-for="card in ganttCards" :key="card.id" class="timeline-row" :class="{ 'last-changed': store.changedCards[card.id] }" :data-card-id="card.id"><button v-if="ganttOffscreen.get(card.id)" class="timeline-offscreen-arrow" :class="`timeline-offscreen-${ganttOffscreen.get(card.id)}`" type="button" :aria-label="`Show ${card.title || 'Untitled card'} on the timeline, starting ${card.startDate || card.dueDate}`" :title="`Go to ${card.startDate || card.dueDate}`" @click="showCardOnTimeline(card)"><v-icon :icon="ganttOffscreen.get(card.id) === 'before' ? mdiChevronLeft : mdiChevronRight" size="18" aria-hidden="true" /></button><div class="timeline-track" :style="timelineWindowStyle"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" :color="ganttCardColor(card)" :text-color="ganttCardTextColor(card)" :show-priority="ganttDisplay.ganttShowPriority" :show-status="ganttDisplay.ganttShowStatus" :show-path="ganttDisplay.ganttShowPath" :status-name="ganttCardStatus(card)" :path-name="ganttCardPathName(card)" @edit="editCard" /></div></div>
             <p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p>
           </div>
         </div>

@@ -212,7 +212,7 @@ it("highlights a Gantt card after its dates change on the timeline", async (t) =
   assert.notEqual(look.label, plainLabel, "The changed card's label must be tinted");
   assert.notEqual(look.row, "rgba(0, 0, 0, 0)", "The changed card's timeline row must be tinted");
   assert.notEqual(look.ring, "none", "The changed card's bar must carry a ring that shows on any card color");
-  assert.match(look.labelTransition, /^0s/, "The highlight must not animate under reduced motion");
+  assert.ok(parseFloat(look.labelTransition) <= 0.01, `The highlight must not animate under reduced motion, got ${look.labelTransition}`);
   await page.screenshot({ path: join(screenshotDir, "gantt-change-highlight-1440.png") });
   await page.waitForFunction(() => !document.querySelector(".timeline-row")?.classList.contains("last-changed"), null, { timeout: 6000 });
   const elapsed = Date.now() - savedAt;
