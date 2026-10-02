@@ -186,6 +186,10 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   outside the visible dates; a left arrow starts the timeline at that card
   and a right arrow ends it at the card's end date.
   Acceptance: `docs/gantt-offscreen-arrows-acceptance-checklist.md`.
+- [x] Highlight a Gantt card's label, row and bar for four seconds after it is
+  created, gets, changes or loses dates, or has any other property edited;
+  several changed cards stay highlighted at once.
+  Acceptance: `docs/gantt-change-highlight-acceptance-checklist.md`.
 - [x] Keep the timer WebSocket as the web's live channel in production: route
   `/ws/*` through the Cloudflare proxy (and standalone Vite), ping idle
   sockets every 30 seconds, and skip focus/visibility refetches while the
