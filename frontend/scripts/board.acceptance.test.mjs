@@ -243,6 +243,28 @@ for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline
   assert.ok(Math.abs(cardLeft) < 2, `The card's start must be at the timeline start: ${cardLeft}`);
 });
 
+// GO-07
+for (const width of [390, 1440]) it(`ends the timeline at a future card from its right edge arrow at ${width}px`, async (t) => {
+  const { page } = await fixture(t, width);
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: [{ ...cards[0], id: "later", title: "Later card", startDate: dateOnly(60), dueDate: dateOnly(61), position: 0 }] }));
+  await boardAction(page, "Gantt");
+  const laterArrow = page.getByRole("button", { name: `Show Later card on the timeline, starting ${dateOnly(60)}` });
+  await laterArrow.click();
+  await page.waitForFunction((to) => new URL(location.href).searchParams.get("to") === to, dateOnly(61));
+  const url = new URL(page.url());
+  assert.equal(inclusiveDays(url.searchParams.get("from"), url.searchParams.get("to")), 14, "The range keeps its length");
+  assert.equal(await page.locator(".board-gantt-end-date").inputValue(), dateOnly(61));
+  await page.locator(".timeline-row .timeline-card").waitFor();
+  assert.equal(await laterArrow.count(), 0);
+  const gap = await page.evaluate(() => {
+    const scroller = document.querySelector(".timeline-scroll");
+    const view = scroller.getBoundingClientRect();
+    return view.left + scroller.clientLeft + scroller.clientWidth - document.querySelector(".timeline-row .timeline-card").getBoundingClientRect().right;
+  });
+  assert.ok(Math.abs(gap) < 2, `The card's end must be at the visible right edge: ${gap}`);
+  await page.screenshot({ path: join(screenshotDir, `gantt-offscreen-right-jump-${width}.png`) });
+});
+
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: !process.env.BOARD_HEADED }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
