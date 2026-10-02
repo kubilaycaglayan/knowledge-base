@@ -95,13 +95,13 @@ it("keeps the full-width Gantt card list inside the visible shell", async (t) =>
   assert.equal(visible, true, "Card heading must not be clipped by the page container in wide mode");
 });
 
-it("tightens the nav bar bottom margin only in the Gantt view", async (t) => {
+it("uses the standard 10px nav bar bottom margin in Kanban and Gantt", async (t) => {
   const { page } = await fixture(t, 1440);
   const headerMargin = () => page.locator(".dashboard-shell > header").evaluate((element) => getComputedStyle(element).marginBottom);
-  assert.equal(await headerMargin(), "28px", "Kanban keeps the shared shell spacing");
+  assert.equal(await headerMargin(), "10px", "Kanban uses the shared shell spacing");
   await boardAction(page, "Gantt");
   await page.locator(".board-page-gantt").waitFor();
-  assert.equal(await headerMargin(), "10px", "Gantt gives the timeline more vertical room");
+  assert.equal(await headerMargin(), "10px", "Gantt uses the shared shell spacing");
 });
 
 for (const width of [390, 1440]) it(`pins Gantt card titles to the visible left edge until the bar ends at ${width}px`, async (t) => {
