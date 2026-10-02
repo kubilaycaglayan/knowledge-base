@@ -72,6 +72,13 @@
 .timeline-layout { --timeline-label-width:180px; display:grid; grid-template-columns:var(--timeline-label-width) minmax(0, 1fr); flex:1 1 auto; min-width:0; min-height:0; overflow:hidden; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); }
 /* Reserve the same native horizontal scrollbar space in both panes so their
    vertical scroll ranges match, including at the last card. */
+/* The card list toggle sits on the timeline's top-left edge, in its header row. */
+.timeline-layout { position:relative; }
+.timeline-layout.labels-hidden { grid-template-columns:minmax(0, 1fr); }
+.gantt-labels-toggle { position:absolute; z-index:5; top:7px; left:calc(var(--timeline-label-width) + 7px); display:inline-flex; align-items:center; justify-content:center; width:28px; min-width:28px; height:28px; min-height:28px; padding:0; border:1px solid var(--border-color); border-radius:999px; background:var(--workspace-surface); color:var(--muted-text); box-shadow:0 1px 2px #0000001a, 0 3px 8px #00000014; touch-action:manipulation; }
+.gantt-labels-toggle:hover { color:inherit; }
+.timeline-layout.labels-hidden .gantt-labels-toggle { left:7px; }
+@media (max-width:700px) { .gantt-labels-toggle::after { content:""; position:absolute; inset:-8px; } }
 .timeline-label-pane { min-width:0; min-height:0; overflow-x:scroll; overflow-y:hidden; scrollbar-width:auto; scrollbar-color:transparent transparent; border-right:1px solid var(--workspace-border); background:var(--workspace-surface); }
 .timeline-label-pane::-webkit-scrollbar:horizontal { height:12px; }
 .timeline-label-pane::-webkit-scrollbar-track, .timeline-label-pane::-webkit-scrollbar-thumb { background:transparent; }

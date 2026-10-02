@@ -28,7 +28,7 @@ import "@vuepic/vue-datepicker/dist/main.css";
 import { format, parseISO } from "date-fns";
 import { isDarkTheme, theme as currentTheme } from "../lib/theme";
 import { mdiCalendarToday } from "@mdi/js";
-import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiCheck, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiDragVertical, mdiCogOutline, mdiAllInclusive, mdiMagnify, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortAscending, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
+import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiCheck, mdiChevronDoubleLeft, mdiChevronDoubleRight, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiDragVertical, mdiCogOutline, mdiAllInclusive, mdiMagnify, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortAscending, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
 
 const theme = computed(() => isDarkTheme(currentTheme.value) ? "dark" : "light");
 const store = useBoardsStore();
@@ -92,6 +92,16 @@ const ganttTitleOverflow = ref<{ title: string; left: number; top: number; maxWi
 
 function toggleKanbanWide() { measureViewport(); void preferences.setKanbanWide(!kanbanWide.value); }
 function toggleGanttWide() { measureViewport(); void preferences.setGanttWide(!ganttWide.value); }
+// Hiding the Gantt card list gives the timeline the whole width. It is a
+// per-browser convenience, so it lives in local storage, which may be blocked.
+const GANTT_LABELS_HIDDEN = "board.ganttLabelsHidden";
+const ganttLabelsHidden = ref((() => { try { return localStorage.getItem(GANTT_LABELS_HIDDEN) === "true"; } catch { return false; } })());
+function toggleGanttLabels() {
+  ganttLabelsHidden.value = !ganttLabelsHidden.value;
+  try { localStorage.setItem(GANTT_LABELS_HIDDEN, String(ganttLabelsHidden.value)); } catch { /* storage blocked */ }
+  // A hidden pane cannot follow the timeline's scroll, so catch it up on show.
+  if (!ganttLabelsHidden.value) void nextTick(syncTimelineLabels);
+}
 // Columns share the tallest column's height but never run past the visible
 // viewport (which shrinks for an on-screen keyboard or a showing address bar)
 // or under the floating tracker; each column scrolls its own cards.
@@ -584,8 +594,9 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
     <section v-else class="gantt" :class="{ wide: ganttWide }" :style="{ '--timeline-scrollbar-width': `${timelineScrollbarWidth}px` }" aria-labelledby="gantt-heading">
       <button class="kanban-width-toggle gantt-width-toggle" type="button" :aria-pressed="ganttWide" :aria-label="ganttWide ? 'Collapse timeline to page width' : 'Expand timeline to full width'" :title="ganttWide ? 'Collapse to page width' : 'Expand to full width'" @click="toggleGanttWide"><v-icon :icon="ganttWide ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal" size="16" aria-hidden="true" /></button>
       <h2 id="gantt-heading" class="sr-only">Timeline</h2>
-      <div class="timeline-layout">
-        <div ref="timelineLabelPane" class="timeline-label-pane" role="region" aria-label="Gantt card list" @wheel="scrollTimelineFromLabels">
+      <div class="timeline-layout" :class="{ 'labels-hidden': ganttLabelsHidden }">
+        <button class="gantt-labels-toggle" type="button" aria-controls="gantt-card-list" :aria-expanded="!ganttLabelsHidden" :aria-label="ganttLabelsHidden ? 'Show card list' : 'Hide card list'" :title="ganttLabelsHidden ? 'Show card list' : 'Hide card list'" @click="toggleGanttLabels"><v-icon :icon="ganttLabelsHidden ? mdiChevronDoubleRight : mdiChevronDoubleLeft" size="16" aria-hidden="true" /></button>
+        <div v-show="!ganttLabelsHidden" id="gantt-card-list" ref="timelineLabelPane" class="timeline-label-pane" role="region" aria-label="Gantt card list" @wheel="scrollTimelineFromLabels">
           <div class="timeline-label-content">
             <div class="timeline-header"><div class="timeline-label-heading"><span>Card</span><button class="secondary icon-button timeline-add-card" type="button" aria-label="Add card" title="Add card" :disabled="store.creatingCard || !boards.length" @click="addGanttCard"><v-icon :icon="mdiPlus" size="18" aria-hidden="true" /></button></div></div>
             <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
