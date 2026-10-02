@@ -12,6 +12,8 @@ const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screensho
 const boardTemplate = { id: "board-1", name: "Product", archived: false };
 const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false, cardSort: "MANUAL" }));
 const dateOnly = (offset = 0) => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return date.toISOString().slice(0, 10); };
+const monthsFrom = (amount) => { const [year, month, day] = dateOnly().split("-").map(Number); const last = new Date(Date.UTC(year, month - 1 + amount + 1, 0)).getUTCDate(); return new Date(Date.UTC(year, month - 1 + amount, Math.min(day, last))).toISOString().slice(0, 10); };
+const inclusiveDays = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
 const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"] }];
 const boardLabels = [["label-design", "Design"], ["label-docs", "Docs"], ["label-research", "Research"], ["label-backend", "Backend"], ["label-frontend", "Frontend"], ["label-ops", "Operations"], ["label-bug", "Bug"]].map(([id, name]) => ({ id, name, color: null, scopes: ["BOARD"] }));
 
@@ -33,27 +35,40 @@ for (const width of [390, 1440]) it(`scrolls time continuously with native horiz
   await page.waitForTimeout(150);
   assert.ok(Math.abs((await marker.boundingBox()).x - start + 46) < 1, "Small wheel movements must not snap to a day or window");
   const dayWidth = width <= 700 ? 132 : 80;
-  await page.mouse.wheel(dayWidth * 600 + 13, 0);
-  await page.waitForTimeout(400);
+  const extent = () => scroller.evaluate((el) => ({ width: el.scrollWidth, left: el.scrollLeft, viewport: el.clientWidth }));
+  const initial = await extent();
+  const twoMonthsBefore = inclusiveDays(monthsFrom(-2), dateOnly()) - 1, twoMonthsAfter = inclusiveDays(dateOnly(), monthsFrom(2)) - 1;
+  assert.ok(Math.abs((initial.left - 46) / dayWidth - twoMonthsBefore) < 1, "The timeline must start two months before the initial date");
+  assert.ok(initial.width <= (twoMonthsBefore + twoMonthsAfter + 1) * dayWidth + initial.viewport + dayWidth * 2, `The initial window must cover about two months on each side (${initial.width / dayWidth} days)`);
+  assert.ok(initial.width >= (twoMonthsBefore + twoMonthsAfter) * dayWidth, "The initial window must still reach two months ahead");
+  // Travel well past both initial edges in ordinary steps; the window grows as it is reached.
+  for (let step = 0; step < 24; step++) { await page.mouse.wheel(dayWidth * 25, 0); await page.waitForTimeout(60); }
+  await page.mouse.wheel(13, 0);
+  await page.waitForTimeout(150);
+  const distantDay = page.locator(`.timeline-days span[data-date="${dateOnly(600)}"]`);
+  assert.ok(Math.abs((await distantDay.boundingBox()).x - start + 59) < 1, "Travelling forward past the loaded window must keep the exact date position");
+  assert.ok((await extent()).width > initial.width, "Reaching the end must load more dates");
   assert.ok(await page.locator(".timeline-days span").count() < 100, "Only nearby dates should be rendered after travelling years");
-  await page.mouse.wheel(-dayWidth * 600 - 59, 0);
-  await page.waitForTimeout(400);
-  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Returning must restore the same date position without drift");
+  for (let step = 0; step < 30; step++) { await page.mouse.wheel(-dayWidth * 25, 0); await page.waitForTimeout(60); }
+  await page.mouse.wheel(-13, 0);
+  await page.waitForTimeout(150);
+  const earlyDay = page.locator(`.timeline-days span[data-date="${dateOnly(-150)}"]`);
+  assert.ok(Math.abs((await earlyDay.boundingBox()).x - start + 46) < 1, "Scrolling before the loaded window must prepend dates without moving the view");
+  for (let step = 0; step < 6; step++) { await page.mouse.wheel(dayWidth * 25, 0); await page.waitForTimeout(60); }
+  await page.waitForTimeout(150);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start + 46) < 1, "Returning must restore the same date position without drift");
+  await page.mouse.wheel(46, 0);
+  await page.waitForTimeout(150);
+  await page.mouse.wheel(-46, 0);
+  await page.waitForTimeout(150);
   await page.mouse.wheel(0, 83);
   await page.waitForTimeout(150);
-  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Vertical wheel input must keep time stationary");
+  assert.ok(Math.abs((await marker.boundingBox()).x - start + 46) < 1, "Vertical wheel input must keep time stationary");
   assert.equal(await scroller.evaluate((el) => el.scrollTop), 83);
   assert.equal(await page.locator(".timeline-label-pane").evaluate((el) => el.scrollTop), 83);
-  await page.mouse.wheel(dayWidth * 4980 + 19, 0);
-  await page.waitForTimeout(400);
-  const distantDay = page.locator(`.timeline-days span[data-date="${dateOnly(4980)}"]`);
-  assert.ok(Math.abs((await distantDay.boundingBox()).x - start + 19) < 1, "Recycling distant scroll coordinates must preserve the fractional date position");
-  await page.mouse.wheel(41, 0);
+  await page.mouse.wheel(-46, 0);
   await page.waitForTimeout(150);
-  assert.ok(Math.abs((await distantDay.boundingBox()).x - start + 60) < 1);
-  await page.mouse.wheel(-dayWidth * 4980 - 60, 0);
-  await page.waitForTimeout(400);
-  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Dates must survive a round trip through recycled scroll coordinates");
+  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1);
   await page.keyboard.down("Shift");
   await page.mouse.wheel(0, 37);
   await page.keyboard.up("Shift");
