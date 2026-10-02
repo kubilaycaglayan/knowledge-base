@@ -61,7 +61,7 @@ const showFloatingTracker = () =>
   auth.isAuthenticated &&
   route?.path !== "/" &&
   route?.path !== "/sessions" &&
-  !(focusedTextInput.value && route?.path !== "/sessions");
+  !focusedTextInput.value;
 onMounted(() => {
   document.addEventListener("focusin", updateFocusedTextInput);
   document.addEventListener("focusout", handleFocusOut);
@@ -105,15 +105,20 @@ function authenticated() {
         >knowledge<span>.</span>base</RouterLink
       >
       <nav v-if="auth.isAuthenticated" aria-label="Main navigation">
-        <RouterLink to="/sessions">Sessions</RouterLink
+        <RouterLink to="/board">Board</RouterLink
         ><RouterLink to="/logs">Logs</RouterLink
-        ><RouterLink to="/paths">Paths</RouterLink
-        ><RouterLink to="/calendar">Calendar</RouterLink
         ><RouterLink
           to="/notes"
           :class="{ 'section-active': route?.path.startsWith('/notes/') }"
           >Notes</RouterLink
-        ><RouterLink to="/board">Board</RouterLink><RouterLink to="/reports">Reports</RouterLink>
+        ><RouterLink to="/calendar">Calendar</RouterLink
+        ><RouterLink to="/reports"
+          >Reports
+          <svg class="reports-nav-icon" viewBox="0 0 16 16" width="15" height="15" fill="none" aria-hidden="true">
+            <path d="M2 13.5h12M3.5 11V8.5M7 11V5M10.5 11V2.5M14 11V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </RouterLink
+        ><RouterLink to="/paths">Paths</RouterLink>
         <RouterLink to="/labels">Labels</RouterLink>
       </nav>
       <div class="shell-actions">

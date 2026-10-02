@@ -51,6 +51,10 @@
   font-size: 13px;
   font-weight: 500;
 }
+.dashboard-shell nav .reports-nav-icon {
+  margin-left: 5px;
+  flex: 0 0 auto;
+}
 .dashboard-shell nav a.router-link-exact-active,
 .dashboard-shell nav a.section-active {
   background: var(--workspace-selected);

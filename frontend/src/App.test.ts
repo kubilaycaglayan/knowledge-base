@@ -69,13 +69,12 @@ describe("App", () => {
         .findAll("a")
         .map((link) => link.text()),
     ).toEqual([
-      "Sessions",
-      "Logs",
-      "Paths",
-      "Calendar",
-      "Notes",
       "Board",
+      "Logs",
+      "Notes",
+      "Calendar",
       "Reports",
+      "Paths",
       "Labels",
     ]);
     expect(wrapper.get(".settings-link").attributes("aria-label")).toBe(
