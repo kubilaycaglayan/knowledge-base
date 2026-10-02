@@ -23,6 +23,13 @@ disposable Compose project with generated local credentials and runs
 PostgreSQL, proxy, and browser. The runner cleans only its own Compose project
 and volumes.
 
+`(cd frontend && npm run test:nav)` runs
+`frontend/scripts/nav-shell.acceptance.test.mjs` against mocked API fixtures. It
+checks that the nav bar has the same position, width, and 10px bottom margin on
+every page (including the board Gantt view) at phone and desktop widths, and
+that the logo returns home through the router, reusing cached sessions, paths,
+and labels instead of reloading the page.
+
 Both board browser layers drive the board the way a person does — clicking a
 board tab or a column name to rename it inline, and reaching archived boards,
 statuses, and cards through the `/board/archive` page linked from the board
@@ -61,6 +68,7 @@ docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --n
 (cd frontend && npm ci && npm run build)
 (cd frontend && npm run test:tracker)
 (cd frontend && npm run test:board)
+(cd frontend && npm run test:nav)
 node --check chrome-extension/popup.js
 node --check chrome-extension/options.js
 (cd chrome-extension && npm test)

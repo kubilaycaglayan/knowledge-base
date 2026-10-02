@@ -21,6 +21,7 @@ export default defineConfig({
       "node_modules",
       "scripts/session-tracker.acceptance.test.mjs",
       "scripts/board.acceptance.test.mjs",
+      "scripts/nav-shell.acceptance.test.mjs",
       "scripts/board.real-stack.acceptance.test.mjs",
       "scripts/timer-websocket.real-stack.acceptance.test.mjs",
     ],

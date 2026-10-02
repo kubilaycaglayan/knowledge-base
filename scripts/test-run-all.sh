@@ -122,7 +122,7 @@ main() {
   }
   web_tests() {
     npm_install frontend &&
-      (cd frontend && npm test && npm run build && npm run test:tracker && npm run test:board)
+      (cd frontend && npm test && npm run build && npm run test:tracker && npm run test:board && npm run test:nav)
   }
   extension_tests() {
     node --check chrome-extension/popup.js &&
