@@ -260,8 +260,8 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
               )
               .join(" · ")
           }}</span
-          ><button
-            class="history-button"
+          ><span class="label-actions"><button
+            class="history-button label-action-button"
             type="button"
             :aria-label="`Show history of ${label.name}`"
             title="History"
@@ -271,8 +271,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
               <path :d="mdiHistory" fill="currentColor" />
             </svg></button
-          ><span class="label-actions"
-            ><button
+          ><button
               class="icon-button quiet label-action-button"
               type="button"
               :aria-label="`Edit ${label.name}`"
@@ -541,40 +540,29 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.history-button {
-  display: inline-flex;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: var(--workspace-radius);
-  background: transparent;
-  color: var(--workspace-muted);
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.history-button:hover,
-.history-button:focus-visible {
-  background: var(--workspace-hover);
-  color: var(--workspace-text);
-}
 .label-actions {
   display: inline-flex;
   flex: none;
-  gap: 6px;
+  gap: 2px;
 }
 .label-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: 0;
   border-radius: var(--workspace-radius);
   background: transparent;
   color: var(--workspace-muted);
   cursor: pointer;
   touch-action: manipulation;
+}
+.label-action-button svg {
+  width: 18px;
+  height: 18px;
 }
 .label-action-button:hover,
 .label-action-button:focus-visible {
@@ -645,7 +633,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
   }
 }
 @media (max-width: 700px) {
-  .history-button {
+  .label-action-button {
     width: 44px;
     height: 44px;
   }
