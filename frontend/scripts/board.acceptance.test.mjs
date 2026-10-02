@@ -111,7 +111,9 @@ for (const width of [1440, 1600]) it(`keeps the Gantt width toggle and vertical 
     const gantt = document.querySelector(".gantt").getBoundingClientRect();
     const toggleEl = document.querySelector(".gantt-width-toggle"), toggle = toggleEl.getBoundingClientRect();
     const scroller = document.querySelector(".timeline-scroll"), box = scroller.getBoundingClientRect();
-    const corners = [[toggle.left + 2, toggle.top + 2], [toggle.right - 2, toggle.top + 2], [toggle.left + 2, toggle.bottom - 2], [toggle.right - 2, toggle.bottom - 2]];
+    const midX = toggle.left + toggle.width / 2, midY = toggle.top + toggle.height / 2;
+    // The toggle is round, so probe just inside its top, right, bottom and left edges.
+    const corners = [[midX, toggle.top + 2], [toggle.right - 2, midY], [midX, toggle.bottom - 2], [toggle.left + 2, midY]];
     const scrollbarX = box.right - (scroller.offsetWidth - scroller.clientWidth) / 2, scrollbarY = box.top + box.height / 2;
     return {
       toggleInside: toggle.top >= gantt.top && toggle.right <= gantt.right && toggle.left >= gantt.left && toggle.bottom <= gantt.bottom,

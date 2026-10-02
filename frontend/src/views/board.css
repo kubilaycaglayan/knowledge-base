@@ -41,9 +41,14 @@
 .board-footer .link-button.secondary { border:0; } .board-footer .link-button.secondary:hover { background:var(--workspace-hover); }
 .gantt-heading { display:flex; justify-content:space-between; gap:1rem; align-items:flex-end; margin:1.25rem 0 .75rem; padding-right:2.25rem; }
 .gantt { position:relative; }
-.gantt.wide { --wide-gutter:24px; width:calc(var(--viewport-width, 100vw) - 2 * var(--wide-gutter)); margin-left:calc(var(--wide-gutter) - var(--content-left, 0px)); }
-.gantt-width-toggle { top:0; right:0; }
-.gantt.wide .gantt-width-toggle { right:0; }
+/* The Gantt clips its overflow, so its width toggle sits inside the timeline's
+   header row, left of the vertical scrollbar, instead of on the Kanban corner. */
+.gantt > .gantt-width-toggle { top:7px; right:calc(var(--timeline-scrollbar-width, 0px) + 7px); z-index:5; }
+/* The shell's main spans the content box inside the root scrollbar gutter, so
+   the wide timeline matches it; sizing from the viewport clipped the timeline's
+   own vertical scrollbar. */
+:global(.dashboard-shell:has(.board-page-gantt) > main) { container-type:inline-size; }
+@media (min-width:701px) { .board-page-gantt .gantt.wide { width:100cqw; margin-left:calc((100% - 100cqw) / 2); } }
 .gantt-controls { display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; }
 .board-tabs-gantt { flex:1 1 auto; width:100%; gap:.6rem; }
 .board-gantt-selector { position:relative; flex:0 0 auto; }
@@ -113,7 +118,7 @@
 @media (prefers-reduced-motion: reduce) { .timeline-offscreen-arrow { transition:none; } }
 .timeline-cell { flex:1 1 0; min-width:0; height:100%; border-right:1px solid color-mix(in srgb, var(--workspace-border) 55%, transparent); }
 .timeline-cell.weekend { background:color-mix(in srgb, var(--workspace-hover) 55%, transparent); }
-@media (max-width:700px) { .timeline-layout { --timeline-label-width:140px; } .gantt.wide { width:auto; margin-left:0; } .gantt-width-toggle { display:none; } .board-tabs-gantt { align-items:flex-start; flex-wrap:wrap; } .board-gantt-controls { display:grid; flex-basis:100%; grid-template-columns:minmax(0, 1fr) 44px minmax(0, 1fr); align-items:center; gap:.35rem; } .board-gantt-controls .board-gantt-start-date { grid-row:1; grid-column:1; } .board-gantt-controls .board-gantt-end-date { grid-row:1; grid-column:3; } .board-gantt-controls .board-gantt-prev { grid-row:2; grid-column:1; justify-self:start; } .board-gantt-controls .board-gantt-today { grid-row:1; grid-column:2; justify-self:center; } .board-gantt-controls .board-gantt-next { grid-row:2; grid-column:3; justify-self:end; } .board-gantt-controls input { width:100%; min-width:0; } .board-gantt-controls .gantt-sort { grid-row:2; grid-column:2; justify-self:center; gap:0; } .board-gantt-controls .gantt-sort button { min-width:0; padding-inline:.3rem; } }
+@media (max-width:700px) { .timeline-layout { --timeline-label-width:140px; } .gantt-width-toggle { display:none; } .board-tabs-gantt { align-items:flex-start; flex-wrap:wrap; } .board-gantt-controls { display:grid; flex-basis:100%; grid-template-columns:minmax(0, 1fr) 44px minmax(0, 1fr); align-items:center; gap:.35rem; } .board-gantt-controls .board-gantt-start-date { grid-row:1; grid-column:1; } .board-gantt-controls .board-gantt-end-date { grid-row:1; grid-column:3; } .board-gantt-controls .board-gantt-prev { grid-row:2; grid-column:1; justify-self:start; } .board-gantt-controls .board-gantt-today { grid-row:1; grid-column:2; justify-self:center; } .board-gantt-controls .board-gantt-next { grid-row:2; grid-column:3; justify-self:end; } .board-gantt-controls input { width:100%; min-width:0; } .board-gantt-controls .gantt-sort { grid-row:2; grid-column:2; justify-self:center; gap:0; } .board-gantt-controls .gantt-sort button { min-width:0; padding-inline:.3rem; } }
 /* Above the floating time tracker (z-index 15), in line with the app's other dialogs. */
 .dialog-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:1rem; background:#11182799; } .dialog-backdrop.confirm-layer { z-index:101; } .editor-actions { justify-content:flex-end; }
 /* Flat card editor: a meta row (path, priority, status, dates, labels), then
