@@ -2,6 +2,7 @@ import { config, flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import LogsView from "./LogsView.vue";
 import { api } from "../lib/api";
+import { useLogsStore } from "../stores/logs";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -57,6 +58,18 @@ describe("LogsView", () => {
     );
     expect(wrapper.find(".log-group-day-break").exists()).toBe(true);
     expect(wrapper.findAll("time.log-time")[2].text()).toBe("Sept 10 11:00");
+  });
+
+  it("WU-03: shows warmed logs before the refresh returns", async () => {
+    useLogsStore().setAll([log("warm", "Warmed thought", "2026-09-11T11:00:00Z")]);
+    vi.mocked(api).mockImplementation((path) =>
+      path === "/logs" ? new Promise(() => undefined) : Promise.resolve([]),
+    );
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    expect(wrapper.find(".log-body").text()).toBe("Warmed thought");
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/logs")).toHaveLength(1);
+    wrapper.unmount();
   });
 
   it("keeps search hidden until Cmd/Ctrl+K opens it", async () => {

@@ -13,11 +13,13 @@ const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body:
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width) {
+async function fixture(t, width, { warmup = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
   await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
+  // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
+  if (warmup) await context.addInitScript(() => localStorage.setItem("know_warmup", "force"));
   await context.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");
@@ -30,7 +32,9 @@ async function fixture(t, width) {
     else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [card];
     else if (path === "/boards/board-1/gantt") body = [card];
     else if (path === "/timers/current") body = null;
-    else if (path === "/timers/draft" || path === "/preferences" || path.startsWith("/reports")) body = {};
+    else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
+    else if (path.startsWith("/reports")) body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
+    else if (path === "/timers/draft" || path === "/preferences") body = {};
     await route.fulfill({ json: body });
   });
   const page = await context.newPage();
@@ -106,4 +110,27 @@ it("navigates home from the logo without a page reload and reuses cached session
   await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__noReload), true, "Logo click must use client-side routing");
   assert.equal(requests.filter((path) => homeData.includes(path)).length, before, "Returning home must reuse cached sessions, paths, and labels");
+});
+
+it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { warmup: true });
+  const warmed = ["/notes", "/calendar/days", "/reports", "/logs"];
+  const count = (path) => requests.filter((value) => value === path).length;
+  await until(() => requests.includes("/logs"));
+  for (const path of warmed) assert.equal(count(path), 1, `${path} must be warmed exactly once`);
+  assert.equal(requests.some((path) => path.startsWith("/boards")), false, "Warm-up must not load boards");
+
+  await visit(page, "/reports");
+  await page.locator(".reports-page").waitFor();
+  await page.waitForTimeout(300);
+  assert.equal(count("/reports"), 1, "A warmed Reports page must not refetch its report");
+
+  await visit(page, "/calendar");
+  await page.waitForTimeout(300);
+  assert.equal(count("/calendar/days"), 1, "A warmed Calendar must not refetch its month");
+
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.locator(".dashboard-shell > header nav").waitFor();
+  await page.waitForTimeout(6000);
+  for (const path of warmed) assert.equal(count(path), 1, `A reload inside the cooldown must not warm ${path} again`);
 });
