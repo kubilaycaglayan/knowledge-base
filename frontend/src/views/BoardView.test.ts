@@ -111,8 +111,8 @@ describe("BoardView", () => {
     const wrapper = mountBoard();
     await flushPromises();
 
-    await openSettingsFor(wrapper, "Test Board");
-    const settings = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
+    await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
+    const settings = wrapper.find('[role="dialog"][aria-labelledby="boards-manager-title"]');
     expect(settings.text()).toContain("Show priority");
     expect(settings.text()).toContain("Show status");
     expect(settings.text()).toContain("Show path");

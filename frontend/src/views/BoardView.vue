@@ -496,6 +496,12 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
       <ul ref="managerList" class="settings-statuses boards-manager-list" :class="{ dragging: managerDragId }" aria-label="Boards">
         <li v-for="board in managerBoards" :key="board.id" :data-board-id="board.id" :class="{ 'is-dragged': managerDragId === board.id }"><button class="icon-button quiet drag-handle" type="button" :aria-label="`Reorder ${board.name}`" aria-describedby="board-reorder-help" title="Drag to reorder" @pointerdown="startBoardDrag($event, board)" @keydown.up.prevent="moveBoard(board, -1)" @keydown.down.prevent="moveBoard(board, 1)"><v-icon :icon="mdiDragVertical" size="20" aria-hidden="true" /></button><button class="boards-manager-name" type="button" @click="openBoardSettings(board.id)"><span v-if="board.pathId" class="board-tab-dot" :style="{ backgroundColor: pathColor(board.pathId) }" aria-hidden="true"></span>{{ board.name }}</button><button class="icon-button quiet boards-manager-pin" :class="{ pinned: board.pinned }" type="button" :aria-pressed="Boolean(board.pinned)" :aria-label="`${board.pinned ? 'Unpin' : 'Pin'} ${board.name}`" :title="board.pinned ? 'Unpin board' : 'Pin board'" :disabled="pinningBoardId === board.id" @click="togglePinned(board)"><v-icon :icon="board.pinned ? mdiPin : mdiPinOutline" size="20" aria-hidden="true" /></button></li>
       </ul>
+      <template v-if="view === 'gantt'">
+        <h3 class="settings-label">Gantt card details</h3>
+        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowPriority" @change="setGanttDisplay('ganttShowPriority', ($event.target as HTMLInputElement).checked)" />Show priority</label>
+        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowStatus" @change="setGanttDisplay('ganttShowStatus', ($event.target as HTMLInputElement).checked)" />Show status</label>
+        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowPath" @change="setGanttDisplay('ganttShowPath', ($event.target as HTMLInputElement).checked)" />Show path</label>
+      </template>
       <footer class="board-settings-footer end-only"><button type="button" @click="closeManager">Done</button></footer>
     </section></div>
     <div v-if="settingsOpen && settingsBoard" class="dialog-backdrop" role="presentation" v-backdrop-close="closeSettings"><section v-dialog-focus class="confirm-dialog board-settings" role="dialog" aria-modal="true" aria-labelledby="board-settings-title" tabindex="-1" @keydown.esc.prevent="closeSettings">
@@ -508,12 +514,6 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
         <input id="board-settings-name" v-model="settingsName" class="settings-input" name="boardSettingsName" maxlength="120" autocomplete="off" @keydown.enter.prevent="saveSettingsName" @blur="saveSettingsName" />
       </template>
       <h3 class="settings-label">Statuses</h3>
-      <template v-if="view === 'gantt'">
-        <h3 class="settings-label">Timeline card details</h3>
-        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowPriority" @change="setGanttDisplay('ganttShowPriority', ($event.target as HTMLInputElement).checked)" />Show priority</label>
-        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowStatus" @change="setGanttDisplay('ganttShowStatus', ($event.target as HTMLInputElement).checked)" />Show status</label>
-        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowPath" @change="setGanttDisplay('ganttShowPath', ($event.target as HTMLInputElement).checked)" />Show path</label>
-      </template>
       <form class="settings-add-status" @submit.prevent="addStatus"><input v-model="newStatus" class="settings-input" aria-label="New status name" name="statusName" placeholder="New status…" maxlength="120" autocomplete="off" /><button class="icon-button quiet" type="submit" aria-label="Add status" title="Add status"><v-icon :icon="mdiPlus" size="20" aria-hidden="true" /></button></form>
       <p id="status-reorder-help" class="sr-only">Drag the handle to reorder, or focus it and press the up or down arrow key.</p>
       <ul ref="settingsStatusList" class="settings-statuses" :class="{ dragging: statusDragId }" aria-label="Statuses">
