@@ -194,6 +194,10 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   Acceptance: `docs/gantt-change-highlight-acceptance-checklist.md`.
 - [x] Keep the Gantt width toggle fully visible in the timeline header, left of
   the vertical scrollbar, and keep that scrollbar visible at full width.
+- [x] Hide or show the Gantt card list from a round toggle on the timeline's
+  top-left edge, so the timeline can use the whole width; the choice is kept
+  per browser.
+  Acceptance: `docs/gantt-card-list-toggle-acceptance-checklist.md`.
 - [x] Keep the timer WebSocket as the web's live channel in production: route
   `/ws/*` through the Cloudflare proxy (and standalone Vite), ping idle
   sockets every 30 seconds, and skip focus/visibility refetches while the
