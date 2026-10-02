@@ -6,7 +6,7 @@
 /* In Gantt mode, keep the shell and board controls in place while the timeline
    owns both scroll axes. */
 :global(.dashboard-shell:has(.board-page-gantt)) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
-:global(.dashboard-shell:has(.board-page-gantt) > header) { flex:0 0 auto; }
+:global(.dashboard-shell:has(.board-page-gantt) > header) { flex:0 0 auto; margin-bottom:10px; }
 /* The full-width timeline extends beyond the centered board. Its clipping
    ancestor must span the shell so the left card pane stays visible. */
 :global(.dashboard-shell:has(.board-page-gantt) > main) { flex:1 1 auto; width:100%; max-width:none; min-height:0; padding-bottom:0; overflow:hidden; }
