@@ -44,6 +44,26 @@ for (const width of [390, 1440]) it(`scrolls time continuously with native horiz
   assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Vertical wheel input must keep time stationary");
   assert.equal(await scroller.evaluate((el) => el.scrollTop), 83);
   assert.equal(await page.locator(".timeline-label-pane").evaluate((el) => el.scrollTop), 83);
+  await page.mouse.wheel(dayWidth * 4980 + 19, 0);
+  await page.waitForTimeout(400);
+  const distantDay = page.locator(`.timeline-days span[data-date="${dateOnly(4980)}"]`);
+  assert.ok(Math.abs((await distantDay.boundingBox()).x - start + 19) < 1, "Recycling distant scroll coordinates must preserve the fractional date position");
+  await page.mouse.wheel(41, 0);
+  await page.waitForTimeout(150);
+  assert.ok(Math.abs((await distantDay.boundingBox()).x - start + 60) < 1);
+  await page.mouse.wheel(-dayWidth * 4980 - 60, 0);
+  await page.waitForTimeout(400);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Dates must survive a round trip through recycled scroll coordinates");
+  await page.keyboard.down("Shift");
+  await page.mouse.wheel(0, 37);
+  await page.keyboard.up("Shift");
+  await page.waitForTimeout(150);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start + 37) < 1, "Shift-wheel must support ordinary mice");
+  const labels = await page.locator(".timeline-label-pane").boundingBox();
+  await page.mouse.move(labels.x + labels.width / 2, labels.y + 100);
+  await page.mouse.wheel(-37, 0);
+  await page.waitForTimeout(150);
+  assert.ok(Math.abs((await marker.boundingBox()).x - start) < 1, "Horizontal input over the labels must also scroll time");
   await page.screenshot({ path: join(screenshotDir, `gantt-native-wheel-${width}.png`) });
 });
 
@@ -201,6 +221,11 @@ const selectedTab = (page) => page.locator(".board-tab.selected");
 async function boardAction(page, name) {
   const direct = page.getByRole("button", { name, exact: true });
   if (await direct.isVisible().catch(() => false)) return direct.click();
+  const ganttMenu = page.locator(".board-gantt-selector button.board-all-menu");
+  if (await ganttMenu.isVisible().catch(() => false)) {
+    await ganttMenu.click();
+    return page.getByRole("menuitemradio", { name, exact: true }).click();
+  }
   await page.locator("button.board-tab-more").click();
   await page.locator('.board-more-menu [role^="menuitem"]', { hasText: new RegExp(`^${name}`) }).click();
 }
@@ -309,11 +334,11 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const drag = async (selector, days) => {
       const element = page.locator(selector);
       const box = await element.boundingBox();
-      const track = await page.locator(".timeline-track").boundingBox();
+      const day = await page.locator(".timeline-days span").first().boundingBox();
       const response = page.waitForResponse((r) => r.request().method() === "PUT" && r.url().includes("/cards/card-1"));
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.down();
-      await page.mouse.move(box.x + box.width / 2 + days * track.width / 14, box.y + box.height / 2, { steps: 6 });
+      await page.mouse.move(box.x + box.width / 2 + days * day.width, box.y + box.height / 2, { steps: 6 });
       await page.mouse.up();
       const result = await response;
       await page.waitForFunction(() => document.querySelector('.timeline-card')?.getAttribute('aria-busy') === 'false');
@@ -344,11 +369,11 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.locator(".timeline-card").waitFor();
     const original = await page.locator(".timeline-card").getAttribute("style");
     const box = await page.locator(".timeline-bar").boundingBox();
-    const track = await page.locator(".timeline-track").boundingBox();
+    const day = await page.locator(".timeline-days span").first().boundingBox();
     const start = async () => {
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.down();
-      await page.mouse.move(box.x + box.width / 2 + track.width / 14, box.y + box.height / 2, { steps: 5 });
+      await page.mouse.move(box.x + box.width / 2 + day.width, box.y + box.height / 2, { steps: 5 });
     };
     await start();
     await page.keyboard.press("Escape");
@@ -408,12 +433,12 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await boardAction(page, "Kanban");
     await setCardStatus(page, "Ship timeline", "Pending");
     await boardAction(page, "Gantt");
-    await page.locator(".timeline-row small").filter({ hasText: "Pending" }).waitFor();
+    await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor();
 
     await boardAction(page, "Kanban");
     await archiveCardFromEditor(page, "Ship timeline");
     await boardAction(page, "Gantt");
-    await page.locator(".board-empty").filter({ hasText: "No dated active cards" }).waitFor();
+    await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor({ state: "detached" });
 
     await boardAction(page, "Kanban");
     await restoreFromArchive(page, "Ship timeline");

@@ -17,7 +17,8 @@ import { usePreferencesStore, type BoardViewState, type GanttSortRule } from "..
 import { useBoardsStore, type Board, type BoardCard, type BoardCardSort, type BoardStatus, type MergedColumn } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
-import { addCalendarDays, timelineDays } from "../lib/board-gantt";
+import { addCalendarDays, inclusiveDayCount } from "../lib/board-gantt";
+import { useGanttScroll } from "../lib/use-gantt-scroll";
 import GanttCard from "../components/GanttCard.vue";
 import { ApiError } from "../lib/api";
 import { vDialogFocus } from "../lib/dialog-focus";
@@ -92,7 +93,7 @@ function measureKanbanHeight() { const kanban = kanbanEl.value; if (!kanban) ret
 const kanbanResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureKanbanHeight());
 watch(kanbanEl, (kanban) => { kanbanResize?.disconnect(); if (kanban) { if (boardPage.value) kanbanResize?.observe(boardPage.value); void nextTick(measureKanbanHeight); } });
 function measureViewport() { measureKanbanHeight(); viewportWidth.value = document.documentElement.clientWidth; const page = boardPage.value; if (page) contentLeft.value = page.getBoundingClientRect().left + parseFloat(getComputedStyle(page).paddingLeft || "0"); }
-function syncTimelineLabels() { if (timelineScroll.value && timelineLabelPane.value) timelineLabelPane.value.scrollTop = timelineScroll.value.scrollTop; ganttTitleOverflow.value = null; }
+function syncTimelineLabels() { if (timelineScroll.value && timelineLabelPane.value) timelineLabelPane.value.scrollTop = timelineScroll.value.scrollTop; ganttTitleOverflow.value = null; scrollTimeline(); }
 function showGanttTitleOverflow(event: MouseEvent, title: string) {
   const label = (event.currentTarget as HTMLElement).querySelector("strong");
   if (!label || label.scrollWidth <= label.clientWidth + 1) { ganttTitleOverflow.value = null; return; }
@@ -106,10 +107,23 @@ function scrollTimelineFromLabels(event: WheelEvent) { const scroller = timeline
 const today = format(new Date(), "yyyy-MM-dd");
 const ganttFrom = ref(typeof route.query.from === "string" ? route.query.from : today);
 const ganttTo = ref(typeof route.query.to === "string" ? route.query.to : addCalendarDays(ganttFrom.value, 13));
-const visibleDays = computed(() => timelineDays(ganttFrom.value, ganttTo.value));
+const phone = ref(false);
+const ganttRangeDays = computed(() => Math.max(1, inclusiveDayCount(ganttFrom.value, ganttTo.value)) || 14);
+let timelineQueryTimer: ReturnType<typeof setTimeout> | undefined;
+let pendingTimelineQuery = "";
+function rememberTimelineDate(from: string) {
+  if (from === ganttFrom.value) return;
+  const days = ganttRangeDays.value;
+  ganttFrom.value = from;
+  ganttTo.value = addCalendarDays(from, days - 1);
+  clearTimeout(timelineQueryTimer);
+  timelineQueryTimer = setTimeout(() => {
+    pendingTimelineQuery = `${ganttFrom.value}/${ganttTo.value}`;
+    void router.replace({ query: { ...route.query, from: ganttFrom.value, to: ganttTo.value } });
+  }, 250);
+}
+const { days: visibleDays, width: timelineWidth, windowStyle: timelineWindowStyle, todayPosition, onScroll: scrollTimeline, jump: jumpTimeline } = useGanttScroll(timelineScroll, ganttFrom, computed(() => phone.value ? 132 : 80), today, rememberTimelineDate);
 const formatTimelineDay = (day: string) => `${day.slice(8, 10)}-${day.slice(5, 7)}`;
-const timelineWidth = computed(() => Math.max(100, visibleDays.value.length * (phone.value ? 132 : 80)));
-const todayPosition = computed(() => { const index = visibleDays.value.indexOf(today); return index < 0 ? undefined : `${(index + 0.5) / visibleDays.value.length * 100}%`; });
 const isWeekend = (value: string) => [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
 const activeStatuses = computed(() => statuses.value.filter((status) => !status.archived));
 // The All boards view shows every tab board's columns merged by name; each merged column keeps its own sort.
@@ -257,7 +271,6 @@ watch(() => [store.selectedId, ...otherBoards.value.map((board) => `${board.id}:
 // On phones the view switch and the Manage boards gear move into this menu,
 // so it is always there, even when every board fits.
 const PHONE_QUERY = "(max-width: 700px)";
-const phone = ref(false);
 let phoneQuery: MediaQueryList | undefined;
 const onPhoneChange = (event: MediaQueryListEvent) => { phone.value = event.matches; };
 const showBoardMenu = computed(() => moreBoards.value.length > 0 || phone.value);
@@ -275,10 +288,10 @@ function closeMoreOnOutside(event: PointerEvent) { const target = event.target a
 watch(showBoardMenu, (shown) => { if (!shown) closeMore(); });
 watch(phone, () => { void nextTick(measureTabs); });
 function setView(next: string) { if (view.value === next) return; void router.push({ query: { ...route.query, view: next, ...(next === "gantt" ? { from: ganttFrom.value, to: ganttTo.value } : {}) } }); }
-function updateGanttRange() { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; void router.push({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
+function updateGanttRange() { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; clearTimeout(timelineQueryTimer); jumpTimeline(ganttFrom.value); void router.push({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
 function shiftGantt(amount: number) { ganttFrom.value = addCalendarDays(ganttFrom.value, amount); ganttTo.value = addCalendarDays(ganttTo.value, amount); updateGanttRange(); }
 function showToday() {
-  const days = visibleDays.value.length || 14;
+  const days = ganttRangeDays.value;
   ganttFrom.value = format(new Date(), "yyyy-MM-dd");
   ganttTo.value = addCalendarDays(ganttFrom.value, days - 1);
   updateGanttRange();
@@ -407,7 +420,7 @@ function requestArchiveCard(card: BoardCard) { archiveCardConfirm.value = card; 
 async function confirmArchiveCard() { const card = archiveCardConfirm.value; archiveCardConfirm.value = null; if (!card) return; try { if (editing.value?.id === card.id) { await queueSave(); clearTimeout(saveTimer); destroyCardEditor(); editing.value = null; } await store.archiveCard(card); } catch { notices.notify("Could not archive card."); } }
 async function archiveBoard() { const id = settingsBoardId.value; if (!id) return; const wasOpen = id === store.selectedId; archiveConfirmOpen.value = false; settingsOpen.value = false; dismissError(); try { await store.archiveBoard(id); if (wasOpen) await router.replace({ query: {} }); } catch { notices.notify("Could not archive board."); } }
 onMounted(async () => { phoneQuery = typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : undefined; phone.value = Boolean(phoneQuery?.matches); phoneQuery?.addEventListener("change", onPhoneChange); document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureKanbanHeight); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); document.addEventListener("keydown", boardSearchKeydown); window.addEventListener("beforeunload", warnBeforeUnload); // The board is selected before the list loads, so loading never falls back to All boards first.
-  await restoreBoardState(); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
+  await restoreBoardState(); jumpTimeline(ganttFrom.value); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
 // The Boards page state (BS-01 to BS-04): a URL without board parameters (the nav link, a new session)
 // opens the remembered state and writes it into the URL; explicit parameters win. Every change is remembered.
 const BOARD_QUERY_KEYS = ["board", "view", "from", "to", "q"];
@@ -439,8 +452,8 @@ watch(hasBoardQuery, (present) => { if (!present && boardStateReady && route.pat
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
-watch(() => [route.query.from, route.query.to], ([from, to]) => { if (view.value !== "gantt" || typeof from !== "string" || typeof to !== "string" || from === ganttFrom.value && to === ganttTo.value) return; ganttFrom.value = from; ganttTo.value = to; void store.loadGantt(from, to); });
-onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventListener("change", onPhoneChange); document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); document.removeEventListener("keydown", boardSearchKeydown); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
+watch(() => [route.query.from, route.query.to], ([from, to]) => { if (`${from}/${to}` === pendingTimelineQuery) { pendingTimelineQuery = ""; return; } if (view.value !== "gantt" || typeof from !== "string" || typeof to !== "string" || from === ganttFrom.value && to === ganttTo.value) return; clearTimeout(timelineQueryTimer); ganttFrom.value = from; ganttTo.value = to; jumpTimeline(from); void store.loadGantt(from, to); });
+onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQueryTimer); phoneQuery?.removeEventListener("change", onPhoneChange); document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); document.removeEventListener("keydown", boardSearchKeydown); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
 </script>
 
 <template>
@@ -488,7 +501,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
             <template v-if="phone"><li role="separator" class="board-more-separator"></li><li v-for="option in [{ value: 'kanban', label: 'Kanban' }, { value: 'gantt', label: 'Gantt' }]" :key="option.value" role="none"><button class="board-more-item" type="button" role="menuitemradio" tabindex="-1" :aria-checked="view === option.value" @click="pickView(option.value)"><v-icon class="board-more-check" :icon="mdiCheck" size="16" aria-hidden="true" />{{ option.label }}</button></li><li role="separator" class="board-more-separator"></li><li role="none"><button class="board-more-item" type="button" role="menuitem" tabindex="-1" @click="pickManageBoards"><v-icon class="board-more-check" :icon="mdiCogOutline" size="16" aria-hidden="true" />Manage boards…</button></li></template>
           </ul>
         </div>
-        <div class="gantt-controls board-gantt-controls"><button class="secondary board-gantt-prev" type="button" aria-label="Previous timeline window" @click="shiftGantt(-visibleDays.length)">←</button><input class="board-gantt-start-date" v-model="ganttFrom" type="date" aria-label="Timeline start date" @change="updateGanttRange" /><button class="secondary icon-button board-gantt-today" type="button" aria-label="Today" title="Today" @click="showToday"><v-icon :icon="mdiCalendarToday" size="20" aria-hidden="true" /></button><input class="board-gantt-end-date" v-model="ganttTo" type="date" aria-label="Timeline end date" @change="updateGanttRange" /><button class="secondary board-gantt-next" type="button" aria-label="Next timeline window" @click="shiftGantt(visibleDays.length)">→</button><span class="gantt-sort" role="group" aria-label="Timeline sort rules"><button class="secondary" type="button" :aria-pressed="ganttSortDirection('PRIORITY') !== 'OFF'" :aria-label="ganttSortLabel('PRIORITY')" @click="toggleGanttSort('PRIORITY')">Priority <span aria-hidden="true">{{ ganttSortDirection('PRIORITY') === 'ASC' ? '↑' : ganttSortDirection('PRIORITY') === 'DESC' ? '↓' : '↕' }}</span></button><button class="secondary" type="button" :aria-pressed="ganttSortDirection('DATE') !== 'OFF'" :aria-label="ganttSortLabel('DATE')" @click="toggleGanttSort('DATE')">Date <span aria-hidden="true">{{ ganttSortDirection('DATE') === 'ASC' ? '↑' : ganttSortDirection('DATE') === 'DESC' ? '↓' : '↕' }}</span></button></span></div>
+        <div class="gantt-controls board-gantt-controls"><button class="secondary board-gantt-prev" type="button" aria-label="Previous timeline window" @click="shiftGantt(-ganttRangeDays)">←</button><input class="board-gantt-start-date" v-model="ganttFrom" type="date" aria-label="Timeline start date" @change="updateGanttRange" /><button class="secondary icon-button board-gantt-today" type="button" aria-label="Today" title="Today" @click="showToday"><v-icon :icon="mdiCalendarToday" size="20" aria-hidden="true" /></button><input class="board-gantt-end-date" v-model="ganttTo" type="date" aria-label="Timeline end date" @change="updateGanttRange" /><button class="secondary board-gantt-next" type="button" aria-label="Next timeline window" @click="shiftGantt(ganttRangeDays)">→</button><span class="gantt-sort" role="group" aria-label="Timeline sort rules"><button class="secondary" type="button" :aria-pressed="ganttSortDirection('PRIORITY') !== 'OFF'" :aria-label="ganttSortLabel('PRIORITY')" @click="toggleGanttSort('PRIORITY')">Priority <span aria-hidden="true">{{ ganttSortDirection('PRIORITY') === 'ASC' ? '↑' : ganttSortDirection('PRIORITY') === 'DESC' ? '↓' : '↕' }}</span></button><button class="secondary" type="button" :aria-pressed="ganttSortDirection('DATE') !== 'OFF'" :aria-label="ganttSortLabel('DATE')" @click="toggleGanttSort('DATE')">Date <span aria-hidden="true">{{ ganttSortDirection('DATE') === 'ASC' ? '↑' : ganttSortDirection('DATE') === 'DESC' ? '↓' : '↕' }}</span></button></span></div>
       </div>
       <div v-else ref="tabBar" class="board-tabs" role="group" aria-label="Boards">
         <button ref="allTab" class="board-all-tab" :class="{ selected: isAll }" type="button" aria-label="All boards" title="All boards" :aria-current="isAll ? 'true' : undefined" @click="activateBoardTab(ALL_BOARDS)"><v-icon :icon="mdiAllInclusive" size="20" aria-hidden="true" /></button>
@@ -535,8 +548,8 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); phoneQuery?.removeEventLi
         <div ref="timelineScroll" class="timeline-scroll" tabindex="0" role="region" aria-label="Board card timeline" @scroll="syncTimelineLabels" @wheel="scrollTimelineHorizontally">
           <div class="timeline" :style="{ minWidth: `${timelineWidth}px` }">
             <div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div>
-            <div class="timeline-header"><div class="timeline-days" :style="{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day">{{ formatTimelineDay(day) }}</span></div></div>
-            <div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-track"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div>
+            <div class="timeline-header"><div class="timeline-days" :style="{ ...timelineWindowStyle, gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day" :data-date="day">{{ formatTimelineDay(day) }}</span></div></div>
+            <div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-track" :style="timelineWindowStyle"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div>
             <p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p>
           </div>
         </div>

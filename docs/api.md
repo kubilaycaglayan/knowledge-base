@@ -34,8 +34,11 @@ for cards with dates overlapping its inclusive window, while its name gutter
 also lists undated and out-of-window cards. Date-only values use calendar
 arithmetic, so inclusive ranges remain stable across month, leap-day, and
 daylight-saving boundaries.
-The web timeline's Today control starts the window on the user's local current
-date, preserves its visible day count, and updates the `from`/`to` URL parameters.
+The web timeline uses native horizontal scrolling to navigate calendar time
+pixel by pixel. It renders nearby dates as the viewport moves; the `from`/`to`
+URL parameters and saved board range follow the leftmost visible date. Today
+jumps to the local current date, and the date inputs remain available for
+direct navigation.
 The Gantt chart marks the local current day with a red vertical line when it is
 in view. Dragging a card shifts its dates by whole calendar days; dragging its
 start or end handle resizes its inclusive range, clamped to at least one day.

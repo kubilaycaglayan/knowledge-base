@@ -198,5 +198,7 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   undated cards last) in the user's board state (V55).
   Acceptance: `docs/board-state-acceptance-checklist.md`.
 - [x] Store Gantt full-width state independently from Kanban width (V56).
+- [x] Navigate Gantt time with native horizontal scrolling and render date cells
+  only around the viewport, keeping the visible date stable across long journeys.
 - [x] Move Gantt date controls into the toolbar and combine path/board choices
   in its All boards dropdown.

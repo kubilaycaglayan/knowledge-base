@@ -132,7 +132,7 @@ describe("BoardView", () => {
       .toEqual(["in-range", "undated", "outside-range"]);
     expect(wrapper.find(".timeline-summary").exists()).toBe(false);
     expect(wrapper.find(".timeline-scroll").attributes("role")).toBe("region");
-    expect(wrapper.find(".timeline-days span").text()).toBe("01-09");
+    expect(wrapper.find('.timeline-days span[data-date="2026-09-01"]').text()).toBe("01-09");
     expect(wrapper.findAll(".timeline-card")).toHaveLength(1);
     await wrapper.unmount();
   });
