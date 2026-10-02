@@ -263,7 +263,9 @@ describe("LabelsView", () => {
     vi.mocked(api).mockImplementation(async (path: string) =>
       path === "/labels"
         ? [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }]
-        : {
+        : path.startsWith("/labels/one/history/records")
+          ? { items: [], hasMore: false }
+          : {
             labelId: "one",
             name: "Study",
             color: "#2878D5",
@@ -289,8 +291,8 @@ describe("LabelsView", () => {
     await button.trigger("click");
     await flushPromises();
 
-    expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toMatch(
-      /^\/labels\/one\/history\?zone=/,
+    expect(vi.mocked(api).mock.calls.map(([path]) => path)).toContainEqual(
+      expect.stringMatching(/^\/labels\/one\/history\?zone=/),
     );
     expect(wrapper.find('[role="dialog"].label-history-dialog').exists()).toBe(
       true,

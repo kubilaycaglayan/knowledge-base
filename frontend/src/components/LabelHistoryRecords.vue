@@ -42,8 +42,8 @@ async function load() {
       `/labels/${props.labelId}/history/records?kind=${kind.value}&page=${page.value}`,
     );
     if (token !== request) return;
-    items.value = result.items;
-    hasMore.value = result.hasMore;
+    items.value = result?.items ?? [];
+    hasMore.value = result?.hasMore ?? false;
   } catch {
     if (token === request) error.value = "Could not load related records.";
   } finally {
