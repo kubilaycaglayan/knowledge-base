@@ -181,6 +181,64 @@ for (const width of [390, 1440]) it(`keeps Gantt rows aligned while scrolling at
   await page.screenshot({ path: join(screenshotDir, `gantt-scroll-${width}.png`) });
 });
 
+// GH-05, GH-07
+it("highlights a Gantt card after its dates change on the timeline", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-card").waitFor();
+  const row = page.locator('.timeline-row[data-card-id="card-1"]'), label = page.locator(".timeline-label").first();
+  const highlighted = async () => ({ row: await row.evaluate((element) => element.classList.contains("last-changed")), label: await label.evaluate((element) => element.classList.contains("last-changed")) });
+  const plainLabel = await label.evaluate((element) => getComputedStyle(element).backgroundColor);
+  assert.deepEqual(await highlighted(), { row: false, label: false });
+  const drag = async (selector, days) => {
+    const box = await page.locator(selector).boundingBox();
+    const day = await page.locator(".timeline-days span").first().boundingBox();
+    const saved = cardSaved(page);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + days * day.width, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await saved;
+    await page.waitForFunction(() => document.querySelector(".timeline-row")?.classList.contains("last-changed"));
+  };
+
+  await drag(".timeline-bar", 2);
+  const savedAt = Date.now();
+  assert.deepEqual(await highlighted(), { row: true, label: true });
+  const look = await page.evaluate(() => {
+    const label = document.querySelector(".timeline-label"), row = document.querySelector(".timeline-row"), card = document.querySelector(".timeline-card");
+    return { label: getComputedStyle(label).backgroundColor, labelTransition: getComputedStyle(label).transitionDuration, row: getComputedStyle(row).backgroundColor, ring: getComputedStyle(card).boxShadow };
+  });
+  assert.notEqual(look.label, plainLabel, "The changed card's label must be tinted");
+  assert.notEqual(look.row, "rgba(0, 0, 0, 0)", "The changed card's timeline row must be tinted");
+  assert.notEqual(look.ring, "none", "The changed card's bar must carry a ring that shows on any card color");
+  assert.match(look.labelTransition, /^0s/, "The highlight must not animate under reduced motion");
+  await page.screenshot({ path: join(screenshotDir, "gantt-change-highlight-1440.png") });
+  await page.waitForFunction(() => !document.querySelector(".timeline-row")?.classList.contains("last-changed"), null, { timeout: 6000 });
+  const elapsed = Date.now() - savedAt;
+  assert.ok(elapsed >= 3500 && elapsed <= 5000, `The highlight must last about four seconds, lasted ${elapsed}ms`);
+  assert.deepEqual(await highlighted(), { row: false, label: false });
+
+  await drag(".timeline-resize:last-child", 1);
+  assert.deepEqual(await highlighted(), { row: true, label: true });
+  await page.waitForFunction(() => !document.querySelector(".timeline-row")?.classList.contains("last-changed"), null, { timeout: 6000 });
+  await drag(".timeline-resize:first-child", -1);
+  assert.deepEqual(await highlighted(), { row: true, label: true });
+});
+
+// GH-05
+it("highlights an unscheduled Gantt card after it gets a date", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: [{ ...cards[0], startDate: undefined, dueDate: undefined }] }));
+  await boardAction(page, "Gantt");
+  const track = page.getByRole("button", { name: "Choose a date for Ship timeline" });
+  await track.waitFor();
+  const saved = cardSaved(page);
+  await track.click();
+  await saved;
+  await page.waitForFunction(() => document.querySelector(".timeline-row")?.classList.contains("last-changed") && document.querySelector(".timeline-label")?.classList.contains("last-changed"));
+});
+
 // GO-04, GO-05, GO-06
 for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline edges and jumps to the card at ${width}px`, async (t) => {
   const { page } = await fixture(t, width);

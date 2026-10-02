@@ -11,6 +11,7 @@ import { useRouter, useRoute } from "vue-router";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, describe, vi } from "vitest";
 import { reactive } from "vue";
+import { api } from "../lib/api";
 
 vi.mock("vue-router", () => ({
   useRouter: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("../lib/api");
 describe("BoardView", () => {
   let mockRouter: any;
   let mockRoute: any;
+  let realBoardActions: Pick<ReturnType<typeof useBoardsStore>, "createCard" | "updateCard">;
 
   beforeEach(async () => {
     setActivePinia(createPinia());
@@ -44,6 +46,8 @@ describe("BoardView", () => {
     const boardsStore = useBoardsStore();
     const pathsStore = usePathsStore();
     const labelsStore = useLabelsStore();
+    // Tests that check what a real card change does put these back.
+    realBoardActions = { createCard: boardsStore.createCard, updateCard: boardsStore.updateCard };
 
     // Mock store actions to prevent API calls
     const noop = () => Promise.resolve();
@@ -1266,6 +1270,91 @@ describe("BoardView", () => {
       await title.setValue("Drafted again");
       await vi.advanceTimersByTimeAsync(700);
       expect((store.updateCard as any).mock.calls[1][0].updatedAt).toBe("t2");
+      await wrapper.unmount();
+    });
+
+    // GH-03, GH-06
+    it("highlights the last changed Gantt card for four seconds", async () => {
+      vi.useFakeTimers();
+      const store = seedBoard(["Backlog"]);
+      store.ganttCards = [{ ...baseCard, boardId: "test-id" }];
+      mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+      const wrapper = mountBoard();
+      await flushPromises();
+      (store.updateCard as any) = realBoardActions.updateCard;
+      vi.mocked(api).mockImplementation(async (_path: string, init?: RequestInit) => ({ ...baseCard, boardId: "test-id", ...JSON.parse(String(init?.body)), updatedAt: "t2" }));
+
+      await wrapper.find(".timeline-label").trigger("click");
+      await wrapper.find('textarea[name="title"]').setValue("Changed");
+      await vi.advanceTimersByTimeAsync(700);
+      await flushPromises();
+      expect(wrapper.find(".timeline-label").classes()).toContain("last-changed");
+      expect(wrapper.find(".timeline-row").classes()).toContain("last-changed");
+      await vi.advanceTimersByTimeAsync(4000);
+      await flushPromises();
+      expect(wrapper.find(".timeline-label").classes()).not.toContain("last-changed");
+      expect(wrapper.find(".timeline-row").classes()).not.toContain("last-changed");
+      await wrapper.unmount();
+    });
+
+    // GH-06
+    it("highlights a Gantt card after its dates are cleared in the editor", async () => {
+      vi.useFakeTimers();
+      const store = seedBoard(["Backlog"]);
+      store.ganttCards = [{ ...baseCard, boardId: "test-id", startDate: "2026-09-03", dueDate: "2026-09-05" }];
+      mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+      const wrapper = mountBoard();
+      await flushPromises();
+      (store.updateCard as any) = realBoardActions.updateCard;
+      vi.mocked(api).mockImplementation(async (_path: string, init?: RequestInit) => ({ ...baseCard, boardId: "test-id", ...JSON.parse(String(init?.body)), updatedAt: "t2" }));
+
+      await wrapper.find(".timeline-label").trigger("click");
+      (wrapper.vm as any).setDraftDates(null);
+      await vi.advanceTimersByTimeAsync(700);
+      await flushPromises();
+      expect(JSON.parse(String(vi.mocked(api).mock.calls[0][1]?.body))).not.toHaveProperty("startDate");
+      expect(wrapper.find(".timeline-label").classes()).toContain("last-changed");
+      expect(wrapper.find(".timeline-row").classes()).toContain("last-changed");
+      expect(wrapper.find(".timeline-unscheduled").exists()).toBe(true);
+      await wrapper.unmount();
+    });
+
+    // GH-03
+    it("highlights a changed card's label and timeline row", async () => {
+      vi.useFakeTimers();
+      const store = seedBoard(["Backlog"]);
+      store.ganttCards = [{ ...baseCard, boardId: "test-id", startDate: "2026-09-03", dueDate: "2026-09-05" }, { ...baseCard, id: "card-2", boardId: "test-id", title: "Second", position: 1 }];
+      mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+      const wrapper = mountBoard();
+      await flushPromises();
+      store.markCardChanged("card-1");
+      store.markCardChanged("card-2");
+      await flushPromises();
+      expect(wrapper.findAll(".timeline-label").map((label) => label.classes().includes("last-changed"))).toEqual([true, true]);
+      expect(wrapper.findAll(".timeline-row").map((row) => row.classes().includes("last-changed"))).toEqual([true, true]);
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(wrapper.findAll(".timeline-row.last-changed, .timeline-label.last-changed")).toHaveLength(0);
+      await wrapper.unmount();
+    });
+
+    // GH-04
+    it("highlights a card created from the Gantt view", async () => {
+      vi.useFakeTimers();
+      const store = seedBoard(["Backlog"]);
+      store.statuses = store.statuses.map((status) => ({ ...status, boardId: "test-id" }));
+      store.ganttCards = [{ ...baseCard, boardId: "test-id" }];
+      mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+      const wrapper = mountBoard();
+      await flushPromises();
+      (store.createCard as any) = realBoardActions.createCard;
+      vi.mocked(api).mockResolvedValue({ ...baseCard, id: "created", boardId: "test-id", title: "", position: 1 });
+
+      await wrapper.find(".timeline-add-card").trigger("click");
+      await flushPromises();
+      const rows = wrapper.findAll(".timeline-row");
+      expect(rows.map((row) => row.attributes("data-card-id"))).toEqual(["card-1", "created"]);
+      expect(rows.map((row) => row.classes().includes("last-changed"))).toEqual([false, true]);
+      expect(wrapper.findAll(".timeline-label")[1].classes()).toContain("last-changed");
       await wrapper.unmount();
     });
 

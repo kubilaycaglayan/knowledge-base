@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 
 const apiMock = vi.fn();
@@ -850,5 +850,85 @@ describe("All boards view and cached views (AB-19, AB-20)", () => {
     await store.loadBoards();
     store.selectedId = "a"; await store.loadBoard();
     expect(apiMock.mock.calls.length).toBeGreaterThan(calls + 1);
+  });
+});
+
+describe("changed-card marks (GH-01, GH-02)", () => {
+  beforeEach(() => { setActivePinia(createPinia()); apiMock.mockReset(); vi.useFakeTimers(); });
+  afterEach(() => vi.useRealTimers());
+  const card = (id: string, statusId = "backlog") => ({ id, boardId: "board", statusId, title: id, body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" });
+  const status = (id: string, name = id) => ({ id, boardId: "board", name, position: 0, archived: false });
+  async function setup() {
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.statuses = [status("backlog", "Backlog"), status("done", "Done")];
+    return store;
+  }
+
+  // GH-01
+  it("marks a card as changed for four seconds after each successful card change", async () => {
+    const store = await setup();
+    const changes: Array<[string, (target: ReturnType<typeof card>) => Promise<unknown>, unknown]> = [
+      ["created", () => store.createCard({ title: "Created", body: "{}", priority: "MEDIUM" }), card("created")],
+      ["in-column", () => store.createCardInColumn("board", "Backlog", { title: "In column", body: "{}", priority: "MEDIUM" }), { card: card("in-column"), status: status("backlog", "Backlog"), statusCreated: false }],
+      ["edited", (target) => store.updateCard(target, { title: "Edited", body: "{}", priority: "HIGH", startDate: undefined, dueDate: undefined }), { ...card("edited"), title: "Edited" }],
+      ["moved", (target) => store.moveCard(target, "done", 0), card("moved", "done")],
+      ["column", (target) => store.moveCardToColumn(target, "Done", 0), { card: card("column", "done"), status: status("done", "Done"), statusCreated: false }],
+      ["transferred", (target) => store.transferCard(target, "board"), { card: card("transferred"), status: status("backlog", "Backlog"), statusCreated: false }],
+      ["restored", (target) => store.archiveCard(target, true), card("restored")],
+    ];
+    for (const [id, change, response] of changes) {
+      const target = card(id);
+      store.cards = [...store.cards.filter((item) => item.id !== id), target];
+      apiMock.mockResolvedValueOnce(response);
+      await change(target);
+      expect(store.changedCards[id], `${id} is marked`).toBe(true);
+      await vi.advanceTimersByTimeAsync(3999);
+      expect(store.changedCards[id], `${id} is still marked just before four seconds`).toBe(true);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(store.changedCards[id], `${id} is unmarked after four seconds`).toBeUndefined();
+    }
+  });
+
+  // GH-01
+  it("keeps each changed card marked for its own four seconds", async () => {
+    const store = await setup();
+    const first = card("first"), second = card("second");
+    store.cards = [first, second];
+    apiMock.mockImplementation((_path: string, init: { body: string }) => Promise.resolve({ ...(init.body.includes("First") ? first : second), title: JSON.parse(init.body).title }));
+    await store.updateCard(first, { title: "First", body: "{}", priority: "MEDIUM" });
+    await vi.advanceTimersByTimeAsync(2000);
+    await store.updateCard(second, { title: "Second", body: "{}", priority: "MEDIUM" });
+    expect(store.changedCards).toEqual({ first: true, second: true });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(store.changedCards).toEqual({ second: true });
+    // A repeat change restarts the card's four seconds.
+    await vi.advanceTimersByTimeAsync(1000);
+    await store.updateCard(second, { title: "Second", body: "{}", priority: "MEDIUM" });
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(store.changedCards).toEqual({ second: true });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(store.changedCards).toEqual({});
+  });
+
+  // GH-02
+  it("does not mark a card whose change failed", async () => {
+    const store = await setup();
+    const target = card("failed");
+    store.cards = [target];
+    apiMock.mockRejectedValue(Object.assign(new Error("offline"), { status: 500 }));
+    await expect(store.updateCard(target, { title: "Nope", body: "{}", priority: "MEDIUM" })).rejects.toThrow();
+    await expect(store.moveCard(target, "done", 0)).rejects.toThrow();
+    await expect(store.createCard({ title: "Nope", body: "{}", priority: "MEDIUM" })).rejects.toThrow();
+    expect(store.changedCards).toEqual({});
+
+    apiMock.mockResolvedValue({ ...target, title: "Saved" });
+    await store.updateCard(target, { title: "Saved", body: "{}", priority: "MEDIUM" });
+    expect(store.changedCards).toEqual({ failed: true });
+    store.reset();
+    expect(store.changedCards).toEqual({});
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(store.changedCards).toEqual({});
   });
 });

@@ -27,7 +27,8 @@ that cover it. Tick an item only once those tests pass.
   _Tests:_ `BoardView.test.ts` "highlights a card created from the Gantt view"
 - [ ] **GH-05** Dragging a bar to new dates, resizing either end, and setting
   dates on an unscheduled card (click or drag) highlight the card's row.
-  _Tests:_ `board.acceptance.test.mjs` "highlights a Gantt card after its dates change on the timeline"
+  _Tests:_ `board.acceptance.test.mjs` "highlights a Gantt card after its dates change on the timeline";
+  `board.acceptance.test.mjs` "highlights an unscheduled Gantt card after it gets a date"
 - [ ] **GH-06** Editing the card in the dialog highlights it on every save:
   changing or clearing its dates, and changing its title, priority, labels,
   status or board.
