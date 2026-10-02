@@ -975,6 +975,11 @@
   height: 360px;
   width: 100%;
 }
+.chart-frame.has-range-selector,
+.chart-frame.has-range-selector .report-echart {
+  min-height: 378px;
+  height: 378px;
+}
 .sankey-card {
   margin-top: 24px;
 }
@@ -1921,6 +1926,11 @@
   .report-echart {
     min-height: 280px;
     height: 280px;
+  }
+  .chart-frame.has-range-selector,
+  .chart-frame.has-range-selector .report-echart {
+    min-height: 298px;
+    height: 298px;
   }
   .sankey-frame {
     min-height: 280px;

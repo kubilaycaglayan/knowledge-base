@@ -435,6 +435,7 @@ const option = computed<EChartsOption>(() => ({
 <template>
   <div
     class="chart-frame"
+    :class="{ 'has-range-selector': days.length > 31 }"
     role="img"
     :aria-label="`${aggregation.toLowerCase()} tracked time${showCalendar ? ' with calendar inputs' : ''}${trendlineMode !== 'OFF' ? ` with ${trendlineMode.toLowerCase()} trendline` : ''}: ${
       days
