@@ -71,6 +71,8 @@ const settingsBoard = computed(() => boards.value.find((board) => board.id === s
 const settingsForOpenBoard = computed(() => settingsBoardId.value === store.selectedId);
 const settingsAllStatuses = computed(() => settingsForOpenBoard.value ? statuses.value : otherBoardStatuses.value);
 const settingsActiveStatuses = computed(() => settingsAllStatuses.value.filter((status) => !status.archived));
+const ganttDisplay = computed(() => preferences.board);
+function setGanttDisplay(key: "ganttShowPriority" | "ganttShowStatus" | "ganttShowPath", value: boolean) { preferences.setBoardState({ ...preferences.board, [key]: value }); }
 const statusDragId = ref(""), statusDragOrder = ref<string[] | null>(null), settingsStatusList = ref<HTMLElement | null>(null);
 // While a status is dragged the dialog previews the new order; it is saved on release.
 const settingsStatuses = computed(() => statusDragOrder.value ? statusDragOrder.value.map((id) => settingsActiveStatuses.value.find((status) => status.id === id)).filter((status): status is BoardStatus => Boolean(status)) : settingsActiveStatuses.value);
@@ -81,6 +83,13 @@ const pageObservers = new Map<string, IntersectionObserver>();
 const preferences = usePreferencesStore(), kanbanWide = computed(() => preferences.kanbanWide), ganttWide = computed(() => preferences.ganttWide), viewportWidth = ref(0), contentLeft = ref(0), boardPage = ref<HTMLElement | null>(null);
 const timelineScroll = ref<HTMLElement | null>(null), timelineLabelPane = ref<HTMLElement | null>(null);
 const ganttTitleOverflow = ref<{ title: string; left: number; top: number; maxWidth: number; font: string; letterSpacing: string } | null>(null);
+const lastChangedGanttCardId = ref("");
+let ganttHighlightTimer: ReturnType<typeof setTimeout> | undefined;
+function highlightGanttCard(cardId: string) {
+  lastChangedGanttCardId.value = cardId;
+  clearTimeout(ganttHighlightTimer);
+  ganttHighlightTimer = setTimeout(() => { lastChangedGanttCardId.value = ""; }, 4000);
+}
 
 function toggleKanbanWide() { measureViewport(); void preferences.setKanbanWide(!kanbanWide.value); }
 function toggleGanttWide() { measureViewport(); void preferences.setGanttWide(!ganttWide.value); }
@@ -213,6 +222,14 @@ const sortTitle = (sort: BoardCardSort) => `${SORT_LABELS[sort][0].toUpperCase()
 async function cycleColumnSort(column: KanbanColumn) { dismissError(); try { if (column.merged) await store.setColumnSort(column.merged.key, nextSort(column.sort)); else await store.setStatusSort(column.status!, nextSort(column.sort)); } catch { notices.notify("Could not sort this column."); } }
 const statusName = (statusId: string) => statuses.value.find((status) => status.id === statusId)?.name || "Status";
 const cardAccent = (card: BoardCard) => cardBoard(card)?.pathId ? undefined : pathsStore.activePaths.find((path) => card.pathIds.includes(path.id))?.color || undefined;
+const ganttCardPath = (card: BoardCard) => {
+  const boardPathId = cardBoard(card)?.pathId;
+  return (boardPathId && pathsStore.byId(boardPathId)) || pathsStore.activePaths.find((path) => card.pathIds.includes(path.id));
+};
+const ganttCardColor = (card: BoardCard) => ganttCardPath(card)?.color || undefined;
+const ganttCardTextColor = (card: BoardCard) => ganttCardPath(card)?.textColor || undefined;
+const ganttCardStatus = (card: BoardCard) => statuses.value.find((status) => status.id === card.statusId)?.name || "";
+const ganttCardPathName = (card: BoardCard) => ganttCardPath(card)?.name || "";
 function selectBoard(id: string) { dismissError(); store.selectedId = id; void router.replace({ query: { ...route.query, board: id } }); void store.loadBoard(); }
 // Tabs only switch boards; renaming lives in board settings.
 // Cards tied to a path (through a path board or their own path) can start a
@@ -347,7 +364,7 @@ function editCard(card: BoardCard) { clearTimeout(saveTimer); destroyCardEditor(
 // A single confirmed day is both the start and the due date.
 function setDraftDates(value: Date[] | null) { const [start, due] = value || []; draft.value.startDate = start ? format(start, "yyyy-MM-dd") : ""; draft.value.dueDate = start ? format(due || start, "yyyy-MM-dd") : ""; }
 function queueSave() { clearTimeout(saveTimer); saveChain = saveChain.then(persistDraft); return saveChain; }
-async function persistDraft() { const card = editing.value; if (!card) return; const snapshot = JSON.stringify(draft.value); if (snapshot === savedSnapshot.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; saveState.value = "saving"; try { const saved = await store.updateCard(card, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); if (editing.value?.id === card.id) editing.value = saved; savedSnapshot.value = snapshot; saveState.value = "saved"; saveError.value = ""; closeAnyway.value = false; } catch (saveFailure) { saveState.value = "error"; saveError.value = saveFailure instanceof ApiError && saveFailure.status === 408 ? "The request timed out. Your edits are kept." : saveFailure instanceof ApiError && saveFailure.status === 409 ? "This card changed elsewhere. Retry to save your version." : "Could not save card. Your edits are kept."; } }
+async function persistDraft() { const card = editing.value; if (!card) return; const snapshot = JSON.stringify(draft.value); if (snapshot === savedSnapshot.value) return; if (draft.value.startDate && draft.value.dueDate && draft.value.dueDate < draft.value.startDate) { cardDateError.value = "Due date must be on or after the start date."; return; } cardDateError.value = ""; saveState.value = "saving"; try { const saved = await store.updateCard(card, { ...draft.value, startDate: draft.value.startDate || undefined, dueDate: draft.value.dueDate || undefined }); if (editing.value?.id === card.id) editing.value = saved; highlightGanttCard(card.id); savedSnapshot.value = snapshot; saveState.value = "saved"; saveError.value = ""; closeAnyway.value = false; } catch (saveFailure) { saveState.value = "error"; saveError.value = saveFailure instanceof ApiError && saveFailure.status === 408 ? "The request timed out. Your edits are kept." : saveFailure instanceof ApiError && saveFailure.status === 409 ? "This card changed elsewhere. Retry to save your version." : "Could not save card. Your edits are kept."; } }
 // In the All boards view the status list also offers other boards' column
 // names ("column:<key>"); picking one adds that column to the card's board.
 const COLUMN_OPTION = "column:";
@@ -357,8 +374,8 @@ async function changeCardStatus(value: string) {
   const card = editing.value; if (!card || card.statusId === value) return;
   saveChain = saveChain.then(async () => {
     try {
-      if (value.startsWith(COLUMN_OPTION)) { const column = mergedColumns.value.find((item) => item.key === value.slice(COLUMN_OPTION.length)); if (!column) return; const placed = await store.moveCardToColumn(card, column.name, 0); announceColumn(placed.status, placed.statusCreated); return; }
-      await store.moveCard(card, value, cardsFor(value).length);
+      if (value.startsWith(COLUMN_OPTION)) { const column = mergedColumns.value.find((item) => item.key === value.slice(COLUMN_OPTION.length)); if (!column) return; const placed = await store.moveCardToColumn(card, column.name, 0); announceColumn(placed.status, placed.statusCreated); highlightGanttCard(card.id); return; }
+      await store.moveCard(card, value, cardsFor(value).length); highlightGanttCard(card.id);
     } catch { notices.notify("Could not move card. The change was rolled back."); }
   });
   await saveChain;
@@ -367,7 +384,7 @@ async function changeCardStatus(value: string) {
 async function changeCardBoard(boardId: string) {
   const card = editing.value; if (!card || cardBoardId(card) === boardId) return;
   saveChain = saveChain.then(async () => {
-    try { const placed = await store.transferCard(card, boardId); announceColumn(placed.status, placed.statusCreated); void preferences.setLastCardBoard(boardId); } catch { notices.notify("Could not move the card to that board."); }
+    try { const placed = await store.transferCard(card, boardId); announceColumn(placed.status, placed.statusCreated); highlightGanttCard(card.id); void preferences.setLastCardBoard(boardId); } catch { notices.notify("Could not move the card to that board."); }
   });
   await saveChain;
 }
@@ -464,7 +481,7 @@ watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => [route.query.from, route.query.to], ([from, to]) => { if (`${from}/${to}` === pendingTimelineQuery) { pendingTimelineQuery = ""; return; } if (view.value !== "gantt" || typeof from !== "string" || typeof to !== "string" || from === ganttFrom.value && to === ganttTo.value) return; clearTimeout(timelineQueryTimer); ganttFrom.value = from; ganttTo.value = to; jumpTimeline(from); void store.loadGantt(from, to); });
-onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQueryTimer); phoneQuery?.removeEventListener("change", onPhoneChange); document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); document.removeEventListener("keydown", boardSearchKeydown); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
+onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQueryTimer); clearTimeout(ganttHighlightTimer); phoneQuery?.removeEventListener("change", onPhoneChange); document.removeEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.removeEventListener("resize", measureKanbanHeight); kanbanResize?.disconnect(); tabResize?.disconnect(); endBoardDrag(); window.removeEventListener("resize", measureViewport); document.removeEventListener("pointerdown", rememberCardFocus); document.removeEventListener("keydown", moveFocusedCard); document.removeEventListener("keydown", boardSearchKeydown); window.removeEventListener("beforeunload", warnBeforeUnload); pageObservers.forEach((observer) => observer.disconnect()); clearTimeout(saveTimer); destroyCardEditor(); });
 </script>
 
 <template>
@@ -491,6 +508,12 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
         <input id="board-settings-name" v-model="settingsName" class="settings-input" name="boardSettingsName" maxlength="120" autocomplete="off" @keydown.enter.prevent="saveSettingsName" @blur="saveSettingsName" />
       </template>
       <h3 class="settings-label">Statuses</h3>
+      <template v-if="view === 'gantt'">
+        <h3 class="settings-label">Timeline card details</h3>
+        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowPriority" @change="setGanttDisplay('ganttShowPriority', ($event.target as HTMLInputElement).checked)" />Show priority</label>
+        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowStatus" @change="setGanttDisplay('ganttShowStatus', ($event.target as HTMLInputElement).checked)" />Show status</label>
+        <label class="settings-switch"><input type="checkbox" :checked="ganttDisplay.ganttShowPath" @change="setGanttDisplay('ganttShowPath', ($event.target as HTMLInputElement).checked)" />Show path</label>
+      </template>
       <form class="settings-add-status" @submit.prevent="addStatus"><input v-model="newStatus" class="settings-input" aria-label="New status name" name="statusName" placeholder="New status…" maxlength="120" autocomplete="off" /><button class="icon-button quiet" type="submit" aria-label="Add status" title="Add status"><v-icon :icon="mdiPlus" size="20" aria-hidden="true" /></button></form>
       <p id="status-reorder-help" class="sr-only">Drag the handle to reorder, or focus it and press the up or down arrow key.</p>
       <ul ref="settingsStatusList" class="settings-statuses" :class="{ dragging: statusDragId }" aria-label="Statuses">
@@ -552,7 +575,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
           <div class="timeline-label-content">
             <div class="timeline-header"><div class="timeline-label-heading"><span>Card</span><button class="secondary icon-button timeline-add-card" type="button" aria-label="Add card" title="Add card" :disabled="store.creatingCard || !boards.length" @click="addGanttCard"><v-icon :icon="mdiPlus" size="18" aria-hidden="true" /></button></div></div>
             <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
-              <button class="timeline-label" type="button" :aria-label="`Open card: ${card.title || 'Untitled card'}`" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null" @click="editCard(card)"><strong>{{ card.title }}</strong></button>
+              <button class="timeline-label" :class="{ 'last-changed': lastChangedGanttCardId === card.id }" type="button" :aria-label="`Open card: ${card.title || 'Untitled card'}`" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null" @click="editCard(card)"><strong>{{ card.title }}</strong></button>
             </div>
           </div>
         </div>
@@ -560,7 +583,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
           <div class="timeline" :style="{ minWidth: `${timelineWidth}px` }">
             <div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div>
             <div class="timeline-header"><div class="timeline-days" :style="{ ...timelineWindowStyle, gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day" :data-date="day">{{ formatTimelineDay(day) }}</span></div></div>
-            <div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-track" :style="timelineWindowStyle"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" @edit="editCard" /></div></div>
+            <div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-track" :style="timelineWindowStyle"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" :color="ganttCardColor(card)" :text-color="ganttCardTextColor(card)" :show-priority="ganttDisplay.ganttShowPriority" :show-status="ganttDisplay.ganttShowStatus" :show-path="ganttDisplay.ganttShowPath" :status-name="ganttCardStatus(card)" :path-name="ganttCardPathName(card)" @edit="editCard" /></div></div>
             <p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p>
           </div>
         </div>

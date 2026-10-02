@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { addCalendarDays, barPosition } from "../lib/board-gantt";
+import { contrastingPathTextColor } from "../lib/path-colors";
 import { useBoardsStore, type BoardCard } from "../stores/boards";
 import { useNoticesStore } from "../stores/notices";
 
-const props = defineProps<{ card: BoardCard; days: string[]; color?: string }>();
+const props = defineProps<{ card: BoardCard; days: string[]; color?: string; textColor?: string; showPriority?: boolean; showStatus?: boolean; showPath?: boolean; statusName?: string; pathName?: string }>();
 const emit = defineEmits<{ edit: [card: BoardCard] }>();
 const store = useBoardsStore();
 const notices = useNoticesStore();
@@ -36,6 +37,7 @@ const position = computed(() => {
   const p = barPosition(dates.startDate || dates.dueDate, dates.dueDate || dates.startDate, props.days);
   return p ? { left: `${p.left}%`, width: `${p.width}%` } : {};
 });
+const foregroundColor = computed(() => contrastingPathTextColor(props.color || "#9f3f22", props.textColor));
 function begin(event: PointerEvent, mode: Mode) {
   if (saving.value || event.button !== 0 || !props.days.length) return;
   const target = event.currentTarget as HTMLElement;
@@ -127,10 +129,15 @@ function open(event: MouseEvent) { if (suppressClick && event.detail) { suppress
 
 <template>
   <button v-if="!card.startDate && !card.dueDate" class="timeline-unscheduled" type="button" :disabled="saving" title="Click to set one date, or drag to select a date range" :style="{ '--prospective-left': `${Math.max(0, Math.min(days.indexOf(unscheduledAnchorDay || unscheduledDay || ''), days.indexOf(unscheduledDay || ''))) * 100 / days.length}%`, '--prospective-width': `${(Math.abs(days.indexOf(unscheduledDay || '') - days.indexOf(unscheduledAnchorDay || unscheduledDay || '')) + 1) * 100 / days.length}%`, '--timeline-card-color': color || '#9f3f22' }" :aria-label="unscheduledAnchorDay && unscheduledDay !== unscheduledAnchorDay ? `Set ${card.title || 'Untitled card'} date range from ${unscheduledAnchorDay} to ${unscheduledDay}` : unscheduledDay ? `Set ${card.title || 'Untitled card'} date to ${unscheduledDay}` : `Choose a date for ${card.title || 'Untitled card'}`" @pointerdown="beginUnscheduled" @pointermove="previewUnscheduled" @pointerup="finishUnscheduled" @pointercancel="unscheduledGesture = null; unscheduledDay = null; unscheduledAnchorDay = null" @lostpointercapture="unscheduledGesture = null" @pointerleave="!unscheduledGesture && (unscheduledDay = null, unscheduledAnchorDay = null)" @click="clickUnscheduled"><span v-if="unscheduledDay" class="timeline-prospective-bar" aria-hidden="true"></span></button>
-  <div v-if="position.left" class="timeline-card" :class="{ 'timeline-card-dragging': preview }" :style="{ ...position, '--timeline-card-color': color || '#9f3f22' }" :aria-busy="saving" @pointermove="move" @pointerup="finish" @pointercancel="cancel" @lostpointercapture="cancel" @keydown.esc="cancel">
+  <div v-if="position.left" class="timeline-card" :class="{ 'timeline-card-dragging': preview }" :style="{ ...position, '--timeline-card-color': color || '#9f3f22', '--timeline-card-text-color': foregroundColor }" :aria-busy="saving" @pointermove="move" @pointerup="finish" @pointercancel="cancel" @lostpointercapture="cancel" @keydown.esc="cancel">
     <button class="timeline-resize" type="button" :disabled="saving" :aria-label="`Adjust start date for ${card.title || 'Untitled card'}`" title="Drag to adjust start date; click to edit dates" @pointerdown="begin($event, 'start')" @click="open">│</button>
     <button ref="barButton" class="timeline-bar" type="button" :disabled="saving" :aria-label="card.title || 'Untitled card'" aria-description="Drag to move dates; click to edit" @pointerdown="begin($event, 'move')" @click="open"><span class="timeline-bar-title">{{ card.title }}</span><span v-if="saving" class="gantt-saving" aria-hidden="true">◌</span><span v-if="titleOverflows && card.title" class="timeline-card-tooltip" aria-hidden="true">{{ card.title }}</span></button>
     <button class="timeline-resize" type="button" :disabled="saving" :aria-label="`Adjust end date for ${card.title || 'Untitled card'}`" title="Drag to adjust end date; click to edit dates" @pointerdown="begin($event, 'end')" @click="open">│</button>
+    <span v-if="showPriority || showStatus && statusName || showPath && pathName" class="timeline-card-details" aria-hidden="true">
+      <span v-if="showPriority" class="timeline-card-chip priority-chip" :class="`priority-${card.priority.toLowerCase()}`">{{ card.priority }}</span>
+      <span v-if="showStatus && statusName" class="timeline-card-chip">{{ statusName }}</span>
+      <span v-if="showPath && pathName" class="timeline-card-chip">{{ pathName }}</span>
+    </span>
   </div>
   <span class="visually-hidden" role="status">{{ message }}</span>
 </template>
@@ -140,7 +147,10 @@ function open(event: MouseEvent) { if (suppressClick && event.detail) { suppress
 .timeline-unscheduled { position:absolute; inset:0; z-index:1; width:100%; min-height:24px; padding:0; border:0; border-radius:0; background:transparent; cursor:crosshair; touch-action:manipulation; }
 .timeline-prospective-bar { position:absolute; top:50%; left:var(--prospective-left); width:var(--prospective-width); height:24px; transform:translateY(-50%); border:1px dashed color-mix(in srgb, var(--timeline-card-color, #9f3f22) 75%, transparent); border-radius:7px; background:color-mix(in srgb, var(--timeline-card-color, #9f3f22) 18%, transparent); box-shadow:0 2px 7px #0002; pointer-events:none; }
 .timeline-card-dragging { user-select:none; box-shadow:0 3px 8px #0003; }
-.timeline-bar { position:relative; flex:1; min-width:0; min-height:24px; overflow:visible; padding:.15rem 0; border:0; border-radius:0; background:var(--timeline-card-color); color:#fff; text-align:left; font-size:.8rem; cursor:grab; touch-action:none; }
+.timeline-card-details { position:absolute; z-index:2; left:calc(100% + 6px); top:50%; display:flex; align-items:center; gap:5px; width:max-content; max-width:min(50vw, 420px); transform:translateY(-50%); pointer-events:none; }
+.timeline-card-chip { display:inline-flex; align-items:center; min-height:20px; max-width:160px; box-sizing:border-box; overflow:hidden; padding:1px 7px; border:1px solid var(--workspace-control-border, #cbd5e1); border-radius:999px; background:var(--workspace-surface, #fff); color:var(--workspace-text, #334155); font-size:.68rem; font-weight:650; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; box-shadow:0 1px 3px #0002; }
+.priority-chip.priority-urgent { color:#b42318; }.priority-chip.priority-high { color:#c2410c; }.priority-chip.priority-low { color:#2563eb; }
+.timeline-bar { position:relative; flex:1; min-width:0; min-height:24px; overflow:visible; padding:.15rem 0; border:0; border-radius:0; background:var(--timeline-card-color); color:var(--timeline-card-text-color); text-align:left; font-size:.8rem; cursor:grab; touch-action:none; }
 .timeline-bar-title { position:sticky; left:0; display:block; width:max-content; max-width:100%; min-width:0; padding-left:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .timeline-card-tooltip { position:absolute; z-index:10; left:0; bottom:calc(100% + 4px); width:max-content; max-width:min(420px, 70vw); overflow-wrap:anywhere; white-space:normal; padding:.35rem .55rem; border:1px solid color-mix(in srgb, #fff 28%, var(--timeline-card-color)); border-radius:6px; background:color-mix(in srgb, var(--timeline-card-color) 78%, black); color:#fff; box-shadow:0 4px 12px #0005; text-align:left; pointer-events:none; }
 .timeline-bar:hover .timeline-card-tooltip, .timeline-bar:focus-visible .timeline-card-tooltip { display:block; }
