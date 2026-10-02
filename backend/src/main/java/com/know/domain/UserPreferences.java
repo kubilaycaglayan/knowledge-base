@@ -19,6 +19,9 @@ public class UserPreferences {
   @Column(name = "board_gantt_to") private LocalDate boardGanttTo;
   @Column(name = "board_search", nullable = false, length = 200) private String boardSearch = "";
   @Column(name = "board_gantt_sorts", nullable = false, length = 32) private String boardGanttSorts = "";
+  @Column(name = "board_gantt_show_priority", nullable = false) private boolean boardGanttShowPriority;
+  @Column(name = "board_gantt_show_status", nullable = false) private boolean boardGanttShowStatus;
+  @Column(name = "board_gantt_show_path", nullable = false) private boolean boardGanttShowPath;
   @Column(name = "updated_at", nullable = false) private Instant updatedAt = Instant.now();
   protected UserPreferences() {}
   public UserPreferences(UUID userId) { this.userId = userId; }
@@ -33,14 +36,20 @@ public class UserPreferences {
   public LocalDate getBoardGanttTo() { return boardGanttTo; }
   public String getBoardSearch() { return boardSearch; }
   public String getBoardGanttSorts() { return boardGanttSorts; }
+  public boolean isBoardGanttShowPriority() { return boardGanttShowPriority; }
+  public boolean isBoardGanttShowStatus() { return boardGanttShowStatus; }
+  public boolean isBoardGanttShowPath() { return boardGanttShowPath; }
   /** A null board is the All boards view. */
-  public void rememberBoardState(UUID boardId, String view, LocalDate ganttFrom, LocalDate ganttTo, String search, String ganttSorts) {
+  public void rememberBoardState(UUID boardId, String view, LocalDate ganttFrom, LocalDate ganttTo, String search, String ganttSorts, boolean showPriority, boolean showStatus, boolean showPath) {
     this.boardId = boardId;
     boardView = view;
     boardGanttFrom = ganttFrom;
     boardGanttTo = ganttTo;
     boardSearch = search;
     boardGanttSorts = ganttSorts;
+    boardGanttShowPriority = showPriority;
+    boardGanttShowStatus = showStatus;
+    boardGanttShowPath = showPath;
     updatedAt = Instant.now();
   }
   public void chooseCardBoard(UUID boardId) { lastCardBoardId = boardId; updatedAt = Instant.now(); }

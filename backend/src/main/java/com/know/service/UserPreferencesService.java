@@ -32,7 +32,7 @@ public class UserPreferencesService {
   }
 
   /** The Boards page state: the open board (null for All boards), view, Gantt range, and card search. */
-  public record BoardState(UUID boardId, String view, LocalDate ganttFrom, LocalDate ganttTo, String search, List<String> ganttSorts) {}
+  public record BoardState(UUID boardId, String view, LocalDate ganttFrom, LocalDate ganttTo, String search, List<String> ganttSorts, Boolean ganttShowPriority, Boolean ganttShowStatus, Boolean ganttShowPath) {}
 
   public record View(String theme, boolean kanbanWide, boolean ganttWide, List<UUID> recentPathIds, UUID lastCardBoardId, BoardState board) {}
 
@@ -54,15 +54,15 @@ public class UserPreferencesService {
       if (board.boardId() != null && boards.findByIdAndUserId(board.boardId(), userId).isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Board not found");
       String search = board.search() == null ? "" : board.search();
       List<String> sorts = board.ganttSorts() == null ? List.of() : board.ganttSorts();
-      if (sorts.size() > 2 || sorts.stream().anyMatch(rule -> !List.of("PRIORITY", "DATE").contains(rule)) || sorts.stream().distinct().count() != sorts.size()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Gantt sort rules");
-      stored.rememberBoardState(board.boardId(), board.view() == null ? "kanban" : board.view(), board.ganttFrom(), board.ganttTo(), search, String.join(",", sorts));
+      if (sorts.size() > 2 || sorts.stream().anyMatch(rule -> !List.of("PRIORITY", "DATE", "PRIORITY_ASC", "PRIORITY_DESC", "DATE_ASC", "DATE_DESC").contains(rule)) || sorts.stream().map(rule -> rule.startsWith("PRIORITY") ? "PRIORITY" : "DATE").distinct().count() != sorts.size()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Gantt sort rules");
+      stored.rememberBoardState(board.boardId(), board.view() == null ? "kanban" : board.view(), board.ganttFrom(), board.ganttTo(), search, String.join(",", sorts), Boolean.TRUE.equals(board.ganttShowPriority()), Boolean.TRUE.equals(board.ganttShowStatus()), Boolean.TRUE.equals(board.ganttShowPath()));
     }
     return view(userId, preferences.save(stored));
   }
 
   private View view(UUID userId, UserPreferences stored) {
     List<UUID> recent = entries.findRecentPathIds(userId, RECENT_PATHS).stream().map(UUID::fromString).toList();
-    BoardState board = new BoardState(stored.getBoardId(), stored.getBoardView(), stored.getBoardGanttFrom(), stored.getBoardGanttTo(), stored.getBoardSearch(), stored.getBoardGanttSorts().isBlank() ? List.of() : List.of(stored.getBoardGanttSorts().split(",")));
+    BoardState board = new BoardState(stored.getBoardId(), stored.getBoardView(), stored.getBoardGanttFrom(), stored.getBoardGanttTo(), stored.getBoardSearch(), stored.getBoardGanttSorts().isBlank() ? List.of() : List.of(stored.getBoardGanttSorts().split(",")), stored.isBoardGanttShowPriority(), stored.isBoardGanttShowStatus(), stored.isBoardGanttShowPath());
     return new View(stored.getTheme(), stored.isKanbanWide(), stored.isGanttWide(), recent, stored.getLastCardBoardId(), board);
   }
 }
