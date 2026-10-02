@@ -52,12 +52,13 @@ export function useGanttScroll(element: Ref<HTMLElement | null>, start: Ref<stri
     if (element.value) element.value.scrollLeft = offset;
     void nextTick(() => { if (element.value && element.value.scrollLeft !== left.value) element.value.scrollLeft = left.value; });
   }
-  function jump(date: string) {
+  // Scrolls so the date is the first visible day, or with align "end" the last one.
+  function jump(date: string, align: "start" | "end" = "start") {
     measure();
     origin.value = addCalendarMonths(date, -WINDOW_MONTHS);
     total.value = indexOf(addCalendarMonths(date, WINDOW_MONTHS)) + 1 + visibleDays.value;
     coordinateDayWidth = dayWidth.value;
-    scrollTo(indexOf(date) * dayWidth.value);
+    scrollTo(align === "end" ? Math.max(0, (indexOf(date) + 1) * dayWidth.value - viewport.value) : indexOf(date) * dayWidth.value);
   }
   function onScroll() {
     const el = element.value;

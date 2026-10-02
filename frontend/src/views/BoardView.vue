@@ -305,16 +305,19 @@ function closeMoreOnOutside(event: PointerEvent) { const target = event.target a
 watch(showBoardMenu, (shown) => { if (!shown) closeMore(); });
 watch(phone, () => { void nextTick(measureTabs); });
 function setView(next: string) { if (view.value === next) return; void router.push({ query: { ...route.query, view: next, ...(next === "gantt" ? { from: ganttFrom.value, to: ganttTo.value } : {}) } }); }
-function updateGanttRange() { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; clearTimeout(timelineQueryTimer); jumpTimeline(ganttFrom.value); void router.push({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
-// Dated cards entirely outside the scrolled viewport get an edge arrow that starts the timeline at the card.
+function updateGanttRange() { applyGanttRange("start"); }
+function applyGanttRange(align: "start" | "end") { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; clearTimeout(timelineQueryTimer); jumpTimeline(align === "end" ? ganttTo.value : ganttFrom.value, align); void router.push({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
+// Dated cards entirely outside the scrolled viewport get an edge arrow: a left arrow starts the
+// timeline at the card's start, a right arrow ends it at the card's end.
 const ganttOffscreen = computed(() => new Map(ganttCards.value.map((card) => [card.id, offscreenSide(card.startDate, card.dueDate, timelineVisibleRange.value.start, timelineVisibleRange.value.end)])));
 function showCardOnTimeline(card: BoardCard) {
-  const from = card.startDate || card.dueDate;
-  if (!from) return;
+  const from = card.startDate || card.dueDate, to = card.dueDate || card.startDate;
+  if (!from || !to) return;
   const days = ganttRangeDays.value;
-  ganttFrom.value = from;
-  ganttTo.value = addCalendarDays(from, days - 1);
-  updateGanttRange();
+  const after = ganttOffscreen.value.get(card.id) === "after";
+  ganttFrom.value = after ? addCalendarDays(to, 1 - days) : from;
+  ganttTo.value = after ? to : addCalendarDays(from, days - 1);
+  applyGanttRange(after ? "end" : "start");
   // The arrow disappears once the card is in view, so focus moves to the card's bar.
   void nextTick(() => [...timelineScroll.value?.querySelectorAll<HTMLElement>(".timeline-row") || []].find((row) => row.dataset.cardId === card.id)?.querySelector<HTMLElement>(".timeline-bar")?.focus({ preventScroll: true }));
 }
