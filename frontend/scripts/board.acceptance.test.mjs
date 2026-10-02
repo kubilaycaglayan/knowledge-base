@@ -181,6 +181,66 @@ for (const width of [390, 1440]) it(`keeps Gantt rows aligned while scrolling at
   await page.screenshot({ path: join(screenshotDir, `gantt-scroll-${width}.png`) });
 });
 
+// GO-04, GO-05, GO-06
+for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline edges and jumps to the card at ${width}px`, async (t) => {
+  const { page } = await fixture(t, width);
+  const offscreen = [["earlier", "Earlier card", dateOnly(-20), dateOnly(-18)], ["visible", "Visible card", dateOnly(), dateOnly(1)], ["later", "Later card", dateOnly(60), dateOnly(61)]];
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: offscreen.map(([id, title, startDate, dueDate], position) => ({ ...cards[0], id, title, startDate, dueDate, position })) }));
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-row").nth(2).waitFor();
+  const earlierArrow = page.getByRole("button", { name: `Show Earlier card on the timeline, starting ${dateOnly(-20)}` });
+  const laterArrow = page.getByRole("button", { name: `Show Later card on the timeline, starting ${dateOnly(60)}` });
+  await earlierArrow.waitFor();
+  await laterArrow.waitFor();
+  assert.equal(await page.locator(".timeline-row").nth(1).locator(".timeline-offscreen-arrow").count(), 0);
+  const geometry = () => page.evaluate(() => {
+    const scroller = document.querySelector(".timeline-scroll");
+    const rows = [...document.querySelectorAll(".timeline-row")];
+    const box = (element) => element?.getBoundingClientRect();
+    const view = box(scroller);
+    return {
+      left: view.left + scroller.clientLeft,
+      right: view.left + scroller.clientLeft + scroller.clientWidth,
+      rows: rows.map((row) => { const arrow = row.querySelector(".timeline-offscreen-arrow"); const r = box(row), a = box(arrow); return a ? { rowMiddle: r.top + r.height / 2, arrowMiddle: a.top + a.height / 2, left: a.left, right: a.right, width: a.width, height: a.height } : null; }),
+    };
+  });
+  const minimum = width <= 390 ? 44 : 24;
+  const check = (g) => {
+    const [earlier, , later] = g.rows;
+    assert.ok(Math.abs(earlier.left - g.left) < 2, `Left arrow must sit at the visible left edge: ${earlier.left} vs ${g.left}`);
+    assert.ok(Math.abs(later.right - g.right) < 2, `Right arrow must sit at the visible right edge: ${later.right} vs ${g.right}`);
+    for (const arrow of [earlier, later]) {
+      assert.ok(Math.abs(arrow.arrowMiddle - arrow.rowMiddle) < 1.5, "Arrows are centered on their card's row");
+      assert.ok(arrow.width >= minimum && arrow.height >= minimum - 10, `Arrow hit target is too small: ${arrow.width}x${arrow.height}`);
+    }
+  };
+  check(await geometry());
+  await page.screenshot({ path: join(screenshotDir, `gantt-offscreen-arrows-${width}.png`) });
+
+  // Scrolling a little keeps both arrows pinned to the visible edges.
+  await page.locator(".timeline-scroll").evaluate((scroller) => { scroller.scrollLeft += 150; });
+  await page.waitForTimeout(100);
+  check(await geometry());
+
+  // Scrolling the earlier card into view removes its arrow.
+  const dayWidth = width <= 390 ? 132 : 80;
+  await page.locator(".timeline-scroll").evaluate((scroller, offset) => { scroller.scrollLeft -= offset; }, dayWidth * 19 + 150);
+  await page.locator(".timeline-row").nth(0).locator(".timeline-card").waitFor();
+  assert.equal(await earlierArrow.count(), 0);
+  await page.locator(".timeline-scroll").evaluate((scroller, offset) => { scroller.scrollLeft += offset; }, dayWidth * 19);
+  await earlierArrow.waitFor();
+
+  await earlierArrow.focus();
+  assert.notEqual(await earlierArrow.evaluate((element) => getComputedStyle(element).outlineStyle), "none", "Focused arrows show a focus ring");
+  await earlierArrow.click();
+  await page.waitForFunction((from) => new URL(location.href).searchParams.get("from") === from, dateOnly(-20));
+  assert.equal(await page.locator(".board-gantt-start-date").inputValue(), dateOnly(-20));
+  await page.locator(".timeline-row").nth(0).locator(".timeline-card").waitFor();
+  assert.equal(await earlierArrow.count(), 0);
+  const cardLeft = await page.evaluate(() => document.querySelector(".timeline-row .timeline-card").getBoundingClientRect().left - document.querySelector(".timeline-scroll").getBoundingClientRect().left);
+  assert.ok(Math.abs(cardLeft) < 2, `The card's start must be at the timeline start: ${cardLeft}`);
+});
+
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: !process.env.BOARD_HEADED }); });
 after(async () => { await browser?.close(); await server?.close(); });
 

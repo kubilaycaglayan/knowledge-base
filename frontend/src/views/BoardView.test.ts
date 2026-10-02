@@ -159,6 +159,69 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  // GO-01, GO-02, GO-03, GO-06
+  it("shows edge arrows for dated cards outside the visible timeline", async () => {
+    const store = seedBoard(["Backlog"]);
+    const card = (id: string, dates: Record<string, string> = {}) => ({
+      id, boardId: "test-id", statusId: "status-1", title: id, body: "{}", priority: "MEDIUM" as const,
+      position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", ...dates,
+    });
+    store.ganttCards = [
+      card("in-range", { startDate: "2026-09-03", dueDate: "2026-09-05" }),
+      card("earlier", { startDate: "2026-08-25", dueDate: "2026-08-31" }),
+      card("undated"),
+      card("later", { startDate: "2026-09-20" }),
+      card("spanning", { startDate: "2026-08-01", dueDate: "2026-10-01" }),
+      card("due-earlier", { dueDate: "2026-08-20" }),
+    ];
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+
+    const wrapper = mountBoard();
+    await flushPromises();
+
+    const rows = wrapper.findAll(".timeline-row");
+    const arrowsIn = (index: number) => rows[index].findAll(".timeline-offscreen-arrow");
+    expect(arrowsIn(0)).toHaveLength(0);
+    expect(arrowsIn(2)).toHaveLength(0);
+    expect(arrowsIn(4)).toHaveLength(0);
+    const before = arrowsIn(1);
+    expect(before).toHaveLength(1);
+    expect(before[0].element.tagName).toBe("BUTTON");
+    expect(before[0].classes()).toContain("timeline-offscreen-before");
+    expect(before[0].attributes("aria-label")).toBe("Show earlier on the timeline, starting 2026-08-25");
+    const after = arrowsIn(3);
+    expect(after).toHaveLength(1);
+    expect(after[0].classes()).toContain("timeline-offscreen-after");
+    expect(after[0].attributes("aria-label")).toBe("Show later on the timeline, starting 2026-09-20");
+    expect(arrowsIn(5)[0].classes()).toContain("timeline-offscreen-before");
+    expect(arrowsIn(5)[0].attributes("aria-label")).toBe("Show due-earlier on the timeline, starting 2026-08-20");
+    await wrapper.unmount();
+  });
+
+  // GO-04
+  it("moves the timeline start to the card's start date from its edge arrow", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.ganttCards = [
+      { id: "earlier", boardId: "test-id", statusId: "status-1", title: "Earlier", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "", startDate: "2026-08-10", dueDate: "2026-08-12" },
+    ];
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+
+    const wrapper = mountBoard();
+    await flushPromises();
+    expect(wrapper.findAll(".timeline-card")).toHaveLength(0);
+
+    await wrapper.find(".timeline-offscreen-arrow").trigger("click");
+    await flushPromises();
+
+    expect((wrapper.find(".board-gantt-start-date").element as HTMLInputElement).value).toBe("2026-08-10");
+    expect((wrapper.find(".board-gantt-end-date").element as HTMLInputElement).value).toBe("2026-08-23");
+    expect(mockRouter.push).toHaveBeenCalledWith({ query: expect.objectContaining({ view: "gantt", from: "2026-08-10", to: "2026-08-23" }) });
+    expect(store.loadGantt).toHaveBeenCalledWith("2026-08-10", "2026-08-23");
+    expect(wrapper.find(".timeline-offscreen-arrow").exists()).toBe(false);
+    expect(wrapper.findAll(".timeline-card")).toHaveLength(1);
+    await wrapper.unmount();
+  });
+
   it("previews a one-day bar on an undated card's row and saves the hovered date on click", async () => {
     const store = seedBoard(["Backlog"]);
     store.ganttCards = [{ id: "undated", boardId: "test-id", statusId: "status-1", title: "Undated", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addCalendarDays, addCalendarMonths, barPosition, inclusiveDayCount, timelineDays } from "./board-gantt";
+import { addCalendarDays, addCalendarMonths, barPosition, inclusiveDayCount, offscreenSide, timelineDays } from "./board-gantt";
 
 describe("board gantt calendar math", () => {
   it("counts both endpoints for a single day and a range", () => {
@@ -34,5 +34,18 @@ describe("board gantt calendar math", () => {
     expect(barPosition("2024-03-02", "2024-03-02", ["2024-03-01", "2024-03-02"]))
       .toEqual({ left: 50, width: 50 });
     expect(barPosition(undefined, undefined, ["2024-03-01"])).toBeNull();
+  });
+
+  // GO-01, GO-02, GO-03
+  it("tells which side of the visible days a card's dates lie on", () => {
+    expect(offscreenSide("2026-09-05", "2026-09-05", "2026-09-06", "2026-09-16")).toBe("before");
+    expect(offscreenSide("2026-09-01", "2026-09-05", "2026-09-06", "2026-09-16")).toBe("before");
+    expect(offscreenSide("2026-09-17", "2026-09-20", "2026-09-06", "2026-09-16")).toBe("after");
+    expect(offscreenSide("2026-09-05", "2026-09-06", "2026-09-06", "2026-09-16")).toBeNull();
+    expect(offscreenSide("2026-09-16", "2026-09-30", "2026-09-06", "2026-09-16")).toBeNull();
+    expect(offscreenSide("2026-09-01", "2026-09-30", "2026-09-06", "2026-09-16")).toBeNull();
+    expect(offscreenSide(undefined, "2026-09-05", "2026-09-06", "2026-09-16")).toBe("before");
+    expect(offscreenSide("2026-09-20", undefined, "2026-09-06", "2026-09-16")).toBe("after");
+    expect(offscreenSide(undefined, undefined, "2026-09-06", "2026-09-16")).toBeNull();
   });
 });
