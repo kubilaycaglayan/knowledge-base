@@ -192,6 +192,8 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   created, gets, changes or loses dates, or has any other property edited;
   several changed cards stay highlighted at once.
   Acceptance: `docs/gantt-change-highlight-acceptance-checklist.md`.
+- [x] Keep the Gantt width toggle fully visible in the timeline header, left of
+  the vertical scrollbar, and keep that scrollbar visible at full width.
 - [x] Keep the timer WebSocket as the web's live channel in production: route
   `/ws/*` through the Cloudflare proxy (and standalone Vite), ping idle
   sockets every 30 seconds, and skip focus/visibility refetches while the
