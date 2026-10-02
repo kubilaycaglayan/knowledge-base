@@ -74,7 +74,7 @@ describe("WU-02: warmed pages open without refetching", () => {
   });
 
   const cases: [string, () => ReturnType<typeof mount>][] = [
-    ["Sessions", () => mount(SessionsView)],
+    ["Sessions", () => mount(SessionsView, { global: { plugins: [vuetify] } })],
     ["Paths", () => mount(PathsView)],
     ["Labels", () => mount(LabelsView, { global: { stubs: { PromptDialog: true } } })],
     [
@@ -99,7 +99,11 @@ describe("WU-02: warmed pages open without refetching", () => {
     it(`${name} sends no request for warmed data`, async () => {
       const wrapper = open();
       await flushPromises();
-      expect(vi.mocked(api).mock.calls.map(([path]) => path)).toEqual([]);
+      // The live timer is server-owned and never warmed.
+      const data = vi.mocked(api).mock.calls
+        .map(([path]) => path as string)
+        .filter((path) => !path.startsWith("/timers"));
+      expect(data).toEqual([]);
       wrapper.unmount();
     });
 

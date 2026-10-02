@@ -9,24 +9,39 @@ import { isDarkTheme, theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 import { useBoardsStore } from "./stores/boards";
 import { usePreferencesStore } from "./stores/preferences";
+import {
+  clearWarmupCooldown,
+  pageDataTasks,
+  routeChunkTasks,
+  scheduleWarmup,
+} from "./lib/warmup";
 const auth = useAuthStore();
 const tracker = useTimerStore();
 const boards = useBoardsStore();
 const preferences = usePreferencesStore();
+const route = inject(routeLocationKey, undefined);
+const router = inject(routerKey, undefined);
 watch(
   () => auth.token,
   (token, previous, onCleanup) => {
     if (token !== previous) { tracker.clear(); boards.reset(); preferences.reset(); }
+    // A signed-out browser forgets the cooldown so the next account warms up too.
+    if (!token && previous) clearWarmupCooldown();
     if (token) {
       void preferences.load();
       tracker.acquire();
-      onCleanup(() => tracker.release());
+      const warmup = scheduleWarmup({
+        chunks: router ? routeChunkTasks(router) : [],
+        data: pageDataTasks(),
+      });
+      onCleanup(() => {
+        warmup.cancel();
+        tracker.release();
+      });
     }
   },
   { immediate: true },
 );
-const route = inject(routeLocationKey, undefined);
-const router = inject(routerKey, undefined);
 const focusedTextInput = ref(false);
 const handleFocusOut = () => requestAnimationFrame(() => updateFocusedTextInput());
 const isMobileViewport = () =>

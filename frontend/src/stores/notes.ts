@@ -50,6 +50,19 @@ export const useNotesStore = defineStore("notes", {
       this.notes = page.items;
       this.pages[key] = page;
     },
+    // Caches a page without showing it, for pages fetched in the background.
+    cachePage(
+      key: string,
+      page: {
+        items: Note[];
+        page: number;
+        size: number;
+        totalItems: number;
+        totalPages: number;
+      },
+    ) {
+      this.pages[key] = page;
+    },
     cachedPage(key: string) {
       return this.pages[key];
     },

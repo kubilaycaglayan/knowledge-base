@@ -11,10 +11,11 @@ export type Log = {
 };
 
 export const useLogsStore = defineStore("logs", {
-  state: () => ({ logs: [] as Log[] }),
+  state: () => ({ logs: [] as Log[], loaded: false }),
   actions: {
     setAll(logs: Log[]) {
       this.logs = logs;
+      this.loaded = true;
     },
     upsert(log: Log) {
       const remaining = this.logs.filter((value) => value.id !== log.id);
