@@ -118,7 +118,15 @@ it("WU-10: warms the other pages once, then reloads inside the cooldown send no 
   const count = (path) => requests.filter((value) => value === path).length;
   await until(() => requests.includes("/logs"));
   for (const path of warmed) assert.equal(count(path), 1, `${path} must be warmed exactly once`);
-  assert.equal(requests.some((path) => path.startsWith("/boards")), false, "Warm-up must not load boards");
+  await until(() => requests.includes("/boards/all/gantt"));
+  const boardRequests = () => requests.filter((path) => path.startsWith("/boards")).length;
+  const warmedBoard = boardRequests();
+
+  await visit(page, "/board");
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Gantt", exact: true }).or(page.locator("button.board-tab-more")).first().waitFor();
+  await openGantt(page);
+  assert.equal(boardRequests(), warmedBoard, "A warmed Board page and its Gantt view must not refetch boards");
 
   await visit(page, "/reports");
   await page.locator(".reports-page").waitFor();

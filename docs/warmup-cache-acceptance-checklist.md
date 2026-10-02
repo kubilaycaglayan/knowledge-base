@@ -28,9 +28,26 @@ automated test browsers must not multiply its requests.
   A warmed response that arrives after a change cleared that cache is dropped.
   Tests: `warmup.test.ts` "skips caches that are already loaded",
   "drops a warmed page when the cache was cleared meanwhile".
-- [x] **WU-05** The Boards list and board views are not warmed, so the Board
-  page still restores the saved board instead of All boards.
-  Tests: `warmup.test.ts` "never loads boards".
+- [x] **WU-05** ~~The Boards list and board views are not warmed~~ (replaced
+  by WU-12).
+- [ ] **WU-12** The Board page is warmed too: the board list, the board the
+  Board page will open (the saved board, else All boards) and its Gantt window
+  (the saved range when the saved view is Gantt, else today plus 13 days) are
+  fetched into the boards store's caches without selecting a board. Opening
+  the Board page afterwards, in Kanban or Gantt view, sends no board request,
+  and it still restores the saved board; a saved board that left the tabs
+  still falls back to All boards.
+  Tests: `boards.test.ts` "prefetches the board list without selecting a
+  board…", "prefetches a board view…", "prefetches the All boards view…",
+  "prefetches a Gantt window…", `warmup.test.ts` "warms the board the Board
+  page will open…", `warmup-board.test.ts` "opens the warmed board…",
+  `nav-shell.acceptance.test.mjs` "warms the other pages once…".
+- [ ] **WU-13** Board warm-up fetches column pages one at a time, skips a view
+  or Gantt window that is already cached or open, and drops a warmed view or
+  window that arrives after the boards changed (invalidate, All boards
+  forgotten, reset) or after the Board page loaded a board meanwhile.
+  Tests: `boards.test.ts` "fetches prefetched column pages one at a time",
+  "drops a prefetched view when the boards change meanwhile".
 
 ## Request budget
 
@@ -44,7 +61,7 @@ automated test browsers must not multiply its requests.
   cooldown skip data warm-up.
   Tests: `warmup.test.ts` "skips data warm-up inside the cooldown…".
 - [x] **WU-08** Requests run one at a time with a short gap between them
-  (about seven requests in total).
+  (about ten requests, plus one per column of the warmed board).
   Tests: `warmup.test.ts` "runs one request at a time with a gap…".
 - [x] **WU-09** The first failure stops the warm-up without retries.
   Tests: `warmup.test.ts` "stops at the first failure without retrying".

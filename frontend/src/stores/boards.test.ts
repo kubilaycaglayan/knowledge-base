@@ -932,3 +932,150 @@ describe("changed-card marks (GH-01, GH-02)", () => {
     expect(store.changedCards).toEqual({});
   });
 });
+
+describe("boards store warm-up prefetch", () => {
+  beforeEach(() => { setActivePinia(createPinia()); apiMock.mockReset(); });
+  const board = (id: string) => ({ id, name: id, archived: false, createdAt: "", updatedAt: "" });
+  const status = (id: string, boardId = "work") => ({ id, boardId, name: id, position: 0, archived: false, cardSort: "MANUAL" });
+  const card = (id: string, statusId: string, boardId = "work") => ({ id, boardId, statusId, title: id, body: "{}", priority: "LOW", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" });
+  function serveBoard(onPage?: (path: string) => Promise<unknown> | undefined) {
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/boards?archived=false") return Promise.resolve([board("work")]);
+      if (path === "/boards/work/statuses") return Promise.resolve([status("todo"), status("done")]);
+      if (path.startsWith("/boards/work/cards/page")) {
+        const custom = onPage?.(path);
+        if (custom) return custom;
+        const statusId = new URLSearchParams(path.split("?")[1]).get("statusId")!;
+        return Promise.resolve({ items: [card(`${statusId}-card`, statusId)], nextCursor: 3 });
+      }
+      if (path === "/boards/all/columns") return Promise.resolve([{ name: "Todo", cardSort: "MANUAL", statuses: [status("todo")] }]);
+      if (path.startsWith("/boards/all/columns/cards/page")) return Promise.resolve({ items: [card("all-card", "todo")], nextCursor: null });
+      if (path.startsWith("/boards/work/gantt")) return Promise.resolve([card("todo-card", "todo")]);
+      return Promise.reject(new Error(`unexpected ${path}`));
+    });
+  }
+
+  it("WU-12: prefetches the board list without selecting a board, and loading it later still falls back", async () => {
+    serveBoard();
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    await store.prefetchBoards();
+    expect(store.boards.map((item) => item.id)).toEqual(["work"]);
+    expect(store.boardsLoaded).toBe(true);
+    expect(store.selectedId).toBe("");
+
+    apiMock.mockClear();
+    store.selectedId = "gone";
+    await store.loadBoards();
+    expect(apiMock).not.toHaveBeenCalled();
+    expect(store.selectedId).toBe("all");
+  });
+
+  it("WU-12: prefetches a board view that loading the board then serves without requests", async () => {
+    serveBoard();
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    await store.prefetchView("work");
+    expect(store.selectedId).toBe("");
+    expect(store.cards).toEqual([]);
+
+    apiMock.mockClear();
+    store.selectedId = "work";
+    await store.loadBoard();
+    expect(apiMock).not.toHaveBeenCalled();
+    expect(store.cards.map((item) => item.id)).toEqual(["todo-card", "done-card"]);
+    expect(store.pageCursors).toEqual({ todo: 3, done: 3 });
+  });
+
+  it("WU-12: prefetches the All boards view", async () => {
+    serveBoard();
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    await store.prefetchView("all");
+
+    apiMock.mockClear();
+    store.selectedId = "all";
+    await store.loadBoard();
+    expect(apiMock).not.toHaveBeenCalled();
+    expect(store.allColumns.map((column) => column.name)).toEqual(["Todo"]);
+    expect(store.cards.map((item) => item.id)).toEqual(["all-card"]);
+  });
+
+  it("WU-12: prefetches a Gantt window that loading the timeline then serves without requests", async () => {
+    serveBoard();
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    await store.prefetchGantt("work", "2026-10-02", "2026-10-15");
+    expect(apiMock).toHaveBeenCalledWith("/boards/work/gantt?from=2026-10-02&to=2026-10-15");
+
+    apiMock.mockClear();
+    store.selectedId = "work";
+    await store.loadGantt("2026-10-02", "2026-10-15");
+    expect(apiMock).not.toHaveBeenCalled();
+    expect(store.ganttCards.map((item) => item.id)).toEqual(["todo-card"]);
+  });
+
+  it("WU-13: fetches prefetched column pages one at a time and skips cached views", async () => {
+    let active = 0;
+    let peak = 0;
+    serveBoard((path) => {
+      active++;
+      peak = Math.max(peak, active);
+      const statusId = new URLSearchParams(path.split("?")[1]).get("statusId")!;
+      return new Promise((resolve) => setTimeout(() => { active--; resolve({ items: [card(`${statusId}-card`, statusId)], nextCursor: null }); }, 5));
+    });
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    await store.prefetchView("work");
+    expect(peak).toBe(1);
+
+    await store.prefetchBoards();
+    await store.prefetchGantt("work", "2026-10-02", "2026-10-15");
+    apiMock.mockClear();
+    await store.prefetchView("work");
+    await store.prefetchBoards();
+    await store.prefetchGantt("work", "2026-10-02", "2026-10-15");
+    expect(apiMock).not.toHaveBeenCalled();
+
+    // The open view is not fetched again either.
+    store.selectedId = "work";
+    await store.loadBoard();
+    await store.prefetchView("work");
+    expect(apiMock).not.toHaveBeenCalled();
+  });
+
+  it("WU-13: drops a prefetched view when the boards change meanwhile", async () => {
+    const page = deferred<unknown>();
+    serveBoard(() => page.promise);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    const pending = store.prefetchView("work");
+    await Promise.resolve();
+    await Promise.resolve();
+    store.forgetAllView();
+    page.resolve({ items: [], nextCursor: null });
+    await pending;
+    expect(store.views.work).toBeUndefined();
+
+    const gantt = deferred<unknown>();
+    apiMock.mockImplementation(() => gantt.promise);
+    const pendingGantt = store.prefetchGantt("work", "2026-10-02", "2026-10-15");
+    store.invalidate();
+    gantt.resolve([]);
+    await pendingGantt;
+    expect(store.ganttCache).toEqual({});
+  });
+
+  it("WU-13: drops a prefetched view when the Board page loaded a board meanwhile", async () => {
+    const page = deferred<unknown>();
+    serveBoard(() => page.promise);
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    const pending = store.prefetchView("work");
+    store.selectedId = "all";
+    void store.loadBoard();
+    page.resolve({ items: [], nextCursor: null });
+    await pending;
+    expect(store.views.work).toBeUndefined();
+  });
+});

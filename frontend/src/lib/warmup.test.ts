@@ -18,6 +18,8 @@ import { useNotesStore } from "../stores/notes";
 import { useCalendarStore } from "../stores/calendar";
 import { useReportsStore } from "../stores/reports";
 import { useLogsStore } from "../stores/logs";
+import { useBoardsStore } from "../stores/boards";
+import { usePreferencesStore } from "../stores/preferences";
 
 vi.mock("./api", () => ({ api: vi.fn() }));
 
@@ -44,6 +46,13 @@ function respond(path: string) {
   if (path.startsWith("/calendar/days")) return [];
   if (path.startsWith("/reports")) return report;
   if (path === "/logs") return [];
+  if (path === "/labels?scope=BOARD") return [];
+  if (path === "/boards?archived=false")
+    return [{ id: "work", name: "Work", archived: false, createdAt: "", updatedAt: "" }];
+  if (path === "/boards/all/columns") return [{ name: "Todo", cardSort: "MANUAL", statuses: [{ id: "todo", boardId: "work", name: "Todo", position: 0, archived: false }] }];
+  if (path === "/boards/work/statuses") return [{ id: "todo", boardId: "work", name: "Todo", position: 0, archived: false }];
+  if (path.includes("/cards/page")) return { items: [], nextCursor: null };
+  if (path.includes("/gantt")) return [];
   throw new Error(`Unexpected ${path}`);
 }
 
@@ -109,6 +118,11 @@ describe("navigation warm-up", () => {
     expect(calls()).toEqual([
       "/paths",
       "/labels",
+      "/boards?archived=false",
+      "/labels?scope=BOARD",
+      "/boards/all/columns",
+      "/boards/all/columns/cards/page?name=Todo&cursor=-1&limit=20",
+      "/boards/all/gantt?from=2026-10-02&to=2026-10-15",
       "/time-entries?page=0&size=50",
       "/notes?page=0&size=20&archived=false",
       "/calendar/days?startDate=2026-09-28&endDate=2026-11-01",
@@ -126,6 +140,11 @@ describe("navigation warm-up", () => {
       useReportsStore().get("startDate=2026-09-28&endDate=2026-10-04&aggregation=DAY"),
     ).toEqual(report);
     expect(useLogsStore().loaded).toBe(true);
+    const boards = useBoardsStore();
+    expect(boards.boardsLoaded).toBe(true);
+    expect(boards.selectedId).toBe("");
+    expect(boards.views.all).toBeTruthy();
+    expect(Object.keys(boards.ganttCache)).toEqual(["all|2026-10-02|2026-10-15"]);
   });
 
   it("WU-02: caching a notes page leaves the visible notes list alone", async () => {
@@ -142,6 +161,12 @@ describe("navigation warm-up", () => {
   it("WU-04: skips caches that are already loaded", async () => {
     usePathsStore().setAll([]);
     useLabelsStore().setAll([]);
+    useLabelsStore().setAll([], "BOARD");
+    const boards = useBoardsStore();
+    boards.boards = [{ id: "work", name: "Work", archived: false, createdAt: "", updatedAt: "" }];
+    boards.boardsLoaded = true;
+    boards.views.all = { statuses: [], cards: [], pageCursors: {}, columns: [] };
+    boards.ganttCache["all|2026-10-02|2026-10-15"] = [];
     useSessionsStore().setPage("0:50", { sessions: [], page: 0, totalPages: 1, totalSessions: 0 });
     useLogsStore().setAll([]);
 
@@ -171,11 +196,39 @@ describe("navigation warm-up", () => {
     expect(useSessionsStore().cachedPage("0:50")).toBeUndefined();
   });
 
-  it("WU-05: never loads boards", async () => {
+  it("WU-12: warms the board the Board page will open, with its saved Gantt range", async () => {
+    const preferences = usePreferencesStore();
+    preferences.board = { ...preferences.board, boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-30" };
     scheduleWarmup({ chunks: [], data: pageDataTasks(today) }, options());
     await vi.runAllTimersAsync();
 
-    expect(calls().some((path) => path.startsWith("/boards"))).toBe(false);
+    const board = calls().filter((path) => path.startsWith("/boards"));
+    expect(board).toEqual([
+      "/boards?archived=false",
+      "/boards/work/statuses",
+      "/boards/work/cards/page?statusId=todo&cursor=-1&limit=20",
+      "/boards/work/gantt?from=2026-09-01&to=2026-09-30",
+    ]);
+    expect(useBoardsStore().selectedId).toBe("");
+  });
+
+  it("WU-12: warms All boards when the saved board left the tabs, and nothing without boards", async () => {
+    const preferences = usePreferencesStore();
+    preferences.board = { ...preferences.board, boardId: "gone" };
+    scheduleWarmup({ chunks: [], data: pageDataTasks(today) }, options());
+    await vi.runAllTimersAsync();
+    expect(calls()).toContain("/boards/all/columns");
+    expect(calls().some((path) => path.includes("gone"))).toBe(false);
+
+    setActivePinia(createPinia());
+    localStorage.clear();
+    vi.mocked(api).mockClear();
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/boards?archived=false" ? [] : respond(path as string),
+    );
+    scheduleWarmup({ chunks: [], data: pageDataTasks(today) }, options());
+    await vi.runAllTimersAsync();
+    expect(calls().filter((path) => path.startsWith("/boards"))).toEqual(["/boards?archived=false"]);
   });
 
   it("WU-06: waits for the delay and browser idle before the first request", async () => {
