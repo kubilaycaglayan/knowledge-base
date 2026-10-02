@@ -20,6 +20,7 @@ describe("GanttCard", () => {
     const title = wrapper.get(".timeline-bar-title").element;
     expect(getComputedStyle(title).position).toBe("sticky");
     expect(getComputedStyle(title).left).toBe("0px");
+    expect(getComputedStyle(title).paddingLeft).toBe("4px");
     wrapper.unmount();
   });
 });
