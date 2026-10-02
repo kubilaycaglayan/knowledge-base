@@ -311,6 +311,17 @@ const newCardBoardId = computed(() => boards.value.find((board) => board.id === 
 const boardName = (boardId: string) => boards.value.find((board) => board.id === boardId)?.name || "Board";
 function announceColumn(status: BoardStatus, created: boolean) { if (created) notices.notify(`Added “${status.name}” to “${boardName(status.boardId || "")}”.`, "info"); }
 async function addCardTo(status: BoardStatus) { if (store.creatingCard) return; dismissError(); try { const card = await store.createCard({ title: "", body: "{}", priority: "MEDIUM", statusId: status.id }); if (card) editCard(card); } catch { notices.notify("Could not create card."); } }
+async function addGanttCard() {
+  if (store.creatingCard) return;
+  dismissError();
+  const boardId = isAll.value ? newCardBoardId.value : store.selectedId;
+  const status = statuses.value.find((item) => item.boardId === boardId && !item.archived);
+  if (!boardId || !status) { notices.notify("Choose a board with an active status to add a card."); return; }
+  try {
+    const card = await store.createCard({ title: "", body: "{}", priority: "MEDIUM", statusId: status.id }, boardId);
+    if (card) editCard(card);
+  } catch { notices.notify("Could not create card."); }
+}
 async function addCardToColumn(column: KanbanColumn) {
   if (!column.merged) return addCardTo(column.status!);
   if (store.creatingCard) return; dismissError();
@@ -539,7 +550,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
       <div class="timeline-layout">
         <div ref="timelineLabelPane" class="timeline-label-pane" role="region" aria-label="Gantt card list" @wheel="scrollTimelineFromLabels">
           <div class="timeline-label-content">
-            <div class="timeline-header"><div class="timeline-label timeline-label-heading">Card</div></div>
+            <div class="timeline-header"><div class="timeline-label-heading"><span>Card</span><button class="secondary icon-button timeline-add-card" type="button" aria-label="Add card" title="Add card" :disabled="store.creatingCard || !boards.length" @click="addGanttCard"><v-icon :icon="mdiPlus" size="18" aria-hidden="true" /></button></div></div>
             <div v-for="card in ganttCards" :key="card.id" class="timeline-label-row">
               <button class="timeline-label" type="button" :aria-label="`Open card: ${card.title || 'Untitled card'}`" @mouseenter="showGanttTitleOverflow($event, card.title)" @mouseleave="ganttTitleOverflow = null" @click="editCard(card)"><strong>{{ card.title }}</strong></button>
             </div>
