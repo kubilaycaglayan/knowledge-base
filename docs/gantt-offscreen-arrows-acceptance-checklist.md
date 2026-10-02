@@ -2,8 +2,9 @@
 
 In the board Gantt view, a card that has dates but none of them in the part of
 the timeline you are looking at gets a small arrow at the edge of the timeline,
-on that card's row. The arrow points toward the card's dates. Clicking it moves
-the timeline so it starts at the card's start date. Each item names the tests
+on that card's row. The arrow points toward the card's dates. Clicking a left
+arrow moves the timeline so it starts at the card's start date; clicking a right
+arrow moves it so it ends at the card's end date. Each item names the tests
 that cover it. Tick an item only once those tests pass.
 
 - [x] **GO-01** A dated card whose dates all fall before the first visible day
@@ -21,7 +22,7 @@ that cover it. Tick an item only once those tests pass.
   date or only a due date use that one date.
   _Tests:_ `board-gantt.test.ts` "tells which side of the visible days a card's dates lie on";
   `BoardView.test.ts` "shows edge arrows for dated cards outside the visible timeline"
-- [x] **GO-04** Clicking an arrow sets the timeline start date to the card's
+- [x] **GO-04** Clicking a left arrow sets the timeline start date to the card's
   start date (its due date when it has none), keeps the range length, puts the
   new range in the URL and loads it, and the card's bar is then in view with no
   arrow.
@@ -34,5 +35,11 @@ that cover it. Tick an item only once those tests pass.
 - [x] **GO-06** Each arrow is a native button named "Show <title> on the
   timeline, starting <date>", with a hit target of at least 24px (44px on
   phones) and a visible focus ring.
+- [ ] **GO-07** Clicking a right arrow sets the timeline end date to the
+  card's end date (its start date when it has no due date), keeps the range
+  length, puts the new range in the URL and loads it, and scrolls so the card's
+  end day is the last visible day; the card's bar is then in view with no arrow.
+  _Tests:_ `BoardView.test.ts` "moves the timeline end to the card's end date from its right edge arrow";
+  `board.acceptance.test.mjs` "ends the timeline at a future card from its right edge arrow"
   _Tests:_ `BoardView.test.ts` "shows edge arrows for dated cards outside the visible timeline";
   `board.acceptance.test.mjs` "pins off-screen card arrows to the timeline edges and jumps to the card"
