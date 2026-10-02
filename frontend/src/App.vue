@@ -86,8 +86,8 @@ function authenticated() {
   <div class="shell dashboard-shell">
     <a class="dashboard-skip" href="#main-content">Skip to content</a>
     <header>
-      <a class="brand" href="/" aria-label="Knowledge Base" translate="no"
-        >knowledge<span>.</span>base</a
+      <RouterLink class="brand" to="/" aria-label="Knowledge Base" translate="no"
+        >knowledge<span>.</span>base</RouterLink
       >
       <nav v-if="auth.isAuthenticated" aria-label="Main navigation">
         <RouterLink to="/sessions">Sessions</RouterLink

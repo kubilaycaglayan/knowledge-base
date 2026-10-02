@@ -97,12 +97,13 @@ it("navigates home from the logo without a page reload and reuses cached session
   await until(() => requests.includes("/time-entries"));
   await visit(page, "/logs");
   await page.evaluate(() => { window.__noReload = true; });
-  const before = requests.filter((path) => path === "/time-entries").length;
+  const homeData = ["/time-entries", "/paths", "/labels"];
+  const before = requests.filter((path) => homeData.includes(path)).length;
   const brand = page.getByRole("link", { name: "Knowledge Base" });
   assert.equal(await brand.getAttribute("href"), "/");
   await brand.click();
   await page.waitForFunction(() => location.pathname === "/");
   await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__noReload), true, "Logo click must use client-side routing");
-  assert.equal(requests.filter((path) => path === "/time-entries").length, before, "Returning home must reuse the cached sessions page");
+  assert.equal(requests.filter((path) => homeData.includes(path)).length, before, "Returning home must reuse cached sessions, paths, and labels");
 });
