@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import PromptDialog from "./PromptDialog.vue";
@@ -58,6 +58,8 @@ const trackerHost = ref<HTMLElement | null>(null);
 const promptHost = ref<HTMLElement | null>(null);
 const labelPicker = ref<HTMLElement | null>(null);
 const trackerViewportHeight = ref(0);
+const visibleSelectedLabelCount = ref(Number.POSITIVE_INFINITY);
+let labelResizeObserver: ResizeObserver | null = null;
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 watch(
   () => timerStore.historyVersion,
@@ -160,15 +162,41 @@ const labelAvailabilitySummary = computed(
     `${sessionLabels.value.length} available${selectedLabelCount.value ? ` · ${selectedLabelCount.value} selected` : ""}`,
 );
 const visibleLabelOptions = computed(() => {
-  if (labelsOpen.value || !selectedLabelIds.value.length)
-    return sessionLabels.value;
+  if (labelsOpen.value) return sessionLabels.value;
   const selected = sessionLabels.value.filter((label) =>
     selectedLabelIds.value.includes(label.id),
   );
-  const unselected = sessionLabels.value.filter(
-    (label) => !selectedLabelIds.value.includes(label.id),
-  );
-  return [...selected, ...unselected];
+  return selected;
+});
+const hiddenSelectedLabelCount = computed(() =>
+  Math.max(0, selectedLabelCount.value - visibleSelectedLabelCount.value),
+);
+function fitSelectedLabelChips() {
+  const row = labelPicker.value?.querySelector<HTMLElement>(".label-picker-options");
+  if (!row || labelsOpen.value) return;
+  const selected = [...row.querySelectorAll<HTMLElement>("button.selected")];
+  selected.forEach((chip) => { chip.hidden = false; });
+  const badge = row.querySelector<HTMLElement>(".label-picker-more");
+  if (badge) badge.hidden = false;
+  const available = row.clientWidth;
+  let shown = selected.length;
+  while (shown > 0) {
+    const widths = selected.slice(0, shown).reduce((sum, chip) => sum + chip.getBoundingClientRect().width, 0);
+    const count = selected.length - shown;
+    if (badge) badge.textContent = `+${count}`;
+    if (widths + (count ? (badge?.getBoundingClientRect().width ?? 36) + 6 : 0) + Math.max(0, shown - 1) * 6 <= available) break;
+    shown--;
+  }
+  visibleSelectedLabelCount.value = shown;
+}
+function isVisibleSelectedChip(id: string) {
+  if (labelsOpen.value) return true;
+  const selected = sessionLabels.value.filter((label) => selectedLabelIds.value.includes(label.id));
+  return selected.findIndex((label) => label.id === id) < visibleSelectedLabelCount.value;
+}
+watch([selectedLabelCount, labelsOpen, sessionLabels], async () => {
+  await nextTick();
+  fitSelectedLabelChips();
 });
 const matchingLabelOptions = computed(() => {
   const query = newLabel.value.trim().toLocaleLowerCase();
@@ -290,8 +318,13 @@ onMounted(() => {
   );
   document.addEventListener("pointerdown", closeLabelsOnOutside);
   document.addEventListener("pointerdown", closeFloatingOnOutside);
+  if (labelPicker.value && typeof ResizeObserver !== "undefined") {
+    labelResizeObserver = new ResizeObserver(() => fitSelectedLabelChips());
+    labelResizeObserver.observe(labelPicker.value);
+  }
 });
 onUnmounted(() => {
+  labelResizeObserver?.disconnect();
   timerStore.release();
   document.removeEventListener("pointerdown", closeLabelsOnOutside);
   document.removeEventListener("pointerdown", closeFloatingOnOutside);
@@ -452,8 +485,9 @@ onUnmounted(() => {
                 :key="label.id"
                 type="button"
                 :class="{ selected: selectedLabelIds.includes(label.id) }"
+                :hidden="!labelsOpen && !isVisibleSelectedChip(label.id)"
                 :aria-pressed="selectedLabelIds.includes(label.id)"
-                @click="toggleLabel(label.id)"
+                @click.stop="toggleLabel(label.id)"
               >
                 <span class="label-name">
                   <span>{{ labelNameParts(label.name).before }}</span
@@ -469,6 +503,13 @@ onUnmounted(() => {
                   >×</span
                 >
               </button>
+              <span
+                v-if="!labelsOpen && selectedLabelCount"
+                class="label-picker-more"
+                :hidden="!hiddenSelectedLabelCount"
+                :aria-label="`${hiddenSelectedLabelCount} more selected labels`"
+                >+{{ hiddenSelectedLabelCount }}</span
+              >
             </div>
             <button
               v-if="sessionLabels.length"
@@ -505,7 +546,7 @@ onUnmounted(() => {
                     : undefined
                 "
                 autocomplete="off"
-                placeholder="New label for this session…"
+                placeholder="Add or create label"
                 @focus="keepFocusedControlVisible"
                 @keydown.arrow-down.prevent="moveLabelHighlight(1)"
                 @keydown.arrow-up.prevent="moveLabelHighlight(-1)"
@@ -541,7 +582,7 @@ onUnmounted(() => {
               :disabled="!newLabel.trim() || busy"
               @click="createLabel"
             >
-              <span aria-hidden="true">＋</span> Create label
+              Add
             </button>
           </div>
         </div>
@@ -875,18 +916,41 @@ onUnmounted(() => {
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
   max-height: 28px;
   overflow: hidden;
 }
-.label-picker.is-open .label-picker-options {
-  max-height: none;
-  overflow: visible;
+.label-picker-more {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--workspace-selected);
+  color: var(--workspace-selected-text);
+  font-size: 12px;
+  white-space: nowrap;
 }
+.label-picker.is-open .label-picker-options {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 180px;
+  flex-wrap: wrap;
+  overflow: auto;
+  align-content: flex-start;
+  padding: 8px;
+  border: 1px solid var(--workspace-control-border);
+  border-radius: 6px;
+  background: var(--workspace-background);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
+}
+.label-picker.is-open { position: relative; }
 .label-picker button {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 4px;
 }

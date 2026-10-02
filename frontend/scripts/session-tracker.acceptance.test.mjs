@@ -478,7 +478,7 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
     await page
       .getByRole("combobox", { name: "New session label name" })
       .fill("First label");
-    await page.getByRole("button", { name: "Create label" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
     await page
       .locator(".tracker-field-heading")
       .getByText("1 available · 1 selected", { exact: true })
