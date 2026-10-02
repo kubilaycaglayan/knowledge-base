@@ -268,23 +268,13 @@ const option = computed<EChartsOption>(() => ({
     left: 48,
     right: 18,
     top: 30,
-    bottom: props.days.length > 31 ? 86 : 58,
+    bottom: props.days.length > 31 ? 104 : 58,
   },
   dataZoom:
     props.days.length > 31
       ? [
-          {
-            type: "inside",
-            start: 0,
-            end: Math.min(100, (31 / props.days.length) * 100),
-          },
-          {
-            type: "slider",
-            start: 0,
-            end: Math.min(100, (31 / props.days.length) * 100),
-            height: 18,
-            bottom: 12,
-          },
+          { type: "inside", start: 0, end: 100 },
+          { type: "slider", start: 0, end: 100, height: 36, bottom: 12 },
         ]
       : [],
   tooltip: {
