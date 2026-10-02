@@ -160,6 +160,30 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("selects and saves an inclusive date range when dragging across an undated row", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.ganttCards = [{ id: "undated", boardId: "test-id", statusId: "status-1", title: "Undated", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+
+    const wrapper = mountBoard();
+    await flushPromises();
+    const chooser = wrapper.get<HTMLButtonElement>(".timeline-unscheduled");
+    vi.spyOn(chooser.element, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1000, 34));
+    const days = wrapper.findAll(".timeline-days span[data-date]").map((day) => day.attributes("data-date"));
+    const startIndex = Math.floor(days.length * 0.2);
+    const endIndex = Math.floor(days.length * 0.65);
+    chooser.element.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: (startIndex + 0.25) * 1000 / days.length }));
+    chooser.element.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: (endIndex + 0.25) * 1000 / days.length }));
+    await flushPromises();
+    expect(wrapper.find(".timeline-prospective-bar").exists()).toBe(true);
+    chooser.element.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: (endIndex + 0.25) * 1000 / days.length }));
+    await flushPromises();
+    expect(store.updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: "undated" }), expect.objectContaining({ startDate: days[startIndex], dueDate: days[endIndex] }));
+    await chooser.trigger("click");
+    expect(store.updateCard).toHaveBeenCalledTimes(1);
+    await wrapper.unmount();
+  });
+
   it("keeps the Gantt card list in a separate left pane beside the scrolling chart", async () => {
     const store = seedBoard(["Backlog"]);
     store.ganttCards = [

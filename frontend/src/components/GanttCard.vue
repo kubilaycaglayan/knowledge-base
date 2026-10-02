@@ -11,6 +11,9 @@ const notices = useNoticesStore();
 type Mode = "move" | "start" | "end";
 const preview = ref<{ startDate: string; dueDate: string } | null>(null);
 const unscheduledDay = ref<string | null>(null);
+const unscheduledAnchorDay = ref<string | null>(null);
+let unscheduledGesture: { id: number; startIndex: number; moved: boolean } | null = null;
+let suppressUnscheduledClick = false;
 const saving = ref(false), message = ref("");
 const barButton = ref<HTMLButtonElement | null>(null), titleOverflows = ref(false);
 let titleResizeObserver: ResizeObserver | null = null;
@@ -70,31 +73,60 @@ async function finish(event: PointerEvent) {
 }
 function previewUnscheduled(event: PointerEvent) {
   if (props.card.startDate || props.card.dueDate || !props.days.length) return;
-  const track = event.currentTarget as HTMLElement;
-  const bounds = track.getBoundingClientRect();
-  const index = Math.max(0, Math.min(props.days.length - 1, Math.floor((event.clientX - bounds.left) / bounds.width * props.days.length)));
+  const index = unscheduledIndex(event);
+  if (index < 0) return;
   unscheduledDay.value = props.days[index] || null;
+  if (unscheduledGesture && event.pointerId === unscheduledGesture.id) {
+    if (index !== unscheduledGesture.startIndex) unscheduledGesture.moved = true;
+  }
 }
-async function scheduleUnscheduled() {
-  if (!unscheduledDay.value || props.card.startDate || props.card.dueDate || saving.value) return;
-  const date = unscheduledDay.value;
+function unscheduledIndex(event: PointerEvent) {
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  if (!bounds.width) return -1;
+  return Math.max(0, Math.min(props.days.length - 1, Math.floor((event.clientX - bounds.left) / bounds.width * props.days.length)));
+}
+function beginUnscheduled(event: PointerEvent) {
+  if (event.button !== 0 || saving.value || props.card.startDate || props.card.dueDate) return;
+  const index = unscheduledIndex(event);
+  if (index < 0) return;
+  unscheduledAnchorDay.value = props.days[index];
+  unscheduledDay.value = props.days[index];
+  unscheduledGesture = { id: event.pointerId, startIndex: index, moved: false };
+  suppressUnscheduledClick = false;
+  const target = event.currentTarget as HTMLElement;
+  if (target.setPointerCapture) target.setPointerCapture(event.pointerId);
+}
+async function finishUnscheduled(event: PointerEvent) {
+  if (!unscheduledGesture || event.pointerId !== unscheduledGesture.id) return;
+  previewUnscheduled(event);
+  const gesture = unscheduledGesture;
+  unscheduledGesture = null;
+  if (!gesture.moved || !unscheduledAnchorDay.value || !unscheduledDay.value) return;
+  suppressUnscheduledClick = true;
+  const startDate = unscheduledAnchorDay.value <= unscheduledDay.value ? unscheduledAnchorDay.value : unscheduledDay.value;
+  const dueDate = unscheduledAnchorDay.value <= unscheduledDay.value ? unscheduledDay.value : unscheduledAnchorDay.value;
+  await scheduleUnscheduled(startDate, dueDate);
+}
+async function scheduleUnscheduled(startDate = unscheduledDay.value, dueDate?: string) {
+  if (!startDate || props.card.startDate || props.card.dueDate || saving.value) return;
   saving.value = true;
   message.value = "Saving date…";
   try {
     const { title, body, priority, pathIds, labelIds } = props.card;
-    await store.updateCard(props.card, { title, body, priority, pathIds, labelIds, startDate: date });
-    message.value = "Date saved.";
+    await store.updateCard(props.card, { title, body, priority, pathIds, labelIds, startDate, ...(dueDate && dueDate !== startDate ? { dueDate } : {}) });
+    message.value = dueDate && dueDate !== startDate ? "Date range saved." : "Date saved.";
   } catch {
     message.value = "Could not save the date. Open the card to review it and try again.";
     notices.notify(message.value);
-  } finally { saving.value = false; unscheduledDay.value = null; }
+  } finally { saving.value = false; unscheduledDay.value = null; unscheduledAnchorDay.value = null; }
 }
+function clickUnscheduled() { if (suppressUnscheduledClick) { suppressUnscheduledClick = false; return; } void scheduleUnscheduled(); }
 function cancel() { if (!gesture) return; suppressClick = gesture.moved; gesture = null; preview.value = null; }
 function open(event: MouseEvent) { if (suppressClick && event.detail) { suppressClick = false; return; } emit("edit", props.card); }
 </script>
 
 <template>
-  <button v-if="!card.startDate && !card.dueDate" class="timeline-unscheduled" type="button" :disabled="saving" :style="{ '--prospective-left': `${Math.max(0, days.indexOf(unscheduledDay || '')) * 100 / days.length}%`, '--prospective-width': `${100 / days.length}%`, '--timeline-card-color': color || '#9f3f22' }" :aria-label="unscheduledDay ? `Set ${card.title || 'Untitled card'} date to ${unscheduledDay}` : `Choose a date for ${card.title || 'Untitled card'}`" @pointermove="previewUnscheduled" @pointerleave="unscheduledDay = null" @click="scheduleUnscheduled"><span v-if="unscheduledDay" class="timeline-prospective-bar" aria-hidden="true"></span></button>
+  <button v-if="!card.startDate && !card.dueDate" class="timeline-unscheduled" type="button" :disabled="saving" title="Click to set one date, or drag to select a date range" :style="{ '--prospective-left': `${Math.max(0, Math.min(days.indexOf(unscheduledAnchorDay || unscheduledDay || ''), days.indexOf(unscheduledDay || ''))) * 100 / days.length}%`, '--prospective-width': `${(Math.abs(days.indexOf(unscheduledDay || '') - days.indexOf(unscheduledAnchorDay || unscheduledDay || '')) + 1) * 100 / days.length}%`, '--timeline-card-color': color || '#9f3f22' }" :aria-label="unscheduledAnchorDay && unscheduledDay !== unscheduledAnchorDay ? `Set ${card.title || 'Untitled card'} date range from ${unscheduledAnchorDay} to ${unscheduledDay}` : unscheduledDay ? `Set ${card.title || 'Untitled card'} date to ${unscheduledDay}` : `Choose a date for ${card.title || 'Untitled card'}`" @pointerdown="beginUnscheduled" @pointermove="previewUnscheduled" @pointerup="finishUnscheduled" @pointercancel="unscheduledGesture = null; unscheduledDay = null; unscheduledAnchorDay = null" @lostpointercapture="unscheduledGesture = null" @pointerleave="!unscheduledGesture && (unscheduledDay = null, unscheduledAnchorDay = null)" @click="clickUnscheduled"><span v-if="unscheduledDay" class="timeline-prospective-bar" aria-hidden="true"></span></button>
   <div v-if="position.left" class="timeline-card" :class="{ 'timeline-card-dragging': preview }" :style="{ ...position, '--timeline-card-color': color || '#9f3f22' }" :aria-busy="saving" @pointermove="move" @pointerup="finish" @pointercancel="cancel" @lostpointercapture="cancel" @keydown.esc="cancel">
     <button class="timeline-resize" type="button" :disabled="saving" :aria-label="`Adjust start date for ${card.title || 'Untitled card'}`" title="Drag to adjust start date; click to edit dates" @pointerdown="begin($event, 'start')" @click="open">│</button>
     <button ref="barButton" class="timeline-bar" type="button" :disabled="saving" :aria-label="card.title || 'Untitled card'" aria-description="Drag to move dates; click to edit" @pointerdown="begin($event, 'move')" @click="open"><span class="timeline-bar-title">{{ card.title }}</span><span v-if="saving" class="gantt-saving" aria-hidden="true">◌</span><span v-if="titleOverflows && card.title" class="timeline-card-tooltip" aria-hidden="true">{{ card.title }}</span></button>
