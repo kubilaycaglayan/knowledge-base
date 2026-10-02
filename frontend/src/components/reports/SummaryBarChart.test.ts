@@ -281,6 +281,64 @@ describe("SummaryBarChart", () => {
     expect(tooltip).not.toContain("<script>");
   });
 
+  const rangeDays = (length: number) =>
+    Array.from({ length }, (_, index) => ({
+      date: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+      totalSeconds: 3600,
+      paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+    }));
+  type ZoomOption = {
+    dataZoom: Array<{
+      type: string;
+      start: number;
+      end: number;
+      height?: number;
+      bottom?: number;
+    }>;
+    grid: { bottom: number };
+  };
+
+  it("RS-01: selects the whole date range in the range selector by default", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(90), categories },
+    });
+    const option = wrapper
+      .getComponent({ name: "VChart" })
+      .props("option") as ZoomOption;
+
+    expect(option.dataZoom).toHaveLength(2);
+    for (const zoom of option.dataZoom) {
+      expect(zoom).toMatchObject({ start: 0, end: 100 });
+    }
+  });
+
+  it("RS-02: draws a double-height range selector below the axis labels", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(90), categories },
+    });
+    const option = wrapper
+      .getComponent({ name: "VChart" })
+      .props("option") as ZoomOption;
+    const slider = option.dataZoom.find((zoom) => zoom.type === "slider");
+
+    expect(slider?.height).toBe(36);
+    expect(option.grid.bottom).toBeGreaterThanOrEqual(
+      (slider?.bottom ?? 0) + 36 + 56,
+    );
+  });
+
+  it("RS-03: keeps short ranges without a range selector", () => {
+    const wrapper = mount(SummaryBarChart, {
+      props: { days: rangeDays(31), categories },
+    });
+    const option = wrapper
+      .getComponent({ name: "VChart" })
+      .props("option") as ZoomOption;
+
+    expect(option.dataZoom).toEqual([]);
+    expect(option.grid.bottom).toBe(58);
+  });
+
   it("returns a safe empty tooltip when no day matches", () => {
     const wrapper = mount(SummaryBarChart, {
       props: { days: [], categories: [], showCalendar: true },
