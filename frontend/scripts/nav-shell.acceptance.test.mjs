@@ -39,6 +39,11 @@ async function fixture(t, width) {
   return { page, requests };
 }
 
+async function until(condition) {
+  for (let attempt = 0; attempt < 200 && !condition(); attempt++) await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.ok(condition(), "Timed out waiting for the mocked request");
+}
+
 async function visit(page, path) {
   await page.evaluate((target) => { history.pushState({}, "", target); dispatchEvent(new PopStateEvent("popstate")); }, path);
   await page.waitForFunction((target) => location.pathname === target, path);
@@ -62,7 +67,7 @@ const header = (page) => page.locator(".dashboard-shell > header").evaluate((ele
 });
 
 for (const width of [390, 1440]) it(`uses one nav bar size and a 10px bottom margin on every page at ${width}px`, async (t) => {
-  const { page } = await fixture(t, width);
+  const { page, requests } = await fixture(t, width);
   const expected = await header(page);
   assert.equal(expected.marginBottom, "10px");
   for (const path of pages) {
@@ -70,15 +75,17 @@ for (const width of [390, 1440]) it(`uses one nav bar size and a 10px bottom mar
     assert.deepEqual(await header(page), expected, `Nav bar on ${path} must match the other pages`);
   }
   await visit(page, "/board");
-  await page.getByRole("button", { name: /Product/ }).first().waitFor();
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Gantt", exact: true }).or(page.locator("button.board-tab-more")).first().waitFor();
   await openGantt(page);
   assert.deepEqual(await header(page), expected, "Nav bar in the Gantt view must match the other pages");
 });
 
 it("keeps the Gantt timeline full width while the nav bar stays standard", async (t) => {
-  const { page } = await fixture(t, 1600);
+  const { page, requests } = await fixture(t, 1600);
   await visit(page, "/board");
-  await page.getByRole("button", { name: /Product/ }).first().waitFor();
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Gantt", exact: true }).or(page.locator("button.board-tab-more")).first().waitFor();
   await openGantt(page);
   const main = await page.locator(".dashboard-shell > main").evaluate((element) => element.getBoundingClientRect().width);
   assert.ok(main > 1500, `Gantt main content must keep the full shell width: ${main}`);
@@ -87,7 +94,7 @@ it("keeps the Gantt timeline full width while the nav bar stays standard", async
 
 it("navigates home from the logo without a page reload and reuses cached sessions", async (t) => {
   const { page, requests } = await fixture(t, 1440);
-  while (!requests.includes("/time-entries")) await page.waitForTimeout(50);
+  await until(() => requests.includes("/time-entries"));
   await visit(page, "/logs");
   await page.evaluate(() => { window.__noReload = true; });
   const before = requests.filter((path) => path === "/time-entries").length;

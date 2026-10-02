@@ -22,7 +22,7 @@
   flex-wrap: wrap;
   gap: 12px 28px;
   min-height: 76px;
-  margin-bottom: 28px;
+  margin-bottom: 10px;
   padding-block: 16px;
   border-bottom: 1px solid var(--workspace-border);
 }
@@ -161,7 +161,6 @@
       max(16px, env(safe-area-inset-right));
   }
   .dashboard-shell > header {
-    margin-bottom: 24px;
     padding-block: 12px;
   }
   .dashboard-shell nav {
