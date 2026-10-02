@@ -863,10 +863,23 @@ body.note-editor-open .note-editor textarea {
 
 .label-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
   gap: 6px;
   margin: 0 0 8px;
   min-height: 0;
+}
+
+.label-chip-more {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--workspace-selected);
+  color: var(--workspace-selected-text);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .label-chip {
@@ -1084,6 +1097,7 @@ body.note-editor-open .note-editor textarea {
   color: var(--workspace-muted);
 }
 .labels-picker {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1098,14 +1112,27 @@ body.note-editor-open .note-editor textarea {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   margin: 0;
   max-height: 36px;
   overflow: hidden;
 }
 .labels-picker.is-open .label-chips {
-  max-height: none;
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  height: auto;
+  max-height: 180px;
+  flex-wrap: wrap;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--workspace-control-border);
+  border-radius: 6px;
+  background: var(--workspace-background);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
 }
 .labels-picker .label-chip {
   display: inline-flex;

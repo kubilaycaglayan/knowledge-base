@@ -383,12 +383,10 @@ function renderLabelChips() {
     $("path").value,
     timerLabelIds,
   );
-  const ordered = labelsExpanded
-    ? available
-    : [
-        ...available.filter((label) => timerLabelIds.includes(label.id)),
-        ...available.filter((label) => !timerLabelIds.includes(label.id)),
-      ];
+  // Keep the tracker row compact: selected labels are the only chips shown
+  // until the separate label chooser is opened.
+  const selected = available.filter((label) => timerLabelIds.includes(label.id));
+  const ordered = labelsExpanded ? available : selected;
   ordered.forEach((label) => {
     const selected = timerLabelIds.includes(label.id);
     const chip = document.createElement("button");
@@ -409,7 +407,6 @@ function renderLabelChips() {
       timerLabelIds = selected
         ? timerLabelIds.filter((id) => id !== label.id)
         : [...timerLabelIds, label.id];
-      labelsExpanded = true;
       renderTimerLabels();
       try {
         await configureCurrentTimer();
@@ -423,6 +420,31 @@ function renderLabelChips() {
     container.append(chip);
     if (focusedLabel === label.id) chip.focus();
   });
+  if (!labelsExpanded && selected.length > 0) {
+    const more = document.createElement("span");
+    more.className = "label-chip-more";
+    more.textContent = `+${selected.length}`;
+    container.append(more);
+    const chips = [...container.querySelectorAll(".label-chip")];
+    let shown = chips.length;
+    while (shown > 0) {
+      const chipWidth = chips.slice(0, shown).reduce((sum, chip) => sum + chip.getBoundingClientRect().width, 0);
+      const badgeWidth = more.getBoundingClientRect().width;
+      const gaps = shown * 6;
+      if (chipWidth + badgeWidth + gaps <= container.clientWidth) break;
+      shown--;
+      more.textContent = `+${selected.length - shown}`;
+    }
+    chips.forEach((chip, index) => { chip.hidden = index >= shown; });
+    more.setAttribute("aria-label", `${selected.length - shown} more selected labels`);
+    more.hidden = selected.length === shown;
+  }
+  if (labelsExpanded) {
+    container.querySelectorAll(".label-chip").forEach((chip) => {
+      if (!chip.hidden) return;
+      chip.hidden = false;
+    });
+  }
   $("labels-picker").className =
     `labels-picker${labelsExpanded ? " is-open" : ""}`;
   $("labels-toggle").setAttribute("aria-expanded", String(labelsExpanded));
@@ -1493,3 +1515,9 @@ chrome.storage.local
       error,
     );
   });
+if (typeof ResizeObserver !== "undefined") {
+  const labelsResizeObserver = new ResizeObserver(() => {
+    if (!labelsExpanded) renderLabelChips();
+  });
+  labelsResizeObserver.observe($("labels-picker"));
+}
