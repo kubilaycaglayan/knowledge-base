@@ -228,7 +228,7 @@ const ganttCardPath = (card: BoardCard) => {
 };
 const ganttCardColor = (card: BoardCard) => ganttCardPath(card)?.color || undefined;
 const ganttCardTextColor = (card: BoardCard) => ganttCardPath(card)?.textColor || undefined;
-const ganttCardStatus = (card: BoardCard) => statuses.value.find((status) => status.id === card.statusId)?.name || "";
+const ganttCardStatus = (card: BoardCard) => (isAll.value ? mergedColumns.value.flatMap((column) => column.statuses) : statuses.value).find((status) => status.id === card.statusId)?.name || "";
 const ganttCardPathName = (card: BoardCard) => ganttCardPath(card)?.name || "";
 function selectBoard(id: string) { dismissError(); store.selectedId = id; void router.replace({ query: { ...route.query, board: id } }); void store.loadBoard(); }
 // Tabs only switch boards; renaming lives in board settings.
