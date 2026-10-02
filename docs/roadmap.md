@@ -94,6 +94,7 @@
   with searchable target selection, confirmation, and server-side session transfer.
 - [x] Discard timers stopped before 2 seconds so accidental starts do not create sessions.
 - [x] Preserve path and label colors, scopes, and assignments in Knowledge Base imports and exports.
+- [x] Allow each path to override its Gantt bar text color, with automatic light/dark contrast as the default.
 - [x] Include logs, timestamps, and label assignments in Knowledge Base imports and exports, including batch undo.
 - [x] Add user-scoped native WebSocket timer snapshots with REST polling fallback for web and legacy clients.
 - [x] Edit individual sessions directly from a path’s history dialog.
