@@ -1,5 +1,7 @@
 # Knowledge Base UI roadmap
 
+- [x] Standardize the nav bar on every page (same width in the board Gantt view, 10px bottom margin) and route the logo home without a page reload, reusing cached session data.
+
 - [x] Keep the Gantt card list visible in full-width mode by allowing the timeline's clipping container to span the shell.
 
 - [x] Simplify the timeline heading and add a Today icon between its date fields, preserving the visible window length.
