@@ -31,20 +31,20 @@ const cardChangeTimers = new Map<string, ReturnType<typeof setTimeout>>();
  * change made in one view shows in all of them.
  */
 export const useBoardsStore = defineStore("boards", {
-  state: () => ({ changedCards: {} as Record<string, true>, boards: [] as Board[], archivedBoards: [] as Board[], statuses: [] as BoardStatus[], cards: [] as BoardCard[], allColumns: [] as MergedColumn[], views: {} as Record<string, CachedView>, viewKey: "", boardsLoaded: false, ganttCache: {} as Record<string, BoardCard[]>, ganttCards: [] as BoardCard[], ganttFrom: "", ganttTo: "", ganttLoadRevision: 0, boardListRevision: 0, moveRevisions: {} as Record<string, number>, cardUpdateRevisions: {} as Record<string, number>, boardMutations: {} as Record<string, boolean>, archivedCards: [] as BoardCard[], pageCursors: {} as Record<string, number | null>, pageLoading: {} as Record<string, boolean>, pageErrors: {} as Record<string, string>, selectedId: "", loading: false, creatingBoard: false, updatingBoard: false, creatingCard: false, error: "", boardLoadRevision: 0 }),
+  state: () => ({ changedCards: {} as Record<string, true>, boards: [] as Board[], archivedBoards: [] as Board[], statuses: [] as BoardStatus[], cards: [] as BoardCard[], allColumns: [] as MergedColumn[], views: {} as Record<string, CachedView>, viewKey: "", boardsLoaded: false, ganttCache: {} as Record<string, BoardCard[]>, ganttCards: [] as BoardCard[], ganttFrom: "", ganttTo: "", ganttLoadRevision: 0, boardListRevision: 0, moveRevisions: {} as Record<string, number>, cardUpdateRevisions: {} as Record<string, number>, boardMutations: {} as Record<string, boolean>, archivedCards: [] as BoardCard[], pageCursors: {} as Record<string, number | null>, pageLoading: {} as Record<string, boolean>, pageErrors: {} as Record<string, string>, selectedId: "", loading: false, creatingBoard: false, updatingBoard: false, creatingCard: false, error: "", boardLoadRevision: 0, cacheEpoch: 0 }),
   getters: {
     selected: (state) => state.boards.find((board) => board.id === state.selectedId),
     isAll: (state) => state.selectedId === ALL_BOARDS,
     mergedColumns: (state) => state.allColumns.map((column) => ({ ...column, statuses: column.statusIds.map((id) => state.statuses.find((status) => status.id === id)).filter((status): status is BoardStatus => Boolean(status && !status.archived)) })),
   },
   actions: {
-    reset() { cardChangeTimers.forEach((timer) => clearTimeout(timer)); cardChangeTimers.clear(); this.changedCards = {}; this.boardLoadRevision++; this.ganttLoadRevision++; this.boardListRevision++; this.boards = []; this.archivedBoards = []; this.statuses = []; this.cards = []; this.allColumns = []; this.views = {}; this.viewKey = ""; this.boardsLoaded = false; this.ganttCache = {}; this.ganttCards = []; this.ganttFrom = ""; this.ganttTo = ""; this.moveRevisions = {}; this.cardUpdateRevisions = {}; this.boardMutations = {}; this.archivedCards = []; this.pageCursors = {}; this.pageLoading = {}; this.pageErrors = {}; this.selectedId = ""; this.loading = false; this.creatingBoard = false; this.updatingBoard = false; this.creatingCard = false; this.error = ""; },
+    reset() { this.cacheEpoch++; cardChangeTimers.forEach((timer) => clearTimeout(timer)); cardChangeTimers.clear(); this.changedCards = {}; this.boardLoadRevision++; this.ganttLoadRevision++; this.boardListRevision++; this.boards = []; this.archivedBoards = []; this.statuses = []; this.cards = []; this.allColumns = []; this.views = {}; this.viewKey = ""; this.boardsLoaded = false; this.ganttCache = {}; this.ganttCards = []; this.ganttFrom = ""; this.ganttTo = ""; this.moveRevisions = {}; this.cardUpdateRevisions = {}; this.boardMutations = {}; this.archivedCards = []; this.pageCursors = {}; this.pageLoading = {}; this.pageErrors = {}; this.selectedId = ""; this.loading = false; this.creatingBoard = false; this.updatingBoard = false; this.creatingCard = false; this.error = ""; },
     // Boards changed outside this page (paths, imports): forget every cached view so the next visit fetches.
     // Marks a card created or changed in this browser; each card keeps its mark for its own four seconds.
     markCardChanged(id: string) { clearTimeout(cardChangeTimers.get(id)); this.changedCards[id] = true; cardChangeTimers.set(id, setTimeout(() => { cardChangeTimers.delete(id); delete this.changedCards[id]; }, CARD_CHANGE_HIGHLIGHT_MS)); },
-    invalidate() { this.boardsLoaded = false; this.views = {}; this.viewKey = ""; this.ganttCache = {}; },
+    invalidate() { this.cacheEpoch++; this.boardsLoaded = false; this.views = {}; this.viewKey = ""; this.ganttCache = {}; },
     // The All boards view depends on every board's columns and the tab order.
-    forgetAllView() { delete this.views[ALL_BOARDS]; if (this.viewKey !== ALL_BOARDS) this.allColumns = []; Object.keys(this.ganttCache).filter((key) => key.startsWith(`${ALL_BOARDS}|`)).forEach((key) => delete this.ganttCache[key]); },
+    forgetAllView() { this.cacheEpoch++; delete this.views[ALL_BOARDS]; if (this.viewKey !== ALL_BOARDS) this.allColumns = []; Object.keys(this.ganttCache).filter((key) => key.startsWith(`${ALL_BOARDS}|`)).forEach((key) => delete this.ganttCache[key]); },
     boardOf(item: { boardId?: string }) { return item.boardId || (this.isAll ? "" : this.selectedId); },
     // The open view and every other cached view, each with its own arrays.
     eachView(visit: (view: { statuses: BoardStatus[]; cards: BoardCard[]; columns: MergedColumn[] }, key: string) => void) {
@@ -85,7 +85,9 @@ export const useBoardsStore = defineStore("boards", {
       this.markCardChanged(card.id);
       return { card, status, statusCreated: placed.statusCreated };
     },
-    async loadBoards(includeArchived = false, force = false) { if (!includeArchived && this.boardsLoaded && !force) return; const revision = ++this.boardListRevision; this.loading = true; this.error = ""; try { const items = await api<Board[]>(`/boards?archived=${includeArchived}`); if (revision !== this.boardListRevision) return; if (includeArchived) this.archivedBoards = items; else { this.boards = items; this.boardsLoaded = true; if (!items.length) this.selectedId = ""; else if (this.selectedId !== ALL_BOARDS && (!this.selectedId || !items.some((b) => b.id === this.selectedId))) this.selectedId = ALL_BOARDS; } } catch { if (revision === this.boardListRevision) this.error = "Unable to load boards."; } finally { if (revision === this.boardListRevision) this.loading = false; } },
+    // With no boards nothing is selected; a board missing from the tabs falls back to All boards.
+    selectAvailableBoard() { if (!this.boards.length) this.selectedId = ""; else if (this.selectedId !== ALL_BOARDS && (!this.selectedId || !this.boards.some((b) => b.id === this.selectedId))) this.selectedId = ALL_BOARDS; },
+    async loadBoards(includeArchived = false, force = false) { if (!includeArchived && this.boardsLoaded && !force) { this.selectAvailableBoard(); return; } const revision = ++this.boardListRevision; this.loading = true; this.error = ""; try { const items = await api<Board[]>(`/boards?archived=${includeArchived}`); if (revision !== this.boardListRevision) return; if (includeArchived) this.archivedBoards = items; else { this.boards = items; this.boardsLoaded = true; this.selectAvailableBoard(); } } catch { if (revision === this.boardListRevision) this.error = "Unable to load boards."; } finally { if (revision === this.boardListRevision) this.loading = false; } },
     async createBoard(name: string) { if (this.creatingBoard) return null; this.creatingBoard = true; try { const board = await api<Board>("/boards", { method: "POST", body: JSON.stringify({ name }) }); this.boards.push(board); this.selectedId = board.id; await this.loadBoard(); /* After the switch, which caches the view being left. */ this.forgetAllView(); return board; } finally { this.creatingBoard = false; } },
     async updateBoard(id: string, name: string) { if (this.updatingBoard) return null; this.updatingBoard = true; try { const board = await api<Board>(`/boards/${id}`, { method: "PUT", body: JSON.stringify({ name }) }); const current = this.boards.find((item) => item.id === id); if (current) Object.assign(current, board); const archived = this.archivedBoards.find((item) => item.id === id); if (archived) Object.assign(archived, board); return board; } finally { this.updatingBoard = false; } },
     async archiveBoard(id: string, restore = false) { if (this.boardMutations[id]) return null; this.boardMutations[id] = true; try { const board = await api<Board>(`/boards/${id}/${restore ? "restore" : "archive"}`, { method: "POST" }); const wasSelected = this.selectedId === id; const shouldSelectRestored = restore && !this.selectedId; this.boards = this.boards.filter((item) => item.id !== id); this.archivedBoards = this.archivedBoards.filter((item) => item.id !== id); if (restore) this.boards.unshift(board); delete this.views[id]; this.forgetAllView(); if (wasSelected || shouldSelectRestored) { this.selectedId = restore ? board.id : this.boards.length ? ALL_BOARDS : ""; this.statuses = []; this.cards = []; this.ganttCards = []; this.archivedCards = []; await this.loadBoard(); } else if (this.isAll) await this.loadBoard(true); return board; } finally { delete this.boardMutations[id]; } },
@@ -106,29 +108,52 @@ export const useBoardsStore = defineStore("boards", {
       if (!key) return;
       this.loading = true;
       try {
-        if (key === ALL_BOARDS) {
-          const columns = await api<ApiColumn[]>("/boards/all/columns");
-          if (revision !== this.boardLoadRevision || this.selectedId !== key) return;
-          const pages = await Promise.all(columns.map((column) => api<CardPage>(columnPageUrl(column.name, -1))));
-          if (revision !== this.boardLoadRevision || this.selectedId !== key) return;
-          const statuses = columns.flatMap((column) => column.statuses).map((status) => this.adoptStatus(status));
-          const cards = new Map<string, BoardCard>();
-          pages.flatMap((page) => page.items).forEach((card) => cards.set(card.id, this.adoptCard(card)));
-          this.statuses = statuses; this.cards = [...cards.values()];
-          this.allColumns = columns.map((column) => ({ name: column.name, key: columnKey(column.name), cardSort: column.cardSort, statusIds: column.statuses.map((status) => status.id) }));
-          this.pageCursors = Object.fromEntries(columns.map((column, index) => [columnCursor(columnKey(column.name)), pages[index].nextCursor]));
-        } else {
-          const nextStatuses = await api<BoardStatus[]>(`/boards/${key}/statuses`);
-          if (revision !== this.boardLoadRevision || this.selectedId !== key) return;
-          const active = nextStatuses.filter((status) => !status.archived);
-          const pages = await Promise.all(active.map((status) => api<CardPage>(pageUrl(key, status.id, -1))));
-          if (revision !== this.boardLoadRevision || this.selectedId !== key) return;
-          this.statuses = nextStatuses.map((status) => this.adoptStatus(status));
-          this.cards = pages.flatMap((page) => page.items).map((card) => this.adoptCard(card));
-          this.pageCursors = Object.fromEntries(active.map((status, index) => [status.id, pages[index].nextCursor]));
-        }
+        const view = await this.fetchView(key, () => revision !== this.boardLoadRevision || this.selectedId !== key);
+        if (!view) return;
+        this.statuses = view.statuses; this.cards = view.cards; this.allColumns = view.columns; this.pageCursors = view.pageCursors;
         this.viewKey = key;
       } catch { if (revision === this.boardLoadRevision) this.error = "Unable to load this board."; } finally { if (revision === this.boardLoadRevision) this.loading = false; }
+    },
+    /**
+     * Fetches a board, or the All boards view, with each column's first page. Returns null once
+     * `stale()` says the result is no longer wanted. The background warm-up asks for one page at a time.
+     */
+    async fetchView(key: string, stale: () => boolean, oneAtATime = false): Promise<CachedView | null> {
+      const each = async <T, R>(items: T[], load: (item: T) => Promise<R>) => { if (!oneAtATime) return Promise.all(items.map(load)); const results: R[] = []; for (const item of items) { if (stale()) break; results.push(await load(item)); } return results; };
+      if (key === ALL_BOARDS) {
+        const columns = await api<ApiColumn[]>("/boards/all/columns");
+        if (stale()) return null;
+        const pages = await each(columns, (column) => api<CardPage>(columnPageUrl(column.name, -1)));
+        if (stale()) return null;
+        const statuses = columns.flatMap((column) => column.statuses).map((status) => this.adoptStatus(status));
+        const cards = new Map<string, BoardCard>();
+        pages.flatMap((page) => page.items).forEach((card) => cards.set(card.id, this.adoptCard(card)));
+        return { statuses, cards: [...cards.values()], columns: columns.map((column) => ({ name: column.name, key: columnKey(column.name), cardSort: column.cardSort, statusIds: column.statuses.map((status) => status.id) })), pageCursors: Object.fromEntries(columns.map((column, index) => [columnCursor(columnKey(column.name)), pages[index].nextCursor])) };
+      }
+      const nextStatuses = await api<BoardStatus[]>(`/boards/${key}/statuses`);
+      if (stale()) return null;
+      const active = nextStatuses.filter((status) => !status.archived);
+      const pages = await each(active, (status) => api<CardPage>(pageUrl(key, status.id, -1)));
+      if (stale()) return null;
+      return { statuses: nextStatuses.map((status) => this.adoptStatus(status)), cards: pages.flatMap((page) => page.items).map((card) => this.adoptCard(card)), columns: [], pageCursors: Object.fromEntries(active.map((status, index) => [status.id, pages[index].nextCursor])) };
+    },
+    // Background warm-up: fill the caches the Board page reads without selecting or opening anything.
+    // A result that arrives after the boards changed, or after the page loaded something itself, is dropped.
+    async prefetchBoards() { if (this.boardsLoaded) return; const revision = this.boardListRevision; const epoch = this.cacheEpoch; const items = await api<Board[]>("/boards?archived=false"); if (this.boardsLoaded || revision !== this.boardListRevision || epoch !== this.cacheEpoch) return; this.boards = items; this.boardsLoaded = true; },
+    async prefetchView(key: string) {
+      if (!key || this.viewKey === key || this.views[key]) return;
+      const epoch = this.cacheEpoch, revision = this.boardLoadRevision, views = this.views;
+      const stale = () => epoch !== this.cacheEpoch || revision !== this.boardLoadRevision || views !== this.views || this.viewKey === key || Boolean(this.views[key]);
+      const view = await this.fetchView(key, stale, true);
+      if (view && !stale()) this.views[key] = view;
+    },
+    async prefetchGantt(boardId: string, from: string, to: string) {
+      const key = ganttKey(boardId, from, to);
+      if (!boardId || this.ganttCache[key]) return;
+      const epoch = this.cacheEpoch, cache = this.ganttCache;
+      const path = boardId === ALL_BOARDS ? "/boards/all/gantt" : `/boards/${boardId}/gantt`;
+      const items = await api<BoardCard[]>(`${path}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      if (epoch === this.cacheEpoch && cache === this.ganttCache && !this.ganttCache[key]) this.ganttCache[key] = items;
     },
     appendCards(items: BoardCard[]) { const known = new Set(this.cards.map((card) => card.id)); this.cards = [...this.cards, ...items.map((card) => this.adoptCard(card)).filter((card) => !known.has(card.id))]; },
     async loadMore(statusId: string) { const cursor = this.pageCursors[statusId]; if (cursor === null || cursor === undefined || this.pageLoading[statusId] || this.pageErrors[statusId]) return; const selected = this.selectedId; const boardId = this.statuses.find((status) => status.id === statusId)?.boardId || selected; const revision = this.boardLoadRevision; this.pageLoading[statusId] = true; try { const page = await api<CardPage>(pageUrl(boardId, statusId, cursor)); if (this.selectedId !== selected || this.boardLoadRevision !== revision) return; this.appendCards(page.items); this.pageCursors[statusId] = page.nextCursor; delete this.pageErrors[statusId]; this.error = ""; } catch (error) { if (this.selectedId !== selected || this.boardLoadRevision !== revision) return; this.pageErrors[statusId] = "Unable to load more cards. Try again."; this.error = this.pageErrors[statusId]; throw error; } finally { this.pageLoading[statusId] = false; } },

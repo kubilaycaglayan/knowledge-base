@@ -8,6 +8,10 @@ import { useNotesStore, type Note } from "../stores/notes";
 import { useCalendarStore, type CalendarDay } from "../stores/calendar";
 import { useReportsStore } from "../stores/reports";
 import { useLogsStore, type Log } from "../stores/logs";
+import { useBoardsStore } from "../stores/boards";
+import { usePreferencesStore } from "../stores/preferences";
+import { ALL_BOARDS } from "./board-merge";
+import { addCalendarDays } from "./board-gantt";
 
 /**
  * Background warm-up of the pages a signed-in user can navigate to.
@@ -225,8 +229,8 @@ type ReportShape = { days?: unknown; paths?: unknown; calendarLabels?: unknown }
 
 /**
  * Fills the caches each page reads on mount, with the keys those pages use by
- * default. Boards are left out: loading the board list picks All boards before
- * the Board page restores the saved board.
+ * default. Board data goes into the boards store's caches without selecting a
+ * board, so the Board page still restores the saved board itself.
  */
 export function pageDataTasks(today = new Date()): WarmupTask[] {
   const paths = usePathsStore();
@@ -236,6 +240,8 @@ export function pageDataTasks(today = new Date()): WarmupTask[] {
   const calendar = useCalendarStore();
   const reports = useReportsStore();
   const logs = useLogsStore();
+  const boards = useBoardsStore();
+  const preferences = usePreferencesStore();
   const ymd = (date: Date) => format(date, "yyyy-MM-dd");
 
   const sessionsKey = "0:50";
@@ -247,6 +253,13 @@ export function pageDataTasks(today = new Date()): WarmupTask[] {
   const monthStart = ymd(startOfWeek(startOfMonth(today), { weekStartsOn: 1 }));
   const monthEnd = ymd(endOfWeek(endOfMonth(today), { weekStartsOn: 1 }));
   const calendarRange = `${monthStart}:${monthEnd}`;
+  // The board the Board page will open: the saved one, All boards when it left the tabs, none without boards.
+  const boardToOpen = async () => {
+    await preferences.ready();
+    if (!boards.boards.length) return "";
+    const saved = preferences.board.boardId;
+    return boards.boards.some((board) => board.id === saved) ? saved : ALL_BOARDS;
+  };
   const reportKey = new URLSearchParams({
     startDate: ymd(startOfWeek(today, { weekStartsOn: 1 })),
     endDate: ymd(endOfWeek(today, { weekStartsOn: 1 })),
@@ -263,6 +276,36 @@ export function pageDataTasks(today = new Date()): WarmupTask[] {
       name: "labels",
       needed: () => !labels.loaded,
       run: () => labels.load(),
+    },
+    {
+      name: "board list",
+      needed: () => !boards.boardsLoaded,
+      run: () => boards.prefetchBoards(),
+    },
+    {
+      name: "board labels",
+      needed: () => !labels.loadedScopes.includes("BOARD"),
+      run: () => labels.loadScope("BOARD"),
+    },
+    {
+      name: "board",
+      async run() {
+        const boardId = await boardToOpen();
+        if (boardId) await boards.prefetchView(boardId);
+      },
+    },
+    {
+      name: "board timeline",
+      async run() {
+        const boardId = await boardToOpen();
+        if (!boardId) return;
+        // The Board page's Gantt window: the saved range in Gantt view, else two weeks from today.
+        const saved = preferences.board;
+        const savedRange = saved.view === "gantt" && saved.ganttFrom && saved.ganttTo;
+        const from = savedRange ? saved.ganttFrom : ymd(today);
+        const to = savedRange ? saved.ganttTo : addCalendarDays(from, 13);
+        await boards.prefetchGantt(boardId, from, to);
+      },
     },
     {
       name: "sessions",
