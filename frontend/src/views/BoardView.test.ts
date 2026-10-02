@@ -1676,6 +1676,26 @@ describe("BoardView", () => {
       await custom.unmount();
     });
 
+    it("colors Gantt timeline bars with the card path color", async () => {
+      const store = seedPathBoards();
+      store.selectedId = "custom-a";
+      mockRoute.query = { view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+      store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: ["path-1"], labelIds: [], createdAt: "", updatedAt: "", startDate: "2026-09-01", dueDate: "2026-09-03" }];
+      store.ganttCards = store.cards;
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(wrapper.find(".timeline-card").attributes("style")).toContain("--timeline-card-color: #123456");
+      await wrapper.unmount();
+
+      store.selectedId = "path-board";
+      store.cards = [{ ...store.cards[0], pathIds: [] }];
+      store.ganttCards = store.cards;
+      const pathBoard = mountBoard();
+      await flushPromises();
+      expect(pathBoard.find(".timeline-card").attributes("style")).toContain("--timeline-card-color: #123456");
+      await pathBoard.unmount();
+    });
+
     it("formats the card body with the same rich-text rules as notes", async () => {
       const store = seedPathBoards();
       store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body: JSON.stringify({ type: "doc", content: [{ type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [{ type: "paragraph", content: [{ type: "text", text: "Done" }] }] }] }] }), priority: "MEDIUM", position: 0, archived: false, pathIds: ["path-1"], labelIds: [], createdAt: "", updatedAt: "t1" }];
