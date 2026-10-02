@@ -1,5 +1,7 @@
 # Knowledge Base UI roadmap
 
+- [x] Open the Reports range selector on the whole picked date range and double its height, growing the chart so bars keep their size (see `docs/report-range-selector-acceptance-checklist.md`).
+
 - [x] Standardize the nav bar on every page (same width in the board Gantt view, 10px bottom margin) and route the logo home without a page reload, reusing cached session data.
 
 - [x] Keep the Gantt card list visible in full-width mode by allowing the timeline's clipping container to span the shell.
