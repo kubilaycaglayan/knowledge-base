@@ -30,7 +30,7 @@ automated test browsers must not multiply its requests.
   "drops a warmed page when the cache was cleared meanwhile".
 - [x] **WU-05** ~~The Boards list and board views are not warmed~~ (replaced
   by WU-12).
-- [ ] **WU-12** The Board page is warmed too: the board list, the board the
+- [x] **WU-12** The Board page is warmed too: the board list, the board the
   Board page will open (the saved board, else All boards) and its Gantt window
   (the saved range when the saved view is Gantt, else today plus 13 days) are
   fetched into the boards store's caches without selecting a board. Opening
@@ -42,7 +42,7 @@ automated test browsers must not multiply its requests.
   "prefetches a Gantt window…", `warmup.test.ts` "warms the board the Board
   page will open…", `warmup-board.test.ts` "opens the warmed board…",
   `nav-shell.acceptance.test.mjs` "warms the other pages once…".
-- [ ] **WU-13** Board warm-up fetches column pages one at a time, skips a view
+- [x] **WU-13** Board warm-up fetches column pages one at a time, skips a view
   or Gantt window that is already cached or open, and drops a warmed view or
   window that arrives after the boards changed (invalidate, All boards
   forgotten, reset) or after the Board page loaded a board meanwhile.
@@ -83,3 +83,8 @@ calendar, reports, logs; paths and the first sessions page were skipped as
 already loaded). Five rapid reloads afterwards and a second tab sent no warm-up
 requests. Opening Reports, Calendar, Notes, Labels, and Paths after warm-up sent
 none; Logs sent only its usual background refresh.
+
+Board warm-up on the real dev stack (2026-10-02, a board with four columns and
+six cards, saved in Gantt view): opening the Board page from Logs after warm-up
+sent no board or label request and showed the Gantt cards in 148 ms; without
+warm-up it sent 9 requests and took 456 ms on localhost.

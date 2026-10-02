@@ -13,17 +13,19 @@ web client is the first board client; iOS parity is intentionally deferred.
 
 Signed-in web sessions warm up the other pages in the background
 (`frontend/src/lib/warmup.ts`): every lazy route chunk is preloaded, and the
-default view of Sessions, Paths, Labels, Notes, Calendar, Reports, and Logs is
-fetched into the Pinia caches those pages already read, so a warmed page opens
-without a request. To keep reloads, tabs, and test browsers from flooding the
+default view of Sessions, Paths, Labels, Notes, Calendar, Reports, Logs, and
+the Board page (the board list, the board it will open, and that board's Gantt
+window) is fetched into the Pinia caches those pages already read, so a warmed
+page opens without a request. To keep reloads, tabs, and test browsers from flooding the
 API, data warm-up waits 3 s plus browser idle on a visible tab, sends one
-request at a time with a 250 ms gap (about seven requests), skips caches the
+request at a time with a 250 ms gap (about ten requests plus one per column of
+the warmed board), skips caches the
 open page already filled, stops at the first failure, and runs at most once per
 10 minute cooldown stored in `localStorage` (`know_warmup_at`, cleared on
 sign-out). It is off for automated browsers (`navigator.webdriver`), Save-Data,
 `VITE_WARMUP=off` builds, and `localStorage.know_warmup = "off"`; `"force"`
-turns it on for browser tests. Boards are not warmed so the Board page can
-restore the saved board first. Acceptance:
+turns it on for browser tests. Board data is cached without selecting a board,
+so the Board page still restores the saved board itself. Acceptance:
 `docs/warmup-cache-acceptance-checklist.md`.
 
 Kanban and Gantt share one Pinia card collection. Gantt is a date-window
