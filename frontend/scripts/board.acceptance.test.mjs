@@ -201,6 +201,15 @@ for (const width of [390, 1440]) it(`hides the Gantt card list from the timeline
   assert.equal(again.paneVisible, true);
   assert.ok(again.timelineTop > 0 && Math.abs(again.paneTop - again.timelineTop) <= 1, `The card list must scroll with the timeline (${again.paneTop} vs ${again.timelineTop})`);
   assert.equal(page.url(), url);
+  if (width > 700) {
+    await page.getByRole("button", { name: "Expand timeline to full width", exact: true }).click();
+    await page.getByRole("button", { name: "Collapse timeline to page width", exact: true }).waitFor();
+    await page.waitForTimeout(100);
+    const wide = await measure();
+    assert.equal(wide.hit, true, "The whole toggle must be visible and clickable at full width");
+    assert.ok(wide.offsetLeft >= 0 && wide.offsetLeft <= 12 && wide.insideHeader && wide.insideGantt, "The toggle must stay on the timeline's top-left edge at full width");
+    assert.equal(wide.expanded, "true", "The width toggle must not change the card list");
+  }
 });
 
 it("uses the standard 10px nav bar bottom margin in Kanban and Gantt", async (t) => {
