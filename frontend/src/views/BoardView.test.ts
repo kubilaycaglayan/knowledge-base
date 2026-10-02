@@ -1772,7 +1772,7 @@ describe("BoardView", () => {
       const store = useBoardsStore();
       store.boards = [board("work", "Work")];
       const preferences = usePreferencesStore();
-      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: [], search: "release" };
+      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: [], ganttShowPriority: false, ganttShowStatus: false, ganttShowPath: false, search: "release" };
       const wrapper = mountBoard();
       await flushPromises();
       expect(store.selectedId).toBe("work");
@@ -1788,7 +1788,7 @@ describe("BoardView", () => {
       const store = useBoardsStore();
       store.boards = [board("work", "Work"), board("home", "Home")];
       const preferences = usePreferencesStore();
-      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: [], search: "release" };
+      preferences.board = { boardId: "work", view: "gantt", ganttFrom: "2026-09-01", ganttTo: "2026-09-14", ganttSorts: [], ganttShowPriority: false, ganttShowStatus: false, ganttShowPath: false, search: "release" };
       const wrapper = mountBoard();
       await flushPromises();
       expect(store.selectedId).toBe("home");
