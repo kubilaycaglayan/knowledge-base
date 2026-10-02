@@ -130,6 +130,32 @@ for (const width of [390, 1440]) it(`pins Gantt card titles to the visible left 
   assert.ok(pastBar.titleLeft < pastBar.scrollerLeft, "The title must move out with the bar once its available space ends");
 });
 
+it("uses a path's custom text color on its Gantt bar", async (t) => {
+  const { page } = await fixture(t, 1440, false, false, false, false, false, 409, false, 0, "status-0", "#102030");
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-bar-title").waitFor();
+  const colors = await page.locator(".timeline-bar").evaluate((bar) => ({
+    background: getComputedStyle(bar).backgroundColor,
+    text: getComputedStyle(bar).color,
+  }));
+  assert.deepEqual(colors, { background: "rgb(18, 171, 120)", text: "rgb(16, 32, 48)" });
+});
+
+for (const width of [390, 1440]) it(`previews automatic and custom path text colors at ${width}px`, async (t) => {
+  const { page } = await fixture(t, width);
+  await page.goto(new URL("/paths", page.url()).toString());
+  await page.getByRole("heading", { name: "Paths" }).waitFor();
+  await page.getByRole("button", { name: "Add path", exact: true }).click();
+  await page.locator(".path-create-dialog").waitFor();
+  await page.getByRole("button", { name: "Choose path color: Blue (#3B82F6)" }).click();
+  const preview = page.locator(".path-create-dialog .path-text-color-preview");
+  assert.equal(await preview.evaluate((element) => getComputedStyle(element).color), "rgb(0, 0, 0)");
+  await page.locator("#new-path-text-color-custom").check();
+  await page.locator('.path-create-dialog input[aria-label="Custom path text color"]').fill("#102030");
+  assert.equal(await preview.evaluate((element) => getComputedStyle(element).color), "rgb(16, 32, 48)");
+  await page.screenshot({ path: join(screenshotDir, `path-text-color-${width}.png`) });
+});
+
 for (const width of [390, 1440]) it(`keeps Gantt rows aligned while scrolling at ${width}px`, async (t) => {
   const { page } = await fixture(t, width);
   await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `scroll-${i}`, title: `Scroll card ${i}`, position: i })) }));
@@ -149,7 +175,7 @@ for (const width of [390, 1440]) it(`keeps Gantt rows aligned while scrolling at
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: !process.env.BOARD_HEADED }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0") {
+async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0", pathTextColor = null) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   // Each fixture owns its board so a rename cannot leak into another test.
@@ -183,7 +209,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     else if (path === "/boards/board-1/cards") { const wantsArchived = new URL(request.url()).searchParams.get("archived") === "true"; body = fixtureCards.filter((card) => Boolean(card.archived) === wantsArchived); }
     else if (path === "/boards/board-1/cards/page") { const url = new URL(request.url()); const statusId = url.searchParams.get("statusId"); const cursor = Number(url.searchParams.get("cursor") || -1); const limit = Number(url.searchParams.get("limit") || 20); if (cursor >= 19) lazyPageRequests += 1; if (cursor === -1) firstPageRequests.push(statusId); if (failPageOnce && cursor >= 19 && pageFailures++ === 0) { await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary page failure" }) }); return; } const page = fixtureCards.filter((card) => card.statusId === statusId && !card.archived && card.position > cursor).sort((a, b) => a.position - b.position).slice(0, limit + 1); const more = page.length > limit; body = { items: more ? page.slice(0, limit) : page, nextCursor: more ? page[limit - 1].position : null }; }
     else if (path === "/boards/board-1/gantt") body = fixtureCards.filter((card) => !card.archived && (card.startDate || card.dueDate));
-    else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", status: "ACTIVE" }, { id: "path-2", name: "Research", color: "#3366cc", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
+    else if (path === "/paths") body = [{ id: "path-1", name: "Product", color: "#12ab78", textColor: pathTextColor, status: "ACTIVE" }, { id: "path-2", name: "Research", color: "#3366cc", status: "ACTIVE" }, { id: "path-archived", name: "Archived path", color: "#999999", status: "ARCHIVED" }];
     else if (path === "/labels") body = new URL(request.url()).searchParams.get("scope") === "BOARD" ? boardLabels : [];
     else if (path === "/timers/current") body = runningTimer;
     else if (path === "/timers/draft") body = {};

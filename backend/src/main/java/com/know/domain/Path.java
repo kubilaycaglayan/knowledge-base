@@ -20,6 +20,9 @@ public class Path {
   @Column(nullable = false, length = 7)
   private String color = "#E8754E";
 
+  @Column(name = "text_color", length = 7)
+  private String textColor;
+
   private String description;
 
   @Enumerated(EnumType.STRING)
@@ -57,10 +60,15 @@ public class Path {
   }
 
   public Path(UUID userId, String name, String description, String color) {
+    this(userId, name, description, color, null);
+  }
+
+  public Path(UUID userId, String name, String description, String color, String textColor) {
     this.userId = userId;
     this.name = name;
     this.description = description;
     if (color != null && !color.isBlank()) this.color = color;
+    this.textColor = textColor;
   }
 
   public static Path imported(
@@ -73,6 +81,24 @@ public class Path {
       Instant createdAt,
       Instant updatedAt) {
     Path path = new Path(userId, name, description, color);
+    path.id = id;
+    path.status = status == null ? PathStatus.ACTIVE : status;
+    path.createdAt = createdAt == null ? Instant.now() : createdAt;
+    path.updatedAt = updatedAt == null ? path.createdAt : updatedAt;
+    return path;
+  }
+
+  public static Path imported(
+      UUID id,
+      UUID userId,
+      String name,
+      String description,
+      String color,
+      String textColor,
+      PathStatus status,
+      Instant createdAt,
+      Instant updatedAt) {
+    Path path = new Path(userId, name, description, color, textColor);
     path.id = id;
     path.status = status == null ? PathStatus.ACTIVE : status;
     path.createdAt = createdAt == null ? Instant.now() : createdAt;
@@ -98,6 +124,10 @@ public class Path {
 
   public String getColor() {
     return color;
+  }
+
+  public String getTextColor() {
+    return textColor;
   }
 
   public PathStatus getStatus() {
@@ -152,11 +182,16 @@ public class Path {
     this.importBatchId = importBatchId;
   }
 
-  public void update(String name, String description, String color) {
+  public void update(String name, String description, String color, String textColor) {
     this.name = name;
     this.description = description;
     if (color != null && !color.isBlank()) this.color = color;
+    this.textColor = textColor;
     this.updatedAt = Instant.now();
+  }
+
+  public void update(String name, String description, String color) {
+    update(name, description, color, this.textColor);
   }
 
   public void archive() {

@@ -7,6 +7,7 @@ import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 import MergePathDialog from "../components/MergePathDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
+import PathTextColorControl from "../components/PathTextColorControl.vue";
 import { paletteColors } from "../lib/color-palette";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
@@ -56,12 +57,14 @@ const summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
   description = ref(""),
   selectedColor = ref(colors[0]),
+  selectedTextColor = ref<string | null>(null),
   error = ref(""),
   addDialogOpen = ref(false);
 const editingId = ref(""),
   editName = ref(""),
   editDescription = ref(""),
   editColor = ref(colors[0]);
+const editTextColor = ref<string | null>(null);
 const selectedColorOpen = ref(false);
 const editColorOpen = ref(false);
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
@@ -195,6 +198,7 @@ async function add() {
         name: name.value,
         description: description.value || null,
         color: selectedColor.value,
+        textColor: selectedTextColor.value,
       }),
     });
     pathsStore.add(created);
@@ -202,6 +206,7 @@ async function add() {
     name.value = "";
     description.value = "";
     selectedColor.value = colors[0];
+    selectedTextColor.value = null;
     selectedColorOpen.value = false;
     addDialogOpen.value = false;
     await load();
@@ -358,6 +363,7 @@ function startEdit(path: Path) {
   editName.value = path.name;
   editDescription.value = path.description || "";
   editColor.value = path.color || colors[0];
+  editTextColor.value = path.textColor || null;
   editColorOpen.value = false;
 }
 function cancelEdit() {
@@ -365,6 +371,7 @@ function cancelEdit() {
   editName.value = "";
   editDescription.value = "";
   editColor.value = colors[0];
+  editTextColor.value = null;
   editColorOpen.value = false;
 }
 function openMerge(path: Path) {
@@ -418,6 +425,7 @@ async function saveEdit(path: Path) {
         name: editName.value,
         description: editDescription.value || null,
         color: editColor.value,
+        textColor: editTextColor.value,
       }),
     });
     pathsStore.replace(saved);
@@ -618,6 +626,11 @@ onBeforeUnmount(() => {
               option-label="Set edit path color"
               @update:model-value="chooseEditColor"
           /></span>
+          <PathTextColorControl
+            :id="`edit-path-text-color-${path.id}`"
+            v-model="editTextColor"
+            :background-color="editColor"
+          />
           <label v-if="path.boardId" class="path-board-switch" :for="`path-board-${path.id}`"
             ><input
               :id="`path-board-${path.id}`"
@@ -746,6 +759,11 @@ onBeforeUnmount(() => {
               @update:model-value="chooseSelectedColor"
             />
           </div>
+          <PathTextColorControl
+            id="new-path-text-color"
+            v-model="selectedTextColor"
+            :background-color="selectedColor"
+          />
           <p v-if="error" class="notice" role="alert" aria-live="polite">
             {{ error }}
           </p>

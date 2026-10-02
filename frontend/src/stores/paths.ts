@@ -7,6 +7,7 @@ export type Path = {
   name: string;
   description?: string | null;
   color?: string | null;
+  textColor?: string | null;
   status: string;
   pinned?: boolean;
   sortOrder?: number;

@@ -50,13 +50,16 @@ public class PathController {
       @NotBlank @Size(max = 160) String name,
       @Size(max = 2000) String description,
       @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Color must be a six-digit hex value")
-          String color) {}
+          String color,
+      @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Text color must be a six-digit hex value")
+          String textColor) {}
 
   record PathResponse(
       UUID id,
       String name,
       String description,
       String color,
+      String textColor,
       PathStatus status,
       boolean pinned,
       Long sortOrder,
@@ -71,6 +74,7 @@ public class PathController {
           p.getName(),
           p.getDescription(),
           p.getColor(),
+          p.getTextColor(),
           p.getStatus(),
           p.isPinned(),
           p.getSortOrder(),
@@ -112,7 +116,7 @@ public class PathController {
   @Transactional
   public ResponseEntity<PathResponse> create(Authentication a, @Valid @RequestBody PathRequest r) {
     UUID owner = user(a);
-    Path path = paths.save(new Path(owner, r.name(), r.description(), r.color()));
+    Path path = paths.save(new Path(owner, r.name(), r.description(), r.color(), r.textColor()));
     Board board = boardService.createForPath(path);
     return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.of(path, null, board));
   }
@@ -168,7 +172,7 @@ public class PathController {
   public PathResponse update(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody PathRequest r) {
     Path p = find(a, id);
-    p.update(r.name(), r.description(), r.color());
+    p.update(r.name(), r.description(), r.color(), r.textColor());
     paths.save(p);
     boardService.renameForPath(p);
     return PathResponse.of(p, activityLabels(user(a), List.of(p)).get(p.getId()), boardOf(p));

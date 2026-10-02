@@ -115,6 +115,8 @@ public class KnowledgeBaseTransferService {
                 value(p.getDescription()),
                 "color",
                 p.getColor(),
+                "textColor",
+                value(p.getTextColor()),
                 "status",
                 p.getStatus(),
                 "createdAt",
@@ -291,6 +293,7 @@ public class KnowledgeBaseTransferService {
                     text(p, "name"),
                     text(p, "description"),
                     text(p, "color"),
+                    text(p, "textColor"),
                     enumValue(PathStatus.class, text(p, "status")),
                     instant(p, "createdAt"),
                     instant(p, "updatedAt")));

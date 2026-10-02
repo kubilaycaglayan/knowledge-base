@@ -364,16 +364,18 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         post(
             "/api/v1/paths",
             token,
-            "{\"name\":\"Algorithms\",\"description\":\"DSA study\",\"color\":\"#3B82F6\"}");
+            "{\"name\":\"Algorithms\",\"description\":\"DSA study\",\"color\":\"#3B82F6\",\"textColor\":\"#F8FAFC\"}");
     assertEquals(HttpStatus.CREATED, created.getStatusCode());
     String pathId = created.getBody().get("id").asText();
     assertEquals("Algorithms", created.getBody().get("name").asText());
     assertEquals("#3B82F6", created.getBody().get("color").asText());
+    assertEquals("#F8FAFC", created.getBody().get("textColor").asText());
 
     // Read
     ResponseEntity<JsonNode> fetched = get("/api/v1/paths/" + pathId, token);
     assertEquals(HttpStatus.OK, fetched.getStatusCode());
     assertEquals("Algorithms", fetched.getBody().get("name").asText());
+    assertEquals("#F8FAFC", fetched.getBody().get("textColor").asText());
 
     // Update (editable-paths criteria): name, description, and color
     ResponseEntity<JsonNode> updated =
@@ -381,10 +383,11 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             "/api/v1/paths/" + pathId,
             token,
             "{\"name\":\"Algorithms Updated\",\"description\":\"Updated"
-                + " desc\",\"color\":\"#EF4444\"}");
+                + " desc\",\"color\":\"#EF4444\",\"textColor\":\"#102030\"}");
     assertEquals(HttpStatus.OK, updated.getStatusCode());
     assertEquals("Algorithms Updated", updated.getBody().get("name").asText());
     assertEquals("#EF4444", updated.getBody().get("color").asText());
+    assertEquals("#102030", updated.getBody().get("textColor").asText());
 
     // List includes path
     ResponseEntity<JsonNode> list = get("/api/v1/paths", token);
@@ -415,6 +418,9 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     ResponseEntity<JsonNode> bad =
         post("/api/v1/paths", token, "{\"name\":\"Bad Color\",\"color\":\"red\"}");
     assertEquals(HttpStatus.BAD_REQUEST, bad.getStatusCode());
+    ResponseEntity<JsonNode> badTextColor =
+        post("/api/v1/paths", token, "{\"name\":\"Bad text color\",\"textColor\":\"red\"}");
+    assertEquals(HttpStatus.BAD_REQUEST, badTextColor.getStatusCode());
   }
 
   @Test

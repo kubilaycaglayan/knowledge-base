@@ -344,6 +344,37 @@ describe("PathsView", () => {
         body: expect.stringContaining('"color":"#3B82F6"'),
       }),
     );
+    const createCall = vi.mocked(api).mock.calls.find(([path, options]) => path === "/paths" && options?.method === "POST");
+    expect(JSON.parse(String(createCall?.[1]?.body)).textColor).toBeNull();
+  });
+
+  it("saves a custom path text color", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    await wrapper.get('input[aria-label="New path name"]').setValue("Reading");
+    await wrapper.get("#new-path-text-color-custom").setValue();
+    await wrapper.get('input[aria-label="Custom path text color"]').setValue("#123456");
+    await wrapper.get("form.path-create-form").trigger("submit");
+
+    const createCall = vi.mocked(api).mock.calls.find(([path, options]) => path === "/paths" && options?.method === "POST");
+    expect(JSON.parse(String(createCall?.[1]?.body)).textColor).toBe("#123456");
+  });
+
+  it("can return an edited path to automatic text contrast", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Algorithms", color: "#E8754E", textColor: "#102030", status: "ACTIVE" }];
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.findAll("button.text-button").find((button) => button.text() === "Edit")!.trigger("click");
+    await wrapper.get("#edit-path-text-color-path-1-auto").setValue();
+    await wrapper.get("form.path-edit").trigger("submit");
+
+    const updateCall = vi.mocked(api).mock.calls.find(([path, options]) => path === "/paths/path-1" && options?.method === "PUT");
+    expect(JSON.parse(String(updateCall?.[1]?.body)).textColor).toBeNull();
   });
 
   it("pins paths and persists keyboard-accessible ordering", async () => {
@@ -426,6 +457,8 @@ describe("PathsView", () => {
     await wrapper
       .get('button[aria-label="Set edit path color: Cyan (#06B6D4)"]')
       .trigger("click");
+    await wrapper.get(`#edit-path-text-color-path-1-custom`).setValue();
+    await wrapper.get('input[aria-label="Custom path text color"]').setValue("#102030");
     await wrapper.get("form.path-edit").trigger("submit");
 
     expect(vi.mocked(api)).toHaveBeenCalledWith(
@@ -436,6 +469,7 @@ describe("PathsView", () => {
           name: "Algorithms and Data Structures",
           description: "CS fundamentals",
           color: "#06B6D4",
+          textColor: "#102030",
         }),
       }),
     );
@@ -767,4 +801,3 @@ describe("PathsView", () => {
     });
   });
 });
-

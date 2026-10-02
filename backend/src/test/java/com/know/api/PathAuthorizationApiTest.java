@@ -87,7 +87,20 @@ class PathAuthorizationApiTest {
             post("/api/v1/paths")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Custom text path\",\"color\":\"#4C6FFF\",\"textColor\":\"#102030\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.textColor").value("#102030"));
+    mvc.perform(
+            post("/api/v1/paths")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Unsafe path\",\"color\":\"red\"}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            post("/api/v1/paths")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Unsafe text path\",\"textColor\":\"red\"}"))
         .andExpect(status().isBadRequest());
   }
 

@@ -41,7 +41,7 @@ class KnowledgeBaseTransferServiceTest {
         pathId = UUID.randomUUID(),
         entryId = UUID.randomUUID(),
         labelId = UUID.randomUUID();
-    Path path = new Path(user, "Research", "Description", "#123456");
+    Path path = new Path(user, "Research", "Description", "#123456", "#102030");
     TimeEntry entry =
         new TimeEntry(
             user, pathId, Instant.parse("2026-01-01T10:00:00Z"), "Focus", TimeSource.MANUAL);
@@ -65,7 +65,7 @@ class KnowledgeBaseTransferServiceTest {
     assertThat(csv).startsWith("entity,id,payload\n");
     assertThat(csv)
         .contains("path," + path.getId(), "session," + entry.getId(), "label," + label.getId());
-    assertThat(csv).contains("#123456");
+    assertThat(csv).contains("#123456", "#102030");
     assertThat(csv).contains("#abcdef");
     assertThat(csv).contains("TIME_ENTRY");
     assertThat(csv).contains(label.getId().toString());
@@ -102,7 +102,7 @@ class KnowledgeBaseTransferServiceTest {
     String csv =
         """
 entity,id,payload
-path,%s,"{""name"":""Research"",""description"":null,""color"":""#123456"",""status"":""ACTIVE""}"
+path,%s,"{""name"":""Research"",""description"":null,""color"":""#123456"",""textColor"":""#102030"",""status"":""ACTIVE""}"
 label,%s,"{""name"":""Focus"",""color"":""#ABCDEF"",""scopes"":[""TIME_ENTRY"",""NOTE""]}"
 """
             .formatted(pathId, labelId);
@@ -114,6 +114,7 @@ label,%s,"{""name"":""Focus"",""color"":""#ABCDEF"",""scopes"":[""TIME_ENTRY"","
     verify(paths, atLeastOnce()).save(pathCaptor.capture());
     verify(labels, atLeastOnce()).save(labelCaptor.capture());
     assertThat(pathCaptor.getAllValues().getLast().getColor()).isEqualTo("#123456");
+    assertThat(pathCaptor.getAllValues().getLast().getTextColor()).isEqualTo("#102030");
     assertThat(labelCaptor.getAllValues().getLast().getColor()).isEqualTo("#ABCDEF");
     verify(scopes)
         .save(
