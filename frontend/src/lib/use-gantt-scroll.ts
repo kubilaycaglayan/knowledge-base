@@ -25,6 +25,8 @@ export function useGanttScroll(element: Ref<HTMLElement | null>, start: Ref<stri
   const indexOf = (date: string) => inclusiveDayCount(origin.value, date) - 1;
   const days = computed(() => timelineDays(dateAt(first.value), dateAt(first.value + count.value - 1)));
   const windowStyle = computed(() => ({ left: `${first.value * dayWidth.value}px`, width: `${days.value.length * dayWidth.value}px` }));
+  // The first and last day with any pixel inside the scrolled viewport.
+  const visibleRange = computed(() => ({ start: dateAt(Math.floor(left.value / dayWidth.value)), end: dateAt(Math.max(0, Math.ceil((left.value + viewport.value) / dayWidth.value) - 1)) }));
   const todayPosition = computed(() => {
     const index = indexOf(today);
     return index < first.value || index >= first.value + count.value ? undefined : `${(index + 0.5) * dayWidth.value}px`;
@@ -79,5 +81,5 @@ export function useGanttScroll(element: Ref<HTMLElement | null>, start: Ref<stri
     scrollTo(extend(dayOffset * next));
   }, { flush: "post" });
   onBeforeUnmount(() => resize?.disconnect());
-  return { days, width, windowStyle, todayPosition, onScroll, jump };
+  return { days, width, windowStyle, visibleRange, todayPosition, onScroll, jump };
 }

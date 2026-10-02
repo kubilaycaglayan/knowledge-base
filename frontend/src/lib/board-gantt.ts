@@ -42,3 +42,11 @@ export function barPosition(start: string | undefined, end: string | undefined, 
   if (last < first) return null;
   return { left: (first / days.length) * 100, width: ((last - first + 1) / days.length) * 100 };
 }
+
+// Which side of the visible days [first, last] a card's dates lie on, or null
+// when any of its days is visible or it has no dates. One date stands for both ends.
+export function offscreenSide(start: string | undefined, end: string | undefined, first: string, last: string): "before" | "after" | null {
+  const from = start || end, to = end || start;
+  if (!from || !to) return null;
+  return to < first ? "before" : from > last ? "after" : null;
+}

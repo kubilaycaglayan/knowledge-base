@@ -17,7 +17,7 @@ import { usePreferencesStore, type BoardViewState, type GanttSortRule } from "..
 import { useBoardsStore, type Board, type BoardCard, type BoardCardSort, type BoardStatus, type MergedColumn } from "../stores/boards";
 import { usePathsStore } from "../stores/paths";
 import { useLabelsStore } from "../stores/labels";
-import { addCalendarDays, inclusiveDayCount } from "../lib/board-gantt";
+import { addCalendarDays, inclusiveDayCount, offscreenSide } from "../lib/board-gantt";
 import { useGanttScroll } from "../lib/use-gantt-scroll";
 import GanttCard from "../components/GanttCard.vue";
 import { ApiError } from "../lib/api";
@@ -28,7 +28,7 @@ import "@vuepic/vue-datepicker/dist/main.css";
 import { format, parseISO } from "date-fns";
 import { isDarkTheme, theme as currentTheme } from "../lib/theme";
 import { mdiCalendarToday } from "@mdi/js";
-import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiCheck, mdiChevronDown, mdiClose, mdiDragVertical, mdiCogOutline, mdiAllInclusive, mdiMagnify, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortAscending, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
+import { mdiArchiveOutline, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal, mdiArrowLeft, mdiCheck, mdiChevronDown, mdiChevronLeft, mdiChevronRight, mdiClose, mdiDragVertical, mdiCogOutline, mdiAllInclusive, mdiMagnify, mdiPin, mdiPinOutline, mdiPlus, mdiSort, mdiSortAscending, mdiSortDescending, mdiTrashCanOutline } from "@mdi/js";
 
 const theme = computed(() => isDarkTheme(currentTheme.value) ? "dark" : "light");
 const store = useBoardsStore();
@@ -131,7 +131,7 @@ function rememberTimelineDate(from: string) {
     void router.replace({ query: { ...route.query, from: ganttFrom.value, to: ganttTo.value } });
   }, 250);
 }
-const { days: visibleDays, width: timelineWidth, windowStyle: timelineWindowStyle, todayPosition, onScroll: scrollTimeline, jump: jumpTimeline } = useGanttScroll(timelineScroll, ganttFrom, computed(() => phone.value ? 132 : 80), today, rememberTimelineDate);
+const { days: visibleDays, width: timelineWidth, windowStyle: timelineWindowStyle, visibleRange: timelineVisibleRange, todayPosition, onScroll: scrollTimeline, jump: jumpTimeline } = useGanttScroll(timelineScroll, ganttFrom, computed(() => phone.value ? 132 : 80), today, rememberTimelineDate);
 const formatTimelineDay = (day: string) => `${day.slice(8, 10)}-${day.slice(5, 7)}`;
 const isWeekend = (value: string) => [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
 const activeStatuses = computed(() => statuses.value.filter((status) => !status.archived));
@@ -306,6 +306,18 @@ watch(showBoardMenu, (shown) => { if (!shown) closeMore(); });
 watch(phone, () => { void nextTick(measureTabs); });
 function setView(next: string) { if (view.value === next) return; void router.push({ query: { ...route.query, view: next, ...(next === "gantt" ? { from: ganttFrom.value, to: ganttTo.value } : {}) } }); }
 function updateGanttRange() { if (!ganttFrom.value || !ganttTo.value || ganttTo.value < ganttFrom.value) { error.value = "Choose a valid inclusive date range."; return; } error.value = ""; clearTimeout(timelineQueryTimer); jumpTimeline(ganttFrom.value); void router.push({ query: { ...route.query, view: "gantt", from: ganttFrom.value, to: ganttTo.value } }); void store.loadGantt(ganttFrom.value, ganttTo.value); }
+// Dated cards entirely outside the scrolled viewport get an edge arrow that starts the timeline at the card.
+const ganttOffscreen = computed(() => new Map(ganttCards.value.map((card) => [card.id, offscreenSide(card.startDate, card.dueDate, timelineVisibleRange.value.start, timelineVisibleRange.value.end)])));
+function showCardOnTimeline(card: BoardCard) {
+  const from = card.startDate || card.dueDate;
+  if (!from) return;
+  const days = ganttRangeDays.value;
+  ganttFrom.value = from;
+  ganttTo.value = addCalendarDays(from, days - 1);
+  updateGanttRange();
+  // The arrow disappears once the card is in view, so focus moves to the card's bar.
+  void nextTick(() => [...timelineScroll.value?.querySelectorAll<HTMLElement>(".timeline-row") || []].find((row) => row.dataset.cardId === card.id)?.querySelector<HTMLElement>(".timeline-bar")?.focus({ preventScroll: true }));
+}
 function shiftGantt(amount: number) { ganttFrom.value = addCalendarDays(ganttFrom.value, amount); ganttTo.value = addCalendarDays(ganttTo.value, amount); updateGanttRange(); }
 function showToday() {
   const days = ganttRangeDays.value;
@@ -583,7 +595,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
           <div class="timeline" :style="{ minWidth: `${timelineWidth}px` }">
             <div v-if="todayPosition" class="timeline-today-overlay"><span class="timeline-today-line" :style="{ left: todayPosition }" role="img" :aria-label="`Today, ${today}`"></span></div>
             <div class="timeline-header"><div class="timeline-days" :style="{ ...timelineWindowStyle, gridTemplateColumns: `repeat(${visibleDays.length}, minmax(56px, 1fr))` }"><span v-for="day in visibleDays" :key="day" :data-date="day">{{ formatTimelineDay(day) }}</span></div></div>
-            <div v-for="card in ganttCards" :key="card.id" class="timeline-row"><div class="timeline-track" :style="timelineWindowStyle"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" :color="ganttCardColor(card)" :text-color="ganttCardTextColor(card)" :show-priority="ganttDisplay.ganttShowPriority" :show-status="ganttDisplay.ganttShowStatus" :show-path="ganttDisplay.ganttShowPath" :status-name="ganttCardStatus(card)" :path-name="ganttCardPathName(card)" @edit="editCard" /></div></div>
+            <div v-for="card in ganttCards" :key="card.id" class="timeline-row" :data-card-id="card.id"><button v-if="ganttOffscreen.get(card.id)" class="timeline-offscreen-arrow" :class="`timeline-offscreen-${ganttOffscreen.get(card.id)}`" type="button" :aria-label="`Show ${card.title || 'Untitled card'} on the timeline, starting ${card.startDate || card.dueDate}`" :title="`Go to ${card.startDate || card.dueDate}`" @click="showCardOnTimeline(card)"><v-icon :icon="ganttOffscreen.get(card.id) === 'before' ? mdiChevronLeft : mdiChevronRight" size="18" aria-hidden="true" /></button><div class="timeline-track" :style="timelineWindowStyle"><span v-for="day in visibleDays" :key="day" class="timeline-cell" :class="{ weekend: isWeekend(day) }"></span><GanttCard :card="card" :days="visibleDays" :color="ganttCardColor(card)" :text-color="ganttCardTextColor(card)" :show-priority="ganttDisplay.ganttShowPriority" :show-status="ganttDisplay.ganttShowStatus" :show-path="ganttDisplay.ganttShowPath" :status-name="ganttCardStatus(card)" :path-name="ganttCardPathName(card)" @edit="editCard" /></div></div>
             <p v-if="!ganttCards.length" class="board-empty">No active cards on this board yet.</p>
           </div>
         </div>

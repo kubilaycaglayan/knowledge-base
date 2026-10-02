@@ -201,7 +201,7 @@ for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline
     return {
       left: view.left + scroller.clientLeft,
       right: view.left + scroller.clientLeft + scroller.clientWidth,
-      rows: rows.map((row) => { const arrow = row.querySelector(".timeline-offscreen-arrow"); const r = box(row), a = box(arrow); return a ? { rowMiddle: r.top + r.height / 2, arrowMiddle: a.top + a.height / 2, left: a.left, right: a.right, width: a.width, height: a.height } : null; }),
+      rows: rows.map((row) => { const arrow = row.querySelector(".timeline-offscreen-arrow"); const r = box(row), a = box(arrow); return a ? { rowHeight: r.height, rowMiddle: r.top + r.height / 2, arrowMiddle: a.top + a.height / 2, left: a.left, right: a.right, width: a.width, height: a.height } : null; }),
     };
   });
   const minimum = width <= 390 ? 44 : 24;
@@ -212,6 +212,7 @@ for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline
     for (const arrow of [earlier, later]) {
       assert.ok(Math.abs(arrow.arrowMiddle - arrow.rowMiddle) < 1.5, "Arrows are centered on their card's row");
       assert.ok(arrow.width >= minimum && arrow.height >= minimum - 10, `Arrow hit target is too small: ${arrow.width}x${arrow.height}`);
+      assert.ok(arrow.height <= arrow.rowHeight, `Arrow must fit inside its row: ${arrow.height} > ${arrow.rowHeight}`);
     }
   };
   check(await geometry());
@@ -230,6 +231,7 @@ for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline
   await page.locator(".timeline-scroll").evaluate((scroller, offset) => { scroller.scrollLeft += offset; }, dayWidth * 19);
   await earlierArrow.waitFor();
 
+  await page.keyboard.press("Shift"); // Keyboard modality, so programmatic focus matches :focus-visible.
   await earlierArrow.focus();
   assert.notEqual(await earlierArrow.evaluate((element) => getComputedStyle(element).outlineStyle), "none", "Focused arrows show a focus ring");
   await earlierArrow.click();
