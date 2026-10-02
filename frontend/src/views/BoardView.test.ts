@@ -137,6 +137,29 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("previews a one-day bar on an undated card's row and saves the hovered date on click", async () => {
+    const store = seedBoard(["Backlog"]);
+    store.ganttCards = [{ id: "undated", boardId: "test-id", statusId: "status-1", title: "Undated", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }];
+    mockRoute.query = { board: "test-id", view: "gantt", from: "2026-09-01", to: "2026-09-14" };
+
+    const wrapper = mountBoard();
+    await flushPromises();
+    const cells = wrapper.findAll(".timeline-track .timeline-cell");
+    const dayHeaders = wrapper.findAll(".timeline-days span[data-date]");
+    expect(wrapper.find(".timeline-card").exists()).toBe(false);
+    const chooser = wrapper.get<HTMLButtonElement>(".timeline-unscheduled");
+    vi.spyOn(chooser.element, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1000, 34));
+    const targetIndex = Math.floor(dayHeaders.length * 0.55);
+    chooser.element.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 550 }));
+    await flushPromises();
+    expect(wrapper.find(".timeline-prospective-bar").exists()).toBe(true);
+    expect(chooser.attributes("style")).toContain("--prospective-width");
+    await chooser.trigger("click");
+    expect(store.updateCard).toHaveBeenCalledWith(expect.objectContaining({ id: "undated" }), expect.objectContaining({ startDate: dayHeaders[targetIndex].attributes("data-date") }));
+    expect(cells.length).toBe(dayHeaders.length);
+    await wrapper.unmount();
+  });
+
   it("keeps the Gantt card list in a separate left pane beside the scrolling chart", async () => {
     const store = seedBoard(["Backlog"]);
     store.ganttCards = [
