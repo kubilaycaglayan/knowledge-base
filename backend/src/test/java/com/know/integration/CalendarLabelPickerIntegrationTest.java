@@ -143,4 +143,41 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
                     + "\"}]}")
             .getStatusCode());
   }
+
+  @Test
+  void aCalendarLabelUsedOnDaysCanBeHiddenFromCalendar() {
+    String token = token();
+    String label =
+        ok(
+                HttpMethod.POST,
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Leave\",\"color\":\"#2878D5\",\"scopes\":[\"CALENDAR\",\"NOTE\"]}")
+            .get("id")
+            .asText();
+    ok(
+        HttpMethod.PUT,
+        "/api/v1/calendar/days/2026-10-08",
+        token,
+        "{\"labels\":[{\"labelId\":\"" + label + "\",\"portion\":1.0}]}");
+
+    ok(
+        HttpMethod.PUT,
+        "/api/v1/labels/" + label,
+        token,
+        "{\"name\":\"Leave\",\"color\":\"#2878D5\",\"scopes\":[\"NOTE\"]}");
+
+    assertEquals(List.of("NOTE"), scopes(token, label));
+    for (JsonNode calendarLabel : ok(HttpMethod.GET, "/api/v1/labels?scope=CALENDAR", token, null))
+      assertNotEquals(label, calendarLabel.get("id").asText());
+    JsonNode day =
+        ok(
+                HttpMethod.GET,
+                "/api/v1/calendar/days?startDate=2026-10-08&endDate=2026-10-08",
+                token,
+                null)
+            .get(0);
+    assertEquals(label, day.get("labels").get(0).get("labelId").asText());
+    assertEquals(1.0, day.get("labels").get(0).get("portion").asDouble());
+  }
 }

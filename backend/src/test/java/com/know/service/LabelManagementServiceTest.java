@@ -53,6 +53,24 @@ class LabelManagementServiceTest {
   }
 
   @Test
+  void removesTheCalendarScopeFromALabelUsedOnCalendarDays() {
+    // Calendar days accept labels hidden from Calendar, so hiding a used one is allowed.
+    UUID user = UUID.randomUUID();
+    Label label = new Label(user, "Leave", "#2878D5");
+    when(labels.findByIdAndUserId(label.getId(), user)).thenReturn(Optional.of(label));
+    when(labels.save(any(Label.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(scopes.existsByIdLabelIdAndIdScope(label.getId(), LabelScopeType.CALENDAR))
+        .thenReturn(true);
+    when(calendar.existsByIdLabelId(label.getId())).thenReturn(true);
+    LabelManagementService service = service();
+
+    service.update(user, label.getId(), "Leave", "#2878D5", List.of(LabelScopeType.NOTE));
+
+    verify(scopes).deleteById(new LabelScopeId(label.getId(), LabelScopeType.CALENDAR));
+    verify(calendar, never()).deleteAllByIdLabelId(any());
+  }
+
+  @Test
   void removesAssignmentsButKeepsAssignedEntitiesWhenConfirmed() {
     UUID user = UUID.randomUUID();
     Label label = new Label(user, "Work", "#2878D5");
