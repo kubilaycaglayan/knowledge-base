@@ -12,20 +12,31 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
+import { mdiPlus } from "@mdi/js";
 import { api } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
 import ColorPalette from "../components/ColorPalette.vue";
-import { useLabelsStore } from "../stores/labels";
+import { useLabelsStore, type LabelScope } from "../stores/labels";
 import { useCalendarStore, type CalendarDay } from "../stores/calendar";
 import { useReportsStore } from "../stores/reports";
 
-type Scope = "NOTE" | "CALENDAR" | "TIME_ENTRY";
 type Label = {
   id: string;
   name: string;
   color?: string | null;
-  scopes: Scope[];
+  scopes: LabelScope[];
 };
+type PickerItem = { id: string; name: string; color?: string | null };
+// Labels created from the Calendar picker show everywhere, Calendar included.
+const everyLabelScope: LabelScope[] = [
+  "NOTE",
+  "CALENDAR",
+  "TIME_ENTRY",
+  "LOG",
+  "BOARD",
+];
+// The picker's "Create “…”" item carries the typed name in its id.
+const CREATE_PREFIX = "create:";
 type Assignment = CalendarDay["labels"][number];
 type Day = CalendarDay;
 const month = ref(startOfMonth(new Date()));
@@ -34,16 +45,23 @@ const labelsStore = useLabelsStore();
 const calendarStore = useCalendarStore();
 const reportsStore = useReportsStore();
 const { days } = storeToRefs(calendarStore);
-const labels = computed(() => labelsStore.forScope("CALENDAR"));
+const allLabels = computed(() =>
+  [...labelsStore.labels].sort((a, b) => a.name.localeCompare(b.name)),
+);
+// Only labels shown in Calendar are listed under the note; the picker reaches
+// every label.
+const labels = computed(() =>
+  allLabels.value.filter((label) => label.scopes?.includes("CALENDAR")),
+);
 const note = ref("");
 const chosen = ref<Record<string, number | null>>({});
-const newLabel = ref("");
+const pickerSearch = ref("");
 const newLabelColor = ref(labelColors[0]);
 const newLabelColorOpen = ref(false);
 const editingColor = ref<string | null>(null);
 const error = ref("");
 const saving = ref(false);
-const addingLabel = ref(false);
+const creatingLabel = ref(false);
 const selectingRange = ref(false);
 const rangeStart = ref<string | null>(null);
 const rangeEnd = ref<string | null>(null);
@@ -84,6 +102,54 @@ const rangeTitle = computed(() =>
     : "",
 );
 
+const pickerItems = computed<PickerItem[]>(() => {
+  const items: PickerItem[] = allLabels.value;
+  const name = (pickerSearch.value || "").trim();
+  if (
+    !name ||
+    allLabels.value.some(
+      (label) => label.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+    )
+  )
+    return items;
+  return [
+    ...items,
+    { id: `${CREATE_PREFIX}${name}`, name: `Create “${name}”` },
+  ];
+});
+// Every label chosen for the day, Calendar labels included, so the dropdown
+// shows the day's whole selection.
+const pickedIds = computed({
+  get: () => Object.keys(chosen.value),
+  set: (ids: string[]) => {
+    const create = ids.find((id) => id.startsWith(CREATE_PREFIX));
+    if (create) void createLabel(create.slice(CREATE_PREFIX.length));
+    chosen.value = Object.fromEntries(
+      ids
+        .filter((id) => !id.startsWith(CREATE_PREFIX))
+        .map((id) => [id, hasChosen(id) ? chosen.value[id] : null]),
+    );
+  },
+});
+
+function hasChosen(id: string) {
+  return Object.prototype.hasOwnProperty.call(chosen.value, id);
+}
+function isCreateItem(id: string) {
+  return id.startsWith(CREATE_PREFIX);
+}
+function shownInList(id: string) {
+  return labels.value.some((label) => label.id === id);
+}
+function filterLabels(
+  value: string,
+  query: string,
+  item?: { raw?: PickerItem },
+) {
+  if (item?.raw && isCreateItem(item.raw.id)) return true;
+  const search = query.trim().toLocaleLowerCase();
+  return !search || value.toLocaleLowerCase().includes(search);
+}
 function selectedAssignments() {
   return Object.entries(chosen.value)
     .filter(([, portion]) => portion !== undefined)
@@ -114,11 +180,13 @@ function selectDay(date: Date) {
   );
 }
 function hasLabel(label: Label) {
-  return Object.prototype.hasOwnProperty.call(chosen.value, label.id);
+  return hasChosen(label.id);
 }
-function labelColor(labelId: string) {
+function labelColor(assignment: Assignment) {
   return (
-    labels.value.find((label) => label.id === labelId)?.color || labelColors[0]
+    labelsStore.byId(assignment.labelId)?.color ||
+    assignment.color ||
+    labelColors[0]
   );
 }
 function toggleLabel(label: Label) {
@@ -142,7 +210,7 @@ async function load() {
     );
     const range = `${startDate}:${endDate}`;
     const [savedLabels, savedDays] = await Promise.all([
-      labelsStore.loadScope("CALENDAR"),
+      labelsStore.load(),
       calendarStore.loadedRanges.includes(range)
         ? Promise.resolve([] as Day[])
         : api<Day[]>(
@@ -195,43 +263,26 @@ async function save() {
     saving.value = false;
   }
 }
-async function addLabel() {
-  if (addingLabel.value || !newLabel.value.trim()) return;
-  addingLabel.value = true;
+async function createLabel(name: string) {
+  if (creatingLabel.value || !name) return;
+  creatingLabel.value = true;
+  error.value = "";
   try {
-    labelsStore.add(
-      await api<Label>("/labels", {
-        method: "POST",
-        body: JSON.stringify({
-          name: newLabel.value.trim(),
-          color: newLabelColor.value,
-          scopes: ["CALENDAR"],
-        }),
+    const created = await api<Label>("/labels", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        color: newLabelColor.value,
+        scopes: everyLabelScope,
       }),
-    );
-    labelsStore.labels.sort((a, b) => a.name.localeCompare(b.name));
-    newLabel.value = "";
+    });
+    labelsStore.add(created);
+    chosen.value = { ...chosen.value, [created.id]: null };
   } catch {
-    error.value = "Unable to add that label. Label names must be unique.";
+    error.value = "Unable to create that label. Label names must be unique.";
   } finally {
-    addingLabel.value = false;
+    creatingLabel.value = false;
   }
-}
-function handleNewLabelKeydown(event: KeyboardEvent) {
-  if (event.isComposing || event.keyCode === 229) return;
-  if (event.key === "Enter") {
-    event.preventDefault();
-    void addLabel();
-  }
-}
-function handleNewLabelBeforeInput(event: InputEvent) {
-  if (
-    event.inputType !== "insertLineBreak" &&
-    event.inputType !== "insertParagraph"
-  )
-    return;
-  event.preventDefault();
-  void addLabel();
 }
 function selectNewLabelColor(color: string) {
   newLabelColor.value = color;
@@ -405,7 +456,7 @@ onMounted(load);
                 )"
                 :key="label.labelId"
                 class="calendar-label"
-                :style="{ '--calendar-label-color': labelColor(label.labelId) }"
+                :style="{ '--calendar-label-color': labelColor(label) }"
                 :title="label.name"
                 ><i></i>{{ label.name }}</span
               ><small
@@ -494,20 +545,75 @@ onMounted(load);
             </select>
           </div>
           <p v-if="!labels.length" class="muted">
-            Create a label below to begin.
+            Add or create a label below to begin.
           </p>
         </fieldset>
         <div class="new-calendar-label">
-          <input
-            v-model="newLabel"
-            aria-label="New calendar label"
+          <v-autocomplete
+            v-model="pickedIds"
+            v-model:search="pickerSearch"
+            class="calendar-label-picker"
+            :items="pickerItems"
+            item-title="name"
+            item-value="id"
+            :custom-filter="filterLabels"
+            multiple
+            chips
+            closable-chips
+            auto-select-first
+            clear-on-select
+            hide-details
+            flat
+            variant="solo-filled"
+            density="compact"
+            placeholder="Add or create label…"
+            aria-label="Add or create label"
             name="calendar-label"
             maxlength="80"
-            placeholder="New label, e.g. Vacation"
             enterkeyhint="done"
-            @beforeinput="handleNewLabelBeforeInput"
-            @keydown="handleNewLabelKeydown"
-          /><span class="color-popover-anchor"
+            no-data-text="No matching labels"
+            :menu-props="{ contentClass: 'calendar-label-picker-menu' }"
+            ><template #chip="{ item, props: chipProps }"
+              ><v-chip
+                v-if="!shownInList(item.id)"
+                v-bind="chipProps"
+                class="calendar-picked-chip"
+                label
+                :text="item.name"
+                :close-label="`Remove ${item.name}`"
+                :style="{
+                  '--calendar-label-color': item.color || labelColors[0],
+                }"
+                ><template #prepend
+                  ><i
+                    class="calendar-picked-dot"
+                    aria-hidden="true"
+                  ></i></template></v-chip></template
+            ><template #item="{ item, props: itemProps }"
+              ><v-list-item
+                v-bind="itemProps"
+                role="option"
+                :class="{ 'calendar-label-create': isCreateItem(item.id) }"
+                ><template #prepend="{ isSelected }"
+                  ><v-icon
+                    v-if="isCreateItem(item.id)"
+                    :icon="mdiPlus"
+                    size="18"
+                    aria-hidden="true" /><template v-else
+                    ><v-checkbox-btn
+                      :model-value="isSelected"
+                      :ripple="false"
+                      tabindex="-1"
+                      aria-hidden="true"
+                      density="compact"
+                      @click.prevent /><i
+                      class="calendar-picker-swatch"
+                      aria-hidden="true"
+                      :style="{
+                        backgroundColor: item.color || labelColors[0],
+                      }"
+                    ></i></template></template></v-list-item></template></v-autocomplete
+          ><span class="color-popover-anchor"
             ><button
               id="new-calendar-label-color"
               class="label-color-button"
@@ -528,8 +634,8 @@ onMounted(load);
               :model-value="newLabelColor"
               legend="New calendar label color"
               option-label="Choose new label color"
-              @update:model-value="selectNewLabelColor" /></span
-          ><button class="ghost" type="button" @click="addLabel">Add</button>
+              @update:model-value="selectNewLabelColor"
+          /></span>
         </div>
         <button
           class="primary"

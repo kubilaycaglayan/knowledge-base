@@ -1691,9 +1691,60 @@
   align-items: center;
   gap: 8px;
 }
-.new-calendar-label input {
-  flex: 1;
-  width: 100%;
+.new-calendar-label .calendar-label-picker {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.calendar-label-picker .v-field {
+  min-height: 36px;
+  border-radius: 6px;
+  background: var(--workspace-hover);
+  box-shadow: none;
+  font-size: 14px;
+}
+.calendar-label-picker .v-field--focused {
+  box-shadow: 0 0 0 2px var(--workspace-accent);
+}
+.calendar-label-picker .v-field__input {
+  min-height: 36px;
+  padding-block: 4px;
+  gap: 4px;
+}
+.calendar-label-picker .v-field__input input {
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: max(16px, 0.875rem);
+}
+.calendar-label-picker .v-field__input input:focus,
+.calendar-label-picker .v-field__input input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.calendar-label-picker .v-autocomplete__selection {
+  margin: 0;
+}
+.calendar-picked-chip.v-chip {
+  border-radius: 4px;
+  background: var(--workspace-selected);
+  color: var(--workspace-selected-text, inherit);
+}
+.calendar-picked-dot,
+.calendar-picker-swatch {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.calendar-picked-dot {
+  margin-inline-end: 6px;
+  background: var(--calendar-label-color, var(--workspace-accent));
+}
+.calendar-picker-swatch {
+  margin-inline: 2px 8px;
 }
 .path-color-control {
   align-self: center;

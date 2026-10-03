@@ -471,6 +471,17 @@ no_marker_report="$(api "${header[@]}" "http://localhost:8080/api/v1/reports?sta
 api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data="{\"startDate\":\"$smoke_date\",\"endDate\":\"$calendar_range_end\",\"labels\":[{\"labelId\":\"$calendar_label_id\",\"portion\":1.0}]}" \
   http://localhost:8080/api/v1/calendar/days/range | grep -q "$calendar_range_end"
+# A calendar day accepts a label hidden from Calendar without changing its scopes.
+hidden_label_id="$(api "${header[@]}" http://localhost:8080/api/v1/labels \
+  | grep -o '"id":"[^"]*","name":"Smoke"' | sed -n 's/"id":"\([^"]*\)".*/\1/p')"
+[[ -n "$hidden_label_id" ]]
+hidden_label_date="$(date -u -d "$smoke_date + 3 days" +%Y-%m-%d)"
+api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"labels\":[{\"labelId\":\"$hidden_label_id\"}]}" \
+  "http://localhost:8080/api/v1/calendar/days/$hidden_label_date" | grep -q "$hidden_label_id"
+api "${header[@]}" http://localhost:8080/api/v1/labels \
+  | grep -o '"name":"Smoke"[^]]*]' \
+  | grep -q '"scopes":\["NOTE","TIME_ENTRY","LOG","BOARD"\]'
 manual_start="$(date -u -d '2 hours ago' +%Y-%m-%dT%H:00:00Z)"
 manual_end="$(date -u -d '75 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 manual="$(

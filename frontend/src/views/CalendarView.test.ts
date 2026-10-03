@@ -31,9 +31,12 @@ function pickerInput(wrapper: View) {
   return wrapper.get<HTMLInputElement>(".calendar-label-picker input");
 }
 async function openPicker(wrapper: View, search?: string) {
-  if (search !== undefined) await pickerInput(wrapper).setValue(search);
   await wrapper.get(".calendar-label-picker .v-field").trigger("mousedown");
   await flushPromises();
+  if (search !== undefined) {
+    await pickerInput(wrapper).setValue(search);
+    await flushPromises();
+  }
   const menu = document.querySelector<HTMLElement>(
     ".calendar-label-picker-menu",
   );
@@ -50,8 +53,7 @@ function menuItems() {
 function menuItem(text: string) {
   const item = menuItems().find(
     (element) =>
-      element.querySelector(".v-list-item-title")?.textContent?.trim() ===
-      text,
+      element.querySelector(".v-list-item-title")?.textContent?.trim() === text,
   );
   expect(item, `menu item ${text}`).toBeDefined();
   return item!;
@@ -542,10 +544,10 @@ describe("CalendarView", () => {
     expect(chipNames(wrapper)).toEqual(["Deep work", "Gym"]);
     expect(listedLabels(wrapper)).toEqual(["Sick leave"]);
     await openPicker(wrapper, "");
-    expect(menuItem("Deep work").className).toContain("v-list-item--active");
-    expect(menuItem("Gym").className).toContain("v-list-item--active");
-    expect(menuItem("Sick leave").className).not.toContain(
-      "v-list-item--active",
+    expect(menuItem("Deep work").getAttribute("aria-selected")).toBe("true");
+    expect(menuItem("Gym").getAttribute("aria-selected")).toBe("true");
+    expect(menuItem("Sick leave").getAttribute("aria-selected")).not.toBe(
+      "true",
     );
     expect(labelUpdates()).toHaveLength(0);
 
@@ -573,7 +575,7 @@ describe("CalendarView", () => {
     await wrapper.get('input[type="checkbox"]').setValue(false);
     await wrapper.get('input[type="checkbox"]').setValue(true);
     await openPicker(wrapper, "");
-    expect(menuItem("Sick leave").className).toContain("v-list-item--active");
+    expect(menuItem("Sick leave").getAttribute("aria-selected")).toBe("true");
   });
 
   it("CP-07: removes a picked label from its chip", async () => {

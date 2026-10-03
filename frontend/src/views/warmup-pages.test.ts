@@ -85,7 +85,7 @@ describe("WU-02: warmed pages open without refetching", () => {
         return mount(NotesView, { global: { plugins: [r, vuetify] } });
       },
     ],
-    ["Calendar", () => mount(CalendarView)],
+    ["Calendar", () => mount(CalendarView, { global: { plugins: [vuetify] } })],
     [
       "Reports",
       () => {

@@ -1,5 +1,7 @@
 # Knowledge Base UI roadmap
 
+- [x] Replace the Calendar page's “New label” input with an “Add or create label” picker that searches every label, puts labels hidden from Calendar on a day as chips without changing their visibility, and creates new labels shown everywhere; the Labels list keeps showing only Calendar labels (see `docs/calendar-label-picker-acceptance-checklist.md`).
+
 - [x] Warm up the other pages in the background after the first load (route chunks plus the default Sessions, Paths, Labels, Notes, Calendar, Reports, and Logs data, and the saved board with its Kanban columns and Gantt window), with a 10 minute cooldown, quiet start delay, one-at-a-time requests, and no warm-up in automated browsers (see `docs/warmup-cache-acceptance-checklist.md`).
 
 - [x] Open the Reports range selector on the whole picked date range and double its height, growing the chart so bars keep their size (see `docs/report-range-selector-acceptance-checklist.md`).
