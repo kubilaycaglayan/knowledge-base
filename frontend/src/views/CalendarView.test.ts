@@ -746,4 +746,31 @@ describe("CalendarView", () => {
       { labelId: "leave", portion: null },
     ]);
   });
+
+  it("keeps each label row's layout when a label is checked or unchecked", async () => {
+    // Checking a label used to insert its day-portion select, growing the row
+    // (and wrapping it onto a second line on phones). The select now stays in
+    // the row, hidden and disabled while the label is unchecked.
+    const wrapper = mountView();
+    await flushPromises();
+    const row = () => wrapper.get(".day-label");
+    const portion = () =>
+      row().get('select[aria-label="Sick leave day portion"]');
+    const shape = () => row().element.children.length;
+    const unchecked = shape();
+
+    expect(portion().classes()).toContain("day-portion--unset");
+    expect(portion().attributes("disabled")).toBeDefined();
+    expect(portion().attributes("aria-hidden")).toBe("true");
+
+    await row().get('input[type="checkbox"]').setValue(true);
+    expect(shape()).toBe(unchecked);
+    expect(portion().classes()).not.toContain("day-portion--unset");
+    expect(portion().attributes("disabled")).toBeUndefined();
+    expect(portion().attributes("aria-hidden")).toBeUndefined();
+
+    await row().get('input[type="checkbox"]').setValue(false);
+    expect(shape()).toBe(unchecked);
+    expect(portion().classes()).toContain("day-portion--unset");
+  });
 });
