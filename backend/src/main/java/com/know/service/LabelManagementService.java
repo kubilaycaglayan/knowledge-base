@@ -108,9 +108,9 @@ public class LabelManagementService {
       if (next.contains(scope) && !present)
         scopes.save(new LabelScope(new LabelScopeId(label.getId(), scope)));
       if (!next.contains(scope) && present) {
-        if ((scope == LabelScopeType.CALENDAR
-                && calendarAssignments.existsByIdLabelId(label.getId()))
-            || (scope == LabelScopeType.TIME_ENTRY
+        // Calendar days accept labels hidden from Calendar, so CALENDAR is not
+        // guarded.
+        if ((scope == LabelScopeType.TIME_ENTRY
                 && timeAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.NOTE && noteAssignments.existsByIdLabelId(label.getId()))
             || (scope == LabelScopeType.LOG && logAssignments.existsByIdLabelId(label.getId())))

@@ -482,6 +482,17 @@ api "${header[@]}" "${content_json[@]}" --method=PUT \
 api "${header[@]}" http://localhost:8080/api/v1/labels \
   | grep -o '"name":"Smoke"[^]]*]' \
   | grep -q '"scopes":\["NOTE","TIME_ENTRY","LOG","BOARD"\]'
+# A Calendar label used on a day can still be hidden from Calendar; the day keeps it.
+hide_label="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke hide","scopes":["CALENDAR","NOTE"]}' http://localhost:8080/api/v1/labels)"
+hide_label_id="$(printf '%s' "$hide_label" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data="{\"labels\":[{\"labelId\":\"$hide_label_id\"}]}" \
+  "http://localhost:8080/api/v1/calendar/days/$hidden_label_date" | grep -q "$hide_label_id"
+api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data='{"name":"Smoke hide","scopes":["NOTE"]}' \
+  "http://localhost:8080/api/v1/labels/$hide_label_id" | grep -q '"scopes":\["NOTE"\]'
+api "${header[@]}" "http://localhost:8080/api/v1/calendar/days?startDate=$hidden_label_date&endDate=$hidden_label_date" \
+  | grep -q "$hide_label_id"
 manual_start="$(date -u -d '2 hours ago' +%Y-%m-%dT%H:00:00Z)"
 manual_end="$(date -u -d '75 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
 manual="$(

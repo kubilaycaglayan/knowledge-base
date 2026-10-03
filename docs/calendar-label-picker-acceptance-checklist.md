@@ -14,6 +14,8 @@ an item only once those tests pass.
   _Tests:_ `CalendarLabelPickerIntegrationTest.dayAcceptsAnOwnedLabelHiddenFromCalendarWithoutChangingItsScopes`, `CalendarLabelPickerIntegrationTest.rangeAcceptsAnOwnedLabelHiddenFromCalendar`, `CalendarServiceTest.replaceDayAcceptsAnOwnedLabelWithoutTheCalendarScope`
 - [x] **CP-02** Another user's label is still rejected with `404` on single-day and range saves.
   _Tests:_ `CalendarLabelPickerIntegrationTest.anotherUsersLabelIsStillRejected`, `CrossUserIsolationIntegrationTest`
+- [x] **CP-13** A label's `CALENDAR` scope can be removed even while calendar days use it; the days keep the label, which then shows only as a chip in the picker. `NOTE`, `TIME_ENTRY`, and `LOG` stay guarded while in use.
+  _Tests:_ `CalendarLabelPickerIntegrationTest.aCalendarLabelUsedOnDaysCanBeHiddenFromCalendar`, `LabelManagementServiceTest.removesTheCalendarScopeFromALabelUsedOnCalendarDays`, `LabelManagementServiceTest.refusesRemovingAUsedScope`, `scripts/run-smoke-tests.sh` (“Smoke hide”)
 
 ## Web
 
