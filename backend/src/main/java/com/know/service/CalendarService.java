@@ -113,7 +113,7 @@ public class CalendarService {
         badRequest("Portion must be 0, 0.25, 0.50, 0.75, or 1.00");
     }
     Map<UUID, Label> owned = new HashMap<>();
-    for (UUID id : ids) owned.put(id, label(userId, id));
+    for (UUID id : ids) owned.put(id, ownedLabel(userId, id));
     Optional<DailyRecord> existing = records.findByUserIdAndRecordDate(userId, date);
     if (cleanedNote == null && requested.isEmpty()) {
       existing.ifPresent(record -> records.delete(record));
@@ -216,7 +216,7 @@ public class CalendarService {
       if (input.portion() != null && !isValidPortion(input.portion()))
         badRequest("Portion must be 0, 0.25, 0.50, 0.75, or 1.00");
     }
-    ids.forEach(id -> label(userId, id));
+    ids.forEach(id -> ownedLabel(userId, id));
   }
 
   private LabelAssignmentView assignmentView(Label label, BigDecimal portion) {
@@ -225,6 +225,14 @@ public class CalendarService {
 
   private LabelView labelView(Label label) {
     return new LabelView(label.getId(), label.getName(), label.getColor());
+  }
+
+  // Days accept any owned label, including ones hidden from the Calendar list,
+  // and assigning one leaves its scopes unchanged.
+  private Label ownedLabel(UUID userId, UUID id) {
+    return labels
+        .findByIdAndUserId(id, userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Label not found"));
   }
 
   private Label label(UUID userId, UUID id) {
