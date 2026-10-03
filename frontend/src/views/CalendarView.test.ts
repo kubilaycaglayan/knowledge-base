@@ -448,8 +448,8 @@ describe("CalendarView", () => {
     ).toBeTruthy();
     await checkbox.setValue(false);
     expect(
-      wrapper.find('select[aria-label="Sick leave day portion"]').exists(),
-    ).toBe(false);
+      wrapper.get('select[aria-label="Sick leave day portion"]').classes(),
+    ).toContain("day-portion--unset");
   });
 
   it("renders saved notes and only the first two labels with an overflow count", async () => {

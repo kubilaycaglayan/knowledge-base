@@ -1647,8 +1647,13 @@
   display: flex;
   align-items: center;
 }
+/* The portion select always keeps its slot, so checking a label never
+   resizes its row. */
 .day-label select {
   width: 128px;
+}
+.day-label select.day-portion--unset {
+  visibility: hidden;
 }
 .color-popover-anchor {
   position: relative;
@@ -1941,11 +1946,8 @@
     border-width: 10px;
   }
   .day-label select {
-    width: 100%;
-    grid-column: 3;
-  }
-  .day-label {
-    grid-template-columns: auto auto minmax(0, 1fr);
+    width: 112px;
+    height: 44px;
   }
   .report-date-range {
     max-width: 100%;

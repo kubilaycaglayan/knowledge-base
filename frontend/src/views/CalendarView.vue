@@ -524,8 +524,10 @@ onMounted(load);
                 @update:model-value="changeColor(label, $event)" /></span
             ><label :for="`calendar-label-${label.id}`">{{ label.name }}</label
             ><select
-              v-if="hasLabel(label)"
               :value="chosen[label.id] ?? ''"
+              :class="{ 'day-portion--unset': !hasLabel(label) }"
+              :disabled="!hasLabel(label)"
+              :aria-hidden="hasLabel(label) ? undefined : 'true'"
               :aria-label="`${label.name} day portion`"
               @change="
                 chosen = {
