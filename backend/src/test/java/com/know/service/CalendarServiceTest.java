@@ -48,6 +48,28 @@ class CalendarServiceTest {
   }
 
   @Test
+  void replaceDayAcceptsAnOwnedLabelWithoutTheCalendarScope() {
+    // CP-01: the Calendar picker can put any owned label on a day.
+    UUID user = UUID.randomUUID();
+    LocalDate date = LocalDate.of(2026, 9, 7);
+    Label hidden = new Label(user, "Deep work", "#2878D5");
+    when(labels.findByIdAndUserId(hidden.getId(), user)).thenReturn(Optional.of(hidden));
+    when(scopes.existsByIdLabelIdAndIdScope(hidden.getId(), LabelScopeType.CALENDAR))
+        .thenReturn(false);
+    when(records.findByUserIdAndRecordDate(user, date)).thenReturn(Optional.empty());
+    when(records.save(any(DailyRecord.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    CalendarService service = service();
+
+    CalendarService.DayView result =
+        service.replaceDay(
+            user, date, null, List.of(new CalendarService.LabelInput(hidden.getId(), null)));
+
+    assertEquals(List.of("Deep work"), result.labels().stream().map(l -> l.name()).toList());
+    verify(scopes, never()).save(any());
+    verify(scopes, never()).deleteById(any());
+  }
+
+  @Test
   void replaceDayTreatsBlankNoteAsEmptyAndDeletesAnExistingEmptyDay() {
     UUID user = UUID.randomUUID();
     LocalDate date = LocalDate.of(2026, 9, 6);
