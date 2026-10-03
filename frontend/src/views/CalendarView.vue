@@ -132,6 +132,11 @@ const pickedIds = computed({
   },
 });
 
+// Vuetify drops the placeholder once anything is selected, so while the
+// day's labels are all in the Labels list (no chips), show it ourselves.
+const showPickerPrompt = computed(
+  () => !pickerSearch.value && pickedIds.value.every((id) => shownInList(id)),
+);
 function hasChosen(id: string) {
   return Object.prototype.hasOwnProperty.call(chosen.value, id);
 }
@@ -590,7 +595,13 @@ onMounted(load);
                   ><i
                     class="calendar-picked-dot"
                     aria-hidden="true"
-                  ></i></template></v-chip></template
+                  ></i></template></v-chip
+              ><span
+                v-else-if="item.id === pickedIds[0] && showPickerPrompt"
+                class="calendar-picker-placeholder"
+                aria-hidden="true"
+                >Add or create label…</span
+              ></template
             ><template #item="{ item, props: itemProps }"
               ><v-list-item
                 v-bind="itemProps"

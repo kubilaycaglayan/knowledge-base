@@ -532,6 +532,22 @@ describe("CalendarView", () => {
     expect(titles).not.toContain("Gym");
   });
 
+  it("CP-04: keeps the picker's prompt while no chips show", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    const prompt = () =>
+      pickerInput(wrapper).attributes("placeholder") ||
+      wrapper.find(".calendar-picker-placeholder").text();
+
+    await wrapper.get('input[type="checkbox"]').setValue(true);
+    expect(prompt()).toBe("Add or create label…");
+
+    await openPicker(wrapper, "Deep");
+    await clickMenuItem("Deep work");
+    expect(chipNames(wrapper)).toEqual(["Deep work"]);
+    expect(wrapper.find(".calendar-picker-placeholder").exists()).toBe(false);
+  });
+
   it("CP-05: picks labels hidden from Calendar as chips without changing them", async () => {
     const wrapper = mountView();
     await flushPromises();

@@ -1731,6 +1731,10 @@
 .calendar-label-picker .v-autocomplete__selection {
   margin: 0;
 }
+.calendar-picker-placeholder {
+  color: var(--workspace-muted);
+  white-space: nowrap;
+}
 .calendar-picked-chip.v-chip {
   border-radius: 4px;
   background: var(--workspace-selected);
