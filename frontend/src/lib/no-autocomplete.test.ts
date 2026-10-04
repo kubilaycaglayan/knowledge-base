@@ -22,4 +22,16 @@ describe("watchBrowserCompletions", () => {
     expect(document.getElementById("password")?.getAttribute("autocomplete")).toBe("current-password");
     expect(added.getAttribute("autocomplete")).toBe("off");
   });
+
+  it("leaves fields inside a rich-text editor to the editor", async () => {
+    document.body.innerHTML = '<div contenteditable="true"><ul><li><label contenteditable="false"><input id="task" type="checkbox"></label></li></ul></div>';
+    stop = watchBrowserCompletions(document.body);
+    expect(document.getElementById("task")?.hasAttribute("autocomplete")).toBe(false);
+
+    const item = document.createElement("li");
+    item.innerHTML = '<label contenteditable="false"><input id="late-task" type="checkbox"></label>';
+    document.querySelector("ul")?.append(item);
+    await Promise.resolve();
+    expect(document.getElementById("late-task")?.hasAttribute("autocomplete")).toBe(false);
+  });
 });
