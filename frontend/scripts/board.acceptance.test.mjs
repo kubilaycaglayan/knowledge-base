@@ -1073,6 +1073,26 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     }
   });
 
+  // Clicking Checklist used to freeze the page.
+  it("turns a card body line into a checklist from the toolbar", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    const body = page.locator(".card-editor .ProseMirror");
+    const toolbar = page.getByRole("toolbar", { name: "Formatting" });
+    await toolbar.waitFor();
+    await page.getByRole("textbox", { name: "Title", exact: true }).evaluate((element) => element === document.activeElement || new Promise((resolve) => element.addEventListener("focus", resolve, { once: true })));
+    await body.click();
+    await page.waitForFunction(() => Boolean(document.activeElement?.closest(".card-editor .ProseMirror")));
+    await page.keyboard.type("Buy milk");
+    await toolbar.getByRole("button", { name: "Checklist" }).click({ timeout: 5000 });
+    const responsive = await Promise.race([page.evaluate(() => true), new Promise((resolve) => setTimeout(() => resolve(false), 3000))]);
+    assert.ok(responsive, "The page must stay responsive after clicking Checklist");
+    await body.locator("ul[data-type='taskList'] li", { hasText: "Buy milk" }).waitFor({ timeout: 3000 });
+    assert.equal(await toolbar.getByRole("button", { name: "Checklist" }).getAttribute("aria-pressed"), "true");
+    await page.keyboard.type(" today");
+    await body.locator("ul[data-type='taskList'] li", { hasText: "Buy milk today" }).waitFor({ timeout: 3000 });
+  });
+
   it("shows the Archived items link without a border", async (t) => {
     const { page } = await fixture(t, 1280);
     const link = page.locator("footer.board-footer").getByRole("link", { name: "Archived items" });
