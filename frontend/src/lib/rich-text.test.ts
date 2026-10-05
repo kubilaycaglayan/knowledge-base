@@ -39,6 +39,9 @@ describe("shared rich-text body", () => {
     expect(rules.find((rule) => rule.selectorText === '.rich-text ul[data-type="taskList"] li > label')?.style.height).toBe("1lh");
     expect(parseFloat(getComputedStyle(box).marginTop)).toBe(0);
     expect(parseFloat(getComputedStyle(box).marginBottom)).toBe(0);
+    // Glyphs sit slightly above the line's middle, so the box is raised 1px to meet the text optically.
+    expect(getComputedStyle(box).position).toBe("relative");
+    expect(getComputedStyle(box).top).toBe("-1px");
     document.body.innerHTML = "";
   });
 
