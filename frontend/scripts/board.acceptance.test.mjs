@@ -1263,6 +1263,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     }).map((field) => ({ label: field.getAttribute("aria-label") || field.className, width: Math.round(field.getBoundingClientRect().width), height: Math.round(field.getBoundingClientRect().height) })));
     assert.deepEqual(undersizedFields, [], `Landscape card-editor fields keep 44px targets (${JSON.stringify(undersizedFields)})`);
     assert.ok(editorBox.y >= 0 && editorBox.y + editorBox.height <= 390, "The editor remains inside the landscape viewport");
+    await page.screenshot({ path: join(screenshotDir, "card-editor-phone-landscape.png") });
     await closeCard(page);
   });
 

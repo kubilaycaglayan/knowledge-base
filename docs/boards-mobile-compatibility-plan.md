@@ -52,6 +52,11 @@ keyboard, safe areas, and narrow screens.
   clear and selected-label removal, at 44px or larger on a phone. The production
   build, TypeScript check, and all 106 `BoardView` unit tests pass after this
   change.
+- Added short-height touch-phone handling for landscape. An 844×390 viewport
+  now gets phone-aware Kanban height, 44px board and editor targets, and a
+  full-height card editor. Focused portrait and landscape acceptance checks
+  pass in Chromium and iPhone-profile WebKit; the landscape WebKit screenshot
+  was visually inspected.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance

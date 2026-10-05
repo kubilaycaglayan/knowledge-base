@@ -296,7 +296,7 @@ watch(tabBar, (bar, previous) => { if (previous) tabResize?.unobserve(previous);
 watch(() => [store.selectedId, ...otherBoards.value.map((board) => `${board.id}:${board.name}:${board.pathId || ""}`)].join("|"), () => { void nextTick(measureTabs); });
 // On phones the view switch and the Manage boards gear move into this menu,
 // so it is always there, even when every board fits.
-const PHONE_QUERY = "(max-width: 700px)";
+const PHONE_QUERY = "(max-width: 700px), (max-height: 500px) and (pointer: coarse)";
 let phoneQuery: MediaQueryList | undefined;
 const onPhoneChange = (event: MediaQueryListEvent) => { phone.value = event.matches; };
 const showBoardMenu = computed(() => moreBoards.value.length > 0 || phone.value);
