@@ -152,8 +152,8 @@
 .confirm-dialog { position:absolute; width:min(420px, calc(100% - 2rem)); padding:1rem; border:1px solid var(--workspace-border); border-radius:12px; background:var(--workspace-surface); box-shadow:0 12px 32px #0005; }
 @media (max-width: 700px) { .board-page { padding:0 .8rem .8rem; } .board-header { align-items:flex-start; flex-direction:column; } .board-toolbar { align-items:stretch; flex-direction:column; } .board-tabs { flex-basis:100%; } .board-tab, .board-tab-measure, .board-tab-edit, .board-tab-more { min-height:44px; font-size:.8rem; } .board-view-actions { margin-left:0; } .view-switch { flex:1; } .view-switch button { flex:1; } .gantt-heading { align-items:stretch; flex-direction:column; } .gantt-controls { justify-content:space-between; } }
 @media (max-width:700px) {
-  .kanban { gap:.65rem; padding:0 .1rem 1rem; scroll-padding-inline:.1rem; scroll-snap-type:x proximity; touch-action:pan-x pan-y; }
-  .kanban-column { flex-basis:min(88vw,360px); min-height:min(15rem, calc(var(--kanban-max-height, 300px) - 1rem)); scroll-snap-align:start; touch-action:pan-y; }
+  .kanban { gap:.65rem; padding:0 .1rem 1rem; scroll-padding-inline:.1rem; scroll-snap-type:x proximity; touch-action:manipulation; }
+  .kanban-column { flex-basis:min(88vw,360px); min-height:min(15rem, calc(var(--kanban-max-height, 300px) - 1rem)); scroll-snap-align:start; touch-action:manipulation; }
   .kanban-column > header { min-height:44px; }
   .column-tools { gap:.1rem; }
   .column-tools button, .card-actions button { min-width:44px; min-height:44px; }

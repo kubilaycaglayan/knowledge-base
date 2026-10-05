@@ -28,6 +28,9 @@ keyboard, safe areas, and narrow screens.
 
 - Implemented and committed the viewport-aware Kanban sizing and full-height
   phone card editor.
+- Kept pinch zoom available on the horizontally scrolling Kanban and its
+  vertically scrolling columns by using `touch-action: manipulation`; a browser
+  regression assertion confirms both surfaces retain pan and zoom gestures.
 - Browser checks cover 320px and 390px Kanban layouts, editor controls and
   formatting, a shortened 520px viewport while editing, phone board menus,
   a vertically shifted visual viewport while editing, touch status changes,
@@ -35,6 +38,9 @@ keyboard, safe areas, and narrow screens.
   320px/390px checks pass in Chromium and WebKit; WebKit uses Playwright's
   iPhone 13 device profile (including mobile mode, touch, and device pixel
   ratio).
+- The Kanban pinch-zoom regression check and axe scan pass in both Chromium and
+  iPhone-profile WebKit at 320px and 390px. TypeScript, all 106 `BoardView`
+  unit tests, and the production build pass after the CSS change.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance
