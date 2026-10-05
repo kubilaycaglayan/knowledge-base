@@ -20,7 +20,7 @@ keyboard, safe areas, and narrow screens.
 4. **Responsive controls and touch targets** — [x] check board tabs, column actions,
    metadata pickers, date picker, and card actions at narrow widths; retain
    keyboard access and visible focus.
-5. **Verify and document** — [ ] add/update focused responsive behavior tests, run
+5. **Verify and document** — [x] add/update focused responsive behavior tests, run
    the frontend tests and build, and exercise the relevant screens at iOS and
    Chrome mobile viewport sizes where the local browser environment permits.
 
@@ -29,15 +29,19 @@ keyboard, safe areas, and narrow screens.
 - Implemented and committed the viewport-aware Kanban sizing and full-height
   phone card editor.
 - Browser checks cover 390×844 Kanban scrolling, 390px editor control layout,
-  a shortened 520px viewport while editing, phone board menus, and accessibility.
+  a shortened 520px viewport while editing, phone board menus, touch status
+  changes, the phone date picker, and accessibility. The focused mobile set
+  passed in both Chromium and WebKit (7/7 WebKit checks).
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
-- The complete board acceptance run completed with intermittent Vite module
-  fetch failures and browser startup timeouts under full-suite load. Responsive
-  browser tests passed in focused runs; rerun the full suite in a stable browser
-  environment before closing this step.
+- TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance
+  run reached 109/111; its two failures were fixture page-start timeouts in
+  unrelated Gantt tests, and both passed when rerun alone.
+- Generated 390px Kanban and card editor screenshots were visually inspected.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
-  workspace; responsive viewport checks use Chromium.
+  workspace. WebKit 26.6 was used as a mobile rendering-engine check with touch
+  and viewport emulation; native keyboard and safe-area behavior still merits a
+  device check.
 
 ## Working rules
 
