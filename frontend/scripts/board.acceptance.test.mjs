@@ -1253,6 +1253,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const viewportHeight = await page.evaluate(() => window.visualViewport?.height || window.innerHeight);
     const editorBox = await editor.boundingBox();
     assert.ok(Math.abs(editorBox.height - viewportHeight) < 2, `${width}px portrait editor fills the visual viewport (${editorBox.height}px of ${viewportHeight}px)`);
+    const results = await new AxeBuilder({ page }).analyze();
+    assert.equal(results.violations.length, 0, `${width}px card editor axe violations: ${results.violations.map((item) => item.id).join(", ")}`);
   });
 
   it("keeps Kanban and the card editor usable in phone landscape", async (t) => {

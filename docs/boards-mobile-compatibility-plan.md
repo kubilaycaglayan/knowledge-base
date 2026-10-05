@@ -78,7 +78,8 @@ keyboard, safe areas, and narrow screens.
   cases passed across 320px/390px layouts, Gantt, editor controls, touch
   status changes, and landscape keyboard sizing. Added direct 320×900 and
   390×900 portrait assertions that the card editor fills the visual viewport;
-  both pass in Chromium and iPhone-profile WebKit.
+  both pass in Chromium and iPhone-profile WebKit, with zero axe violations
+  while the editor is open.
 - Fixed the keyboard-resize test to remove its temporary `visualViewport`
   overrides before returning to the full viewport. It now asserts the editor
   expands back to 900px before capturing the 390px screenshot; the focused
