@@ -1372,7 +1372,24 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
         }
       }
       const [labels, archive] = [await editor.locator(".card-labels-picker-wrap").boundingBox(), await editor.getByRole("button", { name: "Archive card" }).boundingBox()];
-      assert.ok(Math.abs(labels.y + labels.height / 2 - (archive.y + archive.height / 2)) <= 4, `${width}px: the archive button stays on the labels' row`);
+      if (width === 390) {
+        assert.ok(labels.y > archive.y + archive.height - 1, "On phones the label picker gets its own full-width row below the metadata controls");
+        assert.ok(archive.width >= 44 && archive.height >= 44, "The phone archive action keeps a 44px touch target");
+      } else assert.ok(Math.abs(labels.y + labels.height / 2 - (archive.y + archive.height / 2)) <= 4, `${width}px: the archive button stays on the labels' row`);
+      if (width === 390) {
+        const initial = await editor.boundingBox();
+        assert.ok(initial.y >= 0 && initial.y + initial.height <= 900, "The phone editor stays inside the visual viewport");
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "The phone editor does not create page overflow");
+        await editor.locator(".ProseMirror").click();
+        await page.setViewportSize({ width, height: 520 });
+        await page.waitForFunction(() => {
+          const dialog = document.querySelector(".card-editor");
+          return dialog && Math.abs(dialog.getBoundingClientRect().height - (window.visualViewport?.height || window.innerHeight)) < 2;
+        });
+        const shortViewport = await editor.boundingBox();
+        assert.ok(shortViewport.y >= 0 && shortViewport.y + shortViewport.height <= 520, "The editor resizes with a shortened phone viewport (software keyboard simulation)");
+        await page.setViewportSize({ width, height: 900 });
+      }
       await page.screenshot({ path: join(screenshotDir, `card-editor-${width}.png`) });
       await closeCard(page);
     }
