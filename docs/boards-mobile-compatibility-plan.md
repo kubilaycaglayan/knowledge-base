@@ -32,8 +32,12 @@ keyboard, safe areas, and narrow screens.
   a shortened 520px viewport while editing, phone board menus, and accessibility.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
-- The complete board acceptance run is in progress; its existing timer-label
-  and preferences expectations need review if they continue to fail.
+- The complete board acceptance run completed with intermittent Vite module
+  fetch failures and browser startup timeouts under full-suite load. Responsive
+  browser tests passed in focused runs; rerun the full suite in a stable browser
+  environment before closing this step.
+- Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
+  workspace; responsive viewport checks use Chromium.
 
 ## Working rules
 

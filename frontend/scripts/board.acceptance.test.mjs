@@ -2280,7 +2280,7 @@ describe("All boards view", { concurrency: 4 }, () => {
     await page.waitForTimeout(300);
     assert.equal(new URL(page.url()).search, "", "Leaving the board keeps its state off other pages");
     await page.getByRole("link", { name: "Board", exact: true }).click();
-    await page.waitForURL((url) => url.searchParams.get("q") === "Home");
+    await page.waitForFunction(() => new URL(location.href).searchParams.get("q") === "Home");
     assert.deepEqual(query(), expected);
     assert.equal(await page.locator("#board-search-input").inputValue(), "Home");
     assert.equal(await page.getByRole("button", { name: "All boards" }).getAttribute("aria-current"), "true");
