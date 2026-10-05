@@ -1222,6 +1222,23 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.deepEqual(await header.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline", "Close card"]);
   });
 
+  it("keeps card timer actions at 44px on phones", async (t) => {
+    const { page } = await inProgressFixture(t, 390);
+    const boardPlay = page.locator(".kanban .board-card-play").first();
+    const boardBox = await boardPlay.boundingBox();
+    assert.ok(boardBox.width >= 44 && boardBox.height >= 44, `The card timer action is a 44px phone target (${boardBox.width}×${boardBox.height})`);
+    await page.locator(".board-card").first().click();
+    const editorPlay = page.locator(".card-editor-header .board-card-play");
+    const editorBox = await editorPlay.boundingBox();
+    assert.ok(editorBox.width >= 44 && editorBox.height >= 44, `The editor timer action is a 44px phone target (${editorBox.width}×${editorBox.height})`);
+    const undersizedButtons = await page.locator(".card-editor button").evaluateAll((buttons) => buttons.filter((button) => {
+      const box = button.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
+    }).map((button) => ({ label: button.getAttribute("aria-label") || button.title || button.textContent.trim(), width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height) })));
+    assert.deepEqual(undersizedButtons, [], `Visible card editor buttons are at least 44px (${JSON.stringify(undersizedButtons)})`);
+    await closeCard(page);
+  });
+
   // CT-08
   it("moves a card to In Progress when a session starts from its editor", async (t) => {
     const { page, timerStarts } = await fixture(t, 1280);
