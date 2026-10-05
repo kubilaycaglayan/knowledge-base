@@ -1297,6 +1297,39 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await closeCard(page);
   });
 
+  it("keeps the board and editor usable in compact phone landscape (667×375)", async (t) => {
+    const { page } = await fixture(t, 390);
+    await page.setViewportSize({ width: 667, height: 375 });
+    await page.waitForFunction(() => window.innerWidth === 667 && window.innerHeight === 375);
+    await page.waitForTimeout(50);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "The compact landscape page has no horizontal overflow");
+    const kanbanBox = await page.locator(".kanban").boundingBox();
+    assert.ok(kanbanBox.y + kanbanBox.height <= 375, `Kanban stays inside the compact landscape viewport (${kanbanBox.y + kanbanBox.height}px)`);
+    await page.locator(".board-card").first().click();
+    const editor = page.locator(".card-editor");
+    let editorBox = await editor.boundingBox();
+    assert.ok(Math.abs(editorBox.height - 375) < 2, `The editor fills compact landscape height (${editorBox.height}px)`);
+    const undersizedButtons = await editor.locator("button").evaluateAll((buttons) => buttons.filter((button) => {
+      const box = button.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
+    }).map((button) => button.getAttribute("aria-label") || button.title || button.textContent.trim()));
+    assert.deepEqual(undersizedButtons, [], `Compact landscape editor buttons keep 44px targets (${undersizedButtons.join(", ")})`);
+    await editor.locator(".ProseMirror").click();
+    await page.setViewportSize({ width: 667, height: 260 });
+    await page.waitForFunction(() => {
+      const dialog = document.querySelector(".card-editor");
+      return dialog && Math.abs(dialog.getBoundingClientRect().height - (window.visualViewport?.height || window.innerHeight)) < 2;
+    });
+    editorBox = await editor.boundingBox();
+    const footerBox = await editor.locator(".card-editor-footer").boundingBox();
+    const bodyBox = await editor.locator(".card-body-editor").boundingBox();
+    assert.ok(editorBox.y >= 0 && editorBox.y + editorBox.height <= 260, "The editor stays within the keyboard-sized viewport");
+    assert.ok(footerBox.y + footerBox.height <= editorBox.y + editorBox.height, "Metadata controls remain visible above the keyboard");
+    assert.ok(bodyBox.height >= 40, `The body retains a usable scroll area (${bodyBox.height}px)`);
+    const results = await new AxeBuilder({ page }).analyze();
+    assert.equal(results.violations.length, 0, `Compact landscape editor axe violations: ${results.violations.map((item) => item.id).join(", ")}`);
+  });
+
   // CT-08
   it("moves a card to In Progress when a session starts from its editor", async (t) => {
     const { page, timerStarts } = await fixture(t, 1280);

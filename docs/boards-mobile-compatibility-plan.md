@@ -87,6 +87,9 @@ keyboard, safe areas, and narrow screens.
   expands back to 900px before capturing the 390px screenshot; the focused
   editor checks pass in Chromium and iPhone-profile WebKit, and the screenshot
   visibly fills the phone viewport.
+- Added a compact 667×375 landscape check for page overflow, Kanban bounds,
+  editor height, 44px controls, a 260px keyboard viewport, and axe. It passes in
+  Chromium and iPhone-profile WebKit.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
   safe-area insets, and browser chrome behavior still merit a device check.
