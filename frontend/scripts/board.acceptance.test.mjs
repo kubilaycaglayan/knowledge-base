@@ -1357,12 +1357,16 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   for (const [width, height] of [[1280, 900], [390, 844]]) {
     it(`keeps columns equally tall, within the screen, and scrollable (${width}x${height})`, async (t) => {
       const { page } = await fixture(t, width, true);
+      await page.setViewportSize({ width, height });
+      await page.waitForFunction((size) => window.innerHeight === size.height && window.innerWidth === size.width, { width, height });
       await page.locator(".board-card").first().waitFor();
       const columns = page.locator(".kanban-column");
       const heights = await columns.evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().height)));
       assert.ok(heights.every((value) => Math.abs(value - heights[0]) <= 1), `Columns share one height: ${heights}`);
       const bottom = await columns.first().evaluate((item) => item.getBoundingClientRect().bottom);
       assert.ok(bottom <= height, `Columns end within the screen (${bottom} <= ${height})`);
+      const trackerTop = (await page.locator(".floating-tracker-host").boundingBox()).y;
+      assert.ok(bottom <= trackerTop, `The floating tracker does not cover the columns (${bottom} <= ${trackerTop})`);
       const dense = columns.first();
       assert.ok(await dense.evaluate((item) => item.scrollHeight > item.clientHeight), "The dense column overflows inside itself");
       await dense.evaluate((item) => { item.scrollTop = 200; });
@@ -1372,6 +1376,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       // A keyboard or an address bar shrinks the visible viewport; the columns follow.
       await page.setViewportSize({ width, height: height - 250 });
       await page.waitForFunction((limit) => document.querySelector(".kanban-column").getBoundingClientRect().bottom <= limit, height - 250);
+      const shortBottom = await columns.first().evaluate((item) => item.getBoundingClientRect().bottom);
+      const shortTrackerTop = (await page.locator(".floating-tracker-host").boundingBox()).y;
+      assert.ok(shortBottom <= shortTrackerTop, `The floating tracker stays clear after the viewport shrinks (${shortBottom} <= ${shortTrackerTop})`);
     });
   }
 
