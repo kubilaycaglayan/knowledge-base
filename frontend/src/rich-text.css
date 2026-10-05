@@ -31,7 +31,10 @@
   align-items: center;
   height: 1lh;
 }
+/* Glyphs sit slightly above the line's middle, so raise the box 1px to meet the text optically. */
 .rich-text ul[data-type="taskList"] li > label input {
+  position: relative;
+  top: -1px;
   margin: 0;
 }
 /* The text fills the row, so an empty item still has room for the caret. */
