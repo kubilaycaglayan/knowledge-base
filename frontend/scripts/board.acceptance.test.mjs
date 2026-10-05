@@ -854,6 +854,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t, width);
     await page.locator(".kanban-column").first().waitFor();
     assert.equal(await page.locator(".kanban-column").count(), 4);
+    const touchActions = await page.locator(".kanban, .kanban-column").evaluateAll((elements) => elements.map((element) => getComputedStyle(element).touchAction));
+    assert.ok(touchActions.every((value) => value === "manipulation"), `Kanban surfaces must allow pan gestures and pinch zoom (got ${touchActions.join(", ")})`);
     if (process.env.BOARD_BROWSER === "webkit") {
       const mobile = await page.evaluate(() => ({ userAgent: navigator.userAgent, devicePixelRatio: window.devicePixelRatio, touch: matchMedia("(pointer: coarse)").matches }));
       assert.match(mobile.userAgent, /iPhone/);
