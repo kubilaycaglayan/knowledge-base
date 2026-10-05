@@ -73,7 +73,9 @@ keyboard, safe areas, and narrow screens.
 - TypeScript and all 106 `BoardView` unit tests pass. The latest complete board
   acceptance run passed 116/116. A previous run's seven Vite fixture startup
   timeouts did not recur; those cases had also passed in isolation.
-- Generated 390px Kanban and card editor screenshots were visually inspected.
+- Generated 390px Kanban, card editor, and All Boards screenshots were visually
+  inspected; long board and path labels truncate cleanly and the floating
+  tracker clears the visible card list.
 - Re-ran the responsive acceptance selection in iPhone-profile WebKit: 12/12
   cases passed across 320px/390px layouts, Gantt, editor controls, touch
   status changes, and landscape keyboard sizing. Added direct 320×900 and
