@@ -212,17 +212,35 @@ for (const width of [390, 1440]) it(`hides the Gantt card list from the timeline
   }
 });
 
-it("ends a dated card with the same bottom spacing as an undated one", async (t) => {
+it("spaces card dates tightly: the title's gap above, the card's top padding below", async (t) => {
   const { page } = await fixture(t, 1440);
   const dates = page.locator(".board-card .card-dates").first();
   await dates.waitFor();
   const spacing = await dates.evaluate((line) => {
     const card = line.closest(".board-card");
+    const title = card.querySelector("h3");
     const style = getComputedStyle(card);
-    const innerBottom = card.getBoundingClientRect().bottom - parseFloat(style.borderBottomWidth) - parseFloat(style.paddingBottom);
-    return { gap: innerBottom - line.getBoundingClientRect().bottom, titleMargin: parseFloat(getComputedStyle(card.querySelector("h3")).marginBottom) };
+    const cardBox = card.getBoundingClientRect(), lineBox = line.getBoundingClientRect();
+    return {
+      above: lineBox.top - title.getBoundingClientRect().bottom,
+      titleMargin: parseFloat(getComputedStyle(title).marginBottom),
+      below: cardBox.bottom - parseFloat(style.borderBottomWidth) - lineBox.bottom,
+      top: parseFloat(style.paddingTop),
+    };
   });
-  assert.ok(Math.abs(spacing.gap - spacing.titleMargin) < 0.5, `The dates line must leave only the title's ${spacing.titleMargin}px trailing space, not ${spacing.gap}px`);
+  assert.ok(Math.abs(spacing.above - spacing.titleMargin) < 0.5, `The dates must sit ${spacing.titleMargin}px under the title, not ${spacing.above}px`);
+  assert.ok(Math.abs(spacing.below - spacing.top) < 0.5, `The card must end ${spacing.top}px after the dates, like its top padding, not ${spacing.below}px`);
+});
+
+it("ends an undated card with its top padding below the title", async (t) => {
+  const { page } = await fixture(t, 1440, true);
+  const card = page.locator(".board-card").first();
+  await card.locator("h3").waitFor();
+  const spacing = await card.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { below: element.getBoundingClientRect().bottom - parseFloat(style.borderBottomWidth) - element.querySelector("h3").getBoundingClientRect().bottom, top: parseFloat(style.paddingTop) };
+  });
+  assert.ok(Math.abs(spacing.below - spacing.top) < 0.5, `The card must end ${spacing.top}px after the title, not ${spacing.below}px`);
 });
 
 it("uses the standard 10px nav bar bottom margin in Kanban and Gantt", async (t) => {
