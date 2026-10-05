@@ -73,6 +73,10 @@ keyboard, safe areas, and narrow screens.
 - TypeScript and all 106 `BoardView` unit tests pass. The latest complete board
   acceptance run passed 117/117. A previous run's seven Vite fixture startup
   timeouts did not recur; those cases had also passed in isolation.
+- Revalidated the TypeScript check, production build, and all 106 `BoardView`
+  unit tests. The broad Vitest command reported 628 passing tests but exited
+  nonzero because it collected the unrelated
+  `scripts/label-history.acceptance.test.mjs`, which defines no Vitest suite.
 - Generated 390px Kanban, card editor, and All Boards screenshots were visually
   inspected; long board and path labels truncate cleanly and the floating
   tracker clears the visible card list.
