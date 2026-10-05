@@ -1201,7 +1201,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.ok(box.x + box.width >= card.x + card.width - 16 && box.y <= card.y + 16, "The play button sits at the card's top right");
     await play.click();
     await page.locator(".board-card-play").first().waitFor({ state: "hidden" });
-    assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: [], description: "Ship timeline" }]);
+    assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"], description: "Ship timeline" }]);
     assert.equal(await page.locator(".card-editor").count(), 0, "Starting a session does not open the card");
     await page.getByRole("button", { name: "Stop timer" }).waitFor();
 
@@ -1223,7 +1223,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.getByRole("combobox", { name: "Status" }).locator("option:checked", { hasText: "In Progress" }).waitFor({ state: "attached" });
     await closeCard(page);
     await page.locator(".kanban-column", { has: page.locator("h2", { hasText: /^In Progress$/ }) }).locator(".board-card", { hasText: "Ship timeline" }).waitFor();
-    assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: [], description: "Ship timeline" }]);
+    assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"], description: "Ship timeline" }]);
   });
 
   // CT-06, CT-07
@@ -2271,7 +2271,7 @@ describe("All boards view", { concurrency: 4 }, () => {
     await page.getByRole("button", { name: "Search cards" }).click();
     await page.locator("#board-search-input").fill("Home");
     for (let attempt = 0; attempt < 40 && preferences.board?.search !== "Home"; attempt += 1) await page.waitForTimeout(50);
-    assert.deepEqual({ ...preferences.board, ganttFrom: Boolean(preferences.board.ganttFrom), ganttTo: Boolean(preferences.board.ganttTo) }, { boardId: null, view: "gantt", ganttFrom: true, ganttTo: true, search: "Home" });
+    assert.deepEqual({ ...preferences.board, ganttFrom: Boolean(preferences.board.ganttFrom), ganttTo: Boolean(preferences.board.ganttTo) }, { boardId: null, view: "gantt", ganttFrom: true, ganttTo: true, ganttSorts: [], ganttShowPriority: false, ganttShowStatus: false, ganttShowPath: false, search: "Home" });
     const expected = { board: "all", view: "gantt", from: preferences.board.ganttFrom, to: preferences.board.ganttTo, q: "Home" };
     const query = () => Object.fromEntries(new URL(page.url()).searchParams);
 
