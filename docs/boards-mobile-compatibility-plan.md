@@ -71,9 +71,10 @@ keyboard, safe areas, and narrow screens.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. A prior full board
-  acceptance run passed 114/114. The latest run passed 113/114 with one
-  unrelated Gantt fixture startup timeout, and that case passed when rerun
-  alone.
+  acceptance run passed 114/114. The latest full run passed 107/114; its seven
+  failures timed out while Vite fixtures were starting or loading board modules.
+  All seven passed in isolated reruns (4/4 and 3/3), including board-tab
+  overflow, More-menu keyboard behavior, long board names, and All Boards.
 - Generated 390px Kanban and card editor screenshots were visually inspected.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
