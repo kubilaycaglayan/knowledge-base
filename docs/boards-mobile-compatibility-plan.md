@@ -28,10 +28,12 @@ keyboard, safe areas, and narrow screens.
 
 - Implemented and committed the viewport-aware Kanban sizing and full-height
   phone card editor.
-- Browser checks cover 390×844 Kanban scrolling, 390px editor control layout,
-  a shortened 520px viewport while editing, phone board menus, touch status
-  changes, the phone date picker, and accessibility. The focused mobile set
-  passed in both Chromium and WebKit (7/7 WebKit checks).
+- Browser checks cover 320px and 390px Kanban layouts, editor controls and
+  formatting, a shortened 520px viewport while editing, phone board menus,
+  touch status changes, the phone date picker, and accessibility. Focused
+  320px/390px checks pass in Chromium and WebKit; WebKit uses Playwright's
+  iPhone 13 device profile (including mobile mode, touch, and device pixel
+  ratio).
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance
@@ -39,9 +41,8 @@ keyboard, safe areas, and narrow screens.
   unrelated Gantt tests, and both passed when rerun alone.
 - Generated 390px Kanban and card editor screenshots were visually inspected.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
-  workspace. WebKit 26.6 was used as a mobile rendering-engine check with touch
-  and viewport emulation; native keyboard and safe-area behavior still merits a
-  device check.
+  workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
+  safe-area insets, and browser chrome behavior still merit a device check.
 
 ## Working rules
 
