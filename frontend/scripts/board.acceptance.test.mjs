@@ -4,10 +4,11 @@ import { after, before, describe, it } from "node:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createServer } from "vite";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
 let server, browser;
+const browserEngine = process.env.BOARD_BROWSER === "webkit" ? webkit : chromium;
 const screenshotDir = mkdtempSync(join(tmpdir(), "knowledge-base-board-screenshots-"));
 const boardTemplate = { id: "board-1", name: "Product", archived: false };
 const statuses = ["Backlog", "Pending", "In Progress", "Done"].map((name, index) => ({ id: `status-${index}`, name, position: index, archived: false, cardSort: "MANUAL" }));
@@ -471,7 +472,7 @@ for (const width of [390, 1440]) it(`ends the timeline at a future card from its
   await page.screenshot({ path: join(screenshotDir, `gantt-offscreen-right-jump-${width}.png`) });
 });
 
-before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: !process.env.BOARD_HEADED }); });
+before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await browserEngine.launch({ headless: !process.env.BOARD_HEADED }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
 async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0", pathTextColor = null) {
