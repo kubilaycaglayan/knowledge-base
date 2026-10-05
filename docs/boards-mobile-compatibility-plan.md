@@ -89,6 +89,21 @@ keyboard, safe areas, and narrow screens.
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
   safe-area insets, and browser chrome behavior still merit a device check.
 
+## Physical iPhone check still pending
+
+On an iPhone in Chrome, using a disposable account and non-sensitive board data:
+
+1. Scroll the Kanban sideways between columns and vertically through a populated
+   column; confirm the floating timer does not cover the last card or controls.
+2. Open a card, edit its title and body, use formatting, then focus each metadata
+   control with the keyboard open; confirm the active field and editor footer
+   remain visible without browser zoom.
+3. Open and confirm the date picker, change status and labels, and close the
+   editor; confirm the board reflects the saved edits.
+4. Rotate to landscape and collapse/expand Chrome's browser bars; confirm the
+   Kanban and editor continue to fit the visible area, including around the
+   device safe areas.
+
 ## Working rules
 
 - Implement each step in a reviewable change and commit it before moving on.
