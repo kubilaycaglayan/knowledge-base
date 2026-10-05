@@ -1026,6 +1026,10 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("autosaves edits and closes with Cmd/Ctrl+Enter from the body", async (t) => {
     const { page, getCardUpdateRequests } = await fixture(t);
+    await page.evaluate(() => {
+      window.__boardUnhandledRejections = [];
+      window.addEventListener("unhandledrejection", (event) => window.__boardUnhandledRejections.push(String(event.reason?.message || event.reason)));
+    });
     await page.locator(".board-card").first().click();
     const saved = cardSaved(page);
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Saved by itself");
@@ -1038,6 +1042,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.keyboard.press("ControlOrMeta+Enter");
     await page.locator(".card-editor").waitFor({ state: "detached" });
     assert.equal(getCardUpdateRequests(), 2, "Closing flushes the pending body edit");
+    const unhandled = await page.evaluate(() => window.__boardUnhandledRejections);
+    assert.deepEqual(unhandled, [], `Closing through overlapping keyboard handlers does not reject (${unhandled})`);
   });
 
   it("uses the note body line height and paragraph spacing in the card body", async (t) => {
