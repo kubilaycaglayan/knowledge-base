@@ -31,6 +31,9 @@ keyboard, safe areas, and narrow screens.
 - Kept pinch zoom available on the horizontally scrolling Kanban and its
   vertically scrolling columns by using `touch-action: manipulation`; a browser
   regression assertion confirms both surfaces retain pan and zoom gestures.
+- Enlarged the mobile card date clear and selected-label remove controls to
+  44px touch targets; the label-fit measurement accounts for the larger remove
+  buttons so the compact picker still shows only labels that fit.
 - Browser checks cover 320px and 390px Kanban layouts, editor controls and
   formatting, a shortened 520px viewport while editing, phone board menus,
   a vertically shifted visual viewport while editing, touch status changes,
@@ -41,6 +44,10 @@ keyboard, safe areas, and narrow screens.
 - The Kanban pinch-zoom regression check and axe scan pass in both Chromium and
   iPhone-profile WebKit at 320px and 390px. TypeScript, all 106 `BoardView`
   unit tests, and the production build pass after the CSS change.
+- A card-editor target audit found date-clear and label-remove controls below
+  44px. The new target regression and existing 320px/390px editor-layout checks
+  now pass in Chromium and iPhone-profile WebKit; the 390px editor screenshot
+  was visually inspected after the fix.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance
