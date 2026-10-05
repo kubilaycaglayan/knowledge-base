@@ -42,6 +42,14 @@ describe("shared rich-text body", () => {
     document.body.innerHTML = "";
   });
 
+  it("lets each checklist row's text fill the row so an empty row shows the caret", () => {
+    document.body.innerHTML = `<div class="${RICH_TEXT_CLASS}"><div class="ProseMirror"><ul data-type="taskList"><li><label><input type="checkbox"><span></span></label><div><p><br></p></div></li></ul></div></div>`;
+    const text = getComputedStyle(document.querySelector<HTMLElement>("li > div")!);
+    expect(text.flexGrow).toBe("1");
+    expect(parseFloat(text.minWidth)).toBe(0);
+    document.body.innerHTML = "";
+  });
+
   it("copies blocks as plain lines", () => {
     const editor = new Editor({ extensions: richTextExtensions(), content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "One" }] }, { type: "paragraph", content: [{ type: "text", text: "Two" }] }] } });
     const slice = editor.state.doc.slice(0, editor.state.doc.content.size);
