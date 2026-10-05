@@ -33,6 +33,11 @@
 .rich-text ul[data-type="taskList"] li > label input {
   margin: 0;
 }
+/* The text fills the row, so an empty item still has room for the caret. */
+.rich-text ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .rich-text pre {
   overflow-x: auto;
   padding: 12px;
