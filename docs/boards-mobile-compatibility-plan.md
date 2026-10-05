@@ -71,7 +71,7 @@ keyboard, safe areas, and narrow screens.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The latest complete board
-  acceptance run passed 116/116. A previous run's seven Vite fixture startup
+  acceptance run passed 117/117. A previous run's seven Vite fixture startup
   timeouts did not recur; those cases had also passed in isolation.
 - Generated 390px Kanban, card editor, and All Boards screenshots were visually
   inspected; long board and path labels truncate cleanly and the floating
