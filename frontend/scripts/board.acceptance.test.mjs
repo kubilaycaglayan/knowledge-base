@@ -1398,6 +1398,19 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
         });
         const shortViewport = await editor.boundingBox();
         assert.ok(shortViewport.y >= 0 && shortViewport.y + shortViewport.height <= 520, "The editor resizes with a shortened phone viewport (software keyboard simulation)");
+        await page.evaluate(() => {
+          const viewport = window.visualViewport;
+          if (!viewport) return;
+          Object.defineProperty(viewport, "height", { configurable: true, get: () => 440 });
+          Object.defineProperty(viewport, "offsetTop", { configurable: true, get: () => 80 });
+          viewport.dispatchEvent(new Event("resize"));
+        });
+        await page.waitForFunction(() => {
+          const dialog = document.querySelector(".card-editor");
+          return dialog && Math.abs(dialog.getBoundingClientRect().top - 80) < 2 && dialog.getBoundingClientRect().bottom <= 520;
+        });
+        const shiftedViewport = await editor.boundingBox();
+        assert.ok(shiftedViewport.y >= 80 && shiftedViewport.y + shiftedViewport.height <= 520, "The editor follows a vertically shifted visual viewport while the keyboard is open");
         await page.setViewportSize({ width, height: 900 });
       }
       await page.screenshot({ path: join(screenshotDir, `card-editor-${width}.png`) });

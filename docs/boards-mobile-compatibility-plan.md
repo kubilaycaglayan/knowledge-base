@@ -30,7 +30,8 @@ keyboard, safe areas, and narrow screens.
   phone card editor.
 - Browser checks cover 320px and 390px Kanban layouts, editor controls and
   formatting, a shortened 520px viewport while editing, phone board menus,
-  touch status changes, the phone date picker, and accessibility. Focused
+  a vertically shifted visual viewport while editing, touch status changes,
+  the phone date picker, and accessibility. Focused
   320px/390px checks pass in Chromium and WebKit; WebKit uses Playwright's
   iPhone 13 device profile (including mobile mode, touch, and device pixel
   ratio).
