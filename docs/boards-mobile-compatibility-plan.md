@@ -70,17 +70,20 @@ keyboard, safe areas, and narrow screens.
   all 106 board unit tests, and the production build pass.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
-- TypeScript and all 106 `BoardView` unit tests pass. A prior full board
-  acceptance run passed 114/114. The latest full run passed 107/114; its seven
-  failures timed out while Vite fixtures were starting or loading board modules.
-  All seven passed in isolated reruns (4/4 and 3/3), including board-tab
-  overflow, More-menu keyboard behavior, long board names, and All Boards.
+- TypeScript and all 106 `BoardView` unit tests pass. The latest complete board
+  acceptance run passed 115/115. A previous run's seven Vite fixture startup
+  timeouts did not recur; those cases had also passed in isolation.
 - Generated 390px Kanban and card editor screenshots were visually inspected.
 - Re-ran the responsive acceptance selection in iPhone-profile WebKit: 12/12
   cases passed across 320px/390px layouts, Gantt, editor controls, touch
   status changes, and landscape keyboard sizing. Added a direct 390×900
   portrait assertion that the card editor fills the visual viewport; it passes
   in both Chromium and iPhone-profile WebKit.
+- Fixed the keyboard-resize test to remove its temporary `visualViewport`
+  overrides before returning to the full viewport. It now asserts the editor
+  expands back to 900px before capturing the 390px screenshot; the focused
+  editor checks pass in Chromium and iPhone-profile WebKit, and the screenshot
+  visibly fills the phone viewport.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
   safe-area insets, and browser chrome behavior still merit a device check.

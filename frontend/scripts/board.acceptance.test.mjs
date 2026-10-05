@@ -1494,6 +1494,18 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
         const shiftedViewport = await editor.boundingBox();
         assert.ok(shiftedViewport.y >= 80 && shiftedViewport.y + shiftedViewport.height <= 520, "The editor follows a vertically shifted visual viewport while the keyboard is open");
         await page.setViewportSize({ width, height: 900 });
+        await page.evaluate(() => {
+          const viewport = window.visualViewport;
+          if (!viewport) return;
+          delete viewport.height;
+          delete viewport.offsetTop;
+          viewport.dispatchEvent(new Event("resize"));
+        });
+        await page.waitForFunction(() => {
+          const dialog = document.querySelector(".card-editor");
+          const height = window.visualViewport?.height || window.innerHeight;
+          return dialog && Math.abs(dialog.getBoundingClientRect().height - height) < 2 && Math.abs(height - 900) < 2;
+        });
       }
       await page.screenshot({ path: join(screenshotDir, `card-editor-${width}.png`) });
       await closeCard(page);
