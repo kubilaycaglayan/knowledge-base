@@ -212,6 +212,19 @@ for (const width of [390, 1440]) it(`hides the Gantt card list from the timeline
   }
 });
 
+it("ends a dated card with the same bottom spacing as an undated one", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const dates = page.locator(".board-card .card-dates").first();
+  await dates.waitFor();
+  const spacing = await dates.evaluate((line) => {
+    const card = line.closest(".board-card");
+    const style = getComputedStyle(card);
+    const innerBottom = card.getBoundingClientRect().bottom - parseFloat(style.borderBottomWidth) - parseFloat(style.paddingBottom);
+    return { gap: innerBottom - line.getBoundingClientRect().bottom, titleMargin: parseFloat(getComputedStyle(card.querySelector("h3")).marginBottom) };
+  });
+  assert.ok(Math.abs(spacing.gap - spacing.titleMargin) < 0.5, `The dates line must leave only the title's ${spacing.titleMargin}px trailing space, not ${spacing.gap}px`);
+});
+
 it("uses the standard 10px nav bar bottom margin in Kanban and Gantt", async (t) => {
   const { page } = await fixture(t, 1440);
   const headerMargin = () => page.locator(".dashboard-shell > header").evaluate((element) => getComputedStyle(element).marginBottom);
