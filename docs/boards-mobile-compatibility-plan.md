@@ -57,6 +57,9 @@ keyboard, safe areas, and narrow screens.
   full-height card editor. Focused portrait and landscape acceptance checks
   pass in Chromium and iPhone-profile WebKit; the landscape WebKit screenshot
   was visually inspected.
+- Simulated the landscape keyboard shrinking the visible height to 260px in
+  both engines; the editor follows the viewport, keeps its footer visible, and
+  leaves a scrollable body area.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance

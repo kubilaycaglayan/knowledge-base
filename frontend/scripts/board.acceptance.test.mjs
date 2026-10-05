@@ -1264,6 +1264,18 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.deepEqual(undersizedFields, [], `Landscape card-editor fields keep 44px targets (${JSON.stringify(undersizedFields)})`);
     assert.ok(editorBox.y >= 0 && editorBox.y + editorBox.height <= 390, "The editor remains inside the landscape viewport");
     await page.screenshot({ path: join(screenshotDir, "card-editor-phone-landscape.png") });
+    await editor.locator(".ProseMirror").click();
+    await page.setViewportSize({ width: 844, height: 260 });
+    await page.waitForFunction(() => {
+      const dialog = document.querySelector(".card-editor");
+      return dialog && Math.abs(dialog.getBoundingClientRect().height - (window.visualViewport?.height || window.innerHeight)) < 2;
+    });
+    const keyboardEditor = await editor.boundingBox();
+    const keyboardFooter = await editor.locator(".card-editor-footer").boundingBox();
+    const keyboardBody = await editor.locator(".card-body-editor").boundingBox();
+    assert.ok(keyboardEditor.y >= 0 && keyboardEditor.y + keyboardEditor.height <= 260, "The editor follows the reduced landscape visual viewport");
+    assert.ok(keyboardFooter.y + keyboardFooter.height <= keyboardEditor.y + keyboardEditor.height, "The editor metadata controls remain visible above the keyboard");
+    assert.ok(keyboardBody.height >= 40, `The body editor retains a scrollable area (${keyboardBody.height}px)`);
     await closeCard(page);
   });
 
