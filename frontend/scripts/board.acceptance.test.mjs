@@ -1239,6 +1239,26 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await closeCard(page);
   });
 
+  it("keeps Kanban and the card editor usable in phone landscape", async (t) => {
+    const { page } = await fixture(t, 390);
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.waitForFunction(() => window.innerWidth === 844 && window.innerHeight === 390);
+    await page.waitForTimeout(50);
+    const kanbanBox = await page.locator(".kanban").boundingBox();
+    assert.ok(kanbanBox.y + kanbanBox.height <= 390, `Kanban stays within the short landscape viewport (${kanbanBox.y + kanbanBox.height}px)`);
+    await page.locator(".board-card").first().click();
+    const editor = page.locator(".card-editor");
+    const editorBox = await editor.boundingBox();
+    assert.ok(Math.abs(editorBox.height - 390) < 2, `The landscape card editor fills the visible height (${editorBox.height}px)`);
+    const undersizedButtons = await editor.locator("button").evaluateAll((buttons) => buttons.filter((button) => {
+      const box = button.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
+    }).map((button) => ({ label: button.getAttribute("aria-label") || button.title || button.textContent.trim(), width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height) })));
+    assert.deepEqual(undersizedButtons, [], `Landscape card-editor buttons are at least 44px (${JSON.stringify(undersizedButtons)})`);
+    assert.ok(editorBox.y >= 0 && editorBox.y + editorBox.height <= 390, "The editor remains inside the landscape viewport");
+    await closeCard(page);
+  });
+
   // CT-08
   it("moves a card to In Progress when a session starts from its editor", async (t) => {
     const { page, timerStarts } = await fixture(t, 1280);
