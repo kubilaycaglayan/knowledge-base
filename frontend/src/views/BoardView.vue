@@ -105,9 +105,21 @@ function toggleGanttLabels() {
 // Columns share the tallest column's height but never run past the visible
 // viewport (which shrinks for an on-screen keyboard or a showing address bar)
 // or under the floating tracker; each column scrolls its own cards.
-const KANBAN_BOTTOM_RESERVE = 88, KANBAN_MIN_HEIGHT = 240;
+const KANBAN_BOTTOM_RESERVE = 88, KANBAN_TRACKER_GAP = 8;
 const kanbanEl = ref<HTMLElement | null>(null), kanbanMaxHeight = ref(0);
-function measureKanbanHeight() { const kanban = kanbanEl.value; if (!kanban) return; const viewport = window.visualViewport?.height || window.innerHeight; const top = kanban.getBoundingClientRect().top + window.scrollY; const reserve = phone.value ? 40 : KANBAN_BOTTOM_RESERVE; const minimum = phone.value ? 160 : KANBAN_MIN_HEIGHT; kanbanMaxHeight.value = Math.max(minimum, Math.floor(viewport - top - reserve)); }
+function measureKanbanHeight() {
+  const kanban = kanbanEl.value;
+  if (!kanban) return;
+  const bounds = kanban.getBoundingClientRect();
+  const tracker = document.querySelector<HTMLElement>(".floating-tracker-host");
+  const trackerBounds = tracker?.getBoundingClientRect();
+  const trackerVisible = trackerBounds && trackerBounds.height > 0;
+  const viewport = window.visualViewport?.height || window.innerHeight;
+  const available = trackerVisible
+    ? trackerBounds.top - bounds.top - KANBAN_TRACKER_GAP
+    : viewport - bounds.top - (phone.value ? 40 : KANBAN_BOTTOM_RESERVE);
+  kanbanMaxHeight.value = Math.max(0, Math.floor(available));
+}
 const kanbanResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureKanbanHeight());
 watch(kanbanEl, (kanban) => { kanbanResize?.disconnect(); if (kanban) { if (boardPage.value) kanbanResize?.observe(boardPage.value); void nextTick(measureKanbanHeight); } });
 function measureViewport() { measureKanbanHeight(); const visualViewport = window.visualViewport; visualViewportHeight.value = visualViewport?.height || window.innerHeight; visualViewportTop.value = visualViewport?.offsetTop || 0; viewportWidth.value = document.documentElement.clientWidth; const page = boardPage.value; if (page) contentLeft.value = page.getBoundingClientRect().left + parseFloat(getComputedStyle(page).paddingLeft || "0"); }

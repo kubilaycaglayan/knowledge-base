@@ -60,11 +60,16 @@ keyboard, safe areas, and narrow screens.
 - Simulated the landscape keyboard shrinking the visible height to 260px in
   both engines; the editor follows the viewport, keeps its footer visible, and
   leaves a scrollable body area.
+- Added clearance between the Kanban columns and floating tracker based on the
+  tracker's measured top edge. The regression check caught an 18px overlap at
+  390×844; portrait, landscape, and shortened-viewport clearance now pass in
+  Chromium and iPhone-profile WebKit.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
-- TypeScript and all 106 `BoardView` unit tests pass. The latest full board
-  acceptance run passed 114/114; two fixture startup timeouts from an earlier
-  run did not recur.
+- TypeScript and all 106 `BoardView` unit tests pass. A prior full board
+  acceptance run passed 114/114. The latest run passed 113/114 with one
+  unrelated Gantt fixture startup timeout, and that case passed when rerun
+  alone.
 - Generated 390px Kanban and card editor screenshots were visually inspected.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
