@@ -4,7 +4,7 @@ import { after, before, describe, it } from "node:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createServer } from "vite";
-import { chromium, webkit } from "playwright";
+import { chromium, devices, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
 let server, browser;
@@ -476,7 +476,8 @@ before(async () => { server = await createServer({ server: { host: "127.0.0.1", 
 after(async () => { await browser?.close(); await server?.close(); });
 
 async function fixture(t, width = 390, dense = false, failBoard = false, archivedStatus = false, archivedBoard = false, failCardUpdateOnce = false, failCardUpdateStatus = 409, failPageOnce = false, delayCardUpdateMs = 0, firstCardStatus = "status-0", pathTextColor = null) {
-  const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
+  const iphoneWebKit = process.env.BOARD_BROWSER === "webkit" && width <= 390;
+  const context = await browser.newContext({ ...(iphoneWebKit ? devices["iPhone 13"] : {}), viewport: { width, height: 900 }, ...(iphoneWebKit ? { screen: { width, height: 900 } } : {}), hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   // Each fixture owns its board so a rename cannot leak into another test.
   const board = { ...boardTemplate };
@@ -849,10 +850,16 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.locator(".timeline-bar", { hasText: "Never disappears" }).count() >= 1, true);
   });
 
-  it("keeps Kanban usable on mobile and passes axe checks", async (t) => {
-    const { page } = await fixture(t);
+  for (const width of [320, 390]) it(`keeps Kanban usable on mobile and passes axe checks (${width}px)`, async (t) => {
+    const { page } = await fixture(t, width);
     await page.locator(".kanban-column").first().waitFor();
     assert.equal(await page.locator(".kanban-column").count(), 4);
+    if (process.env.BOARD_BROWSER === "webkit") {
+      const mobile = await page.evaluate(() => ({ userAgent: navigator.userAgent, devicePixelRatio: window.devicePixelRatio, touch: matchMedia("(pointer: coarse)").matches }));
+      assert.match(mobile.userAgent, /iPhone/);
+      assert.equal(mobile.devicePixelRatio, 3);
+      assert.equal(mobile.touch, true);
+    }
     assert.ok(await page.locator(".kanban").evaluate((element) => element.scrollWidth >= element.clientWidth));
     const results = await new AxeBuilder({ page }).analyze();
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
@@ -1067,7 +1074,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   // RT-03, RT-05
   it("formats a card body from the toolbar on desktop and phone", async (t) => {
-    for (const width of [1280, 390]) {
+    for (const width of [1280, 390, 320]) {
       const { page } = await fixture(t, width);
       await page.locator(".board-card").first().click();
       const body = page.locator(".card-editor .ProseMirror");
@@ -1318,7 +1325,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   // CD-04
   it("opens the card path menu under its field on desktop and phone", async (t) => {
-    for (const width of [1280, 390]) {
+    for (const width of [1280, 390, 320]) {
       const { page } = await fixture(t, width);
       await page.locator(".board-card").first().click();
       const header = page.locator(".card-editor-header");
@@ -1346,7 +1353,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   // CD-01, CD-03, CD-05
   it("keeps every card editor control in its own slot on desktop and phone", async (t) => {
-    for (const width of [1280, 390]) {
+    for (const width of [1280, 390, 320]) {
       const { page } = await fixture(t, width);
       await page.locator(".board-card").first().click();
       const editor = page.locator(".card-editor");
@@ -1373,14 +1380,16 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
         }
       }
       const [labels, archive] = [await editor.locator(".card-labels-picker-wrap").boundingBox(), await editor.getByRole("button", { name: "Archive card" }).boundingBox()];
-      if (width === 390) {
+      if (width <= 390) {
         assert.ok(labels.y > archive.y + archive.height - 1, "On phones the label picker gets its own full-width row below the metadata controls");
         assert.ok(archive.width >= 44 && archive.height >= 44, "The phone archive action keeps a 44px touch target");
       } else assert.ok(Math.abs(labels.y + labels.height / 2 - (archive.y + archive.height / 2)) <= 4, `${width}px: the archive button stays on the labels' row`);
-      if (width === 390) {
+      if (width <= 390) {
         const initial = await editor.boundingBox();
         assert.ok(initial.y >= 0 && initial.y + initial.height <= 900, "The phone editor stays inside the visual viewport");
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "The phone editor does not create page overflow");
+      }
+      if (width === 390) {
         await editor.locator(".ProseMirror").click();
         await page.setViewportSize({ width, height: 520 });
         await page.waitForFunction(() => {
