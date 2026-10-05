@@ -1246,6 +1246,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.waitForTimeout(50);
     const kanbanBox = await page.locator(".kanban").boundingBox();
     assert.ok(kanbanBox.y + kanbanBox.height <= 390, `Kanban stays within the short landscape viewport (${kanbanBox.y + kanbanBox.height}px)`);
+    const boardTargets = await page.locator(".board-tabs button, .column-tools button").evaluateAll((buttons) => buttons.filter((button) => button.getClientRects().length).map((button) => ({ label: button.getAttribute("aria-label") || button.textContent.trim(), width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height) })));
+    assert.ok(boardTargets.length > 0 && boardTargets.every((target) => target.width >= 44 && target.height >= 44), `Landscape board buttons keep 44px targets (${JSON.stringify(boardTargets)})`);
     await page.locator(".board-card").first().click();
     const editor = page.locator(".card-editor");
     const editorBox = await editor.boundingBox();
@@ -1255,6 +1257,11 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
     }).map((button) => ({ label: button.getAttribute("aria-label") || button.title || button.textContent.trim(), width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height) })));
     assert.deepEqual(undersizedButtons, [], `Landscape card-editor buttons are at least 44px (${JSON.stringify(undersizedButtons)})`);
+    const undersizedFields = await editor.locator(".card-path-picker .v-field, .meta-field, .meta-dates .dp__input, .card-labels-picker .v-field").evaluateAll((fields) => fields.filter((field) => {
+      const box = field.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
+    }).map((field) => ({ label: field.getAttribute("aria-label") || field.className, width: Math.round(field.getBoundingClientRect().width), height: Math.round(field.getBoundingClientRect().height) })));
+    assert.deepEqual(undersizedFields, [], `Landscape card-editor fields keep 44px targets (${JSON.stringify(undersizedFields)})`);
     assert.ok(editorBox.y >= 0 && editorBox.y + editorBox.height <= 390, "The editor remains inside the landscape viewport");
     await closeCard(page);
   });
