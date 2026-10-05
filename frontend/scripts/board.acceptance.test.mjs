@@ -2284,7 +2284,7 @@ describe("All boards view", { concurrency: 4 }, () => {
     await page.waitForFunction(() => new URL(location.href).searchParams.get("q") === "Home");
     assert.deepEqual(query(), expected);
     assert.equal(await page.locator("#board-search-input").inputValue(), "Home");
-    assert.equal(await page.getByRole("button", { name: "All boards" }).getAttribute("aria-current"), "true");
+    assert.equal(await page.getByRole("button", { name: "Choose board: All boards" }).getAttribute("aria-label"), "Choose board: All boards");
 
     // A fresh app load (a new session) restores the state the server stored.
     await page.goto(new URL("/board", page.url()).href);
