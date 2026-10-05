@@ -76,6 +76,11 @@ keyboard, safe areas, and narrow screens.
   All seven passed in isolated reruns (4/4 and 3/3), including board-tab
   overflow, More-menu keyboard behavior, long board names, and All Boards.
 - Generated 390px Kanban and card editor screenshots were visually inspected.
+- Re-ran the responsive acceptance selection in iPhone-profile WebKit: 12/12
+  cases passed across 320px/390px layouts, Gantt, editor controls, touch
+  status changes, and landscape keyboard sizing. Added a direct 390×900
+  portrait assertion that the card editor fills the visual viewport; it passes
+  in both Chromium and iPhone-profile WebKit.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
   safe-area insets, and browser chrome behavior still merit a device check.
