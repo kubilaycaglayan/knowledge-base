@@ -426,7 +426,25 @@ async function changeCardBoard(boardId: string) {
 }
 // Closing saves pending edits first; if that save fails the dialog stays open
 // with the error, and closing again discards the unsaved edits.
-async function closeEditor() { if (!editing.value) return; await queueSave(); if ((saveState.value === "error" || cardDateError.value) && !closeAnyway.value) { closeAnyway.value = true; return; } clearTimeout(saveTimer); const closedId = editing.value.id; destroyCardEditor(); editing.value = null; saveState.value = ""; restoreCardFocus(); markJustClosed(closedId); }
+let editorClosePromise: Promise<void> | null = null;
+function closeEditor() {
+  if (editorClosePromise) return editorClosePromise;
+  const cardId = editing.value?.id;
+  if (!cardId) return Promise.resolve();
+  const closeOperation = (async () => {
+    await queueSave();
+    if (editing.value?.id !== cardId) return;
+    if ((saveState.value === "error" || cardDateError.value) && !closeAnyway.value) { closeAnyway.value = true; return; }
+    clearTimeout(saveTimer);
+    destroyCardEditor();
+    editing.value = null;
+    saveState.value = "";
+    restoreCardFocus();
+    markJustClosed(cardId);
+  })();
+  editorClosePromise = closeOperation.finally(() => { editorClosePromise = null; });
+  return editorClosePromise;
+}
 async function addStatus() { if (!newStatus.value.trim()) return; dismissError(); try { const status = await store.createStatus(newStatus.value, settingsBoardId.value); if (!settingsForOpenBoard.value) otherBoardStatuses.value.push(status); newStatus.value = ""; } catch { notices.notify("Could not create status."); } }
 function requestArchiveStatus(status: BoardStatus) { archiveStatusConfirm.value = status; }
 async function confirmArchiveStatus() { const status = archiveStatusConfirm.value; archiveStatusConfirm.value = null; if (!status || archivingStatusId.value) return; archivingStatusId.value = status.id; try { const boardId = settingsBoardId.value; await store.archiveStatus(status, false, boardId); if (boardId !== store.selectedId) otherBoardStatuses.value = await store.fetchStatuses(boardId); } catch (archiveError) { error.value = archiveError instanceof ApiError && archiveError.status === 409 ? "A board must keep one active status." : "Could not archive status."; } finally { archivingStatusId.value = ""; } }

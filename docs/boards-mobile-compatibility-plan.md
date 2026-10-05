@@ -64,6 +64,10 @@ keyboard, safe areas, and narrow screens.
   tracker's measured top edge. The regression check caught an 18px overlap at
   390×844; portrait, landscape, and shortened-viewport clearance now pass in
   Chromium and iPhone-profile WebKit.
+- Made card-editor closing idempotent after reproducing an unhandled rejection
+  when ProseMirror and the enclosing dialog both handled Cmd/Ctrl+Enter. The
+  rejection regression and six other close/save/focus cases pass; TypeScript,
+  all 106 board unit tests, and the production build pass.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. A prior full board
