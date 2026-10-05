@@ -71,7 +71,7 @@ keyboard, safe areas, and narrow screens.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The latest complete board
-  acceptance run passed 115/115. A previous run's seven Vite fixture startup
+  acceptance run passed 116/116. A previous run's seven Vite fixture startup
   timeouts did not recur; those cases had also passed in isolation.
 - Generated 390px Kanban and card editor screenshots were visually inspected.
 - Re-ran the responsive acceptance selection in iPhone-profile WebKit: 12/12
