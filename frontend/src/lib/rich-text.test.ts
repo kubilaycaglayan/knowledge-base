@@ -50,6 +50,14 @@ describe("shared rich-text body", () => {
     document.body.innerHTML = "";
   });
 
+  it("keeps checklists gapless against the lines around them", () => {
+    document.body.innerHTML = `<style>ul { margin: 1em 0; }</style><div class="${RICH_TEXT_CLASS}"><div class="ProseMirror"><p>Intro</p><ul data-type="taskList"><li><label><input type="checkbox"><span></span></label><div><p>Task</p></div></li></ul><p>After</p></div></div>`;
+    const list = getComputedStyle(document.querySelector<HTMLElement>("ul")!);
+    expect(parseFloat(list.marginTop)).toBe(0);
+    expect(parseFloat(list.marginBottom)).toBe(0);
+    document.body.innerHTML = "";
+  });
+
   it("copies blocks as plain lines", () => {
     const editor = new Editor({ extensions: richTextExtensions(), content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "One" }] }, { type: "paragraph", content: [{ type: "text", text: "Two" }] }] } });
     const slice = editor.state.doc.slice(0, editor.state.doc.content.size);
