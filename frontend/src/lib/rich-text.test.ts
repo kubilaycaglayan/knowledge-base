@@ -32,11 +32,13 @@ describe("shared rich-text body", () => {
   it("centers each checklist checkbox on the first line of its text", () => {
     document.body.innerHTML = `<div class="${RICH_TEXT_CLASS}"><div class="ProseMirror"><ul data-type="taskList"><li><label><input type="checkbox"><span></span></label><div><p>Task</p></div></li></ul></div></div>`;
     const [label, box] = [document.querySelector<HTMLElement>("li > label")!, document.querySelector<HTMLElement>("input")!];
-    expect(getComputedStyle(label).marginTop).toBe("0px");
+    expect(parseFloat(getComputedStyle(label).marginTop)).toBe(0);
     expect(getComputedStyle(label).display).toBe("flex");
     expect(getComputedStyle(label).alignItems).toBe("center");
-    expect(getComputedStyle(label).height).toBe("1lh");
-    expect(getComputedStyle(box).margin).toBe("0px");
+    const rules = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules]) as CSSStyleRule[];
+    expect(rules.find((rule) => rule.selectorText === '.rich-text ul[data-type="taskList"] li > label')?.style.height).toBe("1lh");
+    expect(parseFloat(getComputedStyle(box).marginTop)).toBe(0);
+    expect(parseFloat(getComputedStyle(box).marginBottom)).toBe(0);
     document.body.innerHTML = "";
   });
 

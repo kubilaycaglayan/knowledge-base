@@ -24,8 +24,14 @@
   display: flex;
   gap: 8px;
 }
+/* The checkbox box is one text line tall, so the checkbox centers on the first line. */
 .rich-text ul[data-type="taskList"] li > label {
-  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  height: 1lh;
+}
+.rich-text ul[data-type="taskList"] li > label input {
+  margin: 0;
 }
 .rich-text pre {
   overflow-x: auto;
