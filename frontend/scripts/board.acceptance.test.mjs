@@ -1245,14 +1245,14 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await closeCard(page);
   });
 
-  it("fills the portrait visual viewport with the phone card editor", async (t) => {
-    const { page } = await fixture(t, 390);
+  for (const width of [320, 390]) it(`fills the portrait visual viewport with the phone card editor (${width}px)`, async (t) => {
+    const { page } = await fixture(t, width);
     await page.locator(".board-card").first().click();
     const editor = page.locator(".card-editor");
     await editor.waitFor();
     const viewportHeight = await page.evaluate(() => window.visualViewport?.height || window.innerHeight);
     const editorBox = await editor.boundingBox();
-    assert.ok(Math.abs(editorBox.height - viewportHeight) < 2, `The portrait editor fills the visual viewport (${editorBox.height}px of ${viewportHeight}px)`);
+    assert.ok(Math.abs(editorBox.height - viewportHeight) < 2, `${width}px portrait editor fills the visual viewport (${editorBox.height}px of ${viewportHeight}px)`);
   });
 
   it("keeps Kanban and the card editor usable in phone landscape", async (t) => {
