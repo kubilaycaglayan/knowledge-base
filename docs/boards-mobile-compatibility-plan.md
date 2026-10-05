@@ -97,6 +97,11 @@ keyboard, safe areas, and narrow screens.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
   safe-area insets, and browser chrome behavior still merit a device check.
+- Deployed the committed mobile changes to production. The API and proxy are
+  healthy, the tunnel is running, the production timer WebSocket check passed,
+  and both `/` and `/board` returned HTTP 200. The configured backup database
+  refresh completed successfully and verified its snapshot. The physical iPhone
+  check below remains for the user to complete later.
 
 ## Physical iPhone check still pending
 
