@@ -48,6 +48,10 @@ keyboard, safe areas, and narrow screens.
   44px. The new target regression and existing 320px/390px editor-layout checks
   now pass in Chromium and iPhone-profile WebKit; the 390px editor screenshot
   was visually inspected after the fix.
+- The expanded card-editor audit measures every visible button, including date
+  clear and selected-label removal, at 44px or larger on a phone. The production
+  build, TypeScript check, and all 106 `BoardView` unit tests pass after this
+  change.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
 - TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance
