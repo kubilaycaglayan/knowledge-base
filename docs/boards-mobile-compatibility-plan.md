@@ -62,9 +62,9 @@ keyboard, safe areas, and narrow screens.
   leaves a scrollable body area.
 - Production build passes to a temporary output directory because the existing
   `frontend/dist` output is not writable in this workspace.
-- TypeScript and all 106 `BoardView` unit tests pass. The full board acceptance
-  run reached 109/111; its two failures were fixture page-start timeouts in
-  unrelated Gantt tests, and both passed when rerun alone.
+- TypeScript and all 106 `BoardView` unit tests pass. The latest full board
+  acceptance run passed 114/114; two fixture startup timeouts from an earlier
+  run did not recur.
 - Generated 390px Kanban and card editor screenshots were visually inspected.
 - Actual iOS Safari / Chrome on an iPhone has not been exercised from this Linux
   workspace. WebKit 26.6 was used with iPhone 13 emulation; native keyboard,
