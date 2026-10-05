@@ -1472,9 +1472,11 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await menu.getByRole("menuitemradio", { name: "Gantt" }).click();
     await menu.waitFor({ state: "detached" });
     await page.waitForFunction(() => new URL(location.href).searchParams.get("view") === "gantt");
-    await menuButton.click();
-    assert.equal(await menu.getByRole("menuitemradio", { name: "Gantt" }).getAttribute("aria-checked"), "true");
-    await menu.getByRole("menuitem", { name: "Manage boards…" }).click();
+    const ganttBoardButton = page.getByRole("button", { name: /^Choose board:/ });
+    await ganttBoardButton.click();
+    const ganttMenu = page.getByRole("menu", { name: "Choose board" });
+    assert.equal(await ganttMenu.getByRole("menuitemradio", { name: "Gantt" }).getAttribute("aria-checked"), "true");
+    await ganttMenu.getByRole("menuitem", { name: "Manage boards…" }).click();
     await page.getByRole("dialog", { name: "Boards" }).waitFor();
   });
 
