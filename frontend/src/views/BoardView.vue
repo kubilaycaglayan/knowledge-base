@@ -57,7 +57,7 @@ const ganttBoardOptions = computed(() => [
   ...pathsStore.activePaths.filter((path) => path.boardId).map((path) => boards.value.find((board) => board.id === path.boardId) || { id: path.boardId!, name: path.name, pathId: path.id, archived: false, createdAt: "", updatedAt: "" }),
   ...boards.value.filter((board) => !board.pathId),
 ]);
-const cardBoardId = (card: BoardCard) => card.boardId || (isAll.value ? "" : store.selectedId);
+const cardBoardId = (card: BoardCard) => card.boardId || statuses.value.find((status) => status.id === card.statusId)?.boardId || (isAll.value ? "" : store.selectedId);
 const cardBoard = (card: BoardCard) => boards.value.find((board) => board.id === cardBoardId(card));
 const editingBoard = computed(() => editing.value ? cardBoard(editing.value) : undefined);
 const pathColor = (pathId?: string | null) => (pathId && pathsStore.byId(pathId)?.color) || undefined;
@@ -396,7 +396,7 @@ const justClosedId = ref(""); let justClosedTimer: ReturnType<typeof setTimeout>
 function markJustClosed(cardId: string) { clearTimeout(justClosedTimer); justClosedId.value = ""; void nextTick(() => { justClosedId.value = cardId; justClosedTimer = setTimeout(() => { justClosedId.value = ""; }, CLOSE_HIGHLIGHT_MS); }); }
 function restoreCardFocus() { const cardId = lastFocusedCardId.value; if (cardId) void nextTick(() => (lastFocusedCard.value || document.getElementById(`board-card-${cardId}`))?.focus()); }
 function warnBeforeUnload(event: BeforeUnloadEvent) { if (editing.value && JSON.stringify(draft.value) !== savedSnapshot.value) { event.preventDefault(); event.returnValue = ""; } }
-function editCard(card: BoardCard) { clearTimeout(saveTimer); destroyCardEditor(); lastFocusedCardId.value = card.id; editing.value = card; cardDateError.value = ""; saveState.value = ""; saveError.value = ""; closeAnyway.value = false; draft.value = { title: card.title, body: card.body, priority: card.priority, startDate: card.startDate || "", dueDate: card.dueDate || "", pathIds: [...card.pathIds], labelIds: [...card.labelIds] }; savedSnapshot.value = JSON.stringify(draft.value); cardEditor.value = new Editor({ extensions: richTextExtensions(), content: parseBoardBody(card.body), editorProps: { ...richTextEditorProps, attributes: { role: "textbox", "aria-label": "Card body", "aria-multiline": "true" }, handleKeyDown: (_view, event) => { if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return false; void closeEditor(); return true; } }, onUpdate: ({ editor }) => { draft.value.body = JSON.stringify(editor.getJSON()); } }); }
+function editCard(card: BoardCard, syncUrl = true) { clearTimeout(saveTimer); destroyCardEditor(); lastFocusedCardId.value = card.id; editing.value = card; cardDateError.value = ""; saveState.value = ""; saveError.value = ""; closeAnyway.value = false; draft.value = { title: card.title, body: card.body, priority: card.priority, startDate: card.startDate || "", dueDate: card.dueDate || "", pathIds: [...card.pathIds], labelIds: [...card.labelIds] }; savedSnapshot.value = JSON.stringify(draft.value); cardEditor.value = new Editor({ extensions: richTextExtensions(), content: parseBoardBody(card.body), editorProps: { ...richTextEditorProps, attributes: { role: "textbox", "aria-label": "Card body", "aria-multiline": "true" }, handleKeyDown: (_view, event) => { if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return false; void closeEditor(); return true; } }, onUpdate: ({ editor }) => { draft.value.body = JSON.stringify(editor.getJSON()); } }); if (syncUrl && route.query.card !== card.id) void router.push({ query: { ...route.query, card: card.id, cardBoard: cardBoardId(card) } }); }
 // A single confirmed day is both the start and the due date.
 function setDraftDates(value: Date[] | null) { const [start, due] = value || []; draft.value.startDate = start ? format(start, "yyyy-MM-dd") : ""; draft.value.dueDate = start ? format(due || start, "yyyy-MM-dd") : ""; }
 function queueSave() { clearTimeout(saveTimer); saveChain = saveChain.then(persistDraft); return saveChain; }
@@ -439,6 +439,7 @@ function closeEditor() {
     destroyCardEditor();
     editing.value = null;
     saveState.value = "";
+    if (route.query.card === cardId) { const { card: _card, cardBoard: _cardBoard, ...query } = route.query; void router.replace({ query }); }
     restoreCardFocus();
     markJustClosed(cardId);
   })();
@@ -499,13 +500,13 @@ function endBoardDrag() { window.removeEventListener("pointermove", dragBoard); 
 async function togglePinned(board: Board) { if (pinningBoardId.value) return; pinningBoardId.value = board.id; dismissError(); try { await store.pinBoard(board.id, !board.pinned); } catch { error.value = board.pinned ? "Could not unpin board." : "Could not pin board."; } finally { pinningBoardId.value = ""; } }
 function requestArchiveBoard() { if (settingsBoardId.value) archiveConfirmOpen.value = true; }
 function requestArchiveCard(card: BoardCard) { archiveCardConfirm.value = card; }
-async function confirmArchiveCard() { const card = archiveCardConfirm.value; archiveCardConfirm.value = null; if (!card) return; try { if (editing.value?.id === card.id) { await queueSave(); clearTimeout(saveTimer); destroyCardEditor(); editing.value = null; } await store.archiveCard(card); } catch { notices.notify("Could not archive card."); } }
+async function confirmArchiveCard() { const card = archiveCardConfirm.value; archiveCardConfirm.value = null; if (!card) return; try { if (editing.value?.id === card.id) { await queueSave(); clearTimeout(saveTimer); destroyCardEditor(); editing.value = null; if (route.query.card === card.id) { const { card: _card, cardBoard: _cardBoard, ...query } = route.query; void router.replace({ query }); } } await store.archiveCard(card); } catch { notices.notify("Could not archive card."); } }
 async function archiveBoard() { const id = settingsBoardId.value; if (!id) return; const wasOpen = id === store.selectedId; archiveConfirmOpen.value = false; settingsOpen.value = false; dismissError(); try { await store.archiveBoard(id); if (wasOpen) await router.replace({ query: {} }); } catch { notices.notify("Could not archive board."); } }
 onMounted(async () => { phoneQuery = typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : undefined; phone.value = Boolean(phoneQuery?.matches); phoneQuery?.addEventListener("change", onPhoneChange); document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureViewport); window.visualViewport?.addEventListener("scroll", measureViewport); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); document.addEventListener("keydown", boardSearchKeydown); window.addEventListener("beforeunload", warnBeforeUnload); // The board is selected before the list loads, so loading never falls back to All boards first.
-  await restoreBoardState(); jumpTimeline(ganttFrom.value); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); });
+  await restoreBoardState(); jumpTimeline(ganttFrom.value); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); await openRequestedCard(); });
 // The Boards page state (BS-01 to BS-04): a URL without board parameters (the nav link, a new session)
 // opens the remembered state and writes it into the URL; explicit parameters win. Every change is remembered.
-const BOARD_QUERY_KEYS = ["board", "view", "from", "to", "q"];
+const BOARD_QUERY_KEYS = ["board", "view", "from", "to", "q", "card"];
 const hasBoardQuery = () => BOARD_QUERY_KEYS.some((key) => typeof route.query[key] === "string");
 let boardStateReady = false;
 function boardStateQuery(state: BoardViewState) { return { ...(state.boardId ? { board: state.boardId } : {}), ...(state.view === "gantt" ? { view: "gantt", from: ganttFrom.value, to: ganttTo.value } : {}), ...(state.search ? { q: state.search } : {}) }; }
@@ -527,6 +528,26 @@ async function restoreBoardState() {
   boardStateReady = true;
 }
 const boardState = computed<BoardViewState>(() => { const gantt = view.value === "gantt"; const from = route.query.from, to = route.query.to; return { boardId: store.selectedId, view: view.value, ganttFrom: gantt && typeof from === "string" ? from : preferences.board.ganttFrom, ganttTo: gantt && typeof to === "string" ? to : preferences.board.ganttTo, ganttSorts: preferences.board.ganttSorts, ganttShowPriority: preferences.board.ganttShowPriority, ganttShowStatus: preferences.board.ganttShowStatus, ganttShowPath: preferences.board.ganttShowPath, search: activeSearch.value }; });
+let requestedCardLoad = "";
+async function openRequestedCard() {
+  const id = typeof route.query.card === "string" ? route.query.card : "";
+  if (!id || !boardStateReady || requestedCardLoad === id) return;
+  if (editing.value && editing.value.id !== id) { await closeEditor(); if (editing.value || route.query.card !== id) return; }
+  if (editing.value?.id === id) return;
+  const known = [...cards.value, ...rawGanttCards.value].find((item) => item.id === id);
+  if (known) { editCard(known, false); return; }
+  const boardId = typeof route.query.cardBoard === "string" ? route.query.cardBoard : typeof route.query.board === "string" && route.query.board !== ALL_BOARDS ? route.query.board : "";
+  if (!boardId) return;
+  requestedCardLoad = id;
+  try { const card = await api<BoardCard>(`/boards/${boardId}/cards/${id}`); if (route.query.card === id) editCard(card, false); }
+  catch { /* Invalid, archived, or inaccessible cards remain unopened. */ }
+  finally { if (requestedCardLoad === id) requestedCardLoad = ""; }
+}
+watch(() => route.query.card, (id) => { if (typeof id === "string") void openRequestedCard(); else if (editing.value) void closeEditor(); });
+watch(() => editing.value ? cardBoardId(editing.value) : "", (boardId) => {
+  if (editing.value && route.query.card === editing.value.id && boardId && route.query.cardBoard !== boardId)
+    void router.replace({ query: { ...route.query, cardBoard: boardId } });
+});
 watch(boardState, (state) => { if (boardStateReady && state.boardId && hasBoardQuery()) preferences.setBoardState(state); });
 watch(activeSearch, (search) => { if (!boardStateReady || (route.query.q ?? "") === search) return; const { q: _previous, ...query } = route.query; void router.replace({ query: search ? { ...query, q: search } : query }); });
 // Leaving the page also empties the query; only a bare /board restores.

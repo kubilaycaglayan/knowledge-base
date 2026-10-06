@@ -44,6 +44,11 @@ for cards with dates overlapping its inclusive window, while its name gutter
 also lists undated and out-of-window cards. Date-only values use calendar
 arithmetic, so inclusive ranges remain stable across month, leap-day, and
 daylight-saving boundaries.
+In the web board, opening a card adds `card` and its owning `cardBoard` to the
+board URL. Copying that address opens the same card editor, including when the
+card is outside the currently loaded page; closing the editor removes those
+two query values. This uses the authenticated, board-scoped card endpoint and
+does not grant access to cards owned by another user.
 The web timeline uses native horizontal scrolling to navigate calendar time
 pixel by pixel. Its scrollable range starts two calendar months either side of
 the initial date and grows by two months as the viewport nears either end,

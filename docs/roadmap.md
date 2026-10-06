@@ -173,6 +173,9 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
   label chips show their names, there is no autosave text, and every header
   and footer control has its own slot on desktop and phone.
   Acceptance: `docs/card-dialog-layout-acceptance-checklist.md`.
+- [x] Make board cards individually shareable: opening a card records its id
+  and owning board in the board URL, and opening that URL directly loads the
+  same card editor. Closing the editor clears the card selection from the URL.
 - [x] Label board cards with `BOARD` labels from a searchable Vuetify chip
   picker in the card editor footer; cards show one compact, clipped row of
   label chips between the priority and the title.
