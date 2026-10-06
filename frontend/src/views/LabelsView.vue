@@ -58,6 +58,10 @@ const sortedLabels = computed(() =>
   labels.value.filter(label => label.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name)),
 );
+const editingLabel = computed(() => labels.value.find((label) => label.id === editingId.value));
+async function saveEditingLabel() {
+  if (editingLabel.value) await save(editingLabel.value);
+}
 function searchKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || event.isComposing || document.querySelector('[aria-modal="true"]')) return;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -123,6 +127,7 @@ function closeAddDialog() {
   error.value = "";
 }
 function beginEdit(label: Label) {
+  error.value = "";
   editingId.value = label.id;
   draft.value = {
     name: label.name,
@@ -155,6 +160,11 @@ async function save(label: Label) {
   } finally {
     saving.value = false;
   }
+}
+function closeEditDialog() {
+  if (saving.value) return;
+  cancelEdit();
+  error.value = "";
 }
 async function remove(label: Label) {
   const result = await promptDialog.value!.open(
@@ -221,7 +231,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
       </button>
     </header>
     <p
-      v-if="error && !addDialogOpen"
+      v-if="error && !addDialogOpen && !editingId"
       class="notice"
       role="alert"
       aria-live="polite"
@@ -242,11 +252,8 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
         v-else
         :key="label.id"
         class="label-row"
-        @keydown.ctrl.enter.prevent="editingId === label.id && save(label)"
-        @keydown.meta.enter.prevent="editingId === label.id && save(label)"
       >
-        <template v-if="editingId !== label.id"
-          ><span
+        <span
             class="label-swatch"
             :style="{ backgroundColor: label.color || colors[0] }"
             aria-hidden="true"
@@ -276,6 +283,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
               type="button"
               :aria-label="`Edit ${label.name}`"
               :title="`Edit ${label.name}`"
+              aria-haspopup="dialog"
               @click="beginEdit(label)"
             ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiPencilOutline" fill="currentColor" /></svg></button
             ><button
@@ -284,43 +292,56 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
               :aria-label="`Remove ${label.name}`"
               :title="`Remove ${label.name}`"
               @click="remove(label)"
-            ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiTrashCanOutline" fill="currentColor" /></svg></button></span></template
-        >
-        <template v-else-if="draft"
-          ><input
-            v-model="draft.name"
-            class="edit-name"
-            maxlength="80"
-            :aria-label="`Edit ${label.name} name`"
-          /><ColorPalette
-            v-model="draft.color"
-            class="label-edit-colors"
-            :legend="`Edit ${label.name} color`"
-            option-label="Set edit label color"
-          />
-          <fieldset class="scope-editor">
-            <legend>Don’t show in</legend>
-            <label v-for="option in scopeOptions" :key="option.value"
-              ><input
-                type="checkbox"
-                :checked="checked(option.value, draft.scopes)"
-                @change="toggleScope(draft.scopes, option.value)"
-              />{{ option.label }}</label
-            >
-          </fieldset>
-          <button
-            class="primary compact"
-            type="button"
-            :disabled="saving"
-            @click="save(label)"
-          >
-            Save</button
-          ><button class="ghost" type="button" @click="cancelEdit">
-            Cancel
-          </button></template
-        >
+            ><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiTrashCanOutline" fill="currentColor" /></svg></button></span>
       </div>
     </section>
+    <div
+      v-if="editingId && draft"
+      class="prompt-dialog-backdrop"
+      v-backdrop-close="closeEditDialog"
+    >
+      <section
+        v-dialog-focus
+        class="prompt-dialog card label-edit-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-label-title"
+        tabindex="-1"
+        @keydown.esc.prevent="closeEditDialog"
+      >
+        <div class="label-dialog-heading">
+          <div>
+            <p class="eyebrow">EDIT LABEL</p>
+            <h2 id="edit-label-title">Edit {{ editingLabel?.name }}</h2>
+          </div>
+        </div>
+        <form
+          class="label-create-form"
+          @keydown.ctrl.enter.prevent="saveEditingLabel"
+          @keydown.meta.enter.prevent="saveEditingLabel"
+          @submit.prevent="saveEditingLabel"
+        >
+          <label>Name<input v-model="draft.name" name="label-name" maxlength="80" autocomplete="off" required /></label>
+          <ColorPalette
+            v-model="draft.color"
+            :legend="`Edit ${draft.name || 'label'} color`"
+            option-label="Set edit label color"
+          />
+          <fieldset class="scope-selector">
+            <legend>Don’t show in</legend>
+            <label v-for="option in scopeOptions" :key="option.value" class="scope-option">
+              <input type="checkbox" :checked="checked(option.value, draft.scopes)" @change="toggleScope(draft.scopes, option.value)" />
+              <span>{{ option.label }}</span>
+            </label>
+          </fieldset>
+          <p v-if="error" class="notice" role="alert" aria-live="polite">{{ error }}</p>
+          <div class="prompt-dialog-actions">
+            <button type="button" class="text-button" :disabled="saving" @click="closeEditDialog">Cancel</button>
+            <button class="primary" type="submit" :disabled="saving">{{ saving ? "Saving…" : "Save changes" }}</button>
+          </div>
+        </form>
+      </section>
+    </div>
     <LabelHistoryDialog
       v-if="historyLabelId"
       :label-id="historyLabelId"
@@ -443,6 +464,9 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
   gap: 10px;
 }
 .label-create-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.label-edit-dialog {
   width: min(560px, calc(100vw - 32px));
 }
 .label-dialog-heading {
