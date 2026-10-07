@@ -201,29 +201,45 @@ function measure() {
 function positionMenu() {
   const anchor = root.value?.getBoundingClientRect();
   if (!anchor || !open.value) return;
-  const margin = 8;
-  const viewportWidth = document.documentElement.clientWidth;
-  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-  const width = Math.min(Math.max(anchor.width, props.triggerMode === "icon" ? 240 : 0), viewportWidth - margin * 2);
-  const left = Math.max(margin, Math.min(anchor.left, viewportWidth - width - margin));
-  const menuHeight = menu.value?.getBoundingClientRect().height ?? 300;
-  const below = viewportHeight - anchor.bottom - 6 - margin;
-  const above = anchor.top - 6 - margin;
+  const viewport = window.visualViewport;
+  const styles = getComputedStyle(root.value);
+  const marginX = Math.max(8, parseFloat(styles.getPropertyValue("--picker-safe-left")) || 0, parseFloat(styles.getPropertyValue("--picker-safe-right")) || 0);
+  const marginY = Math.max(8, parseFloat(styles.getPropertyValue("--picker-safe-top")) || 0, parseFloat(styles.getPropertyValue("--picker-safe-bottom")) || 0);
+  const viewportLeft = viewport?.offsetLeft ?? 0;
+  const viewportTop = viewport?.offsetTop ?? 0;
+  const viewportWidth = viewport?.width ?? document.documentElement.clientWidth;
+  const viewportHeight = viewport?.height ?? window.innerHeight;
+  const anchorLeft = anchor.left - viewportLeft;
+  const anchorTop = anchor.top - viewportTop;
+  const anchorBottom = anchor.bottom - viewportTop;
+  const width = Math.max(0, Math.min(Math.max(anchor.width, props.triggerMode === "icon" ? 240 : 0), viewportWidth - marginX * 2));
+  const left = Math.max(marginX, Math.min(anchorLeft, viewportWidth - width - marginX));
+  const maxHeight = Math.max(120, viewportHeight - marginY * 2);
+  const menuHeight = Math.min(menu.value?.getBoundingClientRect().height ?? 300, maxHeight);
+  const below = viewportHeight - anchorBottom - 6 - marginY;
+  const above = anchorTop - 6 - marginY;
   const placeAbove = below < menuHeight && above > below;
   const top = placeAbove
-    ? Math.max(margin, anchor.top - menuHeight - 6)
-    : Math.min(anchor.bottom + 6, viewportHeight - menuHeight - margin);
+    ? Math.max(marginY, anchorTop - menuHeight - 6)
+    : Math.min(anchorBottom + 6, viewportHeight - menuHeight - marginY);
   menuPosition.value = {
     position: "fixed",
     left: `${left}px`,
-    top: `${Math.max(margin, top)}px`,
+    top: `${Math.max(marginY, top)}px`,
     width: `${width}px`,
+    maxHeight: `${maxHeight}px`,
   };
 }
+function repositionForVisualViewport() { positionMenu(); }
 function outsideClick(event: PointerEvent) {
   const target = event.target as Node;
   if (!root.value?.contains(target) && !menu.value?.contains(target)) open.value = false;
 }
+watch(activeIndex, async (index) => {
+  await nextTick();
+  const option = document.getElementById(`${listboxId}-option-${index}`);
+  if (option && menu.value?.contains(option)) option.scrollIntoView?.({ block: "nearest" });
+});
 watch([selectedLabels, open], async () => { await nextTick(); measure(); positionMenu(); }, { deep: true });
 watch(open, (value) => emit("open-change", value));
 watch([matchingLabels, canCreate, error], async () => { await nextTick(); positionMenu(); });
@@ -235,14 +251,20 @@ onMounted(() => {
   }
   document.addEventListener("pointerdown", outsideClick);
   window.addEventListener("resize", positionMenu);
+  window.addEventListener("orientationchange", positionMenu);
   window.addEventListener("scroll", positionMenu, true);
+  window.visualViewport?.addEventListener("resize", repositionForVisualViewport);
+  window.visualViewport?.addEventListener("scroll", repositionForVisualViewport);
   measure();
 });
 onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   document.removeEventListener("pointerdown", outsideClick);
   window.removeEventListener("resize", positionMenu);
+  window.removeEventListener("orientationchange", positionMenu);
   window.removeEventListener("scroll", positionMenu, true);
+  window.visualViewport?.removeEventListener("resize", repositionForVisualViewport);
+  window.visualViewport?.removeEventListener("scroll", repositionForVisualViewport);
 });
 </script>
 
@@ -286,18 +308,19 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.label-picker { position: relative; width: 100%; color: var(--workspace-text); }
+.label-picker { position: relative; width: 100%; min-width:0; color: var(--workspace-text); --picker-safe-left:env(safe-area-inset-left); --picker-safe-right:env(safe-area-inset-right); --picker-safe-top:env(safe-area-inset-top); --picker-safe-bottom:env(safe-area-inset-bottom); }
 .label-picker.is-disabled { opacity: .55; }
-.label-picker-icon-trigger { display:grid; place-items:center; width:36px; min-width:36px; min-height:36px; padding:0; border:0; border-radius:6px; background:transparent; color:var(--workspace-muted); cursor:pointer; }
-.label-picker-icon-trigger:hover,.label-picker-icon-trigger:focus-visible,.is-open .label-picker-icon-trigger { background:var(--workspace-hover); color:var(--workspace-accent); }
+.label-picker-icon-trigger { display:grid; place-items:center; width:36px; min-width:36px; min-height:36px; padding:0; border:0; border-radius:6px; background:transparent; color:var(--workspace-muted); cursor:pointer; touch-action:manipulation; }
+.label-picker-icon-trigger:hover,.is-open .label-picker-icon-trigger { background:transparent; color:var(--workspace-text); }
+.label-picker-icon-trigger:focus-visible { outline:2px solid var(--workspace-focus); outline-offset:2px; }
 .label-picker-icon-trigger svg { width:20px; height:20px; transform:rotate(315deg); fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
 .label-picker-icon-trigger.has-selection svg { fill:currentColor; stroke:none; }
 .label-picker-icon-trigger.has-selection svg circle { fill:var(--workspace-surface); stroke:none; }
 .label-picker-icon-trigger.has-selection { color:var(--workspace-strong); }
-.label-picker-control { display: flex; align-items: center; gap: 6px; min-height: 42px; width: 100%; overflow: hidden; padding: 4px 8px 4px 9px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-surface); cursor: pointer; }
+.label-picker-control { display: flex; align-items: center; gap: 6px; min-height: 42px; width: 100%; overflow: hidden; padding: 4px 8px 4px 9px; border: 1px solid var(--workspace-control-border); border-radius: 6px; background: var(--workspace-surface); cursor: pointer; touch-action:manipulation; }
 .label-picker-control:focus-within, .is-open .label-picker-control { border-color: var(--workspace-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-focus) 16%, transparent); }
 .empty-picker { flex: 1; min-width: 0; overflow: hidden; color: var(--workspace-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.picker-chevron { display: grid; place-items: center; width: 28px; height: 30px; flex: 0 0 auto; margin-left: auto; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--workspace-muted); }
+.picker-chevron { display: grid; place-items: center; width: 28px; height: 30px; flex: 0 0 auto; margin-left: auto; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--workspace-muted); touch-action:manipulation; }
 .picker-chevron:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
 .picker-chevron svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 120ms ease; }
 .is-open .picker-chevron svg { transform: rotate(180deg); }
@@ -309,10 +332,10 @@ onBeforeUnmount(() => {
 .selected-chip button:hover { background: var(--workspace-hover); color: var(--workspace-strong); }
 .more-chip { min-width: 38px; justify-content: center; padding-inline: 8px; color: var(--workspace-muted); background: var(--workspace-hover); border-color: var(--workspace-border); font-variant-numeric: tabular-nums; }
 .measure-row { position: absolute; z-index: -1; top: 0; left: 0; display: flex; visibility: hidden; pointer-events: none; white-space: nowrap; }
-.label-picker-menu { z-index: 1000; max-height: min(360px, 60vh); overflow: auto; overscroll-behavior: contain; padding: 7px; border: 1px solid var(--workspace-border); border-radius: 8px; background: var(--workspace-surface); box-shadow: 0 14px 38px rgb(0 0 0 / 20%), 0 2px 8px rgb(0 0 0 / 9%); }
-.label-picker-menu > input { width: 100%; min-height: 38px; margin-bottom: 5px; padding: 7px 9px; border-radius: 5px; font-size: 14px; }
+.label-picker-menu { box-sizing:border-box; z-index: 1000; max-height: min(360px, 60vh); overflow: auto; overscroll-behavior: contain; padding: 7px; border: 1px solid var(--workspace-border); border-radius: 8px; background: var(--workspace-surface); box-shadow: 0 14px 38px rgb(0 0 0 / 20%), 0 2px 8px rgb(0 0 0 / 9%); }
+.label-picker-menu > input { box-sizing:border-box; width: 100%; min-width:0; min-height: 44px; margin-bottom: 5px; padding: 7px 9px; border-radius: 5px; font-size: 16px; }
 .label-picker-options { max-height: 255px; overflow: auto; overscroll-behavior: contain; }
-.label-picker-options > button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--workspace-text); text-align: left; cursor: pointer; }
+.label-picker-options > button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--workspace-text); text-align: left; cursor: pointer; touch-action:manipulation; }
 .label-picker-options > button:hover, .label-picker-options > button.active { background: var(--workspace-hover); }
 .label-picker-options > button.selected { background: color-mix(in srgb, var(--workspace-selected) 60%, transparent); }
 .option-check { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 auto; color: var(--workspace-selected-text); font-weight: 700; }
@@ -325,5 +348,6 @@ onBeforeUnmount(() => {
 kbd { min-width: 18px; padding: 1px 4px; border: 1px solid var(--workspace-border); border-radius: 4px; text-align: center; font: inherit; }
 .density-comfortable .label-picker-control { min-height: 54px; padding: 7px 10px 7px 12px; border-radius: 10px; }
 .density-comfortable .selected-chip, .density-comfortable .more-chip { min-height: 30px; padding: 3px 6px 3px 9px; border-radius: 7px; }
-@media (max-width: 600px) { .label-picker-control { gap: 4px; padding-inline: 8px; } .picker-chevron { width: 44px; height: 44px; } .selected-chip { max-width: 135px; } .label-picker-menu { max-height: 48vh; } }
+@media (max-width: 600px) { .label-picker-control { min-height:44px; gap: 4px; padding-inline: 8px; } .picker-chevron { width: 44px; height: 44px; } .selected-chip { max-width: 135px; } .label-picker-menu { max-height: calc(100dvh - 16px); } }
+@media (pointer: coarse) { .label-picker-control { min-height:44px; } .label-picker-icon-trigger { width:44px; min-width:44px; min-height:44px; } .picker-chevron { width:44px; height:44px; } .selected-chip { min-height:44px; padding-right:44px; } .selected-chip button { top:50%; right:0; width:44px; height:44px; transform:translateY(-50%); } .label-picker-options > button { min-height:48px; } }
 </style>
