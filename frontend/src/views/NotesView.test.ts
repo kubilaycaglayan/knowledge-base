@@ -1,4 +1,4 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import vuetify from "../plugins/vuetify";
 import { createMemoryHistory, createRouter } from "vue-router";
 import NotesView from "./NotesView.vue";
@@ -54,9 +54,21 @@ function mountNotes(r: ReturnType<typeof router>) {
     global: { plugins: [r, vuetify] },
   });
 }
+async function openNoteLabels(wrapper: ReturnType<typeof mount>) {
+  await wrapper.get(".picker-chevron").trigger("click");
+  await flushPromises();
+  return new DOMWrapper(document.querySelector<HTMLInputElement>(
+    '.label-picker-menu input[aria-label="Note labels"]',
+  )!);
+}
+function noteLabelOption(name: string) {
+  return [...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+    .find((option) => option.textContent?.includes(name));
+}
 
 describe("NotesView", () => {
   beforeEach(() => setActivePinia(createPinia()));
+  afterEach(() => document.querySelectorAll(".label-picker-menu").forEach((menu) => menu.remove()));
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string) => {
@@ -369,30 +381,26 @@ describe("NotesView", () => {
     await r.isReady();
     const wrapper = mountNotes(r);
     await flushPromises();
-    const input = wrapper.get('input[aria-label="Add label"]');
+    const input = await openNoteLabels(wrapper);
     await input.setValue("e");
-    expect(
-      wrapper.findAll(".label-suggestion").map((button) => button.text()),
-    ).toEqual(["Work notes", "Travel"]);
-    await input.trigger("keydown", { key: "ArrowDown" });
-    expect(wrapper.findAll(".label-suggestion")[1].classes()).toContain(
-      "active",
-    );
-    await input.trigger("keydown", { key: "Enter" });
-    expect(wrapper.findAll(".note-tag").map((tag) => tag.text())).toEqual([
-      "study×",
-      "Travel×",
-    ]);
-    expect((input.element as HTMLInputElement).value).toBe("");
+    const optionNames = [...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+      .map((button) => button.querySelector(".option-name")?.textContent);
+    expect(optionNames).toContain("Work notes");
+    expect(optionNames).toContain("Travel");
+    noteLabelOption("Travel")?.click();
+    await flushPromises();
+    expect(wrapper.get(".tag-editor .measure-row").text()).toContain("Travel");
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
   });
 
-  it("adds a new label when Enter is pressed on the mobile keyboard", async () => {
+  it("adds a new label from the note label picker", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
         if (path === "/notes/note-1" && !options) return note;
         if (path === "/notes/labels") return [{ id: "study", name: "Study" }];
+        if (path === "/labels" && options?.method === "POST")
+          return { id: "mobile", name: "mobile", color: null, scopes: ["NOTE"] };
         if (path === "/notes/note-1" && options?.method === "PUT")
           return { ...note, tags: ["study", "mobile"] };
         return undefined;
@@ -403,24 +411,24 @@ describe("NotesView", () => {
     await r.isReady();
     const wrapper = mountNotes(r);
     await flushPromises();
-    const input = wrapper.get('input[aria-label="Add label"]');
+    const input = await openNoteLabels(wrapper);
     await input.setValue("mobile");
+    await input.trigger("keydown", { key: "ArrowDown" });
     await input.trigger("keydown", { key: "Enter" });
+    await flushPromises();
 
-    expect(wrapper.findAll(".note-tag").map((tag) => tag.text())).toEqual([
-      "study×",
-      "mobile×",
-    ]);
-    expect((input.element as HTMLInputElement).value).toBe("");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST" }));
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
   });
 
-  it("adds a new label when a mobile keyboard emits a line-break input", async () => {
+  it("creates a note label with Enter in the picker", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
         if (path === "/notes/note-1" && !options) return note;
         if (path === "/notes/labels") return [];
+        if (path === "/labels" && options?.method === "POST")
+          return { id: "mobile", name: "mobile", color: null, scopes: ["NOTE"] };
         if (path === "/notes/note-1" && options?.method === "PUT")
           return { ...note, tags: ["study", "mobile"] };
         return undefined;
@@ -431,15 +439,13 @@ describe("NotesView", () => {
     await r.isReady();
     const wrapper = mountNotes(r);
     await flushPromises();
-    const input = wrapper.get('input[aria-label="Add label"]');
+    const input = await openNoteLabels(wrapper);
     await input.setValue("mobile");
-    await input.trigger("beforeinput", { inputType: "insertLineBreak" });
+    expect(noteLabelOption("Create")).toBeDefined();
+    await input.trigger("keydown", { key: "ArrowDown" });
+    await input.trigger("keydown", { key: "Enter" });
 
-    expect(wrapper.findAll(".note-tag").map((tag) => tag.text())).toEqual([
-      "study×",
-      "mobile×",
-    ]);
-    expect((input.element as HTMLInputElement).value).toBe("");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST" }));
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
   });

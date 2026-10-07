@@ -796,12 +796,11 @@ describe("BoardView", () => {
       await flushPromises();
       await wrapper.find(".board-card").trigger("click");
       expect(wrapper.find(".card-meta .card-labels").exists()).toBe(false);
-      const picker = wrapper.findComponent({ name: "VAutocomplete" });
+      const picker = wrapper.find(".card-editor .label-picker");
       expect(picker.exists()).toBe(true);
-      expect(picker.classes()).toContain("card-labels-picker");
-      expect(picker.props("multiple")).toBe(true);
-      expect((picker.props("items") as Array<{ name: string }>).map((label) => label.name)).toEqual(["Design", "Docs"]);
-      picker.vm.$emit("update:modelValue", ["label-docs"]);
+      await picker.get(".picker-chevron").trigger("click");
+      [...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+        .find((option) => option.textContent?.includes("Docs"))?.click();
       await flushPromises();
       expect((wrapper.vm as any).draft.labelIds).toEqual(["label-docs"]);
       await wrapper.unmount();
@@ -813,9 +812,11 @@ describe("BoardView", () => {
       await flushPromises();
       await wrapper.find(".board-card").trigger("click");
       await flushPromises();
-      const chips = wrapper.findAll(".card-editor .card-labels-chip");
-      expect(chips.map((chip) => chip.text())).toEqual(["Docs", "Design"]);
-      await chips[0].find(".v-chip__close").trigger("click");
+      expect(wrapper.find(".card-editor .measure-row").text()).toContain("Docs");
+      expect(wrapper.find(".card-editor .measure-row").text()).toContain("Design");
+      await wrapper.get(".card-editor .picker-chevron").trigger("click");
+      [...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+        .find((option) => option.textContent?.includes("Docs"))?.click();
       expect((wrapper.vm as any).draft.labelIds).toEqual(["label-design"]);
       await wrapper.unmount();
     });

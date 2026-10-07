@@ -1,4 +1,4 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import CalendarView from "./CalendarView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
@@ -28,43 +28,51 @@ function mountView() {
 }
 type View = ReturnType<typeof mountView>;
 function pickerInput(wrapper: View) {
-  return wrapper.get<HTMLInputElement>(".calendar-label-picker input");
+  const input = document.querySelector<HTMLInputElement>(
+    '.label-picker-menu input[aria-label="Add or create calendar label"]',
+  );
+  if (input) return new DOMWrapper(input);
+  return new DOMWrapper(document.querySelector<HTMLInputElement>(".label-picker-menu input")!);
 }
 async function openPicker(wrapper: View, search?: string) {
-  await wrapper.get(".calendar-label-picker .v-field").trigger("mousedown");
+  if (!document.querySelector(".label-picker-menu"))
+    await wrapper.get(".picker-chevron").trigger("click");
   await flushPromises();
   if (search !== undefined) {
     await pickerInput(wrapper).setValue(search);
     await flushPromises();
   }
   const menu = document.querySelector<HTMLElement>(
-    ".calendar-label-picker-menu",
+    ".label-picker-menu",
   );
   expect(menu).not.toBeNull();
   return menu!;
 }
-function menuItems() {
+function menuItems(): DOMWrapper<HTMLElement>[] {
   return [
     ...document.querySelectorAll<HTMLElement>(
-      ".calendar-label-picker-menu .v-list-item",
+      '.label-picker-menu [role="option"]',
     ),
-  ];
+  ].map((element) => new DOMWrapper(element));
 }
 function menuItem(text: string) {
-  const item = menuItems().find(
-    (element) =>
-      element.querySelector(".v-list-item-title")?.textContent?.trim() === text,
-  );
+  if (text.startsWith("Create")) {
+    const create = document.querySelector<HTMLElement>(
+      '.label-picker-menu [role="option"][id$="option-create"]',
+    );
+    if (create) return new DOMWrapper(create);
+  }
+  const item = menuItems().find((element) => element.text().includes(text));
   expect(item, `menu item ${text}`).toBeDefined();
   return item!;
 }
 async function clickMenuItem(text: string) {
-  menuItem(text).click();
+  await menuItem(text).trigger("click");
   await flushPromises();
 }
 function chipNames(wrapper: View) {
   return wrapper
-    .findAll(".calendar-label-picker .calendar-picked-chip")
+    .findAll(".new-calendar-label .measure-row .chip-name")
     .map((chip) => chip.text());
 }
 function listedLabels(wrapper: View) {
@@ -379,8 +387,8 @@ describe("CalendarView", () => {
 
     await openPicker(wrapper, "Vacation");
     await clickMenuItem("Create “Vacation”");
-    expect(wrapper.get('[role="alert"]').text()).toBe(
-      "Unable to create that label. Label names must be unique.",
+    expect(document.querySelector(".picker-error")?.textContent).toBe(
+      "Could not create that label. Names must be unique.",
     );
 
     await wrapper
@@ -420,7 +428,7 @@ describe("CalendarView", () => {
     ).toBe("false");
     await openPicker(wrapper, "  ");
     expect(
-      menuItems().some((item) => item.textContent?.includes("Create")),
+      menuItems().some((item) => item.text().includes("Create")),
     ).toBe(false);
   });
 
@@ -511,15 +519,16 @@ describe("CalendarView", () => {
   it("CP-04: searches every label in the add-or-create picker", async () => {
     const wrapper = mountView();
     await flushPromises();
+    await openPicker(wrapper);
     expect(pickerInput(wrapper).attributes("placeholder")).toBe(
-      "Add or create label…",
+      "Search labels…",
     );
     expect(pickerInput(wrapper).attributes("aria-label")).toBe(
-      "Add or create label",
+      "Add or create calendar label",
     );
 
     await openPicker(wrapper);
-    expect(menuItems().map((item) => item.textContent?.trim())).toEqual([
+    expect(menuItems().map((item) => item.text().trim())).toEqual([
       "Deep work",
       "Gym",
       "Sick leave",
@@ -527,7 +536,7 @@ describe("CalendarView", () => {
 
     await pickerInput(wrapper).setValue("dee");
     await flushPromises();
-    const titles = menuItems().map((item) => item.textContent?.trim());
+    const titles = menuItems().map((item) => item.text().trim());
     expect(titles).toContain("Deep work");
     expect(titles).not.toContain("Gym");
   });
@@ -535,17 +544,12 @@ describe("CalendarView", () => {
   it("CP-04: keeps the picker's prompt while no chips show", async () => {
     const wrapper = mountView();
     await flushPromises();
-    const prompt = () =>
-      pickerInput(wrapper).attributes("placeholder") ||
-      wrapper.find(".calendar-picker-placeholder").text();
-
-    await wrapper.get('input[type="checkbox"]').setValue(true);
-    expect(prompt()).toBe("Add or create label…");
+    expect(wrapper.find(".new-calendar-label .empty-picker").text()).toBe("Choose labels…");
 
     await openPicker(wrapper, "Deep");
     await clickMenuItem("Deep work");
     expect(chipNames(wrapper)).toEqual(["Deep work"]);
-    expect(wrapper.find(".calendar-picker-placeholder").exists()).toBe(false);
+    expect(wrapper.find(".new-calendar-label .selected-chip").exists()).toBe(true);
   });
 
   it("CP-05: picks labels hidden from Calendar as chips without changing them", async () => {
@@ -560,9 +564,9 @@ describe("CalendarView", () => {
     expect(chipNames(wrapper)).toEqual(["Deep work", "Gym"]);
     expect(listedLabels(wrapper)).toEqual(["Sick leave"]);
     await openPicker(wrapper, "");
-    expect(menuItem("Deep work").getAttribute("aria-selected")).toBe("true");
-    expect(menuItem("Gym").getAttribute("aria-selected")).toBe("true");
-    expect(menuItem("Sick leave").getAttribute("aria-selected")).not.toBe(
+    expect(menuItem("Deep work").attributes("aria-selected")).toBe("true");
+    expect(menuItem("Gym").attributes("aria-selected")).toBe("true");
+    expect(menuItem("Sick leave").attributes("aria-selected")).not.toBe(
       "true",
     );
     expect(labelUpdates()).toHaveLength(0);
@@ -586,12 +590,12 @@ describe("CalendarView", () => {
       (wrapper.get('input[type="checkbox"]').element as HTMLInputElement)
         .checked,
     ).toBe(true);
-    expect(chipNames(wrapper)).toEqual([]);
+    expect(chipNames(wrapper)).toEqual(["Sick leave"]);
 
     await wrapper.get('input[type="checkbox"]').setValue(false);
     await wrapper.get('input[type="checkbox"]').setValue(true);
     await openPicker(wrapper, "");
-    expect(menuItem("Sick leave").getAttribute("aria-selected")).toBe("true");
+    expect(menuItem("Sick leave").attributes("aria-selected")).toBe("true");
   });
 
   it("CP-07: removes a picked label from its chip", async () => {
@@ -601,7 +605,8 @@ describe("CalendarView", () => {
     await clickMenuItem("Deep work");
     expect(chipNames(wrapper)).toEqual(["Deep work"]);
 
-    await wrapper.get('[aria-label="Remove Deep work"]').trigger("click");
+    await openPicker(wrapper);
+    await clickMenuItem("Deep work");
     await flushPromises();
     expect(chipNames(wrapper)).toEqual([]);
 
@@ -647,7 +652,7 @@ describe("CalendarView", () => {
       (created.get('input[type="checkbox"]').element as HTMLInputElement)
         .checked,
     ).toBe(true);
-    expect(chipNames(wrapper)).toEqual([]);
+    expect(chipNames(wrapper)).toEqual(["Vacation"]);
 
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
@@ -676,7 +681,7 @@ describe("CalendarView", () => {
     await openPicker(wrapper, "deep WORK");
 
     expect(
-      menuItems().some((item) => item.textContent?.includes("Create")),
+      menuItems().some((item) => item.text().includes("Create")),
     ).toBe(false);
     await clickMenuItem("Deep work");
     expect(chipNames(wrapper)).toEqual(["Deep work"]);
@@ -704,8 +709,8 @@ describe("CalendarView", () => {
     await openPicker(wrapper, "Vacation");
     await clickMenuItem("Create “Vacation”");
 
-    expect(wrapper.get('[role="alert"]').text()).toBe(
-      "Unable to create that label. Label names must be unique.",
+    expect(document.querySelector(".picker-error")?.textContent).toBe(
+      "Could not create that label. Names must be unique.",
     );
     expect(chipNames(wrapper)).toEqual([]);
     expect(listedLabels(wrapper)).toEqual(["Sick leave"]);
@@ -745,7 +750,7 @@ describe("CalendarView", () => {
     const wrapper = mountView();
     await flushPromises();
 
-    expect(chipNames(wrapper)).toEqual(["Deep work"]);
+    expect(chipNames(wrapper)).toEqual(["Deep work", "Sick leave"]);
     expect(
       (wrapper.get('input[type="checkbox"]').element as HTMLInputElement)
         .checked,

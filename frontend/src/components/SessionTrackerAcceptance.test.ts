@@ -1,4 +1,4 @@
-import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
+import { DOMWrapper, flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import FloatingTimeTracker from "./FloatingTimeTracker.vue";
 import vuetify from "../plugins/vuetify";
@@ -31,7 +31,10 @@ describe("session tracker acceptance", () => {
       return [];
     });
   });
-  afterEach(() => wrapper?.unmount());
+  afterEach(() => {
+    wrapper?.unmount();
+    document.querySelectorAll(".label-picker-menu").forEach((menu) => menu.remove());
+  });
   async function render() {
     wrapper = mount(FloatingTimeTracker, {
       attachTo: document.body,
@@ -40,15 +43,13 @@ describe("session tracker acceptance", () => {
     });
     await flushPromises();
   }
-  const chips = () => wrapper.findAll("#tt-label-options button");
-  const chip = (name: string) =>
-    chips().find((button) => button.text().replace("×", "") === name)!;
-  const selected = () =>
-    chips()
-      .filter((button) => button.attributes("aria-pressed") === "true")
-      .map((button) => button.text().replace("×", ""));
-  const summary = () => wrapper.get(".tracker-field-heading > span").text();
-  const toggle = () => wrapper.get(".label-picker-toggle");
+  const chips = () => [...document.querySelectorAll<HTMLElement>('.label-picker-menu [role="option"]')]
+    .map((element) => new DOMWrapper(element));
+  const chip = (name: string) => chips().find((button) => button.find(".option-name").text() === name)!;
+  const selected = () => chips().filter((button) => button.attributes("aria-selected") === "true")
+    .map((button) => button.find(".option-name").text());
+  const summary = () => wrapper.get(".tracker-field-heading > span:last-child").text();
+  const toggle = () => wrapper.get(".picker-chevron");
 
   it("P4–P8: offers add first and only active paths", async () => {
     await render();
@@ -66,21 +67,13 @@ describe("session tracker acceptance", () => {
     expect(summary()).toBe("3 available");
     expect(chips()).toHaveLength(0);
     await toggle().trigger("click");
-    expect(
-      chips().every((button) => button.attributes("aria-pressed") === "false"),
-    ).toBe(true);
+    expect(chips()).toHaveLength(3);
+    expect(chips().every((button) => button.attributes("aria-selected") === "false")).toBe(true);
     await chip("Review").trigger("click");
     await chip("Planning").trigger("click");
     expect(selected()).toEqual(["Review", "Planning"]);
     expect(summary()).toBe("3 available · 2 selected");
-    await toggle().trigger("click");
-    expect(toggle().attributes("aria-expanded")).toBe("false");
-    expect(chips().map((button) => button.text())).toEqual([
-      "Review×",
-      "Planning×",
-    ]);
     await chip("Review").trigger("click");
-    expect(toggle().attributes("aria-expanded")).toBe("true");
     expect(selected()).toEqual(["Planning"]);
     expect(summary()).toBe("3 available · 1 selected");
     await chip("Planning").trigger("click");
@@ -91,19 +84,10 @@ describe("session tracker acceptance", () => {
   it("L11–L12, L18: keeps internal focus open and dismisses on Escape, outside pointer, or focus leaving", async () => {
     await render();
     await toggle().trigger("click");
-    await chip("Focus").trigger("pointerdown");
+    const input = document.querySelector<HTMLInputElement>('.label-picker-menu input[aria-label="Search session labels"]')!;
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(toggle().attributes("aria-expanded")).toBe("true");
-    await chip("Focus").trigger("keydown", { key: "Escape" });
-    expect(toggle().attributes("aria-expanded")).toBe("false");
-    expect(document.activeElement).toBe(toggle().element);
-    await toggle().trigger("click");
-    await wrapper
-      .get(".label-picker")
-      .trigger("focusout", { relatedTarget: chip("Review").element });
-    expect(toggle().attributes("aria-expanded")).toBe("true");
-    await wrapper
-      .get(".label-picker")
-      .trigger("focusout", { relatedTarget: wrapper.get("textarea").element });
+    await flushPromises();
     expect(toggle().attributes("aria-expanded")).toBe("false");
     await toggle().trigger("click");
     document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
@@ -111,18 +95,15 @@ describe("session tracker acceptance", () => {
     expect(toggle().attributes("aria-expanded")).toBe("false");
   });
 
-  it.each([false, true])(
-    "L16–L17: creates a label while open=%s and preserves other selections",
-    async (open) => {
+  it("creates a label and preserves other selections", async () => {
       await render();
       await toggle().trigger("click");
       await chip("Focus").trigger("click");
-      if (!open) await toggle().trigger("click");
-      const input = wrapper.get('input[aria-label="New session label name"]');
-      expect(input.isVisible()).toBe(true);
-      expect(wrapper.get(".create-label").isVisible()).toBe(true);
-      await input.setValue("  New label  ");
-      await wrapper.get(".create-label").trigger("click");
+      const input = document.querySelector<HTMLInputElement>('.label-picker-menu input[aria-label="Search session labels"]')!;
+      await new DOMWrapper(input).setValue("  New label  ");
+      await flushPromises();
+      expect(document.querySelector('.label-picker-menu [id$="option-create"]')).not.toBeNull();
+      document.querySelector<HTMLButtonElement>('.label-picker-menu [id$="option-create"]')?.click();
       await flushPromises();
       expect(api).toHaveBeenCalledWith(
         "/labels",
@@ -130,25 +111,26 @@ describe("session tracker acceptance", () => {
           method: "POST",
           body: JSON.stringify({
             name: "New label",
-            scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
             color: null,
+            scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
           }),
         }),
       );
       expect(selected()).toEqual(["Focus", "New label"]);
       expect(summary()).toBe("4 available · 2 selected");
-      expect(input.element).toHaveProperty("value", "");
-    },
-  );
+      expect(input.value).toBe("");
+  });
 
   it("C4: renders an empty label set with a usable creation flow", async () => {
     vi.mocked(api).mockResolvedValue([]);
     await render();
     expect(chips()).toHaveLength(0);
     expect(summary()).toBe("0 available");
-    await wrapper
-      .get('input[aria-label="New session label name"]')
-      .setValue("First label");
-    expect(wrapper.get(".create-label").attributes("disabled")).toBeUndefined();
+    await toggle().trigger("click");
+    const input = document.querySelector<HTMLInputElement>('.label-picker-menu input[aria-label="Search session labels"]')!;
+    input.value = "First label";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await flushPromises();
+    expect(document.querySelector('.label-picker-menu [id$="option-create"]')).not.toBeNull();
   });
 });

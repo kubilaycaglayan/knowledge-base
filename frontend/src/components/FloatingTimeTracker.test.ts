@@ -53,6 +53,7 @@ describe("FloatingTimeTracker", () => {
   });
 
   afterEach(() => {
+    document.querySelectorAll(".label-picker-menu").forEach((menu) => menu.remove());
     vi.unstubAllGlobals();
     if (originalMatchMedia)
       Object.defineProperty(window, "matchMedia", originalMatchMedia);
@@ -697,7 +698,7 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("keeps labels in one row until the label chevron expands the chip list", async () => {
+  it("opens the searchable label picker from its chevron", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
       if (path === "/labels?scope=TIME_ENTRY")
@@ -715,38 +716,25 @@ describe("FloatingTimeTracker", () => {
     });
     await flushPromises();
     const picker = wrapper.get(".label-picker");
-    const toggle = wrapper.get(".label-picker-toggle");
+    const toggle = wrapper.get(".picker-chevron");
     expect(picker.classes()).not.toContain("is-open");
     expect(toggle.attributes("aria-expanded")).toBe("false");
-    expect(
-      wrapper.find('input[aria-label="New session label name"]').exists(),
-    ).toBe(true);
-
     await toggle.trigger("click");
     expect(picker.classes()).toContain("is-open");
     expect(toggle.attributes("aria-expanded")).toBe("true");
-    expect(wrapper.get("#tt-label-options").findAll("button")).toHaveLength(3);
+    expect(document.querySelectorAll('.label-picker-menu [role="option"]')).toHaveLength(3);
 
-    const labelButtons = wrapper.get("#tt-label-options").findAll("button");
-    await labelButtons[1].trigger("click");
+    const labelButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]'));
+    labelButtons[1].click();
     await flushPromises();
     expect(
-      wrapper.get("#tt-label-options").find("button.selected").exists(),
-    ).toBe(true);
-    expect(wrapper.get(".tracker-field-heading > span").text()).toBe(
-      "3 available · 1 selected",
-    );
+      document.querySelector('.label-picker-menu [role="option"][aria-selected="true"]'),
+    ).toBeTruthy();
+    expect(document.querySelectorAll('.label-picker-menu [role="option"][aria-selected="true"]')).toHaveLength(1);
     await toggle.trigger("click");
     expect(picker.classes()).not.toContain("is-open");
     expect(toggle.attributes("aria-expanded")).toBe("false");
-    const closedLabelButtons = wrapper
-      .get("#tt-label-options")
-      .findAll("button");
-    expect(closedLabelButtons).toHaveLength(1);
-    expect(closedLabelButtons.map((button) => button.text())).toEqual([
-      "Review×",
-    ]);
-    expect(closedLabelButtons[0].classes()).toContain("selected");
+    expect(document.querySelector(".label-picker-menu")).toBeNull();
 
     await toggle.trigger("click");
     document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
@@ -755,7 +743,7 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("suggests matching existing labels and selects them from the new-label input", async () => {
+  it("suggests matching existing labels and selects them from the picker", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [{ id: "path-1", name: "Focus path", status: "ACTIVE", color: "#e85d75" }];
@@ -775,32 +763,25 @@ describe("FloatingTimeTracker", () => {
     useTimerStore().pathId = "path-1";
     await nextTick();
 
-    const input = wrapper.get<HTMLInputElement>(
-      'input[aria-label="New session label name"]',
-    );
-    await input.setValue("vie");
-    expect(wrapper.find('[role="listbox"]').exists()).toBe(true);
-    expect(wrapper.get('[role="option"]').text()).toContain("Review");
-    expect(wrapper.get(".label-match").text()).toBe("vie");
-    expect(wrapper.get(".label-picker").attributes("style")).toContain(
-      "--label-match-color: #e85d75",
-    );
-    const styles = [...document.head.querySelectorAll("style")]
-      .map((style) => style.textContent || "")
-      .join("\n");
-    expect(styles).toContain("font-weight: 400");
+    await wrapper.get(".picker-chevron").trigger("click");
+    const input = document.querySelector<HTMLInputElement>('.label-picker-menu input[aria-label="Search session labels"]')!;
+    input.value = "vie";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+    expect(document.querySelector('.label-picker-menu [role="listbox"]')).not.toBeNull();
+    expect([...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+      .some((option) => option.textContent?.includes("Review"))).toBe(true);
 
-    await input.trigger("keydown", { key: "ArrowDown" });
-    await input.trigger("keydown", { key: "Enter" });
+    [...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+      .find((option) => option.textContent?.includes("Review"))?.click();
     await flushPromises();
 
-    expect(wrapper.get("#tt-label-options").text()).toContain("Review");
-    expect(input.element.value).toBe("");
-    expect(wrapper.find('[role="listbox"]').exists()).toBe(false);
+    expect([...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+      .some((option) => option.textContent?.includes("Review") && option.getAttribute("aria-selected") === "true")).toBe(true);
     wrapper.unmount();
   });
 
-  it("expands the labels picker when a collapsed label is selected or unselected", async () => {
+  it("allows selecting and unselecting a label from the picker", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
       if (path === "/labels?scope=TIME_ENTRY")
@@ -819,24 +800,15 @@ describe("FloatingTimeTracker", () => {
 
     const picker = wrapper.get(".label-picker");
     expect(picker.classes()).not.toContain("is-open");
-    expect(wrapper.findAll("#tt-label-options button")).toHaveLength(0);
-    await wrapper.get(".label-picker-toggle").trigger("click");
-    (
-      wrapper.get("#tt-label-options button").element as HTMLButtonElement
-    ).click();
+    await wrapper.get(".picker-chevron").trigger("click");
+    document.querySelector<HTMLButtonElement>('.label-picker-menu [role="option"]')?.click();
     await flushPromises();
     expect(picker.classes()).toContain("is-open");
 
-    await wrapper.get(".label-picker-toggle").trigger("click");
-    expect(picker.classes()).not.toContain("is-open");
-    (
-      wrapper.get("#tt-label-options button").element as HTMLButtonElement
-    ).click();
+    await wrapper.get(".picker-chevron").trigger("click");
+    document.querySelector<HTMLButtonElement>('.label-picker-menu [role="option"]')?.click();
     await flushPromises();
-    expect(picker.classes()).toContain("is-open");
-    expect(
-      wrapper.get("#tt-label-options button").attributes("aria-pressed"),
-    ).toBe("false");
+    expect(document.querySelectorAll('.label-picker-menu [role="option"][aria-selected="true"]')).toHaveLength(0);
     wrapper.unmount();
   });
 
@@ -855,7 +827,7 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     const picker = wrapper.get(".label-picker");
     expect(picker.classes()).not.toContain("is-open");
-    await picker.trigger("click");
+    await wrapper.get(".label-picker-control").trigger("click");
     expect(picker.classes()).toContain("is-open");
     wrapper.unmount();
   });
@@ -992,10 +964,13 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     await vi.advanceTimersByTimeAsync(2000);
 
-    await wrapper
-      .get('input[aria-label="New session label name"]')
-      .setValue("Focus");
-    await wrapper.get(".create-label").trigger("click");
+    await wrapper.get(".picker-chevron").trigger("click");
+    const createInput = document.querySelector<HTMLInputElement>('.label-picker-menu input[aria-label="Search session labels"]')!;
+    createInput.value = "Focus";
+    createInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+    [...document.querySelectorAll<HTMLButtonElement>('.label-picker-menu [role="option"]')]
+      .find((option) => option.id.endsWith("option-create"))?.click();
     await flushPromises();
     resolveStalePoll?.({
       id: "timer-1",
@@ -1012,7 +987,7 @@ describe("FloatingTimeTracker", () => {
         body: expect.stringContaining('"labelIds":["label-1"]'),
       }),
     );
-    expect(wrapper.get(".label-picker button").classes()).toContain("selected");
+    expect(wrapper.find(".label-picker .selected-chip").exists()).toBe(true);
     wrapper.unmount();
     vi.useRealTimers();
   });
@@ -1207,7 +1182,7 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
 
     expect(second.get(".tracker-path-select").text()).toContain("Study");
-    expect(second.get(".label-picker button").classes()).toContain("selected");
+    expect(second.find(".label-picker .selected-chip").exists()).toBe(true);
     expect(
       second.get('textarea[aria-label="Timer description"]').element,
     ).toHaveProperty("value", "Read chapter");

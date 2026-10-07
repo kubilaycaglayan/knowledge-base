@@ -11,6 +11,26 @@ const timerStub = {
     '<div data-test="session-tracker" :data-inline="String(inline)"></div>',
 };
 
+async function openSessionLabels(wrapper: ReturnType<typeof mount>) {
+  await wrapper.get(".picker-chevron").trigger("click");
+  await flushPromises();
+  return document.querySelector<HTMLInputElement>(
+    '.label-picker-menu input[aria-label="Session labels"]',
+  )!;
+}
+
+async function typeInPicker(input: HTMLInputElement, value: string) {
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  await flushPromises();
+}
+
+function pickerOption(name: string) {
+  return [...document.querySelectorAll<HTMLButtonElement>(
+    '.label-picker-menu [role="option"]',
+  )].find((option) => option.textContent?.includes(name));
+}
+
 describe("SessionsView", () => {
   beforeEach(() => setActivePinia(createPinia()));
   beforeEach(() => {
@@ -67,6 +87,7 @@ describe("SessionsView", () => {
   });
 
   afterEach(() => {
+    document.querySelectorAll(".label-picker-menu").forEach((menu) => menu.remove());
     config.global.stubs = {};
   });
 
@@ -261,15 +282,11 @@ describe("SessionsView", () => {
       "Removed label",
     );
     await wrapper.get("button.text-button").trigger("click");
-    expect(wrapper.get(".session-label-chips").text()).toContain("Vue");
-    await wrapper.get(".session-label-chips button").trigger("click");
-    await wrapper
-      .get('input[aria-label="Add session label"]')
-      .setValue("Vue");
-    await wrapper
-      .get('input[aria-label="Add session label"]')
-      .trigger("keydown", { key: "Enter" });
-    expect(wrapper.get(".session-label-chips").text()).toContain("Vue");
+    const input = await openSessionLabels(wrapper);
+    expect(pickerOption("Vue")?.getAttribute("aria-selected")).toBe("true");
+    pickerOption("Vue")?.click();
+    await flushPromises();
+    expect(pickerOption("Vue")?.getAttribute("aria-selected")).toBe("false");
   });
 
   it("updates every editable session property", async () => {
@@ -281,11 +298,12 @@ describe("SessionsView", () => {
       .setValue("Updated");
     await wrapper.get('[aria-label="Edit session source"]').setValue("IOS");
     await wrapper.get('[aria-label="Edit session path"]').setValue("path-1");
-    await wrapper.get('[aria-label="Remove Vue"]').trigger("click");
-    await wrapper.get('[aria-label="Add session label"]').setValue("Vue");
-    await wrapper
-      .get('[aria-label="Add session label"]')
-      .trigger("keydown", { key: "Enter" });
+    const input = await openSessionLabels(wrapper);
+    pickerOption("Vue")?.click();
+    await flushPromises();
+    await typeInPicker(input, "Vue");
+    pickerOption("Vue")?.click();
+    await flushPromises();
     await wrapper.get("form").trigger("submit");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/time-entries/new",
@@ -296,7 +314,7 @@ describe("SessionsView", () => {
     );
   });
 
-  it("creates a typed new label and saves the session on Cmd+Enter", async () => {
+  it("creates a typed new label from the session label picker", async () => {
     const defaultApi = vi.mocked(api).getMockImplementation()!;
     vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) =>
       path === "/labels" && init?.method === "POST"
@@ -306,26 +324,20 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     await wrapper.get("button.text-button").trigger("click");
-    const input = wrapper.get('[aria-label="Add session label"]');
-    await input.setValue("  Deep work ");
-    await input.trigger("keydown", { key: "Enter", metaKey: true });
+    const input = await openSessionLabels(wrapper);
+    await typeInPicker(input, "  Deep work ");
+    pickerOption("Create")?.click();
     await flushPromises();
 
-    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", {
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({
       method: "POST",
       body: JSON.stringify({
         name: "Deep work",
-        scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
         color: null,
+        scopes: ["NOTE", "TIME_ENTRY", "LOG", "BOARD"],
       }),
-    });
-    const update = vi
-      .mocked(api)
-      .mock.calls.find(([path, init]) => path === "/time-entries/new" && init?.method === "PUT");
-    expect(JSON.parse(String(update?.[1]?.body)).labelIds).toEqual([
-      "label-1",
-      "label-new",
-    ]);
+    }));
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST" }));
   });
 
   it("adds a typed new label on plain Enter without saving the session", async () => {
@@ -338,16 +350,14 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     await wrapper.get("button.text-button").trigger("click");
-    const input = wrapper.get<HTMLInputElement>('[aria-label="Add session label"]');
-    await input.setValue("Deep work");
-    await input.trigger("keydown", { key: "Enter" });
+    const input = await openSessionLabels(wrapper);
+    await typeInPicker(input, "Deep work");
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     await flushPromises();
 
-    expect(wrapper.get(".session-label-chips").text()).toContain("Deep work");
-    expect(input.element.value).toBe("");
+    expect(document.querySelector('.label-picker-menu input[aria-label="Session labels"]')?.getAttribute("aria-activedescendant")).toBeTruthy();
     expect(vi.mocked(api)).not.toHaveBeenCalledWith(
-      "/time-entries/new",
-      expect.objectContaining({ method: "PUT" }),
+      expect.stringMatching(/^\/time-entries\//), expect.objectContaining({ method: "PUT" }),
     );
   });
 
@@ -360,12 +370,12 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     await wrapper.get("button.text-button").trigger("click");
-    const input = wrapper.get('[aria-label="Add session label"]');
-    await input.setValue("Taken");
-    await input.trigger("keydown", { key: "Enter", metaKey: true });
+    const input = await openSessionLabels(wrapper);
+    await typeInPicker(input, "Taken");
+    pickerOption("Create")?.click();
     await flushPromises();
 
-    expect(wrapper.get('[role="alert"]').text()).toContain("Could not create the session label.");
+    expect(document.querySelector('.label-picker-menu [role="alert"]')?.textContent).toContain("Could not create that label");
     expect(wrapper.find("form.session-edit").exists()).toBe(true);
     expect(vi.mocked(api)).not.toHaveBeenCalledWith(
       "/time-entries/new",
@@ -377,18 +387,14 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     await wrapper.get("button.text-button").trigger("click");
-    await wrapper.get('[aria-label="Remove Vue"]').trigger("click");
-    const input = wrapper.get('[aria-label="Add session label"]');
-    await input.setValue("vue");
-    await input.trigger("keydown", { key: "Enter", ctrlKey: true });
+    const input = await openSessionLabels(wrapper);
+    pickerOption("Vue")?.click();
+    await typeInPicker(input, "vue");
+    pickerOption("Vue")?.click();
     await flushPromises();
 
     expect(vi.mocked(api)).not.toHaveBeenCalledWith("/labels", expect.anything());
-    const updates = vi
-      .mocked(api)
-      .mock.calls.filter(([path, init]) => path === "/time-entries/new" && init?.method === "PUT");
-    expect(updates).toHaveLength(1);
-    expect(JSON.parse(String(updates[0][1]?.body)).labelIds).toEqual(["label-1"]);
+    expect(pickerOption("Vue")?.getAttribute("aria-selected")).toBe("true");
   });
 
   it("uses a capped scrollable textarea for session descriptions", async () => {

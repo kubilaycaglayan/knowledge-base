@@ -239,8 +239,9 @@ describe("ReportsView", () => {
     useLabelsStore().labels = [{ id: "label-1", name: "Deep work", color: "#2878D5", scopes: ["TIME_ENTRY"] }] as never;
     await flushPromises();
     const chips = wrapper.findAll(".breakdown-control .v-chip");
-    expect(chips.map((chip) => chip.text())).toEqual(["Wander", "Deep work"]);
-    expect(chips.map((chip) => chip.attributes("aria-label"))).toEqual(["Selected path: Wander", "Selected label: Deep work"]);
+    expect(chips.map((chip) => chip.text())).toEqual(["Wander"]);
+    expect(chips.map((chip) => chip.attributes("aria-label"))).toEqual(["Selected path: Wander"]);
+    expect(wrapper.find(".breakdown-control .measure-row").text()).toContain("Deep work");
     await chips[0].find(".v-chip__close").trigger("click");
     await flushPromises();
     expect(new URL(window.location.href).searchParams.getAll("pathId")).toEqual([]);

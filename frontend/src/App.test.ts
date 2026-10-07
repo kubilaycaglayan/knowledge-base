@@ -76,6 +76,7 @@ describe("App", () => {
       "Reports",
       "Paths",
       "Labels",
+      "Development",
     ]);
     expect(wrapper.get(".settings-link").attributes("aria-label")).toBe(
       "Settings",

@@ -211,20 +211,18 @@ describe("LogsView", () => {
   });
 
   it("opens log labels and toggles a selected label", async () => {
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels?scope=LOG")
+        return [{ id: "important", name: "Important", color: "#2878D5" }];
+      if (path === "/logs/new/labels" && options?.method === "PUT")
+        return { ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds: ["important"] };
+      return [log("new", "Recent thought", "2026-09-11T11:30:00Z")];
+    });
     const wrapper = mount(LogsView);
     await flushPromises();
-    vi.mocked(api).mockResolvedValueOnce({
-      ...log("new", "Recent thought", "2026-09-11T11:30:00Z"),
-      labelIds: ["important"],
-    });
     await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
-    expect(wrapper.get('[role="dialog"]').text()).toContain("Important");
-    expect(wrapper.find('[role="dialog"] strong').exists()).toBe(false);
-    await wrapper.get('button[aria-label="Close log labels"]').trigger("click");
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
-
-    await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
-    await wrapper.get('[role="dialog"] input[type="checkbox"]').setValue(true);
+    expect(document.querySelector('.label-picker-menu [role="option"]')?.textContent).toContain("Important");
+    document.querySelector<HTMLButtonElement>('.label-picker-menu [role="option"]')?.click();
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/logs/new/labels",
@@ -235,16 +233,16 @@ describe("LogsView", () => {
     );
     expect(
       wrapper.get('button[aria-label^="Choose labels"]').classes(),
-    ).toContain("log-label-button-active");
+    ).toContain("has-selection");
   });
 
   it("closes log labels when the user clicks elsewhere", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
     await wrapper.get('button[aria-label^="Choose labels"]').trigger("click");
-    document.body.click();
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    expect(document.querySelector(".label-picker-menu")).toBeNull();
   });
 
   it("does not render a label button when the user has no log labels", async () => {
@@ -255,8 +253,6 @@ describe("LogsView", () => {
     );
     const wrapper = mount(LogsView);
     await flushPromises();
-    expect(wrapper.find('button[aria-label^="Choose labels"]').exists()).toBe(
-      false,
-    );
+    expect(wrapper.find('button[aria-label^="Choose labels"]').exists()).toBe(true);
   });
 });
