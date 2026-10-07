@@ -1,0 +1,12 @@
+[Unit]
+Description=Check for a verified Knowledge Base main commit every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+RandomizedDelaySec=30s
+Unit=knowledge-base-deploy-watch.service
+
+[Install]
+WantedBy=timers.target
