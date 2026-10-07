@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+service=knowledge-base-deploy-watch.service
+timer=knowledge-base-deploy-watch.timer
+state_file="${XDG_STATE_HOME:-$HOME/.local/state}/knowledge-base/deployed-main-sha"
+checkout="${DEPLOY_CHECKOUT:-$HOME/knowledge-base-production}"
+
+usage() {
+  cat <<'EOF'
+Usage: kb-deploy [watch|status|last|help]
+
+  watch   Follow automatic deployment and deploy-script logs (default)
+  status  Show the watcher timer and deployed/checked-out commits
+  last    Show the latest watcher and deployment log entries
+  help    Show this help
+EOF
+}
+
+case "${1:-watch}" in
+  watch|logs)
+    shift || true
+    exec journalctl --user -u "$service" -f "$@"
+    ;;
+  status)
+    systemctl --user status "$timer" --no-pager
+    printf '\nLast deployed commit: '
+    if [[ -r "$state_file" ]]; then cat "$state_file"; else printf 'none recorded\n'; fi
+    printf 'Production checkout: '
+    if git -C "$checkout" rev-parse --verify HEAD 2>/dev/null; then :; else printf 'unavailable (%s)\n' "$checkout"; fi
+    ;;
+  last)
+    count="${2:-100}"
+    exec journalctl --user -u "$service" -n "$count" --no-pager
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
