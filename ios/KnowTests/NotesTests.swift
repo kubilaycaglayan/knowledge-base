@@ -58,7 +58,8 @@ final class NotesTests: XCTestCase {
     XCTAssertEqual(stub.pinCalls, 1)
     XCTAssertTrue(model.notes[0].pinned)
 
-    XCTAssertTrue(await model.reorder(from: model.notes[1], before: model.notes[0]))
+    let reordered = await model.reorder(from: model.notes[1], before: model.notes[0])
+    XCTAssertTrue(reordered)
     XCTAssertEqual(stub.orderCalls, 1)
     XCTAssertEqual(model.notes[0].id, stub.otherID)
   }
