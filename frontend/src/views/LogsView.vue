@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { useLogsStore, type Log } from "../stores/logs";
 import PromptDialog from "../components/PromptDialog.vue";
+import LabelPicker from "../components/LabelPicker.vue";
 
 type Draft = { body: string; occurredAt: string };
 type LogLabel = { id: string; name: string; color?: string | null };
@@ -18,7 +19,6 @@ const error = ref("");
 const status = ref<"idle" | "saving" | "saved">("idle");
 const savingEdit = ref(false);
 const logLabels = ref<LogLabel[]>([]);
-const openLabelMenuId = ref("");
 const savingLabelsId = ref("");
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 const composerTextarea = ref<HTMLTextAreaElement | null>(null);
@@ -230,15 +230,9 @@ async function loadLogLabels() {
     error.value = "Unable to load log labels. Please try again.";
   }
 }
-function hasLabel(log: Log, labelId: string) {
-  return Boolean(log.labelIds?.includes(labelId));
-}
-async function toggleLogLabel(log: Log, labelId: string) {
+async function setLogLabels(log: Log, nextLabelIds: string[]) {
   if (savingLabelsId.value === log.id) return;
   savingLabelsId.value = log.id;
-  const nextLabelIds = hasLabel(log, labelId)
-    ? (log.labelIds || []).filter((id) => id !== labelId)
-    : [...(log.labelIds || []), labelId];
   try {
     const saved = await api<Log>(`/logs/${log.id}/labels`, {
       method: "PUT",
@@ -292,13 +286,6 @@ function startEdit(log: Log) {
 function cancelEdit() {
   editingId.value = "";
   draft.value = null;
-}
-function closeLabelMenuWhenClickingElsewhere(event: MouseEvent) {
-  if (
-    !(event.target instanceof Element) ||
-    !event.target.closest(".log-label-control")
-  )
-    openLabelMenuId.value = "";
 }
 async function removeLog(log: Log) {
   const confirmation = await promptDialog.value?.open(
@@ -367,7 +354,6 @@ onMounted(async () => {
   refreshTimer = setInterval(refreshVisibleList, 15000);
   clockTimer = setInterval(syncBrowserClock, 1000);
   window.addEventListener("focus", refreshVisibleList);
-  document.addEventListener("click", closeLabelMenuWhenClickingElsewhere);
 });
 watch(searchQuery, () => { currentPage.value = 1; });
 watch([searchQuery, currentPage], syncUrl);
@@ -376,7 +362,6 @@ onBeforeUnmount(() => {
   if (refreshTimer) clearInterval(refreshTimer);
   if (clockTimer) clearInterval(clockTimer);
   window.removeEventListener("focus", refreshVisibleList);
-  document.removeEventListener("click", closeLabelMenuWhenClickingElsewhere);
   window.removeEventListener("keydown", onGlobalKeydown);
   window.removeEventListener("popstate", readUrl);
 });
@@ -523,87 +508,11 @@ onBeforeUnmount(() => {
           <div class="log-actions">
             <div
               class="log-label-slot"
-              :class="{ 'log-label-slot-empty': !logLabels.length }"
-              :aria-hidden="logLabels.length ? undefined : 'true'"
             >
-              <template v-if="logLabels.length">
-                <div class="log-label-control">
-                  <button
-                    class="log-label-button ghost"
-                    :class="{
-                      'log-label-button-active': Boolean(log.labelIds?.length),
-                    }"
-                    type="button"
-                    :aria-label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`"
-                    :aria-expanded="openLabelMenuId === log.id"
-                    aria-haspopup="dialog"
-                    title="Choose log labels"
-                    @click="
-                      openLabelMenuId = openLabelMenuId === log.id ? '' : log.id
-                    "
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M17.63 5.84C17.27 5.33 16.68 5 16 5H5C3.9 5 3 5.9 3 7V17C3 18.1 3.9 19 5 19H16C16.68 19 17.27 18.67 17.63 18.16L22 12L17.63 5.84M16 17H5V7H16L19.55 12L16 17M7.5 9C6.67 9 6 9.67 6 10.5C6 11.33 6.67 12 7.5 12C8.33 12 9 11.33 9 10.5C9 9.67 8.33 9 7.5 9Z"
-                      />
-                    </svg>
-                  </button>
-                  <div
-                    v-if="openLabelMenuId === log.id"
-                    class="log-label-menu card"
-                    role="dialog"
-                    :aria-label="`Labels for log from ${formatTimestamp(log.occurredAt)}`"
-                    @keydown.esc="openLabelMenuId = ''"
-                  >
-                    <button
-                      class="log-label-menu-close ghost"
-                      type="button"
-                      aria-label="Close log labels"
-                      title="Close"
-                      @click="openLabelMenuId = ''"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        stroke-linecap="round"
-                        aria-hidden="true"
-                      >
-                        <path d="m6 6 12 12M18 6 6 18" />
-                      </svg>
-                    </button>
-                    <label
-                      v-for="label in logLabels"
-                      :key="label.id"
-                      class="log-label-option"
-                      ><input
-                        type="checkbox"
-                        :checked="hasLabel(log, label.id)"
-                        :disabled="savingLabelsId === log.id"
-                        @change="toggleLogLabel(log, label.id)"
-                      /><span
-                        class="label-swatch"
-                        :style="{
-                          backgroundColor:
-                            label.color || 'var(--workspace-accent)',
-                        }"
-                        aria-hidden="true"
-                      ></span
-                      ><span>{{ label.name }}</span></label
-                    >
-                  </div>
-                </div>
-                <span class="log-actions-separator" aria-hidden="true">|</span>
-              </template>
+              <div class="log-label-control">
+                <LabelPicker trigger-mode="icon" :model-value="log.labelIds || []" :labels="logLabels" :disabled="savingLabelsId === log.id" :label="`Choose labels for log from ${formatTimestamp(log.occurredAt)}`" @update:model-value="setLogLabels(log, $event)" @label-created="logLabels = [...logLabels, $event]" />
+              </div>
+              <span class="log-actions-separator" aria-hidden="true">|</span>
             </div>
             <button
               class="log-edit-button ghost"
@@ -799,6 +708,9 @@ onBeforeUnmount(() => {
 }
 .log-label-control {
   position: relative;
+  width: 36px;
+  min-width: 36px;
+  flex: 0 0 36px;
 }
 .log-label-slot {
   display: flex;
@@ -806,9 +718,6 @@ onBeforeUnmount(() => {
   gap: 2px;
   width: 38px;
   min-width: 38px;
-}
-.log-label-slot-empty {
-  visibility: hidden;
 }
 .log-label-menu {
   position: absolute;

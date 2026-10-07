@@ -11,6 +11,7 @@ import {
 import { useRoute, useRouter } from "vue-router";
 import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
+import LabelPicker from "../components/LabelPicker.vue";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
 import { Editor } from "@tiptap/core";
 import { api } from "../lib/api";
@@ -21,6 +22,7 @@ import {
   type Note as StoreNote,
   type NoteLabel as StoreNoteLabel,
 } from "../stores/notes";
+import { useLabelsStore } from "../stores/labels";
 
 type Note = StoreNote;
 type NoteLabel = StoreNoteLabel;
@@ -35,6 +37,7 @@ type NotePage = {
 const route = useRoute();
 const router = useRouter();
 const notesStore = useNotesStore();
+const labelsStore = useLabelsStore();
 const { notes, selected, existingLabels } = storeToRefs(notesStore);
 const query = ref("");
 const showArchived = ref(false);
@@ -46,9 +49,7 @@ const totalItems = ref(0);
 const loading = ref(false);
 const error = ref("");
 const title = ref("");
-const tagInput = ref("");
 const tags = ref<string[]>([]);
-const highlightedLabelIndex = ref(0);
 const status = ref<"saved" | "saving" | "error">("saved");
 const editorHost = ref<HTMLElement | null>(null);
 const editor = shallowRef<Editor | null>(null);
@@ -62,23 +63,13 @@ let saveQueued = false;
 
 const isEditor = computed(() => route.name === "note-editor");
 const defaultDocument = { type: "doc", content: [{ type: "paragraph" }] };
-const matchingLabels = computed(() => {
-  const query = tagInput.value.trim().toLocaleLowerCase();
-  if (!query) return [];
-  const selectedNames = new Set(
-    tags.value.map((tag) => tag.toLocaleLowerCase()),
-  );
-  return existingLabels.value
-    .filter(
-      (label) =>
-        !selectedNames.has(label.name.toLocaleLowerCase()) &&
-        label.name.toLocaleLowerCase().includes(query),
-    )
-    .slice(0, 8);
+const pickerLabels = computed(() => {
+  const byName = new Map<string, { id: string; name: string; color?: string | null }>();
+  for (const label of [...existingLabels.value, ...labelsStore.labels.filter((item) => item.scopes?.includes("NOTE"))]) byName.set(label.name.toLocaleLowerCase(), label);
+  for (const tag of tags.value) if (!byName.has(tag.toLocaleLowerCase())) byName.set(tag.toLocaleLowerCase(), { id: `note-tag:${tag.toLocaleLowerCase()}`, name: tag });
+  return [...byName.values()];
 });
-watch(tagInput, () => {
-  highlightedLabelIndex.value = 0;
-});
+const noteLabelIds = computed(() => tags.value.map((tag) => pickerLabels.value.find((label) => label.name.toLocaleLowerCase() === tag.toLocaleLowerCase())?.id).filter((id): id is string => Boolean(id)));
 const parseContent = (value?: string) => {
   if (!value) return defaultDocument;
   try {
@@ -258,56 +249,12 @@ async function newNote() {
     creating = false;
   }
 }
-function addTag() {
-  const value = tagInput.value.trim().replace(/^#/, "");
-  if (
-    value &&
-    !tags.value.some((tag) => tag.toLowerCase() === value.toLowerCase())
-  )
-    tags.value.push(value);
-  tagInput.value = "";
-  scheduleSave();
-}
-function chooseLabel(label: NoteLabel) {
-  if (!tags.value.some((tag) => tag.toLowerCase() === label.name.toLowerCase()))
-    tags.value.push(label.name);
-  tagInput.value = "";
-  scheduleSave();
-}
-function handleLabelKeydown(event: KeyboardEvent) {
-  if (event.isComposing || event.keyCode === 229) return;
-  if (event.key === "ArrowDown" && matchingLabels.value.length) {
-    event.preventDefault();
-    highlightedLabelIndex.value =
-      (highlightedLabelIndex.value + 1) % matchingLabels.value.length;
-  } else if (event.key === "ArrowUp" && matchingLabels.value.length) {
-    event.preventDefault();
-    highlightedLabelIndex.value =
-      (highlightedLabelIndex.value - 1 + matchingLabels.value.length) %
-      matchingLabels.value.length;
-  } else if (event.key === "Enter") {
-    event.preventDefault();
-    if (matchingLabels.value.length && highlightedLabelIndex.value >= 0) {
-      chooseLabel(matchingLabels.value[highlightedLabelIndex.value]);
-    } else {
-      addTag();
-    }
-  } else if (event.key === "Escape") {
-    event.preventDefault();
-    tagInput.value = "";
-  }
-}
-function handleLabelBeforeInput(event: InputEvent) {
-  if (
-    event.inputType !== "insertLineBreak" &&
-    event.inputType !== "insertParagraph"
-  )
-    return;
-  event.preventDefault();
-  addTag();
-}
 function removeTag(tag: string) {
   tags.value = tags.value.filter((value) => value !== tag);
+  scheduleSave();
+}
+function updateNoteLabels(ids: string[]) {
+  tags.value = [...new Set(ids.map((id) => pickerLabels.value.find((label) => label.id === id)?.name).filter((name): name is string => Boolean(name)))];
   scheduleSave();
 }
 function scheduleSave() {
@@ -662,50 +609,7 @@ onBeforeUnmount(() => {
           maxlength="240"
           @input="scheduleSave"
         />
-        <div class="tag-editor">
-          <!-- prettier-ignore -->
-          <span v-for="tag in tags" :key="tag" class="note-tag">{{ tag }}<button type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">×</button></span
-          ><input
-            v-model="tagInput"
-            name="note-label"
-            aria-label="Add label"
-            placeholder="Add label and press Enter…"
-            autocomplete="off"
-            enterkeyhint="done"
-            role="combobox"
-            aria-autocomplete="list"
-            :aria-expanded="matchingLabels.length > 0"
-            aria-controls="note-label-suggestions"
-            :aria-activedescendant="
-              matchingLabels.length
-                ? `note-label-suggestion-${matchingLabels[highlightedLabelIndex].id}`
-                : undefined
-            "
-            @beforeinput="handleLabelBeforeInput"
-            @keydown="handleLabelKeydown"
-          />
-          <div
-            v-if="matchingLabels.length"
-            id="note-label-suggestions"
-            class="label-suggestions"
-            role="listbox"
-            aria-label="Matching existing labels"
-          >
-            <button
-              v-for="(label, index) in matchingLabels"
-              :id="`note-label-suggestion-${label.id}`"
-              :key="label.id"
-              type="button"
-              role="option"
-              class="label-suggestion"
-              :class="{ active: index === highlightedLabelIndex }"
-              :aria-selected="index === highlightedLabelIndex"
-              @click="chooseLabel(label)"
-            >
-              {{ label.name }}
-            </button>
-          </div>
-        </div>
+        <div class="tag-editor"><LabelPicker :model-value="noteLabelIds" :labels="pickerLabels" label="Note labels" @update:model-value="updateNoteLabels" /></div>
       </div>
       <div ref="editorHost" class="rich-editor" :class="RICH_TEXT_CLASS">
         <EditorContent v-if="editor" :editor="editor" />

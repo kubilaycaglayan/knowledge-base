@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import PromptDialog from "./PromptDialog.vue";
 import TimerRunButton from "./TimerRunButton.vue";
+import LabelPicker from "./LabelPicker.vue";
 import { paletteColors } from "../lib/color-palette";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
@@ -12,12 +13,6 @@ import { useReportsStore } from "../stores/reports";
 import { useSessionsStore } from "../stores/sessions";
 
 type Path = { id: string; name: string; status: string; color?: string | null };
-type Label = {
-  id: string;
-  name: string;
-  color?: string | null;
-  scopes?: ("NOTE" | "CALENDAR" | "TIME_ENTRY")[];
-};
 type Timer = StoreTimer;
 
 const props = defineProps<{ inline?: boolean }>();
@@ -33,10 +28,8 @@ const { current: timer } = storeToRefs(timerStore);
 const {
   pathId,
   description,
-  newLabel,
   selectedLabelIds,
   recentPathIds,
-  busy,
   actionBusy,
   error,
   timerStartedAt,
@@ -46,20 +39,14 @@ const {
 const {
   toggleRun,
   updateTimer,
-  createLabel,
   rememberPath,
   pauseSession,
   resumeSession,
 } = timerStore;
-const open = ref(Boolean(props.inline)),
-  labelsOpen = ref(false);
-const activeLabelIndex = ref(-1);
+const open = ref(Boolean(props.inline));
 const trackerHost = ref<HTMLElement | null>(null);
 const promptHost = ref<HTMLElement | null>(null);
-const labelPicker = ref<HTMLElement | null>(null);
 const trackerViewportHeight = ref(0);
-const visibleSelectedLabelCount = ref(Number.POSITIVE_INFINITY);
-let labelResizeObserver: ResizeObserver | null = null;
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
 watch(
   () => timerStore.historyVersion,
@@ -81,41 +68,9 @@ async function runFromDescription(event: KeyboardEvent) {
 function togglePause() {
   return timer.value ? pauseSession() : resumeSession();
 }
-async function toggleLabel(id: string) {
-  labelsOpen.value = true;
-  await timerStore.toggleLabel(id);
-}
-function moveLabelHighlight(direction: 1 | -1) {
-  if (!matchingLabelOptions.value.length) return;
-  const next = activeLabelIndex.value + direction;
-  activeLabelIndex.value =
-    (next + matchingLabelOptions.value.length) %
-    matchingLabelOptions.value.length;
-}
-async function selectLabelSuggestion(event: KeyboardEvent) {
-  const index = activeLabelIndex.value < 0 ? 0 : activeLabelIndex.value;
-  const label = matchingLabelOptions.value[index];
-  if (!label) return;
-  event.preventDefault();
-  await chooseExistingLabel(label.id);
-}
-async function chooseExistingLabel(id: string) {
-  newLabel.value = "";
-  activeLabelIndex.value = -1;
-  await toggleLabel(id);
-}
-function highlightLabel(name: string) {
-  const query = newLabel.value.trim();
-  const start = name.toLocaleLowerCase().indexOf(query.toLocaleLowerCase());
-  if (!query || start < 0) return { before: name, match: "", after: "" };
-  return {
-    before: name.slice(0, start),
-    match: name.slice(start, start + query.length),
-    after: name.slice(start + query.length),
-  };
-}
-function labelNameParts(name: string) {
-  return highlightLabel(name);
+async function updateSelectedLabels(ids: string[]) {
+  selectedLabelIds.value = ids;
+  await updateTimer();
 }
 const activePaths = computed(() =>
   paths.value.filter((path) => path.status === "ACTIVE"),
@@ -140,12 +95,6 @@ const pathName = computed(
       (path) => path.id === (timer.value?.pathId || pathId.value),
     )?.name || "",
 );
-const pathColor = computed(
-  () =>
-    paths.value.find(
-      (path) => path.id === (timer.value?.pathId || pathId.value),
-    )?.color || undefined,
-);
 const selectedLabelNames = computed(() =>
   selectedLabelIds.value
     .map((id) => sessionLabels.value.find((label) => label.id === id)?.name)
@@ -161,56 +110,6 @@ const labelAvailabilitySummary = computed(
   () =>
     `${sessionLabels.value.length} available${selectedLabelCount.value ? ` · ${selectedLabelCount.value} selected` : ""}`,
 );
-const visibleLabelOptions = computed(() => {
-  if (labelsOpen.value) return sessionLabels.value;
-  const selected = sessionLabels.value.filter((label) =>
-    selectedLabelIds.value.includes(label.id),
-  );
-  return selected;
-});
-const hiddenSelectedLabelCount = computed(() =>
-  Math.max(0, selectedLabelCount.value - visibleSelectedLabelCount.value),
-);
-function fitSelectedLabelChips() {
-  const row = labelPicker.value?.querySelector<HTMLElement>(".label-picker-options");
-  if (!row || labelsOpen.value) return;
-  const selected = [...row.querySelectorAll<HTMLElement>("button.selected")];
-  selected.forEach((chip) => { chip.hidden = false; });
-  const badge = row.querySelector<HTMLElement>(".label-picker-more");
-  if (badge) badge.hidden = false;
-  const available = row.clientWidth;
-  let shown = selected.length;
-  while (shown > 0) {
-    const widths = selected.slice(0, shown).reduce((sum, chip) => sum + chip.getBoundingClientRect().width, 0);
-    const count = selected.length - shown;
-    if (badge) badge.textContent = `+${count}`;
-    if (widths + (count ? (badge?.getBoundingClientRect().width ?? 36) + 6 : 0) + Math.max(0, shown - 1) * 6 <= available) break;
-    shown--;
-  }
-  visibleSelectedLabelCount.value = shown;
-}
-function isVisibleSelectedChip(id: string) {
-  if (labelsOpen.value) return true;
-  const selected = sessionLabels.value.filter((label) => selectedLabelIds.value.includes(label.id));
-  return selected.findIndex((label) => label.id === id) < visibleSelectedLabelCount.value;
-}
-watch([selectedLabelCount, labelsOpen, sessionLabels], async () => {
-  await nextTick();
-  fitSelectedLabelChips();
-});
-const matchingLabelOptions = computed(() => {
-  const query = newLabel.value.trim().toLocaleLowerCase();
-  if (!query) return [];
-  return sessionLabels.value.filter(
-    (label) =>
-      !selectedLabelIds.value.includes(label.id) &&
-      label.name.toLocaleLowerCase().includes(query),
-  );
-});
-watch(matchingLabelOptions, (labels) => {
-  if (!labels.length) activeLabelIndex.value = -1;
-  else if (activeLabelIndex.value >= labels.length) activeLabelIndex.value = 0;
-});
 const timerSummary = computed(() =>
   selectedLabelIds.value.length
     ? `${selectedLabelIds.value.length} label${selectedLabelIds.value.length > 1 ? "s" : ""} selected`
@@ -233,20 +132,6 @@ function keepFocusedControlVisible(event: FocusEvent) {
     }),
   );
 }
-function closeLabelsOnOutside(event: PointerEvent) {
-  if (labelsOpen.value && !labelPicker.value?.contains(event.target as Node))
-    labelsOpen.value = false;
-}
-function dismissLabels() {
-  labelsOpen.value = false;
-  labelPicker.value
-    ?.querySelector<HTMLButtonElement>(".label-picker-toggle")
-    ?.focus();
-}
-function closeLabelsOnFocusOut(event: FocusEvent) {
-  if (!labelPicker.value?.contains(event.relatedTarget as Node | null))
-    labelsOpen.value = false;
-}
 function closeFloatingOnOutside(event: PointerEvent) {
   if (props.inline || !open.value) return;
   const target = event.target as Node;
@@ -254,6 +139,7 @@ function closeFloatingOnOutside(event: PointerEvent) {
   if (
     trackerHost.value?.contains(target) ||
     promptHost.value?.contains(target) ||
+    (target instanceof Element && target.closest(".label-picker-menu")) ||
     (target instanceof Element && target.closest(".tracker-path-menu"))
   )
     return;
@@ -316,17 +202,10 @@ onMounted(() => {
     "resize",
     updateTrackerViewportHeight,
   );
-  document.addEventListener("pointerdown", closeLabelsOnOutside);
   document.addEventListener("pointerdown", closeFloatingOnOutside);
-  if (labelPicker.value && typeof ResizeObserver !== "undefined") {
-    labelResizeObserver = new ResizeObserver(() => fitSelectedLabelChips());
-    labelResizeObserver.observe(labelPicker.value);
-  }
 });
 onUnmounted(() => {
-  labelResizeObserver?.disconnect();
   timerStore.release();
-  document.removeEventListener("pointerdown", closeLabelsOnOutside);
   document.removeEventListener("pointerdown", closeFloatingOnOutside);
   window.visualViewport?.removeEventListener(
     "resize",
@@ -450,7 +329,7 @@ onUnmounted(() => {
         </div>
         <div class="tracker-field">
           <div class="tracker-field-heading">
-            <label for="tt-labels">Labels</label
+            <span>Labels</span
             ><span>{{ labelAvailabilitySummary }}</span>
           </div>
           <v-select
@@ -467,124 +346,13 @@ onUnmounted(() => {
               }
             "
           />
-          <div
-            id="tt-labels"
-            ref="labelPicker"
-            class="label-picker"
-            :class="{ 'is-open': labelsOpen }"
-            :style="{ '--label-match-color': pathColor }"
-            role="group"
-            aria-label="Session labels"
-            @click="labelsOpen = true"
-            @keydown.esc.stop.prevent="dismissLabels"
-            @focusout="closeLabelsOnFocusOut"
-          >
-            <div id="tt-label-options" class="label-picker-options">
-              <button
-                v-for="label in visibleLabelOptions"
-                :key="label.id"
-                type="button"
-                :class="{ selected: selectedLabelIds.includes(label.id) }"
-                :hidden="!labelsOpen && !isVisibleSelectedChip(label.id)"
-                :aria-pressed="selectedLabelIds.includes(label.id)"
-                @click.stop="toggleLabel(label.id)"
-              >
-                <span class="label-name">
-                  <span>{{ labelNameParts(label.name).before }}</span
-                  ><span
-                    v-if="labelNameParts(label.name).match"
-                    class="label-name-match"
-                    >{{ labelNameParts(label.name).match }}</span
-                  ><span>{{ labelNameParts(label.name).after }}</span>
-                </span
-                ><span
-                  v-if="selectedLabelIds.includes(label.id)"
-                  aria-hidden="true"
-                  >×</span
-                >
-              </button>
-              <span
-                v-if="!labelsOpen && selectedLabelCount"
-                class="label-picker-more"
-                :hidden="!hiddenSelectedLabelCount"
-                :aria-label="`${hiddenSelectedLabelCount} more selected labels`"
-                >+{{ hiddenSelectedLabelCount }}</span
-              >
-            </div>
-            <button
-              v-if="sessionLabels.length"
-              class="label-picker-toggle"
-              type="button"
-              :aria-expanded="labelsOpen"
-              aria-haspopup="true"
-              aria-controls="tt-label-options"
-              @click.stop="labelsOpen = !labelsOpen"
-            >
-              <span class="sr-only">{{
-                labelsOpen ? "Close session labels" : "Open session labels"
-              }}</span
-              ><span
-                aria-hidden="true"
-                class="chevron"
-                :class="{ up: labelsOpen }"
-              ></span>
-            </button>
-          </div>
-          <div class="new-label-row">
-            <div class="new-label-combobox">
-              <input
-                v-model="newLabel"
-                name="tt-new-label"
-                aria-label="New session label name"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-controls="tt-label-suggestions"
-                :aria-expanded="String(matchingLabelOptions.length > 0)"
-                :aria-activedescendant="
-                  activeLabelIndex >= 0
-                    ? `tt-label-suggestion-${matchingLabelOptions[activeLabelIndex]?.id}`
-                    : undefined
-                "
-                autocomplete="off"
-                placeholder="Add or create label"
-                @focus="keepFocusedControlVisible"
-                @keydown.arrow-down.prevent="moveLabelHighlight(1)"
-                @keydown.arrow-up.prevent="moveLabelHighlight(-1)"
-                @keydown.enter="selectLabelSuggestion"
-                @keydown.escape="newLabel = ''; activeLabelIndex = -1"
-              />
-              <ul
-                v-if="matchingLabelOptions.length"
-                id="tt-label-suggestions"
-                class="label-suggestions"
-                role="listbox"
-                aria-label="Matching existing labels"
-              >
-                <li
-                  v-for="(label, index) in matchingLabelOptions"
-                  :id="`tt-label-suggestion-${label.id}`"
-                  :key="label.id"
-                  role="option"
-                  :aria-selected="activeLabelIndex === index"
-                  :class="{ active: activeLabelIndex === index }"
-                  @mousedown.prevent="chooseExistingLabel(label.id)"
-                >
-                  <span
-                    v-for="(part, partName) in highlightLabel(label.name)"
-                    :key="partName"
-                    :class="{ 'label-match': partName === 'match' }"
-                  >{{ part }}</span>
-                </li>
-              </ul>
-            </div><button
-              type="button"
-              class="create-label"
-              :disabled="!newLabel.trim() || busy"
-              @click="createLabel"
-            >
-              Add
-            </button>
-          </div>
+          <LabelPicker
+            :model-value="selectedLabelIds"
+            :labels="sessionLabels"
+            label="Search session labels"
+            density="compact"
+            @update:model-value="updateSelectedLabels"
+          />
         </div>
         <div class="tracker-field tracker-field-wide">
           <label for="tt-desc">Description</label
@@ -876,8 +644,7 @@ onUnmounted(() => {
   color: var(--workspace-muted);
   font-size: 12px;
 }
-.recent-paths button,
-.label-picker button {
+.recent-paths button {
   border: 0;
   border-radius: 4px;
   padding: 4px 8px;
@@ -892,110 +659,15 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.recent-paths button:hover,
-.label-picker button:hover {
+.recent-paths button:hover {
   background: var(--workspace-hover);
 }
-.recent-paths button.selected,
-.label-picker button.selected {
+.recent-paths button.selected {
   background: var(--workspace-accent);
   color: var(--workspace-on-accent);
 }
-.label-picker {
-  display: flex;
-  min-height: 36px;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--workspace-control-border);
-  border-radius: 6px;
-  padding: 6px;
-  background: var(--workspace-background);
-}
-.label-picker-options {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 6px;
-  max-height: 28px;
-  overflow: hidden;
-}
-.label-picker-more {
-  flex: 0 0 auto;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: var(--workspace-selected);
-  color: var(--workspace-selected-text);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.label-picker.is-open .label-picker-options {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  max-height: 180px;
-  flex-wrap: wrap;
-  overflow: auto;
-  align-content: flex-start;
-  padding: 8px;
-  border: 1px solid var(--workspace-control-border);
-  border-radius: 6px;
-  background: var(--workspace-background);
-  box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
-}
-.label-picker.is-open { position: relative; }
-.label-picker button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 4px;
-}
-.label-picker button span {
-  font-size: 15px;
-  line-height: 1;
-}
-.label-picker-toggle {
-  flex: 0 0 auto;
-  width: 28px;
-  min-height: 28px;
-  justify-content: center;
-  border: 0;
-  border-radius: 4px;
-  padding: 0;
-  background: transparent;
-  color: var(--workspace-muted);
-}
-.label-picker-toggle:hover {
-  background: var(--workspace-hover);
-  color: var(--workspace-text);
-}
-.label-picker-toggle .chevron {
-  width: 8px;
-  height: 8px;
-}
 .tracker-test-select {
   display: none;
-}
-.label-picker-options button {
-  min-width: 28px;
-  min-height: 28px;
-  max-width: 100%;
-}
-.label-picker-options button .label-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.label-name-match {
-  color: var(--label-match-color, var(--workspace-accent));
-  font-weight: 400;
 }
 .tracker-path-select :deep(.v-select__selection) {
   min-width: 0;
@@ -1005,73 +677,6 @@ onUnmounted(() => {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.new-label-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.new-label-combobox {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-}
-.new-label-row input {
-  width: 100%;
-  min-width: 0;
-}
-.label-suggestions {
-  position: absolute;
-  z-index: 3;
-  right: 0;
-  top: calc(100% + 5px);
-  left: 0;
-  max-height: 220px;
-  overflow-y: auto;
-  margin: 0;
-  padding: 4px;
-  border: 1px solid var(--workspace-control-border);
-  border-radius: 6px;
-  background: var(--workspace-surface);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--workspace-ink) 16%, transparent);
-  list-style: none;
-}
-.label-suggestions li {
-  min-height: 36px;
-  padding: 8px 9px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.label-suggestions li.active,
-.label-suggestions li:hover {
-  background: var(--workspace-hover);
-}
-.label-match {
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--workspace-accent) 28%, transparent);
-  color: var(--workspace-strong);
-  font-weight: 400;
-}
-.create-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  flex: 0 0 auto;
-  border: 0;
-  border-radius: 6px;
-  padding: 6px 10px;
-  background: var(--workspace-selected);
-  color: var(--workspace-selected-text);
-  font-size: 12px;
-}
-.create-label:hover {
-  background: var(--workspace-hover);
-}
-.create-label:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 .tracker-error {
   grid-column: 1 / -1;
@@ -1140,10 +745,6 @@ onUnmounted(() => {
   .tracker-field textarea {
     max-height: min(200px, 40dvh);
   }
-  .label-picker-toggle {
-    width: 44px;
-    min-height: 44px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .floating-tracker,
@@ -1153,14 +754,6 @@ onUnmounted(() => {
   }
 }
 @media (max-width: 640px) {
-  .label-picker-options {
-    max-height: 44px;
-  }
-  .label-picker-options button,
-  .create-label {
-    min-height: 44px;
-    min-width: 44px;
-  }
   .tracker-path-select :deep(.v-field) {
     height: 58px;
     min-height: 58px;

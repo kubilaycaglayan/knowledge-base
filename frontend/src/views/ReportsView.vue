@@ -23,6 +23,7 @@ import {
 import { api } from "../lib/api";
 import { paletteColors } from "../lib/color-palette";
 import ReportTabs from "../components/reports/ReportTabs.vue";
+import LabelPicker from "../components/LabelPicker.vue";
 import ReportDateRange, {
   type DateRange,
 } from "../components/reports/ReportDateRange.vue";
@@ -428,11 +429,6 @@ function removePath(pathId: string) {
     selectedPathIds.value.filter((selectedId) => selectedId !== pathId),
   );
 }
-function removeLabel(labelId: string) {
-  selectLabels(
-    selectedLabelIds.value.filter((selectedId) => selectedId !== labelId),
-  );
-}
 function selectAggregation(value: string) {
   aggregation.value = value as Aggregation;
   if (aggregation.value === "DAY") {
@@ -706,32 +702,7 @@ onBeforeUnmount(() =>
             </v-select>
           </div>
           <div class="breakdown-control">
-            <v-select
-              aria-label="Filter by labels"
-              :items="labelOptions"
-              item-title="name"
-              item-value="id"
-              :model-value="selectedLabelIds"
-              multiple
-              chips
-              closable-chips
-              clearable
-              density="compact"
-              variant="outlined"
-              hide-details
-              placeholder="Choose labels…"
-              @update:model-value="selectLabels"
-            >
-              <template #chip="{ item }">
-                <v-chip
-                  :text="item.name"
-                  closable
-                  close-icon="$close"
-                  :aria-label="`Selected label: ${item.name}`"
-                  @click:close="removeLabel(item.id)"
-                />
-              </template>
-            </v-select>
+            <LabelPicker :model-value="selectedLabelIds" :labels="labelOptions" label="Filter by labels" @update:model-value="selectLabels" />
           </div>
           <div class="breakdown-control">
             <span>Group by</span>

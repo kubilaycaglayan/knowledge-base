@@ -6,11 +6,8 @@ import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
-import {
-  defaultLabelScopes,
-  useLabelsStore,
-  type LabelScope,
-} from "../stores/labels";
+import LabelPicker from "../components/LabelPicker.vue";
+import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 import {
   useSessionsStore,
@@ -26,12 +23,6 @@ type Path = {
   description?: string;
   status: string;
   color?: string | null;
-};
-type Label = {
-  id: string;
-  name: string;
-  color?: string | null;
-  scopes: LabelScope[];
 };
 type Draft = {
   pathId: string;
@@ -54,8 +45,6 @@ const editingId = ref("");
 const draft = ref<Draft | null>(null);
 const error = ref("");
 const saving = ref(false);
-const labelQuery = ref("");
-const activeLabelIndex = ref(-1);
 const page = ref(1);
 const totalPages = ref(1);
 const totalSessions = ref(0);
@@ -74,17 +63,6 @@ const sessionLabelStyle = (labelId: string) => {
   return color ? { "--session-label-color": color } : undefined;
 };
 const sessionLabelIds = (session: Session) => session.labelIds || [];
-const availableLabels = sessionLabels;
-const matchingLabels = computed(() => {
-  const query = labelQuery.value.trim().toLocaleLowerCase();
-  return query && draft.value
-    ? availableLabels.value.filter(
-        (label) =>
-          !draft.value!.labelIds.includes(label.id) &&
-          label.name.toLocaleLowerCase().includes(query),
-      )
-    : [];
-});
 const localDateTime = (iso?: string) => {
   if (!iso) return "";
   const date = new Date(iso);
@@ -194,90 +172,11 @@ function beginEdit(session: Session) {
     description: session.description || "",
     source: session.source,
   };
-  labelQuery.value = "";
-  activeLabelIndex.value = -1;
   error.value = "";
 }
 function cancelEdit() {
   editingId.value = "";
   draft.value = null;
-  labelQuery.value = "";
-  activeLabelIndex.value = -1;
-}
-function addSessionLabel(event: Event) {
-  const select = event.target as HTMLSelectElement;
-  const labelId = select.value;
-  if (labelId && draft.value && !draft.value.labelIds.includes(labelId)) {
-    draft.value.labelIds = [...draft.value.labelIds, labelId];
-  }
-  select.value = "";
-}
-function chooseLabel(id: string) {
-  if (draft.value && !draft.value.labelIds.includes(id))
-    draft.value.labelIds = [...draft.value.labelIds, id];
-  labelQuery.value = "";
-  activeLabelIndex.value = -1;
-}
-function moveLabelHighlight(direction: 1 | -1) {
-  if (!matchingLabels.value.length) return;
-  activeLabelIndex.value =
-    (activeLabelIndex.value + direction + matchingLabels.value.length) %
-    matchingLabels.value.length;
-}
-function selectHighlightedLabel(event: KeyboardEvent) {
-  if (event.isComposing || !labelQuery.value.trim()) return;
-  event.preventDefault();
-  void commitLabelQuery();
-}
-// Attaches the typed label: the highlighted match, an exact name match, or a
-// newly created TIME_ENTRY label. Returns false when creating it failed.
-async function commitLabelQuery() {
-  const name = labelQuery.value.trim();
-  if (!name || !draft.value) return true;
-  const match =
-    matchingLabels.value[activeLabelIndex.value < 0 ? 0 : activeLabelIndex.value] ||
-    sessionLabels.value.find(
-      (label) => label.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
-    );
-  if (match) {
-    chooseLabel(match.id);
-    return true;
-  }
-  try {
-    const created = await api<Label>("/labels", {
-      method: "POST",
-      body: JSON.stringify({
-        name,
-        scopes: defaultLabelScopes(),
-        color: null,
-      }),
-    });
-    labelsStore.add({
-      ...created,
-      scopes: created.scopes || defaultLabelScopes(),
-    });
-    chooseLabel(created.id);
-    return true;
-  } catch {
-    error.value = "Could not create the session label.";
-    return false;
-  }
-}
-function highlightedLabel(name: string) {
-  const query = labelQuery.value.trim();
-  const start = name.toLocaleLowerCase().indexOf(query.toLocaleLowerCase());
-  return !query || start < 0
-    ? { before: name, match: "", after: "" }
-    : { before: name.slice(0, start), match: name.slice(start, start + query.length), after: name.slice(start + query.length) };
-}
-watch(matchingLabels, (labels) => {
-  if (!labels.length) activeLabelIndex.value = -1;
-  else if (activeLabelIndex.value >= labels.length) activeLabelIndex.value = 0;
-});
-function removeSessionLabel(labelId: string) {
-  if (draft.value) {
-    draft.value.labelIds = draft.value.labelIds.filter((id) => id !== labelId);
-  }
 }
 async function save(session: Session) {
   if (!draft.value || !draft.value.startedAt || !draft.value.endedAt) {
@@ -287,7 +186,6 @@ async function save(session: Session) {
   if (saving.value) return;
   saving.value = true;
   try {
-    if (!(await commitLabelQuery())) return;
     await api(`/time-entries/${session.id}`, {
       method: "PUT",
       body: JSON.stringify({
@@ -489,32 +387,7 @@ onMounted(load);
                 </label>
                 <fieldset class="session-edit-labels">
                   <legend>Labels</legend>
-                  <div class="session-label-picker">
-                    <div
-                      v-if="draft.labelIds.length"
-                      class="session-label-chips"
-                      aria-label="Selected session labels"
-                    >
-                      <button
-                        v-for="labelId in draft.labelIds"
-                        :key="labelId"
-                        type="button"
-                        :aria-label="`Remove ${labelFor(labelId)?.name || 'removed label'}`"
-                        @click="removeSessionLabel(labelId)"
-                      >
-                        {{ labelFor(labelId)?.name || "Removed label" }}
-                        <span aria-hidden="true">×</span>
-                      </button>
-                    </div>
-                    <div class="session-label-combobox">
-                      <input v-model="labelQuery" name="session-labels" type="text" autocomplete="off" aria-label="Add session label" role="combobox" aria-autocomplete="list" aria-controls="session-label-suggestions" :aria-expanded="String(matchingLabels.length > 0)" placeholder="Add a label…" @keydown.arrow-down.prevent="moveLabelHighlight(1)" @keydown.arrow-up.prevent="moveLabelHighlight(-1)" @keydown.enter.exact="selectHighlightedLabel" @keydown.escape="labelQuery = ''; activeLabelIndex = -1" />
-                      <ul v-if="matchingLabels.length" id="session-label-suggestions" class="session-label-suggestions" role="listbox" aria-label="Matching labels">
-                        <li v-for="(label, index) in matchingLabels" :key="label.id" role="option" :aria-selected="activeLabelIndex === index" :class="{ active: activeLabelIndex === index }" @mousedown.prevent="chooseLabel(label.id)">
-                          <span v-for="(part, partName) in highlightedLabel(label.name)" :key="partName" :class="{ 'session-label-match': partName === 'match' }">{{ part }}</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
+                  <LabelPicker v-if="draft" v-model="draft.labelIds" :labels="sessionLabels" label="Session labels" />
                 </fieldset>
                 <label
                   >Source<select
