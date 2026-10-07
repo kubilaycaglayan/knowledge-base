@@ -12,6 +12,12 @@ deploys; successful deployments are recorded so an unchanged commit is not
 deployed again. The normal preflight, health checks, WebSocket probe, image
 pruning, and production volumes remain in effect.
 
+Use the `kb-deploy` helper on the production host to inspect the watcher.
+Running `kb-deploy` starts a live view of watcher and deploy-script logs;
+`kb-deploy status` shows the timer and deployed commit, and `kb-deploy last`
+shows recent log entries. Add a number to `last` to choose how many entries to
+show, for example `kb-deploy last 200`.
+
 The production checkout can be the `main` branch in a separate worktree. To
 configure it without touching an interactive checkout, create a `main`
 worktree and share the existing production backups directory and environment
