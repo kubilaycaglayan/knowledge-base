@@ -13,6 +13,12 @@ Knowledge Base is a production-shaped monorepo for a personal knowledge and acti
 - `deployment/`, `docker-compose.yml`: Ubuntu deployment, Caddy HTTPS, backup, and persistent PostgreSQL configuration.
 - `scripts/run-smoke-tests.sh`: deployed-shaped end-to-end verification.
 
+## Git workflow
+
+- Keep the local `main` branch up to date with its remote by fetching and fast-forwarding it before starting new work.
+- Do all task work on a dedicated branch created from the up-to-date `main`; use a descriptive prefix such as `feature/`, `fix/`, or `chore/`.
+- Do not make task changes directly on `main`. Keep unrelated work on separate branches.
+
 ## Required checks
 
 Run the relevant checks before handing off changes:
