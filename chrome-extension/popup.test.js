@@ -28,6 +28,7 @@ class Element {
     this.attributes = {};
     this.classes = new Set();
     this.style = { height: "", removeProperty(name) { this[name] = ""; } };
+    this.clientWidth = id === "selected-labels" ? 320 : 0;
     this.classList = {
       toggle: (name, enabled) => {
         if (enabled) this.classes.add(name);
@@ -66,6 +67,12 @@ class Element {
   querySelector() {
     return null;
   }
+  querySelectorAll(selector) {
+    if (selector === ".label-chip")
+      return this.children.filter((child) => child.className?.split(/\s+/).includes("label-chip"));
+    return [];
+  }
+  getBoundingClientRect() { return { width: 48 }; }
   contains(target) {
     return (
       target === this || this.children.some((child) => child.contains?.(target))
@@ -336,12 +343,13 @@ test("acceptance L3–L15/L19–L20: multi-selection, counts, priority, expansio
       name,
     })),
   });
-  const chips = () => popup.elements["selected-labels"].children;
+  const chips = () => popup.elements["selected-labels"].querySelectorAll(".label-chip");
   const toggle = popup.elements["labels-toggle"];
   const picker = popup.elements["labels-picker"];
   const summary = () => popup.elements["labels-summary"].textContent;
   assert.equal(summary(), "3 available");
   assert.equal(toggle["aria-expanded"], "false");
+  toggle.onclick();
   await chips()[1].onclick();
   await chips()[2].onclick();
   assert.equal(toggle["aria-expanded"], "true");
@@ -353,9 +361,10 @@ test("acceptance L3–L15/L19–L20: multi-selection, counts, priority, expansio
   toggle.onclick();
   assert.deepEqual(
     chips().map((chip) => chip.children[0].textContent),
-    ["Second", "Third", "First"],
+    ["Second", "Third"],
   );
-  await chips()[0].onclick();
+  toggle.onclick();
+  await chips()[1].onclick();
   assert.equal(toggle["aria-expanded"], "true");
   assert.deepEqual(
     chips().map((chip) => chip["aria-pressed"]),
@@ -365,6 +374,7 @@ test("acceptance L3–L15/L19–L20: multi-selection, counts, priority, expansio
   picker.onkeydown({ key: "Escape", preventDefault() {} });
   assert.equal(toggle["aria-expanded"], "false");
   assert.equal(toggle.focused, true);
+  assert.deepEqual(chips().map((chip) => chip.children[0].textContent), ["Third"]);
   toggle.onclick();
   popup.state.pointerdown({ target: picker });
   assert.equal(toggle["aria-expanded"], "true");
@@ -375,10 +385,11 @@ test("acceptance L3–L15/L19–L20: multi-selection, counts, priority, expansio
   assert.equal(toggle["aria-expanded"], "false");
 });
 
-for (const open of [false, true])
+  for (const open of [false, true])
   test(`acceptance L16–L17: creates a label with picker open=${open}`, async () => {
     const popup = await readyPopup({ token: "token" });
-    await popup.elements["selected-labels"].children[0].onclick();
+    popup.elements["labels-toggle"].onclick();
+    await popup.elements["selected-labels"].querySelectorAll(".label-chip")[0].onclick();
     if (!open) popup.elements["labels-toggle"].onclick();
     popup.elements["new-label"].value = "  Review  ";
     await popup.elements["create-label"].onclick();
@@ -396,7 +407,7 @@ for (const open of [false, true])
       "2 available · 2 selected",
     );
     assert.ok(
-      popup.elements["selected-labels"].children.every(
+      popup.elements["selected-labels"].querySelectorAll(".label-chip").every(
         (chip) => chip["aria-pressed"] === "true",
       ),
     );
@@ -513,7 +524,14 @@ test("loads only labels scoped for time-entry sessions", async () => {
     false,
   );
   assert.deepEqual(
-    popup.elements["selected-labels"].children.map(
+    popup.elements["selected-labels"].querySelectorAll(".label-chip").map(
+      (chip) => chip.children[0].textContent,
+    ),
+    [],
+  );
+  popup.elements["labels-toggle"].onclick();
+  assert.deepEqual(
+    popup.elements["selected-labels"].querySelectorAll(".label-chip").map(
       (chip) => chip.children[0].textContent,
     ),
     ["Algorithms"],
@@ -548,7 +566,8 @@ test("starts a server timer with selected path, labels, description, and extensi
   await flush();
   await flush();
   popup.elements.path.value = "path-1";
-  await popup.elements["selected-labels"].children[0].onclick();
+  popup.elements["labels-toggle"].onclick();
+  await popup.elements["selected-labels"].querySelectorAll(".label-chip")[0].onclick();
   popup.elements.description.value = "Read algorithms";
   await popup.elements.toggle.onclick();
 
@@ -633,7 +652,7 @@ test("removes a label from the timer when its chip close button is clicked", asy
   await flush();
   await flush();
   await flush();
-  await popup.elements["selected-labels"].children[0].onclick();
+  await popup.elements["selected-labels"].querySelectorAll(".label-chip")[0].onclick();
 
   const update = popup.state.calls.find(
     ({ path, options }) =>
@@ -641,10 +660,8 @@ test("removes a label from the timer when its chip close button is clicked", asy
   );
   assert.ok(update);
   assert.deepEqual(JSON.parse(update.options.body).labelIds, []);
-  assert.equal(
-    popup.elements["selected-labels"].children[0]["aria-pressed"],
-    "false",
-  );
+  assert.deepEqual(popup.elements["selected-labels"].querySelectorAll(".label-chip"), []);
+  assert.equal(popup.elements["labels-summary"].textContent, "1 available");
 });
 
 test("stops the server timer and clears its local active state", async () => {
@@ -671,7 +688,7 @@ test("stops the server timer and clears its local active state", async () => {
   assert.equal(popup.elements.toggle.textContent, "▶");
   assert.equal(popup.elements.path.value, "");
   assert.equal(
-    popup.elements["selected-labels"].children.every(
+    popup.elements["selected-labels"].querySelectorAll(".label-chip").every(
       (chip) => chip["aria-pressed"] === "false",
     ),
     true,

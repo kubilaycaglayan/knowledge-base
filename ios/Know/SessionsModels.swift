@@ -51,10 +51,11 @@ struct SessionDraft: Equatable {
   }
 
   func body(completed: Bool) throws -> Data {
+    let normalizedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
     var fields: [String: Any] = [
       "pathId": pathId?.uuidString as Any? ?? NSNull(),
       "labelIds": labelIds.map(\.uuidString),
-      "description": description.isEmpty ? NSNull() : description as Any,
+      "description": normalizedDescription.isEmpty ? NSNull() : normalizedDescription as Any,
       "startedAt": SessionFormatting.iso(startedAt),
     ]
     if completed {
