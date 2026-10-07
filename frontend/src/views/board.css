@@ -3,6 +3,12 @@
    page reserves room below its last row (the archive footer) to keep it tappable. */
 /* Keep the board title and controls aligned with the shared shell content. */
 .board-page { position:relative; box-sizing:border-box; width:100%; max-width:1200px; margin:0 auto; padding:0 0 7.5rem; }
+/* Kanban columns own vertical scrolling, so keep the board shell in the
+   viewport and let the measured columns use the remaining height. */
+:global(.dashboard-shell:has(.board-page:not(.board-page-gantt))) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
+:global(.dashboard-shell:has(.board-page:not(.board-page-gantt)) > header) { flex:0 0 auto; width:100%; }
+:global(.dashboard-shell:has(.board-page:not(.board-page-gantt)) > main) { flex:1 1 auto; width:100%; max-width:none; min-height:0; padding-bottom:0; overflow:hidden; }
+.board-page:not(.board-page-gantt) { height:100%; min-height:0; padding-bottom:0; }
 /* In Gantt mode, keep the shell and board controls in place while the timeline
    owns both scroll axes. */
 :global(.dashboard-shell:has(.board-page-gantt)) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
