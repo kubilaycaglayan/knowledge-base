@@ -81,8 +81,9 @@ describe("LabelsView", () => {
     ).toHaveLength(15);
     expect(wrapper.get('button[aria-label="Edit Study"]').find("svg").exists()).toBe(true);
     expect(wrapper.get('button[aria-label="Remove Study"]').find("svg").exists()).toBe(true);
+    await wrapper.get(".label-create-dialog button.text-button").trigger("click");
     await wrapper.get('button[aria-label="Edit Study"]').trigger("click");
-    expect(wrapper.findAll(".label-edit-colors button")).toHaveLength(15);
+    expect(wrapper.findAll(".label-edit-dialog .color-palette button")).toHaveLength(15);
   });
 
   it("reuses cached labels when the view is mounted again", async () => {
@@ -211,16 +212,16 @@ describe("LabelsView", () => {
       .get('button[aria-label="Edit Study"]')
       .trigger("click");
     await wrapper
-      .get('input[aria-label="Edit Study name"]')
+      .get('.label-edit-dialog input[name="label-name"]')
       .setValue("Study time");
-    expect(wrapper.get(".scope-editor legend").text()).toBe("Don’t show in");
+    expect(wrapper.get(".label-edit-dialog .scope-selector legend").text()).toBe("Don’t show in");
     expect(
-      wrapper.get(".scope-editor label:nth-of-type(2) input").element,
+      wrapper.get(".label-edit-dialog .scope-selector label:nth-of-type(2) input").element,
     ).toHaveProperty("checked", true);
     await wrapper
-      .get(".scope-editor label:nth-of-type(1) input")
+      .get(".label-edit-dialog .scope-selector label:nth-of-type(1) input")
       .setValue(true);
-    await wrapper.get("button.compact").trigger("click");
+    await wrapper.get(".label-edit-dialog form").trigger("submit");
     await flushPromises();
     expect(wrapper.text()).toContain("Study time");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
