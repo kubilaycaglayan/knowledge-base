@@ -1,5 +1,40 @@
 # Deployment
 
+## Automatic production deployment
+
+`scripts/watch-main-and-deploy.sh` checks the public GitHub API every five
+minutes for a successful `verify` run on the current `main` commit. It fetches
+and checks out that exact commit in a dedicated production checkout, then runs
+`scripts/production-web-deploy.sh` on this host. This works with the host's
+outbound-only Cloudflare Tunnel setup and avoids exposing a self-hosted runner
+to workflows from this public repository. A local lock prevents overlapping
+deploys; successful deployments are recorded so an unchanged commit is not
+deployed again. The normal preflight, health checks, WebSocket probe, image
+pruning, and production volumes remain in effect.
+
+The production checkout can be the `main` branch in a separate worktree. To
+configure it without touching an interactive checkout, create a `main`
+worktree and share the existing production backups directory and environment
+file:
+
+```bash
+git worktree add /home/ubuntu/knowledge-base-production main
+ln -s /home/ubuntu/dev/vibe/knowledge-base/backups /home/ubuntu/knowledge-base-production/backups
+install -m 600 /home/ubuntu/dev/vibe/knowledge-base/.env.production /home/ubuntu/knowledge-base-production/.env.production
+install -D -m 700 scripts/watch-main-and-deploy.sh /home/ubuntu/.local/bin/knowledge-base-watch-main
+mkdir -p ~/.config/systemd/user
+cp /home/ubuntu/knowledge-base-production/deployment/systemd/knowledge-base-deploy-watch.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now knowledge-base-deploy-watch.timer
+sudo loginctl enable-linger ubuntu
+```
+
+The linger setting keeps the user timer running after logout and across reboots.
+No GitHub secrets, inbound SSH rule, or production credential is needed in
+GitHub. Check the watcher with `systemctl --user status
+knowledge-base-deploy-watch.timer` and `journalctl --user -u
+knowledge-base-deploy-watch.service`.
+
 The Cloudflare production proxy CSP permits the Cloudflare Web Analytics beacon and its telemetry endpoint.
 
 Sign-in survives API/container recreation: tokens are signed with the persistent
