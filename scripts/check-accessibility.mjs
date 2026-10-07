@@ -48,8 +48,8 @@ const required = [
   ],
   [
     "frontend/src/components/FloatingTimeTracker.vue",
-    'aria-label="New session label name"',
-    "session label creation name",
+    'label="Search session labels"',
+    "session label picker search name",
   ],
   [
     "frontend/src/views/ImportsView.vue",
