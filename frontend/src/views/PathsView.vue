@@ -8,6 +8,7 @@ import PromptDialog from "../components/PromptDialog.vue";
 import MergePathDialog from "../components/MergePathDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
 import PathTextColorControl from "../components/PathTextColorControl.vue";
+import LabelPicker from "../components/LabelPicker.vue";
 import { paletteColors } from "../lib/color-palette";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
@@ -306,26 +307,6 @@ async function editSession(event: Activity) {
 function closeSessionEdit() {
   editingSession.value = null;
   sessionDraft.value = null;
-}
-function addSessionLabel(event: Event) {
-  const select = event.target as HTMLSelectElement;
-  if (
-    sessionDraft.value &&
-    select.value &&
-    !sessionDraft.value.labelIds.includes(select.value)
-  ) {
-    sessionDraft.value.labelIds = [
-      ...sessionDraft.value.labelIds,
-      select.value,
-    ];
-  }
-  select.value = "";
-}
-function removeSessionLabel(labelId: string) {
-  if (sessionDraft.value)
-    sessionDraft.value.labelIds = sessionDraft.value.labelIds.filter(
-      (id) => id !== labelId,
-    );
 }
 async function saveSession() {
   const event = editingSession.value;
@@ -925,40 +906,7 @@ onBeforeUnmount(() => {
             </label>
             <fieldset class="session-edit-labels">
               <legend>Labels</legend>
-              <div class="session-label-picker">
-                <div
-                  v-if="sessionDraft.labelIds.length"
-                  class="session-label-chips"
-                  aria-label="Selected session labels"
-                >
-                  <button
-                    v-for="labelId in sessionDraft.labelIds"
-                    :key="labelId"
-                    type="button"
-                    :aria-label="`Remove ${labelFor(labelId)?.name || 'removed label'}`"
-                    @click="removeSessionLabel(labelId)"
-                  >
-                    {{ labelFor(labelId)?.name || "Removed label" }}
-                    <span aria-hidden="true">×</span>
-                  </button>
-                </div>
-                <select
-                  name="history-session-labels"
-                  aria-label="Add session label"
-                  @change="addSessionLabel"
-                >
-                  <option value="">Add a label…</option>
-                  <option
-                    v-for="label in sessionLabels.filter(
-                      (label) => !sessionDraft.labelIds.includes(label.id),
-                    )"
-                    :key="label.id"
-                    :value="label.id"
-                  >
-                    {{ label.name }}
-                  </option>
-                </select>
-              </div>
+              <LabelPicker v-if="sessionDraft" v-model="sessionDraft.labelIds" :labels="sessionLabels" label="Session labels" />
             </fieldset>
             <label
               >Source<select
