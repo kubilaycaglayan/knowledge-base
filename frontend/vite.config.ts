@@ -23,6 +23,7 @@ export default defineConfig({
       "scripts/board.acceptance.test.mjs",
       "scripts/nav-shell.acceptance.test.mjs",
       "scripts/board.real-stack.acceptance.test.mjs",
+      "scripts/label-history.acceptance.test.mjs",
       "scripts/timer-websocket.real-stack.acceptance.test.mjs",
     ],
     server: { deps: { inline: ["vuetify"] } },
