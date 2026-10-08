@@ -1053,7 +1053,7 @@ final class KnowUITests: XCTestCase {
     // The fixture saves at once, so the brief "not saved yet" state is covered by
     // NotesTests; here the typed line must end up with its own saved time.
     let lineLabels = {
-      app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Line "))
+      self.app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Line "))
         .allElementsBoundByIndex.map(\.label)
     }
     let saved = app.descendants(matching: .any).matching(
