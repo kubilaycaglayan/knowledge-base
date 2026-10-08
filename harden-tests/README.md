@@ -4,19 +4,19 @@ This directory is the working index for test coverage, planned gaps, and durable
 
 ## Test map
 
-| Area | Entry point | What it covers |
-| --- | --- | --- |
-| Backend | Dockerized `gradle test` in `scripts/test-run-all.sh` | Spring services, API integration, H2 behavior, and PostgreSQL-only search when configured |
-| Web | `npm test`, `npm run build` in `frontend/` | Vue components, stores, API client, and view behavior |
-| Browser acceptance | `npm run test:board`, `test:nav`, `test:tracker` | Browser workflows against deterministic fixtures |
-| Real-stack browser | `scripts/test-run-all.sh` | Board/card, timer WebSocket, and note/card line-history journeys against disposable PostgreSQL/API/proxy/web containers |
-| Extension | `npm test` in `chrome-extension/` | Manifest V3 client and timer behavior |
-| Contracts | `node scripts/check-accessibility.mjs`, `check-security.mjs`, `check-smoke-cleanup.mjs`, `./scripts/check-image-prune.sh` | Accessibility, security, and scoped cleanup invariants |
-| Deployment smoke | `scripts/run-smoke-tests.sh` | Deployed-shaped HTTP/HTTPS, database, timer, and backup/restore checks |
+| Area | CI workflow jobs | Local/opt-in/platform-limited | What it covers and boundary |
+| --- | --- | --- | --- |
+| Backend | `backend` job runs Dockerized `gradle test` | `scripts/test-run-all.sh`; PostgreSQL search test is opt-in with explicit disposable DB config | Spring services and H2 integration; ordinary CI does not establish PostgreSQL-specific behavior. |
+| Web | `web-and-extension` job runs `npm ci`, `npm test`, and build | `scripts/test-run-all.sh` also invokes tracker/board/nav fixture suites | Vue components, stores, API client, and views; fixture coverage is distinct from real-stack browser coverage. |
+| Browser acceptance | Timer WebSocket and line-history real-stack suites run in dedicated CI jobs | Board/nav/tracker and selectable desktop/mobile/WebKit profiles are available locally | CI Chromium jobs do not prove the complete desktop/mobile profile matrix. See separate [run records](runs/README.md). |
+| Extension | `web-and-extension` job runs extension tests/build and permission checks | Local extension `npm test` | Manifest V3 client and timer behavior. |
+| Contracts | Accessibility/security/cleanup checks run in `web-and-extension` | Local `scripts/test-run-all.sh`; image-prune check is also run there | Accessibility, security, and scoped cleanup invariants; static checks do not prove live edge policy. |
+| Deployment smoke | `smoke` job runs full-stack and backup/restore smoke | `scripts/run-smoke-tests.sh` supports narrower local flags | Deployed-shaped HTTP/HTTPS, database, timer, and backup/restore checks. |
+| iOS | None active; both historical workflow jobs are hard-disabled | macOS/Xcode/XcodeGen simulator validation is platform-limited; Linux note conversion check is Foundation-only | Do not claim SwiftUI/simulator coverage from Linux checks. |
 
 The open work is split into seven milestones: real-stack search/deep links,
 browser failure-state coverage and flake triage, PostgreSQL/time/volume behavior,
-HTTP and edge rate-limit verification, performance baselines, an active iOS
+HTTP and edge rate-limit verification, performance baselines, a supported iOS
 validation path, and run-evidence/plan hygiene. The milestone files define
 tasks and acceptance evidence; they do not indicate that implementation has
 already been completed. Existing global-search API and fixture coverage is

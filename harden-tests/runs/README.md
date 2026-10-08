@@ -15,11 +15,16 @@ and machine preflight commands.
 # E2E run: <profile>
 
 - Date (UTC):
+- Start/end time (UTC):
 - Commit:
+- Exact command and relevant environment overrides (redact generated secrets):
+- Exit status:
 - Compose project:
+- Stack retained? reuse window and project-scoped cleanup command:
 - Images (tag and immutable ID):
+- Database engine/version and migration result (for stack-backed runs):
 - Browser engine/version and profile (viewport, user agent, touch, scale factor):
-- Environment (OS, Node, Playwright):
+- Environment (OS/version/architecture, Node, Playwright, Docker, CPU/memory/disk limits):
 - Suite outcomes (passed/failed/skipped):
 - Failed cases:
 - Artifacts/logs:
@@ -37,6 +42,12 @@ and machine preflight commands.
 
 - None yet.
 ```
+
+Capture actual values while the run is active. If an older transcript lacks a
+value, write `Not recorded` and retain it as unknown; never copy metadata from a
+nearby run. Link artifacts at a location reviewers can access and record their
+retention or expiry. Local `/tmp` paths are provenance notes only until the
+artifact is copied to durable ignored storage or CI artifacts.
 
 For a HARD-05 performance report, add these sections beneath the common run
 metadata. Keep each desktop Chromium, mobile-size Chromium, and emulated iPhone
