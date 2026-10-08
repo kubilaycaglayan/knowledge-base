@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Search/deep-link acceptance against an isolated disposable stack.
 project="knowledge-base-search-smoke-${BASHPID:-$$}-$(date +%s%N)"
+started_at="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 password="Search-e2e-$(date +%s%N)"
 email="search-e2e-$(date +%s%N)@example.com"
 port="${SEARCH_E2E_PROXY_PORT:-26280}"
@@ -14,9 +15,11 @@ cleanup() {
     "${compose[@]}" logs --no-color > "harden-tests/artifacts/${project}-server.log" 2>&1 || true
   fi
   "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
+  echo "Search E2E finished at: $(date -u '+%Y-%m-%d %H:%M:%S UTC') (exit $status)"
 }
 trap cleanup EXIT
 echo "Search E2E disposable Compose project: $project"
+echo "Search E2E started at: $started_at"
 
 export COMPOSE_PROJECT_NAME="$project"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$password}"
