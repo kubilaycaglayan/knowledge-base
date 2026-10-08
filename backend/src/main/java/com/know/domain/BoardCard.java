@@ -20,6 +20,7 @@ public class BoardCard {
   @Column(name = "archived_at") private Instant archivedAt;
   @Column(name = "created_at", nullable = false) private Instant createdAt = now();
   @Column(name = "updated_at", nullable = false) private Instant updatedAt = now();
+  @Column(name = "line_edits", columnDefinition = "text") private String lineEdits = LineAttribution.fresh(body, createdAt);
   @ManyToMany @JoinTable(name = "board_card_paths", joinColumns = @JoinColumn(name = "card_id"), inverseJoinColumns = @JoinColumn(name = "path_id")) private Set<Path> paths = new LinkedHashSet<>();
   @ManyToMany @JoinTable(name = "board_card_labels", joinColumns = @JoinColumn(name = "card_id"), inverseJoinColumns = @JoinColumn(name = "label_id")) private Set<Label> labels = new LinkedHashSet<>();
   protected BoardCard() {}
@@ -28,9 +29,11 @@ public class BoardCard {
   public String getTitle() { return title; } public String getBody() { return body; } public BoardPriority getPriority() { return priority; }
   public LocalDate getStartDate() { return startDate; } public LocalDate getDueDate() { return dueDate; } public int getPosition() { return position; }
   public Instant getArchivedAt() { return archivedAt; } public Instant getCreatedAt() { return createdAt; } public Instant getUpdatedAt() { return updatedAt; }
+  /** When each body line was last edited, in body line order. */
+  public List<Instant> getLineEdits() { return LineAttribution.times(body, lineEdits, updatedAt); }
   public Set<Path> getPaths() { return paths; } public Set<Label> getLabels() { return labels; }
   public boolean isArchived() { return archivedAt != null; }
-  public void update(String title, String body, BoardPriority priority, LocalDate start, LocalDate due) { this.title = title == null ? "" : title; this.body = body == null || body.isBlank() ? "{}" : body; this.priority = priority == null ? BoardPriority.MEDIUM : priority; this.startDate = start; this.dueDate = due; this.updatedAt = now(); }
+  public void update(String title, String body, BoardPriority priority, LocalDate start, LocalDate due) { Instant now = now(); String nextBody = body == null || body.isBlank() ? "{}" : body; if (!this.body.equals(nextBody)) lineEdits = LineAttribution.next(this.body, lineEdits, updatedAt, nextBody, now); this.title = title == null ? "" : title; this.body = nextBody; this.priority = priority == null ? BoardPriority.MEDIUM : priority; this.startDate = start; this.dueDate = due; this.updatedAt = now; }
   public void moveToBoard(UUID boardId, UUID statusId, int position) { this.boardId = boardId; move(statusId, position); }
   public void move(UUID statusId, int position) { this.statusId = statusId; this.position = position; this.updatedAt = now(); }
   public void archive() { archivedAt = now(); updatedAt = now(); } public void restore() { archivedAt = null; updatedAt = now(); }

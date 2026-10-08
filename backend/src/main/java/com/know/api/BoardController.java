@@ -44,8 +44,8 @@ public class BoardController {
   record TransferRequest(@NotNull UUID boardId) {}
   record BoardView(UUID id, String name, boolean archived, UUID pathId, boolean hidden, boolean pinned, Instant createdAt, Instant updatedAt) { static BoardView of(Board b) { return new BoardView(b.getId(), b.getName(), b.isArchived(), b.getPathId(), b.isHidden(), b.isPinned(), b.getCreatedAt(), b.getUpdatedAt()); } }
   record StatusView(UUID id, UUID boardId, String name, int position, boolean archived, BoardCardSort cardSort) { static StatusView of(BoardStatus s) { return new StatusView(s.getId(), s.getBoardId(), s.getName(), s.getPosition(), s.isArchived(), s.getCardSort()); } }
-  record CardView(UUID id, UUID boardId, UUID statusId, String title, String body, BoardPriority priority, LocalDate startDate, LocalDate dueDate, int position, boolean archived, List<UUID> pathIds, List<UUID> labelIds, Instant createdAt, Instant updatedAt) {
-    static CardView of(BoardCard c) { return new CardView(c.getId(), c.getBoardId(), c.getStatusId(), c.getTitle(), c.getBody(), c.getPriority(), c.getStartDate(), c.getDueDate(), c.getPosition(), c.isArchived(), c.getPaths().stream().map(Path::getId).toList(), c.getLabels().stream().map(Label::getId).toList(), c.getCreatedAt(), c.getUpdatedAt()); }
+  record CardView(UUID id, UUID boardId, UUID statusId, String title, String body, BoardPriority priority, LocalDate startDate, LocalDate dueDate, int position, boolean archived, List<UUID> pathIds, List<UUID> labelIds, Instant createdAt, Instant updatedAt, List<Instant> lineEdits) {
+    static CardView of(BoardCard c) { return new CardView(c.getId(), c.getBoardId(), c.getStatusId(), c.getTitle(), c.getBody(), c.getPriority(), c.getStartDate(), c.getDueDate(), c.getPosition(), c.isArchived(), c.getPaths().stream().map(Path::getId).toList(), c.getLabels().stream().map(Label::getId).toList(), c.getCreatedAt(), c.getUpdatedAt(), c.getLineEdits()); }
   }
   /** A card placed by column name, with the column and whether placing the card created it. */
   record PlacedCardView(CardView card, StatusView status, boolean statusCreated) {
