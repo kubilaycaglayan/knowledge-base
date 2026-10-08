@@ -1,0 +1,67 @@
+[
+  {
+    "name": "paragraphs and an empty line",
+    "content": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"One\"}]},{\"type\":\"paragraph\"},{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Two\"}]}]}",
+    "lines": [
+      "One",
+      "",
+      "Two"
+    ]
+  },
+  {
+    "name": "marks join into one line",
+    "content": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Bold \"},{\"type\":\"text\",\"text\":\"word\",\"marks\":[{\"type\":\"bold\"}]}]}]}",
+    "lines": [
+      "Bold word"
+    ]
+  },
+  {
+    "name": "hard breaks split a paragraph",
+    "content": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"First\"},{\"type\":\"hardBreak\"},{\"type\":\"text\",\"text\":\"Second\"}]}]}",
+    "lines": [
+      "First",
+      "Second"
+    ]
+  },
+  {
+    "name": "heading, lists and quote",
+    "content": "{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":2},\"content\":[{\"type\":\"text\",\"text\":\"Plan\"}]},{\"type\":\"bulletList\",\"content\":[{\"type\":\"listItem\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Alpha\"}]},{\"type\":\"bulletList\",\"content\":[{\"type\":\"listItem\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Nested\"}]}]}]}]}]},{\"type\":\"orderedList\",\"content\":[{\"type\":\"listItem\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Beta\"}]}]}]},{\"type\":\"blockquote\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Quoted\"}]}]},{\"type\":\"horizontalRule\"}]}",
+    "lines": [
+      "Plan",
+      "Alpha",
+      "Nested",
+      "Beta",
+      "Quoted"
+    ]
+  },
+  {
+    "name": "task items carry their checkbox",
+    "content": "{\"type\":\"doc\",\"content\":[{\"type\":\"taskList\",\"content\":[{\"type\":\"taskItem\",\"attrs\":{\"checked\":true},\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Done\"}]}]},{\"type\":\"taskItem\",\"attrs\":{\"checked\":false},\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Open\"}]},{\"type\":\"taskList\",\"content\":[{\"type\":\"taskItem\",\"attrs\":{\"checked\":false},\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Sub\"}]}]}]}]}]}]}",
+    "lines": [
+      "[x] Done",
+      "[ ] Open",
+      "[ ] Sub"
+    ]
+  },
+  {
+    "name": "code block newlines are lines",
+    "content": "{\"type\":\"doc\",\"content\":[{\"type\":\"codeBlock\",\"attrs\":{\"language\":null},\"content\":[{\"type\":\"text\",\"text\":\"a = 1\\nb = 2\"}]}]}",
+    "lines": [
+      "a = 1",
+      "b = 2"
+    ]
+  },
+  {
+    "name": "empty card body",
+    "content": "{}",
+    "lines": []
+  },
+  {
+    "name": "legacy plain text",
+    "content": "Line one\nLine two",
+    "lines": [
+      "Line one",
+      "Line two"
+    ]
+  }
+]

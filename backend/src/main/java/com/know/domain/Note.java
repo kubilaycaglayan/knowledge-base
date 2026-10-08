@@ -2,6 +2,8 @@ package com.know.domain;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -55,6 +57,9 @@ public class Note {
   @Column(name = "import_batch_id")
   private UUID importBatchId;
 
+  @Column(name = "line_edits", columnDefinition = "text")
+  private String lineEdits;
+
   protected Note() {}
 
   public Note(UUID userId, UUID pathId, UUID activityId, String title, String content) {
@@ -64,6 +69,7 @@ public class Note {
     this.title = title;
     this.content = content;
     this.contentText = content;
+    this.lineEdits = LineAttribution.fresh(content, createdAt);
   }
 
   public static Note imported(
@@ -82,6 +88,7 @@ public class Note {
     note.contentText = contentText == null ? content : contentText;
     note.createdAt = createdAt == null ? Instant.now() : createdAt;
     note.updatedAt = updatedAt == null ? note.createdAt : updatedAt;
+    note.lineEdits = null;
     return note;
   }
 
@@ -129,6 +136,11 @@ public class Note {
 
   public long getVersion() {
     return version;
+  }
+
+  /** When each body line was last edited, in body line order. */
+  public List<Instant> getLineEdits() {
+    return LineAttribution.times(content, lineEdits, updatedAt);
   }
 
   public Instant getDeletedAt() {
@@ -182,16 +194,16 @@ public class Note {
   }
 
   public void update(String title, String content) {
-    this.title = title;
-    this.content = content;
-    this.contentText = content;
-    this.updatedAt = Instant.now();
+    update(title, content, content);
   }
 
   public void update(String title, String content, String contentText) {
+    Instant now = Instant.now();
+    if (!Objects.equals(this.content, content))
+      lineEdits = LineAttribution.next(this.content, lineEdits, updatedAt, content, now);
     this.title = title;
     this.content = content;
     this.contentText = contentText;
-    this.updatedAt = Instant.now();
+    this.updatedAt = now;
   }
 }

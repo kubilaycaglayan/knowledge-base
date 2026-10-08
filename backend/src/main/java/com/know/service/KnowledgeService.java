@@ -74,7 +74,9 @@ public class KnowledgeService {
       String contentText,
       List<String> tags,
       boolean pinned,
-      Long sortOrder) {}
+      Long sortOrder,
+      // Per-line edit times; only single-note responses carry them, lists leave them null.
+      List<Instant> lineEdits) {}
 
   public record NotePage(
       List<NoteView> items, int page, int size, long totalItems, int totalPages) {}
@@ -254,13 +256,13 @@ public class KnowledgeService {
         noteTags == null
             ? List.of()
             : noteTags.findTags(n.getId()).stream().map(Label::getName).sorted().toList();
-    return noteView(n, names);
+    return noteView(n, names, n.getLineEdits());
   }
 
   private List<NoteView> noteViews(UUID userId, List<Note> notesToView) {
     if (notesToView.isEmpty()) return List.of();
     if (noteTags == null)
-      return notesToView.stream().map(note -> noteView(note, List.of())).toList();
+      return notesToView.stream().map(note -> noteView(note, List.of(), null)).toList();
     List<NoteTag> assignments =
         noteTags.findAllByIdNoteIdIn(notesToView.stream().map(Note::getId).toList());
     Set<UUID> tagIds =
@@ -281,12 +283,12 @@ public class KnowledgeService {
             note -> {
               List<String> noteNames = namesByNote.getOrDefault(note.getId(), List.of());
               noteNames = noteNames.stream().sorted().toList();
-              return noteView(note, noteNames);
+              return noteView(note, noteNames, null);
             })
         .toList();
   }
 
-  private NoteView noteView(Note n, List<String> tagNames) {
+  private NoteView noteView(Note n, List<String> tagNames, List<Instant> lineEdits) {
     return new NoteView(
         n.getId(),
         n.getPathId(),
@@ -301,7 +303,8 @@ public class KnowledgeService {
         n.getContentText(),
         tagNames,
         n.isPinned(),
-        n.getSortOrder());
+        n.getSortOrder(),
+        lineEdits);
   }
 
   private Note activeNote(UUID userId, UUID id) {
