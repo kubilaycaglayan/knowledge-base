@@ -151,6 +151,33 @@ class LineAttributionTest {
   }
 
   @Test
+  void derivesThePlainTextCopyFromDocumentBodiesOnly() {
+    String tasks = "{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"content\":[{\"type\":\"text\",\"text\":\"Plan\"}]},{\"type\":\"paragraph\"},"
+        + "{\"type\":\"taskList\",\"content\":[{\"type\":\"taskItem\",\"attrs\":{\"checked\":true},\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Done\"}]}]}]}]}";
+    assertEquals("Plan\n\nDone", LineAttribution.plainText(tasks));
+    assertEquals("", LineAttribution.plainText("{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"));
+    assertNull(LineAttribution.plainText("legacy text"));
+    assertNull(LineAttribution.plainText("{}"));
+    assertNull(LineAttribution.plainText(null));
+  }
+
+  // Search and excerpts read the copy; the extension sends Markdown and old web clients sent blank lines.
+  @Test
+  void notesKeepTheServerDerivedCopyWhateverTheClientSends() {
+    Note note = new Note(null, null, null, "Title", doc("A", "B"));
+    assertEquals("A\nB", note.getContentText());
+    note.update("Title", doc("A", "B", "C"), "A\n\n\nB\n**C**");
+    assertEquals("A\nB\nC", note.getContentText());
+    note.update("Renamed", doc("A", "B", "C"), "stale");
+    assertEquals("A\nB\nC", note.getContentText());
+    Note legacy = new Note(null, null, null, "Old", "plain body");
+    legacy.update("Old", "plain body, edited", "plain body, edited");
+    assertEquals("plain body, edited", legacy.getContentText());
+    // Imports restore the exported copy as it was.
+    assertEquals("A\n\nB", Note.imported(java.util.UUID.randomUUID(), null, null, null, null, "I", doc("A", "B"), "A\n\nB", EARLIER, EARLIER).getContentText());
+  }
+
+  @Test
   void notesAndCardsStampTheirBodies() {
     Note note = new Note(null, null, null, "Title", doc("A", "B"));
     List<Instant> created = note.getLineEdits();
