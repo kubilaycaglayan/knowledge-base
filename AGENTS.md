@@ -37,7 +37,7 @@ JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scr
 SMOKE_FULL_STACK=1 COMPOSE_PROJECT_NAME=knowledge-base-full-smoke JWT_SECRET='<at-least-32-characters>' POSTGRES_PASSWORD='<local-password>' ./scripts/run-smoke-tests.sh
 ```
 
-On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS app and UI tests, run `brew install xcodegen`, then `(cd ios && xcodegen generate --spec project.yml)` and the generated `ios/Know.xcodeproj` build/test scheme used by CI. SwiftUI and UI-test verification cannot be performed in the Linux development environment.
+On macOS, open `ios/Package.swift` for host-side Swift validation; for the iOS app and UI tests, run `brew install xcodegen`, then `(cd ios && xcodegen generate --spec project.yml)` and the generated `ios/Know.xcodeproj` build/test scheme used by CI. SwiftUI and UI-test verification cannot be performed in the Linux development environment. The `ios` and `ios-note-document` CI jobs are soft-disabled and run only when the repository variable `RUN_IOS_CHECKS` is `true` (`gh variable set RUN_IOS_CHECKS --body true`; `gh variable delete RUN_IOS_CHECKS` turns them off again).
 
 ## Safety and design rules
 
