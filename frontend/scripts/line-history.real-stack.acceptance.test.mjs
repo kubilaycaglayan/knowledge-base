@@ -15,16 +15,16 @@ const screenshots = process.env.LINE_HISTORY_E2E_SCREENSHOTS;
 if (!baseUrl || !email || !password) throw new Error("LINE_HISTORY_E2E_BASE_URL, LINE_HISTORY_E2E_EMAIL, and LINE_HISTORY_E2E_PASSWORD are required");
 if (screenshots) mkdirSync(screenshots, { recursive: true });
 
-// The Chrome extension's own body builder, taken from its popup script so this
-// suite saves exactly what the extension saves.
-function extensionNoteDocument() {
+// The Chrome extension's own note text and body builder, taken from its popup
+// script so this suite edits and saves exactly what the extension does.
+function extensionNotes() {
   const source = readFileSync(new URL("../../chrome-extension/popup.js", import.meta.url), "utf8");
-  const start = source.indexOf("function markdownInlineContent(");
+  const start = source.indexOf("function noteMarkdown(");
   const end = source.indexOf("function replaceNoteEditorText(");
-  assert.ok(start >= 0 && end > start, "popup.js no longer has markdownInlineContent/markdownNoteDocument in this order");
+  assert.ok(start >= 0 && end > start, "popup.js no longer has noteMarkdown…markdownNoteDocument before replaceNoteEditorText");
   const context = vm.createContext({});
-  vm.runInContext(`${source.slice(start, end)}; this.build = markdownNoteDocument;`, context);
-  return (markdown) => JSON.stringify(context.build(markdown));
+  vm.runInContext(`${source.slice(start, end)}; this.text = notePlainText; this.build = markdownNoteDocument;`, context);
+  return { text: (note) => context.text(note), build: (markdown) => JSON.stringify(context.build(markdown)) };
 }
 
 // The iOS app's body conversion, ported line for line from NoteDocument in
@@ -261,18 +261,19 @@ describe("line history across clients", () => {
   }
 
   it("keeps every untouched line's time through a Chrome extension save", async () => {
-    const build = extensionNoteDocument();
+    const extension = extensionNotes();
     const before = await webNote("Extension");
     const original = timesByText(before);
     assert.deepEqual(Object.keys(original), ["Plan", "Alpha", "Item", "Done", "Open", "First", "Second", "Last!"]);
-    // The web's plain-text copy has one line per body line, so the extension adds no blank lines.
-    assert.equal(before.contentText, "Plan\nAlpha\nItem\nDone\nOpen\nFirst\nSecond\nLast!");
-    // The extension edits the web's plain-text copy and rebuilds the body from it.
-    const untouched = await api(page, "PUT", `/notes/${before.id}`, { title: before.title, content: build(before.contentText), contentText: before.contentText, tags: [], version: before.version });
+    // The extension edits Markdown serialized from the body and rebuilds the body from it.
+    const text = extension.text(before);
+    assert.equal(text, "Plan\nAlpha\n- Item\nDone\nOpen\nFirst\nSecond\nLast!");
+    const untouched = await api(page, "PUT", `/notes/${before.id}`, { title: before.title, content: extension.build(text), contentText: text, tags: [], version: before.version });
     assert.deepEqual(untouched.lineEdits, before.lineEdits, "an unchanged extension save restamped lines");
+    assert.match(untouched.content, /"bulletList"/, "the extension save kept the list");
 
-    const edited = before.contentText.replace("Item", "Item, edited in the extension");
-    const after = await api(page, "PUT", `/notes/${before.id}`, { title: before.title, content: build(edited), contentText: edited, tags: [], version: untouched.version });
+    const edited = text.replace("- Item", "- Item, edited in the extension");
+    const after = await api(page, "PUT", `/notes/${before.id}`, { title: before.title, content: extension.build(edited), contentText: edited, tags: [], version: untouched.version });
     const times = timesByText(after);
     assert.deepEqual(without(times, "Item, edited in the extension"), without(original, "Item"));
     assert.ok(times["Item, edited in the extension"] > original.Item);
