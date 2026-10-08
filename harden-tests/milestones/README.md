@@ -10,7 +10,7 @@ the repository's bug-fix workflow.
 
 | ID | Focus | Priority | Status |
 | --- | --- | --- | --- |
-| [HARD-01](01-browser-journeys.md) | Real-stack search and deep-link journeys | High | In progress |
+| [HARD-01](01-browser-journeys.md) | Real-stack search and deep-link journeys | High | Complete |
 | [HARD-02](02-browser-resilience.md) | Browser failure states and unresolved flake triage | High | Planned |
 | [HARD-03](03-postgres-and-boundaries.md) | PostgreSQL behavior, time boundaries, volume cases | High | Planned |
 | [HARD-04](04-rate-limits-and-security.md) | HTTP rate limits and deployed security controls | High | Planned |

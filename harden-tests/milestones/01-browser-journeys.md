@@ -1,7 +1,8 @@
 # HARD-01: Real-stack search and deep-link journeys
 
 **Priority:** High  
-**Status:** In progress  
+**Status:** Complete
+
 **Scope:** Test coverage and run documentation only.
 
 Track completion in the [HARD-01 acceptance checklist](01-acceptance-checklist.md).
@@ -24,27 +25,27 @@ fixture tests cannot expose.
   [HARD-01 acceptance checklist](01-acceptance-checklist.md) synchronized when
   either source changes. `frontend/src/views/DeepLinks.test.ts` is mocked
   component evidence; it is not full-stack route evidence.
-- [ ] Add a real-stack search journey that creates isolated fixtures for at
+- [x] Add a real-stack search journey that creates isolated fixtures for at
   least a note, log, session, path, label, board/card, and calendar day; search,
   open each result, assert the destination record/state, and verify Back and
   Forward restore the expected URL and page state.
-- [ ] Verify the empty, request-error/retry, and stale-response behavior against
+- [x] Verify the empty, request-error/retry, and stale-response behavior against
   the real API where deterministic fault injection is available. Keep the
   existing unit tests for debounce and out-of-order responses as the precise
   race contract.
-- [ ] Exercise every row in the route matrix in the acceptance checklist using
+- [x] Exercise every row in the route matrix in the acceptance checklist using
   direct navigation and a fresh browser context. Include one nonexistent ID
   and one foreign-user ID for each record family with a record-detail route.
-- [ ] Cover a copied card URL whose card is outside the initial loaded page and
+- [x] Cover a copied card URL whose card is outside the initial loaded page and
   confirm the owning board/card dialog opens after direct load.
-- [ ] Run each journey with `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop`,
+- [x] Run each journey with `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop`,
   `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone`, and
   `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone`; these combinations use
   desktop Chromium, mobile-size Chromium, and mobile-size WebKit respectively.
   Retain separate reports, browser versions, viewport/touch configuration,
   and artifacts. Mobile-size Chromium does not prove physical Android Chrome
   compatibility, and WebKit is not Chrome coverage.
-- [ ] Add the selected real-stack journeys to `scripts/test-run-all.sh` or a
+- [x] Add the selected real-stack journeys to `scripts/test-run-all.sh` or a
   documented CI job with unique Compose project and credentials. Keep cleanup
   project-scoped.
 
@@ -69,21 +70,19 @@ fixture tests cannot expose.
 ## Current implementation
 
 `frontend/scripts/search.real-stack.acceptance.test.mjs` and
-`scripts/run-search-e2e.sh` provide the initial disposable PostgreSQL journey.
-The suite seeds a unique user and records through the API, then exercises
-search-result activation for notes, logs, paths, labels, sessions, calendar
-days, boards, and active cards. It checks route state, Back/Forward for the
-note/log/path/label/session results, active-card ownership parameters, and
-direct loads for active routes. `scripts/test-run-all.sh` includes the journey
-in its stack-backed browser stage. This initial suite does not yet satisfy the
-full milestone; the acceptance checklist remains the record of uncompleted
-route variants, failure cases, and profile evidence.
+`scripts/run-search-e2e.sh` provide the full disposable PostgreSQL journey.
+The suite seeds unique disposable accounts and fixtures through the API, then
+checks every search result and page shortcut, browser history, direct loads and
+reloads in fresh authenticated contexts, archived and ownership cases,
+calendar/Gantt URL boundaries, empty/error recovery, and responsive viewport
+geometry. The runner timestamps runs, captures failure evidence and project
+logs, and removes only its unique Compose project. `scripts/test-run-all.sh`
+includes the suite in its stack-backed browser stage.
 
-The selected journey passed on commit `bad2c8c` in all three supported local
-profiles. See the separate run reports in [`runs/`](../runs/):
-[desktop Chromium](../runs/2026-10-08-bad2c8c-desktop-chromium-search.md),
-[mobile Chromium](../runs/2026-10-08-bad2c8c-mobile-chromium-search.md), and
-[iPhone WebKit](../runs/2026-10-08-bad2c8c-iphone-webkit-search.md). The
-remaining checklist covers archived results, page shortcuts, URL state
-variants, missing/foreign IDs, and broader failure behavior; these are not
-accepted by the current selected journey.
+The complete 12-case suite passed on commit `e6008dd` in all three profiles.
+See the separate [desktop Chromium](../runs/2026-10-08-e6008dd-desktop-chromium-search.md),
+[mobile-size Chromium](../runs/2026-10-08-e6008dd-mobile-chromium-search.md), and
+[iPhone WebKit](../runs/2026-10-08-e6008dd-iphone-webkit-search.md) run reports.
+The browser profiles are emulated; no physical Android or iPhone device was
+tested. The complete route-by-route evidence is recorded in the
+[acceptance checklist](01-acceptance-checklist.md).
