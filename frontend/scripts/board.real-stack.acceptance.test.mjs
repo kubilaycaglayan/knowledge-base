@@ -168,17 +168,17 @@ async function addCard(title) {
 
 // Seeds cards straight over the API so pagination tests stay fast.
 async function seedCards(boardId, count, prefix, priority = "MEDIUM", statusId) {
-  await page.evaluate(async ({ boardId: id, count: total, prefix: label, priority: level }) => {
+  await page.evaluate(async ({ boardId: id, count: total, prefix: label, priority: level, statusId: targetStatusId }) => {
     const token = localStorage.getItem("know_token");
     for (let index = 0; index < total; index += 1) {
       const response = await fetch(`/api/v1/boards/${id}/cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: level, ...(statusId ? { statusId } : {}) }),
+        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: level, ...(targetStatusId ? { statusId: targetStatusId } : {}) }),
       });
       if (!response.ok) throw new Error(`Seeding ${label} card ${index} failed with ${response.status}`);
     }
-  }, { boardId, count, prefix, priority });
+  }, { boardId, count, prefix, priority, statusId });
 }
 
 // Boards are created from the Boards dialog's Add board button; the New board
