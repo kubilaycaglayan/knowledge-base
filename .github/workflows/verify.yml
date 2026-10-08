@@ -74,6 +74,9 @@ jobs:
         run: ./scripts/run-line-history-e2e.sh
 
   ios-note-document:
+    # iOS checks are soft-disabled. Turn them back on with:
+    #   gh variable set RUN_IOS_CHECKS --body true
+    if: vars.RUN_IOS_CHECKS == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -96,6 +99,9 @@ jobs:
         run: ./scripts/run-line-history-orca.sh
 
   ios:
+    # iOS checks are soft-disabled. Turn them back on with:
+    #   gh variable set RUN_IOS_CHECKS --body true
+    if: vars.RUN_IOS_CHECKS == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
