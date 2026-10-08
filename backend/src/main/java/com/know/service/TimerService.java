@@ -355,7 +355,7 @@ public class TimerService {
     validateTargets(userId, pathId, labelIds);
     TimeEntry e =
         entries
-            .findByIdAndUserId(id, userId)
+            .findByIdAndUserIdForUpdate(id, userId)
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Timer not found"));
     if (!e.running())
@@ -443,7 +443,7 @@ public class TimerService {
     validateTargets(userId, pathId, labelIds);
     TimeEntry e =
         entries
-            .findByIdAndUserId(id, userId)
+            .findByIdAndUserIdForUpdate(id, userId)
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
     if (e.running())
