@@ -18,7 +18,8 @@ import { computed, onBeforeUnmount, ref, toRaw, watch } from "vue";
 // The formatting toolbar shared by note bodies and board card bodies. It is a
 // WAI-ARIA toolbar: one Tab stop, with arrow keys, Home, and End moving focus.
 // Passing lineHistory adds a toggle for the per-line edit-time gutter.
-const props = defineProps<{ editor: Editor; lineHistory?: boolean }>();
+// The undefined default stops Vue from casting an absent boolean prop to false.
+const props = withDefaults(defineProps<{ editor: Editor; lineHistory?: boolean }>(), { lineHistory: undefined });
 const emit = defineEmits<{ "update:lineHistory": [value: boolean] }>();
 // ProseMirror rejects transactions from a proxied editor, so always use the raw one.
 const editor = computed(() => toRaw(props.editor));
@@ -73,6 +74,8 @@ const bar = ref<HTMLElement | null>(null);
 const current = ref(0);
 const indexOf = (group: number, item: number) => 1 + groups.slice(0, group).reduce((sum, list) => sum + list.length, 0) + item;
 const historyIndex = indexOf(groups.length, 0);
+// The toolbar keeps one Tab stop, so hand it back when the Line history button goes away.
+watch(() => props.lineHistory, (value) => { if (value === undefined && current.value === historyIndex) current.value = 0; });
 const controls = () => [...(bar.value?.querySelectorAll<HTMLButtonElement>("button") || [])];
 function remember(event: FocusEvent) { const index = controls().indexOf(event.target as HTMLButtonElement); if (index >= 0) current.value = index; }
 function move(event: KeyboardEvent) {

@@ -63,12 +63,15 @@
   position: relative;
   padding-left: calc(var(--line-history-inset, 0px) + 7.5rem);
 }
-.rich-text .line-history-stamp {
+/* .ProseMirror outranks the editor's own injected [contenteditable="false"] { white-space: normal }. */
+.rich-text .ProseMirror .line-history-stamp {
   position: absolute;
   left: var(--line-history-inset, 0px);
   width: 7rem;
   overflow: hidden;
   color: var(--workspace-muted);
+  /* The UI font, not the line's own: code blocks would otherwise widen the stamp past the gutter. */
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.75rem;
   font-style: normal;
   font-weight: 400;
@@ -89,7 +92,7 @@
   .rich-text .ProseMirror.line-history-on[contenteditable] {
     padding-left: calc(var(--line-history-inset, 0px) + 4.75rem);
   }
-  .rich-text .line-history-stamp {
+  .rich-text .ProseMirror .line-history-stamp {
     width: 4.25rem;
     font-size: 0.6875rem;
   }

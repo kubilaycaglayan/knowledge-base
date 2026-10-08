@@ -908,7 +908,7 @@ describe("BoardView", () => {
     await flushPromises();
     const toggle = wrapper.get('.card-body-editor button[aria-label="Line history"]');
     expect(toggle.attributes("aria-pressed")).toBe("true");
-    expect(wrapper.get(".card-body-editor .line-history-stamp time").attributes("datetime")).toBe("2026-09-02T10:00:00Z");
+    expect(wrapper.get(".card-body-editor .line-history-stamp time").attributes("datetime")).toBe("2026-09-02T10:00:00.000Z");
     await toggle.trigger("click");
     expect(mockRouter.replace).toHaveBeenCalledWith({ query: expect.objectContaining({ lines: undefined }) });
     await wrapper.unmount();
@@ -1351,6 +1351,72 @@ describe("BoardView", () => {
       await vi.advanceTimersByTimeAsync(700);
       expect((store.updateCard as any).mock.calls[1][0].updatedAt).toBe("t2");
       await wrapper.unmount();
+    });
+
+    describe("line history", () => {
+      const OLD = "2026-09-02T10:00:00Z";
+      const NEW = "2026-09-03T12:30:00Z";
+      const body = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Step" }] }] });
+      const stampTexts = (wrapper: ReturnType<typeof mountBoard>) => wrapper.findAll(".card-body-editor .line-history-stamp").map((stamp) => stamp.find("time").exists() ? stamp.get("time").attributes("datetime") : stamp.text());
+      async function openStamped(card: Partial<typeof baseCard> & { lineEdits?: string[] }) {
+        const store = seedBoard(["Backlog"]);
+        store.cards = [{ ...baseCard, body, lineEdits: [OLD], ...card }] as any;
+        mockRoute.query = { ...mockRoute.query, lines: "1" };
+        const wrapper = mountBoard();
+        await flushPromises();
+        await wrapper.find(".board-card").trigger("click");
+        await flushPromises();
+        return { store, wrapper, editor: (wrapper.vm as any).cardEditor as import("@tiptap/core").Editor };
+      }
+
+      it("offers no toggle for a card without line times", async () => {
+        const { wrapper } = await openStamped({ lineEdits: undefined });
+        expect(wrapper.find('.card-body-editor button[aria-label="Line history"]').exists()).toBe(false);
+        expect(wrapper.findAll(".line-history-stamp")).toHaveLength(0);
+        await wrapper.unmount();
+      });
+
+      it("marks a typed line unsaved until the save returns its time", async () => {
+        vi.useFakeTimers();
+        const { store, wrapper, editor } = await openStamped({});
+        (store.updateCard as any) = realBoardActions.updateCard;
+        vi.mocked(api).mockImplementation(async (_path: string, init?: RequestInit) => ({ ...baseCard, boardId: "test-id", ...JSON.parse(String(init?.body)), updatedAt: "t2", lineEdits: [OLD, NEW] }));
+        editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Next" }] });
+        await flushPromises();
+        expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "Unsaved"]);
+        await vi.advanceTimersByTimeAsync(700);
+        await flushPromises();
+        expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "2026-09-03T12:30:00.000Z"]);
+        await wrapper.unmount();
+      });
+
+      it("shows the newer card's times after a conflict and the retried save's times after Retry", async () => {
+        vi.useFakeTimers();
+        const { store, wrapper, editor } = await openStamped({});
+        (store.updateCard as any) = realBoardActions.updateCard;
+        const remote = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Step" }] }, { type: "paragraph", content: [{ type: "text", text: "Remote" }] }] });
+        let writes = 0;
+        vi.mocked(api).mockImplementation(async (_path: string, init?: RequestInit) => {
+          if (init?.method === "PUT") {
+            writes += 1;
+            if (writes === 1) throw Object.assign(new Error("Card changed elsewhere"), { status: 409 });
+            return { ...baseCard, boardId: "test-id", ...JSON.parse(String(init.body)), updatedAt: "t3", lineEdits: [OLD, NEW] };
+          }
+          return { ...baseCard, boardId: "test-id", body: remote, updatedAt: "t2", lineEdits: [OLD, OLD] };
+        });
+        editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Mine" }] });
+        await vi.advanceTimersByTimeAsync(700);
+        await flushPromises();
+        // The draft is kept; its own line is unsaved against the newer card.
+        expect(wrapper.find(".field-error").exists()).toBe(true);
+        expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "Unsaved"]);
+
+        await wrapper.get(".field-error button").trigger("click");
+        await flushPromises();
+        expect(writes).toBe(2);
+        expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "2026-09-03T12:30:00.000Z"]);
+        await wrapper.unmount();
+      });
     });
 
     // GH-03, GH-06

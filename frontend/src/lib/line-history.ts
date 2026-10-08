@@ -75,7 +75,7 @@ export function documentLines(doc: ProseMirrorNode): DocumentLine[] {
 const MAX_ALIGNMENT_CELLS = 2_000_000;
 
 /** Gives each current line the time of the saved line it matches, or null when it is unsaved. */
-export function alignTimes(saved: string[], times: string[], current: string[]): (string | null)[] {
+export function alignTimes(saved: string[], times: (string | null)[], current: string[]): (string | null)[] {
   const result: (string | null)[] = current.map(() => null);
   if (saved.length !== times.length) return result;
   let head = 0;
@@ -103,20 +103,32 @@ export function alignTimes(saved: string[], times: string[], current: string[]):
   return result;
 }
 
-const timeFormat = () => new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const dateFormat = () => new Intl.DateTimeFormat(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
-const shortDateFormat = () => new Intl.DateTimeFormat(undefined, { month: "2-digit", day: "2-digit" });
-const fullFormat = () => new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short" });
+// Formatters are costly to build and the page's locale does not change, so build them once.
+let formats: Record<"time" | "date" | "shortDate" | "full", Intl.DateTimeFormat> | null = null;
+function lineFormats() {
+  formats ||= {
+    time: new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }),
+    date: new Intl.DateTimeFormat(undefined, { year: "numeric", month: "2-digit", day: "2-digit" }),
+    shortDate: new Intl.DateTimeFormat(undefined, { month: "2-digit", day: "2-digit" }),
+    full: new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short" }),
+  };
+  return formats;
+}
 
 /** "13:34" and the locale's numeric date, e.g. "10/08/2026" (or "10/08" for narrow gutters), for a line's gutter. */
 export function formatLineTime(iso: string) {
   const value = new Date(iso);
-  return { time: timeFormat().format(value), date: dateFormat().format(value), shortDate: shortDateFormat().format(value), full: fullFormat().format(value) };
+  const { time, date, shortDate, full } = lineFormats();
+  return { time: time.format(value), date: date.format(value), shortDate: shortDate.format(value), full: full.format(value), iso: value.toISOString() };
 }
 
 export type LineHistoryState = { content: string; times: string[] } | null;
-type PluginState = { history: LineHistoryState; decorations: DecorationSet };
+type Saved = { lines: string[]; times: (string | null)[] };
+type PluginState = { saved: Saved | null; decorations: DecorationSet };
 const lineHistoryKey = new PluginKey<PluginState>("lineHistory");
+
+// A time the browser cannot read is treated as unknown rather than breaking the gutter.
+const readable = (time: string) => (Number.isNaN(Date.parse(time)) ? null : time);
 
 function stamp(time: string | null, text: string) {
   const element = document.createElement("span");
@@ -132,26 +144,34 @@ function stamp(time: string | null, text: string) {
     element.title = "Not saved yet";
     return element;
   }
-  const { time: clock, date, shortDate, full } = formatLineTime(time);
+  const { time: clock, date, shortDate, full, iso } = formatLineTime(time);
   const label = document.createElement("time");
-  label.dateTime = time;
+  label.dateTime = iso;
   label.title = `Edited ${full}`;
-  label.innerHTML = `<span class="line-history-clock"></span> <span class="line-history-date"></span><span class="line-history-short-date"></span>`;
-  label.querySelector(".line-history-clock")!.textContent = clock;
-  label.querySelector(".line-history-date")!.textContent = date;
-  label.querySelector(".line-history-short-date")!.textContent = shortDate;
+  for (const [className, value] of [["line-history-clock", clock], ["line-history-date", date], ["line-history-short-date", shortDate]]) {
+    const part = document.createElement("span");
+    part.className = className;
+    part.textContent = value;
+    label.append(part);
+    if (className === "line-history-clock") label.append(" ");
+  }
   element.append(label);
   return element;
 }
 
-function decorations(doc: ProseMirrorNode, history: LineHistoryState) {
-  if (!history) return DecorationSet.empty;
+function decorations(doc: ProseMirrorNode, saved: Saved | null) {
+  if (!saved) return DecorationSet.empty;
   const lines = documentLines(doc);
-  const times = alignTimes(contentLines(history.content), history.times, lines.map((line) => line.text));
+  const times = alignTimes(saved.lines, saved.times, lines.map((line) => line.text));
   return DecorationSet.create(
     doc,
-    lines.map((line, index) => Decoration.widget(line.pos, () => stamp(times[index], line.text), { side: -1, ignoreSelection: true, key: `${index}:${times[index] ?? "unsaved"}` })),
+    lines.map((line, index) => Decoration.widget(line.pos, () => stamp(times[index], line.text), { side: -1, ignoreSelection: true, key: `${index}:${times[index] ?? (line.text ? "unsaved" : "empty")}` })),
   );
+}
+
+// The saved body is parsed once per save, not on every keystroke.
+function savedLines(history: LineHistoryState): Saved | null {
+  return history ? { lines: contentLines(history.content), times: history.times.map(readable) } : null;
 }
 
 /** Draws each line's edit time in a gutter while a history is set with setLineHistory. */
@@ -162,17 +182,17 @@ export const LineHistory = Extension.create({
       new Plugin<PluginState>({
         key: lineHistoryKey,
         state: {
-          init: () => ({ history: null, decorations: DecorationSet.empty }),
+          init: () => ({ saved: null, decorations: DecorationSet.empty }),
           apply(tr, value, _previous, state) {
             const meta = tr.getMeta(lineHistoryKey) as { history: LineHistoryState } | undefined;
-            const history = meta ? meta.history : value.history;
-            if (!meta && !tr.docChanged) return value;
-            return { history, decorations: decorations(state.doc, history) };
+            if (!meta && (!tr.docChanged || !value.saved)) return value;
+            const saved = meta ? savedLines(meta.history) : value.saved;
+            return { saved, decorations: decorations(state.doc, saved) };
           },
         },
         props: {
           decorations: (state) => lineHistoryKey.getState(state)?.decorations,
-          attributes: (state): Record<string, string> => (lineHistoryKey.getState(state)?.history ? { class: "line-history-on" } : {}),
+          attributes: (state): Record<string, string> => (lineHistoryKey.getState(state)?.saved ? { class: "line-history-on" } : {}),
         },
       }),
     ];
