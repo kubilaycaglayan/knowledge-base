@@ -182,6 +182,28 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(0, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=20", token()).getBody().get("items").size(), "Another user sees none of these cards");
   }
 
+  @Test
+  void columnCursorWalkRemainsStableAcrossManyPages() {
+    String token = token();
+    String boardId = board(token, "Volume board");
+    String backlogId = statusId(token, boardId, "Backlog");
+    List<String> expected = new ArrayList<>();
+    for (int index = 0; index < 55; index++) {
+      String title = "Volume card " + String.format("%03d", index);
+      ResponseEntity<JsonNode> created =
+          post(
+              "/api/v1/boards/" + boardId + "/cards",
+              token,
+              "{\"title\":\"" + title + "\",\"statusId\":\"" + backlogId + "\"}");
+      assertEquals(HttpStatus.CREATED, created.getStatusCode(), String.valueOf(created.getBody()));
+      expected.add(title);
+    }
+
+    List<String> actual = walkColumn(token, "Backlog", 7);
+    assertEquals(expected, actual);
+    assertEquals(expected.size(), actual.stream().distinct().count());
+  }
+
   // AB-03, AB-04
   @Test
   void columnPagesFollowTheColumnSort() {
