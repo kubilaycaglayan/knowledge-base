@@ -1027,7 +1027,7 @@ final class KnowUITests: XCTestCase {
     app.buttons["Archive note"].tap()
   }
 
-  func testNotesLineHistoryListsEachLineWithItsEditTime() {
+  func testNotesLineHistoryListsEachLineWithItsEditTime() throws {
     app.launchArguments += ["-ui-testing-authenticated"]
     app.launch()
     app.buttons["workspace.notes"].tap()
@@ -1061,6 +1061,10 @@ final class KnowUITests: XCTestCase {
     ).firstMatch
     XCTAssertTrue(saved.waitForExistence(timeout: 8), "line labels: \(lineLabels())")
     XCTAssertTrue(first.exists, "the untouched line keeps its time")
+    // Apple's accessibility audit (the checks behind Accessibility Inspector) over
+    // the editor with the Line history list showing: element descriptions, hit
+    // regions, contrast, Dynamic Type, and more. VoiceOver itself cannot run in CI.
+    try app.performAccessibilityAudit()
     let attachment = XCTAttachment(screenshot: app.screenshot())
     attachment.name = "Notes-line-history"
     attachment.lifetime = .keepAlways
