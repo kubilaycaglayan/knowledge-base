@@ -281,6 +281,53 @@ describe("board real-stack acceptance", () => {
     }
   });
 
+  it("retries a failed card page with the same cursor and without duplicate cards", async () => {
+    const boardId = currentBoardId();
+    const prefix = `Retry page ${Date.now()}`;
+    await seedCards(boardId, 35, prefix);
+
+    const firstPageLoaded = page.waitForResponse((response) =>
+      response.url().includes("/cards/page") && response.request().method() === "GET" && response.status() === 200,
+    );
+    await page.reload();
+    const firstPage = await firstPageLoaded;
+    const firstPageData = await firstPage.json();
+    assert.ok(firstPageData.nextCursor, "fixture must have a second page");
+    const firstPageTitles = firstPageData.items.map((card) => card.title);
+    const retryUrls = [];
+    const pageRequest = "**/api/v1/boards/*/cards/page**";
+    let failedOnce = false;
+    await page.route(pageRequest, async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      retryUrls.push(route.request().url());
+      if (!failedOnce) {
+        failedOnce = true;
+        await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+        return;
+      }
+      await route.continue();
+    });
+
+    const sentinel = page.locator(".load-more-sentinel").first();
+    await sentinel.scrollIntoViewIfNeeded();
+    const retry = page.getByRole("button", { name: "Retry loading cards" });
+    await retry.waitFor();
+    assert.equal(await page.getByRole("alert").filter({ hasText: "Unable to load more cards" }).count(), 1);
+    await retry.focus();
+    assert.equal(await retry.evaluate((element) => element === document.activeElement), true, "retry must be keyboard reachable");
+    await retry.press("Enter");
+
+    await page.getByRole("heading", { name: `${prefix} card 34` }).waitFor();
+    assert.equal(retryUrls.length, 2, "one failed page request should be followed by exactly one retry");
+    assert.equal(new URL(retryUrls[0]).searchParams.get("cursor"), new URL(retryUrls[1]).searchParams.get("cursor"), "retry should use the failed cursor");
+    for (const title of firstPageTitles) {
+      assert.equal(await page.getByRole("heading", { name: title, exact: true }).count(), 1, `${title} should appear once`);
+    }
+    assert.equal(await page.getByRole("heading", { name: `${prefix} card 34`, exact: true }).count(), 1);
+    assert.equal(await retry.count(), 0, "successful retry removes the recovery action");
+    await page.unroute(pageRequest);
+  });
+
   it("protects a card from a stale concurrent tab write", async () => {
     const boardId = currentBoardId();
     await addCard("Concurrent card");
