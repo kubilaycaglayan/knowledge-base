@@ -374,6 +374,85 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
             "Rollback scope label"));
   }
 
+  @Test
+  void postgresLabelDeleteRollsBackEarlierAssignmentDeletesWhenALaterJoinFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Assignment cleanup rollback contract requires PostgreSQL");
+    String token = api.register();
+    UUID userId = subject(token);
+    String labelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Rollback delete label\",\"scopes\":[\"NOTE\",\"CALENDAR\",\"TIME_ENTRY\",\"LOG\"]}")
+            .get("id")
+            .asText();
+    api.put(
+        "/api/v1/calendar/days/2026-05-25",
+        token,
+        "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.25}]}");
+    api.created(
+        "POST",
+        "/api/v1/time-entries",
+        token,
+        "{\"labelIds\":[\""
+            + labelId
+            + "\"],\"startedAt\":\"2026-05-25T10:00:00Z\",\"endedAt\":\"2026-05-25T10:01:00Z\"}");
+    api.created(
+        "POST",
+        "/api/v1/notes",
+        token,
+        "{\"title\":\"Delete rollback note\",\"content\":\"body\",\"tags\":[\"Rollback delete label\"]}");
+    String logId =
+        api.created(
+                "POST",
+                "/api/v1/logs",
+                token,
+                "{\"body\":\"Delete rollback log\",\"occurredAt\":\"2026-05-25T10:00:00Z\"}")
+            .get("id")
+            .asText();
+    assertEquals(
+        200,
+        api.put(
+                "/api/v1/logs/" + logId + "/labels",
+                token,
+                "{\"labelIds\":[\"" + labelId + "\"]}")
+            .status());
+
+    String trigger = failOnDeleteTrigger("note_label");
+    try {
+      ApiClient.Reply failed = api.delete("/api/v1/labels/" + labelId + "?removeAssignments=true", token);
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("note_label", trigger);
+    }
+    UUID labelUuid = UUID.fromString(labelId);
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from labels where id = ? and user_id = ?",
+            Long.class,
+            labelUuid,
+            userId));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from daily_record_label where label_id = ?", Long.class, labelUuid));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry_label where label_id = ?", Long.class, labelUuid));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from note_label where label_id = ?", Long.class, labelUuid));
+    assertEquals(
+        1L,
+        jdbc.queryForObject("select count(*) from log_label where label_id = ?", Long.class, labelUuid));
+  }
+
   private String failOnInsertTrigger(String tableName) {
     String suffix = UUID.randomUUID().toString().replace("-", "");
     String functionName = "fail_insert_" + suffix;
@@ -395,6 +474,24 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   private void dropInsertTrigger(String tableName, String name) {
     jdbc.execute("drop trigger if exists " + name + " on " + tableName);
     jdbc.execute("drop function if exists " + name + "()");
+  }
+
+  private String failOnDeleteTrigger(String tableName) {
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_delete_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced association delete failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before delete on "
+            + tableName
+            + " for each row execute function "
+            + functionName
+            + "()");
+    return functionName;
   }
 
   private void insertEntry(
