@@ -3,7 +3,6 @@ import SwiftUI
 struct LabelsView: View {
   @Bindable var model: LabelsModel
   @Environment(\.colorScheme) private var scheme
-  @Environment(\.dynamicTypeSize) private var typeSize
   @State private var createOpen = false
   @FocusState private var focused: Field?
   enum Field: Hashable { case createName, editName }
@@ -93,26 +92,18 @@ struct LabelsView: View {
           get: { model.editingDraft ?? LabelDraft(label) }, set: { model.editingDraft = $0 }),
         submit: { _ = await model.saveEdit() }, cancel: { model.cancelEdit() })
     } else {
-      // At accessibility text sizes the row stacks and its text wraps instead of clipping.
-      let layout =
-        typeSize.isAccessibilitySize
-        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout())
-      layout {
-        HStack {
-          Circle().fill(WorkspaceTheme.color(label.color ?? colors[0])).frame(width: 14, height: 14)
-            .accessibilityHidden(true)
-          Text(label.name).bold().fixedSize(horizontal: false, vertical: true)
-        }
+      HStack {
+        Circle().fill(WorkspaceTheme.color(label.color ?? colors[0])).frame(width: 14, height: 14)
+          .accessibilityHidden(true)
+        Text(label.name).bold().lineLimit(2)
         Text(label.scopes.map(\.title).joined(separator: " · ")).foregroundStyle(
           WorkspaceTheme.muted(scheme)
-        ).fixedSize(horizontal: false, vertical: true)
-        if !typeSize.isAccessibilitySize { Spacer() }
-        HStack {
-          Button("Edit") { model.beginEdit(label) }.accessibilityIdentifier("labels.edit.\(label.id)")
-          Button("Remove") { model.requestRemove(label) }.foregroundStyle(
-            WorkspaceTheme.danger(scheme)
-          ).accessibilityIdentifier("labels.remove.\(label.id)")
-        }
+        ).lineLimit(2)
+        Spacer()
+        Button("Edit") { model.beginEdit(label) }.accessibilityIdentifier("labels.edit.\(label.id)")
+        Button("Remove") { model.requestRemove(label) }.foregroundStyle(
+          WorkspaceTheme.danger(scheme)
+        ).accessibilityIdentifier("labels.remove.\(label.id)")
       }.padding(.vertical, 8).accessibilityElement(children: .contain)
     }
   }
