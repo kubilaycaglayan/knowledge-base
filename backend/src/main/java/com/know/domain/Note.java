@@ -68,7 +68,7 @@ public class Note {
     this.activityId = activityId;
     this.title = title;
     this.content = content;
-    this.contentText = content;
+    this.contentText = copyOf(content, content);
     this.lineEdits = LineAttribution.fresh(content, createdAt);
   }
 
@@ -85,7 +85,8 @@ public class Note {
       Instant updatedAt) {
     Note note = new Note(userId, pathId, activityId, timeEntryId, title, content);
     note.id = id;
-    note.contentText = contentText == null ? content : contentText;
+    // An import restores the exported copy as it was; the next edit derives it again.
+    note.contentText = contentText == null ? copyOf(content, content) : contentText;
     note.createdAt = createdAt == null ? Instant.now() : createdAt;
     note.updatedAt = updatedAt == null ? note.createdAt : updatedAt;
     note.lineEdits = null;
@@ -193,6 +194,14 @@ public class Note {
     touch();
   }
 
+  // Search and excerpts read the plain-text copy, so the server derives it from document bodies
+  // whatever a client sends (the extension sends Markdown, older web clients sent blank lines
+  // between blocks); legacy plain-text bodies keep the client's copy.
+  private static String copyOf(String content, String clientCopy) {
+    String derived = LineAttribution.plainText(content);
+    return derived != null ? derived : clientCopy;
+  }
+
   // Rows from before line times date every line from updated_at, so pin those
   // times down before updated_at moves on.
   private void touch() {
@@ -207,7 +216,7 @@ public class Note {
   public void update(String title, String content, String contentText) {
     if (Objects.equals(this.content, content)) {
       this.title = title;
-      this.contentText = contentText;
+      this.contentText = copyOf(content, contentText);
       touch();
       return;
     }
@@ -215,7 +224,7 @@ public class Note {
     lineEdits = LineAttribution.next(this.content, lineEdits, updatedAt, content, now);
     this.title = title;
     this.content = content;
-    this.contentText = contentText;
+    this.contentText = copyOf(content, contentText);
     this.updatedAt = now;
   }
 }

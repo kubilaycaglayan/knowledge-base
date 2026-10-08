@@ -65,6 +65,22 @@ public final class LineAttribution {
   }
 
   /**
+   * A document body's plain-text copy, used for search and excerpts: one line per body line,
+   * without task checkboxes. Null for legacy bodies that are not documents, whose copy is the
+   * client's own text.
+   */
+  public static String plainText(String content) {
+    if (content == null) return null;
+    try {
+      JsonNode root = JSON.readTree(content);
+      if (root == null || !root.isObject() || !"doc".equals(root.path("type").asText())) return null;
+    } catch (JsonProcessingException notJson) {
+      return null;
+    }
+    return String.join("\n", lines(content).stream().map(line -> TASK.matcher(line).replaceFirst("")).toList());
+  }
+
+  /**
    * The edit time of each of the body's lines; lines without a stored time take the fallback.
    * Null when the body is too long to track line by line.
    */
