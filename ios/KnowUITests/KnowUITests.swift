@@ -1064,7 +1064,12 @@ final class KnowUITests: XCTestCase {
     // Apple's accessibility audit (the checks behind Accessibility Inspector) over
     // the editor with the Line history list showing: element descriptions, hit
     // regions, contrast, Dynamic Type, and more. VoiceOver itself cannot run in CI.
-    try app.performAccessibilityAudit()
+    // One category per call: a whole-screen audit can outlast the CI simulator's time limit.
+    let audits: [XCUIAccessibilityAuditType] = [
+      .sufficientElementDescription, .hitRegion, .contrast, .elementDetection, .trait,
+      .textClipped, .dynamicType, .action,
+    ]
+    for audit in audits { try app.performAccessibilityAudit(for: audit) }
     let attachment = XCTAttachment(screenshot: app.screenshot())
     attachment.name = "Notes-line-history"
     attachment.lifetime = .keepAlways
