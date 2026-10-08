@@ -13,6 +13,7 @@ struct NotesView: View {
   @State private var archiveCandidate: Note?
   @State private var leaveConfirmation = false
   @State private var draggingNoteID: UUID?
+  @State private var showLineHistory = false
   @FocusState private var focused: Field?
   enum Field: Hashable { case search, title, body, label }
 
@@ -221,6 +222,14 @@ struct NotesView: View {
           } label: {
             Image(systemName: "arrow.uturn.forward").frame(width: 44, height: 44)
           }.disabled(redoStack.isEmpty).accessibilityLabel("Redo")
+          if model.selected?.lineEdits != nil {
+            Button {
+              showLineHistory.toggle()
+            } label: {
+              Image(systemName: "clock.arrow.circlepath").frame(width: 44, height: 44)
+            }.accessibilityLabel("Line history").accessibilityValue(showLineHistory ? "On" : "Off")
+              .accessibilityIdentifier("notes.line-history")
+          }
         }
         TextField(
           "Note title",
@@ -246,12 +255,48 @@ struct NotesView: View {
             })
         ).frame(minHeight: 300).modifier(WorkspaceControl()).focused($focused, equals: .body)
           .accessibilityLabel("Note content").accessibilityIdentifier("notes.body")
+        if showLineHistory, let note = model.selected, let lineEdits = note.lineEdits {
+          lineHistory(note: note, lineEdits: lineEdits)
+        }
         if let note = model.selected {
           Text("Created \(date(note.createdAt)) · Updated \(date(note.updatedAt))").font(.caption)
             .foregroundStyle(WorkspaceTheme.muted(scheme))
         }
       }.frame(maxWidth: 900, alignment: .leading).padding(16)
     }.task { focused = .title }
+  }
+
+  // When each line of the body was last edited, like the web editor's gutter. A
+  // TextEditor cannot host a per-line gutter, so the lines are listed below it.
+  private func lineHistory(note: Note, lineEdits: [String]) -> some View {
+    let rows = NoteLineHistory.rows(
+      body: editorDraft?.body ?? "", content: note.content, lineEdits: lineEdits)
+    return VStack(alignment: .leading, spacing: 4) {
+      Text("Line history").font(.headline)
+      ForEach(rows, id: \.number) { row in
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+          Group {
+            if let edited = row.edited {
+              Text(edited, format: .dateTime.hour().minute().month(.twoDigits).day(.twoDigits).year())
+            } else {
+              Text(row.text.isEmpty ? "" : "Unsaved").italic()
+            }
+          }.font(.caption.monospacedDigit()).foregroundStyle(WorkspaceTheme.muted(scheme))
+            .frame(width: 128, alignment: .leading)
+          Text(row.text.isEmpty ? " " : row.text).lineLimit(1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(lineHistoryLabel(row))
+      }
+    }.accessibilityIdentifier("notes.line-history.list")
+  }
+
+  private func lineHistoryLabel(_ row: NoteLineHistory.Row) -> String {
+    let text = row.text.isEmpty ? "empty" : row.text
+    guard let edited = row.edited else {
+      return "Line \(row.number), \(text), not saved yet"
+    }
+    return "Line \(row.number), \(text), edited \(edited.formatted(date: .complete, time: .shortened))"
   }
 
   private var labelEditor: some View {

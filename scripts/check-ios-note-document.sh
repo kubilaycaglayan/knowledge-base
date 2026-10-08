@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Compiles the iOS app's NoteDocument (ios/Know/NotesModels.swift) on Linux
-# with the official Swift image and runs its XCTest cases from
-# ios/KnowTests/NotesTests.swift (every test whose name starts with
-# testDocument or testPlainText). SwiftUI cannot build on Linux, but this
-# conversion is Foundation-only and decides what an iOS save does to a note.
+# Compiles the iOS app's NoteDocument and NoteLineHistory
+# (ios/Know/NotesModels.swift) on Linux with the official Swift image and runs
+# their XCTest cases from ios/KnowTests/NotesTests.swift (every test whose name
+# starts with testDocument, testPlainText, or testLineHistory). SwiftUI cannot
+# build on Linux, but these are Foundation-only and decide what an iOS save
+# does to a note and which edit time each line shows.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 package="$(mktemp -d)"
 trap 'rm -rf "$package"' EXIT
@@ -17,7 +18,7 @@ models = open("ios/Know/NotesModels.swift").read()
 start, end = models.index("enum NoteDocument {"), models.index("protocol NotesTransport")
 open(f"{package}/Sources/NoteDoc/NoteDocument.swift", "w").write("import Foundation\n\n" + models[start:end])
 tests = open("ios/KnowTests/NotesTests.swift").read()
-bodies = [tests[m.start():tests.index("\n  }\n", m.start()) + 5] for m in re.finditer(r"^  func (testDocument|testPlainText)\w*\(\)", tests, re.M)]
+bodies = [tests[m.start():tests.index("\n  }\n", m.start()) + 5] for m in re.finditer(r"^  func (testDocument|testPlainText|testLineHistory)\w*\(\)", tests, re.M)]
 if not bodies:
     sys.exit("no NoteDocument tests found in ios/KnowTests/NotesTests.swift")
 open(f"{package}/Tests/NoteDocTests/NoteDocTests.swift", "w").write(

@@ -65,6 +65,105 @@ enum NoteDocument {
   }
 }
 
+/// Per-line edit times for the note editor's Line history list. The server stamps
+/// each body line on save and returns `lineEdits`, one per line of the saved body;
+/// the line rules match `frontend/src/lib/line-history.ts` and the server's
+/// `LineAttribution`. Lines typed since the last save have no time yet.
+enum NoteLineHistory {
+  struct Row: Equatable {
+    let number: Int
+    let text: String
+    let edited: Date?
+  }
+
+  /// The saved body's lines, with task checkboxes as "[x] " or "[ ] ".
+  static func savedLines(content: String) -> [String] {
+    guard let data = content.data(using: .utf8),
+      let object = try? JSONSerialization.jsonObject(with: data)
+    else { return content.components(separatedBy: "\n") }
+    guard let document = object as? [String: Any] else { return content.components(separatedBy: "\n") }
+    guard document["type"] as? String == "doc" else { return [] }
+    var lines: [String] = []
+    func collect(_ value: Any, prefix: String) {
+      guard let node = value as? [String: Any] else { return }
+      let type = node["type"] as? String
+      let children = node["content"] as? [Any] ?? []
+      if type == "paragraph" || type == "heading" || type == "codeBlock" {
+        let text = children.map { child -> String in
+          guard let child = child as? [String: Any] else { return "" }
+          if child["type"] as? String == "hardBreak" { return "\n" }
+          return child["type"] as? String == "text" ? child["text"] as? String ?? "" : ""
+        }.joined()
+        lines.append(contentsOf: (prefix + text).components(separatedBy: "\n"))
+        return
+      }
+      let checked = (node["attrs"] as? [String: Any])?["checked"] as? Bool ?? false
+      let childPrefix = type == "taskItem" ? (checked ? "[x] " : "[ ] ") : ""
+      children.forEach { collect($0, prefix: childPrefix) }
+    }
+    collect(document, prefix: "")
+    return lines
+  }
+
+  /// Whether two lines are the same line: a line also matches itself without its task
+  /// checkbox, which plain-text editing drops, but not with the other checkbox.
+  static func same(_ a: String, _ b: String) -> Bool {
+    if a == b { return true }
+    func task(_ line: String) -> Bool { line.hasPrefix("[x] ") || line.hasPrefix("[ ] ") }
+    let taskA = task(a)
+    let taskB = task(b)
+    return taskA != taskB && (taskA ? String(a.dropFirst(4)) : a) == (taskB ? String(b.dropFirst(4)) : b)
+  }
+
+  static func date(_ value: String) -> Date? {
+    let precise = ISO8601DateFormatter()
+    precise.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = precise.date(from: value) { return date }
+    return ISO8601DateFormatter().date(from: value)
+  }
+
+  /// One row per line of the editor's body, with the edit time of the saved line it
+  /// matches, or nil for lines not saved yet.
+  static func rows(body: String, content: String, lineEdits: [String]) -> [Row] {
+    let saved = savedLines(content: content)
+    let current = body.components(separatedBy: "\n")
+    var times = [Date?](repeating: nil, count: current.count)
+    if saved.count == lineEdits.count {
+      let lcs = alignment(saved, current)
+      for (savedIndex, currentIndex) in lcs { times[currentIndex] = date(lineEdits[savedIndex]) }
+    }
+    return current.enumerated().map { Row(number: $0.offset + 1, text: $0.element, edited: times[$0.offset]) }
+  }
+
+  // Longest common subsequence of the two line lists, as matched index pairs.
+  private static func alignment(_ a: [String], _ b: [String]) -> [(Int, Int)] {
+    let n = a.count
+    let m = b.count
+    if n == 0 || m == 0 || n * m > 2_000_000 { return [] }
+    var lengths = [[Int]](repeating: [Int](repeating: 0, count: m + 1), count: n + 1)
+    for i in stride(from: n - 1, through: 0, by: -1) {
+      for j in stride(from: m - 1, through: 0, by: -1) {
+        lengths[i][j] = same(a[i], b[j]) ? lengths[i + 1][j + 1] + 1 : max(lengths[i + 1][j], lengths[i][j + 1])
+      }
+    }
+    var pairs: [(Int, Int)] = []
+    var i = 0
+    var j = 0
+    while i < n && j < m {
+      if same(a[i], b[j]) {
+        pairs.append((i, j))
+        i += 1
+        j += 1
+      } else if lengths[i + 1][j] >= lengths[i][j + 1] {
+        i += 1
+      } else {
+        j += 1
+      }
+    }
+    return pairs
+  }
+}
+
 protocol NotesTransport {
   func page(page: Int, size: Int, query: String, archived: Bool) async throws -> NotePage
   func labels() async throws -> [NoteLabel]
