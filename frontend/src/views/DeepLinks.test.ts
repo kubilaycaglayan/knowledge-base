@@ -156,6 +156,17 @@ describe("/sessions/:id", () => {
     expect(router.currentRoute.value.fullPath).toBe("/");
   });
 
+  it("links each listed session's date to its own address", async () => {
+    respond(/^\/time-entries\?/, { page: 0, totalPages: 1, totalSessions: 1, sessions: [session] });
+    await open(SessionsView, "/", ["/", "/sessions/:id"]);
+    const link = document.querySelector<HTMLAnchorElement>("a.session-date-link")!;
+    expect(link.getAttribute("href")).toBe("/sessions/s1");
+    link.click();
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe("/sessions/s1");
+    expect(dialog()!.textContent).toContain("Edited the sunset series");
+  });
+
   it("explains a session that no longer exists", async () => {
     respond("/time-entries/gone", notFound);
     await open(SessionsView, "/sessions/gone", ["/", "/sessions/:id"]);
@@ -246,6 +257,17 @@ describe("/logs/:id", () => {
     await router.push("/logs/gone");
     await flushPromises();
     expect(dialog()!.textContent).toContain("This log doesn’t exist any more");
+  });
+
+  it("links each row's time to the log's own address", async () => {
+    await open(LogsView, "/logs", ["/logs", "/logs/:id"]);
+    const link = document.querySelector<HTMLAnchorElement>('#log-log-7 a.log-time-link')!;
+    expect(link.getAttribute("href")).toBe("/logs/log-7");
+    expect(link.getAttribute("aria-label")).toMatch(/^Open log from /);
+    link.click();
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe("/logs/log-7");
+    expect(dialog()!.textContent).toContain("Thought 7");
   });
 
   it("closes with Escape back to the list", async () => {

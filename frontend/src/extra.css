@@ -2061,3 +2061,11 @@
 html.global-search-open {
   overflow: hidden;
 }
+.session-date-link {
+  color: inherit;
+  text-decoration: none;
+}
+.session-date-link:hover {
+  color: var(--workspace-strong);
+  text-decoration: underline;
+}

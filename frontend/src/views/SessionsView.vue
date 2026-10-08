@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref, watch } from "vue";
-import { routeLocationKey, routerKey } from "vue-router";
+import { RouterLink, routeLocationKey, routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
@@ -329,7 +329,13 @@ onMounted(load);
                 <span>{{ duration(session) }}</span>
                 <span
                   >{{ session.source }} ·
-                  {{ sessionDate(session.startedAt) }}</span
+                  <RouterLink
+                    v-if="router"
+                    class="session-date-link"
+                    :to="`/sessions/${session.id}`"
+                    :aria-label="`Open session from ${sessionDate(session.startedAt)}`"
+                    >{{ sessionDate(session.startedAt) }}</RouterLink
+                  ><template v-else>{{ sessionDate(session.startedAt) }}</template></span
                 >
               </div>
               <div class="session-card-actions">
