@@ -1069,7 +1069,15 @@ final class KnowUITests: XCTestCase {
       .sufficientElementDescription, .hitRegion, .contrast, .elementDetection, .trait,
       .textClipped, .dynamicType,
     ]
-    for audit in audits { try app.performAccessibilityAudit(for: audit) }
+    var issues: [String] = []
+    for audit in audits {
+      try app.performAccessibilityAudit(for: audit) { issue in
+        let element = issue.element.map { "\($0.elementType.rawValue) id=\($0.identifier) label=\($0.label)" } ?? "none"
+        issues.append("\(issue.compactDescription) [\(element)]")
+        return true
+      }
+    }
+    XCTAssertEqual(issues, [], issues.joined(separator: "\n"))
     let attachment = XCTAttachment(screenshot: app.screenshot())
     attachment.name = "Notes-line-history"
     attachment.lifetime = .keepAlways
