@@ -82,6 +82,8 @@ part of the shareable direct-navigation contract:
 - [x] Direct-load every destination above in a fresh context and assert the
   path, query values, visible record identity, and absence of unrelated stale
   selection state.
+- [x] For unknown archive-board IDs, assert both the canonical selected-board
+  URL and the matching visible archive heading after reload.
 - [x] For board/card links, assert both `board` and `cardBoard` ownership
   parameters where generated; parse query parameters semantically instead of
   relying on query-string ordering.

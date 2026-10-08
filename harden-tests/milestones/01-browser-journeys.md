@@ -79,10 +79,13 @@ geometry. The runner timestamps runs, captures failure evidence and project
 logs, and removes only its unique Compose project. `scripts/test-run-all.sh`
 includes the suite in its stack-backed browser stage.
 
-The complete 12-case suite passed on commit `e6008dd` in all three profiles.
-See the separate [desktop Chromium](../runs/2026-10-08-e6008dd-desktop-chromium-search.md),
-[mobile-size Chromium](../runs/2026-10-08-e6008dd-mobile-chromium-search.md), and
-[iPhone WebKit](../runs/2026-10-08-e6008dd-iphone-webkit-search.md) run reports.
-The browser profiles are emulated; no physical Android or iPhone device was
-tested. The complete route-by-route evidence is recorded in the
-[acceptance checklist](01-acceptance-checklist.md).
+The complete 12-case suite passed on commit `1978af6` in all three profiles.
+See the separate [desktop Chromium](../runs/2026-10-08-1978af6-desktop-chromium-search.md),
+[mobile-size Chromium](../runs/2026-10-08-1978af6-mobile-chromium-search.md), and
+[iPhone WebKit](../runs/2026-10-08-1978af6-iphone-webkit-search.md) run reports.
+The expanded assertions confirm off-page session pagination and dialog close,
+path history close, a board hidden in the overflow menu, untitled archived-note
+search, note body and calendar selection, archive row highlighting, and visible
+fallback context after an unknown archive-board URL. Browser profiles are
+emulated; no physical Android or iPhone device was tested. The complete
+route-by-route evidence is recorded in the [acceptance checklist](01-acceptance-checklist.md).

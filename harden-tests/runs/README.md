@@ -81,11 +81,11 @@ When the same failure occurs in multiple cases or suites, count each affected ca
 
 ## Cumulative failure groups
 
-The complete HARD-01 suite passed on 2026-10-08 at commit `e6008dd` in desktop
+The complete HARD-01 suite passed on 2026-10-08 at commit `1978af6` in desktop
 Chromium, mobile-size Chromium, and emulated iPhone WebKit. Each final run
-passed 12 cases and has a separate report: [desktop Chromium](2026-10-08-e6008dd-desktop-chromium-search.md),
-[mobile-size Chromium](2026-10-08-e6008dd-mobile-chromium-search.md), and
-[iPhone WebKit](2026-10-08-e6008dd-iphone-webkit-search.md). Each profile used
+passed 12 cases and has a separate report: [desktop Chromium](2026-10-08-1978af6-desktop-chromium-search.md),
+[mobile-size Chromium](2026-10-08-1978af6-mobile-chromium-search.md), and
+[iPhone WebKit](2026-10-08-1978af6-iphone-webkit-search.md). Each profile used
 a clean uniquely named Compose project and project-scoped cleanup.
 
 Counts below include the initial Chromium run in [2026-10-08-fb8f96a-chromium.md](2026-10-08-fb8f96a-chromium.md), the emulated iPhone WebKit line-history, timer, and board runs, focused desktop Chromium line-history and board reruns, and the incomplete-metadata local board attempt in [2026-10-08-unclassified-board-attempt.md](2026-10-08-unclassified-board-attempt.md). The latter contributes its two unclassified signatures and one recurrence of the archive-footer hit test. These are observed failure occurrences; resolved groups remain listed so later runs can show recurrence.
@@ -102,12 +102,16 @@ Counts below include the initial Chromium run in [2026-10-08-fb8f96a-chromium.md
 | Unclassified | 2 | 1 | 2026-10-08 | Phone view-switch row absent and board restore selected-tab timeout in the incomplete-metadata local attempt; see report |
 | Impossible or malformed calendar date remained in URL | 2 | 2 | 2026-10-08 | Calendar route watcher canonicalizes invalid date values on initial load and preserves other query keys |
 | Shortcut keyboard test assumed a fixed selection/history/readiness sequence | 3 | 3 | 2026-10-08 | Select the matching page option through keyboard navigation; wait for the app before opening search; verify history in the click journey |
+| Search journey assertions assumed note body content and initially selected board context | 3 | 2 | 2026-10-08 | Assert fixture body text and explicitly select a board with the target hidden in overflow before opening its menu |
 
 HARD-01 added two reproductions of the invalid calendar-date canonicalization
 defect and three temporary failures from shortcut keyboard-test assumptions.
 The defects and test assumptions were corrected; the final profile runs passed.
 Their transcripts and browser artifacts remain in ignored local storage. The
-cumulative table reconciles to 48 observed failing case occurrences across 16
-failure-group suite occurrences: 43 from earlier records and 5 from HARD-01.
-Earlier partial transcripts remain failure history only and do not count as
-browser-profile coverage.
+cumulative table reconciles to 51 observed failing case occurrences across 18
+failure-group suite occurrences: 43 from earlier records and 8 from HARD-01.
+The later unknown-board visible-context assertion passed in all three profiles.
+Two additional startup attempts collided on the runner's fixed localhost port
+when profiles were launched concurrently; they exited before browser cases
+started and are not counted as case failures. Earlier partial transcripts
+remain failure history only and do not count as browser-profile coverage.

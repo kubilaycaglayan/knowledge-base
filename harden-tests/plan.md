@@ -30,7 +30,8 @@ for completion criteria, including reconciliation of the existing run records.
 - [x] Complete global search and direct deep-link journeys across the route
   matrix. The HARD-01 real-stack suite passes in desktop Chromium, mobile-size
   Chromium, and iPhone WebKit; archived routes, ownership, URL states, and
-  error recovery are recorded in its acceptance checklist and run reports.
+  error recovery are recorded in its acceptance checklist and run reports at
+  commit `1978af6`.
 - [ ] Expand explicit empty and long-content, delayed-response, network-failure, and retry states across the remaining journeys. Existing coverage includes delayed board responses, timer HTTP fallback, and note retry.
 
 See [HARD-01](milestones/01-browser-journeys.md) and
