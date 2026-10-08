@@ -84,6 +84,10 @@ records that engine/profile and its outcomes.
 - [ ] Cover very long titles, snippets, labels, note bodies, and card bodies;
   assert content remains reachable and does not create unintended horizontal
   overflow at desktop and phone widths.
+  Long note/card titles and bodies plus a matching long search snippet now have
+  real-stack checks. The phone dark-theme note check reproduces a gutter overlap
+  for list and code lines, and the long-label case remains fixture-level only;
+  see the [long-content report](../runs/2026-10-08-long-content-resilience.md).
 - [x] Delay responses while switching routes, selected entities, boards, or
   pages; assert stale data never replaces the latest selection.
 - [x] For each asynchronous race, state the expected winner and synchronization

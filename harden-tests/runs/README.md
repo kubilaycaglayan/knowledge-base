@@ -132,7 +132,7 @@ d2cda77 reports; the final 6d29b9b pair added five more. The subsequent
 suite occurrences (archive overlap in both profiles, detached locator and
 More boards in mobile Chromium). The f6abf77 line-history pair passed all 12
 cases in each profile and added no failure occurrences. The cumulative table
-has 132 case occurrences across 52 failure-group suite occurrences: 65 cases
+has 136 case occurrences across 56 failure-group suite occurrences: 65 cases
 from 17 complete dated reports with failures, 4 test-authoring failures from
 exploratory attempts, and 3 from the partial transcript. The f6abf77 line-history,
 941b7c4 timer, and 5bba75f search reports passed and add no failing occurrences. The current offline-recovery and keyboard-timer authoring failures and profile outcomes are documented in the [offline recovery report](2026-10-08-offline-accessibility-recovery.md).
@@ -181,7 +181,8 @@ failures remain without traces or network/server logs.
 | Detached board card locator | 6 | 6 | 2026-10-08 | Reproduced in four mobile Chromium runs; latest trace retained locally; timing versus rerender remains suspected. |
 | Board menu control unavailable during phone card/view switching | 6 | 6 | 2026-10-08 | Reproduced in five mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
 | Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
-| Test-authoring synchronization/assertion issues | 9 | 8 | 2026-10-08 | Four timer retry iterations, three search live-region/empty-state locator attempts, and two board race cache/synchronization attempts failed during authoring; corrected and documented in the exploratory investigation, [board synchronization follow-up](2026-10-08-board-race-synchronization-followup.md), and [offline recovery report](2026-10-08-offline-accessibility-recovery.md). No durable traces retained for the initial attempts. |
+| Test-authoring synchronization/assertion issues | 11 | 10 | 2026-10-08 | Four timer retry iterations, three search live-region/empty-state locator attempts, two board race cache/synchronization attempts, and two overlong search-title fixture attempts failed during authoring; corrected and documented in the exploratory investigation, [board synchronization follow-up](2026-10-08-board-race-synchronization-followup.md), [offline recovery report](2026-10-08-offline-accessibility-recovery.md), and [long-content report](2026-10-08-long-content-resilience.md). No durable traces retained for the initial attempts. |
+| Line-history gutter overlaps long list/code lines on phone | 2 | 2 | 2026-10-08 | Reproduced in desktop and phone-size Chromium line-history runs; see the [long-content report](2026-10-08-long-content-resilience.md). |
 | Tracker acceptance fixture repair | 40 | 6 | 2026-10-08 | Repeated runs exposed stale control selectors and assumptions; repaired against the current UI and the final 10/10 fixture suite passed. Evidence and output are retained in the tracker repair report. |
 | Board fixture card-label picker assumptions | 4 | 1 | 2026-10-08 | Four stale selector/measurement assumptions were updated against the shared LabelPicker and passed in a focused rerun. |
 | Board fixture card-editor overflow | 2 | 1 | 2026-10-08 | Dialog/footer overflow at 1280px reproduced; focused rerun measured 373px of footer overflow. |

@@ -305,13 +305,15 @@ describe("note line history", () => {
   });
 
   it("fits a phone in the dark theme and passes an Axe audit", async () => {
-    const note = await api(page, "POST", "/notes", { title: "Phone", content: JSON.stringify({ type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "A heading that runs long enough to wrap on a phone screen" }] }, paragraph("A paragraph that is also long enough to wrap onto a second line on narrow screens."), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Item")] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Done")] }] }, { type: "codeBlock", content: [{ type: "text", text: "a = 1\nb = 2" }] }] }), contentText: "", tags: [] });
+    const longNoteLine = `${"Long note content must wrap without clipping. ".repeat(14)}NoteBodyEndingRemainsReachable`;
+    const note = await api(page, "POST", "/notes", { title: "Phone", content: JSON.stringify({ type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "A heading that runs long enough to wrap on a phone screen" }] }, paragraph(longNoteLine), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Item")] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Done")] }] }, { type: "codeBlock", content: [{ type: "text", text: "a = 1\nb = 2" }] }] }), contentText: longNoteLine, tags: [] });
     const phone = await newPage({ viewport: { width: 390, height: 844 }, colorScheme: "dark", isMobile: true, hasTouch: true });
     await signIn(phone);
     await phone.goto(`${baseUrl}/notes/${note.id}?lines=1`);
     await phone.locator(".rich-editor .line-history-stamp time").first().waitFor();
     // Six lines carry times; the editor's own trailing paragraph after the code block has an empty stamp.
     assert.equal(await phone.locator(".rich-editor .line-history-stamp time").count(), 6);
+    assert.ok((await phone.locator(".rich-editor .ProseMirror").innerText()).includes("NoteBodyEndingRemainsReachable"));
     assert.ok(await phone.evaluate(() => getComputedStyle(document.documentElement).colorScheme.includes("dark") || document.documentElement.dataset.theme === "dark"), "dark theme is active");
     await assertGutterLayout(phone, ".rich-editor");
     const results = await new AxeBuilder({ page: phone }).include(".rich-editor").analyze();
@@ -417,9 +419,9 @@ describe("line history for assistive technology", () => {
 });
 
 describe("board card line history", () => {
-  async function openCard(target, body) {
+  async function openCard(target, body, title = "Card") {
     const board = await api(target, "POST", "/boards", { name: `Lines ${Date.now()}` });
-    const card = await api(target, "POST", `/boards/${board.id}/cards`, { title: "Card", body, priority: "MEDIUM" });
+    const card = await api(target, "POST", `/boards/${board.id}/cards`, { title, body, priority: "MEDIUM" });
     await target.goto(`${baseUrl}/board?board=${board.id}&card=${card.id}&cardBoard=${board.id}&lines=1`);
     await target.locator(".card-body-editor .line-history-stamp time").first().waitFor();
     return { board, card };
@@ -458,12 +460,13 @@ describe("board card line history", () => {
     assert.deepEqual(await stamps(page, ".card-body-editor"), server.lineEdits.map(iso));
   });
 
-  it("fits the card dialog on a phone", async () => {
-    const phone = await newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-    await signIn(phone);
-    await openCard(phone, doc("A card line long enough to wrap in the phone dialog", "Short"));
-    await assertGutterLayout(phone, ".card-body-editor");
-    if (screenshots) await phone.screenshot({ path: `${screenshots}/card-phone-light.png` });
-    await phone.context().close();
+  it("keeps long card titles and bodies reachable without phone-width overflow", async () => {
+    const longTitle = `Research card ${"Long title ".repeat(12)}Visible ending`;
+    const longBody = `${"Card body text must wrap and remain available in the editor. ".repeat(14)}CardBodyEndingRemainsReachable`;
+    await openCard(page, doc(longBody), longTitle);
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), longTitle);
+    assert.ok((await page.locator(".card-body-editor .ProseMirror").innerText()).includes("CardBodyEndingRemainsReachable"));
+    await assertGutterLayout(page, ".card-body-editor");
+    if (screenshots) await page.screenshot({ path: `${screenshots}/card-long-content-${iphoneProfile ? "phone" : "desktop"}.png` });
   });
 });
