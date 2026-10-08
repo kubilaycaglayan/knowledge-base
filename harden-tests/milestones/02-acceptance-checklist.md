@@ -76,15 +76,21 @@ records that engine/profile and its outcomes.
   resurrect data that has since changed or been deleted.
 - [ ] Assert failure, loading, success, and retry feedback is visible and
   exposed through the expected accessible name/live announcement.
-- [ ] Cover empty and sparse accounts with explicit empty-state text and a
+- [x] Cover empty and sparse accounts with explicit empty-state text and a
   keyboard-operable next action.
+  A fresh real-stack account sees the Notes empty state and can open the editor
+  with keyboard focus/Enter; global search also verifies its explicit empty
+  result state and keyboard retry in both Chromium profiles.
 - [ ] Cover very long titles, snippets, labels, note bodies, and card bodies;
   assert content remains reachable and does not create unintended horizontal
   overflow at desktop and phone widths.
-- [ ] Delay responses while switching routes, selected entities, boards, or
+- [x] Delay responses while switching routes, selected entities, boards, or
   pages; assert stale data never replaces the latest selection.
-- [ ] For each asynchronous race, state the expected winner and synchronization
+- [x] For each asynchronous race, state the expected winner and synchronization
   signal; avoid fixed sleeps as the only ordering guarantee.
+  The delayed-board case holds the cold board's status response, switches to a
+  second board, and asserts the second board remains selected; see the
+  [synchronization follow-up](../runs/2026-10-08-board-race-synchronization-followup.md).
 - [ ] Cover offline/connection loss and recovery where the app exposes a
   retry/reconnect path; assert recovery does not require a full reload unless
   that is the documented behavior.

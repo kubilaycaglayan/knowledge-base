@@ -132,13 +132,13 @@ d2cda77 reports; the final 6d29b9b pair added five more. The subsequent
 suite occurrences (archive overlap in both profiles, detached locator and
 More boards in mobile Chromium). The f6abf77 line-history pair passed all 12
 cases in each profile and added no failure occurrences. The cumulative table
-has 127 case occurrences across 48 failure-group suite occurrences: 65 cases
+has 129 case occurrences across 49 failure-group suite occurrences: 65 cases
 from 17 complete dated reports with failures, 4 test-authoring failures from
 exploratory attempts, and 3 from the partial transcript. The f6abf77 line-history,
 941b7c4 timer, and 5bba75f search reports passed and add no failing occurrences.
 The emulated iPhone WebKit line-history report added two reproduced failures
 across two failure-group suite occurrences; tracker acceptance repair iterations
-added 40 test-authoring failures across six suite occurrences, documented [here](2026-10-08-tracker-acceptance-repair.md).
+added 40 test-authoring failures across six suite occurrences, documented [here](2026-10-08-tracker-acceptance-repair.md). The board race synchronization follow-up adds two corrected test-authoring attempts and one suite occurrence.
 The local board browser fixture suite added 13 failures across five failure
 groups; see its [report](2026-10-08-board-fixture-suite.md). Fixture suite
 failures do not count as real-stack browser-profile coverage.
@@ -181,7 +181,7 @@ failures remain without traces or network/server logs.
 | Detached board card locator | 6 | 6 | 2026-10-08 | Reproduced in four mobile Chromium runs; latest trace retained locally; timing versus rerender remains suspected. |
 | Board menu control unavailable during phone card/view switching | 6 | 6 | 2026-10-08 | Reproduced in five mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
 | Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
-| Test-authoring synchronization/assertion issues | 4 | 4 | 2026-10-08 | Three timer retry iterations and one search empty-state locator failed during authoring; corrected and documented in the exploratory investigation report. No durable traces retained. |
+| Test-authoring synchronization/assertion issues | 6 | 5 | 2026-10-08 | Three timer retry iterations, one search empty-state locator, and two board race cache/synchronization attempts failed during authoring; corrected and documented in the exploratory investigation and [board synchronization follow-up](2026-10-08-board-race-synchronization-followup.md). No durable traces retained for the initial attempts. |
 | Tracker acceptance fixture repair | 40 | 6 | 2026-10-08 | Repeated runs exposed stale control selectors and assumptions; repaired against the current UI and the final 10/10 fixture suite passed. Evidence and output are retained in the tracker repair report. |
 | Board fixture card-label picker assumptions | 4 | 1 | 2026-10-08 | Four stale selector/measurement assumptions were updated against the shared LabelPicker and passed in a focused rerun. |
 | Board fixture card-editor overflow | 2 | 1 | 2026-10-08 | Dialog/footer overflow at 1280px reproduced; focused rerun measured 373px of footer overflow. |

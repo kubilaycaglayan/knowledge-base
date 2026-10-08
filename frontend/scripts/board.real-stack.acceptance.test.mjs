@@ -306,14 +306,23 @@ describe("board real-stack acceptance", () => {
     await createBoard(secondBoard);
     const secondId = currentBoardId();
     await addCard("Second board card");
+    // Rebuild the store after fixture creation so the first board is not served
+    // from the warm view cache when selected below.
+    await page.reload();
+    await boardSettled();
 
     let releaseFirstPage;
     let reportFirstPageHeld;
     const firstPageReleased = new Promise((resolve) => { releaseFirstPage = resolve; });
     const firstPageHeld = new Promise((resolve) => { reportFirstPageHeld = resolve; });
     let held = false;
-    const heldPattern = `**/api/v1/boards/${firstId}/cards/page*`;
+    const heldPattern = "**/api/v1/boards/*/statuses";
     await page.route(heldPattern, async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.pathname !== `/api/v1/boards/${firstId}/statuses`) {
+        await route.continue();
+        return;
+      }
       if (!held) {
         held = true;
         reportFirstPageHeld();
@@ -325,7 +334,10 @@ describe("board real-stack acceptance", () => {
     });
     try {
       await selectBoard(firstBoard, { settle: false });
-      await firstPageHeld;
+      await Promise.race([
+        firstPageHeld,
+        page.waitForTimeout(5000).then(() => assert.fail(`No status request was held for board ${firstId}`)),
+      ]);
       await selectBoard(secondBoard, { settle: false });
       await page.getByRole("heading", { name: "Second board card" }).waitFor();
       assert.equal(currentBoardId(), secondId);
