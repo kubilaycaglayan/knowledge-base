@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+# Many checks are silent (grep -q, [[ … ]]); name the one that failed so a
+# failure is never just a bare non-zero exit.
+trap 'echo "Smoke test failed at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
 : "${JWT_SECRET:?Set JWT_SECRET to a random value before running smoke tests}"
 : "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to the password used by the database volume}"
