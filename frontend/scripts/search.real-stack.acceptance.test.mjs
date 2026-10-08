@@ -56,7 +56,9 @@ it("preserves a search query after a retryable request failure and retries acces
       new URL(response.url()).pathname === "/api/v1/search" &&
       response.request().method() === "GET" && response.status() === 200,
     );
-    await dialog.getByRole("button", { name: "Try again" }).click();
+    const retry = dialog.getByRole("button", { name: "Try again" });
+    await retry.focus();
+    await retry.press("Enter");
     await retryResponse;
     await dialog.locator(".global-search-empty").getByText("No results for", { exact: false }).waitFor();
     assert.equal(await input.inputValue(), "zzzxq-nonexistent-query");
