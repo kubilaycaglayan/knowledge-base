@@ -1,7 +1,7 @@
 # HARD-01: Real-stack search and deep-link journeys
 
 **Priority:** High  
-**Status:** Planned  
+**Status:** In progress  
 **Scope:** Test coverage and run documentation only.
 
 Track completion in the [HARD-01 acceptance checklist](01-acceptance-checklist.md).
@@ -65,3 +65,16 @@ fixture tests cannot expose.
 - `(cd frontend && npm run test:tracker)` for existing fixture coverage
 - `./scripts/test-run-all.sh` for the disposable integrated stack
 - `docs/global-search-acceptance-checklist.md`
+
+## Current implementation
+
+`frontend/scripts/search.real-stack.acceptance.test.mjs` and
+`scripts/run-search-e2e.sh` provide the initial disposable PostgreSQL journey.
+The suite seeds a unique user and records through the API, then exercises
+search-result activation for notes, logs, paths, labels, sessions, calendar
+days, boards, and active cards. It checks route state, Back/Forward for the
+note/log/path/label/session results, active-card ownership parameters, and
+direct loads for active routes. `scripts/test-run-all.sh` includes the journey
+in its stack-backed browser stage. This initial suite does not yet satisfy the
+full milestone; the acceptance checklist remains the record of uncompleted
+route variants, failure cases, and profile evidence.
