@@ -1461,6 +1461,49 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresExportKeepsHighVolumeLogRecordsStablyOrdered() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This export volume case runs against PostgreSQL");
+    }
+    String token = freshToken();
+    List<UUID> ids = new ArrayList<>();
+    StringBuilder csv = new StringBuilder("entity,id,payload\n");
+    for (int index = 0; index < 60; index++) {
+      UUID id = UUID.randomUUID();
+      ids.add(id);
+      String occurredAt = Instant.parse("2024-01-01T00:00:00Z").plusSeconds(index).toString();
+      csv.append(
+          csvRow(
+              "log",
+              id,
+              "{\"body\":\"Export volume "
+                  + index
+                  + "\",\"occurredAt\":\""
+                  + occurredAt
+                  + "\",\"createdAt\":\""
+                  + occurredAt
+                  + "\",\"updatedAt\":\""
+                  + occurredAt
+                  + "\",\"labelIds\":[]}"));
+    }
+    ResponseEntity<JsonNode> imported = importCsv(token, csv.toString());
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(60, imported.getBody().get("imported").asInt());
+
+    String exported = exportCsv(token).getBody();
+    String[] lines = exported.strip().split("\\n");
+    List<String> exportedLogIds =
+        java.util.Arrays.stream(lines)
+            .filter(line -> line.startsWith("log,"))
+            .map(line -> line.split(",", 3)[1])
+            .toList();
+    assertEquals(60, exportedLogIds.size());
+    assertEquals(ids.reversed().stream().map(UUID::toString).toList(), exportedLogIds);
+    assertTrue(exported.length() < 25_000_000);
+  }
+
+  @Test
   void reportBadPeriodIsRejected() {
     String token = freshToken();
     ResponseEntity<JsonNode> result = get("/api/v1/reports?period=INVALID", token);
