@@ -66,12 +66,12 @@ records that engine/profile and its outcomes.
 
 ## Resilience coverage
 
-- [ ] For notes, cards, paged board results, search, and timer fallback, inject
+- [x] For notes, cards, paged board results, search, and timer fallback, inject
   a retryable request failure and assert the user's draft/input is preserved.
   Notes and cards now have real-stack failure/replay coverage; paged board
   results, search, and timer draft fallback have real-stack failure/retry
   cases. Search and timer are verified in desktop and mobile-size Chromium.
-- [ ] Assert retry uses current server state and does not duplicate a write or
+- [x] Assert retry uses current server state and does not duplicate a write or
   resurrect data that has since changed or been deleted.
 - [ ] Assert failure, loading, success, and retry feedback is visible and
   exposed through the expected accessible name/live announcement.
