@@ -13,6 +13,7 @@
     "test:board": "node --test --test-concurrency=1 scripts/board.acceptance.test.mjs",
     "test:board:e2e": "node --test scripts/board.real-stack.acceptance.test.mjs",
     "test:timer:e2e": "node --test scripts/timer-websocket.real-stack.acceptance.test.mjs",
+    "test:search:e2e": "node --test scripts/search.real-stack.acceptance.test.mjs",
     "test:lines:e2e": "node --test --test-concurrency=1 scripts/line-history.real-stack.acceptance.test.mjs",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview"
