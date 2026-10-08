@@ -278,6 +278,26 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
     assertEquals(1, history.get("uses").get("logs").asLong());
   }
 
+  @Test
+  void postgresRequestedZoneBucketsTrackedTimeAcrossSpringForward() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This timezone transition case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Spring forward");
+    session(
+        owner,
+        Instant.parse("2024-03-10T06:30:00Z"),
+        Instant.parse("2024-03-10T08:00:00Z"),
+        labelId);
+
+    JsonNode result = history(owner, labelId, "?zone=America/New_York");
+    assertEquals(5400, result.get("trackedSeconds").asLong());
+    assertEquals(1800, result.get("hours").get(1).get("trackedSeconds").asLong());
+    assertEquals(0, result.get("hours").get(2).get("trackedSeconds").asLong());
+    assertEquals(3600, result.get("hours").get(3).get("trackedSeconds").asLong());
+  }
+
   private int assignLabelTogether(
       String token, String logId, String labelId, CyclicBarrier startTogether) throws Exception {
     startTogether.await(5, TimeUnit.SECONDS);

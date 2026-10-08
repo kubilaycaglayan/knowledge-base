@@ -276,6 +276,33 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresConcurrentStatusReordersKeepOneCompleteOrdering() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent status ordering case runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Concurrent status order board");
+    List<String> original =
+        get("/api/v1/boards/" + boardId + "/statuses", token)
+            .getBody()
+            .findValuesAsText("id");
+    List<String> reversed = new ArrayList<>(original);
+    java.util.Collections.reverse(reversed);
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> reorderStatusesTogether(boardId, token, original, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> reorderStatusesTogether(boardId, token, reversed, startTogether));
+      assertEquals(List.of(200, 200), List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)).stream().sorted().toList());
+    }
+    JsonNode current = get("/api/v1/boards/" + boardId + "/statuses", token).getBody();
+    List<String> currentOrder = current.findValuesAsText("id");
+    assertTrue(List.of(original, reversed).contains(currentOrder));
+    assertEquals(List.of(0, 1, 2, 3), current.findValuesAsText("position").stream().map(Integer::valueOf).toList());
+  }
+
+  @Test
   void postgresGanttKeepsDateOnlyCardDatesWithoutZoneDrift() {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -310,6 +337,18 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
             "{\"statusId\":\""
                 + targetStatusId
                 + "\",\"position\":0}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int reorderStatusesTogether(
+      String boardId, String token, List<String> ids, CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/boards/" + boardId + "/statuses/order",
+            token,
+            "{\"ids\":[\"" + String.join("\",\"", ids) + "\"]}")
         .getStatusCode()
         .value();
   }
