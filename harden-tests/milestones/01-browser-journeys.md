@@ -78,3 +78,12 @@ direct loads for active routes. `scripts/test-run-all.sh` includes the journey
 in its stack-backed browser stage. This initial suite does not yet satisfy the
 full milestone; the acceptance checklist remains the record of uncompleted
 route variants, failure cases, and profile evidence.
+
+The selected journey passed on commit `bad2c8c` in all three supported local
+profiles. See the separate run reports in [`runs/`](../runs/):
+[desktop Chromium](../runs/2026-10-08-bad2c8c-desktop-chromium-search.md),
+[mobile Chromium](../runs/2026-10-08-bad2c8c-mobile-chromium-search.md), and
+[iPhone WebKit](../runs/2026-10-08-bad2c8c-iphone-webkit-search.md). The
+remaining checklist covers archived results, page shortcuts, URL state
+variants, missing/foreign IDs, and broader failure behavior; these are not
+accepted by the current selected journey.

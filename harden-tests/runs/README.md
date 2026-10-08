@@ -81,6 +81,13 @@ When the same failure occurs in multiple cases or suites, count each affected ca
 
 ## Cumulative failure groups
 
+HARD-01 selected active-route search journeys passed on 2026-10-08 in desktop
+Chromium, mobile-size Chromium, and emulated iPhone WebKit. The three reports
+are [desktop Chromium](2026-10-08-bad2c8c-desktop-chromium-search.md),
+[mobile Chromium](2026-10-08-bad2c8c-mobile-chromium-search.md), and
+[iPhone WebKit](2026-10-08-bad2c8c-iphone-webkit-search.md). These runs had no
+failed cases and add no occurrences to the cumulative failure table below.
+
 Counts below include the initial Chromium run in [2026-10-08-fb8f96a-chromium.md](2026-10-08-fb8f96a-chromium.md), the emulated iPhone WebKit line-history, timer, and board runs, focused desktop Chromium line-history and board reruns, and the incomplete-metadata local board attempt in [2026-10-08-unclassified-board-attempt.md](2026-10-08-unclassified-board-attempt.md). The latter contributes its two unclassified signatures and one recurrence of the archive-footer hit test. These are observed failure occurrences; resolved groups remain listed so later runs can show recurrence.
 
 | Suspected root cause | Case occurrences | Suite occurrences | Last seen | Confirmed correction |

@@ -27,7 +27,10 @@ for completion criteria, including reconciliation of the existing run records.
 - [x] Run desktop Chromium and emulated iPhone WebKit real-stack journeys for board/card edits, pagination, note conflicts, timer sync/fallback, delayed board responses, and session restoration; keep reports separate by browser profile.
 - [x] Confirm the existing real-stack suites support mobile-size Chromium by combining `BROWSER_ENGINE=chromium` with `BROWSER_PROFILE=iphone`; report it as mobile Chromium emulation, not physical Android Chrome.
 - [ ] Run and record a mobile-size Chromium profile separately from desktop Chromium and iPhone WebKit, with engine, viewport, touch, scale factor, and machine details.
-- [ ] Add global search and direct deep-link journeys to both profiles.
+- [ ] Complete global search and direct deep-link journeys across the route
+  matrix. An initial active-route suite now passes in desktop Chromium,
+  mobile-size Chromium, and iPhone WebKit; archived/missing/foreign routes and
+  the remaining checklist cases are still open.
 - [ ] Expand explicit empty and long-content, delayed-response, network-failure, and retry states across the remaining journeys. Existing coverage includes delayed board responses, timer HTTP fallback, and note retry.
 
 See [HARD-01](milestones/01-browser-journeys.md) and

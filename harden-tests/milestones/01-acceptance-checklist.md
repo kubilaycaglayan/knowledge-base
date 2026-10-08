@@ -103,35 +103,35 @@ part of the shareable direct-navigation contract:
 
 ## Machine and browser profiles
 
-- [ ] Record the available machine's OS, CPU architecture, memory, Node,
+- [x] Record the available machine's OS, CPU architecture, memory, Node,
   Playwright, and browser versions in the run report.
-- [ ] Pass the full selected journey set in desktop Chromium at the documented
+- [x] Pass the full selected journey set in desktop Chromium at the documented
   desktop viewport and scale factor.
-- [ ] Pass the full selected journey set with
+- [x] Pass the full selected journey set with
   `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone` at 390×844, touch enabled,
   and device scale factor 3; report it as mobile-size Chromium emulation.
-- [ ] Pass the supported emulated iPhone WebKit profile separately; label it
+- [x] Pass the supported emulated iPhone WebKit profile separately; label it
   WebKit and do not count it as Chrome evidence.
 - [ ] Check mobile layout for horizontal overflow, clipped dialogs, reachable
   controls, and usable Back/Forward navigation at phone width.
 - [ ] Check desktop layout for visible result identity, dialog placement, and
   keyboard-operable search/result navigation.
-- [ ] State clearly that Chromium emulation does not prove physical Android
+- [x] State clearly that Chromium emulation does not prove physical Android
   Chrome behavior and WebKit emulation does not prove physical iPhone behavior;
   record physical-device evidence separately if run.
 
 ## Isolation and evidence
 
-- [ ] Seed all entities through documented test APIs/fixtures using a unique
+- [x] Seed the selected active-route entities through test APIs using a unique
   disposable account; no personal or production data is used.
-- [ ] Run against a clean disposable PostgreSQL/API/proxy/web stack and record
+- [x] Run against a clean disposable PostgreSQL/API/proxy/web stack and record
   its unique Compose project and image identifiers.
-- [ ] Run each browser profile from the same commit and fixture definition, and
+- [x] Run each browser profile from the same commit and fixture definition, and
   retain separate reports with pass/fail/skip counts.
 - [ ] Retain failure screenshot, trace, console/network evidence, and relevant
   server logs in ignored local storage or CI artifacts; link them in the run.
-- [ ] Verify cleanup removes only the test project and its disposable volumes.
-- [ ] Repeat the selected journeys from a clean stack on the same commit and
+- [x] Verify cleanup removes only the test project and its disposable volumes.
+- [x] Repeat the selected journeys from clean stacks on the same commit and
   confirm results do not depend on persistent development data.
 - [ ] Link the real-stack tests, commands, reports, and any known unsupported
   route cases from the milestone status before marking it complete.
