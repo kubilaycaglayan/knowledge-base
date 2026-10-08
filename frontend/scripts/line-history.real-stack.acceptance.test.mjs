@@ -28,19 +28,25 @@ function extensionNoteDocument() {
 }
 
 // The iOS app's body conversion, ported line for line from NoteDocument in
-// ios/Know/NotesModels.swift (Swift cannot run in this Linux suite).
+// ios/Know/NotesModels.swift; scripts/check-ios-note-document.sh runs the
+// Swift original with XCTest.
 const iosNoteDocument = {
   plainText(content, fallback) {
     let document;
     try { document = JSON.parse(content); } catch { return fallback ?? content; }
     if (!document || typeof document !== "object" || document.type !== "doc") return fallback ?? content;
+    const lines = [];
     const collect = (node) => {
-      if (!node || typeof node !== "object") return "";
-      const text = typeof node.text === "string" ? node.text : "";
-      const children = (Array.isArray(node.content) ? node.content : []).map(collect).join("");
-      return text + children + (node.type === "paragraph" ? "\n" : "");
+      if (!node || typeof node !== "object") return;
+      const children = Array.isArray(node.content) ? node.content : [];
+      if (["paragraph", "heading", "codeBlock"].includes(node.type)) {
+        lines.push(...children.map((child) => (child?.type === "hardBreak" ? "\n" : typeof child?.text === "string" ? child.text : "")).join("").split("\n"));
+        return;
+      }
+      children.forEach(collect);
     };
-    return collect(document).replace(/^\n+|\n+$/g, "").replaceAll("\n\n", "\n");
+    collect(document);
+    return lines.join("\n");
   },
   json(body) {
     return JSON.stringify({ type: "doc", content: body.split(/\r\n|\r|\n/).map((line) => (line ? { type: "paragraph", content: [{ type: "text", text: line }] } : { type: "paragraph" })) });
@@ -241,7 +247,7 @@ describe("note line history", () => {
 });
 
 describe("line history across clients", () => {
-  const richBody = JSON.stringify({ type: "doc", content: [paragraph("Alpha"), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Item")] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Done")] }, { type: "taskItem", attrs: { checked: false }, content: [paragraph("Open")] }] }, paragraph("Last")] });
+  const richBody = JSON.stringify({ type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Plan" }] }, paragraph("Alpha"), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Item")] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Done")] }, { type: "taskItem", attrs: { checked: false }, content: [paragraph("Open")] }] }, { type: "paragraph", content: [{ type: "text", text: "First" }, { type: "hardBreak" }, { type: "text", text: "Second" }] }, paragraph("Last")] });
 
   // Opens the note in the web app and lets it save once, so contentText is the web's own.
   async function webNote(title) {
@@ -258,10 +264,12 @@ describe("line history across clients", () => {
     const build = extensionNoteDocument();
     const before = await webNote("Extension");
     const original = timesByText(before);
-    assert.deepEqual(Object.keys(original), ["Alpha", "Item", "Done", "Open", "Last!"]);
+    assert.deepEqual(Object.keys(original), ["Plan", "Alpha", "Item", "Done", "Open", "First", "Second", "Last!"]);
+    // The web's plain-text copy has one line per body line, so the extension adds no blank lines.
+    assert.equal(before.contentText, "Plan\nAlpha\nItem\nDone\nOpen\nFirst\nSecond\nLast!");
     // The extension edits the web's plain-text copy and rebuilds the body from it.
     const untouched = await api(page, "PUT", `/notes/${before.id}`, { title: before.title, content: build(before.contentText), contentText: before.contentText, tags: [], version: before.version });
-    assert.deepEqual(timesByText(untouched), original, "an unchanged extension save restamped lines");
+    assert.deepEqual(untouched.lineEdits, before.lineEdits, "an unchanged extension save restamped lines");
 
     const edited = before.contentText.replace("Item", "Item, edited in the extension");
     const after = await api(page, "PUT", `/notes/${before.id}`, { title: before.title, content: build(edited), contentText: edited, tags: [], version: untouched.version });
@@ -279,7 +287,8 @@ describe("line history across clients", () => {
     const before = await webNote("iOS");
     const original = timesByText(before);
     const body = iosNoteDocument.plainText(before.content, before.contentText);
-    assert.equal(body, "Alpha\nItem\nDone\nOpen\nLast!");
+    // Headings and hard-broken lines stay separate lines.
+    assert.equal(body, "Plan\nAlpha\nItem\nDone\nOpen\nFirst\nSecond\nLast!");
     const untouched = await api(page, "PUT", `/notes/${before.id}`, { title: before.title, content: iosNoteDocument.json(body), contentText: body, tags: [], version: before.version });
     assert.deepEqual(untouched.lineEdits, before.lineEdits, "an unchanged iOS save restamped lines");
     const edited = body.replace("Open", "Open, edited on iOS");
@@ -303,13 +312,13 @@ describe("line history for assistive technology", () => {
 
     const status = page.locator('.rich-editor [role="status"].line-history-status');
     await placeCaret(page, page.locator(".rich-editor p", { hasText: "Second" }));
-    await page.waitForFunction(() => /^Line edited /.test(document.querySelector(".rich-editor .line-history-status")?.textContent || ""));
+    await page.waitForFunction(() => /^Line 2, edited /.test(document.querySelector(".rich-editor .line-history-status")?.textContent || ""));
     await page.keyboard.press("Enter");
     await page.keyboard.type("Typed");
-    await page.waitForFunction(() => document.querySelector(".rich-editor .line-history-status")?.textContent === "Line not saved yet");
-    assert.equal(await page.getByRole("status").filter({ hasText: "Line not saved yet" }).count(), 1, "the announcement is in the accessibility tree");
+    await page.waitForFunction(() => document.querySelector(".rich-editor .line-history-status")?.textContent === "Line 3, not saved yet");
+    assert.equal(await page.getByRole("status").filter({ hasText: "Line 3, not saved yet" }).count(), 1, "the announcement is in the accessibility tree");
     await page.keyboard.press("ArrowUp");
-    await page.waitForFunction(() => /^Line edited /.test(document.querySelector(".rich-editor .line-history-status")?.textContent || ""));
+    await page.waitForFunction(() => /^Line 2, edited /.test(document.querySelector(".rich-editor .line-history-status")?.textContent || ""));
     await page.getByRole("button", { name: "Line history" }).click();
     await page.waitForFunction(() => (document.querySelector(".rich-editor .line-history-status")?.textContent ?? "") === "");
     assert.equal(await status.count(), 1);
