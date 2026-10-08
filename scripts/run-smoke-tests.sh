@@ -542,8 +542,8 @@ printf '%s' "$paths_order" | grep -q 'Other smoke path'
 # through a label, near-miss spellings, and parameter validation.
 search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke%20path')"
 [[ "$search" == *'"type":"PATH"'* && "$search" == *'"title":"Smoke path"'* && "$search" == *'"fuzzy":false'* ]]
-search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Persisted%20knowledge&types=NOTE')"
-[[ "$search" == *'"title":"Smoke note"'* && "$search" != *'"type":"PATH"'* ]]
+search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Updated%20knowledge&types=NOTE')"
+[[ "$search" == *'"title":"Edited smoke note"'* && "$search" != *'"type":"PATH"'* ]]
 search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=leave&types=SESSION')"
 [[ "$search" == *'Edited session'* && "$search" == *'"via":"LABEL"'* ]]
 search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=sesion&types=SESSION')"
