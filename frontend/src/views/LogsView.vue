@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { routeLocationKey, routerKey } from "vue-router";
+import { RouterLink, routeLocationKey, routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { isPageSearchShortcut } from "../lib/search";
@@ -530,9 +530,15 @@ onBeforeUnmount(() => {
           </div>
         </template>
         <template v-else>
-          <time class="log-time" :datetime="log.occurredAt">{{
-            formatLogTimestamp(log.occurredAt, group.label)
-          }}</time>
+          <time class="log-time" :datetime="log.occurredAt"
+            ><RouterLink
+              v-if="router"
+              class="log-time-link"
+              :to="`/logs/${log.id}`"
+              :aria-label="`Open log from ${formatTimestamp(log.occurredAt)}`"
+              >{{ formatLogTimestamp(log.occurredAt, group.label) }}</RouterLink
+            ><template v-else>{{ formatLogTimestamp(log.occurredAt, group.label) }}</template></time
+          >
           <p class="log-body">{{ log.body }}</p>
           <div class="log-actions">
             <div
@@ -599,6 +605,14 @@ onBeforeUnmount(() => {
 .logs-page {
   max-width: 1200px;
   margin: 0 auto;
+}
+.log-time-link {
+  color: inherit;
+  text-decoration: none;
+}
+.log-time-link:hover {
+  color: var(--workspace-strong);
+  text-decoration: underline;
 }
 .log-entry-highlight {
   border-radius: var(--workspace-radius);
