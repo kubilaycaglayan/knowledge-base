@@ -50,8 +50,8 @@ async function seed() {
   fixtures.card = await api(`/boards/${fixtures.board.id}/cards`, "POST", { title: `${text} Card`, body: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] }), priority: "MEDIUM", pathIds: [], labelIds: [] });
   fixtures.archivedBoard = await api("/boards", "POST", { name: `${text} Archived Board` });
   fixtures.archivedBoardStatus = (await api(`/boards/${fixtures.archivedBoard.id}/statuses`))[0];
-  fixtures.archivedCard = await api(`/boards/${fixtures.archivedBoard.id}/cards`, "POST", { title: `${text} Archived Card`, body: "{}", priority: "MEDIUM", pathIds: [], labelIds: [] });
-  await api(`/boards/${fixtures.archivedBoard.id}/cards/${fixtures.archivedCard.id}/archive`, "POST");
+  fixtures.archivedCard = await api(`/boards/${fixtures.board.id}/cards`, "POST", { title: `${text} Archived Card`, body: "{}", priority: "MEDIUM", pathIds: [], labelIds: [] });
+  await api(`/boards/${fixtures.board.id}/cards/${fixtures.archivedCard.id}/archive`, "POST");
   await api(`/boards/${fixtures.archivedBoard.id}/archive`, "POST");
   fixtures.day = new Date().toISOString().slice(0, 10);
   await api(`/calendar/days/${fixtures.day}`, "PUT", { note: `${text} Day`, labels: [] });
@@ -70,6 +70,9 @@ async function openSearch() {
 }
 
 async function searchFor(query, type, id) {
+  // Clear the prior result route and any modal before starting a new search.
+  await page.goto(`${baseUrl}/`);
+  await page.locator("#app").waitFor();
   const dialog = await openSearch();
   const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
   await input.fill(query);
@@ -241,7 +244,7 @@ describe("search and direct routes against disposable real stack", () => {
     const archivedCard = await searchFor(`${text} Archived Card`, "CARD", fixtures.archivedCard.id);
     await archivedCard.option.click();
     await page.waitForFunction((id) => location.pathname === "/board/archive" && new URL(location.href).searchParams.get("card") === id, fixtures.archivedCard.id);
-    assert.equal(new URL(page.url()).searchParams.get("board"), fixtures.archivedBoard.id);
+    assert.equal(new URL(page.url()).searchParams.get("board"), fixtures.board.id);
     assert.equal(await page.locator(".card-editor").count(), 0, "archived cards do not open the active-card editor");
     await page.getByText(`${text} Archived Card`, { exact: false }).waitFor();
 
@@ -264,7 +267,7 @@ describe("search and direct routes against disposable real stack", () => {
       { path: `/board?board=${fixtures.board.id}`, kind: "board" },
       { path: `/board?board=${fixtures.board.id}&card=${fixtures.card.id}&cardBoard=${fixtures.board.id}`, kind: "card" },
       { path: `/board/archive?archivedBoard=${fixtures.archivedBoard.id}`, kind: "archived-board" },
-      { path: `/board/archive?board=${fixtures.archivedBoard.id}&card=${fixtures.archivedCard.id}`, kind: "archived-card" },
+      { path: `/board/archive?board=${fixtures.board.id}&card=${fixtures.archivedCard.id}`, kind: "archived-card" },
     ];
     for (const destination of destinations) {
       const direct = await context.newPage();
@@ -288,7 +291,7 @@ describe("search and direct routes against disposable real stack", () => {
         await direct.getByText(`${text} Archived Board`, { exact: false }).first().waitFor();
       } else if (destination.kind === "archived-card") {
         const url = new URL(direct.url());
-        assert.equal(url.searchParams.get("board"), fixtures.archivedBoard.id);
+        assert.equal(url.searchParams.get("board"), fixtures.board.id);
         assert.equal(url.searchParams.get("card"), fixtures.archivedCard.id);
         assert.equal(await direct.locator(".card-editor").count(), 0);
         await direct.getByText(`${text} Archived Card`, { exact: false }).waitFor();
