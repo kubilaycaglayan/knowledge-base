@@ -36,9 +36,9 @@ failure-state requirements, and acceptance evidence.
 
 ### Backend integration
 
-- Existing H2 integration coverage includes malformed and oversized input, ownership, stale note versions, and API behavior; PostgreSQL search has a dedicated opt-in integration test.
-- [ ] Expand coverage for rate limits, time boundaries, empty and large result sets, and PostgreSQL behavior that H2 cannot represent. Existing tests cover stale note/card versions and concurrent board writes.
-- [ ] Keep PostgreSQL tests isolated to an empty disposable database migrated by Flyway; do not point test jobs at persistent data.
+- Existing H2 integration coverage includes malformed and oversized input, ownership, stale note versions, and API behavior. The `backend-postgres` CI job now runs the complete integration suite against a guarded PostgreSQL 16 database and repeats the search suite against its migrated schema.
+- [ ] Finish HARD-03 time boundaries, result-volume coverage, and remaining PostgreSQL behavior that H2 cannot represent. The current PostgreSQL evidence covers report periods, imports, timer/note/card races, rollback, and representative result volumes; open cases are listed in the [HARD-03 checklist](milestones/03-acceptance-checklist.md).
+- [x] Keep PostgreSQL tests isolated to an empty disposable database migrated by Flyway; do not point test jobs at persistent data.
 
 See [HARD-03](milestones/03-postgres-and-boundaries.md) for database-sensitive
 areas, deterministic time cases, scale coverage, and disposable-database gates.

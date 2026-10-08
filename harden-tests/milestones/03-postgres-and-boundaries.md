@@ -1,7 +1,7 @@
 # HARD-03: PostgreSQL behavior, time boundaries, and result volume
 
 **Priority:** High  
-**Status:** Planned  
+**Status:** In Progress
 **Scope:** Test coverage and documentation only.
 
 Track completion in the [HARD-03 acceptance checklist](03-acceptance-checklist.md).
@@ -20,7 +20,7 @@ time boundaries and empty/large result sets.
   repository, migration, and existing test evidence. The source-backed map and
   outstanding PostgreSQL criteria are in the
   [HARD-03 acceptance checklist](03-acceptance-checklist.md).
-- [ ] Add an opt-in or CI PostgreSQL integration profile using a unique,
+- [x] Add an opt-in or CI PostgreSQL integration profile using a unique,
   disposable database/container initialized only by Flyway. Fail fast if the
   configured database is not empty or is not explicitly marked disposable;
   never point this job at a persistent development or production database.
@@ -38,11 +38,16 @@ time boundaries and empty/large result sets.
 - [ ] Add PostgreSQL concurrency cases for the one-running-timer invariant,
   optimistic note/card versions, board moves/ordering, and duplicate label or
   assignment writes where concurrent requests can race.
-- [ ] Run Flyway migration tests from the supported baseline and on an already
+- [x] Run Flyway migration tests from the supported baseline and on an already
   migrated disposable database. Include a migration smoke path that proves
   application startup does not rely on Hibernate schema mutation.
-- [ ] Document local invocation and CI evidence in `docs/testing.md`, including
+- [x] Document local invocation and CI evidence in `docs/testing.md`, including
   the disposable database guard and cleanup behavior.
+
+The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
+passes the full PostgreSQL suite and migrated startup check. The milestone
+remains in progress because injected-clock/running-entry cases, board move and
+label/assignment races, and high-volume label history are still open.
 
 ## Acceptance evidence
 
