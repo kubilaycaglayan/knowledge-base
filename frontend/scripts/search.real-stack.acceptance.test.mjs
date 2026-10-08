@@ -251,6 +251,7 @@ describe("search and direct routes against disposable real stack", () => {
       page.off("request", onRequest);
 
       await page.goto(`${baseUrl}${priorPath}`);
+      await page.locator("#app").waitFor();
       const keyboardDialog = await openSearch();
       const keyboardInput = keyboardDialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
       await keyboardInput.fill(label);
