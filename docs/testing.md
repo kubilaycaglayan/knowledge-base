@@ -23,7 +23,16 @@ integration suites run on H2, which registers `com.know.service.Trigrams` as
 `word_similarity` in place of pg_trgm. `SearchPostgresIntegrationTest` runs
 the same suite against real PostgreSQL migrated by Flyway, so the pg_trgm
 operators and trigram indexes are exercised too; it runs only when
-`KB_TEST_POSTGRES_URL` names an empty, disposable database:
+`KB_TEST_POSTGRES_URL` names an empty, disposable database.
+
+The current opt-in test class enables Flyway and Hibernate validation, but does
+not verify that the configured database is empty or disposable before it
+connects. Create a new database as shown below, use only an isolated local or
+CI database, and do not point this test at the persistent development or
+production database. A future database guard should fail before migrations or
+fixtures run when this precondition is not met.
+
+Example disposable PostgreSQL 16 invocation:
 
 ```bash
 docker run -d --rm --name kb-search-pg -e POSTGRES_PASSWORD=pw postgres:16-alpine

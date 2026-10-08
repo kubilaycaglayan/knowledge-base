@@ -16,10 +16,10 @@ time boundaries and empty/large result sets.
 
 ## Tasks
 
-- [ ] Build an inventory mapping database-sensitive behavior to service,
-  repository, and migration code. Prioritize native SQL, JSON/JSONB, array or
-  text-search operators, partial/unique indexes, foreign-key cascades, and
-  transaction/locking assumptions.
+- [x] Build an inventory mapping database-sensitive behavior to service,
+  repository, migration, and existing test evidence. The source-backed map and
+  outstanding PostgreSQL criteria are in the
+  [HARD-03 acceptance checklist](03-acceptance-checklist.md).
 - [ ] Add an opt-in or CI PostgreSQL integration profile using a unique,
   disposable database/container initialized only by Flyway. Fail fast if the
   configured database is not empty or is not explicitly marked disposable;
