@@ -87,7 +87,8 @@ struct WorkspaceView: View {
     VStack(spacing: 0) {
       VStack(alignment: .leading, spacing: 8) {
         HStack {
-          Text("knowledge.base").font(.system(size: 19, weight: .bold)).tracking(-0.7)
+          // A text style rather than a fixed size, so the title follows Dynamic Type.
+          Text("knowledge.base").font(.system(.title3, weight: .bold)).tracking(-0.7)
             .accessibilityLabel("Knowledge Base").accessibilityAddTraits(.isHeader)
           Spacer()
           Menu {
@@ -128,7 +129,10 @@ struct WorkspaceView: View {
                   .padding(.horizontal, 10).frame(minHeight: 44)
                   .background(
                     section == name ? WorkspaceTheme.selected(scheme) : .clear,
-                    in: RoundedRectangle(cornerRadius: 4))
+                    in: RoundedRectangle(cornerRadius: 4)
+                  )
+                  // Without a shape a plain button's hit area is only its text.
+                  .contentShape(Rectangle())
               }.buttonStyle(.plain).accessibilityAddTraits(section == name ? .isSelected : [])
                 .accessibilityIdentifier("workspace.\(name.lowercased())")
             }
