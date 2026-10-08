@@ -39,6 +39,7 @@ async function seed() {
 
   fixtures.path = await api("/paths", "POST", { name: `${text} Path`, description: text, color: "#2878D5", textColor: "#FFFFFF" });
   fixtures.note = await api("/notes", "POST", { pathId: fixtures.path.id, title: `${text} Note`, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] }), contentText: text, tags: [] });
+  fixtures.specialNote = await api("/notes", "POST", { title: `${text} Café, Signals?`, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Punctuation and Unicode search fixture" }] }] }), contentText: "Punctuation and Unicode search fixture", tags: [] });
   fixtures.archivedNote = await api("/notes", "POST", { title: `${text} Archived Note`, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] }), contentText: text, tags: [] });
   await api(`/notes/${fixtures.archivedNote.id}`, "DELETE");
   fixtures.log = await api("/logs", "POST", { body: `${text} Log`, occurredAt: new Date().toISOString() });
@@ -49,6 +50,7 @@ async function seed() {
     await api(`/boards/${fixtures.board.id}/cards`, "POST", { title: `${stamp} Padding ${index}`, body: "{}", priority: "MEDIUM", pathIds: [], labelIds: [] });
   }
   fixtures.card = await api(`/boards/${fixtures.board.id}/cards`, "POST", { title: `${text} Card`, body: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] }), priority: "MEDIUM", pathIds: [], labelIds: [] });
+  fixtures.ganttEndCard = await api(`/boards/${fixtures.board.id}/cards`, "POST", { title: `${text} Gantt end day`, body: "{}", priority: "MEDIUM", startDate: "2026-06-14", dueDate: "2026-06-14", pathIds: [], labelIds: [] });
   fixtures.archivedBoard = await api("/boards", "POST", { name: `${text} Archived Board` });
   fixtures.archivedBoardStatus = (await api(`/boards/${fixtures.archivedBoard.id}/statuses`))[0];
   fixtures.archivedCard = await api(`/boards/${fixtures.board.id}/cards`, "POST", { title: `${text} Archived Card`, body: "{}", priority: "MEDIUM", pathIds: [], labelIds: [] });
@@ -222,8 +224,130 @@ describe("search and direct routes against disposable real stack", () => {
     await recordOption.waitFor();
     assert.equal(await pageOption.getAttribute("aria-label"), "Paths, page");
     assert.match(await recordOption.getAttribute("aria-label"), /^Paths,/);
-    await recordOption.click();
+    await dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" }).press("ArrowDown");
+    assert.equal(await recordOption.getAttribute("aria-selected"), "true", "ArrowDown selects the record separately from the page shortcut");
+    await dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" }).press("Enter");
     await page.waitForFunction((id) => location.pathname === `/paths/${id}`, fixtures.shortcutMatchPath.id);
+  });
+
+  it("trims and encodes a punctuation and Unicode query", async () => {
+    await page.goto(`${baseUrl}/`);
+    await page.locator("#app").waitFor();
+    let searchUrl;
+    const onRequest = (request) => {
+      if (new URL(request.url()).pathname === "/api/v1/search") searchUrl = request.url();
+    };
+    page.on("request", onRequest);
+    const dialog = await openSearch();
+    const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+    await input.fill("  Café, Signals?  ");
+    const result = page.locator(`#global-search-note-${fixtures.specialNote.id}`);
+    await result.waitFor();
+    assert.equal(new URL(searchUrl).searchParams.get("q"), "Café, Signals?");
+    assert.match(searchUrl, /q=Caf%C3%A9%2C\+Signals%3F/);
+    assert.ok((await result.getAttribute("aria-label")).includes(`${text} Café, Signals?`));
+    page.off("request", onRequest);
+  });
+
+  it("keeps the search dialog and card editor inside the active viewport", async () => {
+    await page.goto(`${baseUrl}/`);
+    await page.locator("#app").waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, "the home screen has no horizontal overflow");
+    const dialog = await openSearch();
+    const dialogBox = await dialog.boundingBox();
+    const viewport = page.viewportSize();
+    assert.ok(dialogBox && viewport && dialogBox.x >= 0 && dialogBox.y >= 0 && dialogBox.x + dialogBox.width <= viewport.width && dialogBox.y + dialogBox.height <= viewport.height, "search dialog fits inside the viewport");
+    await page.keyboard.press("Escape");
+    await page.goto(`${baseUrl}/board?board=${fixtures.board.id}&card=${fixtures.card.id}&cardBoard=${fixtures.board.id}`);
+    const editor = page.locator(".card-editor");
+    await editor.waitFor();
+    const editorBox = await editor.boundingBox();
+    assert.ok(editorBox && viewport && editorBox.x >= 0 && editorBox.y >= 0 && editorBox.x + editorBox.width <= viewport.width && editorBox.y + editorBox.height <= viewport.height, "card editor fits inside the viewport");
+    const closeBox = await page.getByRole("button", { name: "Close card" }).boundingBox();
+    assert.ok(closeBox && closeBox.x >= 0 && closeBox.y >= 0 && closeBox.x + closeBox.width <= viewport.width && closeBox.y + closeBox.height <= viewport.height, "card close control remains reachable");
+  });
+
+  it("restores notes, labels, board search, line history, Gantt range, and archive URLs", async () => {
+    const noteSearch = await context.newPage();
+    const noteQuery = encodeURIComponent(`${text} Note`);
+    await noteSearch.goto(`${baseUrl}/notes?q=${noteQuery}`);
+    assert.equal(await noteSearch.getByRole("textbox", { name: "Search notes" }).inputValue(), `${text} Note`);
+    await noteSearch.getByText(`${text} Note`, { exact: false }).first().waitFor();
+    await noteSearch.reload();
+    assert.equal(await noteSearch.getByRole("textbox", { name: "Search notes" }).inputValue(), `${text} Note`);
+    await noteSearch.close();
+
+    const archivedNotes = await context.newPage();
+    await archivedNotes.goto(`${baseUrl}/notes?archived=1&q=${encodeURIComponent(`${text} Archived Note`)}`);
+    await archivedNotes.getByRole("textbox", { name: "Search notes" }).waitFor();
+    await archivedNotes.getByText(`${text} Archived Note`, { exact: false }).first().waitFor();
+    await archivedNotes.getByRole("textbox", { name: "Search notes" }).fill("");
+    await archivedNotes.waitForFunction(() => new URL(location.href).searchParams.get("archived") === "1" && !new URL(location.href).searchParams.has("q"));
+    await archivedNotes.close();
+
+    const noteLines = await context.newPage();
+    await noteLines.goto(`${baseUrl}/notes/${fixtures.note.id}?lines=1`);
+    const noteHistory = noteLines.getByRole("button", { name: "Line history" });
+    await noteHistory.waitFor();
+    assert.equal(await noteHistory.getAttribute("aria-pressed"), "true");
+    await noteLines.close();
+
+    const labelQuery = `${text} Label`;
+    const labels = await context.newPage();
+    await labels.goto(`${baseUrl}/labels?q=${encodeURIComponent(labelQuery)}`);
+    assert.equal(await labels.getByRole("searchbox", { name: "Search labels" }).inputValue(), labelQuery);
+    await labels.getByText(labelQuery, { exact: true }).first().waitFor();
+    await labels.goto(`${baseUrl}/labels/${fixtures.label.id}?q=${encodeURIComponent(labelQuery)}`);
+    await labels.getByRole("heading", { name: labelQuery }).waitFor();
+    await labels.getByRole("button", { name: "Close history" }).click();
+    await labels.waitForFunction((query) => location.pathname === "/labels" && new URL(location.href).searchParams.get("q") === query, labelQuery);
+    await labels.close();
+
+    const boardSearch = await context.newPage();
+    const boardQuery = "Padding";
+    await boardSearch.goto(`${baseUrl}/board?board=${fixtures.board.id}&q=${boardQuery}`);
+    assert.equal(await boardSearch.locator("#board-search-input").inputValue(), boardQuery);
+    await boardSearch.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
+    await boardSearch.close();
+
+    const boardLines = await context.newPage();
+    await boardLines.goto(`${baseUrl}/board?board=${fixtures.board.id}&card=${fixtures.card.id}&cardBoard=${fixtures.board.id}&lines=1`);
+    await boardLines.getByRole("textbox", { name: "Title", exact: true }).waitFor();
+    const cardHistory = boardLines.getByRole("button", { name: "Line history" });
+    await cardHistory.waitFor();
+    assert.equal(await cardHistory.getAttribute("aria-pressed"), "true");
+    await boardLines.close();
+
+    const from = "2026-06-01";
+    const to = "2026-06-14";
+    const gantt = await context.newPage();
+    const ganttRequest = gantt.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return url.pathname === `/api/v1/boards/${fixtures.board.id}/gantt` && request.method() === "GET";
+    });
+    await gantt.goto(`${baseUrl}/board?board=${fixtures.board.id}&view=gantt&from=${from}&to=${to}`);
+    const request = await ganttRequest;
+    const requestUrl = new URL(request.url());
+    assert.equal(requestUrl.searchParams.get("from"), from);
+    assert.equal(requestUrl.searchParams.get("to"), to);
+    assert.equal(await gantt.getByRole("textbox", { name: "Timeline start date" }).inputValue(), from);
+    assert.equal(await gantt.getByRole("textbox", { name: "Timeline end date" }).inputValue(), to);
+    await gantt.getByText(`${text} Gantt end day`, { exact: false }).waitFor();
+    await gantt.close();
+
+    const archiveActiveBoard = await context.newPage();
+    await archiveActiveBoard.goto(`${baseUrl}/board/archive?board=${fixtures.board.id}`);
+    await archiveActiveBoard.getByText(`${text} Archived Card`, { exact: false }).waitFor();
+    await archiveActiveBoard.close();
+
+    const unknownArchiveBoard = await context.newPage();
+    const unknownId = randomUUID();
+    await unknownArchiveBoard.goto(`${baseUrl}/board/archive?board=${unknownId}`);
+    await unknownArchiveBoard.waitForFunction((id) => {
+      const url = new URL(location.href);
+      return url.pathname === "/board/archive" && url.searchParams.get("board") !== id && Boolean(url.searchParams.get("board"));
+    }, unknownId);
+    await unknownArchiveBoard.close();
   });
 
   it("opens calendar, board, and active card search destinations", async () => {
