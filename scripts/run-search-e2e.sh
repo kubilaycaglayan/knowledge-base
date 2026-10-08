@@ -7,7 +7,14 @@ password="Search-e2e-$(date +%s%N)"
 email="search-e2e-$(date +%s%N)@example.com"
 port="${SEARCH_E2E_PROXY_PORT:-26280}"
 compose=(docker compose -p "$project" -f docker-compose.yml -f docker-compose.smoke.yml)
-cleanup() { "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true; }
+cleanup() {
+  local status=$?
+  if (( status != 0 )); then
+    mkdir -p harden-tests/artifacts
+    "${compose[@]}" logs --no-color > "harden-tests/artifacts/${project}-server.log" 2>&1 || true
+  fi
+  "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 echo "Search E2E disposable Compose project: $project"
 
@@ -28,5 +35,6 @@ for attempt in {1..60}; do
   sleep 2
 done
 
+mkdir -p harden-tests/artifacts
 SEARCH_E2E_BASE_URL="http://localhost:${port}" SEARCH_E2E_EMAIL="$email" SEARCH_E2E_PASSWORD="$password" \
-  npm run test:search:e2e --prefix frontend
+  npm run test:search:e2e --prefix frontend 2>&1 | tee "harden-tests/artifacts/${project}-command.log"

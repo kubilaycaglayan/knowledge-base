@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { after, before, describe, it } from "node:test";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { after, before, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
 
 const baseUrl = process.env.SEARCH_E2E_BASE_URL;
@@ -17,6 +19,35 @@ let token;
 const fixtures = {};
 const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const text = `SearchJourney${stamp}`;
+const browserErrors = [];
+const failedRequests = [];
+
+const it = (name, run) => nodeIt(name, async (...args) => {
+  try {
+    await run(...args);
+  } catch (error) {
+    await captureFailureArtifacts(name, error);
+    throw error;
+  }
+});
+
+async function captureFailureArtifacts(name, error) {
+  if (!context) return;
+  const directory = join(process.cwd(), "harden-tests", "artifacts");
+  const fileStem = `${new Date().toISOString().replaceAll(":", "-")}-${process.pid}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+  await mkdir(directory, { recursive: true });
+  const activePage = context.pages().at(-1) || page;
+  await activePage?.screenshot({ path: join(directory, `${fileStem}.png`), fullPage: true }).catch(() => undefined);
+  await context.tracing.stop({ path: join(directory, `${fileStem}.zip`) }).catch(() => undefined);
+  await writeFile(join(directory, `${fileStem}.json`), JSON.stringify({
+    test: name,
+    url: activePage?.url() || "unavailable",
+    error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : String(error),
+    browserErrors,
+    failedRequests,
+  }, null, 2));
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true }).catch(() => undefined);
+}
 
 async function api(path, method = "GET", body, authToken = token) {
   const response = await fetch(`${baseUrl}/api/v1${path}`, {
@@ -139,6 +170,12 @@ before(async () => {
     colorScheme: "light", reducedMotion: "reduce",
   });
   context.setDefaultTimeout(10000);
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+  context.on("page", (newPage) => {
+    newPage.on("console", (message) => { if (message.type() === "error") browserErrors.push(`console: ${message.text()}`); });
+    newPage.on("pageerror", (error) => browserErrors.push(`pageerror: ${error.message}`));
+    newPage.on("requestfailed", (request) => failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText || "failed"}`));
+  });
   await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
   page = await context.newPage();
   await page.goto(`${baseUrl}/`);
@@ -153,7 +190,11 @@ before(async () => {
   await page.locator("#app").waitFor();
 });
 
-after(async () => { await context?.close(); await browser?.close(); });
+after(async () => {
+  await context?.tracing.stop().catch(() => undefined);
+  await context?.close();
+  await browser?.close();
+});
 
 describe("search and direct routes against disposable real stack", () => {
   it("opens note, log, path, and session results with Back/Forward state", async () => {
@@ -332,7 +373,7 @@ describe("search and direct routes against disposable real stack", () => {
     assert.equal(requestUrl.searchParams.get("to"), to);
     assert.equal(await gantt.getByRole("textbox", { name: "Timeline start date" }).inputValue(), from);
     assert.equal(await gantt.getByRole("textbox", { name: "Timeline end date" }).inputValue(), to);
-    await gantt.getByText(`${text} Gantt end day`, { exact: false }).waitFor();
+    await gantt.getByText(`${text} Gantt end day`, { exact: false }).first().waitFor();
     await gantt.close();
 
     const archiveActiveBoard = await context.newPage();
