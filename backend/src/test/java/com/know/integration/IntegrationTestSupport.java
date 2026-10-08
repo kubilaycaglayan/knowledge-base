@@ -14,6 +14,16 @@ import org.springframework.test.context.DynamicPropertySource;
 abstract class IntegrationTestSupport {
   @DynamicPropertySource
   static void configureDataSource(DynamicPropertyRegistry registry) {
+    String postgresUrl = System.getenv("KB_TEST_POSTGRES_URL");
+    if (postgresUrl != null && !postgresUrl.isBlank()) {
+      PostgresTestDatabaseGuard.verifyFreshDisposableDatabase(postgresUrl);
+      registry.add("spring.datasource.url", () -> postgresUrl);
+      registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+      registry.add("spring.datasource.username", () -> System.getenv().getOrDefault("KB_TEST_POSTGRES_USER", "postgres"));
+      registry.add("spring.datasource.password", () -> System.getenv().getOrDefault("KB_TEST_POSTGRES_PASSWORD", ""));
+      registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+      registry.add("spring.flyway.enabled", () -> "true");
+    } else {
     registry.add(
         "spring.datasource.url",
         () ->
@@ -25,6 +35,7 @@ abstract class IntegrationTestSupport {
     registry.add("spring.datasource.password", () -> "");
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
     registry.add("spring.flyway.enabled", () -> "false");
+    }
     registry.add("app.jwt-secret", () -> "integration-test-secret-with-enough-chars-123");
     registry.add("app.cors-origins", () -> "http://localhost");
     registry.add("app.google-client-id", () -> "");

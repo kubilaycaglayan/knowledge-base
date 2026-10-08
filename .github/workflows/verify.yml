@@ -12,6 +12,32 @@ jobs:
       - name: Run backend tests
         run: docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
 
+  backend-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-database-password
+          POSTGRES_DB: kb_test_ci_${{ github.run_id }}_${{ github.run_attempt }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      KB_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/kb_test_ci_${{ github.run_id }}_${{ github.run_attempt }}
+      KB_TEST_POSTGRES_USER: postgres
+      KB_TEST_POSTGRES_PASSWORD: ci-only-database-password
+      KB_TEST_POSTGRES_DISPOSABLE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run all backend tests with PostgreSQL integration profile
+        run: docker run --rm --network host -e KB_TEST_POSTGRES_URL -e KB_TEST_POSTGRES_USER -e KB_TEST_POSTGRES_PASSWORD -e KB_TEST_POSTGRES_DISPOSABLE -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
+
   web-and-extension:
     runs-on: ubuntu-latest
     steps:
