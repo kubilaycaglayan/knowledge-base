@@ -6,6 +6,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -202,6 +208,50 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     List<String> actual = walkColumn(token, "Backlog", 7);
     assertEquals(expected, actual);
     assertEquals(expected.size(), actual.stream().distinct().count());
+  }
+
+  @Test
+  void postgresConcurrentCardUpdatesRejectAStaleExpectedTimestamp() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This optimistic card update race runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Concurrent card board");
+    JsonNode card = card(token, boardId, "Backlog", "Initial card", "LOW");
+    String cardId = card.get("id").asText();
+    String expectedUpdatedAt = card.get("updatedAt").asText();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner A", startTogether));
+      Future<Integer> second =
+          requests.submit(
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner B", startTogether));
+      int firstStatus = first.get(10, TimeUnit.SECONDS);
+      int secondStatus = second.get(10, TimeUnit.SECONDS);
+      assertEquals(1, List.of(firstStatus, secondStatus).stream().filter(s -> s == 200).count());
+      assertEquals(1, List.of(firstStatus, secondStatus).stream().filter(s -> s == 409).count());
+      JsonNode persisted = get("/api/v1/boards/" + boardId + "/cards/" + cardId, token).getBody();
+      assertTrue(List.of("Winner A", "Winner B").contains(persisted.get("title").asText()));
+    }
+  }
+
+  private int updateCardTogether(
+      String boardId,
+      String cardId,
+      String token,
+      String expectedUpdatedAt,
+      String title,
+      CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/boards/" + boardId + "/cards/" + cardId,
+            token,
+            "{\"title\":\"" + title + "\",\"expectedUpdatedAt\":\"" + expectedUpdatedAt + "\"}")
+        .getStatusCode()
+        .value();
   }
 
   // AB-03, AB-04
