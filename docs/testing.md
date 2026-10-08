@@ -35,7 +35,16 @@ bodies with the Line history gutter on and checks:
 - keyboard toggling;
 - the gutter never overlaps line text and the page never scrolls sideways, at
   desktop and phone widths and in the dark theme;
-- an Axe audit of the editor.
+- an Axe audit of the editor;
+- untouched lines keep their times through a save built by the Chrome
+  extension's own `markdownNoteDocument`, and through a save built by a port
+  of the iOS `NoteDocument` conversion;
+- the editor's accessibility tree leaves the gutter out, and its live region
+  announces the caret line's time;
+- typing 50 ms after a click lands where the click put the caret, with the
+  gutter on and off. Playwright can press keys inside the click's own frame,
+  before the browser reports the new caret, so the other tests wait one frame
+  after clicking.
 Set `LINE_HISTORY_E2E_SCREENSHOTS=<dir>` to keep screenshots.
 
 `(cd frontend && npm run test:nav)` runs

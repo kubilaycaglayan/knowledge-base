@@ -7,7 +7,14 @@
   `lineEdits`. The web editors' "Line history" toolbar toggle (`?lines=1`)
   shows a locale-formatted time and date gutter, and lines not yet saved show
   "Unsaved".
+  While the gutter is on, a polite live region announces the caret line's
+  edit time to screen readers.
 - [ ] Show the per-line edit-time gutter in the iOS Notes editor (the API is ready).
+- [ ] iOS: `NoteDocument.plainText` joins a heading to the line after it and
+  drops hard breaks, so saving a rich note from iOS rewrites those lines.
+- [ ] Chrome extension: the web's plain-text copy separates blocks with blank
+  lines, so saving a web note from the extension adds empty paragraphs
+  between blocks.
 
 - [x] Warm up the other pages in the background after the first load (route chunks plus the default Sessions, Paths, Labels, Notes, Calendar, Reports, and Logs data, and the saved board with its Kanban columns and Gantt window), with a 10 minute cooldown, quiet start delay, one-at-a-time requests, and no warm-up in automated browsers (see `docs/warmup-cache-acceptance-checklist.md`).
 
