@@ -13,6 +13,25 @@ labels, boards, cards, time entries, or calendar data; and
 `InputValidationIntegrationTest` checks that malformed or oversized input
 answers 400 rather than 500.
 
+Global search is covered by `SearchIntegrationTest` (every record type,
+ownership, matching through paths and labels, ranking, paging, archived and
+deleted records, near-miss spellings, LIKE wildcards, and validation). The
+integration suites run on H2, which registers `com.know.service.Trigrams` as
+`word_similarity` in place of pg_trgm. `SearchPostgresIntegrationTest` runs
+the same suite against real PostgreSQL migrated by Flyway, so the pg_trgm
+operators and trigram indexes are exercised too; it runs only when
+`KB_TEST_POSTGRES_URL` names an empty, disposable database:
+
+```bash
+docker run -d --rm --name kb-search-pg -e POSTGRES_PASSWORD=pw postgres:16-alpine
+docker exec kb-search-pg sh -c 'until pg_isready -q; do sleep 1; done; createdb -U postgres kbtest'
+docker run --rm --network container:kb-search-pg \
+  -e KB_TEST_POSTGRES_URL=jdbc:postgresql://localhost:5432/kbtest -e KB_TEST_POSTGRES_PASSWORD=pw \
+  -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 \
+  gradle test --no-daemon --tests '*SearchPostgres*' --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
+docker stop kb-search-pg
+```
+
 Board browser coverage has two layers: `(cd frontend && npm run test:board)` runs
 `frontend/scripts/board.acceptance.test.mjs`, which uses fast isolated API
 fixtures for deterministic mobile, keyboard, Gantt, archive, and pagination

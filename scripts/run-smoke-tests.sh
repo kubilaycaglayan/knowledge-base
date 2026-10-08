@@ -538,7 +538,20 @@ summary_seconds="$(printf '%s' "$summary" | sed -n 's/.*"trackedSeconds":\([0-9]
 paths_order="$(api "${header[@]}" http://localhost:8080/api/v1/paths)"
 printf '%s' "$paths_order" | grep -q 'Smoke path'
 printf '%s' "$paths_order" | grep -q 'Other smoke path'
-api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke' | grep -q 'Smoke path'
+# Global search runs on PostgreSQL's pg_trgm here: grouped results, matches
+# through a label, near-miss spellings, and parameter validation.
+search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke%20path')"
+[[ "$search" == *'"type":"PATH"'* && "$search" == *'"title":"Smoke path"'* && "$search" == *'"fuzzy":false'* ]]
+search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Persisted%20knowledge&types=NOTE')"
+[[ "$search" == *'"title":"Smoke note"'* && "$search" != *'"type":"PATH"'* ]]
+search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=leave&types=SESSION')"
+[[ "$search" == *'Edited session'* && "$search" == *'"via":"LABEL"'* ]]
+search="$(api "${header[@]}" 'http://localhost:8080/api/v1/search?q=sesion&types=SESSION')"
+[[ "$search" == *'"fuzzy":true'* && "$search" == *'Edited session'* ]]
+if api "${header[@]}" 'http://localhost:8080/api/v1/search?q=Smoke&limit=0' >/dev/null 2>&1; then
+  echo "search accepted an invalid limit" >&2
+  exit 1
+fi
 api "${header[@]}" 'http://localhost:8080/api/v1/activities?from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z' | grep -q 'Smoke note'
 statistics="$(api "${header[@]}" http://localhost:8080/api/v1/statistics)"
 month_seconds="$(printf '%s' "$statistics" | sed -n 's/.*"monthSeconds":\([0-9]*\).*/\1/p')"
