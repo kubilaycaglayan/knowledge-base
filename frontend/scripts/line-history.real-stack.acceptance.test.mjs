@@ -237,6 +237,58 @@ describe("note line history", () => {
     assert.deepEqual(await stamps(page, ".rich-editor"), server.lineEdits.map(iso));
   });
 
+  it("keeps a note draft after a network failure and replays it against the latest server version", async () => {
+    const note = await api(page, "POST", "/notes", { title: "Note before retry", content: doc("Preserve this body"), contentText: "Preserve this body", tags: [] });
+    await page.goto(`${baseUrl}/notes/${note.id}`);
+    const title = page.getByRole("textbox", { name: "Note title" });
+    await title.waitFor();
+    const draft = "My note draft after recovery";
+    const noteUrl = `**/api/v1/notes/${note.id}`;
+    const writeStatuses = [];
+    let failedFirstWrite = false;
+    const recordResponse = (response) => {
+      if (response.request().method() === "PUT" && new URL(response.url()).pathname === `/api/v1/notes/${note.id}`) writeStatuses.push(response.status());
+    };
+    page.on("response", recordResponse);
+    await page.route(noteUrl, async (route) => {
+      if (route.request().method() !== "PUT" || failedFirstWrite) return route.continue();
+      failedFirstWrite = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    });
+    const otherPage = await page.context().newPage();
+    try {
+      await title.fill(draft);
+      await page.getByRole("status").filter({ hasText: "Not saved" }).waitFor();
+      assert.equal(await title.inputValue(), draft, "a failed autosave must preserve the title draft");
+
+      await otherPage.goto(`${baseUrl}/notes/${note.id}`);
+      await otherPage.getByRole("textbox", { name: "Note title" }).waitFor();
+      const latest = await api(otherPage, "GET", `/notes/${note.id}`);
+      await api(otherPage, "PUT", `/notes/${note.id}`, {
+        title: "Changed in another window",
+        content: latest.content,
+        contentText: latest.contentText,
+        tags: latest.tags,
+        version: latest.version,
+      });
+
+      // Re-trigger autosave while returning the field to the same draft value.
+      await title.press("End");
+      await title.type(" ");
+      await title.press("Backspace");
+      await page.locator(".save-state").filter({ hasText: /^Saved$/ }).waitFor();
+      assert.deepEqual(writeStatuses, [503, 409, 200], "autosave must retry after refreshing the server version");
+      const savedNote = await api(otherPage, "GET", `/notes/${note.id}`);
+      assert.equal(savedNote.title, draft);
+      assert.equal(savedNote.contentText, "Preserve this body");
+      assert.equal(await title.inputValue(), draft);
+    } finally {
+      page.off("response", recordResponse);
+      await page.unroute(noteUrl);
+      await otherPage.close();
+    }
+  });
+
   it("fits a phone in the dark theme and passes an Axe audit", async () => {
     const note = await api(page, "POST", "/notes", { title: "Phone", content: JSON.stringify({ type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "A heading that runs long enough to wrap on a phone screen" }] }, paragraph("A paragraph that is also long enough to wrap onto a second line on narrow screens."), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Item")] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Done")] }] }, { type: "codeBlock", content: [{ type: "text", text: "a = 1\nb = 2" }] }] }), contentText: "", tags: [] });
     const phone = await newPage({ viewport: { width: 390, height: 844 }, colorScheme: "dark", isMobile: true, hasTouch: true });
