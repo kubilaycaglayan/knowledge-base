@@ -94,8 +94,51 @@ Counts below include the initial Chromium run in [2026-10-08-fb8f96a-chromium.md
 | Board menu control unavailable during phone card/view switching | 1 | 1 | 2026-10-08 | Pending responsive-state investigation |
 | Unclassified | 2 | 1 | 2026-10-08 | Phone view-switch row absent and board restore selected-tab timeout in the incomplete-metadata local attempt; see report |
 
-The cumulative table now reconciles to 43 observed failing case occurrences
-across 11 failure-group suite occurrences: 40 cases from the six complete
-dated reports and 3 from the partial transcript. The partial transcript is
-included for failure history only and does not count as browser-profile
-coverage.
+The historical table above reconciled to 43 observed failing case
+occurrences across 11 failure-group suite occurrences: 40 cases from the six
+complete dated reports and 3 from the partial transcript. The partial
+transcript is included for failure history only and does not count as
+browser-profile coverage.
+
+## HARD-02 investigation update (2026-10-08)
+
+The focused real-stack board suite was run on commit `63cf4f3` against separate
+disposable PostgreSQL stacks in desktop Chromium and mobile-size Chromium. The
+reports below record the observed results. Neither run retained a trace,
+screenshot, browser console/request log, or server log; the failure summaries
+are the only durable evidence. These fresh observations can disposition those
+signatures for these runs, but cannot reconstruct the historical failures'
+missing DOM/network evidence.
+
+| Historical signature | Investigation disposition | Evidence and limit |
+| --- | --- | --- |
+| Board setup assumes a visible selected tab after overflow | Not reproduced | The original 23 setup failures stopped after the earlier API-seeding correction. Both HARD-02 board runs completed setup. Historical run artifacts remain unavailable. |
+| Session-tracker controls unavailable during keyboard/fill | Insufficient evidence | No tracker rerun or original screenshot/DOM trace was available during this investigation. |
+| Archive footer covered by fixed shell/timer | Reproduced | Current desktop run found `null covered by shell dashboard-shell`; current mobile run found the floating timer intercepted archive navigation and covered the footer hit target. Two new suite occurrences, three new case occurrences. Root cause is still suspected at the shared fixed tracker/footer interaction. |
+| WebKit touch caret placement and line-history gutter | Insufficient evidence | No current WebKit rerun and no historical trace/screenshot. |
+| WebKit timer current-request access-control failure | Insufficient evidence | No current WebKit rerun and no historical request or server log. |
+| Detached Gantt card locator | Reproduced | The mobile-size Chromium run reproduced `Element is not attached to the DOM` during scroll. Desktop did not reproduce it. Timing versus rerender cause remains suspected pending trace. |
+| More boards unavailable during phone view switching | Reproduced | The mobile-size Chromium run timed out waiting for `button.board-tab-more`; no DOM snapshot was retained, so responsive state cause remains suspected. |
+| Three failures in incomplete-metadata board transcript | Insufficient evidence | Original phone view-switch and board-restore causes remain unclassifiable; the archive-footer recurrence is separately evidenced above. The transcript remains excluded from profile results. |
+
+The observed cumulative table now includes these five new failing case
+occurrences across two new suite occurrences. Counts are 48 case occurrences
+across 15 failure-group suite occurrences; 45 cases are from the eight
+complete dated reports and 3 are from the partial transcript. The partial
+transcript remains history-only. “Suite occurrences” counts one suite per
+failure group in that suite, so one run can contribute to multiple groups.
+
+| Suspected root cause | Case occurrences | Suite occurrences | Last seen | Confirmed correction |
+| --- | ---: | ---: | --- | --- |
+| Board setup assumes selected board remains a visible tab after overflow | 23 | 1 | 2026-10-08 | Corrected in earlier run; no setup failure in current board runs. |
+| Session-tracker fixture controls unavailable during keyboard/fill interactions | 9 | 1 | 2026-10-08 | Insufficient evidence; historical artifacts unavailable. |
+| Fixed timer/shell overlaps archive footer controls | 7 | 5 | 2026-10-08 | Reproduced in current desktop and mobile Chromium; product cause not confirmed. |
+| WebKit touch caret placement interacts with line-history gutter | 1 | 1 | 2026-10-08 | Insufficient evidence; trace unavailable. |
+| WebKit timer API CORS/access-control request | 1 | 1 | 2026-10-08 | Insufficient evidence; network/server logs unavailable. |
+| Detached board card locator | 3 | 3 | 2026-10-08 | Reproduced in mobile Chromium; synchronization cause suspected. |
+| Board menu control unavailable during phone card/view switching | 2 | 2 | 2026-10-08 | Reproduced in mobile Chromium; responsive state cause suspected. |
+| Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
+
+The earlier `Unclassified` count is preserved because the local transcript does
+not support a root-cause assignment. Reproduced and insufficient-evidence
+signatures remain listed so the cumulative table does not erase prior failures.

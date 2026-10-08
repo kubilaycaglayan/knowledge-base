@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, describe, it } from "node:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { after, before, beforeEach, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import { join } from "node:path";
 
 const baseUrl = process.env.BOARD_E2E_BASE_URL;
 const email = process.env.BOARD_E2E_EMAIL;
@@ -14,6 +16,43 @@ const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
 const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
 let activeBoardName;
 const consoleLog = [];
+const artifactDir = process.env.BOARD_E2E_ARTIFACT_DIR;
+let artifactSequence = 0;
+function it(name, run) {
+  nodeIt(name, async (testContext) => {
+    const context = page?.context();
+    if (artifactDir && context) await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+    let traceSaved = false;
+    try {
+      await run(testContext);
+    } catch (error) {
+      if (artifactDir && context) {
+        mkdirSync(artifactDir, { recursive: true });
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 72);
+        const stem = `${String(++artifactSequence).padStart(2, "0")}-${slug}`;
+        const tracePath = join(artifactDir, `${stem}.zip`);
+        try {
+          await page.screenshot({ path: join(artifactDir, `${stem}.png`), fullPage: true });
+        } catch {
+          // The page may have closed during the failing case; still retain the trace.
+        }
+        await context.tracing.stop({ path: tracePath });
+        traceSaved = true;
+        writeFileSync(join(artifactDir, `${stem}.json`), JSON.stringify({
+          test: name,
+          commit: process.env.GITHUB_SHA || "recorded by the run report",
+          url: page?.url() || "unavailable",
+          failure: String(error?.stack || error),
+          console: consoleLog.slice(-20),
+          capturedAt: new Date().toISOString(),
+        }, null, 2));
+      }
+      throw error;
+    } finally {
+      if (artifactDir && context && !traceSaved) await context.tracing.stop();
+    }
+  });
+}
 const isoDate = (value) => value.toISOString().slice(0, 10);
 const timelineStart = isoDate(new Date());
 const timelineEnd = isoDate(new Date(Date.now() + 2 * 86_400_000));

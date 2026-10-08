@@ -1,7 +1,7 @@
 # HARD-02: Browser failure states and flake triage
 
 **Priority:** High  
-**Status:** Planned  
+**Status:** In progress  
 **Scope:** Test coverage, diagnostics, and run documentation only.
 
 Track completion in the [HARD-02 acceptance checklist](02-acceptance-checklist.md).
@@ -66,3 +66,20 @@ and root-cause classification before assertions are changed.
 - `frontend/scripts/line-history.real-stack.acceptance.test.mjs`
 - `frontend/scripts/session-tracker.acceptance.test.mjs` (locate via `rg --files`)
 - `docs/testing.md`
+
+## Current progress
+
+- The 2026-10-08 desktop Chromium and mobile-size Chromium board runs on
+  `63cf4f3` both exercise the failed-page retry journey. The retry preserved
+  the current cursor, loaded the expected card once, and was keyboard
+  operable. See the [desktop report](../runs/2026-10-08-63cf4f3-desktop-chromium-board-resilience.md)
+  and [mobile report](../runs/2026-10-08-63cf4f3-mobile-chromium-board-resilience.md).
+- Both profiles still have observed board failures. The desktop archive footer
+  is covered by the dashboard shell. The mobile run also observed a detached
+  Gantt card locator, an unavailable More boards control during view switching,
+  and the floating timer covering archive navigation/footer controls. These
+  remain test-only milestone blockers; product changes belong in the bug-fix
+  workflow.
+- Historical investigations are recorded in the [run index](../runs/README.md).
+  Earlier traces, screenshots, and raw transcripts were not retained, so those
+  cases remain insufficient evidence for historical root-cause claims.

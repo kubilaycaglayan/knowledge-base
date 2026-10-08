@@ -22,23 +22,29 @@ records that engine/profile and its outcomes.
 - [x] Confirm the current source has a real-stack delayed-board response case,
   store-level page retry coverage, real-stack note conflict retry, timer socket
   fallback, and tracker long-name viewport coverage.
-- [ ] Keep all unit and mocked-view cases labeled as lower-layer evidence;
+- [x] Keep all unit and mocked-view cases labeled as lower-layer evidence;
   link each accepted browser journey to its exact run report and browser
-  profile.
+  profile. The browser-profile evidence presently covers the board suite only;
+  store and mocked-view rows remain lower-layer evidence.
 - [ ] Use the [local browser runbook](../local-browser-validation.md) to keep
   desktop Chromium, phone-sized Chromium emulation, and iPhone WebKit reports
-  separate. A WebKit phone pass does not establish mobile Chrome behavior.
+  separate. The [desktop Chromium board report](../runs/2026-10-08-63cf4f3-desktop-chromium-board-resilience.md)
+  and [mobile-size Chromium board report](../runs/2026-10-08-63cf4f3-mobile-chromium-board-resilience.md)
+  are separate; an emulated WebKit pass does not establish mobile Chrome
+  behavior, and no fresh WebKit run is recorded for this milestone.
 
 ## Failure investigation
 
-- [ ] Reconcile every row in the cumulative failure table against its dated
+- [x] Reconcile every row in the cumulative failure table against its dated
   reports and count case occurrences and suite occurrences consistently;
   include local transcripts with incomplete metadata as explicitly qualified
-  evidence instead of silently omitting their failures.
+  evidence instead of silently omitting their failures. See the updated
+  counts and evidence boundary in [`runs/README.md`](../runs/README.md).
 - [ ] For each historical signature, record reproduced, not reproduced, or
   insufficient evidence, with report/trace/log links and investigation date.
-- [ ] For every report with missing commit, profile, environment, or artifacts,
+- [x] For every report with missing commit, profile, environment, or artifacts,
   leave those fields unknown and exclude it from profile pass/fail coverage.
+  The incomplete board transcript remains excluded.
 - [ ] For reproduced failures, identify whether evidence supports product
   behavior, fixture setup, timing, browser engine, environment, or test
   synchronization as the cause.
