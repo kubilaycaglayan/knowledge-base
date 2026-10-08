@@ -240,6 +240,7 @@ describe("search and direct routes against disposable real stack", () => {
       const option = page.locator(`#global-search-page-${id}`);
       await option.waitFor();
       assert.equal(await option.getAttribute("aria-label"), `${label}, page`);
+      assert.ok((await option.innerText()).includes(label), `${label} shortcut visibly names its destination`);
       await option.click();
       await page.waitForFunction((destination) => location.pathname === destination, path);
       assert.equal(recordSearchRequests, 0, `${label} click jumps without a record-search request`);
@@ -248,6 +249,22 @@ describe("search and direct routes against disposable real stack", () => {
       await page.goForward();
       assert.equal(new URL(page.url()).pathname, path, `${label} Forward restores the shortcut destination`);
       page.off("request", onRequest);
+
+      await page.goto(`${baseUrl}${priorPath}`);
+      const keyboardDialog = await openSearch();
+      const keyboardInput = keyboardDialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+      await keyboardInput.fill(label);
+      const keyboardOption = page.locator(`#global-search-page-${id}`);
+      await keyboardOption.waitFor();
+      for (let movement = 0; movement < 13 && await keyboardOption.getAttribute("aria-selected") !== "true"; movement += 1)
+        await keyboardInput.press("ArrowDown");
+      assert.equal(await keyboardOption.getAttribute("aria-selected"), "true", `${label} is keyboard selectable`);
+      await keyboardInput.press("Enter");
+      await page.waitForFunction((destination) => location.pathname === destination, path);
+      await page.goBack();
+      assert.equal(new URL(page.url()).pathname, priorPath, `${label} keyboard Back restores the prior page`);
+      await page.goForward();
+      assert.equal(new URL(page.url()).pathname, path, `${label} keyboard Forward restores the shortcut destination`);
     }
 
     for (const [alias, path] of [["home", "/"], ["timer", "/"], ["kanban", "/board"], ["preferences", "/settings"]]) {
@@ -474,35 +491,38 @@ describe("search and direct routes against disposable real stack", () => {
     ];
     for (const destination of destinations) {
       const { direct, close } = await freshAuthenticatedPage();
-      await direct.goto(`${baseUrl}${destination.path}`);
-      await direct.waitForLoadState("networkidle");
-      assert.equal(new URL(direct.url()).pathname + new URL(direct.url()).search, destination.path);
-      if (destination.kind === "note") {
-        await direct.waitForFunction((title) => document.querySelector('[aria-label="Note title"]')?.value === title, `${text} Note`);
-      } else if (destination.kind === "archived-note") {
-        assert.equal(new URL(direct.url()).searchParams.get("archived"), "1");
-        assert.equal(new URL(direct.url()).searchParams.get("q"), `${text} Archived Note`);
-        await direct.getByText(`${text} Archived Note`, { exact: false }).waitFor();
-      } else if (destination.kind === "card") {
-        await direct.waitForFunction((title) => document.querySelector('.card-editor [aria-label="Title"]')?.value === title, `${text} Card`);
-      } else if (destination.kind === "board") {
-        await direct.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
-      } else if (destination.kind === "calendar") {
-        await direct.waitForFunction((date) => new URL(location.href).searchParams.get("date") === date, fixtures.day);
-      } else if (destination.kind === "archived-board") {
-        await direct.waitForFunction((id) => new URL(location.href).searchParams.get("archivedBoard") === id, fixtures.archivedBoard.id);
-        await direct.getByText(`${text} Archived Board`, { exact: false }).first().waitFor();
-      } else if (destination.kind === "archived-card") {
-        const url = new URL(direct.url());
-        assert.equal(url.searchParams.get("board"), fixtures.board.id);
-        assert.equal(url.searchParams.get("card"), fixtures.archivedCard.id);
-        assert.equal(await direct.locator(".card-editor").count(), 0);
-        await direct.getByText(`${text} Archived Card`, { exact: false }).waitFor();
-      } else {
-        const expected = destination.kind === "log" ? `${text} Log`
-          : destination.kind === "path" ? `${text} Path`
-            : destination.kind === "label" ? `${text} Label` : `${text} Session`;
-        await direct.waitForFunction((value) => document.body.innerText.includes(value), expected);
+      for (let load = 0; load < 2; load += 1) {
+        if (load === 0) await direct.goto(`${baseUrl}${destination.path}`);
+        else await direct.reload();
+        await direct.waitForLoadState("networkidle");
+        assert.equal(new URL(direct.url()).pathname + new URL(direct.url()).search, destination.path);
+        if (destination.kind === "note") {
+          await direct.waitForFunction((title) => document.querySelector('[aria-label="Note title"]')?.value === title, `${text} Note`);
+        } else if (destination.kind === "archived-note") {
+          assert.equal(new URL(direct.url()).searchParams.get("archived"), "1");
+          assert.equal(new URL(direct.url()).searchParams.get("q"), `${text} Archived Note`);
+          await direct.getByText(`${text} Archived Note`, { exact: false }).waitFor();
+        } else if (destination.kind === "card") {
+          await direct.waitForFunction((title) => document.querySelector('.card-editor [aria-label="Title"]')?.value === title, `${text} Card`);
+        } else if (destination.kind === "board") {
+          await direct.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
+        } else if (destination.kind === "calendar") {
+          await direct.waitForFunction((date) => new URL(location.href).searchParams.get("date") === date, fixtures.day);
+        } else if (destination.kind === "archived-board") {
+          await direct.waitForFunction((id) => new URL(location.href).searchParams.get("archivedBoard") === id, fixtures.archivedBoard.id);
+          await direct.getByText(`${text} Archived Board`, { exact: false }).first().waitFor();
+        } else if (destination.kind === "archived-card") {
+          const url = new URL(direct.url());
+          assert.equal(url.searchParams.get("board"), fixtures.board.id);
+          assert.equal(url.searchParams.get("card"), fixtures.archivedCard.id);
+          assert.equal(await direct.locator(".card-editor").count(), 0);
+          await direct.getByText(`${text} Archived Card`, { exact: false }).waitFor();
+        } else {
+          const expected = destination.kind === "log" ? `${text} Log`
+            : destination.kind === "path" ? `${text} Path`
+              : destination.kind === "label" ? `${text} Label` : `${text} Session`;
+          await direct.waitForFunction((value) => document.body.innerText.includes(value), expected);
+        }
       }
       await close();
     }
