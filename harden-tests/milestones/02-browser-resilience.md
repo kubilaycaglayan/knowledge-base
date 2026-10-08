@@ -50,8 +50,11 @@ and root-cause classification before assertions are changed.
   or a clear statement of missing evidence.
 - Repeated signatures are grouped by demonstrated root cause, with affected
   cases and suite counts reconciled against individual reports.
-- Focused and full browser runs pass in both supported profiles, or remaining
-  product defects are explicitly filed outside this test-only milestone.
+- Focused and full browser runs pass separately in desktop Chromium and
+  mobile-size Chromium emulation, or remaining product defects are explicitly
+  tracked outside this test-only milestone. Emulated iPhone WebKit is an
+  additional engine/profile report and cannot substitute for either Chromium
+  profile.
 - Retry, empty, long-content, delayed-response, and network-error states have
   assertions for both content and accessible interaction.
 

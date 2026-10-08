@@ -4,6 +4,31 @@ Use this checklist with [HARD-02](02-browser-resilience.md). Every failure
 disposition must cite observed evidence; a green rerun alone does not explain a
 previous failure.
 
+## Existing coverage and evidence boundary
+
+This is a source inventory only. Unit/fixture tests do not count as real-stack
+browser acceptance, and a browser profile passes only when a dated run report
+records that engine/profile and its outcomes.
+
+| Behavior | Current source evidence | Remaining HARD-02 evidence |
+| --- | --- | --- |
+| Board stale response | [`board.real-stack.acceptance.test.mjs`](../../frontend/scripts/board.real-stack.acceptance.test.mjs) has “does not let a delayed board response replace the newly selected board”; `stores/boards.test.ts` also covers stale list/board/Gantt responses. | Repeat under desktop Chromium and mobile-size Chromium with traces on failure; preserve selected board and assert no stale card/status content renders. |
+| Board pagination retry | `stores/boards.test.ts` covers a failed lazy page remaining retryable and exposing recoverable error; real-stack board tests cover loading past the first page. | Add a browser-level failed page request, retry action, current cursor/result assertion, and duplicate/missing-card check in each supported Chromium profile. |
+| Note conflict/retry | [`line-history.real-stack.acceptance.test.mjs`](../../frontend/scripts/line-history.real-stack.acceptance.test.mjs) covers a draft through conflict and retry; `NotesView.test.ts` covers editor failure feedback. | Verify live server conflict/retry and saved line-history in desktop and mobile Chromium; retain screenshot/trace and assert the user draft is preserved. |
+| Timer transport fallback | [`timer-websocket.real-stack.acceptance.test.mjs`](../../frontend/scripts/timer-websocket.real-stack.acceptance.test.mjs) covers socket sync and HTTP polling when the socket is unavailable. | Add explicit reconnection/network-restoration behavior where supported; run and report mobile Chromium separately from desktop and WebKit. |
+| Long content and small-screen layout | [`session-tracker.acceptance.test.mjs`](../../frontend/scripts/session-tracker.acceptance.test.mjs) contains long names, target, and accessibility checks across width/mode combinations; component tests cover long content in several views. | Capture complete desktop and 390×844 Chromium reports for the relevant browser suites; assert overflow, clipped controls, keyboard/touch recovery reachability, and actual mobile Chromium UA/engine identity. |
+| Empty/failure states | View/store tests cover empty reports, empty notes, and multiple API failures/retry states. | Retain authenticated real-stack browser evidence for the selected empty/retry journeys in both Chromium profiles, including visible and accessible recovery. |
+
+- [x] Confirm the current source has a real-stack delayed-board response case,
+  store-level page retry coverage, real-stack note conflict retry, timer socket
+  fallback, and tracker long-name viewport coverage.
+- [ ] Keep all unit and mocked-view cases labeled as lower-layer evidence;
+  link each accepted browser journey to its exact run report and browser
+  profile.
+- [ ] Use the [local browser runbook](../local-browser-validation.md) to keep
+  desktop Chromium, phone-sized Chromium emulation, and iPhone WebKit reports
+  separate. A WebKit phone pass does not establish mobile Chrome behavior.
+
 ## Failure investigation
 
 - [ ] Reconcile every row in the cumulative failure table against its dated
