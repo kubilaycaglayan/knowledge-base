@@ -694,16 +694,50 @@ function setWorkspacePage(page) {
   if (isNotes) void loadNotes();
 }
 
+// The note body is the source of truth: serialize it into the Markdown subset
+// that markdownNoteDocument reads back, one line per body line. The plain-text
+// contentText is only a fallback for legacy bodies that are not documents; the
+// web's older copies of it put blank lines between blocks.
+function noteMarkdown(doc) {
+  const inline = (nodes) => (Array.isArray(nodes) ? nodes : []).map((node) => {
+    if (node?.type === "hardBreak") return "\n";
+    const text = typeof node?.text === "string" ? node.text : "";
+    const marks = Array.isArray(node?.marks) ? node.marks.map((mark) => mark?.type) : [];
+    if (marks.includes("code")) return `\`${text}\``;
+    if (marks.includes("bold")) return `**${text}**`;
+    return text;
+  }).join("");
+  const lines = [];
+  const block = (node, prefix = "") => {
+    if (!node || typeof node !== "object") return;
+    const children = Array.isArray(node.content) ? node.content : [];
+    if (node.type === "paragraph" || node.type === "heading") {
+      inline(children).split("\n").forEach((line, index) => lines.push(index === 0 ? prefix + line : line));
+    } else if (node.type === "codeBlock") {
+      lines.push("```", ...inline(children).split("\n"), "```");
+    } else if (node.type === "bulletList" || node.type === "orderedList") {
+      const start = Number.isInteger(node.attrs?.start) ? node.attrs.start : 1;
+      children.forEach((item, index) => (Array.isArray(item?.content) ? item.content : []).forEach((child, position) =>
+        block(child, position === 0 ? (node.type === "bulletList" ? "- " : `${start + index}. `) : "")));
+    } else if (node.type === "blockquote") {
+      children.forEach((child) => block(child, "> "));
+    } else {
+      children.forEach((child) => block(child));
+    }
+  };
+  block(doc);
+  return lines.join("\n");
+}
+
 function notePlainText(note) {
-  if (typeof note.contentText === "string" && note.contentText) return note.contentText;
   try {
-    const doc = JSON.parse(note.content || "{}");
-    const textFrom = (node) => !node || typeof node !== "object" ? "" :
-      `${typeof node.text === "string" ? node.text : ""}${Array.isArray(node.content) ? node.content.map(textFrom).join("") : ""}${node.type === "paragraph" ? "\n" : ""}`;
-    return textFrom(doc).replace(/\n$/, "");
+    const doc = JSON.parse(note.content || "");
+    if (doc && typeof doc === "object" && doc.type === "doc") return noteMarkdown(doc);
   } catch (_) {
-    return note.content || "";
+    // Legacy bodies are plain text.
   }
+  if (typeof note.contentText === "string" && note.contentText) return note.contentText;
+  return note.content || "";
 }
 
 function markdownInlineContent(text) {

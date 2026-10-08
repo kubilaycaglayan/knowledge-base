@@ -20,9 +20,10 @@
   and hard-broken line separate (it used to join a heading to the next line
   and drop hard breaks); `scripts/check-ios-note-document.sh` runs its XCTest
   cases on Linux in CI.
-- [x] Web: the plain-text copy has one line per body line, so saving a web
-  note from the Chrome extension no longer adds blank paragraphs between
-  blocks.
+- [x] Web: the plain-text copy has one line per body line, and the Chrome
+  extension edits the note body serialized to Markdown rather than that copy,
+  so saving a web note from the extension (old notes included) no longer adds
+  blank paragraphs between blocks and keeps lists, quotes, and code blocks.
 
 - [x] Warm up the other pages in the background after the first load (route chunks plus the default Sessions, Paths, Labels, Notes, Calendar, Reports, and Logs data, and the saved board with its Kanban columns and Gantt window), with a 10 minute cooldown, quiet start delay, one-at-a-time requests, and no warm-up in automated browsers (see `docs/warmup-cache-acceptance-checklist.md`).
 

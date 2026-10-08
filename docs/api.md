@@ -88,7 +88,10 @@ the card or either handle opens the date editor; Escape cancels an active drag.
   plain-text projection, debounces saves, and replays a local draft against
   the latest version after a 409 response. The Chrome extension Notes tab uses
   the same list, create, fetch, and versioned update endpoints with a plain-text
-  editor; its compact list shows note titles only and its editor omits labels
+  editor that shows the note body serialized to its Markdown subset (bold,
+  inline code, bullet and numbered items, quotes, and code fences; one line per
+  body line) and rebuilds the body from it on save; `contentText` is only read
+  for legacy bodies that are not documents; its compact list shows note titles only and its editor omits labels
   and rich-text controls. The popup remembers the currently open note in local
   extension storage and restores it when the popup is reopened.
 - `GET/POST /logs`, `GET /logs/{id}`, `PUT /logs/{id}`, `PUT /logs/{id}/labels`, and `DELETE /logs/{id}` manage owner-scoped, untitled text logs. Log responses include `labelIds`; `PUT /logs/{id}/labels` accepts `{ "labelIds": ["<uuid>"] }` and replaces the log’s assignments. Every assigned label must be owned by the user and have the `LOG` scope. `GET /labels?scope=LOG` returns the user’s available log labels. Log creation requires the client’s timestamp (`occurredAt`, normally the browser’s current time); records are returned newest-first by that timestamp. Updates accept an optional `version` for optimistic concurrency and return HTTP 409 when another window has saved first. Deletes require an owner-scoped lookup and permanently remove the log.

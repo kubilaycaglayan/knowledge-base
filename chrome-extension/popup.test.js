@@ -830,6 +830,52 @@ test("supports Markdown shortcuts and saves formatted note structure", async () 
   assert.equal(document.content[5].type, "codeBlock");
 });
 
+test("edits a web note from its body, without the plain-text copy's blank lines", async () => {
+  const p = (...inline) => ({ type: "paragraph", content: inline });
+  const t = (text, mark) => ({ type: "text", text, ...(mark ? { marks: [{ type: mark }] } : {}) });
+  const content = JSON.stringify({ type: "doc", content: [
+    { type: "heading", attrs: { level: 2 }, content: [t("Plan")] },
+    p(t("Say "), t("bold", "bold"), t(" and "), t("code", "code")),
+    { type: "paragraph" },
+    { type: "bulletList", content: [{ type: "listItem", content: [p(t("Alpha"))] }, { type: "listItem", content: [p(t("Beta"))] }] },
+    { type: "orderedList", attrs: { start: 1 }, content: [{ type: "listItem", content: [p(t("One"))] }] },
+    { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [p(t("Done"))] }] },
+    { type: "blockquote", content: [p(t("Quoted"))] },
+    p(t("First"), { type: "hardBreak" }, t("Second")),
+    { type: "codeBlock", content: [t("a = 1\nb = 2")] },
+  ] });
+  // An older web copy put blank lines between nested blocks.
+  const stale = "Plan\n\nSay bold and code\n\n\nAlpha\n\n\nBeta";
+  const popup = await readyPopup({
+    token: "token",
+    fixtureNotes: [{ id: "note-web", title: "Web", content, contentText: stale, tags: [], version: 4 }],
+    openNoteId: "note-web",
+  });
+  await flush();
+  const editor = popup.elements["note-content"];
+  assert.equal(editor.value, "Plan\nSay **bold** and `code`\n\n- Alpha\n- Beta\n1. One\nDone\n> Quoted\nFirst\nSecond\n```\na = 1\nb = 2\n```");
+
+  // Saving it unchanged keeps the lists, quote, code block, and marks.
+  editor.oninput();
+  await popup.elements["notes-back"].onclick();
+  await flush();
+  const saved = JSON.parse(popup.state.calls.find((call) => call.path === "/notes/note-web" && call.options.method === "PUT").options.body);
+  const blocks = JSON.parse(saved.content).content;
+  assert.deepEqual(blocks.map((block) => block.type), ["paragraph", "paragraph", "paragraph", "bulletList", "orderedList", "paragraph", "blockquote", "paragraph", "paragraph", "codeBlock"]);
+  assert.deepEqual(blocks[1].content.map((node) => node.marks?.[0]?.type ?? null), [null, "bold", null, "code"]);
+  assert.equal(blocks[9].content[0].text, "a = 1\nb = 2");
+});
+
+test("falls back to the plain-text copy for bodies that are not documents", async () => {
+  const popup = await readyPopup({
+    token: "token",
+    fixtureNotes: [{ id: "note-legacy", title: "Legacy", content: "Old plain body", contentText: "Old plain body", tags: [], version: 1 }],
+    openNoteId: "note-legacy",
+  });
+  await flush();
+  assert.equal(popup.elements["note-content"].value, "Old plain body");
+});
+
 test("shows an empty-state message when the notes list is empty", async () => {
   const popup = await readyPopup({ token: "token" });
   await popup.elements["notes-tab"].onclick();
