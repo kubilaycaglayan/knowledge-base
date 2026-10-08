@@ -377,6 +377,70 @@ describe("board real-stack acceptance", () => {
     await page.unroute(pageRequest);
   });
 
+  it("preserves a card draft through a failed save and retries against the latest server version", async () => {
+    await addCard("Card before retry");
+    const boardId = currentBoardId();
+    const cardElement = page.locator(".board-card", { hasText: "Card before retry" });
+    const cardId = (await cardElement.getAttribute("id")).replace("board-card-", "");
+    await cardElement.click();
+    const title = page.getByRole("textbox", { name: "Title", exact: true });
+    const draft = "My retried card draft";
+    const retryUrl = `**/api/v1/boards/${boardId}/cards/${cardId}`;
+    const writeStatuses = [];
+    let failedFirstWrite = false;
+    const recordResponse = (response) => {
+      if (response.request().method() === "PUT" && new URL(response.url()).pathname.endsWith(`/cards/${cardId}`)) writeStatuses.push(response.status());
+    };
+    page.on("response", recordResponse);
+    await page.route(retryUrl, async (route) => {
+      if (route.request().method() !== "PUT" || failedFirstWrite) return route.continue();
+      failedFirstWrite = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    });
+    const otherPage = await page.context().newPage();
+    try {
+      await title.fill(draft);
+      const initialError = page.getByRole("alert").filter({ hasText: "Could not save card. Your edits are kept." });
+      await initialError.waitFor();
+      assert.equal(await title.inputValue(), draft, "a failed save must preserve the title draft");
+
+      await otherPage.goto(`${baseUrl}/board?board=${boardId}`);
+      await otherPage.getByRole("heading", { name: "Boards" }).waitFor();
+      const latestBeforeExternalEdit = await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`);
+      await api(otherPage, "PUT", `/boards/${boardId}/cards/${cardId}`, {
+        title: "Changed in another window",
+        body: latestBeforeExternalEdit.body,
+        priority: latestBeforeExternalEdit.priority,
+        startDate: latestBeforeExternalEdit.startDate,
+        dueDate: latestBeforeExternalEdit.dueDate,
+        pathIds: latestBeforeExternalEdit.pathIds,
+        labelIds: latestBeforeExternalEdit.labelIds,
+        expectedUpdatedAt: latestBeforeExternalEdit.updatedAt,
+      });
+
+      const conflict = page.getByRole("alert").filter({ hasText: "This card changed elsewhere. Retry to save your version." });
+      await initialError.getByRole("button", { name: "Retry" }).press("Enter");
+      await conflict.waitFor();
+      assert.equal(await title.inputValue(), draft, "a conflict refresh must not replace the user's draft");
+      const refreshed = await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`);
+      assert.equal(refreshed.title, "Changed in another window", "the retry conflict must preserve current server state");
+
+      const successfulRetry = page.waitForResponse((response) =>
+        new URL(response.url()).pathname.endsWith(`/cards/${cardId}`) && response.request().method() === "PUT" && response.status() === 200,
+      );
+      await conflict.getByRole("button", { name: "Retry" }).press("Enter");
+      await successfulRetry;
+      await page.getByRole("heading", { name: draft, exact: true }).waitFor();
+      assert.deepEqual(writeStatuses, [503, 409, 200], "the draft is retried once after the current version is refreshed");
+      assert.equal((await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`)).title, draft);
+      await conflict.waitFor({ state: "detached" });
+    } finally {
+      page.off("response", recordResponse);
+      await page.unroute(retryUrl);
+      await otherPage.close();
+    }
+  });
+
   it("protects a card from a stale concurrent tab write", async () => {
     const boardId = currentBoardId();
     await addCard("Concurrent card");
