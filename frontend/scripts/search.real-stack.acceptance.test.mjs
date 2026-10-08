@@ -45,25 +45,31 @@ async function seed() {
   fixtures.card = await api(`/boards/${fixtures.board.id}/cards`, "POST", { title: `${text} Card`, body: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] }), priority: "MEDIUM", pathIds: [], labelIds: [] });
   fixtures.day = new Date().toISOString().slice(0, 10);
   await api(`/calendar/days/${fixtures.day}`, "PUT", { note: `${text} Day`, labels: [] });
+  fixtures.calendarResultId = (await api(`/search?q=${encodeURIComponent(`${text} Day`)}&types=CALENDAR_DAY`)).groups[0].results[0].id;
   const start = new Date(Date.now() - 3_600_000).toISOString();
   const end = new Date(Date.now() - 1_800_000).toISOString();
   fixtures.session = await api("/time-entries", "POST", { pathId: fixtures.path.id, labelIds: [fixtures.label.id], startedAt: start, endedAt: end, description: `${text} Session` });
 }
 
-async function searchFor(query) {
+async function searchFor(query, type, id) {
   await page.getByRole("button", { name: "Search", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Search everything" });
   const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
   await input.fill(query);
-  const option = page.locator(".global-search-option[role=option]").filter({ hasText: query }).last();
+  const option = page.locator(`#global-search-${type.toLowerCase()}-${id}`);
   await option.waitFor();
   return { dialog, option };
 }
 
-async function activate(query, expectedPath, expectedVisible) {
-  const { option } = await searchFor(query);
+async function activate(query, type, id, expectedPath, expectedVisible) {
+  const { option } = await searchFor(query, type, id);
+  const prior = page.url();
   await option.click();
-  await page.waitForURL((url) => url.pathname === expectedPath);
+  try {
+    await page.waitForFunction((path) => location.pathname === path, expectedPath);
+  } catch (cause) {
+    throw new Error(`Expected ${expectedPath} after selecting ${query}; observed ${page.url()}`, { cause });
+  }
   if (expectedPath.startsWith("/notes/")) {
     await page.getByRole("textbox", { name: "Note title" }).waitFor();
     await page.waitForFunction((value) => document.querySelector('[aria-label="Note title"]')?.value === value, expectedVisible);
@@ -73,14 +79,16 @@ async function activate(query, expectedPath, expectedVisible) {
   }
   const selected = page.url();
   await page.goBack();
-  await page.waitForURL((url) => url.pathname === "/", { waitUntil: "commit" });
+  assert.equal(page.url(), prior, `Back restores prior URL after opening ${expectedPath}`);
   await page.goForward();
-  await page.waitForURL((url) => url.href === selected, { waitUntil: "commit" });
+  assert.equal(page.url(), selected, `Forward restores ${expectedPath}`);
   if (expectedPath.startsWith("/notes/")) {
     await page.waitForFunction((value) => document.querySelector('[aria-label="Note title"]')?.value === value, expectedVisible);
     assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), expectedVisible);
   }
   else await page.waitForFunction((value) => document.body.innerText.includes(value), expectedVisible);
+  await page.goto(`${baseUrl}/`);
+  await page.getByRole("button", { name: "Search", exact: true }).waitFor();
 }
 
 before(async () => {
@@ -105,26 +113,26 @@ after(async () => { await context?.close(); await browser?.close(); });
 
 describe("search and direct routes against disposable real stack", () => {
   it("opens note, log, path, and session results with Back/Forward state", async () => {
-    await activate(`${text} Note`, `/notes/${fixtures.note.id}`, `${text} Note`);
-    await activate(`${text} Log`, `/logs/${fixtures.log.id}`, `${text} Log`);
-    await activate(`${text} Path`, `/paths/${fixtures.path.id}`, `${text} Path`);
-    await activate(`${text} Label`, `/labels/${fixtures.label.id}`, `${text} Label`);
-    await activate(`${text} Session`, `/sessions/${fixtures.session.id}`, `${text} Session`);
+    await activate(`${text} Note`, "NOTE", fixtures.note.id, `/notes/${fixtures.note.id}`, `${text} Note`);
+    await activate(`${text} Log`, "LOG", fixtures.log.id, `/logs/${fixtures.log.id}`, `${text} Log`);
+    await activate(`${text} Path`, "PATH", fixtures.path.id, `/paths/${fixtures.path.id}`, `${text} Path`);
+    await activate(`${text} Label`, "LABEL", fixtures.label.id, `/labels/${fixtures.label.id}`, `${text} Label`);
+    await activate(`${text} Session`, "SESSION", fixtures.session.id, `/sessions/${fixtures.session.id}`, `${text} Session`);
   });
 
   it("opens calendar, board, and active card search destinations", async () => {
-    const calendar = await searchFor(`${text} Day`);
+    const calendar = await searchFor(`${text} Day`, "CALENDAR_DAY", fixtures.calendarResultId);
     await calendar.option.click();
-    await page.waitForURL((url) => url.pathname === "/calendar" && url.searchParams.get("date") === fixtures.day);
+    await page.waitForFunction((date) => location.pathname === "/calendar" && new URL(location.href).searchParams.get("date") === date, fixtures.day);
     assert.equal(new URL(page.url()).searchParams.get("date"), fixtures.day);
 
-    const board = await searchFor(`${text} Board`);
+    const board = await searchFor(`${text} Board`, "BOARD", fixtures.board.id);
     await board.option.click();
-    await page.waitForURL((url) => url.pathname === "/board" && url.searchParams.get("board") === fixtures.board.id);
+    await page.waitForFunction((boardId) => location.pathname === "/board" && new URL(location.href).searchParams.get("board") === boardId, fixtures.board.id);
 
-    const card = await searchFor(`${text} Card`);
+    const card = await searchFor(`${text} Card`, "CARD", fixtures.card.id);
     await card.option.click();
-    await page.waitForURL((url) => url.pathname === "/board" && url.searchParams.get("card") === fixtures.card.id);
+    await page.waitForFunction((cardId) => location.pathname === "/board" && new URL(location.href).searchParams.get("card") === cardId, fixtures.card.id);
     const url = new URL(page.url());
     assert.equal(url.searchParams.get("board"), fixtures.board.id);
     assert.equal(url.searchParams.get("cardBoard"), fixtures.board.id);
