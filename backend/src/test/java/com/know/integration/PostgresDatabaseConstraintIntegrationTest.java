@@ -261,6 +261,142 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
             "select board_id from board_cards where title = ?", UUID.class, "Rollback card"));
   }
 
+  @Test
+  void postgresCreateOperationsRollBackParentsWhenAssociationWritesFail() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Association transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    UUID userId = subject(token);
+
+    String noteTrigger = failOnInsertTrigger("note_label");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/notes",
+              token,
+              "{\"title\":\"Rollback note\",\"content\":\"body\",\"tags\":[\"Rollback tag\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("note_label", noteTrigger);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from note where user_id = ? and title = ?",
+            Long.class,
+            userId,
+            "Rollback note"));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from labels where user_id = ? and name = ?",
+            Long.class,
+            userId,
+            "Rollback tag"));
+
+    JsonNode board =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Rollback card board\"}");
+    String boardId = board.get("id").asText();
+    String boardLabelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Rollback board label\",\"scopes\":[\"BOARD\"]}")
+            .get("id")
+            .asText();
+    String cardTrigger = failOnInsertTrigger("board_card_labels");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/boards/" + boardId + "/cards",
+              token,
+              "{\"title\":\"Rollback card\",\"labelIds\":[\"" + boardLabelId + "\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("board_card_labels", cardTrigger);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from board_cards where board_id = ? and title = ?",
+            Long.class,
+            UUID.fromString(boardId),
+            "Rollback card"));
+
+    String timeLabelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Rollback timer label\",\"scopes\":[\"TIME_ENTRY\"]}")
+            .get("id")
+            .asText();
+    String timeTrigger = failOnInsertTrigger("time_entry_label");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/time-entries",
+              token,
+              "{\"labelIds\":[\""
+                  + timeLabelId
+                  + "\"],\"startedAt\":\"2026-05-06T10:00:00Z\",\"endedAt\":\"2026-05-06T10:01:00Z\"}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("time_entry_label", timeTrigger);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry where user_id = ? and description is null and started_at = ?",
+            Long.class,
+            userId,
+            Timestamp.from(Instant.parse("2026-05-06T10:00:00Z"))));
+
+    String scopeTrigger = failOnInsertTrigger("label_scope");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/labels",
+              token,
+              "{\"name\":\"Rollback scope label\",\"scopes\":[\"NOTE\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("label_scope", scopeTrigger);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from labels where user_id = ? and name = ?",
+            Long.class,
+            userId,
+            "Rollback scope label"));
+  }
+
+  private String failOnInsertTrigger(String tableName) {
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_insert_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced association failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on "
+            + tableName
+            + " for each row execute function "
+            + functionName
+            + "()");
+    return functionName;
+  }
+
+  private void dropInsertTrigger(String tableName, String name) {
+    jdbc.execute("drop trigger if exists " + name + " on " + tableName);
+    jdbc.execute("drop function if exists " + name + "()");
+  }
+
   private void insertEntry(
       UUID id, UUID userId, UUID pathId, Instant startedAt, Instant endedAt, Long durationSeconds) {
     jdbc.update(
