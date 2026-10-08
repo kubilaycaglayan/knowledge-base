@@ -14,7 +14,7 @@ records that engine/profile and its outcomes.
 | --- | --- | --- |
 | Board stale response | [`board.real-stack.acceptance.test.mjs`](../../frontend/scripts/board.real-stack.acceptance.test.mjs) has “does not let a delayed board response replace the newly selected board”; `stores/boards.test.ts` also covers stale list/board/Gantt responses. | Passed in the focused desktop and mobile-size Chromium board suites; see the same-commit [desktop](../runs/2026-10-08-6d29b9b-desktop-chromium-board-resilience.md) and [mobile](../runs/2026-10-08-6d29b9b-mobile-chromium-board-resilience.md) reports. |
 | Board pagination retry | `stores/boards.test.ts` covers a failed lazy page remaining retryable and exposing recoverable error; `board.real-stack.acceptance.test.mjs` now injects a failed page request and verifies retry cursor, result identity, duplicates, and keyboard activation. | Passed in both Chromium profiles; see the same-commit reports linked above. |
-| Note conflict/retry | [`line-history.real-stack.acceptance.test.mjs`](../../frontend/scripts/line-history.real-stack.acceptance.test.mjs) covers a draft through conflict and retry; `NotesView.test.ts` covers editor failure feedback. | Verify live server conflict/retry and saved line-history in desktop and mobile Chromium; retain screenshot/trace and assert the user draft is preserved. |
+| Note conflict/retry | [`line-history.real-stack.acceptance.test.mjs`](../../frontend/scripts/line-history.real-stack.acceptance.test.mjs) covers a draft through conflict and retry and a 503 followed by conflict/replay; `NotesView.test.ts` covers editor failure feedback. | The 2026-10-08 desktop and mobile-size Chromium line-history reports record the live 503/conflict/replay journey, preserved draft, and saved result. Screenshots are retained; this runner does not currently capture traces. |
 | Timer transport fallback | [`timer-websocket.real-stack.acceptance.test.mjs`](../../frontend/scripts/timer-websocket.real-stack.acceptance.test.mjs) covers socket sync and HTTP polling when the socket is unavailable. | Add explicit reconnection/network-restoration behavior where supported; run and report mobile Chromium separately from desktop and WebKit. |
 | Long content and small-screen layout | [`session-tracker.acceptance.test.mjs`](../../frontend/scripts/session-tracker.acceptance.test.mjs) contains long names, target, and accessibility checks across width/mode combinations; component tests cover long content in several views. | Capture complete desktop and 390×844 Chromium reports for the relevant browser suites; assert overflow, clipped controls, keyboard/touch recovery reachability, and actual mobile Chromium UA/engine identity. |
 | Empty/failure states | View/store tests cover empty reports, empty notes, and multiple API failures/retry states. | Retain authenticated real-stack browser evidence for the selected empty/retry journeys in both Chromium profiles, including visible and accessible recovery. |
@@ -32,6 +32,12 @@ records that engine/profile and its outcomes.
   and [mobile-size Chromium board report](../runs/2026-10-08-6d29b9b-mobile-chromium-board-resilience.md)
   are separate. No fresh WebKit run is claimed for this milestone; emulated
   WebKit is not mobile Chrome evidence.
+- [x] Verify live note save recovery in desktop and mobile-size Chromium: the
+  user draft survives a retryable 503 and a concurrent server edit, then saves
+  after conflict replay. See the [desktop](../runs/2026-10-08-f6abf77-desktop-chromium-line-history-resilience.md)
+  and [mobile](../runs/2026-10-08-f6abf77-mobile-chromium-line-history-resilience.md)
+  reports. The runner does not capture traces, so screenshots are the retained
+  visual evidence for these passing runs.
 
 ## Failure investigation
 
@@ -61,6 +67,9 @@ records that engine/profile and its outcomes.
 
 - [ ] For notes, cards, paged board results, search, and timer fallback, inject
   a retryable request failure and assert the user's draft/input is preserved.
+  Notes and cards now have real-stack failure/replay coverage; paged board
+  results have a real-stack retry case. Search and timer fallback still need
+  explicit injected-failure preservation/recovery cases.
 - [ ] Assert retry uses current server state and does not duplicate a write or
   resurrect data that has since changed or been deleted.
 - [ ] Assert failure, loading, success, and retry feedback is visible and

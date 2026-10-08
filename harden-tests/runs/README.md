@@ -127,21 +127,32 @@ image/database metadata, and project-scoped container-log capture. The latest
 same-commit pair is [desktop](2026-10-08-6d29b9b-desktop-chromium-board-resilience.md)
 and [mobile-size Chromium](2026-10-08-6d29b9b-mobile-chromium-board-resilience.md).
 The c415565 pair and 457eff2 desktop run added six observed failures after the
-d2cda77 reports; the final 6d29b9b pair added five more. The cumulative table
-has 63 case occurrences across 27 failure-group suite occurrences: 60 cases
-from 15 complete dated reports and 3 from the partial transcript. The partial
+d2cda77 reports; the final 6d29b9b pair added five more. The subsequent
+6ebc5d9 board pair added five more failing cases across four failure-group
+suite occurrences (archive overlap in both profiles, detached locator and
+More boards in mobile Chromium). The f6abf77 line-history pair passed all 12
+cases in each profile and added no failure occurrences. The cumulative table
+has 68 case occurrences across 31 failure-group suite occurrences: 65 cases
+from 17 complete dated reports with failures and 3 from the partial transcript.
+The two f6abf77 line-history reports passed and add no failing occurrences. The partial
 transcript remains history-only. “Suite occurrences” counts one suite per
 failure group in that suite, so one run can contribute to multiple groups.
+
+The line-history profile reports are [desktop Chromium](2026-10-08-f6abf77-desktop-chromium-line-history-resilience.md)
+and [mobile-size Chromium](2026-10-08-f6abf77-mobile-chromium-line-history-resilience.md).
+Both passed 12/12 including a live note draft recovery after a 503 and concurrent
+edit. Image/database and detailed browser environment metadata were not
+captured by the line-history runner and remain unknown.
 
 | Suspected root cause | Case occurrences | Suite occurrences | Last seen | Confirmed correction |
 | --- | ---: | ---: | --- | --- |
 | Board setup assumes selected board remains a visible tab after overflow | 23 | 1 | 2026-10-08 | Corrected in earlier run; no setup failure in current board runs. |
 | Session-tracker fixture controls unavailable during keyboard/fill interactions | 9 | 1 | 2026-10-08 | Insufficient evidence; historical artifacts unavailable. |
-| Fixed timer/shell overlaps archive footer controls | 17 | 12 | 2026-10-08 | Reproduced in desktop and mobile Chromium; latest screenshots/traces and scoped stack logs retained locally; product cause not confirmed. |
+| Fixed timer/shell overlaps archive footer controls | 20 | 14 | 2026-10-08 | Reproduced in desktop and mobile Chromium; latest screenshots/traces and scoped stack logs retained locally; product cause not confirmed. |
 | WebKit touch caret placement interacts with line-history gutter | 1 | 1 | 2026-10-08 | Insufficient evidence; trace unavailable. |
 | WebKit timer API CORS/access-control request | 1 | 1 | 2026-10-08 | Insufficient evidence; network/server logs unavailable. |
-| Detached board card locator | 5 | 5 | 2026-10-08 | Reproduced in three mobile Chromium runs; latest trace retained locally; timing versus rerender remains suspected. |
-| Board menu control unavailable during phone card/view switching | 5 | 5 | 2026-10-08 | Reproduced in four mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
+| Detached board card locator | 6 | 6 | 2026-10-08 | Reproduced in four mobile Chromium runs; latest trace retained locally; timing versus rerender remains suspected. |
+| Board menu control unavailable during phone card/view switching | 6 | 6 | 2026-10-08 | Reproduced in five mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
 | Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
 
 The detached Gantt locator remains classified as a suspected synchronization
