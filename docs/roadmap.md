@@ -1,5 +1,9 @@
 # Knowledge Base UI roadmap
 
+- [x] Page jumps in global search: typing a main page's name (Board, Logs,
+  Notes, Calendar, Reports, Settings, …) lists it under Pages above the
+  record results, matched instantly in the browser; Enter on the top match
+  goes straight there without waiting for the record search.
 - [x] Global search: ⌘K/Ctrl+K (or the header Search button) opens a search
   of every owned path, board, label, note, card, log, session, and calendar
   day from any page. Results are grouped by type with highlighted matches,

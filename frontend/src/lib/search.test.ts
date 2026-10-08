@@ -2,6 +2,7 @@ import {
   forgetSearches,
   highlightParts,
   isGlobalSearchShortcut,
+  matchPages,
   isPageSearchShortcut,
   isTypingTarget,
   recentSearches,
@@ -196,5 +197,34 @@ describe("shortcuts", () => {
     expect(slash({}, document.querySelector("input")!)).toBe(false);
     document.body.innerHTML = '<div aria-modal="true"></div>';
     expect(slash()).toBe(false);
+  });
+});
+
+describe("matchPages", () => {
+  const labels = (query: string) => matchPages(query).map((page) => page.label);
+  it("matches page names by the start of any word, ignoring case", () => {
+    expect(labels("board")).toEqual(["Board", "Board archive"]);
+    expect(labels("BO")).toEqual(["Board", "Board archive"]);
+    expect(labels("arch")).toEqual(["Board archive"]);
+    expect(labels("board arch")).toEqual(["Board archive"]);
+    expect(labels("  logs ")).toEqual(["Logs"]);
+  });
+  it("puts an exact name first, then names that start with the query", () => {
+    expect(labels("board archive")).toEqual(["Board archive"]);
+    const pages = [
+      { id: "a", label: "Archive notes", path: "/a" },
+      { id: "b", label: "Notes", path: "/b" },
+    ];
+    expect(matchPages("notes", pages).map((page) => page.id)).toEqual(["b", "a"]);
+  });
+  it("matches aliases", () => {
+    expect(labels("home")).toEqual(["Sessions"]);
+    expect(matchPages("home")[0].path).toBe("/");
+  });
+  it("matches nothing for empty or unrelated text", () => {
+    expect(labels("")).toEqual([]);
+    expect(labels("   ")).toEqual([]);
+    expect(labels("oard")).toEqual([]);
+    expect(labels("photo")).toEqual([]);
   });
 });
