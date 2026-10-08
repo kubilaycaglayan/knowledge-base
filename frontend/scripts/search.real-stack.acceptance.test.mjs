@@ -1,12 +1,33 @@
 import assert from "node:assert/strict";
-import { after, before, it } from "node:test";
+import { after, before, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
+import { resolve } from "node:path";
+import { browserFailureArtifacts } from "./browser-failure-artifacts.mjs";
 
 const baseUrl = process.env.SEARCH_E2E_BASE_URL;
 if (!baseUrl) throw new Error("SEARCH_E2E_BASE_URL is required");
 const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
 const phone = process.env.BROWSER_PROFILE === "iphone";
 let browser;
+const failureArtifacts = browserFailureArtifacts({
+  directory: process.env.SEARCH_E2E_ARTIFACT_DIR || resolve(process.cwd(), "../harden-tests/local-artifacts", `search-${Date.now()}-${process.env.BROWSER_PROFILE || "default"}`),
+  engine: process.env.BROWSER_ENGINE || "chromium",
+  profile: process.env.BROWSER_PROFILE || "default",
+});
+
+function it(name, run) {
+  nodeIt(name, async (testContext) => {
+    await failureArtifacts.begin(name);
+    try {
+      await run(testContext);
+    } catch (error) {
+      await failureArtifacts.end(error);
+      throw error;
+    } finally {
+      await failureArtifacts.end();
+    }
+  });
+}
 
 before(async () => {
   browser = await browserType.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
@@ -32,6 +53,7 @@ it("preserves a search query after a retryable request failure and retries acces
     viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 800 },
     ...(phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
   });
+  await failureArtifacts.addContext(context);
   await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
@@ -77,6 +99,9 @@ it("preserves a search query after a retryable request failure and retries acces
     await page.waitForFunction(() => document.querySelector("#global-search-status")?.textContent.includes("No results for"));
     assert.equal(await input.inputValue(), "zzzxq-nonexistent-query");
     assert.equal(attempts, 2, "retry should issue one request");
+  } catch (error) {
+    await failureArtifacts.end(error);
+    throw error;
   } finally {
     releaseFirstRequest();
     await context.close();
@@ -97,6 +122,7 @@ it("keeps long note titles and matching body snippets reachable on phone and des
     viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 800 },
     ...(phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
   });
+  await failureArtifacts.addContext(context);
   await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
@@ -116,6 +142,9 @@ it("keeps long note titles and matching body snippets reachable on phone and des
     assert.match(await result.getAttribute("aria-label"), /Long note title.*visible ending/);
     assert.match(await result.locator(".global-search-snippet").textContent(), /DistinctiveSnippetTerm/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, "long search title/snippet must not create page overflow");
+  } catch (error) {
+    await failureArtifacts.end(error);
+    throw error;
   } finally {
     await context.close();
   }

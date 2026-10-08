@@ -8,6 +8,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 project="knowledge-base-search-smoke-${BASHPID:-$$}-$(date +%s%N)"
 password="Search-e2e-$(date +%s%N)"
 port="${SEARCH_E2E_PROXY_PORT:-26480}"
+artifact_dir="${SEARCH_E2E_ARTIFACT_DIR:-$PWD/harden-tests/local-artifacts/search-$(date +%s%N)}"
 compose=(docker compose -p "$project" -f docker-compose.yml -f docker-compose.smoke.yml)
 cleanup() { "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -29,4 +30,17 @@ for attempt in {1..90}; do
   sleep 2
 done
 
-SEARCH_E2E_BASE_URL="http://localhost:${port}" npm run test:search:e2e --prefix frontend
+mkdir -p "$artifact_dir"
+printf 'Commit: %s\nBrowser engine: %s\nBrowser profile: %s\n' "$(git rev-parse HEAD)" "${BROWSER_ENGINE:-chromium}" "${BROWSER_PROFILE:-default}" > "$artifact_dir/run-metadata.txt"
+test_log="$(mktemp)"
+set +e
+SEARCH_E2E_BASE_URL="http://localhost:${port}" SEARCH_E2E_ARTIFACT_DIR="$artifact_dir" npm run test:search:e2e --prefix frontend > "$test_log" 2>&1
+test_status=$?
+set -e
+cat "$test_log"
+if [[ "$test_status" != 0 ]]; then
+  mv "$test_log" "$artifact_dir/command.log"
+  "${compose[@]}" logs --no-color > "$artifact_dir/stack.log" 2>&1 || true
+  exit "$test_status"
+fi
+rm -f "$test_log"

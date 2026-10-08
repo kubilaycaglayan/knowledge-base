@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import vm from "node:vm";
-import { after, before, describe, it } from "node:test";
+import { after, before, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import { resolve } from "node:path";
+import { browserFailureArtifacts } from "./browser-failure-artifacts.mjs";
 
 // Per-line edit times ("Line history") against the real API, PostgreSQL,
 // proxy, and browser: typing, autosave, conflicts, keyboard use, dark theme,
@@ -75,6 +77,11 @@ const without = (times, ...lines) => Object.fromEntries(Object.entries(times).fi
 let browser;
 const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
 const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
+const failureArtifacts = browserFailureArtifacts({
+  directory: process.env.LINE_HISTORY_E2E_ARTIFACT_DIR || resolve(process.cwd(), "../harden-tests/local-artifacts", `line-history-${Date.now()}-${process.env.BROWSER_PROFILE || "default"}`),
+  engine: process.env.BROWSER_ENGINE || "chromium",
+  profile: process.env.BROWSER_PROFILE || "default",
+});
 let page;
 const pageErrors = [];
 const paragraph = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
@@ -97,10 +104,25 @@ async function newPage(options = {}) {
     reducedMotion: "reduce",
     ...options,
   });
+  await failureArtifacts.addContext(context);
   context.setDefaultTimeout(10000);
   const created = await context.newPage();
   created.on("pageerror", (error) => pageErrors.push(error.message));
   return created;
+}
+
+function it(name, run) {
+  nodeIt(name, async (testContext) => {
+    await failureArtifacts.begin(name, [page?.context()]);
+    try {
+      await run(testContext);
+    } catch (error) {
+      await failureArtifacts.end(error);
+      throw error;
+    } finally {
+      await failureArtifacts.end();
+    }
+  });
 }
 
 // API calls from the signed-in page, standing in for "another window".

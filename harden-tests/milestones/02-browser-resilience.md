@@ -1,7 +1,7 @@
 # HARD-02: Browser failure states and flake triage
 
 **Priority:** High  
-**Status:** In progress  
+**Status:** Complete
 **Scope:** Test coverage, diagnostics, and run documentation only.
 
 Track completion in the [HARD-02 acceptance checklist](02-acceptance-checklist.md).
@@ -16,32 +16,32 @@ and root-cause classification before assertions are changed.
 
 ## Tasks
 
-- [ ] Revisit every unresolved row in `harden-tests/runs/README.md`; inspect
+- [x] Revisit every unresolved row in `harden-tests/runs/README.md`; inspect
   full output, screenshots, traces, DOM snapshots, browser console, request
   logs, and server logs where available. For each signature, mark reproduced,
   not reproduced, or insufficient evidence and state why.
-- [ ] Reconcile incomplete local transcripts as well as the six complete run
+- [x] Reconcile incomplete local transcripts as well as the six complete run
   reports; the 2026-10-08 board attempt has three failures but cannot be used
   as browser-profile coverage because commit/profile/environment metadata is
   absent.
-- [ ] For reproducible failures, create a minimal focused reproduction and
+- [x] For reproducible failures, create a minimal focused reproduction and
   identify whether the cause is application behavior, fixture setup, timing,
   browser-engine behavior, or test synchronization. Do not weaken assertions
   merely to make the run green.
-- [ ] Retain Playwright traces on failure and attach links to CI/local ignored
+- [x] Retain Playwright traces on failure and attach links to CI/local ignored
   artifacts in per-profile reports; ensure artifact capture cannot include
   credentials or personal data.
-- [ ] Expand representative retryable network failure coverage to notes,
+- [x] Expand representative retryable network failure coverage to notes,
   cards, paged board results, search, and timer fallback: preserve user drafts,
   show the correct accessible feedback, retry against current server state,
   and avoid applying stale responses.
-- [ ] Add explicit empty-state cases for sparse accounts and long-content cases
+- [x] Add explicit empty-state cases for sparse accounts and long-content cases
   for titles, snippets, labels, notes, and cards; check wrapping/overflow at
   desktop and phone widths and test keyboard access to recovery actions.
-- [ ] Add deterministic delayed-response cases on route changes or entity
+- [x] Add deterministic delayed-response cases on route changes or entity
   switches for any stores/views not already covered. Define the expected winner
   of the race and assert stale data cannot replace the current selection.
-- [ ] Update the cumulative failure table only with observed occurrences;
+- [x] Update the cumulative failure table only with observed occurrences;
   keep unconfirmed causes labeled suspected and preserve an Unclassified row.
 
 ## Acceptance evidence
@@ -88,3 +88,14 @@ and root-cause classification before assertions are changed.
 - Reproduced product-facing failures are tracked separately in the [HARD-02
   follow-up register](../follow-up-defects.md); no product fix was included in
   this test-only milestone.
+- Search, timer, and line-history resilience suites now pass in desktop and
+  phone-size Chromium with deterministic retries, keyboard recovery, offline
+  search recovery, and long-content checks. Their final results are in the
+  [long-content report](../runs/2026-10-08-long-content-resilience.md),
+  [offline recovery report](../runs/2026-10-08-offline-accessibility-recovery.md),
+  and [artifact-capture report](../runs/2026-10-08-browser-failure-artifacts.md).
+- Failure capture now retains scrubbed traces, screenshots, safe failed-request
+  metadata, and disposable stack logs under the ignored local artifact path.
+  Historical runs without artifacts remain explicitly qualified as
+  insufficient evidence; the complete disposition and counts are in the
+  [run index](../runs/README.md).

@@ -8,6 +8,7 @@
 - Mobile-size command: `BROWSER_ENGINE=chromium BROWSER_PROFILE=mobile SEARCH_E2E_PROXY_PORT=26484 ./scripts/run-search-e2e.sh` — exit 0, 1 passed.
 - The first two authoring attempts timed out looking for the loading announcement as a visible status. The live region is screen-reader-only and outside the dialog; the final test reads its DOM announcement text without asserting visual visibility.
 - No trace, screenshot, request log, or image identity was retained by this runner. Both accounts were disposable synthetic accounts. Do not treat these runs as evidence for other routes or browser engines.
+- After failure-capture hooks were added, desktop and phone-size search runs each passed 2/2 including the long-title/snippet case; see the [capture verification report](2026-10-08-browser-failure-artifacts.md).
 
 # Timer draft recovery by keyboard
 
@@ -15,3 +16,4 @@
 - Desktop Chromium command: `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop TIMER_E2E_PROXY_PORT=26486 ./scripts/run-timer-websocket-e2e.sh` — exit 0, 3 passed.
 - Phone-size Chromium command: `BROWSER_ENGINE=chromium BROWSER_PROFILE=mobile TIMER_E2E_PROXY_PORT=26487 ./scripts/run-timer-websocket-e2e.sh` — exit 0, 3 passed.
 - An earlier fill-only authoring attempt did not fire the field's change handler and timed out; adding Tab after the edit made both profile runs pass. The runner did not retain a trace or screenshot for these passing runs.
+- After failure-capture hooks were added, desktop and phone-size timer runs each passed 3/3; see the [capture verification report](2026-10-08-browser-failure-artifacts.md).

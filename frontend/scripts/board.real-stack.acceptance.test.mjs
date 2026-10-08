@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { after, before, beforeEach, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { scrubPlaywrightTrace } from "./browser-failure-artifacts.mjs";
 
 const baseUrl = process.env.BOARD_E2E_BASE_URL;
 const email = process.env.BOARD_E2E_EMAIL;
@@ -41,6 +42,12 @@ function it(name, run) {
         }
         await context.tracing.stop({ path: tracePath });
         traceSaved = true;
+        try {
+          scrubPlaywrightTrace(tracePath);
+        } catch (scrubError) {
+          rmSync(tracePath, { force: true });
+          throw new Error("Playwright trace scrub failed; the unsanitized trace was removed.", { cause: scrubError });
+        }
         writeFileSync(join(artifactDir, `${stem}.json`), JSON.stringify({
           test: name,
           commit: process.env.GITHUB_SHA || "recorded by the run report",
