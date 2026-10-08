@@ -693,6 +693,39 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresImportRollsBackEarlierRowsWhenALaterRecordViolatesAConstraint() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This rollback boundary runs against PostgreSQL");
+    }
+    String token = freshToken();
+    UUID pathId = UUID.randomUUID();
+    UUID noteId = UUID.randomUUID();
+    String created = "2024-02-29T12:00:00Z";
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                pathId,
+                "{\"name\":\"Rollback-only path\",\"status\":\"ACTIVE\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + created
+                    + "\"}")
+            + csvRow(
+                "note",
+                noteId,
+                "{\"pathId\":\"" + pathId + "\",\"content\":\"late invalid note\"}");
+
+    ResponseEntity<JsonNode> failed = importCsv(token, csv);
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failed.getStatusCode());
+    assertTrue(get("/api/v1/paths", token).getBody().findValuesAsText("name").stream()
+        .noneMatch("Rollback-only path"::equals));
+    assertTrue(get("/api/v1/imports/knowledge-base/batches", token).getBody().isEmpty());
+    assertFalse(exportCsv(token).getBody().contains(pathId.toString()));
+  }
+
+  @Test
   void mergingPathsMovesTheSourceSessionsToTheOwnedTargetAndSoftDeletesTheSource() {
     String token = freshToken();
     String sourceId =
