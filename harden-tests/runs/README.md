@@ -132,12 +132,14 @@ d2cda77 reports; the final 6d29b9b pair added five more. The subsequent
 suite occurrences (archive overlap in both profiles, detached locator and
 More boards in mobile Chromium). The f6abf77 line-history pair passed all 12
 cases in each profile and added no failure occurrences. The cumulative table
-has 74 case occurrences across 37 failure-group suite occurrences: 65 cases
+has 114 case occurrences across 43 failure-group suite occurrences: 65 cases
 from 17 complete dated reports with failures, 4 test-authoring failures from
 exploratory attempts, and 3 from the partial transcript. The f6abf77 line-history,
 941b7c4 timer, and 5bba75f search reports passed and add no failing occurrences.
 The emulated iPhone WebKit line-history report added two reproduced failures
-across two failure-group suite occurrences. The partial transcript remains
+across two failure-group suite occurrences; tracker acceptance repair iterations
+added 40 test-authoring failures across six suite occurrences, documented [here](2026-10-08-tracker-acceptance-repair.md).
+The partial transcript remains
 history-only. “Suite occurrences” counts one suite per failure group in that
 suite, so one run can contribute to multiple groups.
 
@@ -152,9 +154,9 @@ and [mobile-size Chromium](2026-10-08-941b7c4-mobile-chromium-timer-resilience.m
 Both passed 3/3, including a timer draft 503 and user-initiated recovery. These
 runner transcripts do not include screenshots/traces or immutable image IDs.
 
-The search recovery profile reports are [desktop Chromium](2026-10-08-5bba75f-desktop-chromium-search-resilience.md)
-and [mobile-size Chromium](2026-10-08-5bba75f-mobile-chromium-search-resilience.md).
-Both passed 1/1 after an injected 503 and retry to the explicit empty state.
+The search recovery profile reports are [desktop Chromium](2026-10-08-5e0cc54-desktop-chromium-search-resilience.md)
+and [mobile-size Chromium](2026-10-08-5e0cc54-mobile-chromium-search-resilience.md).
+Both passed 1/1 after an injected 503 and keyboard retry to the explicit empty state.
 Test-authoring failures from the exploratory timer and search attempts are
 reconciled in the separate [investigation report](2026-10-08-resilience-test-authoring-investigations.md)
 and do not count as profile coverage.
@@ -175,6 +177,7 @@ failures remain without traces or network/server logs.
 | Board menu control unavailable during phone card/view switching | 6 | 6 | 2026-10-08 | Reproduced in five mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
 | Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
 | Test-authoring synchronization/assertion issues | 4 | 4 | 2026-10-08 | Three timer retry iterations and one search empty-state locator failed during authoring; corrected and documented in the exploratory investigation report. No durable traces retained. |
+| Tracker acceptance fixture repair | 40 | 6 | 2026-10-08 | Repeated runs exposed stale control selectors and assumptions; repaired against the current UI and the final 10/10 fixture suite passed. Evidence and output are retained in the tracker repair report. |
 
 The detached Gantt locator remains classified as a suspected synchronization
 or rerender issue because it recurred in the c415565 and 6d29b9b mobile runs
