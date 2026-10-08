@@ -1,5 +1,21 @@
 # Knowledge Base UI roadmap
 
+- [x] Global search: ⌘K/Ctrl+K (or the header Search button) opens a search
+  of every owned path, board, label, note, card, log, session, and calendar
+  day from any page. Results are grouped by type with highlighted matches,
+  snippets, Archived and path/label badges, and a per-type "Show more"; arrow
+  keys move, Enter opens, ⌘/Ctrl+Enter opens a new tab, and every result is a
+  real link. Records also match through their path and labels, and near-miss
+  spellings are offered when nothing matches literally. Logs, Labels, and the
+  Board card search moved their own shortcut to `/` (see
+  `docs/global-search-acceptance-checklist.md`).
+- [x] Every record has its own address: `/sessions/:id` and `/logs/:id` open
+  the record in a dialog over its list (view, edit, remove, start again, show
+  in list), `/paths/:id` and `/labels/:id` open their history,
+  `/calendar?date=YYYY-MM-DD` selects a day, `/notes?archived=1&q=` opens the
+  filtered notes archive, and `/board/archive` marks a linked archived card or
+  board. Log times and session dates in the lists link to their addresses.
+
 - [x] Replace the Calendar page's “New label” input with an “Add or create label” picker that searches every label, puts labels hidden from Calendar on a day as chips without changing their visibility, and creates new labels shown everywhere; the Labels list keeps showing only Calendar labels, and a label used on calendar days can still be hidden from Calendar (see `docs/calendar-label-picker-acceptance-checklist.md`).
 
 - [x] Show when each note and board card body line was last edited, like git
@@ -40,7 +56,7 @@
 
 - [x] Add “No marker” to web calendar label assignments to omit them from reports; keep “Marker” as the default.
 
-- [x] Search labels by name with ⌘K/Ctrl+K focus, Escape to clear, and a shareable `q` URL filter.
+- [x] Search labels by name with `/` focus (it was ⌘K/Ctrl+K until global search took that shortcut), Escape to clear, and a shareable `q` URL filter.
 
 - [x] Share tracker fields, queued saves, and synchronization across web routes;
   persist idle selections per account and reconcile them in web, extension,
