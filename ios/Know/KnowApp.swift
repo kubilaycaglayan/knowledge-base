@@ -48,6 +48,8 @@ struct Note: Codable, Identifiable, Equatable {
   let version: Int
   var tags: [String]
   var pinned: Bool = false
+  // When each body line was last edited (ISO-8601), on single-note responses only.
+  var lineEdits: [String]? = nil
 }
 
 struct Activity: Codable, Identifiable {

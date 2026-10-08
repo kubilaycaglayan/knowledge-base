@@ -36,6 +36,50 @@ final class NotesTests: XCTestCase {
     XCTAssertEqual(NoteDocument.plainText(content: "legacy text"), "legacy text")
   }
 
+  func testLineHistorySavedLinesFollowTheServerLineRules() {
+    let rich = #"""
+      {"type":"doc","content":[
+        {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Plan"}]},
+        {"type":"paragraph","content":[{"type":"text","text":"First"},{"type":"hardBreak"},{"type":"text","text":"Second"}]},
+        {"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"Done"}]}]}]},
+        {"type":"codeBlock","content":[{"type":"text","text":"a = 1\nb = 2"}]},
+        {"type":"horizontalRule"}
+      ]}
+      """#
+    XCTAssertEqual(
+      NoteLineHistory.savedLines(content: rich), ["Plan", "First", "Second", "[x] Done", "a = 1", "b = 2"])
+    XCTAssertEqual(NoteLineHistory.savedLines(content: "{}"), [])
+    XCTAssertEqual(NoteLineHistory.savedLines(content: "legacy\ntext"), ["legacy", "text"])
+  }
+
+  func testLineHistoryMatchesTaskLinesWithoutTheirCheckbox() {
+    XCTAssertTrue(NoteLineHistory.same("[x] Done", "Done"))
+    XCTAssertTrue(NoteLineHistory.same("Open", "[ ] Open"))
+    XCTAssertFalse(NoteLineHistory.same("[ ] Ship", "[x] Ship"))
+    XCTAssertFalse(NoteLineHistory.same("[x]Ship", "Ship"))
+  }
+
+  func testLineHistoryRowsKeepSavedTimesAndMarkTypedLinesUnsaved() {
+    let content = #"{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Kept"}]},{"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Task"}]}]}]},{"type":"paragraph","content":[{"type":"text","text":"Old"}]}]}"#
+    let times = ["2026-10-08T10:00:00Z", "2026-10-08T11:00:00.123456Z", "2026-10-08T12:00:00Z"]
+    let body = NoteDocument.plainText(content: content)
+    XCTAssertEqual(body, "Kept\nTask\nOld")
+    let rows = NoteLineHistory.rows(body: "Kept\nTyped\nTask\nOld, changed", content: content, lineEdits: times)
+    XCTAssertEqual(rows.map(\.number), [1, 2, 3, 4])
+    XCTAssertEqual(rows.map(\.text), ["Kept", "Typed", "Task", "Old, changed"])
+    XCTAssertEqual(rows[0].edited, NoteLineHistory.date("2026-10-08T10:00:00Z"))
+    XCTAssertNil(rows[1].edited)
+    XCTAssertEqual(rows[2].edited?.timeIntervalSince1970 ?? 0, 1_791_457_200.123, accuracy: 0.001)
+    XCTAssertNil(rows[3].edited)
+  }
+
+  func testLineHistoryIgnoresTimesThatDoNotMatchTheSavedBody() {
+    let content = NoteDocument.json(body: "One\nTwo")
+    let rows = NoteLineHistory.rows(body: "One\nTwo", content: content, lineEdits: ["2026-10-08T10:00:00Z"])
+    XCTAssertEqual(rows.map(\.edited), [nil, nil])
+    XCTAssertNil(NoteLineHistory.date("not a time"))
+  }
+
   func testPaginationIsCachedByQueryAndPageSettings() async {
     let stub = NotesStub()
     let model = NotesModel(transport: stub)
