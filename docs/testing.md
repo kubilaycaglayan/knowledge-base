@@ -57,9 +57,10 @@ a new one, then checks Orca's speech log:
 - Orca never reads the gutter stamps aloud.
 
 `./scripts/check-ios-note-document.sh` compiles the iOS app's `NoteDocument`
-in the official Swift image and runs its XCTest cases from
-`ios/KnowTests/NotesTests.swift` on Linux. SwiftUI cannot build here, but
-this conversion decides what an iOS save does to a note.
+and `NoteLineHistory` in the official Swift image and runs their XCTest cases
+from `ios/KnowTests/NotesTests.swift` on Linux. SwiftUI cannot build here, but
+this Foundation-only code decides what an iOS save does to a note and which
+edit time each line shows.
 
 `(cd frontend && npm run test:nav)` runs
 `frontend/scripts/nav-shell.acceptance.test.mjs` against mocked API fixtures. It
