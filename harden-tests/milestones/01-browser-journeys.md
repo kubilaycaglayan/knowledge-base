@@ -12,15 +12,18 @@ Global search has broad service, API, component, utility, and mocked-browser
 coverage. Direct routes are covered by `frontend/src/views/DeepLinks.test.ts`
 and acceptance checklist `docs/global-search-acceptance-checklist.md`. The
 missing evidence is the full authenticated web client against the disposable
-PostgreSQL/API/proxy/web stack in desktop Chromium and emulated iPhone WebKit.
-This catches integration failures in URL parsing, routing, API authorization,
-browser history, and responsive interaction that fixture tests cannot expose.
+PostgreSQL/API/proxy/web stack in desktop Chromium, mobile-size Chromium, and
+emulated iPhone WebKit. This catches integration failures in URL parsing,
+routing, API authorization, browser history, and responsive interaction that
+fixture tests cannot expose.
 
 ## Tasks
 
-- [ ] Inventory every search result and route covered by existing tests; mark
-  which paths require a direct-load journey and which can be reached through
-  search. Reuse the expected behavior from `docs/global-search-acceptance-checklist.md`.
+- [x] Inventory the current result routes and page shortcuts from
+  `frontend/src/lib/search.ts` and `frontend/src/main.ts`; keep the matrix in the
+  [HARD-01 acceptance checklist](01-acceptance-checklist.md) synchronized when
+  either source changes. `frontend/src/views/DeepLinks.test.ts` is mocked
+  component evidence; it is not full-stack route evidence.
 - [ ] Add a real-stack search journey that creates isolated fixtures for at
   least a note, log, session, path, label, board/card, and calendar day; search,
   open each result, assert the destination record/state, and verify Back and
@@ -29,12 +32,9 @@ browser history, and responsive interaction that fixture tests cannot expose.
   the real API where deterministic fault injection is available. Keep the
   existing unit tests for debounce and out-of-order responses as the precise
   race contract.
-- [ ] Exercise direct navigation for record routes and query-driven states:
-  `/sessions/:id`, `/logs/:id`, `/paths/:id`, `/labels/:id`,
-  `/calendar?date=…`, `/notes?archived=1&q=…`, `/board?board=…&card=…`, and
-  `/board/archive?archivedBoard=…` (adjust exact query shape to the current
-  router contract). Include one nonexistent ID and one foreign-user ID to
-  check safe not-found behavior.
+- [ ] Exercise every row in the route matrix in the acceptance checklist using
+  direct navigation and a fresh browser context. Include one nonexistent ID
+  and one foreign-user ID for each record family with a record-detail route.
 - [ ] Cover a copied card URL whose card is outside the initial loaded page and
   confirm the owning board/card dialog opens after direct load.
 - [ ] Run each journey with `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop`,
