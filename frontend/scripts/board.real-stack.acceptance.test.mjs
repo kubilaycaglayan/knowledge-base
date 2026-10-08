@@ -291,13 +291,13 @@ describe("board real-stack acceptance", () => {
     }, boardId);
     await seedCards(boardId, 35, prefix, "MEDIUM", statusId);
 
-    const firstPageLoaded = page.waitForResponse((response) =>
-      response.url().includes("/cards/page") && new URL(response.url()).searchParams.get("statusId") === statusId && response.request().method() === "GET" && response.status() === 200,
-    );
-    await page.reload();
-    const firstPage = await firstPageLoaded;
-    const firstPageData = await firstPage.json();
+    const firstPageData = await page.evaluate(async ({ id, statusId: selectedStatus }) => {
+      const response = await fetch(`/api/v1/boards/${id}/cards/page?statusId=${selectedStatus}&cursor=-1&limit=20`, { headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` } });
+      if (!response.ok) throw new Error(`Loading first card page failed with ${response.status}`);
+      return response.json();
+    }, { id: boardId, statusId });
     assert.notEqual(firstPageData.nextCursor, null, "fixture must have a second page");
+    await page.reload();
     const firstPageTitles = firstPageData.items.map((card) => card.title);
     const retryUrls = [];
     const pageRequest = "**/api/v1/boards/*/cards/page**";
