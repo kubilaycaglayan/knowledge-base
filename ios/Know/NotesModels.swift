@@ -29,14 +29,26 @@ enum NoteDocument {
       let object = try? JSONSerialization.jsonObject(with: data),
       let document = object as? [String: Any], document["type"] as? String == "doc"
     else { return fallback ?? content }
-    func collect(_ value: Any) -> String {
-      guard let node = value as? [String: Any] else { return "" }
-      let text = node["text"] as? String ?? ""
-      let children = (node["content"] as? [Any] ?? []).map(collect).joined()
-      return text + children + (node["type"] as? String == "paragraph" ? "\n" : "")
+    // One line per paragraph, heading, or code-block line, split at hard breaks,
+    // matching the line rules of the web editor and the server's line times.
+    var lines: [String] = []
+    func collect(_ value: Any) {
+      guard let node = value as? [String: Any] else { return }
+      let children = node["content"] as? [Any] ?? []
+      switch node["type"] as? String {
+      case "paragraph", "heading", "codeBlock":
+        let text = children.map { child -> String in
+          guard let child = child as? [String: Any] else { return "" }
+          if child["type"] as? String == "hardBreak" { return "\n" }
+          return child["text"] as? String ?? ""
+        }.joined()
+        lines.append(contentsOf: text.components(separatedBy: "\n"))
+      default:
+        children.forEach(collect)
+      }
     }
-    return collect(document).trimmingCharacters(in: .newlines)
-      .replacingOccurrences(of: "\n\n", with: "\n")
+    collect(document)
+    return lines.joined(separator: "\n")
   }
 
   static func json(body: String) -> String {
