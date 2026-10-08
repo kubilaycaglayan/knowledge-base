@@ -308,12 +308,15 @@ describe("board real-stack acceptance", () => {
     await addCard("Second board card");
 
     let releaseFirstPage;
+    let reportFirstPageHeld;
     const firstPageReleased = new Promise((resolve) => { releaseFirstPage = resolve; });
+    const firstPageHeld = new Promise((resolve) => { reportFirstPageHeld = resolve; });
     let held = false;
     const heldPattern = `**/api/v1/boards/${firstId}/cards/page*`;
     await page.route(heldPattern, async (route) => {
       if (!held) {
         held = true;
+        reportFirstPageHeld();
         await firstPageReleased;
       }
       // The route may already be unhandled/handled by the time the hold is
@@ -322,7 +325,7 @@ describe("board real-stack acceptance", () => {
     });
     try {
       await selectBoard(firstBoard, { settle: false });
-      await page.waitForTimeout(100);
+      await firstPageHeld;
       await selectBoard(secondBoard, { settle: false });
       await page.getByRole("heading", { name: "Second board card" }).waitFor();
       assert.equal(currentBoardId(), secondId);
