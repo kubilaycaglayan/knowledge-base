@@ -33,10 +33,12 @@ public class BoardCard {
   public List<Instant> getLineEdits() { return LineAttribution.times(body, lineEdits, updatedAt); }
   public Set<Path> getPaths() { return paths; } public Set<Label> getLabels() { return labels; }
   public boolean isArchived() { return archivedAt != null; }
-  public void update(String title, String body, BoardPriority priority, LocalDate start, LocalDate due) { Instant now = now(); String nextBody = body == null || body.isBlank() ? "{}" : body; if (!this.body.equals(nextBody)) lineEdits = LineAttribution.next(this.body, lineEdits, updatedAt, nextBody, now); this.title = title == null ? "" : title; this.body = nextBody; this.priority = priority == null ? BoardPriority.MEDIUM : priority; this.startDate = start; this.dueDate = due; this.updatedAt = now; }
+  public void update(String title, String body, BoardPriority priority, LocalDate start, LocalDate due) { Instant now = now(); String nextBody = body == null || body.isBlank() ? "{}" : body; lineEdits = this.body.equals(nextBody) ? LineAttribution.pin(this.body, lineEdits, updatedAt) : LineAttribution.next(this.body, lineEdits, updatedAt, nextBody, now); this.title = title == null ? "" : title; this.body = nextBody; this.priority = priority == null ? BoardPriority.MEDIUM : priority; this.startDate = start; this.dueDate = due; this.updatedAt = now; }
   public void moveToBoard(UUID boardId, UUID statusId, int position) { this.boardId = boardId; move(statusId, position); }
-  public void move(UUID statusId, int position) { this.statusId = statusId; this.position = position; this.updatedAt = now(); }
-  public void archive() { archivedAt = now(); updatedAt = now(); } public void restore() { archivedAt = null; updatedAt = now(); }
+  public void move(UUID statusId, int position) { this.statusId = statusId; this.position = position; touch(); }
+  public void archive() { archivedAt = now(); touch(); } public void restore() { archivedAt = null; touch(); }
+  // Rows from before line times date every line from updated_at, so pin those times down before updated_at moves on.
+  private void touch() { lineEdits = LineAttribution.pin(body, lineEdits, updatedAt); updatedAt = now(); }
   public void setPaths(Collection<Path> values) { paths = new LinkedHashSet<>(values); } public void setLabels(Collection<Label> values) { labels = new LinkedHashSet<>(values); }
   private static Instant now() { return Instant.now().truncatedTo(ChronoUnit.MICROS); }
 }

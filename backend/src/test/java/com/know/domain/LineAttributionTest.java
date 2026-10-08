@@ -96,6 +96,37 @@ class LineAttributionTest {
   }
 
   @Test
+  void bodiesPastTheLineCapReportNoLineTimes() {
+    String[] tooMany = IntStream.range(0, LineAttribution.MAX_LINES + 1).mapToObj(i -> "l" + i).toArray(String[]::new);
+    assertNull(LineAttribution.times(doc(tooMany), null, EARLIER));
+    assertNull(LineAttribution.next(doc("A"), null, EARLIER, doc(tooMany), NOW));
+    // Trimming back under the cap starts tracking again; the long body's lines date from the fallback.
+    assertEquals(List.of(EARLIER, NOW), LineAttribution.times(doc("l0", "new"), LineAttribution.next(doc(tooMany), null, EARLIER, doc("l0", "new"), NOW), null));
+  }
+
+  @Test
+  void lineTimesKeepTheDatabasePrecision() {
+    Instant precise = Instant.parse("2026-10-08T13:34:00.123456789Z");
+    assertEquals(List.of(Instant.parse("2026-10-08T13:34:00.123456Z")), LineAttribution.times(doc("A"), LineAttribution.fresh(doc("A"), precise), null));
+    assertEquals(List.of(Instant.parse("2026-10-08T13:34:00.123456Z")), LineAttribution.times(doc("A"), null, precise));
+  }
+
+  @Test
+  void rowsWithoutStoredTimesKeepThemThroughOtherChanges() {
+    Note note = Note.imported(java.util.UUID.randomUUID(), null, null, null, null, "Old", doc("A", "B"), "A\nB", EARLIER, EARLIER);
+    note.setPinned(true);
+    note.setSortOrder(3);
+    note.update("Renamed", doc("A", "B"), "A\nB");
+    note.delete();
+    note.restore();
+    assertNotEquals(EARLIER, note.getUpdatedAt());
+    assertEquals(List.of(EARLIER, EARLIER), note.getLineEdits());
+    note.update("Renamed", doc("A", "B!"), "A\nB!");
+    assertEquals(EARLIER, note.getLineEdits().get(0));
+    assertNotEquals(EARLIER, note.getLineEdits().get(1));
+  }
+
+  @Test
   void notesAndCardsStampTheirBodies() {
     Note note = new Note(null, null, null, "Title", doc("A", "B"));
     List<Instant> created = note.getLineEdits();

@@ -3,13 +3,19 @@ package com.know.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Note and card responses carry a per-line edit time that survives saves of untouched lines. */
 class LineEditsIntegrationTest extends IntegrationTestSupport {
   @LocalServerPort int port;
+  @Autowired JdbcTemplate jdbc;
   ApiClient api;
 
   @BeforeEach
@@ -67,5 +73,37 @@ class LineEditsIntegrationTest extends IntegrationTestSupport {
     assertEquals(card.get("lineEdits").get(0), times.get(0));
     assertEquals(card.get("lineEdits").get(1), times.get(1));
     assertNotEquals(card.get("lineEdits").get(1), times.get(2));
+  }
+
+  // Rows saved before V64 have no line times and date every line from updated_at.
+  @Test
+  void rowsFromBeforeLineTimesKeepThemThroughPinsMovesAndRenames() {
+    String token = api.register();
+    Instant old = Instant.parse("2026-01-02T03:04:05Z");
+    String noteId = api.created("POST", "/api/v1/notes", token, "{\"title\":\"Old\",\"content\":\"" + doc("A", "B") + "\"}").get("id").asText();
+    jdbc.update("update note set line_edits = null, updated_at = ? where id = ?", Timestamp.from(old), UUID.fromString(noteId));
+    assertEquals("[\"" + old + "\",\"" + old + "\"]", api.get("/api/v1/notes/" + noteId, token).json().get("lineEdits").toString());
+
+    JsonNode pinned = api.created("POST", "/api/v1/notes/" + noteId + "/pin", token, "{\"pinned\":true}");
+    JsonNode renamed = api.put("/api/v1/notes/" + noteId, token, "{\"title\":\"New\",\"content\":\"" + doc("A", "B") + "\",\"version\":" + pinned.get("version") + "}").json();
+    assertNotEquals(old.toString(), renamed.get("updatedAt").asText());
+    assertEquals("[\"" + old + "\",\"" + old + "\"]", renamed.get("lineEdits").toString());
+
+    String boardId = api.created("POST", "/api/v1/boards", token, "{\"name\":\"Old\"}").get("id").asText();
+    JsonNode card = api.created("POST", "/api/v1/boards/" + boardId + "/cards", token, "{\"title\":\"Card\",\"body\":\"" + doc("C") + "\"}");
+    jdbc.update("update board_cards set line_edits = null, updated_at = ? where id = ?", Timestamp.from(old), UUID.fromString(card.get("id").asText()));
+    String done = api.get("/api/v1/boards/" + boardId + "/statuses", token).json().get(3).get("id").asText();
+    JsonNode moved = api.created("POST", "/api/v1/boards/" + boardId + "/cards/" + card.get("id").asText() + "/move", token, "{\"statusId\":\"" + done + "\",\"position\":0}");
+    assertEquals("[\"" + old + "\"]", moved.get("lineEdits").toString());
+    JsonNode archived = api.created("POST", "/api/v1/boards/" + boardId + "/cards/" + card.get("id").asText() + "/archive", token, null);
+    assertEquals("[\"" + old + "\"]", archived.get("lineEdits").toString());
+  }
+
+  @Test
+  void listsLeaveNoteLineTimesOut() {
+    String token = api.register();
+    api.created("POST", "/api/v1/notes", token, "{\"title\":\"Listed\",\"content\":\"" + doc("A") + "\"}");
+    JsonNode page = api.get("/api/v1/notes?page=0&size=20", token).json();
+    assertTrue(page.get("items").get(0).get("lineEdits").isNull());
   }
 }

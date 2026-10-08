@@ -167,12 +167,12 @@ public class Note {
     }
     if (!pinned) pinnedAt = null;
     this.pinned = pinned;
-    this.updatedAt = Instant.now();
+    touch();
   }
 
   public void setSortOrder(long sortOrder) {
     this.sortOrder = sortOrder;
-    this.updatedAt = Instant.now();
+    touch();
   }
 
   public UUID getImportBatchId() {
@@ -185,11 +185,18 @@ public class Note {
 
   public void delete() {
     deletedAt = Instant.now();
-    updatedAt = Instant.now();
+    touch();
   }
 
   public void restore() {
     deletedAt = null;
+    touch();
+  }
+
+  // Rows from before line times date every line from updated_at, so pin those
+  // times down before updated_at moves on.
+  private void touch() {
+    lineEdits = LineAttribution.pin(content, lineEdits, updatedAt);
     updatedAt = Instant.now();
   }
 
@@ -198,9 +205,14 @@ public class Note {
   }
 
   public void update(String title, String content, String contentText) {
+    if (Objects.equals(this.content, content)) {
+      this.title = title;
+      this.contentText = contentText;
+      touch();
+      return;
+    }
     Instant now = Instant.now();
-    if (!Objects.equals(this.content, content))
-      lineEdits = LineAttribution.next(this.content, lineEdits, updatedAt, content, now);
+    lineEdits = LineAttribution.next(this.content, lineEdits, updatedAt, content, now);
     this.title = title;
     this.content = content;
     this.contentText = contentText;
