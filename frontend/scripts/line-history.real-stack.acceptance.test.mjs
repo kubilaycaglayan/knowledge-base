@@ -168,6 +168,21 @@ after(async () => {
 });
 
 describe("note line history", () => {
+  it("shows an empty notes state and makes its create action keyboard reachable", async () => {
+    await page.goto(`${baseUrl}/notes`);
+    await page.getByText("Your notes will appear here.", { exact: true }).waitFor();
+    const create = page.getByRole("button", { name: "Create new note" });
+    await create.focus();
+    assert.equal(await create.evaluate((element) => element === document.activeElement), true);
+    await create.press("Enter");
+    await page.getByRole("textbox", { name: "Note title" }).waitFor();
+    const noteId = new URL(page.url()).pathname.split("/").at(-1);
+    assert.ok(noteId, "new note route includes the created note id");
+    await api(page, "DELETE", `/notes/${noteId}`);
+    await page.goto(`${baseUrl}/notes`);
+    await page.getByText("Your notes will appear here.", { exact: true }).waitFor();
+  });
+
   it("stamps only the lines typed in the browser and keeps the times across reloads", async () => {
     const note = await api(page, "POST", "/notes", { title: "Line history", content: doc("Alpha", "Bravo", "Charlie"), contentText: "Alpha\nBravo\nCharlie", tags: [] });
     const original = (await api(page, "GET", `/notes/${note.id}`)).lineEdits.map(iso);
