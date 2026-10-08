@@ -3,7 +3,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { after, before, beforeEach, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const baseUrl = process.env.BOARD_E2E_BASE_URL;
 const email = process.env.BOARD_E2E_EMAIL;
@@ -16,7 +17,9 @@ const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
 const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
 let activeBoardName;
 const consoleLog = [];
-const artifactDir = process.env.BOARD_E2E_ARTIFACT_DIR;
+const artifactDir = process.env.BOARD_E2E_ARTIFACT_DIR
+  ? resolve(fileURLToPath(new URL("../../", import.meta.url)), process.env.BOARD_E2E_ARTIFACT_DIR)
+  : undefined;
 let artifactSequence = 0;
 function it(name, run) {
   nodeIt(name, async (testContext) => {
