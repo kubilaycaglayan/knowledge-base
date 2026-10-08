@@ -23,7 +23,9 @@ and machine preflight commands.
 - Suite outcomes (passed/failed/skipped):
 - Failed cases:
 - Artifacts/logs:
-- Fixed-data performance (journey/API, sample count, median, p95, baseline):
+- Fixed-data performance (fixture/profile, journey/API, warmups, samples, median, p95, min/max, failures/timeouts, baseline):
+- Performance environment (machine load, CPU/memory limits, runtime versions, cache/network state):
+- Performance raw data / trace artifacts:
 
 ## Failure groups
 
@@ -34,6 +36,34 @@ and machine preflight commands.
 ## Root-cause corrections
 
 - None yet.
+```
+
+For a HARD-05 performance report, add these sections beneath the common run
+metadata. Keep each desktop Chromium, mobile-size Chromium, and emulated iPhone
+WebKit report separate. The phone-sized Chromium profile is responsive/touch
+emulation and must not be labeled as a physical Android Chrome run.
+
+```markdown
+## Performance workload
+
+- Fixture generator/version and profile:
+- Fixture counts and expected result counts:
+- Setup/verification/cleanup command and disposable project:
+- Journey start and completion signals:
+- API method/path and client/server timing source:
+- Warm/cold cache and network shaping:
+- Warmups / measured samples / outlier policy:
+- Machine load and relevant resource limits:
+
+| Journey/API | Fixture | Warmups | Samples | Median | p95 | Min/max | Failed/timeouts | Raw data |
+| --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
+
+## Baseline comparison
+
+- Comparable run IDs and commits:
+- Within-run and between-run variance:
+- Proposed absolute and relative thresholds (report-only until approved):
+- Rerun / baseline refresh / override policy:
 ```
 
 When the same failure occurs in multiple cases or suites, count each affected case and suite under one suspected cause. Preserve an `Unclassified` row for failures without evidence. Correct the grouping here after investigation and record the evidence and correction in the detailed run report.

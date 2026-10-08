@@ -48,8 +48,9 @@ contract check are partial evidence, not completion of those tasks.
 
 ### Performance
 
-- [ ] Measure fixed-data browser journeys and API routes and record inputs, environment, and results in each run report.
-- [ ] Keep the initial baseline report-only. Enable a 20% regression gate only after repeat runs establish a stable baseline; document noise and rerun policy.
+- [ ] Measure fixed-data startup, search, board paging, Gantt, reports, note save, timer, and WebSocket journeys and their API requests with explicit boundaries and raw samples.
+- [ ] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture current machine load and runtime/image metadata for every run.
+- [ ] Keep initial baselines report-only. Consider a 20% gate only after comparable repeated batches establish variance and a documented absolute floor, refresh, rerun, and override policy.
 
 See [HARD-05](milestones/05-performance-baselines.md) for fixture sizes,
 journeys, environment fields, and gate promotion criteria.
