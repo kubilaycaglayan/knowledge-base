@@ -333,8 +333,17 @@ watch(selected, (value) => {
 watch(
   () => route?.query.date,
   () => {
+    const requested = route?.query.date;
     const value = requestedDate();
-    if (!value || value === selected.value) return;
+    if (!value) {
+      if (requested != null && router && route) {
+        const query = { ...route.query };
+        delete query.date;
+        void router.replace({ query });
+      }
+      return;
+    }
+    if (value === selected.value) return;
     const date = parseISO(value);
     const monthChanges = !isSameMonth(date, month.value);
     month.value = startOfMonth(date);
