@@ -190,8 +190,11 @@ describe("timer WebSocket in the web app", () => {
     try {
       await tracker.getByRole("button", { name: "Expand tracker" }).click();
       const description = tracker.getByRole("textbox", { name: "Timer description" });
-      await description.fill("Draft survives a timer save failure");
-      await description.dispatchEvent("change");
+      await description.evaluate((input) => {
+        input.value = "Draft survives a timer save failure";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
       await page.getByRole("alert").getByText("Could not save the active timer settings.").waitFor();
       assert.equal(await description.inputValue(), "Draft survives a timer save failure");
       assert.equal(draftWrites, 1, "the first save should fail exactly once");
@@ -200,8 +203,11 @@ describe("timer WebSocket in the web app", () => {
         new URL(response.url()).pathname === "/api/v1/timers/draft" &&
         response.request().method() === "PUT" && response.status() === 200,
       );
-      await description.fill("Draft survives a timer save failure and retry");
-      await description.dispatchEvent("change");
+      await description.evaluate((input) => {
+        input.value = "Draft survives a timer save failure and retry";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
       await successfulSave;
       const savedDraft = await api("/timers/draft", {}, token);
       assert.equal(savedDraft.description, "Draft survives a timer save failure and retry");
