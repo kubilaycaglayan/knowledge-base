@@ -1,6 +1,6 @@
 # Knowledge Base test hardening
 
-This directory is the working index for test coverage, planned gaps, and durable real-stack E2E run records. Start with the [plan](plan.md), then read the latest run report and the cumulative failure-group summary before changing a flaky test.
+This directory is the working index for test coverage, planned gaps, and durable real-stack E2E run records. Start with the [current plan](plan.md) and its [milestone task files](milestones/README.md), then read the latest run report and cumulative failure-group summary before changing a flaky test.
 
 ## Test map
 
@@ -14,7 +14,16 @@ This directory is the working index for test coverage, planned gaps, and durable
 | Contracts | `node scripts/check-accessibility.mjs`, `check-security.mjs`, `check-smoke-cleanup.mjs`, `./scripts/check-image-prune.sh` | Accessibility, security, and scoped cleanup invariants |
 | Deployment smoke | `scripts/run-smoke-tests.sh` | Deployed-shaped HTTP/HTTPS, database, timer, and backup/restore checks |
 
-The real-stack browser suites accept `BROWSER_ENGINE=chromium|webkit` and `BROWSER_PROFILE=desktop|iphone` (desktop Chromium is the default). For an emulated iPhone WebKit run, install the browser and its host dependencies with `(cd frontend && npx playwright install --with-deps webkit)`, then run `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone ./scripts/test-run-all.sh`. The profile uses a 390×844 viewport, touch input, and a device scale factor of 3. An iPhone-sized viewport is not equivalent to a physical iPhone browser; this does not represent Chrome on a physical iPhone. Record the exact profile used in the report.
+The open work is split into seven milestones: real-stack search/deep links,
+browser failure-state coverage and flake triage, PostgreSQL/time/volume behavior,
+HTTP and edge rate-limit verification, performance baselines, an active iOS
+validation path, and run-evidence/plan hygiene. The milestone files define
+tasks and acceptance evidence; they do not indicate that implementation has
+already been completed. Existing global-search API and fixture coverage is
+tracked in `docs/global-search-acceptance-checklist.md`; HARD-01 adds the
+missing cross-profile real-stack evidence.
+
+The current real-stack browser suites accept `BROWSER_ENGINE=chromium|webkit` and `BROWSER_PROFILE=desktop|iphone` (desktop Chromium is the default). For an emulated iPhone WebKit run, install the browser and its host dependencies with `(cd frontend && npx playwright install --with-deps webkit)`, then run `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone ./scripts/test-run-all.sh`. The profile uses a 390×844 viewport, touch input, and a device scale factor of 3. Mobile Chrome/Chromium emulation is a separate planned profile and is not currently selectable in these runners. An iPhone-sized viewport is not equivalent to a physical iPhone browser; it does not represent Chrome on Android or iPhone. Record the exact profile used in each report.
 
 ## Docker workflow
 

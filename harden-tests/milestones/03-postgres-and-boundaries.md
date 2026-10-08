@@ -1,0 +1,68 @@
+# HARD-03: PostgreSQL behavior, time boundaries, and result volume
+
+**Priority:** High  
+**Status:** Planned  
+**Scope:** Test coverage and documentation only.
+
+Track completion in the [HARD-03 acceptance checklist](03-acceptance-checklist.md).
+
+## Why this milestone exists
+
+Most backend integration tests use H2. `SearchPostgresIntegrationTest` gives
+valuable real PostgreSQL coverage for search and Flyway, but it does not
+establish behavior for the other queries, constraints, transaction semantics,
+ordering, or concurrency that differ from H2. The current plan also calls out
+time boundaries and empty/large result sets.
+
+## Tasks
+
+- [ ] Build an inventory mapping database-sensitive behavior to service,
+  repository, and migration code. Prioritize native SQL, JSON/JSONB, array or
+  text-search operators, partial/unique indexes, foreign-key cascades, and
+  transaction/locking assumptions.
+- [ ] Add an opt-in or CI PostgreSQL integration profile using a unique,
+  disposable database/container initialized only by Flyway. Fail fast if the
+  configured database is not empty or is not explicitly marked disposable;
+  never point this job at a persistent development or production database.
+- [ ] Cover PostgreSQL invariants for boards/cards, notes and line-history,
+  labels and assignments, imports/transfers, and timer/time-entry writes where
+  query or constraint behavior matters. Include rollback behavior when a
+  multi-step operation fails.
+- [ ] Add deterministic date/time boundary tests for UTC day/week/month report
+  windows, inclusive date-only board ranges, leap days, month/year rollover,
+  entries exactly at `from`/`to`, zero-duration intervals, and running entries
+  cut off at `now`. Freeze or inject the clock rather than relying on wall time.
+- [ ] Add empty and high-volume result tests for search, reports, calendar,
+  board cursor pages, label history, and exports. Assert stable ordering,
+  continuation/no-duplicate behavior, caps, and bounded response shape.
+- [ ] Add PostgreSQL concurrency cases for the one-running-timer invariant,
+  optimistic note/card versions, board moves/ordering, and duplicate label or
+  assignment writes where concurrent requests can race.
+- [ ] Run Flyway migration tests from the supported baseline and on an already
+  migrated disposable database. Include a migration smoke path that proves
+  application startup does not rely on Hibernate schema mutation.
+- [ ] Document local invocation and CI evidence in `docs/testing.md`, including
+  the disposable database guard and cleanup behavior.
+
+## Acceptance evidence
+
+- PostgreSQL tests use a unique empty database and run migrations from the
+  repository's migration history; no H2 substitute is used for the cases in
+  this milestone.
+- The backend PostgreSQL suite is part of a repeatable CI or release gate, with
+  logs identifying PostgreSQL version and migration result.
+- Time tests are deterministic and cover exact boundary inclusivity and
+  time-zone assumptions in service/API contracts.
+- Volume tests validate correctness and paging invariants without brittle
+  wall-clock thresholds; performance thresholds belong to HARD-05.
+
+## Relevant sources
+
+- `backend/src/test/java/com/know/integration/SearchPostgresIntegrationTest.java`
+- `backend/src/test/java/com/know/integration/IntegrationTestSupport.java`
+- `backend/src/main/java/com/know/service/ReportService.java`
+- `backend/src/main/java/com/know/service/TimerService.java`
+- `backend/src/main/java/com/know/service/CalendarService.java`
+- `backend/src/main/java/com/know/service/BoardService.java`
+- `backend/src/main/resources/db/migration/`
+- `docs/testing.md`

@@ -1,4 +1,11 @@
-# Test hardening plan
+# Test hardening plan: completed first phase
+
+> Historical survey and completed first phase (2026-09-29). The active,
+> cross-stack gap plan and remaining work are maintained in
+> [`harden-tests/plan.md`](../harden-tests/plan.md), with detailed task lists in
+> [`harden-tests/milestones/`](../harden-tests/milestones/README.md). The TH-01
+> through TH-19 results below remain the record of that phase; the unchecked
+> items in the active plan are not covered by this document.
 
 Goal: close the gaps in automated coverage that matter most for a
 multi-user, internet-facing app — authentication, per-user data isolation,

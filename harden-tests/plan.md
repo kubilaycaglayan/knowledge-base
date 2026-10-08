@@ -6,6 +6,10 @@ Make gaps and recurring failures visible across the Knowledge Base backend, web 
 
 ## Implementation and acceptance criteria
 
+Detailed executable task lists and acceptance evidence are maintained in
+[the hardening milestones](milestones/README.md). Keep this document as the
+summary status; update both the summary and milestone status when work lands.
+
 ### Durable inventory and run records
 
 - [x] Add a root `harden-tests/` index, this plan, and a run-record directory.
@@ -13,13 +17,21 @@ Make gaps and recurring failures visible across the Knowledge Base backend, web 
 - [ ] Record every desktop Chromium and emulated iPhone WebKit pass separately, including the commit, Compose project, image references, outcomes, failures, and artifact/log links.
 - [ ] Maintain cumulative failure counts and revise classifications after root-cause investigation.
 
+See [HARD-07: Durable run evidence and plan consistency](milestones/07-run-evidence-and-plan-hygiene.md)
+for completion criteria, including reconciliation of the existing run records.
+
 ### Browser acceptance
 
 - Existing real-stack suites exercise board creation/edits/pagination and delayed responses, note/card version conflicts and retry, timer WebSocket reconnect behavior, and session continuity. Existing fixture suites cover navigation, accessibility, and mobile viewport behavior.
 - [x] Add selectable desktop Chromium and emulated iPhone WebKit profiles with touch emulation to the existing real-stack browser suites.
 - [x] Run desktop Chromium and emulated iPhone WebKit real-stack journeys for board/card edits, pagination, note conflicts, timer sync/fallback, delayed board responses, and session restoration; keep reports separate by browser profile.
+- [ ] Add and record a mobile Chrome/Chromium phone profile as its own run type; the current runners only select desktop Chromium or iPhone WebKit. Do not treat WebKit as Chrome coverage.
 - [ ] Add global search and direct deep-link journeys to both profiles.
 - [ ] Expand explicit empty and long-content, delayed-response, network-failure, and retry states across the remaining journeys. Existing coverage includes delayed board responses, timer HTTP fallback, and note retry.
+
+See [HARD-01](milestones/01-browser-journeys.md) and
+[HARD-02](milestones/02-browser-resilience.md) for route-by-route tasks,
+failure-state requirements, and acceptance evidence.
 
 ### Backend integration
 
@@ -27,10 +39,19 @@ Make gaps and recurring failures visible across the Knowledge Base backend, web 
 - [ ] Expand coverage for rate limits, time boundaries, empty and large result sets, and PostgreSQL behavior that H2 cannot represent. Existing tests cover stale note/card versions and concurrent board writes.
 - [ ] Keep PostgreSQL tests isolated to an empty disposable database migrated by Flyway; do not point test jobs at persistent data.
 
+See [HARD-03](milestones/03-postgres-and-boundaries.md) for database-sensitive
+areas, deterministic time cases, scale coverage, and disposable-database gates.
+See [HARD-04](milestones/04-rate-limits-and-security.md) for HTTP limiter and
+Cloudflare policy verification. The existing limiter unit test and WAF static
+contract check are partial evidence, not completion of those tasks.
+
 ### Performance
 
 - [ ] Measure fixed-data browser journeys and API routes and record inputs, environment, and results in each run report.
 - [ ] Keep the initial baseline report-only. Enable a 20% regression gate only after repeat runs establish a stable baseline; document noise and rerun policy.
+
+See [HARD-05](milestones/05-performance-baselines.md) for fixture sizes,
+journeys, environment fields, and gate promotion criteria.
 
 ### Docker lifecycle and cleanup
 
@@ -43,6 +64,10 @@ Make gaps and recurring failures visible across the Knowledge Base backend, web 
 - [x] Retain native iOS source and both workflow job definitions, but use unconditional `if: ${{ false }}` so repository variables cannot enable them.
 - [x] Remove variable-based enablement instructions. Keep historical iOS docs and source available.
 
+See [HARD-06](milestones/06-ios-validation.md) for a supported automated or
+manual simulator validation path. Until that work is completed, disabled
+workflow jobs must not be counted as active iOS CI coverage.
+
 ## Acceptance
 
-The full acceptance set is listed in `README.md` and the repository's testing guidance. At minimum, run the existing unit/integration suites, web build, extension tests, accessibility/security/cleanup checks, and disposable full-stack smoke. Run and record both real-browser profiles as those journeys are implemented. Store baseline measurements first without failing builds; promote the 20% gate only after repeatable observations support it.
+The full acceptance set is listed in `README.md` and the repository's testing guidance. At minimum, run the existing unit/integration suites, web build, extension tests, accessibility/security/cleanup checks, and disposable full-stack smoke. Run and record desktop Chromium, mobile Chrome/Chromium emulation, and iPhone WebKit as distinct browser profiles for the journeys that support them. Store baseline measurements first without failing builds; promote the 20% gate only after repeatable observations support it.
