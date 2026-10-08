@@ -101,7 +101,7 @@ struct WorkspaceView: View {
           }
           .buttonStyle(.plain).foregroundStyle(WorkspaceTheme.muted(scheme))
           .accessibilityLabel("Appearance settings").accessibilityIdentifier("workspace.appearance")
-          Button("Sign out") {
+          Button {
             if sessions.hasUnsavedDraft || sessions.editingHistoryDraft || logs.hasUnsavedDraft
               || labels.hasUnsavedDraft || notes.hasUnsavedDraft || calendar.hasUnsavedDraft
             {
@@ -110,7 +110,11 @@ struct WorkspaceView: View {
               reports.signOut()
               app.signOut()
             }
-          }.font(.caption).frame(minHeight: 44).accessibilityIdentifier("workspace.signOut")
+          } label: {
+            // The frame goes on the label: outside the button it adds space but no hit area.
+            Text("Sign out").font(.caption).frame(minWidth: 44, minHeight: 44)
+              .contentShape(Rectangle())
+          }.accessibilityIdentifier("workspace.signOut")
         }
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 2) {
