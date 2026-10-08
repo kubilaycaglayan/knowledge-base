@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { alignTimes, contentLines, documentLines, formatLineTime, setLineHistory } from "./line-history";
+import { alignTimes, contentLines, documentLines, formatLineTime, sameLine, setLineHistory } from "./line-history";
 import { RICH_TEXT_CLASS, richTextExtensions } from "./rich-text";
 import "../rich-text.css";
 
@@ -11,6 +11,7 @@ import "../rich-text.css";
 // Vitest runs from frontend/, so the path is relative to it.
 const fixture = readFileSync("../backend/src/test/resources/line-history-cases.json", "utf8") as string;
 const cases = JSON.parse(fixture) as { name: string; content: string; lines: string[] }[];
+const matchCases = JSON.parse(readFileSync("../backend/src/test/resources/line-match-cases.json", "utf8") as string) as { a: string; b: string; same: boolean }[];
 
 const editors: Editor[] = [];
 function editorFor(content: string) {
@@ -34,6 +35,16 @@ describe("line history", () => {
     const [first, second] = documentLines(editor.state.doc);
     expect(editor.state.doc.textBetween(first.pos, first.pos + 5)).toBe("First");
     expect(editor.state.doc.textBetween(second.pos, second.pos + 6)).toBe("Second");
+  });
+
+  it.each(matchCases)("matches $a and $b by the shared rules", ({ a, b, same }) => {
+    expect(sameLine(a, b)).toBe(same);
+    expect(sameLine(b, a)).toBe(same);
+  });
+
+  it("keeps a task line's time when a plain-text client dropped its checkbox", () => {
+    expect(alignTimes(["[x] Done", "Open"], ["t1", "t2"], ["Done", "[ ] Open"])).toEqual(["t1", "t2"]);
+    expect(alignTimes(["[ ] Ship"], ["t1"], ["[x] Ship"])).toEqual([null]);
   });
 
   it("keeps saved times for matching lines and marks the rest unsaved", () => {
@@ -128,5 +139,43 @@ describe("line history", () => {
     expect(getComputedStyle(stamp).fontFamily).toMatch(/^Inter/);
     expect(getComputedStyle(stamp).position).toBe("absolute");
     host.remove();
+  });
+
+  describe("screen reader announcements", () => {
+    const status = (editor: Editor) => editor.view.dom.parentElement!.querySelector<HTMLElement>('.line-history-status[role="status"]')!;
+
+    it("announces the caret line's edit time only while line history is on", () => {
+      const host = document.body.appendChild(document.createElement("div"));
+      const content = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Kept" }] }, { type: "paragraph", content: [{ type: "text", text: "Typed" }] }] };
+      const editor = new Editor({ element: host, extensions: richTextExtensions(), content });
+      editors.push(editor);
+      expect(status(editor).textContent).toBe("");
+
+      setLineHistory(editor, { content: JSON.stringify({ type: "doc", content: [content.content[0]] }), times: ["2026-10-08T10:00:00Z"] });
+      expect(status(editor).textContent).toBe(`Line edited ${formatLineTime("2026-10-08T10:00:00Z").full}`);
+
+      editor.commands.setTextSelection(8);
+      expect(status(editor).textContent).toBe("Line not saved yet");
+      // Moving within the same line does not repeat the announcement.
+      status(editor).textContent = "read";
+      editor.commands.setTextSelection(9);
+      expect(status(editor).textContent).toBe("read");
+
+      setLineHistory(editor, null);
+      expect(status(editor).textContent).toBe("");
+      host.remove();
+    });
+
+    it("keeps the live region out of the editor's own text", () => {
+      const host = document.body.appendChild(document.createElement("div"));
+      const editor = new Editor({ element: host, extensions: richTextExtensions(), content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "One" }] }] } });
+      editors.push(editor);
+      setLineHistory(editor, { content: JSON.stringify(editor.getJSON()), times: ["2026-10-08T10:00:00Z"] });
+      expect(editor.view.dom.contains(status(editor))).toBe(false);
+      expect(editor.getText()).toBe("One");
+      editor.destroy();
+      expect(host.querySelector(".line-history-status")).toBeNull();
+      host.remove();
+    });
   });
 });

@@ -43,6 +43,30 @@ class LineAttributionTest {
     }
   }
 
+  // The same cases drive frontend/src/lib/line-history.test.ts.
+  @Test
+  void matchesLinesByTheSharedFixtureRules() throws Exception {
+    try (InputStream fixture = getClass().getResourceAsStream("/line-match-cases.json")) {
+      for (JsonNode testCase : new ObjectMapper().readTree(fixture)) {
+        String a = testCase.get("a").asText(), b = testCase.get("b").asText();
+        assertEquals(testCase.get("same").asBoolean(), LineAttribution.same(a, b), a + " vs " + b);
+        assertEquals(testCase.get("same").asBoolean(), LineAttribution.same(b, a), b + " vs " + a);
+      }
+    }
+  }
+
+  // The extension and iOS rebuild bodies from the plain-text copy, which has no checkboxes.
+  @Test
+  void aPlainTextClientSaveKeepsTaskLineTimes() {
+    String tasks = "{\"type\":\"doc\",\"content\":[{\"type\":\"taskList\",\"content\":["
+        + "{\"type\":\"taskItem\",\"attrs\":{\"checked\":true},\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Done\"}]}]},"
+        + "{\"type\":\"taskItem\",\"attrs\":{\"checked\":false},\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Open\"}]}]}]}]}";
+    assertEquals(List.of(EARLIER, EARLIER, NOW), edit(tasks, doc("Done", "Open", "Added")));
+    // And a later web save that restores the checkboxes is not an edit either.
+    String flattened = LineAttribution.next(tasks, LineAttribution.fresh(tasks, EARLIER), EARLIER, doc("Done", "Open"), NOW);
+    assertEquals(List.of(EARLIER, EARLIER), LineAttribution.times(tasks, LineAttribution.next(doc("Done", "Open"), flattened, NOW, tasks, NOW.plusSeconds(60)), null));
+  }
+
   @Test
   void onlyTheEditedLineTakesTheSaveTime() {
     assertEquals(List.of(EARLIER, NOW, EARLIER), edit(doc("One", "Two", "Three"), doc("One", "Two!", "Three")));

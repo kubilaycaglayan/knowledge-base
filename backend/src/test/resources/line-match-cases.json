@@ -1,0 +1,11 @@
+[
+  { "a": "Plan", "b": "Plan", "same": true },
+  { "a": "Plan", "b": "Plan!", "same": false },
+  { "a": "[x] Done", "b": "Done", "same": true },
+  { "a": "Open", "b": "[ ] Open", "same": true },
+  { "a": "[ ] Ship", "b": "[x] Ship", "same": false },
+  { "a": "[x] Ship", "b": "[x] Ship", "same": true },
+  { "a": "[x] Ship", "b": "Ship it", "same": false },
+  { "a": "[x]Ship", "b": "Ship", "same": false },
+  { "a": "", "b": "", "same": true }
+]
