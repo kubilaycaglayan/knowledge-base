@@ -1071,10 +1071,18 @@ final class KnowUITests: XCTestCase {
     ]
     var issues: [String] = []
     for audit in audits {
-      try app.performAccessibilityAudit(for: audit) { issue in
-        let element = issue.element.map { "\($0.elementType.rawValue) id=\($0.identifier) label=\($0.label)" } ?? "none"
-        issues.append("\(issue.compactDescription) [\(element)]")
-        return true
+      // Slow CI simulators sometimes let an audit time out (code -56); retry those.
+      for attempt in 1...3 {
+        do {
+          try app.performAccessibilityAudit(for: audit) { issue in
+            let element = issue.element.map { "\($0.elementType.rawValue) id=\($0.identifier) label=\($0.label) frame=\($0.frame)" } ?? "none"
+            issues.append("\(issue.compactDescription) [\(element)]")
+            return true
+          }
+          break
+        } catch let error as NSError where error.code == -56 && attempt < 3 {
+          continue
+        }
       }
     }
     XCTAssertEqual(issues, [], issues.joined(separator: "\n"))
