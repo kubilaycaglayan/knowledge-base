@@ -368,6 +368,29 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresConcurrentIdenticalLabelCreationsReturnOneScopedLabel() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent label scope case runs against PostgreSQL");
+    String owner = token();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<JsonNode> first = requests.submit(() -> createLabelTogether(owner, startTogether));
+      Future<JsonNode> second = requests.submit(() -> createLabelTogether(owner, startTogether));
+      JsonNode firstLabel = first.get(10, TimeUnit.SECONDS);
+      JsonNode secondLabel = second.get(10, TimeUnit.SECONDS);
+      assertEquals(firstLabel.get("id").asText(), secondLabel.get("id").asText());
+    }
+    assertEquals(
+        1,
+        ok(HttpMethod.GET, "/api/v1/labels?scope=CALENDAR", owner, null)
+            .findValuesAsText("name")
+            .stream()
+            .filter("Concurrent named label"::equals)
+            .count());
+  }
+
+  @Test
   void postgresRequestedZoneBucketsTrackedTimeAcrossSpringForward() {
     org.junit.jupiter.api.Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -451,6 +474,18 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
                 + "\",\"portion\":0.25}]}")
         .getStatusCode()
         .value();
+  }
+
+  private JsonNode createLabelTogether(String token, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    ResponseEntity<JsonNode> response =
+        exchange(
+            HttpMethod.POST,
+            "/api/v1/labels",
+            token,
+            "{\"name\":\"Concurrent named label\",\"scopes\":[\"CALENDAR\"]}");
+    assertEquals(HttpStatus.CREATED, response.getStatusCode(), String.valueOf(response.getBody()));
+    return response.getBody();
   }
 
   // LH-03
