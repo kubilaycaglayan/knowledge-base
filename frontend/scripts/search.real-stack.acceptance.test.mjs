@@ -460,21 +460,43 @@ describe("search and direct routes against disposable real stack", () => {
 
   it("opens calendar, board, and active card search destinations", async () => {
     const calendar = await searchFor(`${text} Day`, "CALENDAR_DAY", fixtures.calendarResultId);
+    const beforeCalendar = page.url();
     await calendar.option.click();
     await page.waitForFunction((date) => location.pathname === "/calendar" && new URL(location.href).searchParams.get("date") === date, fixtures.day);
     assert.equal(new URL(page.url()).searchParams.get("date"), fixtures.day);
+    const calendarUrl = page.url();
+    await page.goBack();
+    assert.equal(page.url(), beforeCalendar);
+    await page.goForward();
+    assert.equal(page.url(), calendarUrl);
+    await page.waitForFunction(() => document.querySelector('.calendar-day[aria-pressed="true"]') !== null);
 
     const board = await searchFor(`${text} Board`, "BOARD", fixtures.board.id);
+    const beforeBoard = page.url();
     await board.option.click();
     await page.waitForFunction((boardId) => location.pathname === "/board" && new URL(location.href).searchParams.get("board") === boardId, fixtures.board.id);
+    await page.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
+    const boardUrl = page.url();
+    await page.goBack();
+    assert.equal(page.url(), beforeBoard);
+    await page.goForward();
+    assert.equal(page.url(), boardUrl);
+    await page.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
 
     const card = await searchFor(`${text} Card`, "CARD", fixtures.card.id);
+    const beforeCard = page.url();
     await card.option.click();
     await page.waitForFunction((cardId) => location.pathname === "/board" && new URL(location.href).searchParams.get("card") === cardId, fixtures.card.id);
     const url = new URL(page.url());
     assert.equal(url.searchParams.get("board"), fixtures.board.id);
     assert.equal(url.searchParams.get("cardBoard"), fixtures.board.id);
     await page.getByRole("textbox", { name: "Title", exact: true }).waitFor();
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), `${text} Card`);
+    const cardUrl = page.url();
+    await page.goBack();
+    assert.equal(page.url(), beforeCard);
+    await page.goForward();
+    assert.equal(page.url(), cardUrl);
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), `${text} Card`);
   });
 
