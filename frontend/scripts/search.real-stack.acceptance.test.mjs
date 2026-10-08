@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import { chromium, webkit } from "playwright";
 
@@ -17,10 +18,10 @@ const fixtures = {};
 const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const text = `SearchJourney${stamp}`;
 
-async function api(path, method = "GET", body) {
+async function api(path, method = "GET", body, authToken = token) {
   const response = await fetch(`${baseUrl}/api/v1${path}`, {
     method,
-    headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+    headers: { Authorization: `Bearer ${authToken}`, ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const data = response.status === 204 ? null : await response.json();
@@ -61,6 +62,22 @@ async function seed() {
   fixtures.session = await api("/time-entries", "POST", { pathId: fixtures.path.id, labelIds: [fixtures.label.id], startedAt: start, endedAt: end, description: `${text} Session` });
 
   fixtures.shortcutMatchPath = await api("/paths", "POST", { name: "Paths", description: "Record result matching the page shortcut", color: "#2878D5", textColor: "#FFFFFF" });
+
+  const foreignAuthResponse = await fetch(`${baseUrl}/api/v1/auth/register`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.replace("@", "+foreign@"), password }),
+  });
+  assert.equal(foreignAuthResponse.status, 200, "second disposable account registration succeeds");
+  const foreignToken = (await foreignAuthResponse.json()).token;
+  fixtures.foreignPath = await api("/paths", "POST", { name: `${text} Foreign Path`, description: "Foreign private path detail", color: "#2878D5", textColor: "#FFFFFF" }, foreignToken);
+  fixtures.foreignNote = await api("/notes", "POST", { title: `${text} Foreign Note`, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Foreign private note body" }] }] }), contentText: "Foreign private note body", tags: [] }, foreignToken);
+  fixtures.foreignLog = await api("/logs", "POST", { body: "Foreign private log body", occurredAt: new Date().toISOString() }, foreignToken);
+  fixtures.foreignLabel = await api("/labels", "POST", { name: `${text} Foreign Label`, color: "#2878D5", scopes: ["CALENDAR", "TIME_ENTRY"] }, foreignToken);
+  fixtures.foreignBoard = await api("/boards", "POST", { name: `${text} Foreign Board` }, foreignToken);
+  fixtures.foreignCard = await api(`/boards/${fixtures.foreignBoard.id}/cards`, "POST", { title: `${text} Foreign Card`, body: "Foreign private card body", priority: "MEDIUM", pathIds: [], labelIds: [] }, foreignToken);
+  const foreignStart = new Date(Date.now() - 3_600_000).toISOString();
+  const foreignEnd = new Date(Date.now() - 1_800_000).toISOString();
+  fixtures.foreignSession = await api("/time-entries", "POST", { pathId: fixtures.foreignPath.id, labelIds: [], startedAt: foreignStart, endedAt: foreignEnd, description: "Foreign private session" }, foreignToken);
 }
 
 async function openSearch() {
@@ -303,5 +320,97 @@ describe("search and direct routes against disposable real stack", () => {
       }
       await direct.close();
     }
+  });
+
+  it("does not expose missing or foreign-user detail records", async () => {
+    const cases = [
+      {
+        family: "note", route: (id) => `/notes/${id}`,
+        missing: randomUUID(), foreign: fixtures.foreignNote.id,
+        privateText: "Foreign private note body",
+        assertRecovery: async (direct) => await direct.getByRole("alert").getByText("Unable to open this note.").waitFor(),
+      },
+      {
+        family: "log", route: (id) => `/logs/${id}`,
+        missing: randomUUID(), foreign: fixtures.foreignLog.id,
+        privateText: "Foreign private log body",
+        assertRecovery: async (direct) => {
+          await direct.getByRole("heading", { name: "Log not found" }).waitFor();
+          await direct.getByRole("button", { name: "Back to logs" }).waitFor();
+        },
+      },
+      {
+        family: "path", route: (id) => `/paths/${id}`,
+        missing: randomUUID(), foreign: fixtures.foreignPath.id,
+        privateText: "Foreign private path detail",
+        assertRecovery: async (direct) => await direct.getByRole("alert").getByText(/That path doesn’t exist any more/).waitFor(),
+      },
+      {
+        family: "label", route: (id) => `/labels/${id}`,
+        missing: randomUUID(), foreign: fixtures.foreignLabel.id,
+        privateText: `${text} Foreign Label`,
+        assertRecovery: async (direct) => {
+          await direct.getByRole("alert").getByText("Could not load this label’s history.").waitFor();
+          await direct.getByRole("button", { name: "Close history" }).waitFor();
+        },
+      },
+      {
+        family: "session", route: (id) => `/sessions/${id}`,
+        missing: randomUUID(), foreign: fixtures.foreignSession.id,
+        privateText: "Foreign private session",
+        assertRecovery: async (direct) => {
+          await direct.getByRole("heading", { name: "Session not found" }).waitFor();
+          await direct.getByRole("button", { name: "Back to sessions" }).waitFor();
+        },
+      },
+    ];
+    for (const testCase of cases) {
+      for (const id of [testCase.missing, testCase.foreign]) {
+        const direct = await context.newPage();
+        await direct.goto(`${baseUrl}${testCase.route(id)}`);
+        await testCase.assertRecovery(direct);
+        assert.ok(!(await direct.locator("body").innerText()).includes(testCase.privateText), `${testCase.family} does not show foreign data`);
+        await direct.close();
+      }
+    }
+
+    const missingCard = await context.newPage();
+    await missingCard.goto(`${baseUrl}/board?board=${fixtures.board.id}&card=${randomUUID()}&cardBoard=${fixtures.board.id}`);
+    await missingCard.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
+    assert.equal(await missingCard.locator(".card-editor").count(), 0, "missing cards remain unopened");
+    assert.ok(!(await missingCard.locator("body").innerText()).includes("Foreign private"));
+    await missingCard.close();
+
+    const foreignBoard = await context.newPage();
+    await foreignBoard.goto(`${baseUrl}/board?board=${fixtures.foreignBoard.id}&card=${fixtures.foreignCard.id}&cardBoard=${fixtures.foreignBoard.id}`);
+    await foreignBoard.waitForFunction((id) => new URL(location.href).searchParams.get("board") !== id, fixtures.foreignBoard.id);
+    assert.equal(await foreignBoard.locator(".card-editor").count(), 0, "foreign cards do not open an editor");
+    const foreignBoardText = await foreignBoard.locator("body").innerText();
+    assert.ok(!foreignBoardText.includes(`${text} Foreign Board`));
+    assert.ok(!foreignBoardText.includes(`${text} Foreign Card`));
+    assert.ok(!foreignBoardText.includes("Foreign private card body"));
+    await foreignBoard.close();
+  });
+
+  it("shows an empty search state and retries a request error against the real API", async () => {
+    await page.goto(`${baseUrl}/`);
+    await page.locator("#app").waitFor();
+    let intercepted = 0;
+    await page.route("**/api/v1/search?**", async (route) => {
+      intercepted += 1;
+      if (intercepted === 1) await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Injected temporary failure" }) });
+      else await route.continue();
+    });
+    const dialog = await openSearch();
+    const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+    await input.fill(`${text} Note`);
+    await dialog.getByRole("alert").getByText("Search isn’t available right now. Check your connection and try again.").waitFor();
+    await dialog.getByRole("button", { name: "Try again" }).click();
+    await page.locator(`#global-search-note-${fixtures.note.id}`).waitFor();
+    assert.ok(intercepted >= 2, "retry performs another request to the real search endpoint");
+    await page.unroute("**/api/v1/search?**");
+
+    await input.fill("NoSuchSearchResult987654321");
+    await dialog.locator(".global-search-empty").getByText(/No results for/).waitFor();
   });
 });
