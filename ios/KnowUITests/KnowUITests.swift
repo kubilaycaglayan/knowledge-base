@@ -1027,6 +1027,46 @@ final class KnowUITests: XCTestCase {
     app.buttons["Archive note"].tap()
   }
 
+  func testNotesLineHistoryListsEachLineWithItsEditTime() {
+    app.launchArguments += ["-ui-testing-authenticated"]
+    app.launch()
+    app.buttons["workspace.notes"].tap()
+    XCTAssertTrue(app.buttons["Open Design notes"].waitForExistence(timeout: 5))
+    app.buttons["Open Design notes"].tap()
+    let toggle = app.buttons["notes.line-history"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    XCTAssertEqual(toggle.value as? String, "Off")
+    XCTAssertFalse(app.otherElements["notes.line-history.list"].exists)
+
+    toggle.tap()
+    XCTAssertEqual(toggle.value as? String, "On")
+    let first = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Line 1, Keep the API contract close to the client., edited ")
+    ).firstMatch
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+
+    let body = app.textViews["notes.body"]
+    body.tap()
+    body.typeText("\nShip it")
+    let typed = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label == %@", "Line 2, Ship it, not saved yet")
+    ).firstMatch
+    XCTAssertTrue(typed.waitForExistence(timeout: 3))
+    let saved = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Line 2, Ship it, edited ")
+    ).firstMatch
+    XCTAssertTrue(saved.waitForExistence(timeout: 5))
+    XCTAssertTrue(first.exists, "the untouched line keeps its time")
+    let attachment = XCTAttachment(screenshot: app.screenshot())
+    attachment.name = "Notes-line-history"
+    attachment.lifetime = .keepAlways
+    add(attachment)
+
+    toggle.tap()
+    XCTAssertEqual(toggle.value as? String, "Off")
+    XCTAssertFalse(saved.exists)
+  }
+
   func testNotesEmptyAndOfflineFixturesOfferRecovery() {
     app.launchArguments += ["-ui-testing-authenticated", "-notes-empty"]
     app.launch()

@@ -9,8 +9,10 @@ struct NotesFixture: NotesTransport {
       id: noteID, pathId: nil, activityId: nil, timeEntryId: nil, title: "Design notes",
       content: NoteDocument.json(body: "Keep the API contract close to the client."),
       contentText: "Keep the API contract close to the client.", createdAt: "2026-09-10T10:00:00Z",
-      updatedAt: "2026-09-13T10:00:00Z", deletedAt: nil, version: 1, tags: ["Work"])
+      updatedAt: "2026-09-13T10:00:00Z", deletedAt: nil, version: 1, tags: ["Work"],
+      lineEdits: ["2026-09-13T10:00:00Z"])
   }
+  private static let savedLine = "Keep the API contract close to the client."
   func page(page: Int, size: Int, query: String, archived: Bool) async throws -> NotePage {
     if arguments.contains("-notes-offline") { throw APIError.offline }
     if arguments.contains("-notes-empty") {
@@ -42,8 +44,12 @@ struct NotesFixture: NotesTransport {
     Note(
       id: id, pathId: nil, activityId: nil, timeEntryId: nil, title: draft.title,
       content: NoteDocument.json(body: draft.body), contentText: draft.body,
-      createdAt: value.createdAt, updatedAt: "2026-09-13T10:00:00Z", deletedAt: nil,
-      version: version + 1, tags: draft.tags)
+      createdAt: value.createdAt, updatedAt: "2026-09-14T09:30:00Z", deletedAt: nil,
+      version: version + 1, tags: draft.tags,
+      // Like the server: the untouched line keeps its time, every other line is new.
+      lineEdits: draft.body.components(separatedBy: "\n").map {
+        $0 == Self.savedLine ? "2026-09-13T10:00:00Z" : "2026-09-14T09:30:00.123456Z"
+      })
   }
   func archive(id: UUID) async throws {}
   func restore(id: UUID) async throws {}

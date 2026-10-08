@@ -94,3 +94,27 @@ jobs:
         run: npm ci
       - name: Orca screen reader reads line history
         run: ./scripts/run-line-history-orca.sh
+
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: brew install xcodegen && xcodegen generate --spec project.yml
+      - name: Build and run unit tests and the notes UI tests in the simulator
+        working-directory: ios
+        run: |
+          device="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r,l in sorted(d.items(), reverse=True) if "iOS" in r for x in l if x["name"].startswith("iPhone")))')"
+          xcodebuild test -project Know.xcodeproj -scheme Know -destination "id=$device" \
+            -resultBundlePath "$RUNNER_TEMP/Know.xcresult" CODE_SIGNING_ALLOWED=NO \
+            -only-testing:KnowTests \
+            -only-testing:KnowUITests/KnowUITests/testNotesListEditorAndArchiveControlsAreReachable \
+            -only-testing:KnowUITests/KnowUITests/testNotesLineHistoryListsEachLineWithItsEditTime
+      - name: Keep the test results and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: ${{ runner.temp }}/Know.xcresult
