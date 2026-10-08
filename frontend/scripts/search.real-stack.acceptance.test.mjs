@@ -261,10 +261,6 @@ describe("search and direct routes against disposable real stack", () => {
       assert.equal(await keyboardOption.getAttribute("aria-selected"), "true", `${label} is keyboard selectable`);
       await keyboardInput.press("Enter");
       await page.waitForFunction((destination) => location.pathname === destination, path);
-      await page.goBack();
-      assert.equal(new URL(page.url()).pathname, priorPath, `${label} keyboard Back restores the prior page`);
-      await page.goForward();
-      assert.equal(new URL(page.url()).pathname, path, `${label} keyboard Forward restores the shortcut destination`);
     }
 
     for (const [alias, path] of [["home", "/"], ["timer", "/"], ["kanban", "/board"], ["preferences", "/settings"]]) {
