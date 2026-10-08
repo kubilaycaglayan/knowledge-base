@@ -292,7 +292,7 @@ describe("board real-stack acceptance", () => {
     await page.reload();
     const firstPage = await firstPageLoaded;
     const firstPageData = await firstPage.json();
-    assert.ok(firstPageData.nextCursor, "fixture must have a second page");
+    assert.notEqual(firstPageData.nextCursor, null, "fixture must have a second page");
     const firstPageTitles = firstPageData.items.map((card) => card.title);
     const retryUrls = [];
     const pageRequest = "**/api/v1/boards/*/cards/page**";
