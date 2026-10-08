@@ -29,6 +29,9 @@ const doc = (...lines) => JSON.stringify({ type: "doc", content: lines.map((text
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("Fresh");
+  // Wait for the autosave's times to reach the live region, however slow the
+  // runner, then give Orca time to speak them before the browser closes.
+  await page.waitForFunction(() => /^Line 3, edited /.test(document.querySelector(".line-history-status")?.textContent || ""), null, { timeout: 30000 });
   await page.waitForTimeout(3000);
   await browser.close();
 })().catch((error) => { console.error(error); process.exit(1); });
