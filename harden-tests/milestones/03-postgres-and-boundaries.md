@@ -39,8 +39,8 @@ time boundaries and empty/large result sets.
   board cursor pages, label history, and exports. Assert stable ordering,
   continuation/no-duplicate behavior, caps, and bounded response shape.
 - [x] Add PostgreSQL races for the one-running-timer invariant, optimistic
-  note/card versions, card moves, status reorders, and repeated log-label
-  assignments.
+  note/card versions, card moves, board/status reorders, and repeated log/time
+  entry label assignments.
 - [ ] Add races for other label/assignment joins and board-tab ordering where
   concurrent requests can collide.
 - [x] Run Flyway migration tests from the supported baseline and on an already
@@ -52,9 +52,9 @@ time boundaries and empty/large result sets.
 The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
 passes the full PostgreSQL suite and migrated startup check. The milestone
 remains in progress because rollback breadth, other assignment joins, broader
-direct-constraint coverage, captured failure logs, and the backend meaning of
-Gantt range dates remain open. The report and timer services now accept an
-injectable UTC clock; `LabelHistoryService` continues to use wall time directly.
+direct-constraint coverage, and the backend meaning of Gantt range dates
+remain open. The report and timer services now accept an injectable UTC
+clock; `LabelHistoryService` continues to use wall time directly.
 
 ## Acceptance evidence
 
