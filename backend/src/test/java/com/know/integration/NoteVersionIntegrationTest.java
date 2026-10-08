@@ -70,8 +70,8 @@ class NoteVersionIntegrationTest extends IntegrationTestSupport {
       assertTrue(ready.await(5, TimeUnit.SECONDS));
       release.countDown();
       List<ApiClient.Reply> responses = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
-      assertEquals(1, responses.stream().filter(reply -> reply.status() == 200).count());
-      assertEquals(1, responses.stream().filter(reply -> reply.status() == 409).count());
+      assertEquals(1, responses.stream().filter(reply -> reply.status() == 200).count(), responses.toString());
+      assertEquals(1, responses.stream().filter(reply -> reply.status() == 409).count(), responses.toString());
       JsonNode persisted = api.get("/api/v1/notes/" + id, token).json();
       assertTrue(List.of("winner A", "winner B").contains(persisted.get("contentText").asText()));
       assertEquals(version + 1, persisted.get("version").asLong());
