@@ -352,6 +352,6 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
     assertTrue(failures.isEmpty(), String.join("\n", failures));
     // The owner does see their own rows through the same reads.
     JsonNode search = api.get("/api/v1/search?q=" + marker, owner).json();
-    assertTrue(search.size() > 0, "Owner search should find their own rows");
+    assertTrue(search.get("groups").size() > 0, "Owner search should find their own rows");
   }
 }

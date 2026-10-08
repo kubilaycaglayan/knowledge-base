@@ -37,16 +37,6 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
   @Query("select n from Note n where n.id = :id and n.userId = :userId and n.deletedAt is null")
   Optional<Note> findByIdAndUserId(UUID id, UUID userId);
 
-  @Query(
-      "select n from Note n where n.userId = :userId and n.deletedAt is null and (lower(n.title)"
-          + " like lower(concat('%', :title, '%')) or (n.userId = :sameUserId and lower(n.content)"
-          + " like lower(concat('%', :content, '%')))) order by n.updatedAt desc")
-  List<Note> findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentContainingIgnoreCase(
-      @Param("userId") UUID userId,
-      @Param("title") String title,
-      @Param("sameUserId") UUID sameUserId,
-      @Param("content") String content,
-      Pageable page);
 
   @Query(
       "select n from Note n where n.userId = :userId and n.deletedAt is null and (lower(n.title)"
