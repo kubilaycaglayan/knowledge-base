@@ -1338,6 +1338,36 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresReportRangeUsesUtcLeapDayAndExactHalfOpenInstantBoundaries() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This timestamp boundary case is part of the PostgreSQL integration profile");
+    }
+    String token = freshToken();
+    for (String entry :
+        new String[] {
+          "\"startedAt\":\"2024-02-28T23:59:50Z\",\"endedAt\":\"2024-02-29T00:00:00Z\",\"description\":\"ends at range start\"",
+          "\"startedAt\":\"2024-02-29T00:00:00Z\",\"endedAt\":\"2024-02-29T00:00:10Z\",\"description\":\"starts at range start\"",
+          "\"startedAt\":\"2024-02-29T12:00:00Z\",\"endedAt\":\"2024-02-29T12:00:00Z\",\"description\":\"zero duration\"",
+          "\"startedAt\":\"2024-03-01T00:00:00Z\",\"endedAt\":\"2024-03-01T00:00:10Z\",\"description\":\"starts at exclusive end\""
+        }) {
+      ResponseEntity<JsonNode> created =
+          post("/api/v1/time-entries", token, "{" + entry + ",\"labelIds\":[]}");
+      assertEquals(HttpStatus.CREATED, created.getStatusCode(), String.valueOf(created.getBody()));
+    }
+
+    ResponseEntity<JsonNode> response =
+        get("/api/v1/reports?startDate=2024-02-29&endDate=2024-02-29", token);
+    assertEquals(HttpStatus.OK, response.getStatusCode(), String.valueOf(response.getBody()));
+    JsonNode report = response.getBody();
+    assertEquals("2024-02-29", report.get("from").asText());
+    assertEquals("2024-02-29", report.get("to").asText());
+    assertEquals(10, report.get("totalSeconds").asLong());
+    assertEquals("2024-02-29", report.get("days").get(0).get("date").asText());
+    assertEquals(10, report.get("days").get(0).get("totalSeconds").asLong());
+  }
+
+  @Test
   void reportBadPeriodIsRejected() {
     String token = freshToken();
     ResponseEntity<JsonNode> result = get("/api/v1/reports?period=INVALID", token);

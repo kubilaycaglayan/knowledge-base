@@ -26,8 +26,13 @@ validation. Before Spring starts, the test harness requires
 `KB_TEST_POSTGRES_DISPOSABLE=true`, a database named `kb_test_<unique-suffix>`,
 and an empty database. It prints the database name and server version; Flyway
 logs its migration result. The guard fails before migrations and fixtures when
-the marker, name, or empty-database check fails. It does not drop a database
-or volume; stop and remove only the disposable container you created.
+the marker, name, loopback-host, or empty-database check fails. The alternate
+`KB_TEST_POSTGRES_MODE=migrated` is only for a database that was initialized by
+the empty mode: it requires successful Flyway history and exercises Hibernate
+validation/startup against the migrated schema. It still requires the explicit
+disposable marker, unique test database name, and loopback host. Neither mode
+drops a database or volume; stop and remove only the disposable container you
+created.
 
 Example disposable PostgreSQL 16 invocation (the generated suffix makes the
 database unique to this run):
@@ -45,12 +50,21 @@ docker run --rm --network host \
   -e KB_TEST_POSTGRES_DISPOSABLE=true \
   -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 \
   gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
+docker run --rm --network host \
+  -e KB_TEST_POSTGRES_URL="jdbc:postgresql://localhost:5432/${test_database}" \
+  -e KB_TEST_POSTGRES_USER=postgres -e KB_TEST_POSTGRES_PASSWORD=local-only-password \
+  -e KB_TEST_POSTGRES_DISPOSABLE=true -e KB_TEST_POSTGRES_MODE=migrated \
+  -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 \
+  gradle test --no-daemon --tests '*SearchPostgresIntegrationTest' \
+    --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
 docker stop "$test_container"
 ```
 
 The `backend-postgres` job in `.github/workflows/verify.yml` runs the full
-backend suite against a per-workflow-run PostgreSQL 16 service database. GitHub
-Actions removes that service container after the job.
+backend suite against a per-workflow-run PostgreSQL 16 service database, then
+restarts the search integration test against the already migrated database.
+GitHub Actions prints the database version and Flyway result from the test
+reports and removes the service container after the job.
 
 Board browser coverage has two layers: `(cd frontend && npm run test:board)` runs
 `frontend/scripts/board.acceptance.test.mjs`, which uses fast isolated API

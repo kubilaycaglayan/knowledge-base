@@ -10,12 +10,17 @@ import java.net.http.WebSocket;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -62,6 +67,35 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
 
   ResponseEntity<JsonNode> put(String path, String token, String body) {
     return exchange(HttpMethod.PUT, path, token, body);
+  }
+
+  @Test
+  void concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This race is PostgreSQL-specific and runs in the opt-in PostgreSQL suite");
+    String token = token();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first = requests.submit(() -> startTimerTogether(token, startTogether));
+      Future<Integer> second = requests.submit(() -> startTimerTogether(token, startTogether));
+      int firstStatus = first.get(10, TimeUnit.SECONDS);
+      int secondStatus = second.get(10, TimeUnit.SECONDS);
+
+      assertEquals(1, java.util.List.of(firstStatus, secondStatus).stream().filter(s -> s == 201).count());
+      assertEquals(1, java.util.List.of(firstStatus, secondStatus).stream().filter(s -> s == 409).count());
+      JsonNode current = get("/api/v1/timers/current", token).getBody();
+      assertNotNull(current);
+      assertTrue(current.get("running").asBoolean());
+      assertEquals(HttpStatus.OK, post("/api/v1/timers/stop", token, "{}").getStatusCode());
+    }
+  }
+
+  private int startTimerTogether(String token, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"concurrent start\"}")
+        .getStatusCode()
+        .value();
   }
 
   String path(String token, String name) {
