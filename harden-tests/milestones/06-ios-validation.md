@@ -16,21 +16,31 @@ an active automated gate.
 
 ## Tasks
 
-- [ ] Inventory iOS unit and UI test coverage by screen, API flow, auth state,
-  and shared behavior (notes, sessions, logs, paths, labels, calendar,
-  reports). Identify UI tests omitted from the historical workflow and why.
+- [x] Verify current target configuration and workflow scope. `KnowTests` is
+  the Swift package test target; XcodeGen's `Know` scheme includes
+  `KnowUITests`. The historical disabled workflow runs all `KnowTests` cases
+  but selects only the Notes list/editor/archive and line-history UI cases.
+  See the source-by-source matrix in the [acceptance checklist](06-acceptance-checklist.md).
+- [ ] Complete the per-screen test inventory by test name, test class, flow,
+  and evidence type. Existing model/unit coverage includes notes, sessions,
+  logs, paths, labels, calendar, and reports; inventory the broad UI suite and
+  mark which behaviors remain model-only, simulator-tested, live-API tested,
+  manual, or deferred.
 - [ ] Decide and document a supported validation path: a maintained macOS
   runner/job, a clearly owned manual release gate with retained `.xcresult`, or
   another supported CI host. Do not re-enable the existing job until the
   runner, signing assumptions, XcodeGen setup, simulator selection, and
   artifact retention are verified.
+- [x] Record that the current workspace host is Linux and lacks `xcodebuild`
+  and `xcodegen`; the Foundation-only conversion workflow is the available
+  host-side check, not a native-app validation path.
 - [ ] Define a safe simulator test account/data setup that is isolated and
   disposable; ensure test secrets are sourced from CI secrets or generated
   locally, never committed or logged.
-- [ ] Cover app launch, sign-in/session restore, API error handling, list/detail
-  navigation, create/edit/archive/restore flows, offline/network failure
-  recovery, keyboard and Dynamic Type behavior, and at least one end-to-end
-  note save/line-history flow.
+- [ ] Use the HARD-06 behavior matrix to cover app launch, sign-in/session
+  restore, API error handling, every implemented screen, create/edit/delete or
+  archive/restore flows, offline/network failure recovery, keyboard and
+  Dynamic Type behavior, and an end-to-end note save/line-history flow.
 - [ ] Make simulator tests deterministic around locale, calendar/time zone,
   animation, network fixtures, and asynchronous waits. Capture screenshots and
   `.xcresult` on failure without sensitive data.
@@ -45,6 +55,11 @@ an active automated gate.
   secrets scrubbed.
 - The test matrix names untested native flows and marks them as manual or
   deferred rather than implying full iOS coverage.
+- Model/API unit tests, simulator UI tests, live-backend smoke, and manual
+  device checks are labeled separately; no one evidence type silently
+  substitutes for another.
+- Mobile Chrome desktop/phone browser profiles remain separate from native
+  simulator coverage in the shared hardening plan.
 - Any workflow change is tested on the actual supported runner before the
   disabled state is changed.
 
