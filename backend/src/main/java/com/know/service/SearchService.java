@@ -304,11 +304,14 @@ public class SearchService {
               "l",
               (row, terms, via, viaName) -> {
                 String body = row.getString("body");
-                String title = clip(firstLine(body), TITLE_LENGTH);
-                String flat = oneLine(body);
+                String first = firstLine(body);
+                String title = clip(first, TITLE_LENGTH);
+                // The first line is the title; the snippet shows what follows it.
+                // body.strip() starts with its first non-blank line.
+                String rest = body == null ? "" : body.strip().substring(first.length());
                 return new Result(
                     type, uuid(row, "id"), title.isEmpty() ? "Empty log" : title,
-                    flat.length() > title.length() ? snippet(body, terms) : null,
+                    snippet(rest, terms),
                     instant(row, "occurred_at"), null, false, via, viaName, null,
                     null, null, null, null, null, null, null, null);
               });
@@ -631,7 +634,7 @@ public class SearchService {
    * no term appears literally (near-miss and path/label matches).
    */
   static String snippet(String text, List<String> terms) {
-    String flat = oneLine(text);
+    String flat = flatten(text);
     if (flat.isEmpty()) return null;
     int at = -1;
     for (String term : terms) {
@@ -660,6 +663,19 @@ public class SearchService {
     int length = term.length();
     for (int i = 0; i + length <= text.length(); i++) if (text.regionMatches(true, i, term, 0, length)) return i;
     return -1;
+  }
+
+  /** Text on one line, with " · " where its lines (blank ones dropped) were. */
+  static String flatten(String text) {
+    if (text == null) return "";
+    StringBuilder out = new StringBuilder();
+    for (String line : text.split("\\R")) {
+      String flat = oneLine(line);
+      if (flat.isEmpty()) continue;
+      if (out.length() > 0) out.append(" · ");
+      out.append(flat);
+    }
+    return out.toString();
   }
 
   static String oneLine(String text) {
