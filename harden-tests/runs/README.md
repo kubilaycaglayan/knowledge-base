@@ -132,21 +132,26 @@ d2cda77 reports; the final 6d29b9b pair added five more. The subsequent
 suite occurrences (archive overlap in both profiles, detached locator and
 More boards in mobile Chromium). The f6abf77 line-history pair passed all 12
 cases in each profile and added no failure occurrences. The cumulative table
-has 114 case occurrences across 43 failure-group suite occurrences: 65 cases
+has 127 case occurrences across 48 failure-group suite occurrences: 65 cases
 from 17 complete dated reports with failures, 4 test-authoring failures from
 exploratory attempts, and 3 from the partial transcript. The f6abf77 line-history,
 941b7c4 timer, and 5bba75f search reports passed and add no failing occurrences.
 The emulated iPhone WebKit line-history report added two reproduced failures
 across two failure-group suite occurrences; tracker acceptance repair iterations
 added 40 test-authoring failures across six suite occurrences, documented [here](2026-10-08-tracker-acceptance-repair.md).
+The local board browser fixture suite added 13 failures across five failure
+groups; see its [report](2026-10-08-board-fixture-suite.md). Fixture suite
+failures do not count as real-stack browser-profile coverage.
 The partial transcript remains
 history-only. “Suite occurrences” counts one suite per failure group in that
 suite, so one run can contribute to multiple groups.
 
-The line-history profile reports are [desktop Chromium](2026-10-08-f6abf77-desktop-chromium-line-history-resilience.md)
+The original line-history profile reports are [desktop Chromium](2026-10-08-f6abf77-desktop-chromium-line-history-resilience.md)
 and [mobile-size Chromium](2026-10-08-f6abf77-mobile-chromium-line-history-resilience.md).
-Both passed 12/12 including a live note draft recovery after a 503 and concurrent
-edit. Image/database and detailed browser environment metadata were not
+The latest 13/13 runs are [desktop](2026-10-08-55255ec-desktop-chromium-line-history-resilience.md)
+and [mobile-size Chromium](2026-10-08-55255ec-mobile-chromium-line-history-resilience.md),
+including a fresh-account empty notes state with keyboard-accessible create and
+cleanup. Image/database and detailed browser environment metadata were not
 captured by the line-history runner and remain unknown.
 
 The current timer retry profile reports are [desktop Chromium](2026-10-08-941b7c4-desktop-chromium-timer-resilience.md)
@@ -170,7 +175,7 @@ failures remain without traces or network/server logs.
 | --- | ---: | ---: | --- | --- |
 | Board setup assumes selected board remains a visible tab after overflow | 23 | 1 | 2026-10-08 | Corrected in earlier run; no setup failure in current board runs. |
 | Session-tracker fixture controls unavailable during keyboard/fill interactions | 9 | 1 | 2026-10-08 | Insufficient evidence; historical artifacts unavailable. |
-| Fixed timer/shell overlaps archive footer controls | 20 | 14 | 2026-10-08 | Reproduced in desktop and mobile Chromium; latest screenshots/traces and scoped stack logs retained locally; product cause not confirmed. |
+| Fixed timer/shell overlaps archive footer controls | 25 | 15 | 2026-10-08 | Reproduced in real-stack desktop/mobile Chromium and the local board fixture suite; latest real-stack screenshots/traces and scoped stack logs retained locally; product cause not confirmed. |
 | WebKit touch caret placement interacts with line-history gutter | 2 | 2 | 2026-10-08 | Reproduced by the emulated iPhone WebKit line-history report; trace unavailable. |
 | WebKit timer API CORS/access-control request | 2 | 2 | 2026-10-08 | Reproduced by the emulated iPhone WebKit line-history report; network/server logs unavailable, cause remains unconfirmed. |
 | Detached board card locator | 6 | 6 | 2026-10-08 | Reproduced in four mobile Chromium runs; latest trace retained locally; timing versus rerender remains suspected. |
@@ -178,6 +183,10 @@ failures remain without traces or network/server logs.
 | Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
 | Test-authoring synchronization/assertion issues | 4 | 4 | 2026-10-08 | Three timer retry iterations and one search empty-state locator failed during authoring; corrected and documented in the exploratory investigation report. No durable traces retained. |
 | Tracker acceptance fixture repair | 40 | 6 | 2026-10-08 | Repeated runs exposed stale control selectors and assumptions; repaired against the current UI and the final 10/10 fixture suite passed. Evidence and output are retained in the tracker repair report. |
+| Board fixture card-label picker assumptions | 4 | 1 | 2026-10-08 | Four stale selector/measurement assumptions were updated against the shared LabelPicker and passed in a focused rerun. |
+| Board fixture card-editor overflow | 2 | 1 | 2026-10-08 | Dialog/footer overflow at 1280px reproduced; focused rerun measured 373px of footer overflow. |
+| Board fixture phone-landscape scroll region | 1 | 1 | 2026-10-08 | Reproduced a 31px body scroll area in compact landscape. |
+| Board fixture route state synchronization | 1 | 1 | 2026-10-08 | `waitForURL` timed out after route had already reached the expected URL; fixture test synchronization issue. |
 
 The detached Gantt locator remains classified as a suspected synchronization
 or rerender issue because it recurred in the c415565 and 6d29b9b mobile runs
