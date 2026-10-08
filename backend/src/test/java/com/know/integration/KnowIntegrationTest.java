@@ -1587,6 +1587,34 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresClockifyImportRollsBackEarlierPathEntryAndBatchOnLaterInvalidInterval() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This Clockify transaction rollback case runs against PostgreSQL");
+    }
+    String token = freshToken();
+    String project = "RollbackProject-" + UUID.randomUUID();
+    String payload =
+        "{\"timeentries\":["
+            + "{\"_id\":\"valid-first\",\"projectName\":\""
+            + project
+            + "\",\"description\":\"first row\",\"timeInterval\":{" 
+            + "\"start\":\"2024-07-01T10:00:00Z\",\"end\":\"2024-07-01T11:00:00Z\"}},"
+            + "{\"_id\":\"invalid-later\",\"projectName\":\""
+            + project
+            + "\",\"description\":\"invalid row\",\"timeInterval\":{" 
+            + "\"start\":\"2024-07-01T12:00:00Z\",\"end\":\"2024-07-01T11:00:00Z\"}}]}";
+
+    ResponseEntity<JsonNode> result = post("/api/v1/imports/clockify", token, payload);
+    assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode(), String.valueOf(result.getBody()));
+    assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/imports/clockify/batches", token).getBody().isEmpty());
+    for (JsonNode board : get("/api/v1/boards?includeHidden=true", token).getBody())
+      assertFalse(project.equals(board.path("name").asText(null)));
+  }
+
+  @Test
   void clockifyImportIsIdempotentOnDuplicateExternalId() {
     String token = freshToken();
     String entryId = "dup-" + UUID.randomUUID();
