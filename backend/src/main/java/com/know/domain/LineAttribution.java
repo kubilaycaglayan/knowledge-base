@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
@@ -24,6 +25,8 @@ public final class LineAttribution {
   private static final Set<String> TEXTBLOCKS = Set.of("paragraph", "heading", "codeBlock");
   // Alignment cost is lines x lines; past this, only the common head and tail keep their times.
   private static final long MAX_ALIGNMENT_CELLS = 2_000_000;
+  // Longer bodies report no line times: their stamps would outweigh the body itself.
+  static final int MAX_LINES = 10_000;
 
   // Times are stored as ISO-8601 strings so the plain mapper needs no time module.
   record Stamp(String h, String t) {}
@@ -61,11 +64,19 @@ public final class LineAttribution {
     for (JsonNode child : node.path("content")) collect(child, childPrefix, out);
   }
 
-  /** The edit time of each of the body's lines; lines without a stored time take the fallback. */
+  /**
+   * The edit time of each of the body's lines; lines without a stored time take the fallback.
+   * Null when the body is too long to track line by line.
+   */
   public static List<Instant> times(String content, String stored, Instant fallback) {
-    List<String> hashes = lines(content).stream().map(LineAttribution::hash).toList();
+    List<String> hashes = hashes(lines(content));
+    return hashes.size() > MAX_LINES ? null : times(hashes, stored, fallback);
+  }
+
+  private static List<Instant> times(List<String> hashes, String stored, Instant fallback) {
+    Instant floor = micros(fallback);
+    List<Instant> unknown = hashes.stream().map(ignored -> floor).toList();
     List<Stamp> stamps = parse(stored);
-    List<Instant> unknown = hashes.stream().map(ignored -> fallback).toList();
     if (stamps == null || !stamps.stream().map(Stamp::h).toList().equals(hashes)) return unknown;
     try {
       return stamps.stream().map(stamp -> Instant.parse(stamp.t())).toList();
@@ -74,13 +85,17 @@ public final class LineAttribution {
     }
   }
 
-  /** The stored stamps for a new body, keeping the times of lines that survive the edit. */
+  /**
+   * The stored stamps for a new body, keeping the times of lines that survive the edit. Null when
+   * the new body is too long to track line by line.
+   */
   public static String next(String oldContent, String stored, Instant fallback, String newContent, Instant now) {
-    List<String> oldHashes = lines(oldContent).stream().map(LineAttribution::hash).toList();
-    List<Instant> oldTimes = times(oldContent, stored, fallback);
-    List<String> newHashes = lines(newContent).stream().map(LineAttribution::hash).toList();
+    List<String> newHashes = hashes(lines(newContent));
+    if (newHashes.size() > MAX_LINES) return null;
+    List<String> oldHashes = hashes(lines(oldContent));
+    List<Instant> oldTimes = times(oldHashes, stored, fallback);
     Instant[] newTimes = new Instant[newHashes.size()];
-    Arrays.fill(newTimes, now);
+    Arrays.fill(newTimes, micros(now));
     align(oldHashes, newHashes, (oldIndex, newIndex) -> newTimes[newIndex] = oldTimes.get(oldIndex));
     List<Stamp> stamps = new ArrayList<>();
     for (int i = 0; i < newHashes.size(); i++) stamps.add(new Stamp(newHashes.get(i), newTimes[i].toString()));
@@ -94,6 +109,19 @@ public final class LineAttribution {
   /** The stored stamps for a brand-new body: every line was written now. */
   public static String fresh(String content, Instant now) {
     return next(null, null, now, content, now);
+  }
+
+  /**
+   * Stored stamps for a row that has none, dating every line from its last update. Rows call this
+   * before any change that moves updated_at, so their lines keep the time they had.
+   */
+  public static String pin(String content, String stored, Instant updatedAt) {
+    return stored != null ? stored : fresh(content, updatedAt);
+  }
+
+  // PostgreSQL keeps microseconds, so line times match the row's own timestamps.
+  private static Instant micros(Instant value) {
+    return value == null ? null : value.truncatedTo(ChronoUnit.MICROS);
   }
 
   interface Match {
@@ -139,10 +167,16 @@ public final class LineAttribution {
     }
   }
 
-  static String hash(String line) {
+  private static List<String> hashes(List<String> lines) {
+    MessageDigest digest = sha256();
+    List<String> out = new ArrayList<>(lines.size());
+    for (String line : lines) out.add(HexFormat.of().formatHex(digest.digest(line.getBytes(StandardCharsets.UTF_8)), 0, 8));
+    return out;
+  }
+
+  private static MessageDigest sha256() {
     try {
-      byte[] digest = MessageDigest.getInstance("SHA-256").digest(line.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(digest, 0, 8);
+      return MessageDigest.getInstance("SHA-256");
     } catch (NoSuchAlgorithmException impossible) {
       throw new IllegalStateException(impossible);
     }
