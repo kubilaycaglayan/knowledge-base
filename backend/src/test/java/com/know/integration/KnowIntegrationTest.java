@@ -1417,6 +1417,50 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresReportAndCalendarKeepOneYearResultShapesBoundedAndComplete() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This one-year volume case runs against PostgreSQL");
+    }
+    String token = freshToken();
+    Instant base = Instant.parse("2024-03-31T12:00:00Z");
+    for (int index = 0; index < 48; index++) {
+      Instant start = base.plusSeconds(index * 60L);
+      ResponseEntity<JsonNode> created =
+          post(
+              "/api/v1/time-entries",
+              token,
+              "{\"startedAt\":\""
+                  + start
+                  + "\",\"endedAt\":\""
+                  + start.plusSeconds(5)
+                  + "\",\"labelIds\":[],\"description\":\"volume entry "
+                  + index
+                  + "\"}");
+      assertEquals(HttpStatus.OK, created.getStatusCode(), String.valueOf(created.getBody()));
+    }
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/calendar/days/range",
+                token,
+                "{\"startDate\":\"2024-01-01\",\"endDate\":\"2024-12-31\","
+                    + "\"note\":\"volume calendar\",\"labels\":[]}")
+            .getStatusCode());
+
+    JsonNode report =
+        get("/api/v1/reports?startDate=2024-01-01&endDate=2024-12-31", token).getBody();
+    assertEquals(366, report.get("days").size());
+    assertEquals(240, report.get("totalSeconds").asLong());
+    assertTrue(report.get("days").get(90).get("calendarNote").asText().equals("volume calendar"));
+    JsonNode calendar =
+        get("/api/v1/calendar/days?startDate=2024-01-01&endDate=2024-12-31", token).getBody();
+    assertEquals(366, calendar.size());
+    assertEquals("2024-01-01", calendar.get(0).get("date").asText());
+    assertEquals("2024-12-31", calendar.get(365).get("date").asText());
+  }
+
+  @Test
   void reportBadPeriodIsRejected() {
     String token = freshToken();
     ResponseEntity<JsonNode> result = get("/api/v1/reports?period=INVALID", token);
