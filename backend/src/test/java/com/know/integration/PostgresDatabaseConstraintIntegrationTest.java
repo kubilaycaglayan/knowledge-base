@@ -2,6 +2,7 @@ package com.know.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Base64;
@@ -68,6 +69,119 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
     assertEquals(0L, jdbc.queryForObject("select count(*) from note where id = ?", Long.class, UUID.fromString(noteId)));
     assertEquals(1L, jdbc.queryForObject("select count(*) from time_entry where id = ?", Long.class, UUID.fromString(entryId)));
     assertNull(jdbc.queryForObject("select path_id from time_entry where id = ?", UUID.class, UUID.fromString(entryId)));
+  }
+
+  @Test
+  void postgresEnforcesDomainBoardCalendarAndLogChecksOnDirectWrites() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Database-level constraints require the PostgreSQL integration profile");
+    String token = api.register();
+    UUID userId = subject(token);
+    String pathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"Direct checks\"}")
+            .get("id")
+            .asText();
+    String entryId =
+        api.created(
+                "POST",
+                "/api/v1/time-entries",
+                token,
+                "{\"pathId\":\""
+                    + pathId
+                    + "\",\"labelIds\":[],\"startedAt\":\"2026-05-04T10:00:00Z\",\"endedAt\":\"2026-05-04T10:01:00Z\"}")
+            .get("id")
+            .asText();
+
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into path (id, user_id, name, status) values (?, ?, ?, ?)",
+                UUID.randomUUID(),
+                userId,
+                "Invalid status",
+                "UNKNOWN"));
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into note (id, user_id, path_id, time_entry_id, title, content) values (?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(),
+                userId,
+                UUID.fromString(pathId),
+                UUID.fromString(entryId),
+                "Invalid target",
+                "{}"));
+    UUID dailyRecordId = UUID.randomUUID();
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into daily_record (id, user_id, record_date, note) values (?, ?, ?, ?)",
+                dailyRecordId,
+                userId,
+                java.sql.Date.valueOf("2026-05-04"),
+                "   "));
+    jdbc.update(
+        "insert into daily_record (id, user_id, record_date) values (?, ?, ?)",
+        dailyRecordId,
+        userId,
+        java.sql.Date.valueOf("2026-05-04"));
+    UUID dailyLabelId = UUID.randomUUID();
+    jdbc.update(
+        "insert into labels (id, user_id, name) values (?, ?, ?)",
+        dailyLabelId,
+        userId,
+        "Direct constraint label");
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into daily_record_label (daily_record_id, label_id, portion) values (?, ?, ?)",
+                dailyRecordId,
+                dailyLabelId,
+                new java.math.BigDecimal("0.10")));
+
+    JsonNode board =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Direct board checks\"}");
+    UUID boardId = UUID.fromString(board.get("id").asText());
+    UUID statusId =
+        jdbc.queryForObject(
+            "select id from board_statuses where board_id = ? order by position limit 1",
+            UUID.class,
+            boardId);
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into board_cards (id, board_id, status_id, title, priority) values (?, ?, ?, ?, ?)",
+                UUID.randomUUID(),
+                boardId,
+                statusId,
+                "Invalid priority",
+                "BLOCKER"));
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into board_cards (id, board_id, status_id, title, start_date, due_date) values (?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(),
+                boardId,
+                statusId,
+                "Invalid date order",
+                java.sql.Date.valueOf("2026-05-05"),
+                java.sql.Date.valueOf("2026-05-04")));
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into logs (id, user_id, body, occurred_at) values (?, ?, ?, ?)",
+                UUID.randomUUID(),
+                userId,
+                "   ",
+                Timestamp.from(Instant.parse("2026-05-04T12:00:00Z"))));
+    assertEquals(1L, jdbc.queryForObject("select count(*) from path where id = ?", Long.class, UUID.fromString(pathId)));
   }
 
   private void insertEntry(
