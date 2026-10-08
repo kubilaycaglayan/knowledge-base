@@ -37,7 +37,7 @@ failure-state requirements, and acceptance evidence.
 ### Backend integration
 
 - Existing H2 integration coverage includes malformed and oversized input, ownership, stale note versions, and API behavior. The `backend-postgres` CI job now runs the complete integration suite against a guarded PostgreSQL 16 database and repeats the search suite against its migrated schema.
-- [ ] Finish HARD-03 time boundaries, result-volume coverage, and remaining PostgreSQL behavior that H2 cannot represent. The current PostgreSQL evidence covers report periods, imports, timer/note/card races, rollback, and representative result volumes; open cases are listed in the [HARD-03 checklist](milestones/03-acceptance-checklist.md).
+- [ ] Finish HARD-03 remaining PostgreSQL behavior that H2 cannot represent. Current evidence covers report periods, label/assignment races, Gantt viewport/date-only behavior, representative direct constraints, rollback across imports, undo, merge, calendar, create, and label cleanup flows, and result volumes; other multi-step operations and further direct-constraint cases remain open in the [HARD-03 checklist](milestones/03-acceptance-checklist.md).
 - [x] Keep PostgreSQL tests isolated to an empty disposable database migrated by Flyway; do not point test jobs at persistent data.
 
 See [HARD-03](milestones/03-postgres-and-boundaries.md) for database-sensitive

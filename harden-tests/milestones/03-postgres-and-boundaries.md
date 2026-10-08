@@ -28,22 +28,28 @@ time boundaries and empty/large result sets.
   labels and assignments, imports/transfers, and timer/time-entry writes where
   query or constraint behavior matters.
 - [ ] Add rollback cases for each multi-step operation that can fail after an
-  earlier write; PostgreSQL coverage now proves rollback for both Clockify and
-  knowledge-base imports.
+  earlier write; PostgreSQL coverage now proves rollback across Clockify and
+  Knowledge Base import/undo, path merge, calendar range, association-backed
+  creation, and label assignment cleanup. Audit remaining multi-write
+  transactions before closing this criterion.
 - [x] Add deterministic date/time boundary tests for UTC day/week/month report
   windows, leap days, month/year rollover, entries exactly at `from`/`to`,
   zero-duration intervals, and running entries cut off at injected `now`.
   Report and timer services use an injectable UTC clock.
-- [ ] Establish the Gantt `from`/`to` filtering contract before asserting
-  inclusive date-only board ranges; current API returns all active dated cards.
+- [x] Establish the Gantt `from`/`to` contract: they define the client's
+  inclusive viewport while the API returns all active cards, including
+  undated and out-of-window cards. PostgreSQL and client tests verify date-only
+  round trips and inclusive clipping.
 - [x] Add empty and high-volume result tests for search, reports, calendar,
   board cursor pages, label history, and exports. Assert stable ordering,
   continuation/no-duplicate behavior, caps, and bounded response shape.
 - [x] Add PostgreSQL races for the one-running-timer invariant, optimistic
   note/card versions, card moves, board/status reorders, and repeated log/time
   entry label assignments.
-- [ ] Add races for other label/assignment joins and board-tab ordering where
-  concurrent requests can collide.
+- [x] Add races for the label/assignment join families where concurrent writes
+  can collide: notes, calendar days/ranges, time entries, logs, board-card
+  paths/labels, timer drafts, and same-name label/scope creation. Board-tab
+  ordering is covered too.
 - [x] Run Flyway migration tests from the supported baseline and on an already
   migrated disposable database. Include a migration smoke path that proves
   application startup does not rely on Hibernate schema mutation.
@@ -52,9 +58,8 @@ time boundaries and empty/large result sets.
 
 The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
 passes the full PostgreSQL suite and migrated startup check. The milestone
-remains in progress because rollback breadth, other assignment joins, broader
-direct-constraint coverage, and the backend meaning of Gantt range dates
-remain open. The report and timer services now accept an injectable UTC
+remains in progress because rollback breadth and additional direct-constraint
+coverage remain open. The report and timer services now accept an injectable UTC
 clock; `LabelHistoryService` continues to use wall time directly.
 
 ## Acceptance evidence
