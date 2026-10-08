@@ -24,20 +24,25 @@ time boundaries and empty/large result sets.
   disposable database/container initialized only by Flyway. Fail fast if the
   configured database is not empty or is not explicitly marked disposable;
   never point this job at a persistent development or production database.
-- [ ] Cover PostgreSQL invariants for boards/cards, notes and line-history,
+- [x] Cover PostgreSQL invariants for boards/cards, notes and line-history,
   labels and assignments, imports/transfers, and timer/time-entry writes where
-  query or constraint behavior matters. Include rollback behavior when a
-  multi-step operation fails.
-- [ ] Add deterministic date/time boundary tests for UTC day/week/month report
-  windows, inclusive date-only board ranges, leap days, month/year rollover,
-  entries exactly at `from`/`to`, zero-duration intervals, and running entries
-  cut off at `now`. Freeze or inject the clock rather than relying on wall time.
-- [ ] Add empty and high-volume result tests for search, reports, calendar,
+  query or constraint behavior matters.
+- [ ] Add rollback cases for each multi-step operation that can fail after an
+  earlier write; current coverage proves transactional import rollback.
+- [x] Add deterministic date/time boundary tests for UTC day/week/month report
+  windows, leap days, month/year rollover, entries exactly at `from`/`to`,
+  zero-duration intervals, and running entries cut off at injected `now`.
+  Report and timer services use an injectable UTC clock.
+- [ ] Establish the Gantt `from`/`to` filtering contract before asserting
+  inclusive date-only board ranges; current API returns all active dated cards.
+- [x] Add empty and high-volume result tests for search, reports, calendar,
   board cursor pages, label history, and exports. Assert stable ordering,
   continuation/no-duplicate behavior, caps, and bounded response shape.
-- [ ] Add PostgreSQL concurrency cases for the one-running-timer invariant,
-  optimistic note/card versions, board moves/ordering, and duplicate label or
-  assignment writes where concurrent requests can race.
+- [x] Add PostgreSQL races for the one-running-timer invariant, optimistic
+  note/card versions, card moves, status reorders, and repeated log-label
+  assignments.
+- [ ] Add races for other label/assignment joins and board-tab ordering where
+  concurrent requests can collide.
 - [x] Run Flyway migration tests from the supported baseline and on an already
   migrated disposable database. Include a migration smoke path that proves
   application startup does not rely on Hibernate schema mutation.
@@ -46,10 +51,10 @@ time boundaries and empty/large result sets.
 
 The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
 passes the full PostgreSQL suite and migrated startup check. The milestone
-remains in progress because duplicate label/assignment races, broader rollback
-and direct-constraint coverage, and the backend meaning of Gantt range dates
-remain open. The report and timer services now accept an injectable UTC clock;
-`LabelHistoryService` continues to use wall time directly.
+remains in progress because rollback breadth, other assignment joins, broader
+direct-constraint coverage, captured failure logs, and the backend meaning of
+Gantt range dates remain open. The report and timer services now accept an
+injectable UTC clock; `LabelHistoryService` continues to use wall time directly.
 
 ## Acceptance evidence
 

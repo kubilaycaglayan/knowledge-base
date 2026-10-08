@@ -41,6 +41,15 @@ database unique to this run):
 test_id="$(date -u +%Y%m%d%H%M%S)_$$"
 test_database="kb_test_local_${test_id}"
 test_container="knowledge-base-postgres-test-${test_id}"
+cleanup_postgres_test() {
+  cleanup_status=$?
+  if [ "$cleanup_status" -ne 0 ]; then
+    mkdir -p backend/build
+    docker logs "$test_container" > "backend/build/${test_container}-postgres.log" 2>&1 || true
+  fi
+  docker stop "$test_container" >/dev/null 2>&1 || true
+}
+trap cleanup_postgres_test EXIT
 docker run -d --rm --name "$test_container" -e POSTGRES_PASSWORD=local-only-password \
   -e POSTGRES_DB="$test_database" -p 5432:5432 postgres:16-alpine
 until docker exec "$test_container" pg_isready -q; do sleep 1; done
@@ -57,8 +66,11 @@ docker run --rm --network host \
   -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 \
   gradle test --no-daemon --tests '*SearchPostgresIntegrationTest' \
     --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
-docker stop "$test_container"
 ```
+
+The trap stops only this disposable container. On a failed test or migration,
+it also saves the PostgreSQL container log under ignored `backend/build/` for
+diagnosis; successful runs discard that log.
 
 The `backend-postgres` job in `.github/workflows/verify.yml` runs the full
 backend suite against a per-workflow-run PostgreSQL 16 service database, then
