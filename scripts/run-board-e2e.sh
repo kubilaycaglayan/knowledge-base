@@ -43,6 +43,14 @@ done
 
 if [[ -n "${BOARD_E2E_ARTIFACT_DIR:-}" ]]; then
   mkdir -p "$BOARD_E2E_ARTIFACT_DIR"
+  {
+    printf 'Commit: '
+    git rev-parse HEAD
+    printf 'Images: '
+    docker image inspect knowledge-base-api:test-only knowledge-base-web:test-only --format '{{.RepoTags}} {{.Id}}'
+    printf 'Database: '
+    "${compose[@]}" exec -T db pg_config --version
+  } > "$BOARD_E2E_ARTIFACT_DIR/run-metadata.txt"
   set +e
   BOARD_E2E_BASE_URL="http://localhost:${port}" BOARD_E2E_EMAIL="$email" BOARD_E2E_PASSWORD="$password" \
     npm run test:board:e2e --prefix frontend 2>&1 | tee "$BOARD_E2E_ARTIFACT_DIR/command.log"
