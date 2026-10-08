@@ -11,9 +11,13 @@ sleep 1
 gsettings set org.gnome.desktop.interface toolkit-accessibility true 2>/dev/null
 speech-dispatcher -d >/dev/null 2>&1 || true
 orca --replace --debug-file /tmp/orca.log >/dev/null 2>&1 &
+orca_pid=$!
 sleep 6
 NODE_PATH=/frontend/node_modules node /orca/drive.cjs
 status=$?
 sleep 2
+# Orca buffers its debug log; stop it and wait so the last speech is written.
+kill -TERM "$orca_pid" 2>/dev/null
+for _ in $(seq 1 20); do kill -0 "$orca_pid" 2>/dev/null || break; sleep 0.5; done
 grep "SPEECH OUTPUT" /tmp/orca.log | sed -E "s/^.*SPEECH OUTPUT: '//; s/' \{.*$//" > /out/speech.txt
 exit $status
