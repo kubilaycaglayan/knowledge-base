@@ -6,6 +6,7 @@ import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
 import { Editor } from "@tiptap/core";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
+import { setLineHistory } from "../lib/line-history";
 import { BOARD_PRIORITIES } from "../lib/board-priority";
 import { ALL_BOARDS, columnCursor, compareCards, dropPosition, nextSort } from "../lib/board-merge";
 import { formatCardDates } from "../lib/card-dates";
@@ -541,6 +542,10 @@ watch(activeSearch, (search) => { if (!boardStateReady || (route.query.q ?? "") 
 // Leaving the page also empties the query; only a bare /board restores.
 watch(hasBoardQuery, (present) => { if (!present && boardStateReady && route.path === "/board") { boardStateReady = false; void restoreBoardState(); } });
 watch(() => store.selectedId, (id) => { if (id && route.query.board !== id) void router.replace({ query: { ...route.query, board: id } }); if (id && view.value === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
+// ?lines=1 shows when each card body line was last edited.
+const lineHistory = computed(() => route.query.lines === "1");
+function toggleLineHistory(on: boolean) { void router.replace({ query: { ...route.query, lines: on ? "1" : undefined } }); }
+watch([cardEditor, lineHistory, () => editing.value?.lineEdits], () => { const card = editing.value; if (cardEditor.value) setLineHistory(cardEditor.value, lineHistory.value && card?.lineEdits ? { content: card.body, times: card.lineEdits } : null); });
 watch(draft, () => { if (!editing.value) return; clearTimeout(saveTimer); saveTimer = setTimeout(() => void queueSave(), AUTOSAVE_DELAY_MS); }, { deep: true });
 watch(view, (next) => { if (next === "gantt") void store.loadGantt(ganttFrom.value, ganttTo.value); });
 watch(() => [route.query.from, route.query.to], ([from, to]) => { if (`${from}/${to}` === pendingTimelineQuery) { pendingTimelineQuery = ""; return; } if (view.value !== "gantt" || typeof from !== "string" || typeof to !== "string" || from === ganttFrom.value && to === ganttTo.value) return; clearTimeout(timelineQueryTimer); ganttFrom.value = from; ganttTo.value = to; jumpTimeline(from); void store.loadGantt(from, to); });
@@ -662,7 +667,7 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
         
         
       </div>
-      <div v-if="cardEditor" class="card-body-editor" :class="RICH_TEXT_CLASS"><EditorContent class="card-body-content" :editor="cardEditor" /><RichTextToolbar :editor="cardEditor" /></div>
+      <div v-if="cardEditor" class="card-body-editor" :class="RICH_TEXT_CLASS"><EditorContent class="card-body-content" :editor="cardEditor" /><RichTextToolbar :editor="cardEditor" :line-history="lineHistory" @update:line-history="toggleLineHistory" /></div>
       <p v-if="cardDateError" class="field-error" role="alert">{{ cardDateError }}</p>
       <p v-if="saveState === 'error'" class="field-error" role="alert">{{ saveError }} <button class="quiet link-like" type="button" @click="queueSave()">Retry</button><span v-if="closeAnyway"> Close again to discard.</span></p>
       <footer class="card-editor-footer"><div class="meta-dates"><VueDatePicker :dark="theme === 'dark'" :model-value="draftDates" :range="{ partialRange: true }" :formats="dateFormats" :time-config="{ enableTimePicker: false }" :action-row="{ showCancel: false, showSelect: true, selectBtnLabel: 'OK', showNow: false, showPreview: false }" :input-attrs="{ clearable: true }" :text-input="false" week-start="1" placeholder="Dates" :aria-labels="{ input: 'Card dates', clearInput: 'Clear card dates' }" teleport="body" @update:model-value="setDraftDates" /></div><select v-model="draft.priority" class="meta-field" name="priority" aria-label="Priority"><option v-for="priority in BOARD_PRIORITIES" :key="priority.value" :value="priority.value">{{ priority.label }}</option></select><select :value="editing.statusId" class="meta-field" name="status" aria-label="Status" @change="changeCardStatus(($event.target as HTMLSelectElement).value)"><template v-if="isAll"><optgroup :label="editingBoard?.name || 'This board'"><option v-for="status in editingOwnStatuses" :key="status.id" :value="status.id">{{ status.name }}</option></optgroup><optgroup v-if="editingOtherColumns.length" label="Other columns"><option v-for="column in editingOtherColumns" :key="column.key" :value="`column:${column.key}`">{{ column.name }}</option></optgroup></template><template v-else><option v-for="status in activeStatuses" :key="status.id" :value="status.id">{{ status.name }}</option></template></select><div class="card-labels-picker-wrap"><LabelPicker v-model="draft.labelIds" :labels="boardLabels" label="Card labels" @open-change="labelsMenuOpen = $event" /></div><button class="icon-button quiet danger card-archive-button" type="button" aria-label="Archive card" title="Archive card" @click="requestArchiveCard(editing)"><v-icon :icon="mdiTrashCanOutline" size="20" aria-hidden="true" /></button></footer>

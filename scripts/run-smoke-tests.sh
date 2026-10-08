@@ -363,6 +363,14 @@ api "${header[@]}" http://localhost:8080/api/v1/labels \
   | grep -o '"name":"Smoke"[^]]*]' \
   | grep -q '"scopes":\["NOTE","TIME_ENTRY","LOG","BOARD"\]'
 api "${header[@]}" http://localhost:8080/api/v1/notes?page=0\&size=20\&q=Smoke | grep -q 'Smoke note'
+# Each body line carries its own edit time; adding a line keeps the untouched line's time.
+first_line_edit="$(api "${header[@]}" "http://localhost:8080/api/v1/notes/$note_id" | sed -n 's/.*"lineEdits":\["\([^"]*\)".*/\1/p')"
+[[ -n "$first_line_edit" ]]
+line_edits="$(api "${header[@]}" "${content_json[@]}" --method=PUT \
+  --body-data='{"title":"Smoke note","content":"{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Persisted knowledge\"}]},{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Second line\"}]}]}","contentText":"Persisted knowledge\nSecond line","tags":["Smoke"]}' \
+  "http://localhost:8080/api/v1/notes/$note_id" | grep -o '"lineEdits":\[[^]]*\]')"
+[[ "$(printf '%s' "$line_edits" | grep -o '"[^"]*Z"' | wc -l)" -eq 2 ]]
+printf '%s' "$line_edits" | grep -q "^\"lineEdits\":\[\"$first_line_edit\","
 api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data='{"title":"Edited smoke note","content":"{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Updated knowledge\"}]}]}","contentText":"Updated knowledge","tags":["Smoke"]}' \
   "http://localhost:8080/api/v1/notes/$note_id" \

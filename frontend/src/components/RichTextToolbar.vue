@@ -11,12 +11,15 @@ import {
   mdiFormatQuoteOpen,
   mdiFormatStrikethrough,
   mdiFormatUnderline,
+  mdiHistory,
 } from "@mdi/js";
 import { computed, onBeforeUnmount, ref, toRaw, watch } from "vue";
 
 // The formatting toolbar shared by note bodies and board card bodies. It is a
 // WAI-ARIA toolbar: one Tab stop, with arrow keys, Home, and End moving focus.
-const props = defineProps<{ editor: Editor }>();
+// Passing lineHistory adds a toggle for the per-line edit-time gutter.
+const props = defineProps<{ editor: Editor; lineHistory?: boolean }>();
+const emit = defineEmits<{ "update:lineHistory": [value: boolean] }>();
 // ProseMirror rejects transactions from a proxied editor, so always use the raw one.
 const editor = computed(() => toRaw(props.editor));
 
@@ -69,6 +72,7 @@ function apply(run: (chain: Chain) => Chain) { run(editor.value.chain().focus())
 const bar = ref<HTMLElement | null>(null);
 const current = ref(0);
 const indexOf = (group: number, item: number) => 1 + groups.slice(0, group).reduce((sum, list) => sum + list.length, 0) + item;
+const historyIndex = indexOf(groups.length, 0);
 const controls = () => [...(bar.value?.querySelectorAll<HTMLButtonElement>("button") || [])];
 function remember(event: FocusEvent) { const index = controls().indexOf(event.target as HTMLButtonElement); if (index >= 0) current.value = index; }
 function move(event: KeyboardEvent) {
@@ -100,6 +104,12 @@ function move(event: KeyboardEvent) {
         <span class="rich-text-toolbar-divider" aria-hidden="true"></span>
         <button v-for="(action, itemIndex) in group" :key="action.name" class="rich-text-action" type="button" :aria-label="action.name" :title="action.name" :aria-pressed="isActive(action.active)" :tabindex="current === indexOf(groupIndex, itemIndex) ? 0 : -1" @mousedown.prevent @click="apply(action.run)">
           <v-icon :icon="action.icon" size="20" aria-hidden="true" />
+        </button>
+      </template>
+      <template v-if="props.lineHistory !== undefined">
+        <span class="rich-text-toolbar-divider" aria-hidden="true"></span>
+        <button class="rich-text-action" type="button" aria-label="Line history" title="Show when each line was last edited" :aria-pressed="props.lineHistory" :tabindex="current === historyIndex ? 0 : -1" @mousedown.prevent @click="emit('update:lineHistory', !props.lineHistory)">
+          <v-icon :icon="mdiHistory" size="20" aria-hidden="true" />
         </button>
       </template>
     </div>

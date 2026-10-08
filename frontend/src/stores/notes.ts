@@ -12,6 +12,8 @@ export type Note = {
   tags: string[];
   pinned?: boolean;
   sortOrder?: number;
+  // Per-line edit times, sent with single-note responses only.
+  lineEdits?: string[];
 };
 export type NoteLabel = { id: string; name: string };
 
