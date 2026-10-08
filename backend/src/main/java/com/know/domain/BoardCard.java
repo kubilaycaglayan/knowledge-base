@@ -20,6 +20,8 @@ public class BoardCard {
   @Column(name = "archived_at") private Instant archivedAt;
   @Column(name = "created_at", nullable = false) private Instant createdAt = now();
   @Column(name = "updated_at", nullable = false) private Instant updatedAt = now();
+  // Plain-text copy of the body for search; kept in step with the body on every save.
+  @Column(name = "body_text", nullable = false, columnDefinition = "text") private String bodyText = "";
   @Column(name = "line_edits", columnDefinition = "text") private String lineEdits = LineAttribution.fresh(body, createdAt);
   @ManyToMany @JoinTable(name = "board_card_paths", joinColumns = @JoinColumn(name = "card_id"), inverseJoinColumns = @JoinColumn(name = "path_id")) private Set<Path> paths = new LinkedHashSet<>();
   @ManyToMany @JoinTable(name = "board_card_labels", joinColumns = @JoinColumn(name = "card_id"), inverseJoinColumns = @JoinColumn(name = "label_id")) private Set<Label> labels = new LinkedHashSet<>();
@@ -40,5 +42,12 @@ public class BoardCard {
   // Rows from before line times date every line from updated_at, so pin those times down before updated_at moves on.
   private void touch() { lineEdits = LineAttribution.pin(body, lineEdits, updatedAt); updatedAt = now(); }
   public void setPaths(Collection<Path> values) { paths = new LinkedHashSet<>(values); } public void setLabels(Collection<Label> values) { labels = new LinkedHashSet<>(values); }
+  @PrePersist @PreUpdate private void deriveBodyText() { bodyText = bodyText(body); }
+  /** A body's plain text: one line per document line, a legacy plain body as is, and nothing for other JSON such as "{}". */
+  public static String bodyText(String body) {
+    if (body == null) return "";
+    String text = LineAttribution.plainText(body);
+    return (text != null ? text : String.join("\n", LineAttribution.lines(body))).strip();
+  }
   private static Instant now() { return Instant.now().truncatedTo(ChronoUnit.MICROS); }
 }

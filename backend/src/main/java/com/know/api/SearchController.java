@@ -1,8 +1,10 @@
 package com.know.api;
 
-import com.know.domain.*;
-import java.util.*;
-import org.springframework.data.domain.PageRequest;
+import com.know.service.SearchService;
+import java.util.EnumSet;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -11,42 +13,42 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/v1/search")
 public class SearchController {
-  private static final int RESULT_LIMIT = 100;
-  private final PathRepository paths;
-  private final NoteRepository notes;
-  private final ActivityRepository activities;
+  private final SearchService search;
 
-  public SearchController(
-      PathRepository paths, NoteRepository notes, ActivityRepository activities) {
-    this.paths = paths;
-    this.notes = notes;
-    this.activities = activities;
+  public SearchController(SearchService search) {
+    this.search = search;
   }
 
-  record Result(String kind, UUID id, String title, String detail) {}
-
   @GetMapping
-  public List<Result> search(Authentication a, @RequestParam String q) {
-    if (q.length() > 200)
+  public SearchService.Response search(
+      Authentication a,
+      @RequestParam String q,
+      @RequestParam(required = false) String types,
+      @RequestParam(defaultValue = "" + SearchService.DEFAULT_LIMIT) int limit,
+      @RequestParam(defaultValue = "0") int offset,
+      @RequestParam(required = false) Boolean fuzzy) {
+    if (q.length() > SearchService.MAX_QUERY_LENGTH)
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Search query is too long");
-    UUID user = UUID.fromString(a.getName());
-    String query = q.trim();
-    if (query.isBlank()) return List.of();
-    var page = PageRequest.of(0, RESULT_LIMIT);
-    List<Result> result = new ArrayList<>();
-    paths
-        .findAllByUserIdAndNameContainingIgnoreCase(user, query, page)
-        .forEach(p -> result.add(new Result("PATH", p.getId(), p.getName(), p.getDescription())));
-    notes
-        .findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentContainingIgnoreCase(
-            user, query, user, query, page)
-        .forEach(n -> result.add(new Result("NOTE", n.getId(), n.getTitle(), n.getContent())));
-    activities
-        .search(user, query, page)
-        .forEach(
-            event ->
-                result.add(
-                    new Result("ACTIVITY", event.getId(), event.getTitle(), event.getDetail())));
-    return result;
+    if (limit < 1 || limit > SearchService.MAX_LIMIT)
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "limit must be between 1 and " + SearchService.MAX_LIMIT);
+    if (offset < 0 || offset > SearchService.MAX_OFFSET)
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "offset must be between 0 and " + SearchService.MAX_OFFSET);
+    return search.search(UUID.fromString(a.getName()), q, parseTypes(types), limit, offset, fuzzy);
+  }
+
+  private static Set<SearchService.Type> parseTypes(String types) {
+    Set<SearchService.Type> parsed = EnumSet.noneOf(SearchService.Type.class);
+    if (types == null || types.isBlank()) return parsed;
+    for (String type : types.split(",")) {
+      if (type.isBlank()) continue;
+      try {
+        parsed.add(SearchService.Type.valueOf(type.trim().toUpperCase(Locale.ROOT)));
+      } catch (IllegalArgumentException unknown) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown search type: " + (type.trim().length() > 40 ? type.trim().substring(0, 40) + "…" : type.trim()));
+      }
+    }
+    return parsed;
   }
 }

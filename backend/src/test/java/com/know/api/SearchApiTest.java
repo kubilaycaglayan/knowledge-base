@@ -1,12 +1,17 @@
 package com.know.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.know.domain.*;
+import com.know.service.SearchService;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -27,36 +32,65 @@ import org.springframework.test.web.servlet.MockMvc;
     })
 class SearchApiTest {
   @Autowired MockMvc mvc;
-  @MockBean PathRepository paths;
-  @MockBean NoteRepository notes;
-  @MockBean ActivityRepository activities;
+  @MockBean SearchService search;
+
+  private final UUID user = UUID.randomUUID();
+  private final UsernamePasswordAuthenticationToken auth =
+      new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
 
   @Test
   void searchRejectsUnboundedQueryInput() throws Exception {
-    var auth =
-        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
     mvc.perform(get("/api/v1/search").param("q", "x".repeat(201)).with(authentication(auth)))
         .andExpect(status().isBadRequest());
+    verifyNoInteractions(search);
   }
 
   @Test
-  void searchReturnsResultsFromOwnedRepositories() throws Exception {
-    var auth =
-        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
-    when(activities.search(any(), org.mockito.ArgumentMatchers.eq("java"), any()))
-        .thenReturn(List.of());
+  void searchPassesTheOwnerQueryTypesAndPage() throws Exception {
+    when(search.search(any(), any(), any(), anyInt(), anyInt(), any()))
+        .thenReturn(new SearchService.Response(List.of(), false, false));
+    mvc.perform(
+            get("/api/v1/search")
+                .param("q", "java")
+                .param("types", "note, Log,,")
+                .param("limit", "20")
+                .param("offset", "40")
+                .param("fuzzy", "true")
+                .with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.groups").isArray());
+    verify(search)
+        .search(
+            eq(user),
+            eq("java"),
+            eq(EnumSet.of(SearchService.Type.NOTE, SearchService.Type.LOG)),
+            eq(20),
+            eq(40),
+            eq(true));
+  }
+
+  @Test
+  void searchDefaultsToEveryTypeAndTheFirstFiveResults() throws Exception {
+    when(search.search(any(), any(), any(), anyInt(), anyInt(), any()))
+        .thenReturn(new SearchService.Response(List.of(), false, false));
     mvc.perform(get("/api/v1/search").param("q", "java").with(authentication(auth)))
         .andExpect(status().isOk());
-    verify(paths)
-        .findAllByUserIdAndNameContainingIgnoreCase(
-            any(), eq("java"), argThat(page -> page.getPageSize() == 100));
-    verify(notes)
-        .findAllByUserIdAndTitleContainingIgnoreCaseOrUserIdAndContentContainingIgnoreCase(
-            any(), eq("java"), any(), eq("java"), argThat(page -> page.getPageSize() == 100));
-    verify(activities)
-        .search(
-            any(),
-            org.mockito.ArgumentMatchers.eq("java"),
-            argThat(page -> page.getPageSize() == 100));
+    verify(search).search(eq(user), eq("java"), eq(EnumSet.noneOf(SearchService.Type.class)), eq(5), eq(0), isNull());
+  }
+
+  @Test
+  void searchRejectsOutOfRangePagesAndUnknownTypes() throws Exception {
+    for (String[] bad :
+        new String[][] {
+          {"limit", "0"}, {"limit", "51"}, {"fuzzy", "maybe"}, {"offset", "-1"}, {"offset", "1001"}, {"types", "NOTE,NOPE"}
+        })
+      mvc.perform(get("/api/v1/search").param("q", "java").param(bad[0], bad[1]).with(authentication(auth)))
+          .andExpect(status().isBadRequest());
+    verifyNoInteractions(search);
+  }
+
+  @Test
+  void searchRequiresAuthentication() throws Exception {
+    mvc.perform(get("/api/v1/search").param("q", "java")).andExpect(status().isUnauthorized());
   }
 }

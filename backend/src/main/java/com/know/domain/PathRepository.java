@@ -65,5 +65,4 @@ public interface PathRepository extends JpaRepository<Path, UUID> {
 
   List<Path> findByUserIdAndNameIgnoreCase(UUID userId, String name);
 
-  List<Path> findAllByUserIdAndNameContainingIgnoreCase(UUID userId, String name, Pageable page);
 }

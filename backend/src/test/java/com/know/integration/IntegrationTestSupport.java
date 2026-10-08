@@ -17,7 +17,9 @@ abstract class IntegrationTestSupport {
     registry.add(
         "spring.datasource.url",
         () ->
-            "jdbc:h2:mem:know_integration;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1");
+            "jdbc:h2:mem:know_integration;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1"
+                // Stands in for pg_trgm's word_similarity, which global search uses for near misses.
+                + ";INIT=CREATE ALIAS IF NOT EXISTS word_similarity FOR 'com.know.service.Trigrams.wordSimilarity'");
     registry.add("spring.datasource.driver-class-name", () -> "org.h2.Driver");
     registry.add("spring.datasource.username", () -> "sa");
     registry.add("spring.datasource.password", () -> "");
