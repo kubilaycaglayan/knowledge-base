@@ -283,6 +283,7 @@ function openHistory(path: Path) {
   else void inspect(path);
 }
 async function openRoutePath(id: string) {
+  if (historyPath.value?.id !== id) historyPath.value = null;
   await pathsStore.load().catch(() => undefined);
   if (routePathId.value !== id) return;
   let path = paths.value.find((value) => value.id === id) as Path | undefined;

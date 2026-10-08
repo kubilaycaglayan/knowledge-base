@@ -2213,5 +2213,29 @@ describe("BoardView", () => {
       expect(mockRoute.query.q).toBeUndefined();
       await wrapper.unmount();
     });
+    it("opens card search with / and leaves Cmd/Ctrl+K to global search", async () => {
+      liveRoute({ board: "work" });
+      const store = useBoardsStore();
+      store.boards = [board("work", "Work")];
+      const wrapper = mountBoard();
+      await flushPromises();
+      for (const modifier of ["metaKey", "ctrlKey"]) {
+        const global = new KeyboardEvent("keydown", { key: "k", [modifier]: true, bubbles: true, cancelable: true });
+        document.dispatchEvent(global);
+        await flushPromises();
+        expect(global.defaultPrevented).toBe(false);
+        expect(wrapper.find("#board-search-input").exists()).toBe(false);
+      }
+      const slash = new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true });
+      document.dispatchEvent(slash);
+      await flushPromises();
+      expect(slash.defaultPrevented).toBe(true);
+      expect(wrapper.find("#board-search-input").exists()).toBe(true);
+      // A second slash keeps the search open rather than closing it.
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+      await flushPromises();
+      expect(wrapper.find("#board-search-input").exists()).toBe(true);
+      await wrapper.unmount();
+    });
   });
 });

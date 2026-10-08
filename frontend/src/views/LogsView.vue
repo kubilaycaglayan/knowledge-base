@@ -223,7 +223,7 @@ async function showInList(log: Log) {
   clearTimeout(highlightTimer);
   highlightTimer = setTimeout(() => { highlightedId.value = ""; }, 2600);
   const row = document.getElementById(`log-${log.id}`);
-  row?.scrollIntoView({ block: "center", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  row?.scrollIntoView?.({ block: "center", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   row?.focus({ preventScroll: true });
 }
 function logRowClass(logsInGroup: Log[], index: number) {
