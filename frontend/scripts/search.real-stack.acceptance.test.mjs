@@ -52,7 +52,8 @@ async function seed() {
 }
 
 async function searchFor(query, type, id) {
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  if (phone) await page.keyboard.press("Control+k");
+  else await page.getByRole("button", { name: "Search", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Search everything" });
   const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
   await input.fill(query);
@@ -88,7 +89,7 @@ async function activate(query, type, id, expectedPath, expectedVisible) {
   }
   else await page.waitForFunction((value) => document.body.innerText.includes(value), expectedVisible);
   await page.goto(`${baseUrl}/`);
-  await page.getByRole("button", { name: "Search", exact: true }).waitFor();
+  await page.locator("#app").waitFor();
 }
 
 before(async () => {
@@ -103,10 +104,15 @@ before(async () => {
   await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
   page = await context.newPage();
   await page.goto(`${baseUrl}/`);
-  await page.getByRole("button", { name: "Search", exact: true }).waitFor();
+  await page.locator("#app").waitFor();
+  if (phone) {
+    await page.keyboard.press("Control+k");
+    await page.getByRole("dialog", { name: "Search everything" }).waitFor();
+    await page.keyboard.press("Escape");
+  } else await page.getByRole("button", { name: "Search", exact: true }).waitFor();
   // Establish an in-app root history entry before exercising result navigation.
   await page.goto(`${baseUrl}/`);
-  await page.getByRole("button", { name: "Search", exact: true }).waitFor();
+  await page.locator("#app").waitFor();
 });
 
 after(async () => { await context?.close(); await browser?.close(); });
