@@ -13,6 +13,7 @@ chrome-extension/.wxt-dev.log
 chrome-extension/.wxt-dev.pid
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
+harden-tests/artifacts/
 backend/build/
 .gradle/
 .DS_Store
