@@ -24,7 +24,7 @@ const highlightBoard = ref(typeof route.query.archivedBoard === "string" ? route
 function revealHighlight() {
   const id = highlightCard.value ? `archive-card-${highlightCard.value}` : highlightBoard.value ? `archive-board-${highlightBoard.value}` : "";
   const row = id ? document.getElementById(id) : null;
-  row?.scrollIntoView({ block: "center" });
+  row?.scrollIntoView?.({ block: "center" });
   row?.focus({ preventScroll: true });
 }
 onMounted(async () => {

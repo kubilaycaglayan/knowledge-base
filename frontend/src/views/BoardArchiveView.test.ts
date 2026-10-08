@@ -49,6 +49,60 @@ describe("BoardArchiveView", () => {
     });
   }
 
+  it("scrolls to and marks the archived card a search result links to", async () => {
+    mockRoute.query = { board: "board-1", card: "card-2" };
+    const store = useBoardsStore();
+    (store.loadArchivedCards as any) = vi.fn(async () => {
+      store.archivedCards = [
+        { id: "card-1", title: "First", archived: true } as any,
+        { id: "card-2", title: "Linked", archived: true } as any,
+      ];
+    });
+    const scrolled = vi.fn();
+    (HTMLElement.prototype as any).scrollIntoView = scrolled;
+    const wrapper = mount(BoardArchiveView, {
+      attachTo: document.body,
+      global: { mocks: { $route: mockRoute, $router: mockRouter }, stubs: { RouterLink: routerLinkStub } },
+    });
+    try {
+      await flushPromises();
+      const row = wrapper.get("#archive-card-card-2");
+      expect(row.classes()).toContain("archive-row-highlight");
+      expect(wrapper.get("#archive-card-card-1").classes()).not.toContain("archive-row-highlight");
+      expect(document.activeElement).toBe(row.element);
+      expect(scrolled).toHaveBeenCalled();
+      expect(mockRouter.replace).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+      delete (HTMLElement.prototype as any).scrollIntoView;
+    }
+  });
+
+  it("marks an archived board named by the link, whether as archivedBoard or board", async () => {
+    for (const query of [{ archivedBoard: "gone" }, { board: "gone" }]) {
+      mockRoute.query = query;
+      const store = useBoardsStore();
+      (store.loadBoards as any) = vi.fn(async (archived?: boolean) => {
+        if (archived) store.archivedBoards = [board("gone", "Retired board"), board("other", "Other")] as any;
+      });
+      const wrapper = mountArchive();
+      await flushPromises();
+      expect(wrapper.get("#archive-board-gone").classes()).toContain("archive-row-highlight");
+      expect(wrapper.get("#archive-board-other").classes()).not.toContain("archive-row-highlight");
+      // An archived board is not swapped for the selected active one.
+      expect(mockRouter.replace).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  });
+
+  it("ignores a linked card that is no longer archived", async () => {
+    mockRoute.query = { board: "board-1", card: "restored" };
+    const wrapper = mountArchive();
+    await flushPromises();
+    expect(wrapper.find(".archive-row-highlight").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("renders the three archive sections with their own headings", async () => {
     const wrapper = mountArchive();
     await flushPromises();

@@ -235,7 +235,7 @@ function setActive(index: number) {
   activeIndex.value = index;
   const option = options.value[index];
   if (!option) return;
-  void nextTick(() => document.getElementById(option.id)?.scrollIntoView({ block: "nearest" }));
+  void nextTick(() => document.getElementById(option.id)?.scrollIntoView?.({ block: "nearest" }));
 }
 function move(step: number) {
   const count = options.value.length;

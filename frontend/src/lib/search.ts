@@ -60,22 +60,6 @@ export const searchGroupLabels: Record<SearchType, string> = {
   CALENDAR_DAY: "Calendar days",
 };
 
-const singular: Record<SearchType, string> = {
-  PATH: "path",
-  BOARD: "board",
-  LABEL: "label",
-  NOTE: "note",
-  CARD: "card",
-  LOG: "log",
-  SESSION: "session",
-  CALENDAR_DAY: "calendar day",
-};
-
-export function searchTypeName(type: SearchType, count = 1) {
-  const name = singular[type];
-  return count === 1 ? name : name.endsWith("y") && type === "CALENDAR_DAY" ? "calendar days" : `${name}s`;
-}
-
 /** Builds the request path for one search, with only non-default parameters. */
 export function searchRequest(
   query: string,
