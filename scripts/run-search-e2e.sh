@@ -9,6 +9,7 @@ port="${SEARCH_E2E_PROXY_PORT:-26280}"
 compose=(docker compose -p "$project" -f docker-compose.yml -f docker-compose.smoke.yml)
 cleanup() { "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
+echo "Search E2E disposable Compose project: $project"
 
 export COMPOSE_PROJECT_NAME="$project"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$password}"

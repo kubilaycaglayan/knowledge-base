@@ -141,17 +141,35 @@ describe("search and direct routes against disposable real stack", () => {
   });
 
   it("direct-loads the result destinations without stale route state", async () => {
-    const paths = [
-      `/notes/${fixtures.note.id}`, `/logs/${fixtures.log.id}`, `/paths/${fixtures.path.id}`,
-      `/sessions/${fixtures.session.id}`, `/calendar?date=${fixtures.day}`,
-      `/board?board=${fixtures.board.id}`,
-      `/board?board=${fixtures.board.id}&card=${fixtures.card.id}&cardBoard=${fixtures.board.id}`,
+    const destinations = [
+      { path: `/notes/${fixtures.note.id}`, kind: "note" },
+      { path: `/logs/${fixtures.log.id}`, kind: "log" },
+      { path: `/paths/${fixtures.path.id}`, kind: "path" },
+      { path: `/labels/${fixtures.label.id}`, kind: "label" },
+      { path: `/sessions/${fixtures.session.id}`, kind: "session" },
+      { path: `/calendar?date=${fixtures.day}`, kind: "calendar" },
+      { path: `/board?board=${fixtures.board.id}`, kind: "board" },
+      { path: `/board?board=${fixtures.board.id}&card=${fixtures.card.id}&cardBoard=${fixtures.board.id}`, kind: "card" },
     ];
-    for (const path of paths) {
+    for (const destination of destinations) {
       const direct = await context.newPage();
-      await direct.goto(`${baseUrl}${path}`);
+      await direct.goto(`${baseUrl}${destination.path}`);
       await direct.waitForLoadState("networkidle");
-      assert.equal(new URL(direct.url()).pathname + new URL(direct.url()).search, path);
+      assert.equal(new URL(direct.url()).pathname + new URL(direct.url()).search, destination.path);
+      if (destination.kind === "note") {
+        await direct.waitForFunction((title) => document.querySelector('[aria-label="Note title"]')?.value === title, `${text} Note`);
+      } else if (destination.kind === "card") {
+        await direct.waitForFunction((title) => document.querySelector('.card-editor [aria-label="Title"]')?.value === title, `${text} Card`);
+      } else if (destination.kind === "board") {
+        await direct.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
+      } else if (destination.kind === "calendar") {
+        await direct.waitForFunction((date) => new URL(location.href).searchParams.get("date") === date, fixtures.day);
+      } else {
+        const expected = destination.kind === "log" ? `${text} Log`
+          : destination.kind === "path" ? `${text} Path`
+            : destination.kind === "label" ? `${text} Label` : `${text} Session`;
+        await direct.waitForFunction((value) => document.body.innerText.includes(value), expected);
+      }
       await direct.close();
     }
   });
