@@ -59,7 +59,7 @@ class NoteVersionIntegrationTest extends IntegrationTestSupport {
         "This optimistic-write race is PostgreSQL-specific");
     String token = api.register();
     JsonNode created = api.created("POST", "/api/v1/notes", token,
-        "{\"title\":\"Concurrent note\",\"content\":\"initial\",\"contentText\":\"initial\"}");
+        "{\"title\":\"Concurrent note\",\"content\":\"initial\",\"contentText\":\"initial\",\"tags\":[\"Concurrent tag\"]}");
     String id = created.get("id").asText();
     long version = created.get("version").asLong();
     CountDownLatch ready = new CountDownLatch(2);
@@ -75,6 +75,8 @@ class NoteVersionIntegrationTest extends IntegrationTestSupport {
       JsonNode persisted = api.get("/api/v1/notes/" + id, token).json();
       assertTrue(List.of("winner A", "winner B").contains(persisted.get("contentText").asText()));
       assertEquals(version + 1, persisted.get("version").asLong());
+      assertEquals(1, persisted.get("tags").size());
+      assertEquals("Concurrent tag", persisted.get("tags").get(0).asText());
     }
   }
 
@@ -85,6 +87,7 @@ class NoteVersionIntegrationTest extends IntegrationTestSupport {
     if (!release.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Concurrent update gate timed out");
     return api.put("/api/v1/notes/" + id, token,
         "{\"title\":\"Concurrent note\",\"content\":" + ApiClient.MAPPER.writeValueAsString(value)
-            + ",\"contentText\":" + ApiClient.MAPPER.writeValueAsString(value) + ",\"version\":" + version + "}");
+            + ",\"contentText\":" + ApiClient.MAPPER.writeValueAsString(value)
+            + ",\"tags\":[\"Concurrent tag\"],\"version\":" + version + "}");
   }
 }

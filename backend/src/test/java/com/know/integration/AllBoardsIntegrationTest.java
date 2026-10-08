@@ -217,6 +217,14 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
         "This optimistic card update race runs against PostgreSQL");
     String token = token();
     String boardId = board(token, "Concurrent card board");
+    String labelId =
+        post(
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Concurrent board label\",\"scopes\":[\"BOARD\"]}")
+            .getBody()
+            .get("id")
+            .asText();
     JsonNode card = card(token, boardId, "Backlog", "Initial card", "LOW");
     String cardId = card.get("id").asText();
     String expectedUpdatedAt = card.get("updatedAt").asText();
@@ -224,16 +232,18 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
       Future<Integer> first =
           requests.submit(
-              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner A", startTogether));
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner A", labelId, startTogether));
       Future<Integer> second =
           requests.submit(
-              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner B", startTogether));
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner B", labelId, startTogether));
       int firstStatus = first.get(10, TimeUnit.SECONDS);
       int secondStatus = second.get(10, TimeUnit.SECONDS);
       assertEquals(1, List.of(firstStatus, secondStatus).stream().filter(s -> s == 200).count());
       assertEquals(1, List.of(firstStatus, secondStatus).stream().filter(s -> s == 409).count());
       JsonNode persisted = get("/api/v1/boards/" + boardId + "/cards/" + cardId, token).getBody();
       assertTrue(List.of("Winner A", "Winner B").contains(persisted.get("title").asText()));
+      assertEquals(1, persisted.get("labelIds").size());
+      assertEquals(labelId, persisted.get("labelIds").get(0).asText());
     }
   }
 
@@ -409,13 +419,20 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
       String token,
       String expectedUpdatedAt,
       String title,
+      String labelId,
       CyclicBarrier startTogether)
       throws Exception {
     startTogether.await(5, TimeUnit.SECONDS);
     return put(
             "/api/v1/boards/" + boardId + "/cards/" + cardId,
             token,
-            "{\"title\":\"" + title + "\",\"expectedUpdatedAt\":\"" + expectedUpdatedAt + "\"}")
+            "{\"title\":\""
+                + title
+                + "\",\"labelIds\":[\""
+                + labelId
+                + "\"],\"expectedUpdatedAt\":\""
+                + expectedUpdatedAt
+                + "\"}")
         .getStatusCode()
         .value();
   }
