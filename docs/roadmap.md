@@ -10,7 +10,12 @@
   While the gutter is on, a polite live region announces the caret line's
   number and edit time to screen readers ("Line 2, edited …"), verified with
   Orca in CI.
-- [ ] Show the per-line edit-time gutter in the iOS Notes editor (the API is ready).
+- [x] Show per-line edit times in the iOS Notes editor: a Line history toggle
+  lists each body line with its time ("Unsaved" for lines typed since the last
+  save), with VoiceOver labels. `NoteLineHistory` runs its XCTest cases on
+  Linux in CI.
+- [ ] Build the iOS app and run `KnowUITests` on macOS to verify the Line
+  history SwiftUI list (it is only syntax-checked on Linux).
 - [x] iOS: `NoteDocument.plainText` keeps each heading, paragraph, code line,
   and hard-broken line separate (it used to join a heading to the next line
   and drop hard breaks); `scripts/check-ios-note-document.sh` runs its XCTest
