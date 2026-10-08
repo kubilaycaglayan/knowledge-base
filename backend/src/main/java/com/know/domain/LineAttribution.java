@@ -90,13 +90,14 @@ public final class LineAttribution {
    * the new body is too long to track line by line.
    */
   public static String next(String oldContent, String stored, Instant fallback, String newContent, Instant now) {
-    List<String> newHashes = hashes(lines(newContent));
-    if (newHashes.size() > MAX_LINES) return null;
-    List<String> oldHashes = hashes(lines(oldContent));
-    List<Instant> oldTimes = times(oldHashes, stored, fallback);
+    List<String> newLines = lines(newContent);
+    if (newLines.size() > MAX_LINES) return null;
+    List<String> newHashes = hashes(newLines);
+    List<String> oldLines = lines(oldContent);
+    List<Instant> oldTimes = times(hashes(oldLines), stored, fallback);
     Instant[] newTimes = new Instant[newHashes.size()];
     Arrays.fill(newTimes, micros(now));
-    align(oldHashes, newHashes, (oldIndex, newIndex) -> newTimes[newIndex] = oldTimes.get(oldIndex));
+    align(oldLines, newLines, (oldIndex, newIndex) -> newTimes[newIndex] = oldTimes.get(oldIndex));
     List<Stamp> stamps = new ArrayList<>();
     for (int i = 0; i < newHashes.size(); i++) stamps.add(new Stamp(newHashes.get(i), newTimes[i].toString()));
     try {
@@ -128,17 +129,30 @@ public final class LineAttribution {
     void at(int oldIndex, int newIndex);
   }
 
-  // Longest common subsequence over the line hashes, after trimming the common head and tail.
+  private static final java.util.regex.Pattern TASK = java.util.regex.Pattern.compile("^\\[[x ]\\] ");
+
+  /**
+   * Whether two lines are the same line. A line also matches itself without its task checkbox:
+   * iOS and the Chrome extension rebuild bodies from plain text, which drops checkboxes, and that
+   * is not an edit. Checking or unchecking a task keeps the checkbox on both sides, so it is.
+   */
+  static boolean same(String a, String b) {
+    if (a.equals(b)) return true;
+    boolean taskA = TASK.matcher(a).lookingAt(), taskB = TASK.matcher(b).lookingAt();
+    return taskA != taskB && (taskA ? a.substring(4) : a).equals(taskB ? b.substring(4) : b);
+  }
+
+  // Longest common subsequence over the lines, after trimming the common head and tail.
   static void align(List<String> a, List<String> b, Match match) {
     int head = 0;
-    while (head < a.size() && head < b.size() && a.get(head).equals(b.get(head))) {
+    while (head < a.size() && head < b.size() && same(a.get(head), b.get(head))) {
       match.at(head, head);
       head++;
     }
     int tail = 0;
     while (tail < a.size() - head
         && tail < b.size() - head
-        && a.get(a.size() - 1 - tail).equals(b.get(b.size() - 1 - tail))) {
+        && same(a.get(a.size() - 1 - tail), b.get(b.size() - 1 - tail))) {
       match.at(a.size() - 1 - tail, b.size() - 1 - tail);
       tail++;
     }
@@ -148,11 +162,11 @@ public final class LineAttribution {
     for (int i = n - 1; i >= 0; i--)
       for (int j = m - 1; j >= 0; j--)
         lengths[i][j] =
-            a.get(head + i).equals(b.get(head + j))
+            same(a.get(head + i), b.get(head + j))
                 ? lengths[i + 1][j + 1] + 1
                 : Math.max(lengths[i + 1][j], lengths[i][j + 1]);
     for (int i = 0, j = 0; i < n && j < m; ) {
-      if (a.get(head + i).equals(b.get(head + j))) match.at(head + i++, head + j++);
+      if (same(a.get(head + i), b.get(head + j))) match.at(head + i++, head + j++);
       else if (lengths[i + 1][j] >= lengths[i][j + 1]) i++;
       else j++;
     }

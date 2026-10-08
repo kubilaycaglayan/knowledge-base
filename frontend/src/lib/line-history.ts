@@ -1,7 +1,7 @@
 import { Extension, type Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 
 // Per-line edit times for note and card bodies, like git blame. The server
 // stamps each body line on save (backend LineAttribution) and returns the
@@ -74,17 +74,29 @@ export function documentLines(doc: ProseMirrorNode): DocumentLine[] {
 // Alignment cost is lines x lines; past this, only the common head and tail keep their times.
 const MAX_ALIGNMENT_CELLS = 2_000_000;
 
+const TASK = /^\[[x ]\] /;
+/**
+ * Whether two lines are the same line, mirroring LineAttribution.same: a line also matches itself
+ * without its task checkbox (plain-text clients drop checkboxes), but not with the other checkbox.
+ */
+export function sameLine(a: string, b: string) {
+  if (a === b) return true;
+  const taskA = TASK.test(a);
+  const taskB = TASK.test(b);
+  return taskA !== taskB && (taskA ? a.slice(4) : a) === (taskB ? b.slice(4) : b);
+}
+
 /** Gives each current line the time of the saved line it matches, or null when it is unsaved. */
 export function alignTimes(saved: string[], times: (string | null)[], current: string[]): (string | null)[] {
   const result: (string | null)[] = current.map(() => null);
   if (saved.length !== times.length) return result;
   let head = 0;
-  while (head < saved.length && head < current.length && saved[head] === current[head]) {
+  while (head < saved.length && head < current.length && sameLine(saved[head], current[head])) {
     result[head] = times[head];
     head++;
   }
   let tail = 0;
-  while (tail < saved.length - head && tail < current.length - head && saved[saved.length - 1 - tail] === current[current.length - 1 - tail]) {
+  while (tail < saved.length - head && tail < current.length - head && sameLine(saved[saved.length - 1 - tail], current[current.length - 1 - tail])) {
     result[current.length - 1 - tail] = times[saved.length - 1 - tail];
     tail++;
   }
@@ -94,9 +106,9 @@ export function alignTimes(saved: string[], times: (string | null)[], current: s
   const lengths = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
   for (let i = n - 1; i >= 0; i--)
     for (let j = m - 1; j >= 0; j--)
-      lengths[i][j] = saved[head + i] === current[head + j] ? lengths[i + 1][j + 1] + 1 : Math.max(lengths[i + 1][j], lengths[i][j + 1]);
+      lengths[i][j] = sameLine(saved[head + i], current[head + j]) ? lengths[i + 1][j + 1] + 1 : Math.max(lengths[i + 1][j], lengths[i][j + 1]);
   for (let i = 0, j = 0; i < n && j < m; ) {
-    if (saved[head + i] === current[head + j]) result[head + j++] = times[head + i++];
+    if (sameLine(saved[head + i], current[head + j])) result[head + j++] = times[head + i++];
     else if (lengths[i + 1][j] >= lengths[i][j + 1]) i++;
     else j++;
   }
@@ -124,7 +136,8 @@ export function formatLineTime(iso: string) {
 
 export type LineHistoryState = { content: string; times: string[] } | null;
 type Saved = { lines: string[]; times: (string | null)[] };
-type PluginState = { saved: Saved | null; decorations: DecorationSet };
+type Aligned = { lines: DocumentLine[]; times: (string | null)[] };
+type PluginState = { saved: Saved | null; decorations: DecorationSet; aligned: Aligned | null };
 const lineHistoryKey = new PluginKey<PluginState>("lineHistory");
 
 // A time the browser cannot read is treated as unknown rather than breaking the gutter.
@@ -159,14 +172,57 @@ function stamp(time: string | null, text: string) {
   return element;
 }
 
-function decorations(doc: ProseMirrorNode, saved: Saved | null) {
-  if (!saved) return DecorationSet.empty;
+function aligned(doc: ProseMirrorNode, saved: Saved | null): Aligned | null {
+  if (!saved) return null;
   const lines = documentLines(doc);
-  const times = alignTimes(saved.lines, saved.times, lines.map((line) => line.text));
+  return { lines, times: alignTimes(saved.lines, saved.times, lines.map((line) => line.text)) };
+}
+
+function decorations(doc: ProseMirrorNode, lines: Aligned | null) {
+  if (!lines) return DecorationSet.empty;
   return DecorationSet.create(
     doc,
-    lines.map((line, index) => Decoration.widget(line.pos, () => stamp(times[index], line.text), { side: -1, ignoreSelection: true, key: `${index}:${times[index] ?? (line.text ? "unsaved" : "empty")}` })),
+    lines.lines.map((line, index) => Decoration.widget(line.pos, () => stamp(lines.times[index], line.text), { side: -1, ignoreSelection: true, key: `${index}:${lines.times[index] ?? (line.text ? "unsaved" : "empty")}` })),
   );
+}
+
+// What a screen reader hears for the caret's line; the gutter itself is hidden from assistive tech.
+export function lineAnnouncement(time: string | null, text: string) {
+  if (time) return `Line edited ${formatLineTime(time).full}`;
+  return text ? "Line not saved yet" : "";
+}
+
+function caretLine(state: { selection: { from: number } }, lines: Aligned) {
+  let index = -1;
+  for (let i = 0; i < lines.lines.length && lines.lines[i].pos <= state.selection.from; i++) index = i;
+  return index;
+}
+
+// A polite live region beside the editor announces the caret line's edit time
+// whenever the caret reaches another line, or the gutter turns on.
+function announcer(view: EditorView) {
+  const status = document.createElement("span");
+  status.className = "line-history-status";
+  status.setAttribute("role", "status");
+  Object.assign(status.style, { position: "absolute", width: "1px", height: "1px", overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" });
+  view.dom.after(status);
+  let last = "";
+  const announce = (current: EditorView) => {
+    const lines = lineHistoryKey.getState(current.state)?.aligned;
+    const index = lines ? caretLine(current.state, lines) : -1;
+    const message = lines && index >= 0 ? lineAnnouncement(lines.times[index], lines.lines[index].text) : "";
+    const key = lines ? `${index}:${message}` : "";
+    if (key === last) return;
+    last = key;
+    status.textContent = message;
+  };
+  return {
+    update: (current: EditorView) => {
+      if (!status.isConnected && current.dom.isConnected) current.dom.after(status);
+      announce(current);
+    },
+    destroy: () => status.remove(),
+  };
 }
 
 // The saved body is parsed once per save, not on every keystroke.
@@ -182,14 +238,16 @@ export const LineHistory = Extension.create({
       new Plugin<PluginState>({
         key: lineHistoryKey,
         state: {
-          init: () => ({ saved: null, decorations: DecorationSet.empty }),
+          init: () => ({ saved: null, decorations: DecorationSet.empty, aligned: null }),
           apply(tr, value, _previous, state) {
             const meta = tr.getMeta(lineHistoryKey) as { history: LineHistoryState } | undefined;
             if (!meta && (!tr.docChanged || !value.saved)) return value;
             const saved = meta ? savedLines(meta.history) : value.saved;
-            return { saved, decorations: decorations(state.doc, saved) };
+            const lines = aligned(state.doc, saved);
+            return { saved, decorations: decorations(state.doc, lines), aligned: lines };
           },
         },
+        view: announcer,
         props: {
           decorations: (state) => lineHistoryKey.getState(state)?.decorations,
           attributes: (state): Record<string, string> => (lineHistoryKey.getState(state)?.saved ? { class: "line-history-on" } : {}),
