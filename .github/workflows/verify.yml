@@ -72,3 +72,25 @@ jobs:
         run: npm ci && npx playwright install --with-deps chromium
       - name: Note and card line history in a real browser
         run: ./scripts/run-line-history-e2e.sh
+
+  ios-note-document:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: iOS NoteDocument conversion with XCTest on Linux
+        run: ./scripts/check-ios-note-document.sh
+
+  line-history-orca:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Playwright
+        working-directory: frontend
+        run: npm ci
+      - name: Orca screen reader reads line history
+        run: ./scripts/run-line-history-orca.sh

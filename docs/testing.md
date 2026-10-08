@@ -47,6 +47,20 @@ bodies with the Line history gutter on and checks:
   after clicking.
 Set `LINE_HISTORY_E2E_SCREENSHOTS=<dir>` to keep screenshots.
 
+`./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
+line history, using its own disposable Compose project and a disposable Orca
+container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and
+a headed Chromium. The script clicks into a note, moves down a line and types
+a new one, then checks Orca's speech log:
+- Orca says "Line 1, edited …", "Line 2, edited …", "Line 3, not saved yet",
+  and, after the autosave, "Line 3, edited …";
+- Orca never reads the gutter stamps aloud.
+
+`./scripts/check-ios-note-document.sh` compiles the iOS app's `NoteDocument`
+in the official Swift image and runs its XCTest cases from
+`ios/KnowTests/NotesTests.swift` on Linux. SwiftUI cannot build here, but
+this conversion decides what an iOS save does to a note.
+
 `(cd frontend && npm run test:nav)` runs
 `frontend/scripts/nav-shell.acceptance.test.mjs` against mocked API fixtures. It
 checks that the nav bar has the same position, width, and 10px bottom margin on
