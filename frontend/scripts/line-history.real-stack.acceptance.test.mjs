@@ -130,11 +130,20 @@ async function assertGutterLayout(target, scope) {
     const problems = [];
     for (const stamp of root.querySelectorAll(".line-history-stamp")) {
       const block = stamp.parentElement;
-      const range = document.createRange();
-      range.selectNodeContents(block);
-      const text = [...range.getClientRects()].filter((rect) => rect.width > 0 && !document.elementFromPoint(rect.left + 1, rect.top + 1)?.closest(".line-history-stamp"));
       const box = stamp.getBoundingClientRect();
-      if (box.width && text.some((rect) => rect.left < box.right - 0.5 && rect.top < box.bottom && rect.bottom > box.top)) problems.push(block.textContent);
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      let textNode;
+      let overlapsStamp = false;
+      while ((textNode = walker.nextNode())) {
+        if (textNode.parentElement?.closest(".line-history-stamp")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(textNode);
+        if ([...range.getClientRects()].some((rect) => rect.width > 0 && rect.left < box.right - 0.5 && rect.top < box.bottom && rect.bottom > box.top)) {
+          overlapsStamp = true;
+          break;
+        }
+      }
+      if (box.width && overlapsStamp) problems.push(block.textContent);
     }
     return problems;
   });
@@ -313,6 +322,7 @@ describe("note line history", () => {
     await phone.locator(".rich-editor .line-history-stamp time").first().waitFor();
     // Six lines carry times; the editor's own trailing paragraph after the code block has an empty stamp.
     assert.equal(await phone.locator(".rich-editor .line-history-stamp time").count(), 6);
+    if (screenshots) await phone.screenshot({ path: `${screenshots}/note-phone-long-content-before-layout-assertion.png`, fullPage: true });
     assert.ok((await phone.locator(".rich-editor .ProseMirror").innerText()).includes("NoteBodyEndingRemainsReachable"));
     assert.ok(await phone.evaluate(() => getComputedStyle(document.documentElement).colorScheme.includes("dark") || document.documentElement.dataset.theme === "dark"), "dark theme is active");
     await assertGutterLayout(phone, ".rich-editor");
@@ -320,6 +330,15 @@ describe("note line history", () => {
     assert.deepEqual(results.violations.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target).join(", ")}`), []);
     if (screenshots) await phone.screenshot({ path: `${screenshots}/note-phone-dark.png` });
     await phone.context().close();
+
+    const desktop = await newPage({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
+    await signIn(desktop);
+    await desktop.goto(`${baseUrl}/notes/${note.id}?lines=1`);
+    await desktop.locator(".rich-editor .line-history-stamp time").first().waitFor();
+    assert.ok((await desktop.locator(".rich-editor .ProseMirror").innerText()).includes("NoteBodyEndingRemainsReachable"));
+    await assertGutterLayout(desktop, ".rich-editor");
+    if (screenshots) await desktop.screenshot({ path: `${screenshots}/note-desktop-long-content.png`, fullPage: true });
+    await desktop.context().close();
   });
 });
 

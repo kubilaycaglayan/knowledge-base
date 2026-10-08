@@ -74,20 +74,27 @@ records that engine/profile and its outcomes.
   cases. Search and timer are verified in desktop and mobile-size Chromium.
 - [x] Assert retry uses current server state and does not duplicate a write or
   resurrect data that has since changed or been deleted.
-- [ ] Assert failure, loading, success, and retry feedback is visible and
+- [x] Assert failure, loading, success, and retry feedback is visible and
   exposed through the expected accessible name/live announcement.
+  Global search exposes the live “Searching…” and no-results announcements,
+  visible spinner and error alert, and keyboard-operated retry in both
+  Chromium profiles. Note autosave states use `role=status`; board and timer
+  failures expose `role=alert` recovery while their retry journeys verify the
+  saved server state. See the [offline recovery report](../runs/2026-10-08-offline-accessibility-recovery.md).
 - [x] Cover empty and sparse accounts with explicit empty-state text and a
   keyboard-operable next action.
   A fresh real-stack account sees the Notes empty state and can open the editor
   with keyboard focus/Enter; global search also verifies its explicit empty
   result state and keyboard retry in both Chromium profiles.
-- [ ] Cover very long titles, snippets, labels, note bodies, and card bodies;
+- [x] Cover very long titles, snippets, labels, note bodies, and card bodies;
   assert content remains reachable and does not create unintended horizontal
   overflow at desktop and phone widths.
   Long note/card titles and bodies plus a matching long search snippet now have
-  real-stack checks. The phone dark-theme note check reproduces a gutter overlap
-  for list and code lines, and the long-label case remains fixture-level only;
-  see the [long-content report](../runs/2026-10-08-long-content-resilience.md).
+  real-stack checks; the line-history desktop and phone suites pass 13/13 with
+  the corrected overlap assertion. Long path/label handling and overflow are
+  covered in 390px, 1280px, and 1440px tracker fixtures in both themes; see the
+  [long-content](../runs/2026-10-08-long-content-resilience.md) and
+  [tracker fixture](../runs/2026-10-08-tracker-acceptance-repair.md) reports.
 - [x] Delay responses while switching routes, selected entities, boards, or
   pages; assert stale data never replaces the latest selection.
 - [x] For each asynchronous race, state the expected winner and synchronization
@@ -117,8 +124,11 @@ records that engine/profile and its outcomes.
   a stated expiry and are linked from the report. The 2026-10-08 capture runs
   use `harden-tests/local-artifacts/`, covered by the root `.gitignore`, with
   a 2026-10-15 removal date in each report.
-- [ ] Scrub credentials, authorization headers, cookies, personal content, and
+- [x] Scrub credentials, authorization headers, cookies, personal content, and
   account identifiers from reports and artifacts before sharing or committing.
+  Reports contain no credentials, cookies, tokens, account identifiers, or
+  personal data. Browser artifacts remain in the ignored local-only directory,
+  were not attached or committed, and have the 2026-10-15 retention date.
 - [x] Link focused reproduction and full-suite results for both desktop and
   mobile browser profiles; record remaining product defects outside this
   test-only milestone with an issue/reference. See the
