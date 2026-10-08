@@ -1,6 +1,8 @@
 package com.know.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 
 import com.know.domain.BoardCardRepository;
 import com.know.domain.BoardStatusRepository;
@@ -12,6 +14,8 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +29,7 @@ import org.springframework.scheduling.config.ScheduledTaskHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
@@ -62,6 +67,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
 
   @Autowired ScheduledTaskHolder scheduledTasks;
 
+  @MockBean Clock clock;
+
   @Autowired BoardCardRepository boardCards;
 
   @Autowired BoardStatusRepository boardStatuses;
@@ -71,6 +78,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   @BeforeEach
   void setUp() {
     base = "http://localhost:" + port;
+    doAnswer(invocation -> Instant.now()).when(clock).instant();
+    doReturn(ZoneOffset.UTC).when(clock).getZone();
   }
 
   // Helpers
@@ -1416,6 +1425,32 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         get("/api/v1/reports?period=WEEK&anchor=2024-12-31", token).getBody();
     assertEquals("2024-12-30", rollover.get("from").asText());
     assertEquals("2025-01-05", rollover.get("to").asText());
+  }
+
+  @Test
+  void postgresRunningEntryReportUsesInjectedNowAtUtcDayBoundary() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This injected-clock running-entry case runs against PostgreSQL");
+    }
+    Instant startedAt = Instant.parse("2024-03-10T06:59:20Z");
+    Instant now = Instant.parse("2024-03-10T07:00:00Z");
+    doReturn(startedAt).when(clock).instant();
+    String token = freshToken();
+    ResponseEntity<JsonNode> started =
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Frozen running entry\",\"source\":\"WEB\"}");
+    assertEquals(HttpStatus.CREATED, started.getStatusCode(), String.valueOf(started.getBody()));
+    doReturn(now).when(clock).instant();
+
+    ResponseEntity<JsonNode> response =
+        get("/api/v1/reports?startDate=2024-03-10&endDate=2024-03-10", token);
+    assertEquals(HttpStatus.OK, response.getStatusCode(), String.valueOf(response.getBody()));
+    assertEquals("2024-03-10", response.getBody().get("from").asText());
+    assertEquals("2024-03-10", response.getBody().get("to").asText());
+    assertEquals(40, response.getBody().get("totalSeconds").asLong());
   }
 
   @Test

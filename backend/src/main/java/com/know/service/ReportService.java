@@ -17,10 +17,20 @@ public class ReportService {
   private final LabelRepository sessionLabels;
   private final TimeEntryLabelRepository entryLabels;
   private final CalendarService calendar;
+  private final Clock clock;
 
   public ReportService(
       TimeEntryRepository entries, PathRepository paths, LabelRepository sessionLabels) {
-    this(entries, paths, sessionLabels, null, null);
+    this(entries, paths, sessionLabels, null, null, Clock.systemUTC());
+  }
+
+  public ReportService(
+      TimeEntryRepository entries,
+      PathRepository paths,
+      LabelRepository sessionLabels,
+      TimeEntryLabelRepository entryLabels,
+      CalendarService calendar) {
+    this(entries, paths, sessionLabels, entryLabels, calendar, Clock.systemUTC());
   }
 
   @Autowired
@@ -29,12 +39,14 @@ public class ReportService {
       PathRepository paths,
       LabelRepository sessionLabels,
       TimeEntryLabelRepository entryLabels,
-      CalendarService calendar) {
+      CalendarService calendar,
+      Clock clock) {
     this.entries = entries;
     this.paths = paths;
     this.sessionLabels = sessionLabels;
     this.entryLabels = entryLabels;
     this.calendar = calendar;
+    this.clock = clock;
   }
 
   public record Category(UUID id, String label, long seconds, String color) {}
@@ -92,7 +104,7 @@ public class ReportService {
       LocalDate anchor,
       Collection<UUID> selectedPathIds,
       Collection<UUID> selectedLabelIds) {
-    LocalDate selected = anchor == null ? LocalDate.now(ZoneOffset.UTC) : anchor;
+    LocalDate selected = anchor == null ? LocalDate.now(clock) : anchor;
     LocalDate fromDate = period.start(selected);
     LocalDate toDateExclusive = period.next(fromDate);
     return report(
@@ -180,7 +192,7 @@ public class ReportService {
       Collection<UUID> selectedLabelIds) {
     Instant from = fromDate.atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant reportEnd = toDateExclusive.atStartOfDay(ZoneOffset.UTC).toInstant();
-    Instant now = Instant.now();
+    Instant now = clock.instant();
     Instant to = reportEnd.isBefore(now) ? reportEnd : now;
     Set<UUID> pathFilter =
         selectedPathIds == null

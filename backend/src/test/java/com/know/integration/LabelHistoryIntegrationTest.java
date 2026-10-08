@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -210,6 +211,40 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
     assertEquals(24, history.get("hours").size());
     history.get("hours").forEach(hour -> assertEquals(0, hour.get("uses").asLong()));
     assertEquals(0, history.get("related").size());
+  }
+
+  @Test
+  void postgresHighVolumeRecordPagesHaveStableOrderWithoutGaps() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This high-volume history case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Large history");
+    Instant base = at("2026-05-02T09:00:00Z");
+    for (int index = 0; index < 55; index++) {
+      Instant start = base.plusSeconds(index * 60L);
+      session(owner, start, start.plusSeconds(20), labelId);
+    }
+
+    String endpoint = "/api/v1/labels/" + labelId + "/history/records?kind=sessions";
+    List<String> actual = new java.util.ArrayList<>();
+    List<String> dates = new java.util.ArrayList<>();
+    for (int page = 0; page < 6; page++) {
+      JsonNode response = ok(HttpMethod.GET, endpoint + "&page=" + page, owner, null);
+      response.get("items")
+          .forEach(
+              item -> {
+                actual.add(item.get("id").asText());
+                dates.add(item.get("date").asText());
+              });
+      assertEquals(page < 5, response.get("hasMore").asBoolean());
+    }
+    assertEquals(55, actual.size());
+    assertEquals(55, actual.stream().distinct().count());
+    List<String> expectedDates = new java.util.ArrayList<>();
+    for (int index = 54; index >= 0; index--)
+      expectedDates.add(base.plusSeconds(index * 60L).toString());
+    assertEquals(expectedDates, dates);
   }
 
   // LH-03

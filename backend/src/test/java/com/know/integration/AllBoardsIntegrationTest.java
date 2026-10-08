@@ -237,6 +237,99 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     }
   }
 
+  @Test
+  void postgresConcurrentCardMovesKeepOneWinnerForTheExpectedTimestamp() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent board move race runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Concurrent card move board");
+    String backlogId = statusId(token, boardId, "Backlog");
+    String doingId = statusId(token, boardId, "In Progress");
+    String doneId = statusId(token, boardId, "Done");
+    JsonNode initial = card(token, boardId, "Backlog", "Movable card", "LOW");
+    String cardId = initial.get("id").asText();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(
+              () ->
+                  moveCardTogether(boardId, cardId, token, doingId, startTogether));
+      Future<Integer> second =
+          requests.submit(
+              () ->
+                  moveCardTogether(boardId, cardId, token, doneId, startTogether));
+      List<Integer> statuses = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+      assertEquals(List.of(200, 200), statuses.stream().sorted().toList());
+      JsonNode persisted = get("/api/v1/boards/" + boardId + "/cards/" + cardId, token).getBody();
+      assertTrue(List.of(doingId, doneId).contains(persisted.get("statusId").asText()));
+      assertNotEquals(backlogId, persisted.get("statusId").asText());
+      assertEquals(
+          1,
+          get("/api/v1/boards/" + boardId + "/cards", token)
+              .getBody()
+              .findValuesAsText("id")
+              .stream()
+              .filter(cardId::equals)
+              .count());
+    }
+  }
+
+  @Test
+  void postgresGanttIncludesCardsTouchingBothDateRangeEndpoints() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This date-only board range case runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Inclusive Gantt board");
+    createDatedCard(token, boardId, "Before range", "2024-03-09", "2024-03-09");
+    createDatedCard(token, boardId, "Starts at range", "2024-03-10", "2024-03-10");
+    createDatedCard(token, boardId, "Ends at range", "2024-03-11", "2024-03-11");
+    createDatedCard(token, boardId, "After range", "2024-03-12", "2024-03-12");
+
+    JsonNode gantt =
+        get("/api/v1/boards/all/gantt?from=2024-03-10&to=2024-03-11", token).getBody();
+    assertEquals(
+        List.of("Before range", "Starts at range", "Ends at range", "After range"),
+        titles(gantt));
+    assertEquals("2024-03-10", gantt.get(1).get("startDate").asText());
+    assertEquals("2024-03-11", gantt.get(2).get("dueDate").asText());
+  }
+
+  private int moveCardTogether(
+      String boardId,
+      String cardId,
+      String token,
+      String targetStatusId,
+      CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return post(
+            "/api/v1/boards/" + boardId + "/cards/" + cardId + "/move",
+            token,
+            "{\"statusId\":\""
+                + targetStatusId
+                + "\",\"position\":0}")
+        .getStatusCode()
+        .value();
+  }
+
+  private void createDatedCard(
+      String token, String boardId, String title, String startDate, String dueDate) {
+    ResponseEntity<JsonNode> result =
+        post(
+            "/api/v1/boards/" + boardId + "/cards",
+            token,
+            "{\"title\":\""
+                + title
+                + "\",\"startDate\":\""
+                + startDate
+                + "\",\"dueDate\":\""
+                + dueDate
+                + "\"}");
+    assertEquals(HttpStatus.CREATED, result.getStatusCode(), String.valueOf(result.getBody()));
+  }
+
   private int updateCardTogether(
       String boardId,
       String cardId,
