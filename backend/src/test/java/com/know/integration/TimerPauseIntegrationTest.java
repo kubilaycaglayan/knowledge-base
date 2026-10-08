@@ -30,12 +30,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Pausing and resuming sessions (docs/session-pause-acceptance-checklist.md). */
 class TimerPauseIntegrationTest extends IntegrationTestSupport {
   @LocalServerPort int port;
   @Autowired TestRestTemplate rest;
   @Autowired ObjectMapper mapper;
+  @Autowired JdbcTemplate jdbc;
   String base;
 
   @BeforeEach
@@ -115,6 +117,57 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
     JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
     assertEquals(1, draft.get("labelIds").size());
     assertEquals(labelId, draft.get("labelIds").get(0).asText());
+  }
+
+  @Test
+  void postgresPauseFailureRollsBackStoppedSegmentWhenDraftLabelsFail() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Pause transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Pause rollback label");
+    JsonNode running = startedMinutesAgo(owner, null, labelId, 3);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_pause_draft_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced pause draft failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on tracker_draft_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/pause", owner, "{}").getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on tracker_draft_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    JsonNode current = get("/api/v1/timers/current", owner).getBody();
+    assertTrue(current.get("running").asBoolean());
+    assertEquals(running.get("id").asText(), current.get("id").asText());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+  }
+
+  private UUID userId(String token) {
+    try {
+      return UUID.fromString(
+          mapper
+              .readTree(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]))
+              .get("sub")
+              .asText());
+    } catch (Exception exception) {
+      throw new AssertionError("Could not read test user from token", exception);
+    }
   }
 
   private int saveDraftTogether(String token, String labelId, CyclicBarrier startTogether)
