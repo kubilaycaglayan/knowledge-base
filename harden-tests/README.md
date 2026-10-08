@@ -23,7 +23,26 @@ already been completed. Existing global-search API and fixture coverage is
 tracked in `docs/global-search-acceptance-checklist.md`; HARD-01 adds the
 missing cross-profile real-stack evidence.
 
-The current real-stack browser suites accept `BROWSER_ENGINE=chromium|webkit` and `BROWSER_PROFILE=desktop|iphone` (desktop Chromium is the default). For an emulated iPhone WebKit run, install the browser and its host dependencies with `(cd frontend && npx playwright install --with-deps webkit)`, then run `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone ./scripts/test-run-all.sh`. The profile uses a 390×844 viewport, touch input, and a device scale factor of 3. Mobile Chrome/Chromium emulation is a separate planned profile and is not currently selectable in these runners. An iPhone-sized viewport is not equivalent to a physical iPhone browser; it does not represent Chrome on Android or iPhone. Record the exact profile used in each report.
+The real-stack runners select engine and viewport independently. Use
+`BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop` for desktop Chromium,
+`BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone` for mobile-size Chromium with
+touch emulation, or `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone` for the
+emulated iPhone WebKit context. The `iphone` profile uses 390×844, touch input,
+and device scale factor 3 with either engine. For example:
+
+```bash
+BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop ./scripts/test-run-all.sh
+BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone ./scripts/test-run-all.sh
+BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone ./scripts/test-run-all.sh
+```
+
+The Chromium phone context verifies responsive layout and touch behavior using
+the bundled Playwright Chromium binary; its default Linux user agent does not
+make it a physical Android Chrome run. The WebKit profile is also emulated and
+does not represent a physical iPhone. Record engine, viewport, touch setting,
+and device scale factor explicitly. See the [local browser validation
+runbook](local-browser-validation.md) for this machine's dated capability
+snapshot and capture procedure.
 
 ## Docker workflow
 
@@ -35,4 +54,10 @@ Cleanup must stay scoped to the generated test project and explicitly test-owned
 
 Before changing a failing assertion, inspect [runs/README.md](runs/README.md) and the latest detailed report. Group cases by suspected shared cause (for example, auth/session setup, network timing, shared fixture state, or browser engine behavior), count affected cases and suites, and investigate the largest group first. Keep a separate `Unclassified` group until evidence supports a cause. After investigation, update the report with the confirmed cause or correct the earlier classification. Do not hide missing controls behind conditional locator-count assertions.
 
-Each desktop Chromium and emulated iPhone WebKit pass gets its own report under [`runs/`](runs/). Include dates, commit, unique Compose project, image refs, browser/profile, outcomes, failed cases, grouped counts, and links to retained logs/artifacts. Do not place credentials, tokens, or personal data in reports or artifacts.
+Each desktop Chromium, mobile-size Chromium, and emulated iPhone WebKit pass
+gets its own report under [`runs/`](runs/). Include dates, commit, unique
+Compose project, image refs, browser/profile, outcomes, failed cases, grouped
+counts, and links to retained logs/artifacts. Do not place credentials, tokens,
+or personal data in reports or artifacts. The [local browser validation
+runbook](local-browser-validation.md) records the available machine and gives
+repeatable commands for these profiles.

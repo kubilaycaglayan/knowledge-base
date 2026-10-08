@@ -1,6 +1,13 @@
 # E2E run records and failure summary
 
-Create one Markdown file per E2E pass, for example `2026-10-08-<short-commit>-desktop-chromium.md` and `2026-10-08-<short-commit>-iphone-webkit.md`. Keep logs and screenshots in the CI artifact store or a local ignored artifact directory and link them here. Never commit secrets or personal data.
+Create one Markdown file per E2E pass, for example
+`2026-10-08-<short-commit>-desktop-chromium.md`,
+`2026-10-08-<short-commit>-mobile-chromium.md`, and
+`2026-10-08-<short-commit>-iphone-webkit.md`. Keep logs and screenshots in the
+CI artifact store or a local ignored artifact directory and link them here.
+Never commit secrets or personal data. See the [local browser validation
+runbook](../local-browser-validation.md) for exact engine/profile combinations
+and machine preflight commands.
 
 ## Required report template
 
@@ -11,7 +18,7 @@ Create one Markdown file per E2E pass, for example `2026-10-08-<short-commit>-de
 - Commit:
 - Compose project:
 - Images (tag and immutable ID):
-- Browser/profile (version, viewport, touch):
+- Browser engine/version and profile (viewport, user agent, touch, scale factor):
 - Environment (OS, Node, Playwright):
 - Suite outcomes (passed/failed/skipped):
 - Failed cases:

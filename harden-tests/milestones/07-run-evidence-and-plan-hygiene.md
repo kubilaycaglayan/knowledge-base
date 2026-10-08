@@ -25,6 +25,9 @@ mistake their scope and completion status.
 - [ ] Amend the report template to require exact profile, browser version,
   viewport, touch settings, commit, Compose project, image tag and immutable
   ID, command, pass/fail/skip counts, failed cases, and artifact links.
+- [ ] Use the [local browser validation runbook](../local-browser-validation.md)
+  to capture a dated machine preflight; treat its hardware and browser cache
+  snapshot as time-bound evidence and refresh it for each performance baseline.
 - [ ] Retain Playwright traces, screenshots, browser console/request logs,
   container logs, and test output for failed runs with a defined retention
   location and expiry. Keep generated artifacts ignored or in CI storage.
@@ -56,3 +59,4 @@ mistake their scope and completion status.
 - `docs/testing.md`
 - `.github/workflows/verify.yml`
 - `scripts/test-run-all.sh`
+- `harden-tests/local-browser-validation.md`

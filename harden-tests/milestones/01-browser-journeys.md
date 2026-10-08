@@ -37,12 +37,13 @@ browser history, and responsive interaction that fixture tests cannot expose.
   check safe not-found behavior.
 - [ ] Cover a copied card URL whose card is outside the initial loaded page and
   confirm the owning board/card dialog opens after direct load.
-- [ ] Run each journey with `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop`
-  and `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone`; add a separate mobile
-  Chrome/Chromium phone profile to the runner and run it as a distinct profile.
-  The current runners do not yet expose that profile. Retain separate reports,
-  browser versions, viewport/touch configuration, and artifacts. An iPhone
-  WebKit run is not evidence for Chrome on Android.
+- [ ] Run each journey with `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop`,
+  `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone`, and
+  `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone`; these combinations use
+  desktop Chromium, mobile-size Chromium, and mobile-size WebKit respectively.
+  Retain separate reports, browser versions, viewport/touch configuration,
+  and artifacts. Mobile-size Chromium does not prove physical Android Chrome
+  compatibility, and WebKit is not Chrome coverage.
 - [ ] Add the selected real-stack journeys to `scripts/test-run-all.sh` or a
   documented CI job with unique Compose project and credentials. Keep cleanup
   project-scoped.

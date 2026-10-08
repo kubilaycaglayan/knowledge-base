@@ -34,16 +34,18 @@ when its linked test or run report provides the named evidence.
   Playwright, and browser versions in the run report.
 - [ ] Pass the full selected journey set in desktop Chromium at the documented
   desktop viewport and scale factor.
-- [ ] Pass the full selected journey set in mobile Chrome/Chromium emulation at
-  a documented phone viewport, touch enabled, and mobile device scale factor.
+- [ ] Pass the full selected journey set with
+  `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone` at 390×844, touch enabled,
+  and device scale factor 3; report it as mobile-size Chromium emulation.
 - [ ] Pass the supported emulated iPhone WebKit profile separately; label it
   WebKit and do not count it as Chrome evidence.
 - [ ] Check mobile layout for horizontal overflow, clipped dialogs, reachable
   controls, and usable Back/Forward navigation at phone width.
 - [ ] Check desktop layout for visible result identity, dialog placement, and
   keyboard-operable search/result navigation.
-- [ ] State clearly that emulation does not prove behavior on a physical
-  Android or iPhone device; record physical-device evidence separately if run.
+- [ ] State clearly that Chromium emulation does not prove physical Android
+  Chrome behavior and WebKit emulation does not prove physical iPhone behavior;
+  record physical-device evidence separately if run.
 
 ## Isolation and evidence
 

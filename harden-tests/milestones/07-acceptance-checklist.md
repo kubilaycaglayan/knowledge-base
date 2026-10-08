@@ -25,6 +25,9 @@ checkbox is complete only when the report or repository artifact exists.
   type/version and migration result for stack-backed runs.
 - [ ] Record browser name/version, profile, viewport, scale factor, touch
   setting, OS, Node, Playwright, and relevant machine constraints.
+- [ ] Attach a dated local machine preflight for comparison/performance runs;
+  re-capture CPU, memory, Docker, disk, runtime, and browser inventory rather
+  than copying a historical snapshot as current evidence.
 - [ ] Keep desktop Chromium, mobile Chrome/Chromium emulation, and iPhone
   WebKit reports separate; do not infer physical-device support from emulation.
 - [ ] List failed/skipped cases and classify every observed failure as

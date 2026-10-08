@@ -25,7 +25,8 @@ for completion criteria, including reconciliation of the existing run records.
 - Existing real-stack suites exercise board creation/edits/pagination and delayed responses, note/card version conflicts and retry, timer WebSocket reconnect behavior, and session continuity. Existing fixture suites cover navigation, accessibility, and mobile viewport behavior.
 - [x] Add selectable desktop Chromium and emulated iPhone WebKit profiles with touch emulation to the existing real-stack browser suites.
 - [x] Run desktop Chromium and emulated iPhone WebKit real-stack journeys for board/card edits, pagination, note conflicts, timer sync/fallback, delayed board responses, and session restoration; keep reports separate by browser profile.
-- [ ] Add and record a mobile Chrome/Chromium phone profile as its own run type; the current runners only select desktop Chromium or iPhone WebKit. Do not treat WebKit as Chrome coverage.
+- [x] Confirm the existing real-stack suites support mobile-size Chromium by combining `BROWSER_ENGINE=chromium` with `BROWSER_PROFILE=iphone`; report it as mobile Chromium emulation, not physical Android Chrome.
+- [ ] Run and record a mobile-size Chromium profile separately from desktop Chromium and iPhone WebKit, with engine, viewport, touch, scale factor, and machine details.
 - [ ] Add global search and direct deep-link journeys to both profiles.
 - [ ] Expand explicit empty and long-content, delayed-response, network-failure, and retry states across the remaining journeys. Existing coverage includes delayed board responses, timer HTTP fallback, and note retry.
 
@@ -70,4 +71,4 @@ workflow jobs must not be counted as active iOS CI coverage.
 
 ## Acceptance
 
-The full acceptance set is listed in `README.md` and the repository's testing guidance. At minimum, run the existing unit/integration suites, web build, extension tests, accessibility/security/cleanup checks, and disposable full-stack smoke. Run and record desktop Chromium, mobile Chrome/Chromium emulation, and iPhone WebKit as distinct browser profiles for the journeys that support them. Store baseline measurements first without failing builds; promote the 20% gate only after repeatable observations support it.
+The full acceptance set is listed in `README.md` and the repository's testing guidance. At minimum, run the existing unit/integration suites, web build, extension tests, accessibility/security/cleanup checks, and disposable full-stack smoke. Run and record desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit as distinct browser profiles for the journeys that support them. Store baseline measurements first without failing builds; promote the 20% gate only after repeatable observations support it.
