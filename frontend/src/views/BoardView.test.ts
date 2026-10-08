@@ -2213,6 +2213,23 @@ describe("BoardView", () => {
       expect(mockRoute.query.q).toBeUndefined();
       await wrapper.unmount();
     });
+    it("opens a linked card that the loaded board view doesn't hold", async () => {
+      // A card on a hidden path board, or past a column's first page, is fetched on its own.
+      liveRoute({ board: "work", card: "far-card", cardBoard: "hidden-board" });
+      const store = useBoardsStore();
+      store.boards = [board("work", "Work")];
+      vi.mocked(api).mockImplementation(async (path: string) =>
+        path === "/boards/hidden-board/cards/far-card"
+          ? { id: "far-card", boardId: "hidden-board", statusId: "status-9", title: "Far away card", body: "{}", priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" }
+          : [],
+      );
+      const wrapper = mountBoard();
+      await flushPromises();
+      expect(vi.mocked(api)).toHaveBeenCalledWith("/boards/hidden-board/cards/far-card");
+      expect((wrapper.find(".card-title-input").element as HTMLTextAreaElement | undefined)?.value).toBe("Far away card");
+      await wrapper.unmount();
+    });
+
     it("opens card search with / and leaves Cmd/Ctrl+K to global search", async () => {
       liveRoute({ board: "work" });
       const store = useBoardsStore();
