@@ -46,8 +46,10 @@ time boundaries and empty/large result sets.
 
 The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
 passes the full PostgreSQL suite and migrated startup check. The milestone
-remains in progress because injected-clock/running-entry cases, board move and
-label/assignment races, and high-volume label history are still open.
+remains in progress because duplicate label/assignment races, broader rollback
+and direct-constraint coverage, and the backend meaning of Gantt range dates
+remain open. The report and timer services now accept an injectable UTC clock;
+`LabelHistoryService` continues to use wall time directly.
 
 ## Acceptance evidence
 

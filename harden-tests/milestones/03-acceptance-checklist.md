@@ -20,8 +20,8 @@ criteria.
 | Partial and expression unique indexes | [V2](../../backend/src/main/resources/db/migration/V2__core_domain.sql) (one running timer per user), [V4](../../backend/src/main/resources/db/migration/V4__case_insensitive_user_email.sql) (case-insensitive email), [V6](../../backend/src/main/resources/db/migration/V6__google_identity.sql) (Google subject), [V7](../../backend/src/main/resources/db/migration/V7__clockify_import_identity.sql) (import identity), [V19](../../backend/src/main/resources/db/migration/V19__daily_calendar_records.sql) (daily-label name), [V27](../../backend/src/main/resources/db/migration/V27__unify_labels.sql) (label name), and [V45](../../backend/src/main/resources/db/migration/V45__path_boards.sql) (one path board per path) define database uniqueness not represented by a simple entity field constraint. PostgreSQL tests race timer starts and exercise identity/index constraints. | Add PostgreSQL races for duplicate label/assignment writes and stable API mapping for each race. |
 | Database checks and referential actions | [V1](../../backend/src/main/resources/db/migration/V1__foundation.sql)/[V2](../../backend/src/main/resources/db/migration/V2__core_domain.sql) define JSONB metadata, note-target and progress checks, `timestamptz`, and time-entry duration/order checks. [V19](../../backend/src/main/resources/db/migration/V19__daily_calendar_records.sql)/[V27](../../backend/src/main/resources/db/migration/V27__unify_labels.sql) define calendar/label checks and cascades. [V43](../../backend/src/main/resources/db/migration/V43__boards.sql)/[V49](../../backend/src/main/resources/db/migration/V49__board_column_sorts.sql) define board/status/card checks, join-table keys, and cascades. `PostgresDatabaseConstraintIntegrationTest` verifies representative time checks, one-running-timer uniqueness, and delete cascade/set-null behavior. | Add direct-write checks for the other listed constraints as those boundaries change. |
 | Native repository queries | [`TimeEntryRepository`](../../backend/src/main/java/com/know/domain/TimeEntryRepository.java) contains native user-scoped lookup, import identity, and recent-path SQL; [`PathRepository`](../../backend/src/main/java/com/know/domain/PathRepository.java) contains native ordered lookup, including-deleted lookup, and restore SQL; [`BoardCardRepository`](../../backend/src/main/java/com/know/domain/BoardCardRepository.java) contains native priority-page SQL. | Run the affected repository/service paths on PostgreSQL and assert UUID mapping/casts, null ordering, stable tie ordering, deleted-row scope, updates, and page boundaries. |
-| Time and date storage | Migrations use `timestamptz` for instants and `date` for daily records and card ranges. [`ReportService`](../../backend/src/main/java/com/know/service/ReportService.java) derives UTC day windows and calls `Instant.now()`; [`TimerService`](../../backend/src/main/java/com/know/service/TimerService.java) and [`LabelHistoryService`](../../backend/src/main/java/com/know/service/LabelHistoryService.java) also read wall time directly. `KnowIntegrationTest` checks UTC report periods, leap day, exact half-open instants, and rollover on PostgreSQL. | Inject/freeze time for running-entry cutoff; cover date-only board inclusivity and contractual DST/zone conversion on PostgreSQL. |
-| Pages and result volume | `AllBoardsIntegrationTest` checks a 55-card cursor walk on PostgreSQL; `KnowIntegrationTest` checks a full leap year of calendar days, 48 report entries, and stable ordering for 60 exported logs. Search cap/page behavior runs on PostgreSQL through the shared profile. | Add high-volume label-history paging and explicit zero-result PostgreSQL checks for each endpoint family. |
+| Time and date storage | Migrations use `timestamptz` for instants and `date` for daily records and card ranges. [`ReportService`](../../backend/src/main/java/com/know/service/ReportService.java) and [`TimerService`](../../backend/src/main/java/com/know/service/TimerService.java) use an injectable UTC `Clock`. `KnowIntegrationTest` pins report time and checks UTC day/week/month windows, leap day, exact half-open instants, rollover, and a running-entry cutoff on PostgreSQL. | `LabelHistoryService` still uses the system clock. The API's Gantt `from`/`to` values currently do not filter cards, so date-range inclusivity is not a backend query contract. Add a product contract before testing it. A DST/zone conversion case also remains open if the API contract adds non-UTC date boundaries. |
+| Pages and result volume | `SearchIntegrationTest` checks a 1,003-result cap and page boundaries on PostgreSQL; `AllBoardsIntegrationTest` checks a 55-card cursor walk; `KnowIntegrationTest` checks a full leap year of calendar days, 48 report entries, and stable ordering for 60 exported logs; `LabelHistoryIntegrationTest` checks six ordered pages of 55 sessions. Existing empty search/history/page/export cases also run on PostgreSQL through the shared profile. | Add any newly introduced endpoint family's empty/high-volume PostgreSQL case to this inventory. |
 | Concurrency and rollback | PostgreSQL integration tests race timer starts, note versions, and card timestamps; `KnowIntegrationTest` forces a later invalid imported note after an earlier valid path and checks rollback. | Add board move/order and duplicate label/assignment races, and rollback cases for other multi-step transfers/operations. |
 
 - [x] Review each row for newly added native queries, constraints, indexes,
@@ -70,13 +70,13 @@ criteria.
 - [x] Treat the existing `LabelHistoryIntegrationTest` `Europe/Istanbul` case
   as H2 integration evidence only; preserve it and add PostgreSQL coverage for
   date-to-instant conversion.
-- [ ] Freeze/inject the clock; assert UTC day, week, and month report boundaries
+- [x] Freeze/inject the clock; assert UTC day, week, and month report boundaries
   including events exactly at inclusive/exclusive endpoints.
 - [ ] Cover date-only board range inclusivity, leap day, month/year rollover,
   zero-duration intervals, and a running entry ending at the injected `now`.
 - [ ] Record and assert the timezone used to translate API dates into query
   boundaries; include an offset/DST transition case if supported by contract.
-- [ ] Cover empty and high-volume search, reports, calendar, board cursor pages,
+- [x] Cover empty and high-volume search, reports, calendar, board cursor pages,
   label history, and exports using deterministic fixture sizes.
 - [ ] Assert stable ordering, no duplicate or missing records across page
   boundaries, valid continuation tokens, documented caps, and bounded response
@@ -87,8 +87,9 @@ criteria.
   area before marking the milestone complete.
 
 HARD-03 remains **In Progress**. The test inventory, CI gate, migration paths,
-guard, timer/note/card races, import rollback, and representative PostgreSQL
-volume checks are complete. The unchecked criteria above are real remaining
-work, chiefly injected-clock/running timer cutoffs, board move/order and
-label/assignment races, full multi-step rollback breadth, label-history scale,
-and broader database check coverage. See the dated [run evidence](../runs/2026-10-08-hard03-postgres.md).
+guard, timer/note/card races, injected running-entry cutoff, import rollback,
+and representative PostgreSQL volume checks are complete. Unchecked criteria
+remain for duplicate label/assignment races, rollback breadth beyond imports,
+additional direct constraint cases, and the board Gantt range semantics (the
+current API does not filter cards by its `from`/`to` parameters). See the dated
+[run evidence](../runs/2026-10-08-hard03-postgres.md).

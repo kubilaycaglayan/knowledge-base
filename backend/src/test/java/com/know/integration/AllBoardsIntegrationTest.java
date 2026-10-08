@@ -276,7 +276,7 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
-  void postgresGanttIncludesCardsTouchingBothDateRangeEndpoints() {
+  void postgresGanttKeepsDateOnlyCardDatesWithoutZoneDrift() {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
         "This date-only board range case runs against PostgreSQL");

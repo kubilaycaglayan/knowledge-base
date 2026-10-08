@@ -1387,6 +1387,7 @@ class KnowIntegrationTest extends IntegrationTestSupport {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "This timestamp boundary case is part of the PostgreSQL integration profile");
     }
+    doReturn(Instant.parse("2024-03-01T00:00:10Z")).when(clock).instant();
     String token = freshToken();
     for (String entry :
         new String[] {
