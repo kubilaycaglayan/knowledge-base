@@ -10,6 +10,32 @@ final class NotesTests: XCTestCase {
     XCTAssertTrue(json.contains("\"type\":\"doc\""))
   }
 
+  // Lines match the web editor and the server's line times, so an iOS save of an
+  // untouched rich note keeps every line (and its edit time).
+  func testPlainTextKeepsEachRichLineSeparate() {
+    let rich = #"""
+      {"type":"doc","content":[
+        {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Plan"}]},
+        {"type":"paragraph","content":[{"type":"text","text":"Alpha"}]},
+        {"type":"paragraph"},
+        {"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Item"}]}]}]},
+        {"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"Done"}]}]}]},
+        {"type":"paragraph","content":[{"type":"text","text":"First"},{"type":"hardBreak"},{"type":"text","text":"Second"}]},
+        {"type":"codeBlock","content":[{"type":"text","text":"a = 1\nb = 2"}]}
+      ]}
+      """#
+    XCTAssertEqual(
+      NoteDocument.plainText(content: rich), "Plan\nAlpha\n\nItem\nDone\nFirst\nSecond\na = 1\nb = 2")
+  }
+
+  func testPlainTextRoundTripsBlankLinesAndFallsBackForNonDocuments() {
+    let body = "One\n\nThree\n"
+    XCTAssertEqual(NoteDocument.plainText(content: NoteDocument.json(body: body)), body)
+    XCTAssertEqual(NoteDocument.plainText(content: NoteDocument.empty), "")
+    XCTAssertEqual(NoteDocument.plainText(content: "legacy text", fallback: "fallback"), "fallback")
+    XCTAssertEqual(NoteDocument.plainText(content: "legacy text"), "legacy text")
+  }
+
   func testPaginationIsCachedByQueryAndPageSettings() async {
     let stub = NotesStub()
     let model = NotesModel(transport: stub)
