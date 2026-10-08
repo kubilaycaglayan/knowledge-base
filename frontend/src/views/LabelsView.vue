@@ -10,6 +10,7 @@ import LabelHistoryDialog from "../components/LabelHistoryDialog.vue";
 import { mdiHistory, mdiPencilOutline, mdiTrashCanOutline } from "@mdi/js";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
+import { isPageSearchShortcut } from "../lib/search";
 import {
   defaultLabelScopes as defaultScopes,
   useLabelsStore,
@@ -62,13 +63,23 @@ const editingLabel = computed(() => labels.value.find((label) => label.id === ed
 async function saveEditingLabel() {
   if (editingLabel.value) await save(editingLabel.value);
 }
+// "/" focuses the label filter; ⌘K / Ctrl+K belongs to global search.
 function searchKeydown(event: KeyboardEvent) {
-  if (event.defaultPrevented || event.isComposing || document.querySelector('[aria-modal="true"]')) return;
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-    event.preventDefault();
-    searchInput.value?.focus();
-    searchInput.value?.select();
-  }
+  if (!isPageSearchShortcut(event)) return;
+  event.preventDefault();
+  searchInput.value?.focus();
+  searchInput.value?.select();
+}
+// /labels/:id opens that label's history over the list.
+const routeLabelId = computed(() => (typeof route?.params.id === "string" ? route.params.id : ""));
+watch(routeLabelId, (id) => { historyLabelId.value = id; }, { immediate: true });
+function openHistory(id: string) {
+  if (router && route) void router.push({ path: `/labels/${id}`, query: route.query });
+  else historyLabelId.value = id;
+}
+function closeHistory() {
+  historyLabelId.value = "";
+  if (router && route && routeLabelId.value) void router.replace({ path: "/labels", query: route.query });
 }
 
 async function load() {
@@ -207,7 +218,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
   <section class="labels-view">
     <header class="labels-heading">
       <input ref="searchInput" v-model="search" class="label-search" type="search"
-        name="label-search" aria-label="Search labels" aria-keyshortcuts="Meta+K Control+K"
+        name="label-search" aria-label="Search labels" aria-keyshortcuts="/"
         placeholder="Search labels…" autocomplete="off" @keydown.esc.prevent="search = ''" />
       <button
         class="icon-button"
@@ -273,7 +284,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
             :aria-label="`Show history of ${label.name}`"
             title="History"
             aria-haspopup="dialog"
-            @click="historyLabelId = label.id"
+            @click="openHistory(label.id)"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
               <path :d="mdiHistory" fill="currentColor" />
@@ -345,7 +356,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
     <LabelHistoryDialog
       v-if="historyLabelId"
       :label-id="historyLabelId"
-      @close="historyLabelId = ''"
+      @close="closeHistory"
     />
     <div
       v-if="addDialogOpen"

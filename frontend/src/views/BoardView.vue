@@ -23,6 +23,7 @@ import { useGanttScroll } from "../lib/use-gantt-scroll";
 import GanttCard from "../components/GanttCard.vue";
 import LabelPicker from "../components/LabelPicker.vue";
 import { ApiError } from "../lib/api";
+import { isPageSearchShortcut } from "../lib/search";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
 import { VueDatePicker } from "@vuepic/vue-datepicker";
@@ -238,7 +239,8 @@ function ganttSortLabel(field: GanttSortField) {
 const columnCards = (column: KanbanColumn) => (column.merged ? cardsForMerged(column.merged) : cardsFor(column.status!.id)).filter(matchesBoardSearch);
 const visibleColumnCards = columnCards;
 function toggleBoardSearch() { boardSearchOpen.value = !boardSearchOpen.value; if (boardSearchOpen.value) void nextTick(() => { boardSearchInput.value?.focus(); boardSearchInput.value?.select(); }); }
-function boardSearchKeydown(event: KeyboardEvent) { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); toggleBoardSearch(); return; } if (event.key === "Escape" && boardSearchOpen.value) { event.preventDefault(); boardSearchOpen.value = false; boardSearch.value = ""; } }
+// "/" opens (or returns to) the card search; ⌘K / Ctrl+K belongs to global search.
+function boardSearchKeydown(event: KeyboardEvent) { if (isPageSearchShortcut(event)) { event.preventDefault(); if (boardSearchOpen.value) void nextTick(() => { boardSearchInput.value?.focus(); boardSearchInput.value?.select(); }); else toggleBoardSearch(); return; } if (event.key === "Escape" && boardSearchOpen.value) { event.preventDefault(); boardSearchOpen.value = false; boardSearch.value = ""; } }
 const SORT_LABELS: Record<BoardCardSort, string> = { MANUAL: "unsorted", PRIORITY: "priority first", PRIORITY_LAST: "priority last" };
 const SORT_ICONS: Record<BoardCardSort, string> = { MANUAL: mdiSort, PRIORITY: mdiSortDescending, PRIORITY_LAST: mdiSortAscending };
 const sortTitle = (sort: BoardCardSort) => `${SORT_LABELS[sort][0].toUpperCase()}${SORT_LABELS[sort].slice(1)}; change to ${SORT_LABELS[nextSort(sort)]}`;

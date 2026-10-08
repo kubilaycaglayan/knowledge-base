@@ -15,14 +15,34 @@ const router = createRouter({
   routes: [
     { path: "/", component: () => import("./views/SessionsView.vue") },
     { path: "/paths", component: () => import("./views/PathsView.vue") },
+    {
+      path: "/paths/:id",
+      name: "path",
+      component: () => import("./views/PathsView.vue"),
+    },
     { path: "/timeline", component: () => import("./views/TimelineView.vue") },
     { path: "/sessions", redirect: "/" },
+    {
+      path: "/sessions/:id",
+      name: "session",
+      component: () => import("./views/SessionsView.vue"),
+    },
     { path: "/logs", component: () => import("./views/LogsView.vue") },
+    {
+      path: "/logs/:id",
+      name: "log",
+      component: () => import("./views/LogsView.vue"),
+    },
     { path: "/reports", component: () => import("./views/ReportsView.vue") },
     { path: "/calendar", component: () => import("./views/CalendarView.vue") },
     { path: "/imports", component: () => import("./views/ImportsView.vue") },
     { path: "/settings", component: () => import("./views/SettingsView.vue") },
     { path: "/labels", component: () => import("./views/LabelsView.vue") },
+    {
+      path: "/labels/:id",
+      name: "label",
+      component: () => import("./views/LabelsView.vue"),
+    },
     { path: "/development", component: () => import("./views/DevelopmentView.vue") },
     { path: "/board", component: () => import("./views/BoardView.vue") },
     {

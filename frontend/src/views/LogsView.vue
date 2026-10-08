@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { routeLocationKey, routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
+import { isPageSearchShortcut } from "../lib/search";
 import { useLogsStore, type Log } from "../stores/logs";
 import PromptDialog from "../components/PromptDialog.vue";
 import LabelPicker from "../components/LabelPicker.vue";
+import LogDialog from "../components/LogDialog.vue";
 
 type Draft = { body: string; occurredAt: string };
 type LogLabel = { id: string; name: string; color?: string | null };
@@ -29,6 +32,12 @@ const searchOpen = ref(false);
 const currentPage = ref(1);
 const searchInput = ref<HTMLInputElement | null>(null);
 const pageSize = 100;
+const router = inject(routerKey, undefined);
+const route = inject(routeLocationKey, undefined);
+// /logs/:id opens one log over the list.
+const routeLogId = computed(() => (typeof route?.params.id === "string" ? route.params.id : ""));
+const highlightedId = ref("");
+let highlightTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -164,7 +173,8 @@ function syncUrl() {
   else url.searchParams.delete("q");
   if (currentPage.value > 1) url.searchParams.set("page", String(currentPage.value));
   else url.searchParams.delete("page");
-  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  // Keep the router's own history state so Back and Forward still work.
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 function readUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -179,8 +189,9 @@ function toggleSearch() {
   if (searchOpen.value) requestAnimationFrame(() => searchInput.value?.focus());
   else searchQuery.value = "";
 }
+// "/" opens the log filter; ⌘K / Ctrl+K belongs to global search.
 function onGlobalKeydown(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+  if (isPageSearchShortcut(event)) {
     event.preventDefault();
     searchOpen.value = true;
     requestAnimationFrame(() => searchInput.value?.focus());
@@ -189,6 +200,31 @@ function onGlobalKeydown(event: KeyboardEvent) {
     searchOpen.value = false;
     searchQuery.value = "";
   }
+}
+function listQuery() {
+  return {
+    ...(searchQuery.value.trim() ? { q: searchQuery.value.trim() } : {}),
+    ...(currentPage.value > 1 ? { page: String(currentPage.value) } : {}),
+  };
+}
+function closeLogDialog() {
+  if (router) void router.replace({ path: "/logs", query: listQuery() });
+}
+/** Leaves the dialog for the log's place in the full list, briefly marked. */
+async function showInList(log: Log) {
+  searchQuery.value = "";
+  searchOpen.value = false;
+  await nextTick();
+  const index = logs.value.findIndex((value) => value.id === log.id);
+  currentPage.value = index < 0 ? 1 : Math.floor(index / pageSize) + 1;
+  if (router) await router.replace({ path: "/logs", query: listQuery() });
+  await nextTick();
+  highlightedId.value = log.id;
+  clearTimeout(highlightTimer);
+  highlightTimer = setTimeout(() => { highlightedId.value = ""; }, 2600);
+  const row = document.getElementById(`log-${log.id}`);
+  row?.scrollIntoView({ block: "center", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  row?.focus({ preventScroll: true });
 }
 function logRowClass(logsInGroup: Log[], index: number) {
   const previous = logsInGroup[index - 1];
@@ -307,29 +343,10 @@ async function saveEdit(log: Log) {
   error.value = "";
   const snapshot = { ...draft.value };
   try {
-    let saved: Log;
-    try {
-      saved = await api<Log>(`/logs/${log.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          ...snapshot,
-          occurredAt: isoDateTime(snapshot.occurredAt),
-          version: log.version,
-        }),
-      });
-    } catch (cause) {
-      if (!String(cause).includes("Log changed in another window")) throw cause;
-      const latest = await api<Log>(`/logs/${log.id}`);
-      saved = await api<Log>(`/logs/${log.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          ...snapshot,
-          occurredAt: isoDateTime(snapshot.occurredAt),
-          version: latest.version,
-        }),
-      });
-    }
-    logsStore.upsert(saved);
+    await logsStore.save(log, {
+      body: snapshot.body,
+      occurredAt: isoDateTime(snapshot.occurredAt),
+    });
     if (
       draft.value?.body === snapshot.body &&
       draft.value?.occurredAt === snapshot.occurredAt
@@ -364,6 +381,7 @@ onBeforeUnmount(() => {
   window.removeEventListener("focus", refreshVisibleList);
   window.removeEventListener("keydown", onGlobalKeydown);
   window.removeEventListener("popstate", readUrl);
+  clearTimeout(highlightTimer);
 });
 </script>
 
@@ -371,6 +389,14 @@ onBeforeUnmount(() => {
   <section class="logs-page">
     <h1 class="sr-only">Logs</h1>
     <PromptDialog ref="promptDialog" />
+    <LogDialog
+      v-if="routeLogId"
+      :log-id="routeLogId"
+      :labels="logLabels"
+      @close="closeLogDialog"
+      @show-in-list="showInList"
+      @label-created="logLabels = [...logLabels, $event]"
+    />
     <form
       class="log-composer"
       autocomplete="off"
@@ -440,6 +466,7 @@ onBeforeUnmount(() => {
           v-model="searchQuery"
           name="search"
           type="search"
+          aria-keyshortcuts="/"
           placeholder="Search all logs…"
           autocomplete="off"
         />
@@ -462,9 +489,11 @@ onBeforeUnmount(() => {
       <h2 class="log-group-heading">{{ group.label }}</h2>
       <article
         v-for="(log, index) in group.logs"
+        :id="`log-${log.id}`"
         :key="log.id"
         class="log-entry"
-        :class="logRowClass(group.logs, index)"
+        :class="[logRowClass(group.logs, index), { 'log-entry-highlight': highlightedId === log.id }]"
+        :tabindex="highlightedId === log.id ? -1 : undefined"
       >
         <template v-if="editingId === log.id && draft">
           <input
@@ -570,6 +599,17 @@ onBeforeUnmount(() => {
 .logs-page {
   max-width: 1200px;
   margin: 0 auto;
+}
+.log-entry-highlight {
+  border-radius: var(--workspace-radius);
+  background: var(--workspace-selected);
+  box-shadow: 0 0 0 6px var(--workspace-selected);
+  transition:
+    background-color 600ms ease,
+    box-shadow 600ms ease;
+}
+.log-entry-highlight:focus {
+  outline: none;
 }
 .logs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -18px 0 18px; }
 .logs-search { display: flex; align-items: center; gap: 8px; flex: 1; }

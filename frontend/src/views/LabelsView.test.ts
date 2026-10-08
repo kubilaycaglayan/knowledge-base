@@ -31,7 +31,7 @@ describe("LabelsView", () => {
       expect(router.currentRoute.value.query.q).toBeUndefined();
     } finally { wrapper.unmount(); }
   });
-  it.each(["metaKey", "ctrlKey"])("focuses label search with %s+K and filters names", async (modifier) => {
+  it("focuses label search with / and filters names, leaving Cmd/Ctrl+K to global search", async () => {
     vi.mocked(api).mockResolvedValue([
       { id: "one", name: "Study", color: null, scopes: ["NOTE"] },
       { id: "two", name: "Work", color: null, scopes: ["NOTE"] },
@@ -39,12 +39,21 @@ describe("LabelsView", () => {
     const wrapper = mount(LabelsView, { attachTo: document.body, global: { stubs: { PromptDialog: true } } });
     try {
       await flushPromises();
-      const shortcut = new KeyboardEvent("keydown", { key: "k", [modifier]: true, bubbles: true, cancelable: true });
+      for (const modifier of ["metaKey", "ctrlKey"]) {
+        const global = new KeyboardEvent("keydown", { key: "k", [modifier]: true, bubbles: true, cancelable: true });
+        document.dispatchEvent(global);
+        expect(global.defaultPrevented).toBe(false);
+      }
+      const shortcut = new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true });
       document.dispatchEvent(shortcut);
       await flushPromises();
       const input = wrapper.get('input[aria-label="Search labels"]');
       expect(document.activeElement).toBe(input.element);
       expect(shortcut.defaultPrevented).toBe(true);
+      // Inside the field, "/" is just a character.
+      const typed = new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true });
+      input.element.dispatchEvent(typed);
+      expect(typed.defaultPrevented).toBe(false);
       await input.setValue("  STU  ");
       expect(wrapper.findAll(".label-row").map(row => row.get("strong").text())).toEqual(["Study"]);
       await input.setValue("missing");
@@ -52,13 +61,13 @@ describe("LabelsView", () => {
       await input.trigger("keydown", { key: "Escape" });
       expect(wrapper.findAll(".label-row")).toHaveLength(2);
       await wrapper.get('button[aria-label="Add label"]').trigger("click");
-      const dialogShortcut = new KeyboardEvent("keydown", { key: "k", [modifier]: true, bubbles: true, cancelable: true });
+      const dialogShortcut = new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true });
       document.dispatchEvent(dialogShortcut);
       expect(dialogShortcut.defaultPrevented).toBe(false);
     } finally {
       wrapper.unmount();
     }
-    const afterUnmount = new KeyboardEvent("keydown", { key: "k", [modifier]: true, cancelable: true });
+    const afterUnmount = new KeyboardEvent("keydown", { key: "/", cancelable: true });
     document.dispatchEvent(afterUnmount);
     expect(afterUnmount.defaultPrevented).toBe(false);
   });

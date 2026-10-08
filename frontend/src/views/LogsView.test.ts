@@ -58,6 +58,7 @@ describe("LogsView", () => {
     );
     expect(wrapper.find(".log-group-day-break").exists()).toBe(true);
     expect(wrapper.findAll("time.log-time")[2].text()).toBe("Sept 10 11:00");
+    wrapper.unmount();
   });
 
   it("WU-03: shows warmed logs before the refresh returns", async () => {
@@ -72,15 +73,29 @@ describe("LogsView", () => {
     wrapper.unmount();
   });
 
-  it("keeps search hidden until Cmd/Ctrl+K opens it", async () => {
-    const wrapper = mount(LogsView);
+  it("keeps search hidden until / opens it, leaving Cmd/Ctrl+K to global search", async () => {
+    const wrapper = mount(LogsView, { attachTo: document.body });
     await flushPromises();
     expect(wrapper.find(".log-composer").exists()).toBe(true);
     expect(wrapper.find(".logs-search-trigger").exists()).toBe(false);
     expect(wrapper.find("#logs-search-input").exists()).toBe(false);
 
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+    const globalShortcut = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, cancelable: true });
+    window.dispatchEvent(globalShortcut);
     await wrapper.vm.$nextTick();
+    expect(wrapper.find("#logs-search-input").exists()).toBe(false);
+    expect(globalShortcut.defaultPrevented).toBe(false);
+
+    // A slash typed into the composer is just text.
+    const composer = wrapper.get("#new-log-body").element;
+    composer.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find("#logs-search-input").exists()).toBe(false);
+
+    const slash = new KeyboardEvent("keydown", { key: "/", cancelable: true });
+    window.dispatchEvent(slash);
+    await wrapper.vm.$nextTick();
+    expect(slash.defaultPrevented).toBe(true);
     expect(wrapper.find("#logs-search-input").exists()).toBe(true);
     await wrapper.unmount();
   });
