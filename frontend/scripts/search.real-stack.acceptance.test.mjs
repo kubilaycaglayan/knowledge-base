@@ -153,7 +153,8 @@ describe("search and direct routes against disposable real stack", () => {
       ["Settings", "settings", "/settings"],
     ];
     for (const [label, id, path] of shortcuts) {
-      await page.goto(`${baseUrl}/notes`);
+      const priorPath = path === "/settings" ? "/notes" : "/settings";
+      await page.goto(`${baseUrl}${priorPath}`);
       await page.locator("#app").waitFor();
       let recordSearchRequests = 0;
       const onRequest = (request) => { if (new URL(request.url()).pathname === "/api/v1/search") recordSearchRequests += 1; };
@@ -168,7 +169,7 @@ describe("search and direct routes against disposable real stack", () => {
       await page.waitForFunction((destination) => location.pathname === destination, path);
       assert.equal(recordSearchRequests, 0, `${label} click jumps without a record-search request`);
       await page.goBack();
-      assert.equal(new URL(page.url()).pathname, "/notes", `${label} Back restores the prior page`);
+      assert.equal(new URL(page.url()).pathname, priorPath, `${label} Back restores the prior page`);
       await page.goForward();
       assert.equal(new URL(page.url()).pathname, path, `${label} Forward restores the shortcut destination`);
       page.off("request", onRequest);
