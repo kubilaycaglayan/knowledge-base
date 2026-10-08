@@ -391,6 +391,12 @@ describe("search and direct routes against disposable real stack", () => {
     await unknownArchiveBoard.close();
   });
 
+  it("canonicalizes an impossible calendar date to the fallback selection", async () => {
+    await page.goto(`${baseUrl}/calendar?date=2026-02-30`);
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has("date"));
+    assert.equal(await page.locator('.calendar-day[aria-pressed="true"]').count(), 1);
+  });
+
   it("opens calendar, board, and active card search destinations", async () => {
     const calendar = await searchFor(`${text} Day`, "CALENDAR_DAY", fixtures.calendarResultId);
     await calendar.option.click();
