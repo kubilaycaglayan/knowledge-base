@@ -106,6 +106,44 @@ export function searchResultLink(result: SearchResult): RouteLocationRaw {
   }
 }
 
+export type AppPage = { id: string; label: string; path: string; aliases?: string[] };
+
+/** The app's main pages, which global search jumps to by name. */
+export const appPages: AppPage[] = [
+  { id: "sessions", label: "Sessions", path: "/", aliases: ["home", "timer"] },
+  { id: "board", label: "Board", path: "/board", aliases: ["kanban"] },
+  { id: "board-archive", label: "Board archive", path: "/board/archive" },
+  { id: "logs", label: "Logs", path: "/logs" },
+  { id: "notes", label: "Notes", path: "/notes" },
+  { id: "calendar", label: "Calendar", path: "/calendar" },
+  { id: "reports", label: "Reports", path: "/reports" },
+  { id: "timeline", label: "Timeline", path: "/timeline" },
+  { id: "paths", label: "Paths", path: "/paths" },
+  { id: "labels", label: "Labels", path: "/labels" },
+  { id: "imports", label: "Imports", path: "/imports" },
+  { id: "development", label: "Development", path: "/development" },
+  { id: "settings", label: "Settings", path: "/settings", aliases: ["preferences"] },
+];
+
+/**
+ * Pages whose name (or alias) has a word starting with every typed term.
+ * An exact name comes first, then names that start with the query, then the rest.
+ */
+export function matchPages(query: string, pages: AppPage[] = appPages): AppPage[] {
+  const terms = searchTerms(query).map((term) => term.toLocaleLowerCase());
+  if (!terms.length) return [];
+  const whole = terms.join(" ");
+  const ranked: { page: AppPage; rank: number }[] = [];
+  for (const page of pages) {
+    const names = [page.label, ...(page.aliases || [])].map((name) => name.toLocaleLowerCase());
+    const words = names.flatMap((name) => name.split(/\s+/));
+    if (!terms.every((term) => words.some((word) => word.startsWith(term)))) continue;
+    const rank = names.includes(whole) ? 0 : names.some((name) => name.startsWith(whole)) ? 1 : 2;
+    ranked.push({ page, rank });
+  }
+  return ranked.sort((a, b) => a.rank - b.rank).map(({ page }) => page);
+}
+
 /** Splits a query into the terms the server matches: distinct, whitespace separated. */
 export function searchTerms(query: string): string[] {
   const seen = new Set<string>();

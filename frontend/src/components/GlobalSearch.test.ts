@@ -78,6 +78,8 @@ async function setup(path = "/board") {
       { path: "/notes/:id", component: Page },
       { path: "/logs/:id", component: Page },
       { path: "/elsewhere", component: Page },
+      { path: "/calendar", component: Page },
+      { path: "/settings", component: Page },
     ],
   });
   await router.push(path);
@@ -374,6 +376,58 @@ describe("GlobalSearch", () => {
     expect(noteIds).toEqual(["global-search-note-n1", "global-search-note-n2", "global-search-note-n3", "global-search-note-n4"]);
     expect(field.getAttribute("aria-activedescendant")).toBe("global-search-note-n3");
     expect(document.querySelector(".global-search-more")?.textContent).toContain("Show 3 more notes");
+  });
+
+  it("goes to a page by name with Enter, without waiting for the search", async () => {
+    await setup("/elsewhere");
+    vi.mocked(api).mockResolvedValue(response([]));
+    press("k", { ctrlKey: true });
+    await flushPromises();
+    const field = input()!;
+    field.value = "board";
+    field.dispatchEvent(new Event("input"));
+    await flushPromises();
+    expect(field.getAttribute("aria-activedescendant")).toBe("global-search-page-board");
+    const page = document.getElementById("global-search-page-board")!;
+    expect(page.getAttribute("href")).toBe("/board");
+    expect(page.getAttribute("aria-label")).toBe("Board, page");
+    press("Enter", {}, field);
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe("/board");
+    expect(dialog()).toBeNull();
+    // A page jump isn't a search worth remembering.
+    expect(localStorage.getItem("know_recent_searches")).toBeNull();
+  });
+
+  it("lists matching pages above record results and keeps them through no results", async () => {
+    await setup();
+    vi.mocked(api).mockResolvedValue(response([]));
+    press("k", { ctrlKey: true });
+    await flushPromises();
+    await type("cal");
+    expect(options().map((option) => option.id)).toEqual(["global-search-page-calendar"]);
+    expect(document.querySelector(".global-search-empty")).toBeNull();
+    expect(document.getElementById("global-search-status")?.textContent).toBe("1 page. No results for “cal”.");
+    vi.mocked(api).mockResolvedValue(PHOTO);
+    await type("settings");
+    const ids = options().map((option) => option.id);
+    expect(ids[0]).toBe("global-search-page-settings");
+    expect(ids).toContain("global-search-path-p1");
+    // Arrow keys move from the page into the record results.
+    press("ArrowDown", {}, input()!);
+    await flushPromises();
+    expect(input()!.getAttribute("aria-activedescendant")).toBe("global-search-path-p1");
+  });
+
+  it("follows a clicked page", async () => {
+    await setup();
+    vi.mocked(api).mockResolvedValue(response([]));
+    press("k", { ctrlKey: true });
+    await flushPromises();
+    await type("settings");
+    document.getElementById("global-search-page-settings")!.click();
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe("/settings");
   });
 
   it("offers recent searches when the field is empty", async () => {

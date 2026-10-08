@@ -40,3 +40,4 @@ test.
 - [x] **GS-21** Archived notes open `/notes?archived=1&q=<title>`; archived cards and boards open `/board/archive` with the row scrolled to and marked.
 - [x] **GS-22** Log times and session dates in their lists link to the record's address.
 - [x] **GS-23** Logs, Labels, and the Board card search use `/` (outside text fields and dialogs) for their own filters.
+- [x] **GS-24** Typing a main page's name (or the start of any word in it, e.g. `board`, `arch`, `home`) lists it under Pages above the record results; the best page is active at once, so Enter goes there even before the record search answers. Page jumps aren't saved as recent searches.

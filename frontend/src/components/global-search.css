@@ -233,7 +233,7 @@ kbd {
   font-size: 12px;
 }
 
-[role="listbox"].stale {
+.global-search-group.stale {
   opacity: 0.65;
   transition: opacity 120ms ease 120ms;
 }
@@ -431,7 +431,7 @@ mark {
   .global-search-spinner {
     animation-duration: 1.6s;
   }
-  [role="listbox"].stale,
+  .global-search-group.stale,
   .global-search-trigger {
     transition: none;
   }

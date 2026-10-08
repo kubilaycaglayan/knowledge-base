@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
+  mdiArrowRight,
   mdiCalendarOutline,
   mdiCardTextOutline,
   mdiChevronDown,
@@ -22,6 +23,7 @@ import {
   forgetSearches,
   highlightParts,
   isGlobalSearchShortcut,
+  matchPages,
   recentSearches,
   rememberSearch,
   SEARCH_MAX_LENGTH,
@@ -31,6 +33,7 @@ import {
   searchResultLink,
   searchTerms,
   shortcutLabel,
+  type AppPage,
   type SearchGroup,
   type SearchResponse,
   type SearchResult,
@@ -64,18 +67,21 @@ let sequence = 0;
 type Option =
   | { kind: "result"; id: string; group: SearchGroup; result: SearchResult }
   | { kind: "more"; id: string; group: SearchGroup }
-  | { kind: "recent"; id: string; query: string };
+  | { kind: "recent"; id: string; query: string }
+  | { kind: "page"; id: string; page: AppPage };
 
 const trimmed = computed(() => query.value.trim());
 const tooLong = computed(() => query.value.length > SEARCH_MAX_LENGTH);
 const terms = computed(() => searchTerms(searchedFor.value));
 const totalResults = computed(() => groups.value.reduce((sum, group) => sum + group.total, 0));
 const anyCapped = computed(() => groups.value.some((group) => group.capped));
+// Pages match on the typed text right away, without waiting for the server.
+const pages = computed(() => (tooLong.value ? [] : matchPages(trimmed.value)));
 
 const options = computed<Option[]>(() => {
   if (!trimmed.value)
     return recent.value.map((value, index) => ({ kind: "recent", id: `global-search-recent-${index}`, query: value }));
-  const list: Option[] = [];
+  const list: Option[] = pages.value.map((page) => ({ kind: "page", id: `global-search-page-${page.id}`, page }));
   for (const group of groups.value) {
     for (const result of group.results)
       list.push({ kind: "result", id: optionId(result), group, result });
@@ -84,11 +90,15 @@ const options = computed<Option[]>(() => {
   }
   return list;
 });
+const pageOptions = computed(() =>
+  options.value.filter((option): option is Extract<Option, { kind: "page" }> => option.kind === "page"),
+);
 const activeOption = computed(() => options.value[activeIndex.value]);
 
 function groupOptions(group: SearchGroup) {
   return options.value.filter(
-    (option): option is Exclude<Option, { kind: "recent" }> => option.kind !== "recent" && option.group === group,
+    (option): option is Extract<Option, { kind: "result" | "more" }> =>
+      (option.kind === "result" || option.kind === "more") && option.group === group,
   );
 }
 function optionId(result: SearchResult) {
@@ -155,6 +165,8 @@ watch(query, () => {
     }
     return;
   }
+  // The best page match is ready before any record result, so Enter can take it.
+  activeIndex.value = pages.value.length ? 0 : -1;
   loading.value = true;
   debounce = setTimeout(() => void run(), DEBOUNCE_MS);
 });
@@ -264,6 +276,10 @@ function onInputKeydown(event: KeyboardEvent) {
       break;
     case "Enter": {
       event.preventDefault();
+      if (activeOption.value?.kind === "page") {
+        activate(activeOption.value, event.metaKey || event.ctrlKey);
+        return;
+      }
       if (loading.value && trimmed.value !== searchedFor.value) {
         // Results for the typed text are on their way; search now instead of waiting.
         clearTimeout(debounce);
@@ -291,8 +307,8 @@ function activate(option: Option, newTab = false) {
     void showMore(option.group);
     return;
   }
-  const link = searchResultLink(option.result);
-  recent.value = rememberSearch(searchedFor.value);
+  const link = option.kind === "page" ? option.page.path : searchResultLink(option.result);
+  if (option.kind === "result") recent.value = rememberSearch(searchedFor.value);
   if (newTab) {
     window.open(router.resolve(link).href, "_blank", "noopener");
     return;
@@ -397,12 +413,13 @@ function resultLabel(result: SearchResult) {
 const status = computed(() => {
   if (tooLong.value) return `Searches are limited to ${SEARCH_MAX_LENGTH} characters.`;
   if (!trimmed.value) return "";
-  if (loading.value) return "Searching…";
+  const pageText = pages.value.length ? `${count.format(pages.value.length)} page${pages.value.length === 1 ? "" : "s"}. ` : "";
+  if (loading.value) return `${pageText}Searching…`;
   if (error.value) return error.value;
   if (!searchedFor.value) return "";
-  if (!groups.value.length) return `No results for “${searchedFor.value}”.`;
+  if (!groups.value.length) return `${pageText}No results for “${searchedFor.value}”.`;
   const amount = `${count.format(totalResults.value)}${anyCapped.value ? "+" : ""}`;
-  return `${amount} result${totalResults.value === 1 ? "" : "s"}${fuzzy.value ? " with similar spelling" : ""}.`;
+  return `${pageText}${amount} result${totalResults.value === 1 ? "" : "s"}${fuzzy.value ? " with similar spelling" : ""}.`;
 });
 </script>
 
@@ -502,25 +519,51 @@ const status = computed(() => {
             </p>
             <p v-if="incomplete" class="global-search-notice">Some results took too long and are left out.</p>
             <div
-              v-if="searchedFor && !loading && !error && !groups.length"
+              v-if="searchedFor && !loading && !error && !groups.length && !pages.length"
               class="global-search-empty"
             >
               <p>No results for “<span class="global-search-empty-query">{{ searchedFor }}</span>”.</p>
               <p class="muted">Try fewer words, or check the spelling.</p>
             </div>
             <div
-              v-show="groups.length"
+              v-show="groups.length || pages.length"
               id="global-search-listbox"
               role="listbox"
               aria-label="Search results"
               :aria-busy="loading || undefined"
-              :class="{ stale: loading }"
             >
+              <div v-if="pages.length" role="group" class="global-search-group" aria-labelledby="global-search-heading-pages">
+                <div class="global-search-group-heading" role="presentation">
+                  <h2 id="global-search-heading-pages">Pages</h2>
+                </div>
+                <RouterLink
+                  v-for="option in pageOptions"
+                  :id="option.id"
+                  :key="option.id"
+                  :to="option.page.path"
+                  role="option"
+                  class="global-search-option global-search-page"
+                  :aria-selected="option.id === activeOption?.id"
+                  :aria-label="`${option.page.label}, page`"
+                  tabindex="-1"
+                  @mousemove="activeIndex = indexOf(option.id)"
+                  @click="onResultClick($event, option)"
+                >
+                  <span class="global-search-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path :d="mdiArrowRight" fill="currentColor" /></svg>
+                  </span>
+                  <span class="global-search-text">
+                    <span class="global-search-title">{{ option.page.label }}</span>
+                    <span class="global-search-meta"><span>Go to page</span></span>
+                  </span>
+                </RouterLink>
+              </div>
               <div
                 v-for="group in groups"
                 :key="group.type"
                 role="group"
                 class="global-search-group"
+                :class="{ stale: loading }"
                 :aria-labelledby="`global-search-heading-${group.type}`"
               >
                 <div class="global-search-group-heading" role="presentation">
