@@ -205,6 +205,13 @@ main() {
       BOARD_E2E_EMAIL="board-e2e-$(date +%s%N)@example.com" \
       BOARD_E2E_PASSWORD="Board-e2e-$(date +%s%N)" npm run test:board:e2e --prefix frontend
   }
+  # Note and card line history through the local proxy config (as
+  # scripts/run-line-history-e2e.sh).
+  line_history_browser_tests() {
+    LINE_HISTORY_E2E_BASE_URL="http://localhost:${stack_proxy_port}" \
+      LINE_HISTORY_E2E_EMAIL="lines-e2e-$(date +%s%N)@example.com" \
+      LINE_HISTORY_E2E_PASSWORD="Lines-e2e-$(date +%s%N)" npm run test:lines:e2e --prefix frontend
+  }
   # Timer sync through the production proxy config (as
   # scripts/run-timer-websocket-e2e.sh).
   timer_browser_tests() {
@@ -214,7 +221,7 @@ main() {
 
   if (( quick == 0 )); then
     smoke_step="Full-stack smoke test (proxies, timer WebSocket, backup/restore)"
-    browser_steps=("Board real-stack browser tests" "Timer WebSocket real-stack browser tests")
+    browser_steps=("Board real-stack browser tests" "Timer WebSocket real-stack browser tests" "Line history real-stack browser tests")
     if run_step "Build test images" \
       env COMPOSE_PROJECT_NAME=knowledge-base-test-images "${test_compose[@]}" build api web; then
       stack_created=1
@@ -226,6 +233,7 @@ main() {
       if stack_ready; then
         run_step "${browser_steps[0]}" board_browser_tests
         run_step "${browser_steps[1]}" timer_browser_tests
+        run_step "${browser_steps[2]}" line_history_browser_tests
       else
         for name in "${browser_steps[@]}"; do skip_step "$name" "the test stack is not serving"; done
         failures=$(( failures + 1 ))

@@ -23,6 +23,21 @@ disposable Compose project with generated local credentials and runs
 PostgreSQL, proxy, and browser. The runner cleans only its own Compose project
 and volumes.
 
+`./scripts/run-line-history-e2e.sh` runs
+`frontend/scripts/line-history.real-stack.acceptance.test.mjs` the same way,
+in its own disposable Compose project. It types into note and board card
+bodies with the Line history gutter on and checks:
+- typed lines read "Unsaved" until the autosave lands, then show the server's
+  times, and those times survive a reload;
+- untouched lines keep their times;
+- a note save replayed over another window's edit, and a card conflict
+  followed by Retry, both end with the server's times;
+- keyboard toggling;
+- the gutter never overlaps line text and the page never scrolls sideways, at
+  desktop and phone widths and in the dark theme;
+- an Axe audit of the editor.
+Set `LINE_HISTORY_E2E_SCREENSHOTS=<dir>` to keep screenshots.
+
 `(cd frontend && npm run test:nav)` runs
 `frontend/scripts/nav-shell.acceptance.test.mjs` against mocked API fixtures. It
 checks that the nav bar has the same position, width, and 10px bottom margin on
