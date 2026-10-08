@@ -32,6 +32,7 @@ class LogServiceTest {
   private Log stored() {
     Log log = new Log(user, "Stored", at);
     when(logs.findByIdAndUserId(log.getId(), user)).thenReturn(Optional.of(log));
+    when(logs.findByIdAndUserIdForUpdate(log.getId(), user)).thenReturn(Optional.of(log));
     return log;
   }
 
@@ -57,6 +58,7 @@ class LogServiceTest {
   void unknownOrForeignLogsAreNotFound() {
     UUID id = UUID.randomUUID();
     when(logs.findByIdAndUserId(id, user)).thenReturn(Optional.empty());
+    when(logs.findByIdAndUserIdForUpdate(id, user)).thenReturn(Optional.empty());
     assertEquals(HttpStatus.NOT_FOUND, status(() -> service.get(user, id)));
     assertEquals(HttpStatus.NOT_FOUND, status(() -> service.update(user, id, "Body", at, null)));
     assertEquals(HttpStatus.NOT_FOUND, status(() -> service.delete(user, id)));

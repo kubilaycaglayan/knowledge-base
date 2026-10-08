@@ -71,7 +71,7 @@ public class LogService {
   @Transactional
   public LogView setLabels(UUID userId, UUID id, List<UUID> requestedLabelIds) {
     Log log =
-        logs.findByIdAndUserId(id, userId)
+        logs.findByIdAndUserIdForUpdate(id, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log not found"));
     List<UUID> requested =
         requestedLabelIds == null ? List.of() : requestedLabelIds.stream().distinct().toList();
