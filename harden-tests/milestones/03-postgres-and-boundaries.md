@@ -28,7 +28,8 @@ time boundaries and empty/large result sets.
   labels and assignments, imports/transfers, and timer/time-entry writes where
   query or constraint behavior matters.
 - [ ] Add rollback cases for each multi-step operation that can fail after an
-  earlier write; current coverage proves transactional import rollback.
+  earlier write; PostgreSQL coverage now proves rollback for both Clockify and
+  knowledge-base imports.
 - [x] Add deterministic date/time boundary tests for UTC day/week/month report
   windows, leap days, month/year rollover, entries exactly at `from`/`to`,
   zero-duration intervals, and running entries cut off at injected `now`.
