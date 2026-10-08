@@ -122,13 +122,14 @@ missing DOM/network evidence.
 | Three failures in incomplete-metadata board transcript | Insufficient evidence | Original phone view-switch and board-restore causes remain unclassifiable; the archive-footer recurrence is separately evidenced above. The transcript remains excluded from profile results. |
 
 The first HARD-02 pair added five failing case occurrences across two suite
-occurrences. Follow-up runs enabled screenshot, trace, and failure-summary
-capture: [desktop](2026-10-08-d2cda77-desktop-chromium-board-resilience.md)
-and [mobile-size Chromium](2026-10-08-d2cda77-mobile-chromium-board-resilience.md).
-Those runs added four more observed case occurrences across two suites; the
-Gantt locator did not recur in the second mobile run. The cumulative table now
-has 52 case occurrences across 18 failure-group suite occurrences: 49 cases
-from ten complete dated reports and 3 from the partial transcript. The partial
+occurrences. Follow-up runs enabled screenshot, trace, command output, exact
+image/database metadata, and project-scoped container-log capture. The latest
+same-commit pair is [desktop](2026-10-08-6d29b9b-desktop-chromium-board-resilience.md)
+and [mobile-size Chromium](2026-10-08-6d29b9b-mobile-chromium-board-resilience.md).
+The c415565 pair and 457eff2 desktop run added six observed failures after the
+d2cda77 reports; the final 6d29b9b pair added five more. The cumulative table
+has 63 case occurrences across 27 failure-group suite occurrences: 60 cases
+from 15 complete dated reports and 3 from the partial transcript. The partial
 transcript remains history-only. “Suite occurrences” counts one suite per
 failure group in that suite, so one run can contribute to multiple groups.
 
@@ -136,16 +137,17 @@ failure group in that suite, so one run can contribute to multiple groups.
 | --- | ---: | ---: | --- | --- |
 | Board setup assumes selected board remains a visible tab after overflow | 23 | 1 | 2026-10-08 | Corrected in earlier run; no setup failure in current board runs. |
 | Session-tracker fixture controls unavailable during keyboard/fill interactions | 9 | 1 | 2026-10-08 | Insufficient evidence; historical artifacts unavailable. |
-| Fixed timer/shell overlaps archive footer controls | 10 | 7 | 2026-10-08 | Reproduced in current desktop and mobile Chromium; latest screenshots/traces retained locally; product cause not confirmed. |
+| Fixed timer/shell overlaps archive footer controls | 17 | 12 | 2026-10-08 | Reproduced in desktop and mobile Chromium; latest screenshots/traces and scoped stack logs retained locally; product cause not confirmed. |
 | WebKit touch caret placement interacts with line-history gutter | 1 | 1 | 2026-10-08 | Insufficient evidence; trace unavailable. |
 | WebKit timer API CORS/access-control request | 1 | 1 | 2026-10-08 | Insufficient evidence; network/server logs unavailable. |
-| Detached board card locator | 3 | 3 | 2026-10-08 | Reproduced in mobile Chromium; synchronization cause suspected. |
-| Board menu control unavailable during phone card/view switching | 3 | 3 | 2026-10-08 | Reproduced in two mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
+| Detached board card locator | 5 | 5 | 2026-10-08 | Reproduced in three mobile Chromium runs; latest trace retained locally; timing versus rerender remains suspected. |
+| Board menu control unavailable during phone card/view switching | 5 | 5 | 2026-10-08 | Reproduced in four mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
 | Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
 
-The detached Gantt locator remains at 3 cases across 3 suites: it was
-reproduced in the first mobile Chromium run and did not recur in the
-capture-enabled follow-up. The first run had no retained trace.
+The detached Gantt locator remains classified as a suspected synchronization
+or rerender issue because it recurred in the c415565 and 6d29b9b mobile runs
+after not reproducing in the d2cda77 follow-up. The latest trace is retained
+locally.
 
 The earlier `Unclassified` count is preserved because the local transcript does
 not support a root-cause assignment. Reproduced and insufficient-evidence

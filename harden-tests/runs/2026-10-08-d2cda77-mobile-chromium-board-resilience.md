@@ -5,8 +5,8 @@
 - Exact command: `BOARD_E2E_ARTIFACT_DIR=/tmp/knowledge-base-hard02-mobile-artifacts BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone ./scripts/run-board-e2e.sh`
 - Exit status: 1 (three board assertions failed)
 - Compose project: `knowledge-base-board-smoke-2741946-1791493647492372455`; runner removed its disposable project and volumes.
-- Images (tag and immutable ID): `knowledge-base-api:test-only` — `sha256:7db97fa53aa04397d64075cdf6536553ff915aaadde0b2f6960cd64874e0106a`; `knowledge-base-web:test-only` — `sha256:641364db11cbf53d55c19af4054c9951dad7e790be7c165c35b6fd37a835bd8b`
-- Database: PostgreSQL 16 Alpine; disposable database started healthy and Flyway migrations completed as part of API readiness.
+- Images: `knowledge-base-api:test-only` and `knowledge-base-web:test-only`; immutable IDs were not captured during this run and cannot be established from a later inspection.
+- Database: PostgreSQL 16 Alpine; disposable database started healthy and API readiness passed. Flyway migration result was not recorded separately.
 - Browser: Playwright 1.63.0, Chromium 153.0.8010.12; 390×844, scale factor 3, touch enabled, mobile context. User agent: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36`. This is mobile-size Chromium emulation, not physical Android Chrome.
 - Environment: Ubuntu 26.04.1 LTS, Linux x86_64, kernel `7.0.0-38-generic`; Node 22.23.3, npm 10.9.9, Docker 29.8.2, Compose 5.6.0; 32 logical CPUs, 30 GiB Docker memory, overlayfs.
 - Suite outcomes: 25 passed, 3 failed, 0 skipped (28 total).

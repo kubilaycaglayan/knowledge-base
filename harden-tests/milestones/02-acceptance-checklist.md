@@ -12,8 +12,8 @@ records that engine/profile and its outcomes.
 
 | Behavior | Current source evidence | Remaining HARD-02 evidence |
 | --- | --- | --- |
-| Board stale response | [`board.real-stack.acceptance.test.mjs`](../../frontend/scripts/board.real-stack.acceptance.test.mjs) has “does not let a delayed board response replace the newly selected board”; `stores/boards.test.ts` also covers stale list/board/Gantt responses. | Repeat under desktop Chromium and mobile-size Chromium with traces on failure; preserve selected board and assert no stale card/status content renders. |
-| Board pagination retry | `stores/boards.test.ts` covers a failed lazy page remaining retryable and exposing recoverable error; real-stack board tests cover loading past the first page. | Add a browser-level failed page request, retry action, current cursor/result assertion, and duplicate/missing-card check in each supported Chromium profile. |
+| Board stale response | [`board.real-stack.acceptance.test.mjs`](../../frontend/scripts/board.real-stack.acceptance.test.mjs) has “does not let a delayed board response replace the newly selected board”; `stores/boards.test.ts` also covers stale list/board/Gantt responses. | Passed in the focused desktop and mobile-size Chromium board suites; see the same-commit [desktop](../runs/2026-10-08-6d29b9b-desktop-chromium-board-resilience.md) and [mobile](../runs/2026-10-08-6d29b9b-mobile-chromium-board-resilience.md) reports. |
+| Board pagination retry | `stores/boards.test.ts` covers a failed lazy page remaining retryable and exposing recoverable error; `board.real-stack.acceptance.test.mjs` now injects a failed page request and verifies retry cursor, result identity, duplicates, and keyboard activation. | Passed in both Chromium profiles; see the same-commit reports linked above. |
 | Note conflict/retry | [`line-history.real-stack.acceptance.test.mjs`](../../frontend/scripts/line-history.real-stack.acceptance.test.mjs) covers a draft through conflict and retry; `NotesView.test.ts` covers editor failure feedback. | Verify live server conflict/retry and saved line-history in desktop and mobile Chromium; retain screenshot/trace and assert the user draft is preserved. |
 | Timer transport fallback | [`timer-websocket.real-stack.acceptance.test.mjs`](../../frontend/scripts/timer-websocket.real-stack.acceptance.test.mjs) covers socket sync and HTTP polling when the socket is unavailable. | Add explicit reconnection/network-restoration behavior where supported; run and report mobile Chromium separately from desktop and WebKit. |
 | Long content and small-screen layout | [`session-tracker.acceptance.test.mjs`](../../frontend/scripts/session-tracker.acceptance.test.mjs) contains long names, target, and accessibility checks across width/mode combinations; component tests cover long content in several views. | Capture complete desktop and 390×844 Chromium reports for the relevant browser suites; assert overflow, clipped controls, keyboard/touch recovery reachability, and actual mobile Chromium UA/engine identity. |
@@ -26,12 +26,12 @@ records that engine/profile and its outcomes.
   link each accepted browser journey to its exact run report and browser
   profile. The browser-profile evidence presently covers the board suite only;
   store and mocked-view rows remain lower-layer evidence.
-- [ ] Use the [local browser runbook](../local-browser-validation.md) to keep
+- [x] Use the [local browser runbook](../local-browser-validation.md) to keep
   desktop Chromium, phone-sized Chromium emulation, and iPhone WebKit reports
-  separate. The [desktop Chromium board report](../runs/2026-10-08-63cf4f3-desktop-chromium-board-resilience.md)
-  and [mobile-size Chromium board report](../runs/2026-10-08-63cf4f3-mobile-chromium-board-resilience.md)
-  are separate; an emulated WebKit pass does not establish mobile Chrome
-  behavior, and no fresh WebKit run is recorded for this milestone.
+  separate. The [desktop Chromium board report](../runs/2026-10-08-c415565-desktop-chromium-board-resilience.md)
+  and [mobile-size Chromium board report](../runs/2026-10-08-6d29b9b-mobile-chromium-board-resilience.md)
+  are separate. No fresh WebKit run is claimed for this milestone; emulated
+  WebKit is not mobile Chrome evidence.
 
 ## Failure investigation
 
@@ -54,7 +54,7 @@ records that engine/profile and its outcomes.
   trace establishes the cause.
 - [ ] Preserve a zero-count `Unclassified` row when no failures remain; never
   silently drop an unresolved signature.
-- [ ] Do not weaken a semantic assertion or add optional-locator guards to hide
+- [x] Do not weaken a semantic assertion or add optional-locator guards to hide
   missing controls; change an assertion only with a documented contract reason.
 
 ## Resilience coverage
@@ -96,5 +96,5 @@ records that engine/profile and its outcomes.
   mobile browser profiles; record remaining product defects outside this
   test-only milestone with an issue/reference. See the
   [follow-up register](../follow-up-defects.md).
-- [ ] Update cumulative counts only from actual run outputs and document the
+- [x] Update cumulative counts only from actual run outputs and document the
   exact reports included in each count.

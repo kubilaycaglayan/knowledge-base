@@ -1,10 +1,10 @@
-# E2E run: desktop Chromium board resilience with failure capture
+# E2E run: desktop Chromium board resilience
 
 - Date (UTC): 2026-10-08; exact start/end times not recorded separately.
-- Commit: `d2cda77`
-- Exact command: `BOARD_E2E_ARTIFACT_DIR=/tmp/knowledge-base-hard02-desktop-artifacts BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop ./scripts/run-board-e2e.sh`
+- Commit: `c415565`
+- Exact command: `BOARD_E2E_ARTIFACT_DIR=harden-tests/local-artifacts/hard02-c415565-desktop BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop ./scripts/run-board-e2e.sh`
 - Exit status: 1 (one board assertion failed)
-- Compose project: `knowledge-base-board-smoke-2739853-1791493611710254539`; runner removed its disposable project and volumes.
+- Compose project: `knowledge-base-board-smoke-2750424-1791493953672516793`; runner removed its disposable project and volumes.
 - Images: `knowledge-base-api:test-only` and `knowledge-base-web:test-only`; immutable IDs were not captured during this run and cannot be established from a later inspection.
 - Database: PostgreSQL 16 Alpine; disposable database started healthy and API readiness passed. Flyway migration result was not recorded separately.
 - Browser: Playwright 1.63.0, Chromium 153.0.8010.12; 1440×900, scale factor 1, touch disabled. User agent: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36`.
@@ -12,7 +12,7 @@
 - Suite outcomes: 27 passed, 1 failed, 0 skipped (28 total).
 - Failed case: archive footer hit-test returned `null covered by shell dashboard-shell`.
 - Retry journey: passed with same-cursor retry, no duplicate cards, and keyboard activation.
-- Artifacts (local, git-ignored): [`trace`](../local-artifacts/hard02-d2cda77-desktop/01-keeps-the-archive-footer-clear-of-the-fixed-bottom-tracker.zip), [`screenshot`](../local-artifacts/hard02-d2cda77-desktop/01-keeps-the-archive-footer-clear-of-the-fixed-bottom-tracker.png), [`failure summary`](../local-artifacts/hard02-d2cda77-desktop/01-keeps-the-archive-footer-clear-of-the-fixed-bottom-tracker.json). Retain through 2026-10-15, then remove the `harden-tests/local-artifacts/` directory. The trace contains the generated disposable test session; review and scrub it before any sharing.
+- Artifacts (local, git-ignored): [`failure artifacts, command output, and stack logs`](../local-artifacts/hard02-c415565-desktop/). Includes screenshot, trace, JSON summary, TAP transcript, and scoped Compose logs. Review through 2026-10-15, then remove `harden-tests/local-artifacts/`. Traces/logs contain the disposable test session; scrub before sharing.
 - Stack cleanup: runner's project-scoped cleanup ran.
 - Fixed-data performance: not measured.
 
@@ -20,5 +20,5 @@
 
 | Suspected root cause | Case count | Suite count | Cases | Evidence / investigation |
 | --- | ---: | ---: | --- | --- |
-| Fixed dashboard shell covers archive footer | 1 | 1 | Archive footer hit-test | Screenshot and Playwright trace retained locally. Hit-test confirms the shell covers the footer target; no product fix was made in this test-only milestone. |
+| Fixed dashboard shell covers archive footer | 1 | 1 | Archive footer hit-test | Reproduced; local screenshot/trace and API/proxy/container logs retained. Product layout cause remains outside this test-only milestone. |
 | Unclassified | 0 | 0 | None | No other failure observed. |

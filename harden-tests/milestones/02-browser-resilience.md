@@ -72,8 +72,9 @@ and root-cause classification before assertions are changed.
 - The 2026-10-08 desktop Chromium and mobile-size Chromium board runs exercise
   the failed-page retry journey. The retry preserved the current cursor,
   loaded the expected card once, and was keyboard operable. Capture-enabled
-  follow-up runs retain local failure artifacts; see the [desktop report](../runs/2026-10-08-d2cda77-desktop-chromium-board-resilience.md)
-  and [mobile report](../runs/2026-10-08-d2cda77-mobile-chromium-board-resilience.md).
+  same-commit follow-up runs retain local failure artifacts and exact image
+  IDs; see the [desktop report](../runs/2026-10-08-6d29b9b-desktop-chromium-board-resilience.md)
+  and [mobile report](../runs/2026-10-08-6d29b9b-mobile-chromium-board-resilience.md).
 - Both profiles still have observed board failures. The desktop archive footer
   is covered by the dashboard shell. The mobile run also observed a detached
   Gantt card locator, an unavailable More boards control during view switching,

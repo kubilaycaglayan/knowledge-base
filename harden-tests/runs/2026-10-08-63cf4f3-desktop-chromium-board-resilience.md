@@ -5,8 +5,8 @@
 - Exact command: `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop ./scripts/run-board-e2e.sh`
 - Exit status: 1 (one board assertion failed)
 - Compose project: `knowledge-base-board-smoke-2734612-1791493436492050090`; runner removed its disposable project and volumes.
-- Images (tag and immutable ID): `knowledge-base-api:test-only` — `sha256:7db97fa53aa04397d64075cdf6536553ff915aaadde0b2f6960cd64874e0106a`; `knowledge-base-web:test-only` — `sha256:641364db11cbf53d55c19af4054c9951dad7e790be7c165c35b6fd37a835bd8b`
-- Database: PostgreSQL 16 Alpine; disposable database started healthy and Flyway migrations completed as part of API readiness.
+- Images: `knowledge-base-api:test-only` and `knowledge-base-web:test-only`; immutable IDs were not captured during this run and cannot be inferred from later tag values.
+- Database: PostgreSQL 16 Alpine; disposable database started healthy and API readiness passed. Flyway migration result was not recorded separately.
 - Browser: Playwright 1.63.0, Chromium 153.0.8010.12; 1440×900, device scale factor 1, touch disabled, headless. User agent: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36`.
 - Environment: Ubuntu 26.04.1 LTS, Linux x86_64, kernel `7.0.0-38-generic`; Node 22.23.3, npm 10.9.9, Docker 29.8.2, Compose 5.6.0; 32 logical CPUs, 30 GiB Docker memory, overlayfs.
 - Suite outcomes: 27 passed, 1 failed, 0 skipped (28 total).
