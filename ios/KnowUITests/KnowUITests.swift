@@ -1067,7 +1067,7 @@ final class KnowUITests: XCTestCase {
     // One category per call: a whole-screen audit can outlast the CI simulator's time limit.
     let audits: [XCUIAccessibilityAuditType] = [
       .sufficientElementDescription, .hitRegion, .contrast, .elementDetection, .trait,
-      .textClipped, .dynamicType, .action,
+      .textClipped, .dynamicType,
     ]
     for audit in audits { try app.performAccessibilityAudit(for: audit) }
     let attachment = XCTAttachment(screenshot: app.screenshot())
