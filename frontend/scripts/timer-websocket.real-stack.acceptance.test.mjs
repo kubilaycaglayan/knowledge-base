@@ -175,4 +175,39 @@ describe("timer WebSocket in the web app", () => {
       await context.close();
     }
   });
+
+  it("keeps a timer draft after a failed save and lets the user retry", async () => {
+    const token = await register();
+    const { context, page, tracker } = await openApp(token, { blockSocket: true });
+    let draftWrites = 0;
+    await page.route("**/api/v1/timers/draft", async (route) => {
+      if (route.request().method() !== "PUT") return route.continue();
+      draftWrites += 1;
+      if (draftWrites === 1)
+        return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+      return route.continue();
+    });
+    try {
+      await tracker.getByRole("button", { name: "Expand tracker" }).click();
+      const description = tracker.getByRole("textbox", { name: "Timer description" });
+      await description.fill("Draft survives a timer save failure");
+      await description.press("Tab");
+      await page.getByRole("alert").getByText("Could not save the active timer settings.").waitFor();
+      assert.equal(await description.inputValue(), "Draft survives a timer save failure");
+      assert.equal(draftWrites, 1, "the first save should fail exactly once");
+
+      const successfulSave = page.waitForResponse((response) =>
+        new URL(response.url()).pathname === "/api/v1/timers/draft" &&
+        response.request().method() === "PUT" && response.status() === 200,
+      );
+      await description.fill("Draft survives a timer save failure and retry");
+      await description.press("Tab");
+      await successfulSave;
+      const savedDraft = await api("/timers/draft", {}, token);
+      assert.equal(savedDraft.description, "Draft survives a timer save failure and retry");
+      assert.equal(draftWrites, 2, "a single retry should produce one successful draft write");
+    } finally {
+      await context.close();
+    }
+  });
 });
