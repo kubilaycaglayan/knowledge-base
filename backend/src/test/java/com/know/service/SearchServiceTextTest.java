@@ -24,7 +24,8 @@ class SearchServiceTextTest {
 
   @Test
   void shortTextIsItsOwnSnippetOnOneLine() {
-    assertEquals("one two three", SearchService.snippet("one\n\ntwo   three ", List.of("two")));
+    assertEquals("one · two three", SearchService.snippet("one\n\ntwo   three ", List.of("two")));
+    assertEquals("a · b", SearchService.flatten(" a \r\n\t\n b"));
     assertNull(SearchService.snippet("  \n ", List.of("x")));
   }
 

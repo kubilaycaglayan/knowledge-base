@@ -183,7 +183,7 @@ class SearchIntegrationTest extends IntegrationTestSupport {
 
     JsonNode log = result(response, "LOG", logId);
     assertEquals("Zephyr log entry", log.get("title").asText());
-    assertEquals("Zephyr log entry Second line about zephyr", log.get("snippet").asText());
+    assertEquals("Second line about zephyr", log.get("snippet").asText());
     assertEquals("2026-09-01T09:00:00Z", log.get("at").asText());
 
     JsonNode day = group(response, "CALENDAR_DAY").get("results").get(0);
@@ -256,6 +256,8 @@ class SearchIntegrationTest extends IntegrationTestSupport {
   @Test
   void matchingIsCaseInsensitiveAndFindsWordParts() {
     String noteId = note("Kubernetes Operators", "Reconcile loops");
+    String multiLine = note("Line breaks", "First line\n\nSecond line");
+    assertEquals("First line · Second line", result(search("second line"), "NOTE", multiLine).get("snippet").asText());
     assertEquals(List.of(noteId), ids(search("KUBER"), "NOTE"));
     assertEquals(List.of(noteId), ids(search("netes oper"), "NOTE"));
     assertEquals(List.of(noteId), ids(search("ConCILE"), "NOTE"));
@@ -578,7 +580,9 @@ class SearchIntegrationTest extends IntegrationTestSupport {
     assertEquals("Untitled note", result(search("capybara"), "NOTE", noteId).get("title").asText());
 
     String logId = log("\n\n   \nCormorant sighting after blank lines");
-    assertEquals("Cormorant sighting after blank lines", result(search("cormorant"), "LOG", logId).get("title").asText());
+    JsonNode cormorant = result(search("cormorant"), "LOG", logId);
+    assertEquals("Cormorant sighting after blank lines", cormorant.get("title").asText());
+    assertTrue(cormorant.get("snippet").isNull(), "a one-line log has no snippet beyond its title");
   }
 
   @Test
