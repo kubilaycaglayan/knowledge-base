@@ -459,8 +459,12 @@ describe("search and direct routes against disposable real stack", () => {
     }, unknownId);
     const canonicalBoard = new URL(unknownArchiveBoard.url()).searchParams.get("board");
     assert.ok(canonicalBoard === "all" || canonicalBoard === fixtures.board.id || fixtures.overflowBoards.some((board) => board.id === canonicalBoard), "an unknown archive board falls back to an available board context");
+    const canonicalBoardFixture = [fixtures.board, ...fixtures.overflowBoards].find((board) => board.id === canonicalBoard);
+    const archiveStatusesHeading = unknownArchiveBoard.getByRole("heading", { name: canonicalBoardFixture ? `Archived statuses · ${canonicalBoardFixture.name}` : "Archived statuses", exact: true });
+    await archiveStatusesHeading.waitFor();
     await unknownArchiveBoard.reload();
     assert.equal(new URL(unknownArchiveBoard.url()).searchParams.get("board"), canonicalBoard);
+    await archiveStatusesHeading.waitFor();
     await unknownArchiveBoard.close();
   });
 
