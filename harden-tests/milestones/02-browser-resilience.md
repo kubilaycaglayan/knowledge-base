@@ -20,6 +20,10 @@ and root-cause classification before assertions are changed.
   full output, screenshots, traces, DOM snapshots, browser console, request
   logs, and server logs where available. For each signature, mark reproduced,
   not reproduced, or insufficient evidence and state why.
+- [ ] Reconcile incomplete local transcripts as well as the six complete run
+  reports; the 2026-10-08 board attempt has three failures but cannot be used
+  as browser-profile coverage because commit/profile/environment metadata is
+  absent.
 - [ ] For reproducible failures, create a minimal focused reproduction and
   identify whether the cause is application behavior, fixture setup, timing,
   browser-engine behavior, or test synchronization. Do not weaken assertions

@@ -7,9 +7,13 @@ previous failure.
 ## Failure investigation
 
 - [ ] Reconcile every row in the cumulative failure table against its dated
-  reports and count case occurrences and suite occurrences consistently.
+  reports and count case occurrences and suite occurrences consistently;
+  include local transcripts with incomplete metadata as explicitly qualified
+  evidence instead of silently omitting their failures.
 - [ ] For each historical signature, record reproduced, not reproduced, or
   insufficient evidence, with report/trace/log links and investigation date.
+- [ ] For every report with missing commit, profile, environment, or artifacts,
+  leave those fields unknown and exclude it from profile pass/fail coverage.
 - [ ] For reproduced failures, identify whether evidence supports product
   behavior, fixture setup, timing, browser engine, environment, or test
   synchronization as the cause.
