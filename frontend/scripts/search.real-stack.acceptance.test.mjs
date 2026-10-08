@@ -73,8 +73,14 @@ async function seed() {
   fixtures.specialNote = await api("/notes", "POST", { title: `${text} Café, Signals?`, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Punctuation and Unicode search fixture" }] }] }), contentText: "Punctuation and Unicode search fixture", tags: [] });
   fixtures.archivedNote = await api("/notes", "POST", { title: `${text} Archived Note`, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] }), contentText: text, tags: [] });
   await api(`/notes/${fixtures.archivedNote.id}`, "DELETE");
+  fixtures.untitledArchivedNote = await api("/notes", "POST", { title: "", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: `${text} Untitled archive body` }] }] }), contentText: `${text} Untitled archive body`, tags: [] });
+  await api(`/notes/${fixtures.untitledArchivedNote.id}`, "DELETE");
   fixtures.log = await api("/logs", "POST", { body: `${text} Log`, occurredAt: new Date().toISOString() });
   fixtures.label = await api("/labels", "POST", { name: `${text} Label`, color: "#2878D5", scopes: ["CALENDAR", "TIME_ENTRY"] });
+  fixtures.overflowBoards = [];
+  for (let index = 0; index < 12; index += 1) {
+    fixtures.overflowBoards.push(await api("/boards", "POST", { name: `Overflow fixture board ${String(index).padStart(2, "0")} with a deliberately wide tab label` }));
+  }
   fixtures.board = await api("/boards", "POST", { name: `${text} Board` });
   fixtures.status = (await api(`/boards/${fixtures.board.id}/statuses`))[0];
   for (let index = 0; index < 21; index += 1) {
@@ -93,6 +99,14 @@ async function seed() {
   const start = new Date(Date.now() - 3_600_000).toISOString();
   const end = new Date(Date.now() - 1_800_000).toISOString();
   fixtures.session = await api("/time-entries", "POST", { pathId: fixtures.path.id, labelIds: [fixtures.label.id], startedAt: start, endedAt: end, description: `${text} Session` });
+  for (let index = 0; index < 50; index += 1) {
+    const paddedEnd = new Date(Date.now() - 60_000 - index * 1_000);
+    await api("/time-entries", "POST", { pathId: fixtures.path.id, labelIds: [], startedAt: new Date(paddedEnd.getTime() - 1_800_000).toISOString(), endedAt: paddedEnd.toISOString(), description: `${stamp} Session padding ${index}` });
+  }
+  const firstSessionPage = await api("/time-entries?page=0&size=50");
+  fixtures.sessionOutsideFirstPage = !firstSessionPage.sessions.some((session) => session.id === fixtures.session.id);
+  assert.equal(firstSessionPage.totalSessions, 51);
+  assert.equal(fixtures.sessionOutsideFirstPage, true, "the target session is outside the first 50-item history page");
 
   fixtures.shortcutMatchPath = await api("/paths", "POST", { name: "Paths", description: "Record result matching the page shortcut", color: "#2878D5", textColor: "#FFFFFF" });
 
@@ -111,6 +125,7 @@ async function seed() {
   const foreignStart = new Date(Date.now() - 3_600_000).toISOString();
   const foreignEnd = new Date(Date.now() - 1_800_000).toISOString();
   fixtures.foreignSession = await api("/time-entries", "POST", { pathId: fixtures.foreignPath.id, labelIds: [], startedAt: foreignStart, endedAt: foreignEnd, description: "Foreign private session" }, foreignToken);
+
 }
 
 async function openSearch() {
@@ -156,6 +171,7 @@ async function activate(query, type, id, expectedPath, expectedVisible) {
     await page.getByRole("textbox", { name: "Note title" }).waitFor();
     await page.waitForFunction((value) => document.querySelector('[aria-label="Note title"]')?.value === value, expectedVisible);
     assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), expectedVisible);
+    assert.ok((await page.getByRole("textbox", { name: "Note content" }).innerText()).includes(text), "the opened note body matches the fixture");
   } else {
     await page.waitForFunction((value) => document.body.innerText.includes(value), expectedVisible);
   }
@@ -167,6 +183,7 @@ async function activate(query, type, id, expectedPath, expectedVisible) {
   if (expectedPath.startsWith("/notes/")) {
     await page.waitForFunction((value) => document.querySelector('[aria-label="Note title"]')?.value === value, expectedVisible);
     assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), expectedVisible);
+    assert.ok((await page.getByRole("textbox", { name: "Note content" }).innerText()).includes(text), "Forward restores the selected note body");
   }
   else await page.waitForFunction((value) => document.body.innerText.includes(value), expectedVisible);
   await page.goto(`${baseUrl}/`);
@@ -441,6 +458,7 @@ describe("search and direct routes against disposable real stack", () => {
       return url.pathname === "/board/archive" && url.searchParams.get("board") !== id && Boolean(url.searchParams.get("board"));
     }, unknownId);
     const canonicalBoard = new URL(unknownArchiveBoard.url()).searchParams.get("board");
+    assert.ok(canonicalBoard === "all" || canonicalBoard === fixtures.board.id || fixtures.overflowBoards.some((board) => board.id === canonicalBoard), "an unknown archive board falls back to an available board context");
     await unknownArchiveBoard.reload();
     assert.equal(new URL(unknownArchiveBoard.url()).searchParams.get("board"), canonicalBoard);
     await unknownArchiveBoard.close();
@@ -499,21 +517,57 @@ describe("search and direct routes against disposable real stack", () => {
 
   it("targets archived results and fetches a card beyond the first page", async () => {
     const archivedNote = await searchFor(`${text} Archived Note`, "NOTE", fixtures.archivedNote.id);
+    const beforeArchivedNote = page.url();
     await archivedNote.option.click();
     await page.waitForFunction(() => location.pathname === "/notes" && new URL(location.href).searchParams.get("archived") === "1");
     assert.equal(new URL(page.url()).searchParams.get("q"), `${text} Archived Note`);
     await page.getByText(`${text} Archived Note`, { exact: false }).waitFor();
+    const archivedNoteUrl = page.url();
+    await page.goBack();
+    assert.equal(page.url(), beforeArchivedNote);
+    await page.goForward();
+    assert.equal(page.url(), archivedNoteUrl);
+    await page.getByText(`${text} Archived Note`, { exact: false }).waitFor();
+
+    const untitledNote = await searchFor(`${text} Untitled archive body`, "NOTE", fixtures.untitledArchivedNote.id);
+    const beforeUntitledNote = page.url();
+    await untitledNote.option.click();
+    await page.waitForFunction(() => location.pathname === "/notes" && new URL(location.href).searchParams.get("archived") === "1");
+    assert.equal(new URL(page.url()).searchParams.get("q"), "", "untitled archive results use an empty query");
+    await page.getByText(`${text} Untitled archive body`, { exact: false }).waitFor();
+    const untitledNoteUrl = page.url();
+    await page.goBack();
+    assert.equal(page.url(), beforeUntitledNote);
+    await page.goForward();
+    assert.equal(page.url(), untitledNoteUrl);
+    await page.getByText(`${text} Untitled archive body`, { exact: false }).waitFor();
 
     const archivedBoard = await searchFor(`${text} Archived Board`, "BOARD", fixtures.archivedBoard.id);
+    const beforeArchivedBoard = page.url();
     await archivedBoard.option.click();
     await page.waitForFunction((id) => location.pathname === "/board/archive" && new URL(location.href).searchParams.get("archivedBoard") === id, fixtures.archivedBoard.id);
     await page.getByText(`${text} Archived Board`, { exact: false }).first().waitFor();
+    await page.waitForFunction((id) => document.getElementById(`archive-board-${id}`)?.classList.contains("archive-row-highlight"), fixtures.archivedBoard.id);
+    const archivedBoardUrl = page.url();
+    await page.goBack();
+    assert.equal(page.url(), beforeArchivedBoard);
+    await page.goForward();
+    assert.equal(page.url(), archivedBoardUrl);
+    await page.getByText(`${text} Archived Board`, { exact: false }).first().waitFor();
 
     const archivedCard = await searchFor(`${text} Archived Card`, "CARD", fixtures.archivedCard.id);
+    const beforeArchivedCard = page.url();
     await archivedCard.option.click();
     await page.waitForFunction((id) => location.pathname === "/board/archive" && new URL(location.href).searchParams.get("card") === id, fixtures.archivedCard.id);
     assert.equal(new URL(page.url()).searchParams.get("board"), fixtures.board.id);
     assert.equal(await page.locator(".card-editor").count(), 0, "archived cards do not open the active-card editor");
+    await page.getByText(`${text} Archived Card`, { exact: false }).waitFor();
+    await page.waitForFunction((id) => document.getElementById(`archive-card-${id}`)?.classList.contains("archive-row-highlight"), fixtures.archivedCard.id);
+    const archivedCardUrl = page.url();
+    await page.goBack();
+    assert.equal(page.url(), beforeArchivedCard);
+    await page.goForward();
+    assert.equal(page.url(), archivedCardUrl);
     await page.getByText(`${text} Archived Card`, { exact: false }).waitFor();
 
     const activeCard = await searchFor(`${text} Card`, "CARD", fixtures.card.id);
@@ -524,9 +578,24 @@ describe("search and direct routes against disposable real stack", () => {
   });
 
   it("direct-loads the result destinations without stale route state", async () => {
+    const boardOverflow = await freshAuthenticatedPage();
+    await boardOverflow.direct.goto(`${baseUrl}/board?board=${fixtures.overflowBoards[0].id}`);
+    await boardOverflow.direct.locator(".board-tabs").waitFor();
+    await boardOverflow.direct.getByRole("button", { name: /More boards/ }).waitFor();
+    assert.equal(await boardOverflow.direct.locator(".board-tab-current .board-tab.selected").innerText(), "Overflow fixture board 00 with a deliberately wide tab label");
+    const initiallyShownBoardNames = await boardOverflow.direct.locator(".board-tab-list .board-tab").allTextContents();
+    assert.equal(initiallyShownBoardNames.some((name) => name.trim() === `${text} Board`), false, "the target board is outside the initially visible tabs");
+    await boardOverflow.direct.getByRole("button", { name: /More boards/ }).click();
+    const boardMenu = boardOverflow.direct.locator(".board-more-menu");
+    await boardMenu.waitFor();
+    const boardMenuNames = await boardMenu.locator("[role='menuitem']").allTextContents();
+    assert.ok(boardMenuNames.some((name) => name.trim() === `${text} Board`), `the overflow menu contains the target board; observed ${JSON.stringify(boardMenuNames)}`);
+    await boardOverflow.close();
+
     const destinations = [
       { path: `/notes/${fixtures.note.id}`, kind: "note" },
       { path: `/notes?archived=1&q=${encodeURIComponent(`${text} Archived Note`)}`, kind: "archived-note" },
+      { path: `/notes?archived=1`, kind: "untitled-archived-note" },
       { path: `/logs/${fixtures.log.id}`, kind: "log" },
       { path: `/paths/${fixtures.path.id}`, kind: "path" },
       { path: `/labels/${fixtures.label.id}`, kind: "label" },
@@ -546,31 +615,64 @@ describe("search and direct routes against disposable real stack", () => {
         assert.equal(new URL(direct.url()).pathname + new URL(direct.url()).search, destination.path);
         if (destination.kind === "note") {
           await direct.waitForFunction((title) => document.querySelector('[aria-label="Note title"]')?.value === title, `${text} Note`);
+          assert.ok((await direct.getByRole("textbox", { name: "Note content" }).innerText()).includes(text), "direct note load restores the expected body");
         } else if (destination.kind === "archived-note") {
           assert.equal(new URL(direct.url()).searchParams.get("archived"), "1");
           assert.equal(new URL(direct.url()).searchParams.get("q"), `${text} Archived Note`);
           await direct.getByText(`${text} Archived Note`, { exact: false }).waitFor();
+        } else if (destination.kind === "untitled-archived-note") {
+          assert.equal(new URL(direct.url()).searchParams.get("archived"), "1");
+          assert.equal(new URL(direct.url()).searchParams.has("q"), false);
+          await direct.getByText(`${text} Untitled archive body`, { exact: false }).waitFor();
         } else if (destination.kind === "card") {
           await direct.waitForFunction((title) => document.querySelector('.card-editor [aria-label="Title"]')?.value === title, `${text} Card`);
+          assert.equal(await direct.locator(".board-tab-current .board-tab.selected").innerText(), `${text} Board`);
+          const url = new URL(direct.url());
+          assert.equal(url.searchParams.get("board"), fixtures.board.id);
+          assert.equal(url.searchParams.get("cardBoard"), fixtures.board.id);
         } else if (destination.kind === "board") {
           await direct.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
         } else if (destination.kind === "calendar") {
           await direct.waitForFunction((date) => new URL(location.href).searchParams.get("date") === date, fixtures.day);
+          assert.equal(await direct.locator('select[aria-label="Calendar month"]').inputValue(), String(Number(fixtures.day.slice(5, 7)) - 1));
+          assert.equal(await direct.locator('select[aria-label="Calendar year"]').inputValue(), fixtures.day.slice(0, 4));
+          const selectedDay = direct.locator('.calendar-day[aria-pressed="true"]');
+          await selectedDay.waitFor();
+          assert.equal(Number(await selectedDay.locator("time").innerText()), Number(fixtures.day.slice(8, 10)));
         } else if (destination.kind === "archived-board") {
           await direct.waitForFunction((id) => new URL(location.href).searchParams.get("archivedBoard") === id, fixtures.archivedBoard.id);
           await direct.getByText(`${text} Archived Board`, { exact: false }).first().waitFor();
+          await direct.waitForFunction((id) => document.getElementById(`archive-board-${id}`)?.classList.contains("archive-row-highlight"), fixtures.archivedBoard.id);
         } else if (destination.kind === "archived-card") {
           const url = new URL(direct.url());
           assert.equal(url.searchParams.get("board"), fixtures.board.id);
           assert.equal(url.searchParams.get("card"), fixtures.archivedCard.id);
           assert.equal(await direct.locator(".card-editor").count(), 0);
           await direct.getByText(`${text} Archived Card`, { exact: false }).waitFor();
+          await direct.waitForFunction((id) => document.getElementById(`archive-card-${id}`)?.classList.contains("archive-row-highlight"), fixtures.archivedCard.id);
         } else {
           const expected = destination.kind === "log" ? `${text} Log`
             : destination.kind === "path" ? `${text} Path`
               : destination.kind === "label" ? `${text} Label` : `${text} Session`;
           await direct.waitForFunction((value) => document.body.innerText.includes(value), expected);
         }
+      }
+      if (destination.kind === "path") {
+        const history = direct.locator(".path-history-dialog");
+        await history.getByRole("heading", { name: `${text} Path` }).waitFor();
+        await history.getByRole("button", { name: "Close", exact: true }).click();
+        await direct.waitForFunction(() => location.pathname === "/paths");
+        assert.equal(await direct.locator(".path-history-dialog").count(), 0, "closing path history returns to the path list");
+      }
+      if (destination.kind === "session") {
+        assert.equal(fixtures.sessionOutsideFirstPage, true);
+        const sessionsList = direct.getByRole("region", { name: "Sessions" });
+        assert.ok(!(await sessionsList.innerText()).includes(`${text} Session`), "the target session is outside the loaded list page");
+        const dialog = direct.locator(".session-dialog");
+        await dialog.getByText(`${text} Session`, { exact: true }).waitFor();
+        await dialog.getByRole("button", { name: "Close session" }).click();
+        await direct.waitForFunction(() => location.pathname === "/");
+        assert.equal(await direct.locator(".session-dialog").count(), 0, "closing a session direct link returns home");
       }
       await close();
     }
@@ -620,22 +722,24 @@ describe("search and direct routes against disposable real stack", () => {
     ];
     for (const testCase of cases) {
       for (const id of [testCase.missing, testCase.foreign]) {
-        const direct = await context.newPage();
+        const { direct, close } = await freshAuthenticatedPage();
         await direct.goto(`${baseUrl}${testCase.route(id)}`);
         await testCase.assertRecovery(direct);
         assert.ok(!(await direct.locator("body").innerText()).includes(testCase.privateText), `${testCase.family} does not show foreign data`);
-        await direct.close();
+        await close();
       }
     }
 
-    const missingCard = await context.newPage();
+    const missingCardContext = await freshAuthenticatedPage();
+    const missingCard = missingCardContext.direct;
     await missingCard.goto(`${baseUrl}/board?board=${fixtures.board.id}&card=${randomUUID()}&cardBoard=${fixtures.board.id}`);
     await missingCard.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
     assert.equal(await missingCard.locator(".card-editor").count(), 0, "missing cards remain unopened");
     assert.ok(!(await missingCard.locator("body").innerText()).includes("Foreign private"));
-    await missingCard.close();
+    await missingCardContext.close();
 
-    const foreignBoard = await context.newPage();
+    const foreignBoardContext = await freshAuthenticatedPage();
+    const foreignBoard = foreignBoardContext.direct;
     await foreignBoard.goto(`${baseUrl}/board?board=${fixtures.foreignBoard.id}&card=${fixtures.foreignCard.id}&cardBoard=${fixtures.foreignBoard.id}`);
     await foreignBoard.waitForFunction((id) => new URL(location.href).searchParams.get("board") !== id, fixtures.foreignBoard.id);
     assert.equal(await foreignBoard.locator(".card-editor").count(), 0, "foreign cards do not open an editor");
@@ -643,7 +747,7 @@ describe("search and direct routes against disposable real stack", () => {
     assert.ok(!foreignBoardText.includes(`${text} Foreign Board`));
     assert.ok(!foreignBoardText.includes(`${text} Foreign Card`));
     assert.ok(!foreignBoardText.includes("Foreign private card body"));
-    await foreignBoard.close();
+    await foreignBoardContext.close();
   });
 
   it("shows an empty search state and retries a request error against the real API", async () => {
