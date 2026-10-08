@@ -351,6 +351,7 @@ watch(
     if (monthChanges) void load();
     else selectDay(date);
   },
+  { immediate: true },
 );
 </script>
 
