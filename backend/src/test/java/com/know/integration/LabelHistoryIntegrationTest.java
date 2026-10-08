@@ -9,6 +9,11 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -245,6 +250,44 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
     for (int index = 54; index >= 0; index--)
       expectedDates.add(base.plusSeconds(index * 60L).toString());
     assertEquals(expectedDates, dates);
+  }
+
+  @Test
+  void postgresConcurrentIdenticalLogLabelAssignmentsAreIdempotent() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent label assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent assignment");
+    JsonNode log =
+        ok(
+            HttpMethod.POST,
+            "/api/v1/logs",
+            owner,
+            "{\"body\":\"Concurrent log\",\"occurredAt\":\"2026-05-02T09:00:00Z\"}");
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> assignLabelTogether(owner, log.get("id").asText(), labelId, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> assignLabelTogether(owner, log.get("id").asText(), labelId, startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode history = history(owner, labelId, "");
+    assertEquals(1, history.get("uses").get("logs").asLong());
+  }
+
+  private int assignLabelTogether(
+      String token, String logId, String labelId, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return exchange(
+            HttpMethod.PUT,
+            "/api/v1/logs/" + logId + "/labels",
+            token,
+            "{\"labelIds\":[\"" + labelId + "\"]}")
+        .getStatusCode()
+        .value();
   }
 
   // LH-03
