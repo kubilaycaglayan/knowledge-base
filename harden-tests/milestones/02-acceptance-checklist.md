@@ -59,7 +59,7 @@ records that engine/profile and its outcomes.
   suspected pending further investigation.
 - [x] Keep suspected causes labeled suspected until a minimal reproduction or
   trace establishes the cause.
-- [ ] Preserve a zero-count `Unclassified` row when no failures remain; never
+- [x] Preserve a zero-count `Unclassified` row when no failures remain; never
   silently drop an unresolved signature.
 - [x] Do not weaken a semantic assertion or add optional-locator guards to hide
   missing controls; change an assertion only with a documented contract reason.
@@ -89,8 +89,10 @@ records that engine/profile and its outcomes.
   that is the documented behavior.
 - [ ] Verify keyboard navigation reaches error recovery and retry actions in
   mobile and desktop browser layouts.
-- [ ] Run mobile Chrome/Chromium phone emulation, desktop Chromium, and emulated
+- [x] Run mobile Chrome/Chromium phone emulation, desktop Chromium, and emulated
   iPhone WebKit as separately labeled profiles; record unsupported profiles.
+  The emulated iPhone WebKit line-history report is separate and records both
+  reproduced WebKit failures; no physical mobile device is claimed.
 
 ## Diagnostics and privacy
 

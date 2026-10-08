@@ -132,12 +132,14 @@ d2cda77 reports; the final 6d29b9b pair added five more. The subsequent
 suite occurrences (archive overlap in both profiles, detached locator and
 More boards in mobile Chromium). The f6abf77 line-history pair passed all 12
 cases in each profile and added no failure occurrences. The cumulative table
-has 72 case occurrences across 35 failure-group suite occurrences: 65 cases
+has 74 case occurrences across 37 failure-group suite occurrences: 65 cases
 from 17 complete dated reports with failures, 4 test-authoring failures from
 exploratory attempts, and 3 from the partial transcript. The f6abf77 line-history,
 941b7c4 timer, and 5bba75f search reports passed and add no failing occurrences.
-The partial transcript remains history-only. “Suite occurrences” counts one suite per
-failure group in that suite, so one run can contribute to multiple groups.
+The emulated iPhone WebKit line-history report added two reproduced failures
+across two failure-group suite occurrences. The partial transcript remains
+history-only. “Suite occurrences” counts one suite per failure group in that
+suite, so one run can contribute to multiple groups.
 
 The line-history profile reports are [desktop Chromium](2026-10-08-f6abf77-desktop-chromium-line-history-resilience.md)
 and [mobile-size Chromium](2026-10-08-f6abf77-mobile-chromium-line-history-resilience.md).
@@ -157,13 +159,18 @@ Test-authoring failures from the exploratory timer and search attempts are
 reconciled in the separate [investigation report](2026-10-08-resilience-test-authoring-investigations.md)
 and do not count as profile coverage.
 
+The emulated iPhone WebKit line-history report is [here](2026-10-08-1dc2a34-iphone-webkit-line-history-resilience.md).
+It passed 11/13 and reproduced the touch caret/gutter issue and timer API
+access-control errors. The runner retained only passing screenshots, so both
+failures remain without traces or network/server logs.
+
 | Suspected root cause | Case occurrences | Suite occurrences | Last seen | Confirmed correction |
 | --- | ---: | ---: | --- | --- |
 | Board setup assumes selected board remains a visible tab after overflow | 23 | 1 | 2026-10-08 | Corrected in earlier run; no setup failure in current board runs. |
 | Session-tracker fixture controls unavailable during keyboard/fill interactions | 9 | 1 | 2026-10-08 | Insufficient evidence; historical artifacts unavailable. |
 | Fixed timer/shell overlaps archive footer controls | 20 | 14 | 2026-10-08 | Reproduced in desktop and mobile Chromium; latest screenshots/traces and scoped stack logs retained locally; product cause not confirmed. |
-| WebKit touch caret placement interacts with line-history gutter | 1 | 1 | 2026-10-08 | Insufficient evidence; trace unavailable. |
-| WebKit timer API CORS/access-control request | 1 | 1 | 2026-10-08 | Insufficient evidence; network/server logs unavailable. |
+| WebKit touch caret placement interacts with line-history gutter | 2 | 2 | 2026-10-08 | Reproduced by the emulated iPhone WebKit line-history report; trace unavailable. |
+| WebKit timer API CORS/access-control request | 2 | 2 | 2026-10-08 | Reproduced by the emulated iPhone WebKit line-history report; network/server logs unavailable, cause remains unconfirmed. |
 | Detached board card locator | 6 | 6 | 2026-10-08 | Reproduced in four mobile Chromium runs; latest trace retained locally; timing versus rerender remains suspected. |
 | Board menu control unavailable during phone card/view switching | 6 | 6 | 2026-10-08 | Reproduced in five mobile Chromium runs; latest screenshot/trace retained locally; responsive state cause suspected. |
 | Unclassified | 2 | 1 | 2026-10-08 | The incomplete-metadata attempt retains two unresolved signatures. |
