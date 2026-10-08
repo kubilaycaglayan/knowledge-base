@@ -40,15 +40,17 @@ records that engine/profile and its outcomes.
   include local transcripts with incomplete metadata as explicitly qualified
   evidence instead of silently omitting their failures. See the updated
   counts and evidence boundary in [`runs/README.md`](../runs/README.md).
-- [ ] For each historical signature, record reproduced, not reproduced, or
+- [x] For each historical signature, record reproduced, not reproduced, or
   insufficient evidence, with report/trace/log links and investigation date.
 - [x] For every report with missing commit, profile, environment, or artifacts,
   leave those fields unknown and exclude it from profile pass/fail coverage.
   The incomplete board transcript remains excluded.
-- [ ] For reproduced failures, identify whether evidence supports product
+- [x] For reproduced failures, identify whether evidence supports product
   behavior, fixture setup, timing, browser engine, environment, or test
-  synchronization as the cause.
-- [ ] Keep suspected causes labeled suspected until a minimal reproduction or
+  synchronization as the cause. The reproduced archive overlap is tracked as a
+  product-facing finding; the detached locator and menu state causes remain
+  suspected pending further investigation.
+- [x] Keep suspected causes labeled suspected until a minimal reproduction or
   trace establishes the cause.
 - [ ] Preserve a zero-count `Unclassified` row when no failures remain; never
   silently drop an unresolved signature.
@@ -82,14 +84,17 @@ records that engine/profile and its outcomes.
 
 ## Diagnostics and privacy
 
-- [ ] Capture Playwright trace, screenshot, browser console, and failed request
+- [x] Capture Playwright trace, screenshot, browser console, and failed request
   details on failure; retain relevant API/proxy logs for real-stack failures.
-- [ ] Confirm artifact paths are ignored locally or retained in CI storage with
-  a stated expiry and are linked from the report.
+- [x] Confirm artifact paths are ignored locally or retained in CI storage with
+  a stated expiry and are linked from the report. The 2026-10-08 capture runs
+  use `harden-tests/local-artifacts/`, covered by the root `.gitignore`, with
+  a 2026-10-15 removal date in each report.
 - [ ] Scrub credentials, authorization headers, cookies, personal content, and
   account identifiers from reports and artifacts before sharing or committing.
-- [ ] Link focused reproduction and full-suite results for both desktop and
+- [x] Link focused reproduction and full-suite results for both desktop and
   mobile browser profiles; record remaining product defects outside this
-  test-only milestone with an issue/reference.
+  test-only milestone with an issue/reference. See the
+  [follow-up register](../follow-up-defects.md).
 - [ ] Update cumulative counts only from actual run outputs and document the
   exact reports included in each count.

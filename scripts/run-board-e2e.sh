@@ -41,5 +41,18 @@ for attempt in {1..60}; do
   sleep 2
 done
 
-BOARD_E2E_BASE_URL="http://localhost:${port}" BOARD_E2E_EMAIL="$email" BOARD_E2E_PASSWORD="$password" \
-  npm run test:board:e2e --prefix frontend
+if [[ -n "${BOARD_E2E_ARTIFACT_DIR:-}" ]]; then
+  mkdir -p "$BOARD_E2E_ARTIFACT_DIR"
+  set +e
+  BOARD_E2E_BASE_URL="http://localhost:${port}" BOARD_E2E_EMAIL="$email" BOARD_E2E_PASSWORD="$password" \
+    npm run test:board:e2e --prefix frontend 2>&1 | tee "$BOARD_E2E_ARTIFACT_DIR/command.log"
+  test_status=${PIPESTATUS[0]}
+  set -e
+  if [[ "$test_status" != 0 ]]; then
+    "${compose[@]}" logs --no-color > "$BOARD_E2E_ARTIFACT_DIR/stack.log" 2>&1 || true
+    exit "$test_status"
+  fi
+else
+  BOARD_E2E_BASE_URL="http://localhost:${port}" BOARD_E2E_EMAIL="$email" BOARD_E2E_PASSWORD="$password" \
+    npm run test:board:e2e --prefix frontend
+fi

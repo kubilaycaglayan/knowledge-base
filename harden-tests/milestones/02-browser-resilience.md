@@ -69,17 +69,21 @@ and root-cause classification before assertions are changed.
 
 ## Current progress
 
-- The 2026-10-08 desktop Chromium and mobile-size Chromium board runs on
-  `63cf4f3` both exercise the failed-page retry journey. The retry preserved
-  the current cursor, loaded the expected card once, and was keyboard
-  operable. See the [desktop report](../runs/2026-10-08-63cf4f3-desktop-chromium-board-resilience.md)
-  and [mobile report](../runs/2026-10-08-63cf4f3-mobile-chromium-board-resilience.md).
+- The 2026-10-08 desktop Chromium and mobile-size Chromium board runs exercise
+  the failed-page retry journey. The retry preserved the current cursor,
+  loaded the expected card once, and was keyboard operable. Capture-enabled
+  follow-up runs retain local failure artifacts; see the [desktop report](../runs/2026-10-08-d2cda77-desktop-chromium-board-resilience.md)
+  and [mobile report](../runs/2026-10-08-d2cda77-mobile-chromium-board-resilience.md).
 - Both profiles still have observed board failures. The desktop archive footer
   is covered by the dashboard shell. The mobile run also observed a detached
   Gantt card locator, an unavailable More boards control during view switching,
   and the floating timer covering archive navigation/footer controls. These
   remain test-only milestone blockers; product changes belong in the bug-fix
   workflow.
-- Historical investigations are recorded in the [run index](../runs/README.md).
-  Earlier traces, screenshots, and raw transcripts were not retained, so those
-  cases remain insufficient evidence for historical root-cause claims.
+- Historical investigations and reconciled counts are recorded in the [run
+  index](../runs/README.md). Earlier traces, screenshots, and raw transcripts
+  were not retained, so those cases remain insufficient evidence for historical
+  root-cause claims.
+- Reproduced product-facing failures are tracked separately in the [HARD-02
+  follow-up register](../follow-up-defects.md); no product fix was included in
+  this test-only milestone.
