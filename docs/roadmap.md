@@ -2,6 +2,13 @@
 
 - [x] Replace the Calendar page's “New label” input with an “Add or create label” picker that searches every label, puts labels hidden from Calendar on a day as chips without changing their visibility, and creates new labels shown everywhere; the Labels list keeps showing only Calendar labels, and a label used on calendar days can still be hidden from Calendar (see `docs/calendar-label-picker-acceptance-checklist.md`).
 
+- [x] Show when each note and board card body line was last edited, like git
+  blame: the server stamps lines on save (V64 `line_edits`) and returns
+  `lineEdits`. The web editors' "Line history" toolbar toggle (`?lines=1`)
+  shows a locale-formatted time and date gutter, and lines not yet saved show
+  "Unsaved".
+- [ ] Show the per-line edit-time gutter in the iOS Notes editor (the API is ready).
+
 - [x] Warm up the other pages in the background after the first load (route chunks plus the default Sessions, Paths, Labels, Notes, Calendar, Reports, and Logs data, and the saved board with its Kanban columns and Gantt window), with a 10 minute cooldown, quiet start delay, one-at-a-time requests, and no warm-up in automated browsers (see `docs/warmup-cache-acceptance-checklist.md`).
 
 - [x] Open the Reports range selector on the whole picked date range and double its height, growing the chart so bars keep their size (see `docs/report-range-selector-acceptance-checklist.md`).
