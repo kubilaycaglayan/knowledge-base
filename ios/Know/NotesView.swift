@@ -198,6 +198,8 @@ struct NotesView: View {
             let target = model.notes.first(where: { $0.id == targetID }) else { return }
           Task { await model.reorder(from: source, before: target) }
         })
+      // A container keeps its own identifier without overwriting its buttons' identifiers.
+      .accessibilityElement(children: .contain)
       .accessibilityIdentifier("notes.row.\(note.id)")
   }
 

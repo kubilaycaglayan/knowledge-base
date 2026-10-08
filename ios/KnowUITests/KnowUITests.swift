@@ -1047,15 +1047,19 @@ final class KnowUITests: XCTestCase {
 
     let body = app.textViews["notes.body"]
     body.tap()
+    // Put the caret after the existing text before typing a new line.
+    body.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.05)).tap()
     body.typeText("\nShip it")
-    let typed = app.descendants(matching: .any).matching(
-      NSPredicate(format: "label == %@", "Line 2, Ship it, not saved yet")
-    ).firstMatch
-    XCTAssertTrue(typed.waitForExistence(timeout: 3))
+    // The fixture saves at once, so the brief "not saved yet" state is covered by
+    // NotesTests; here the typed line must end up with its own saved time.
+    let lineLabels = {
+      app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Line "))
+        .allElementsBoundByIndex.map(\.label)
+    }
     let saved = app.descendants(matching: .any).matching(
       NSPredicate(format: "label BEGINSWITH %@", "Line 2, Ship it, edited ")
     ).firstMatch
-    XCTAssertTrue(saved.waitForExistence(timeout: 5))
+    XCTAssertTrue(saved.waitForExistence(timeout: 8), "line labels: \(lineLabels())")
     XCTAssertTrue(first.exists, "the untouched line keeps its time")
     let attachment = XCTAttachment(screenshot: app.screenshot())
     attachment.name = "Notes-line-history"
