@@ -14,8 +14,8 @@
   lists each body line with its time ("Unsaved" for lines typed since the last
   save), with VoiceOver labels. `NoteLineHistory` runs its XCTest cases on
   Linux in CI.
-- [ ] Build the iOS app and run `KnowUITests` on macOS to verify the Line
-  history SwiftUI list (it is only syntax-checked on Linux).
+- [x] Build the iOS app and run its unit tests and the notes UI tests (Line
+  history included) in an iPhone simulator on every push (CI job `ios`).
 - [x] iOS: `NoteDocument.plainText` keeps each heading, paragraph, code line,
   and hard-broken line separate (it used to join a heading to the next line
   and drop hard breaks); `scripts/check-ios-note-document.sh` runs its XCTest

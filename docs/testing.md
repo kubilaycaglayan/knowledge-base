@@ -56,6 +56,13 @@ a new one, then checks Orca's speech log:
   and, after the autosave, "Line 3, edited …";
 - Orca never reads the gutter stamps aloud.
 
+The `ios` CI job runs on `macos-latest`:
+- it generates `ios/Know.xcodeproj` with XcodeGen and builds the app for an
+  iPhone simulator, ad-hoc signed so the keychain test works;
+- it runs every `KnowTests` case, plus the notes UI tests, including
+  `testNotesLineHistoryListsEachLineWithItsEditTime`;
+- it uploads the `.xcresult`, with screenshots, as an artifact.
+
 `./scripts/check-ios-note-document.sh` compiles the iOS app's `NoteDocument`
 and `NoteLineHistory` in the official Swift image and runs their XCTest cases
 from `ios/KnowTests/NotesTests.swift` on Linux. SwiftUI cannot build here, but
