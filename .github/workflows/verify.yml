@@ -38,12 +38,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run all backend tests with PostgreSQL integration profile
         run: docker run --rm --network host -e KB_TEST_POSTGRES_URL -e KB_TEST_POSTGRES_USER -e KB_TEST_POSTGRES_PASSWORD -e KB_TEST_POSTGRES_DISPOSABLE -e KB_TEST_POSTGRES_MODE -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon
+      - name: Print fresh PostgreSQL and Flyway evidence
+        run: grep -hE 'PostgreSQL test target:|PostgreSQL version:|PostgreSQL empty-database check:|Successfully applied [0-9]+ migrations' backend/build/test-results/test/*.xml | sort -u
       - name: Validate startup against migrated disposable database
         env:
           KB_TEST_POSTGRES_MODE: migrated
         run: docker run --rm --network host -e KB_TEST_POSTGRES_URL -e KB_TEST_POSTGRES_USER -e KB_TEST_POSTGRES_PASSWORD -e KB_TEST_POSTGRES_DISPOSABLE -e KB_TEST_POSTGRES_MODE -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --tests '*SearchPostgresIntegrationTest'
-      - name: Print PostgreSQL and Flyway evidence
-        run: grep -hE 'PostgreSQL test target:|PostgreSQL version:|PostgreSQL empty-database check:|PostgreSQL migrated-database check:|Successfully applied [0-9]+ migrations' backend/build/test-results/test/*.xml | sort -u
+      - name: Print migrated PostgreSQL evidence
+        run: grep -hE 'PostgreSQL test target:|PostgreSQL version:|PostgreSQL migrated-database check:' backend/build/test-results/test/*.xml | sort -u
 
   web-and-extension:
     runs-on: ubuntu-latest

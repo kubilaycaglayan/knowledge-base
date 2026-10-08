@@ -12,7 +12,7 @@ final class PostgresTestDatabaseGuard {
 
   private PostgresTestDatabaseGuard() {}
 
-  static synchronized void verifyFreshDisposableDatabase(String url) {
+  static synchronized void verifyDisposableDatabase(String url) {
     if (VERIFIED.get()) return;
     if (!"true".equalsIgnoreCase(System.getenv(DISPOSABLE_FLAG))) {
       throw new IllegalStateException(

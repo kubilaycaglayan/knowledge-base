@@ -16,7 +16,7 @@ abstract class IntegrationTestSupport {
   static void configureDataSource(DynamicPropertyRegistry registry) {
     String postgresUrl = System.getenv("KB_TEST_POSTGRES_URL");
     if (postgresUrl != null && !postgresUrl.isBlank()) {
-      PostgresTestDatabaseGuard.verifyFreshDisposableDatabase(postgresUrl);
+      PostgresTestDatabaseGuard.verifyDisposableDatabase(postgresUrl);
       registry.add("spring.datasource.url", () -> postgresUrl);
       registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
       registry.add(

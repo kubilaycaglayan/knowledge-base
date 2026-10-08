@@ -1365,6 +1365,22 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(10, report.get("totalSeconds").asLong());
     assertEquals("2024-02-29", report.get("days").get(0).get("date").asText());
     assertEquals(10, report.get("days").get(0).get("totalSeconds").asLong());
+
+    for (String[] period :
+        new String[][] {
+          {"WEEK", "2024-02-26", "2024-03-03"},
+          {"MONTH", "2024-02-01", "2024-02-29"},
+          {"YEAR", "2024-01-01", "2024-12-31"}
+        }) {
+      JsonNode window =
+          get("/api/v1/reports?period=" + period[0] + "&anchor=2024-02-29", token).getBody();
+      assertEquals(period[1], window.get("from").asText(), period[0]);
+      assertEquals(period[2], window.get("to").asText(), period[0]);
+    }
+    JsonNode rollover =
+        get("/api/v1/reports?period=WEEK&anchor=2024-12-31", token).getBody();
+    assertEquals("2024-12-30", rollover.get("from").asText());
+    assertEquals("2025-01-05", rollover.get("to").asText());
   }
 
   @Test
