@@ -25,4 +25,5 @@ open(f"{package}/Tests/NoteDocTests/NoteDocTests.swift", "w").write(
 open(f"{package}/Package.swift", "w").write(
     '// swift-tools-version: 5.9\nimport PackageDescription\nlet package = Package(name: "NoteDoc", targets: [.target(name: "NoteDoc"), .testTarget(name: "NoteDocTests", dependencies: ["NoteDoc"])])\n')
 PY
-docker run --rm -v "$package:/pkg" -w /pkg swift:5.10 swift test
+# Build output stays inside the container, so the runner can delete the package.
+docker run --rm -v "$package:/pkg:ro" -w /pkg swift:5.10 swift test --scratch-path /tmp/build
