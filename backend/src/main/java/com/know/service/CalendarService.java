@@ -61,6 +61,7 @@ public class CalendarService {
 
   @Transactional
   public LabelView createLabel(UUID userId, String name, String color) {
+    users.findForUpdateById(userId);
     String normalized = normalizedName(name);
     validateColor(color);
     Optional<Label> existing = labels.findByUserIdAndNameIgnoreCase(userId, normalized);

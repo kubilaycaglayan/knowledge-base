@@ -16,9 +16,10 @@ class LabelManagementServiceTest {
   private final TimeEntryLabelRepository timeEntries = mock(TimeEntryLabelRepository.class);
   private final NoteTagRepository notes = mock(NoteTagRepository.class);
   private final LogLabelRepository logs = mock(LogLabelRepository.class);
+  private final UserRepository users = mock(UserRepository.class);
 
   private LabelManagementService service() {
-    return new LabelManagementService(labels, scopes, calendar, timeEntries, notes, logs);
+    return new LabelManagementService(labels, scopes, calendar, timeEntries, notes, logs, users);
   }
 
   @Test
