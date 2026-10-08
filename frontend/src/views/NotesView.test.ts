@@ -361,6 +361,32 @@ describe("NotesView", () => {
     expect(toolbar.find('button[aria-label="Bold"]').exists()).toBe(true);
   });
 
+  it("toggles a per-line edit-time gutter that the URL remembers", async () => {
+    const stamped = { ...note, lineEdits: ["2026-09-02T10:00:00Z"] };
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => (path === "/notes/note-1" && !options ? stamped : undefined));
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const toggle = wrapper.get('button[aria-label="Line history"]');
+    expect(toggle.attributes("aria-pressed")).toBe("false");
+    expect(wrapper.findAll(".line-history-stamp")).toHaveLength(0);
+
+    await toggle.trigger("click");
+    await vi.waitFor(() => expect(r.currentRoute.value.query.lines).toBe("1"));
+    await flushPromises();
+    expect(wrapper.get('button[aria-label="Line history"]').attributes("aria-pressed")).toBe("true");
+    const stamp = wrapper.get(".line-history-stamp time");
+    expect(stamp.attributes("datetime")).toBe("2026-09-02T10:00:00Z");
+
+    await wrapper.get('button[aria-label="Line history"]').trigger("click");
+    await vi.waitFor(() => expect(r.currentRoute.value.query.lines).toBeUndefined());
+    await flushPromises();
+    expect(wrapper.findAll(".line-history-stamp")).toHaveLength(0);
+    expect(api).not.toHaveBeenCalledWith("/notes/note-1", expect.objectContaining({ method: "PUT" }));
+  });
+
   it("suggests matching existing labels while typing and applies a selected label", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {

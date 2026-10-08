@@ -897,6 +897,23 @@ describe("BoardView", () => {
     await wrapper.unmount();
   });
 
+  it("shows card body line edit times when the URL asks for line history", async () => {
+    const store = seedBoard(["Backlog"]);
+    const body = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Step" }] }] });
+    store.cards = [{ id: "card-1", statusId: "status-1", title: "Draft", body, priority: "MEDIUM", position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "t1", lineEdits: ["2026-09-02T10:00:00Z"] }] as any;
+    mockRoute.query = { ...mockRoute.query, lines: "1" };
+    const wrapper = mountBoard();
+    await flushPromises();
+    await wrapper.find(".board-card").trigger("click");
+    await flushPromises();
+    const toggle = wrapper.get('.card-body-editor button[aria-label="Line history"]');
+    expect(toggle.attributes("aria-pressed")).toBe("true");
+    expect(wrapper.get(".card-body-editor .line-history-stamp time").attributes("datetime")).toBe("2026-09-02T10:00:00Z");
+    await toggle.trigger("click");
+    expect(mockRouter.replace).toHaveBeenCalledWith({ query: expect.objectContaining({ lines: undefined }) });
+    await wrapper.unmount();
+  });
+
   describe("card play button", () => {
     const card = (id: string, title: string, pathIds: string[], position: number, labelIds: string[] = []) => ({ id, statusId: "status-1", title, body: "{}", priority: "MEDIUM", position, archived: false, pathIds, labelIds, createdAt: "", updatedAt: "t1" });
     // Card play buttons only show in the In Progress column (CT-06).

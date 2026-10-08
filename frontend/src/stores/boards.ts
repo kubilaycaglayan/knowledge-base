@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { ALL_BOARDS, columnCursor, columnKey } from "../lib/board-merge";
 
 // pathId is set on the board every path owns; only path boards can be hidden and only custom boards pinned.
-export type Board = { id: string; name: string; archived: boolean; pathId?: string | null; hidden?: boolean; pinned?: boolean; createdAt: string; updatedAt: string };
+export type Board = { id: string; name: string; archived: boolean; pathId?: string | null; hidden?: boolean; pinned?: boolean; createdAt: string; updatedAt: string; lineEdits?: string[] };
 export type BoardCardSort = "MANUAL" | "PRIORITY" | "PRIORITY_LAST";
 export type BoardStatus = { id: string; boardId?: string; name: string; position: number; archived: boolean; cardSort?: BoardCardSort };
 export type BoardCard = { id: string; boardId?: string; statusId: string; title: string; body: string; priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT"; startDate?: string; dueDate?: string; position: number; archived: boolean; pathIds: string[]; labelIds: string[]; createdAt: string; updatedAt: string };

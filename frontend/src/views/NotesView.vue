@@ -13,6 +13,7 @@ import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
 import LabelPicker from "../components/LabelPicker.vue";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
+import { setLineHistory } from "../lib/line-history";
 import { Editor } from "@tiptap/core";
 import { api } from "../lib/api";
 import NotesPageSizeSelect from "../components/NotesPageSizeSelect.vue";
@@ -62,6 +63,11 @@ let saveInFlight = false;
 let saveQueued = false;
 
 const isEditor = computed(() => route.name === "note-editor");
+// ?lines=1 shows when each body line was last edited.
+const lineHistory = computed(() => route.query.lines === "1");
+function toggleLineHistory(on: boolean) {
+  void router.replace({ query: { ...route.query, lines: on ? "1" : undefined } });
+}
 const defaultDocument = { type: "doc", content: [{ type: "paragraph" }] };
 const pickerLabels = computed(() => {
   const byName = new Map<string, { id: string; name: string; color?: string | null }>();
@@ -403,6 +409,14 @@ watch(
     }
   },
 );
+watch(
+  [editor, lineHistory, () => selected.value?.lineEdits],
+  () => {
+    if (!editor.value) return;
+    const note = selected.value;
+    setLineHistory(editor.value, lineHistory.value && note?.lineEdits ? { content: note.content, times: note.lineEdits } : null);
+  },
+);
 function refreshVisibleList() {
   if (!isEditor.value && document.visibilityState === "visible")
     void loadNotes(true);
@@ -613,7 +627,7 @@ onBeforeUnmount(() => {
       </div>
       <div ref="editorHost" class="rich-editor" :class="RICH_TEXT_CLASS">
         <EditorContent v-if="editor" :editor="editor" />
-        <RichTextToolbar v-if="editor" class="note-toolbar" :editor="editor" />
+        <RichTextToolbar v-if="editor" class="note-toolbar" :editor="editor" :line-history="lineHistory" @update:line-history="toggleLineHistory" />
       </div>
       <p v-if="selected" class="note-dates">
         Created {{ formatDate(selected.createdAt) }} · Updated
