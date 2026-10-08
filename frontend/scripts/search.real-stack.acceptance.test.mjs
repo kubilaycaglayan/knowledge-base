@@ -351,6 +351,10 @@ describe("search and direct routes against disposable real stack", () => {
     await archivedNotes.goto(`${baseUrl}/notes?archived=1&q=${encodeURIComponent(`${text} Archived Note`)}`);
     await archivedNotes.getByRole("textbox", { name: "Search notes" }).waitFor();
     await archivedNotes.getByText(`${text} Archived Note`, { exact: false }).first().waitFor();
+    await archivedNotes.reload();
+    assert.equal(new URL(archivedNotes.url()).searchParams.get("archived"), "1");
+    assert.equal(new URL(archivedNotes.url()).searchParams.get("q"), `${text} Archived Note`);
+    await archivedNotes.getByText(`${text} Archived Note`, { exact: false }).first().waitFor();
     await archivedNotes.getByRole("textbox", { name: "Search notes" }).fill("");
     await archivedNotes.waitForFunction(() => new URL(location.href).searchParams.get("archived") === "1" && !new URL(location.href).searchParams.has("q"));
     await archivedNotes.close();
@@ -360,6 +364,8 @@ describe("search and direct routes against disposable real stack", () => {
     const noteHistory = noteLines.getByRole("button", { name: "Line history" });
     await noteHistory.waitFor();
     assert.equal(await noteHistory.getAttribute("aria-pressed"), "true");
+    await noteLines.reload();
+    assert.equal(await noteLines.getByRole("button", { name: "Line history" }).getAttribute("aria-pressed"), "true");
     await noteLines.close();
 
     const labelQuery = `${text} Label`;
@@ -367,6 +373,8 @@ describe("search and direct routes against disposable real stack", () => {
     await labels.goto(`${baseUrl}/labels?q=${encodeURIComponent(labelQuery)}`);
     assert.equal(await labels.getByRole("searchbox", { name: "Search labels" }).inputValue(), labelQuery);
     await labels.getByText(labelQuery, { exact: true }).first().waitFor();
+    await labels.reload();
+    assert.equal(await labels.getByRole("searchbox", { name: "Search labels" }).inputValue(), labelQuery);
     await labels.goto(`${baseUrl}/labels/${fixtures.label.id}?q=${encodeURIComponent(labelQuery)}`);
     await labels.getByRole("heading", { name: labelQuery }).waitFor();
     await labels.getByRole("button", { name: "Close history" }).click();
@@ -378,6 +386,9 @@ describe("search and direct routes against disposable real stack", () => {
     await boardSearch.goto(`${baseUrl}/board?board=${fixtures.board.id}&q=${boardQuery}`);
     assert.equal(await boardSearch.locator("#board-search-input").inputValue(), boardQuery);
     await boardSearch.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
+    await boardSearch.reload();
+    assert.equal(await boardSearch.locator("#board-search-input").inputValue(), boardQuery);
+    await boardSearch.waitForFunction((name) => document.querySelector(".board-tab.selected")?.textContent?.trim() === name, `${text} Board`);
     await boardSearch.close();
 
     const boardLines = await context.newPage();
@@ -386,6 +397,8 @@ describe("search and direct routes against disposable real stack", () => {
     const cardHistory = boardLines.getByRole("button", { name: "Line history" });
     await cardHistory.waitFor();
     assert.equal(await cardHistory.getAttribute("aria-pressed"), "true");
+    await boardLines.reload();
+    assert.equal(await boardLines.getByRole("button", { name: "Line history" }).getAttribute("aria-pressed"), "true");
     await boardLines.close();
 
     const from = "2026-06-01";
@@ -403,10 +416,23 @@ describe("search and direct routes against disposable real stack", () => {
     assert.equal(await gantt.getByRole("textbox", { name: "Timeline start date" }).inputValue(), from);
     assert.equal(await gantt.getByRole("textbox", { name: "Timeline end date" }).inputValue(), to);
     await gantt.getByText(`${text} Gantt end day`, { exact: false }).first().waitFor();
+    const ganttReloadRequest = gantt.waitForRequest((candidate) => {
+      const url = new URL(candidate.url());
+      return url.pathname === `/api/v1/boards/${fixtures.board.id}/gantt` && candidate.method() === "GET";
+    });
+    await gantt.reload();
+    const reloadedGanttRequest = new URL((await ganttReloadRequest).url());
+    assert.equal(reloadedGanttRequest.searchParams.get("from"), from);
+    assert.equal(reloadedGanttRequest.searchParams.get("to"), to);
+    assert.equal(await gantt.getByRole("textbox", { name: "Timeline start date" }).inputValue(), from);
+    assert.equal(await gantt.getByRole("textbox", { name: "Timeline end date" }).inputValue(), to);
+    await gantt.getByText(`${text} Gantt end day`, { exact: false }).first().waitFor();
     await gantt.close();
 
     const archiveActiveBoard = await context.newPage();
     await archiveActiveBoard.goto(`${baseUrl}/board/archive?board=${fixtures.board.id}`);
+    await archiveActiveBoard.getByText(`${text} Archived Card`, { exact: false }).waitFor();
+    await archiveActiveBoard.reload();
     await archiveActiveBoard.getByText(`${text} Archived Card`, { exact: false }).waitFor();
     await archiveActiveBoard.close();
 
@@ -417,6 +443,9 @@ describe("search and direct routes against disposable real stack", () => {
       const url = new URL(location.href);
       return url.pathname === "/board/archive" && url.searchParams.get("board") !== id && Boolean(url.searchParams.get("board"));
     }, unknownId);
+    const canonicalBoard = new URL(unknownArchiveBoard.url()).searchParams.get("board");
+    await unknownArchiveBoard.reload();
+    assert.equal(new URL(unknownArchiveBoard.url()).searchParams.get("board"), canonicalBoard);
     await unknownArchiveBoard.close();
   });
 
