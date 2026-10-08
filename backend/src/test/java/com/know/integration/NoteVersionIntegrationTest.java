@@ -30,4 +30,18 @@ class NoteVersionIntegrationTest extends IntegrationTestSupport {
     ApiClient.Reply second = api.put("/api/v1/notes/" + id, token, "{\"title\":\"Draft\",\"content\":\"three\",\"version\":" + first.json().get("version") + "}");
     assertEquals(200, second.status(), second.toString());
   }
+
+  @Test
+  void createAndPinAnswerWithTheCurrentVersion() {
+    String token = api.register();
+    JsonNode created =
+        api.created("POST", "/api/v1/notes", token, "{\"title\":\"Draft\",\"content\":\"one\",\"contentText\":\"one\"}");
+    String id = created.get("id").asText();
+    assertEquals(api.get("/api/v1/notes/" + id, token).json().get("version"), created.get("version"));
+
+    JsonNode pinned = api.created("POST", "/api/v1/notes/" + id + "/pin", token, "{\"pinned\":true}");
+    assertEquals(api.get("/api/v1/notes/" + id, token).json().get("version"), pinned.get("version"));
+    ApiClient.Reply saved = api.put("/api/v1/notes/" + id, token, "{\"title\":\"Draft\",\"content\":\"two\",\"version\":" + pinned.get("version") + "}");
+    assertEquals(200, saved.status(), saved.toString());
+  }
 }

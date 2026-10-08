@@ -130,7 +130,8 @@ public class KnowledgeService {
     Note n = notes.save(new Note(userId, pathId, activityId, timeEntryId, title, content));
     if (contentText != null) {
       n.update(title, content, contentText);
-      n = notes.save(n);
+      // Flush so the response carries the version the next update must send.
+      n = notes.saveAndFlush(n);
     }
     replaceTags(userId, n, tagNames);
     activityRepository.save(
@@ -185,7 +186,7 @@ public class KnowledgeService {
   public NoteView pinNote(UUID userId, UUID id, boolean pinned) {
     Note note = activeNote(userId, id);
     note.setPinned(pinned);
-    return noteView(notes.save(note));
+    return noteView(notes.saveAndFlush(note));
   }
 
   @Transactional
@@ -246,7 +247,8 @@ public class KnowledgeService {
     }
     if (contentText == null) note.update(title, content);
     else note.update(title, content, contentText);
-    Note saved = notes.save(note);
+    // Flush so the response carries the version the next update must send.
+    Note saved = notes.saveAndFlush(note);
     if (tagNames != null) replaceTags(userId, saved, tagNames);
     return noteView(saved);
   }
