@@ -28,6 +28,7 @@ public class CalendarService {
   private final DailyRecordLabelRepository assignments;
   private final TimeEntryLabelRepository timeAssignments;
   private final NoteTagRepository noteAssignments;
+  private final UserRepository users;
 
   public CalendarService(
       DailyRecordRepository records,
@@ -35,13 +36,15 @@ public class CalendarService {
       DailyRecordLabelRepository assignments,
       LabelScopeRepository scopes,
       TimeEntryLabelRepository timeAssignments,
-      NoteTagRepository noteAssignments) {
+      NoteTagRepository noteAssignments,
+      UserRepository users) {
     this.records = records;
     this.labels = labels;
     this.assignments = assignments;
     this.scopes = scopes;
     this.timeAssignments = timeAssignments;
     this.noteAssignments = noteAssignments;
+    this.users = users;
   }
 
   public record LabelView(UUID id, String name, String color) {}
@@ -114,7 +117,11 @@ public class CalendarService {
     }
     Map<UUID, Label> owned = new HashMap<>();
     for (UUID id : ids) owned.put(id, ownedLabel(userId, id));
-    Optional<DailyRecord> existing = records.findByUserIdAndRecordDate(userId, date);
+    Optional<DailyRecord> existing = records.findByUserIdAndRecordDateForUpdate(userId, date);
+    if (existing.isEmpty()) {
+      users.findForUpdateById(userId);
+      existing = records.findByUserIdAndRecordDateForUpdate(userId, date);
+    }
     if (cleanedNote == null && requested.isEmpty()) {
       existing.ifPresent(record -> records.delete(record));
       return new DayView(date, null, List.of());

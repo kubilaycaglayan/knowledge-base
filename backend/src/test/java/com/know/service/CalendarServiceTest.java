@@ -18,10 +18,11 @@ class CalendarServiceTest {
   private final DailyRecordLabelRepository assignments = mock(DailyRecordLabelRepository.class);
   private final TimeEntryLabelRepository timeAssignments = mock(TimeEntryLabelRepository.class);
   private final NoteTagRepository noteAssignments = mock(NoteTagRepository.class);
+  private final UserRepository users = mock(UserRepository.class);
 
   private CalendarService service() {
     return new CalendarService(
-        records, labels, assignments, scopes, timeAssignments, noteAssignments);
+        records, labels, assignments, scopes, timeAssignments, noteAssignments, users);
   }
 
   @Test
@@ -56,7 +57,7 @@ class CalendarServiceTest {
     when(labels.findByIdAndUserId(hidden.getId(), user)).thenReturn(Optional.of(hidden));
     when(scopes.existsByIdLabelIdAndIdScope(hidden.getId(), LabelScopeType.CALENDAR))
         .thenReturn(false);
-    when(records.findByUserIdAndRecordDate(user, date)).thenReturn(Optional.empty());
+    when(records.findByUserIdAndRecordDateForUpdate(user, date)).thenReturn(Optional.empty());
     when(records.save(any(DailyRecord.class))).thenAnswer(invocation -> invocation.getArgument(0));
     CalendarService service = service();
 
@@ -74,7 +75,7 @@ class CalendarServiceTest {
     UUID user = UUID.randomUUID();
     LocalDate date = LocalDate.of(2026, 9, 6);
     DailyRecord existing = new DailyRecord(user, date, "old");
-    when(records.findByUserIdAndRecordDate(user, date)).thenReturn(Optional.of(existing));
+    when(records.findByUserIdAndRecordDateForUpdate(user, date)).thenReturn(Optional.of(existing));
     CalendarService service = service();
 
     CalendarService.DayView result = service.replaceDay(user, date, "  \n", null);
