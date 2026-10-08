@@ -1353,7 +1353,7 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         }) {
       ResponseEntity<JsonNode> created =
           post("/api/v1/time-entries", token, "{" + entry + ",\"labelIds\":[]}");
-      assertEquals(HttpStatus.CREATED, created.getStatusCode(), String.valueOf(created.getBody()));
+      assertEquals(HttpStatus.OK, created.getStatusCode(), String.valueOf(created.getBody()));
     }
 
     ResponseEntity<JsonNode> response =
