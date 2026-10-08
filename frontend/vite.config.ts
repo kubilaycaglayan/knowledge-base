@@ -25,6 +25,7 @@ export default defineConfig({
       "scripts/board.real-stack.acceptance.test.mjs",
       "scripts/label-history.acceptance.test.mjs",
       "scripts/timer-websocket.real-stack.acceptance.test.mjs",
+      "scripts/line-history.real-stack.acceptance.test.mjs",
     ],
     server: { deps: { inline: ["vuetify"] } },
   },
