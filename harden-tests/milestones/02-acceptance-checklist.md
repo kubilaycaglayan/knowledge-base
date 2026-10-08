@@ -91,11 +91,15 @@ records that engine/profile and its outcomes.
   The delayed-board case holds the cold board's status response, switches to a
   second board, and asserts the second board remains selected; see the
   [synchronization follow-up](../runs/2026-10-08-board-race-synchronization-followup.md).
-- [ ] Cover offline/connection loss and recovery where the app exposes a
+- [x] Cover offline/connection loss and recovery where the app exposes a
   retry/reconnect path; assert recovery does not require a full reload unless
   that is the documented behavior.
-- [ ] Verify keyboard navigation reaches error recovery and retry actions in
+- [x] Verify keyboard navigation reaches error recovery and retry actions in
   mobile and desktop browser layouts.
+  Global search recovers from an offline request without a reload and uses
+  keyboard retry in desktop and phone-size Chromium. Board pagination retry
+  uses keyboard activation, and timer draft recovery commits keyboard input in
+  both Chromium profiles. See the [offline recovery report](../runs/2026-10-08-offline-accessibility-recovery.md).
 - [x] Run mobile Chrome/Chromium phone emulation, desktop Chromium, and emulated
   iPhone WebKit as separately labeled profiles; record unsupported profiles.
   The emulated iPhone WebKit line-history report is separate and records both

@@ -36,10 +36,17 @@ it("preserves a search query after a retryable request failure and retries acces
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
   let attempts = 0;
+  let reportFirstRequest;
+  let releaseFirstRequest;
+  const firstRequestHeld = new Promise((resolve) => { reportFirstRequest = resolve; });
+  const firstRequestRelease = new Promise((resolve) => { releaseFirstRequest = resolve; });
   await page.route("**/api/v1/search?*", async (route) => {
     attempts += 1;
-    if (attempts === 1)
-      return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    if (attempts === 1) {
+      reportFirstRequest();
+      await firstRequestRelease;
+      return route.abort("internetdisconnected");
+    }
     return route.continue();
   });
   try {
@@ -48,6 +55,10 @@ it("preserves a search query after a retryable request failure and retries acces
     const dialog = page.getByRole("dialog", { name: "Search everything" });
     const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
     await input.fill("zzzxq-nonexistent-query");
+    await firstRequestHeld;
+    await page.waitForFunction(() => document.querySelector("#global-search-status")?.textContent.includes("Searching…"));
+    await context.setOffline(true);
+    releaseFirstRequest();
     await dialog.getByRole("alert").getByText("Search isn’t available right now. Check your connection and try again.").waitFor();
     assert.equal(await input.inputValue(), "zzzxq-nonexistent-query");
     assert.equal(attempts, 1);
@@ -56,14 +67,17 @@ it("preserves a search query after a retryable request failure and retries acces
       new URL(response.url()).pathname === "/api/v1/search" &&
       response.request().method() === "GET" && response.status() === 200,
     );
+    await context.setOffline(false);
     const retry = dialog.getByRole("button", { name: "Try again" });
     await retry.focus();
     await retry.press("Enter");
     await retryResponse;
     await dialog.locator(".global-search-empty").getByText("No results for", { exact: false }).waitFor();
+    await page.waitForFunction(() => document.querySelector("#global-search-status")?.textContent.includes("No results for"));
     assert.equal(await input.inputValue(), "zzzxq-nonexistent-query");
     assert.equal(attempts, 2, "retry should issue one request");
   } finally {
+    releaseFirstRequest();
     await context.close();
   }
 });
