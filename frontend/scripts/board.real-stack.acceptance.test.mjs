@@ -89,6 +89,18 @@ const escapeRe = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const boardTab = (name, target = page) => target.locator(".board-tab").filter({ hasText: new RegExp(`^${escapeRe(name)}$`) });
 const selectedTab = (target = page) => target.locator(".board-tab.selected");
 const currentBoardId = (target = page) => new URL(target.url()).searchParams.get("board");
+async function api(target, method, path, body) {
+  return target.evaluate(async ({ method, path, body }) => {
+    const response = await fetch(`/api/v1${path}`, {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!response.ok) throw new Error(`${method} ${path} -> ${response.status}`);
+    if (response.status === 204) return null;
+    return response.json();
+  }, { method, path, body });
+}
 
 // "Loading board…" is on screen while the store swaps boards; waiting it out
 // keeps the next action from racing a half-loaded column set.
