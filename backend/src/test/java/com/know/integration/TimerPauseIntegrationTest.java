@@ -98,6 +98,36 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
         .value();
   }
 
+  @Test
+  void postgresConcurrentDraftLabelReplacementsKeepOneAssignment() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent draft label assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent draft label");
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first = requests.submit(() -> saveDraftTogether(owner, labelId, startTogether));
+      Future<Integer> second = requests.submit(() -> saveDraftTogether(owner, labelId, startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
+    assertEquals(1, draft.get("labelIds").size());
+    assertEquals(labelId, draft.get("labelIds").get(0).asText());
+  }
+
+  private int saveDraftTogether(String token, String labelId, CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/timers/draft",
+            token,
+            "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"shared draft\"}")
+        .getStatusCode()
+        .value();
+  }
+
   String path(String token, String name) {
     return post("/api/v1/paths", token, "{\"name\":\"" + name + "\"}").getBody().get("id").asText();
   }

@@ -225,6 +225,11 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
             .getBody()
             .get("id")
             .asText();
+    String pathId =
+        post("/api/v1/paths", token, "{\"name\":\"Concurrent board path\"}")
+            .getBody()
+            .get("id")
+            .asText();
     JsonNode card = card(token, boardId, "Backlog", "Initial card", "LOW");
     String cardId = card.get("id").asText();
     String expectedUpdatedAt = card.get("updatedAt").asText();
@@ -232,10 +237,10 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
       Future<Integer> first =
           requests.submit(
-              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner A", labelId, startTogether));
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner A", labelId, pathId, startTogether));
       Future<Integer> second =
           requests.submit(
-              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner B", labelId, startTogether));
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner B", labelId, pathId, startTogether));
       int firstStatus = first.get(10, TimeUnit.SECONDS);
       int secondStatus = second.get(10, TimeUnit.SECONDS);
       assertEquals(1, List.of(firstStatus, secondStatus).stream().filter(s -> s == 200).count());
@@ -244,6 +249,8 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
       assertTrue(List.of("Winner A", "Winner B").contains(persisted.get("title").asText()));
       assertEquals(1, persisted.get("labelIds").size());
       assertEquals(labelId, persisted.get("labelIds").get(0).asText());
+      assertEquals(1, persisted.get("pathIds").size());
+      assertEquals(pathId, persisted.get("pathIds").get(0).asText());
     }
   }
 
@@ -420,6 +427,7 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
       String expectedUpdatedAt,
       String title,
       String labelId,
+      String pathId,
       CyclicBarrier startTogether)
       throws Exception {
     startTogether.await(5, TimeUnit.SECONDS);
@@ -430,6 +438,8 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
                 + title
                 + "\",\"labelIds\":[\""
                 + labelId
+                + "\"],\"pathIds\":[\""
+                + pathId
                 + "\"],\"expectedUpdatedAt\":\""
                 + expectedUpdatedAt
                 + "\"}")
