@@ -22,7 +22,7 @@ import { addCalendarDays, inclusiveDayCount, offscreenSide } from "../lib/board-
 import { useGanttScroll } from "../lib/use-gantt-scroll";
 import GanttCard from "../components/GanttCard.vue";
 import LabelPicker from "../components/LabelPicker.vue";
-import { ApiError } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { isPageSearchShortcut } from "../lib/search";
 import { vDialogFocus } from "../lib/dialog-focus";
 import { vBackdropClose } from "../lib/backdrop-close";
