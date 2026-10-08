@@ -156,9 +156,11 @@ public class CalendarService {
     List<LabelInput> requested = inputs == null ? List.of() : inputs;
     validateInputs(userId, requested);
     String cleanedNote = note == null || note.isBlank() ? null : note.trim();
+    users.findForUpdateById(userId);
     for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
       LocalDate recordDate = date;
-      Optional<DailyRecord> existing = records.findByUserIdAndRecordDate(userId, recordDate);
+      Optional<DailyRecord> existing =
+          records.findByUserIdAndRecordDateForUpdate(userId, recordDate);
       if (existing.isEmpty() && cleanedNote == null && requested.isEmpty()) continue;
       DailyRecord record =
           existing.orElseGet(() -> records.save(new DailyRecord(userId, recordDate, cleanedNote)));

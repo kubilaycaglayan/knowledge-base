@@ -145,7 +145,7 @@ class CalendarServiceTest {
     when(labels.findByIdAndUserId(requestedLabelId, user)).thenReturn(Optional.of(requestedLabel));
     when(scopes.existsByIdLabelIdAndIdScope(requestedLabelId, LabelScopeType.CALENDAR))
         .thenReturn(true);
-    when(records.findByUserIdAndRecordDate(user, date)).thenReturn(Optional.of(record));
+    when(records.findByUserIdAndRecordDateForUpdate(user, date)).thenReturn(Optional.of(record));
     when(assignments.findAllByIdDailyRecordId(record.getId()))
         .thenReturn(
             List.of(
