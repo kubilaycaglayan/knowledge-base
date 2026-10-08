@@ -627,7 +627,7 @@ onBeforeUnmount(() => {
       </div>
       <div ref="editorHost" class="rich-editor" :class="RICH_TEXT_CLASS">
         <EditorContent v-if="editor" :editor="editor" />
-        <RichTextToolbar v-if="editor" class="note-toolbar" :editor="editor" :line-history="lineHistory" @update:line-history="toggleLineHistory" />
+        <RichTextToolbar v-if="editor" class="note-toolbar" :editor="editor" :line-history="selected?.lineEdits ? lineHistory : undefined" @update:line-history="toggleLineHistory" />
       </div>
       <p v-if="selected" class="note-dates">
         Created {{ formatDate(selected.createdAt) }} · Updated

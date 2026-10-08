@@ -20,9 +20,9 @@ describe("RichTextToolbar", () => {
     delete rangeProto.getClientRects;
     delete rangeProto.getBoundingClientRect;
   });
-  function mountToolbar(content: object = { type: "doc", content: [paragraph("Hello world")] }) {
+  function mountToolbar(content: object = { type: "doc", content: [paragraph("Hello world")] }, props: { lineHistory?: boolean } = {}) {
     editor = new Editor({ element: document.body.appendChild(document.createElement("div")), extensions: richTextExtensions(), content });
-    return mount(RichTextToolbar, { props: { editor }, attachTo: document.body, global: { plugins: [vuetify] } });
+    return mount(RichTextToolbar, { props: { editor, ...props }, attachTo: document.body, global: { plugins: [vuetify] } });
   }
   const button = (wrapper: ReturnType<typeof mountToolbar>, name: string) => wrapper.get(`button[aria-label="${name}"]`);
   afterEach(() => { editor?.destroy(); document.body.innerHTML = ""; vi.unstubAllGlobals(); });
@@ -113,5 +113,40 @@ describe("RichTextToolbar", () => {
     await wrapper.get("[role='toolbar']").trigger("keydown", { key: "Home" });
     expect(document.activeElement).toBe(controls[0].element);
     wrapper.unmount();
+  });
+
+  describe("line history toggle", () => {
+    it("is absent unless the host offers line history", () => {
+      const wrapper = mountToolbar();
+      expect(wrapper.find('button[aria-label="Line history"]').exists()).toBe(false);
+      wrapper.unmount();
+    });
+
+    it("is the last toolbar stop, reachable with End, and toggles from the keyboard", async () => {
+      const wrapper = mountToolbar(undefined, { lineHistory: false });
+      const toggle = button(wrapper, "Line history");
+      expect(toggle.attributes("aria-pressed")).toBe("false");
+      (wrapper.get("button").element as HTMLButtonElement).focus();
+      await wrapper.get('[role="toolbar"]').trigger("keydown", { key: "End" });
+      expect(document.activeElement).toBe(toggle.element);
+      expect(toggle.attributes("tabindex")).toBe("0");
+      // Native buttons turn Enter and Space into clicks.
+      await toggle.trigger("click");
+      expect(wrapper.emitted("update:lineHistory")).toEqual([[true]]);
+      await wrapper.setProps({ lineHistory: true });
+      expect(toggle.attributes("aria-pressed")).toBe("true");
+      await toggle.trigger("click");
+      expect(wrapper.emitted("update:lineHistory")?.[1]).toEqual([false]);
+      wrapper.unmount();
+    });
+
+    it("hands the Tab stop back when the toggle disappears", async () => {
+      const wrapper = mountToolbar(undefined, { lineHistory: false });
+      (wrapper.get("button").element as HTMLButtonElement).focus();
+      await wrapper.get('[role="toolbar"]').trigger("keydown", { key: "End" });
+      await wrapper.setProps({ lineHistory: undefined });
+      expect(wrapper.findAll('[role="toolbar"] button[tabindex="0"]')).toHaveLength(1);
+      wrapper.unmount();
+    });
   });
 });

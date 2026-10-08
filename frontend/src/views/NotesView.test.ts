@@ -378,13 +378,79 @@ describe("NotesView", () => {
     await flushPromises();
     expect(wrapper.get('button[aria-label="Line history"]').attributes("aria-pressed")).toBe("true");
     const stamp = wrapper.get(".line-history-stamp time");
-    expect(stamp.attributes("datetime")).toBe("2026-09-02T10:00:00Z");
+    expect(stamp.attributes("datetime")).toBe("2026-09-02T10:00:00.000Z");
 
     await wrapper.get('button[aria-label="Line history"]').trigger("click");
     await vi.waitFor(() => expect(r.currentRoute.value.query.lines).toBeUndefined());
     await flushPromises();
     expect(wrapper.findAll(".line-history-stamp")).toHaveLength(0);
     expect(api).not.toHaveBeenCalledWith("/notes/note-1", expect.objectContaining({ method: "PUT" }));
+  });
+
+  it("offers no line history toggle when the note carries no line times", async () => {
+    const r = router();
+    await r.push("/notes/note-1?lines=1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    expect(wrapper.find('button[aria-label="Line history"]').exists()).toBe(false);
+    expect(wrapper.findAll(".line-history-stamp")).toHaveLength(0);
+  });
+
+  describe("line history while editing", () => {
+    const OLD = "2026-09-02T10:00:00Z";
+    const NEW = "2026-09-03T12:30:00Z";
+    const stampTexts = (wrapper: ReturnType<typeof mount>) => wrapper.findAll(".rich-editor .line-history-stamp").map((stamp) => stamp.find("time").exists() ? stamp.get("time").attributes("datetime") : stamp.text());
+    async function openStamped(handlePut: (body: { content: string; version: number }) => unknown) {
+      vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+        if (path === "/notes/note-1" && options?.method === "PUT") return handlePut(JSON.parse(String(options.body)));
+        if (path === "/notes/note-1") return { ...note, lineEdits: [OLD] };
+        return undefined;
+      });
+      const r = router();
+      await r.push("/notes/note-1?lines=1");
+      await r.isReady();
+      const wrapper = mountNotes(r);
+      await flushPromises();
+      const editor = (wrapper.vm as unknown as { editor: import("@tiptap/core").Editor }).editor;
+      return { wrapper, editor };
+    }
+
+    it("marks a typed line unsaved, then shows the time the save returned", async () => {
+      const { wrapper, editor } = await openStamped((body) => ({ ...note, content: body.content, version: 1, lineEdits: [OLD, NEW] }));
+      editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Fresh idea" }] });
+      await flushPromises();
+      expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "Unsaved"]);
+
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await flushPromises();
+      expect(wrapper.get(".save-state").text()).toBe("Saved");
+      expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "2026-09-03T12:30:00.000Z"]);
+    });
+
+    it("shows the replayed save's times after another window saved first", async () => {
+      let writes = 0;
+      const { wrapper, editor } = await openStamped((body) => {
+        writes += 1;
+        if (writes === 1) throw new Error("Note changed in another window");
+        return { ...note, content: body.content, version: body.version + 1, lineEdits: [OLD, NEW] };
+      });
+      editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Fresh idea" }] });
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await flushPromises();
+      expect(writes).toBe(2);
+      expect(wrapper.get(".save-state").text()).toBe("Saved");
+      expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "2026-09-03T12:30:00.000Z"]);
+    });
+
+    it("keeps unsaved lines marked when a save fails", async () => {
+      const { wrapper, editor } = await openStamped(() => { throw new Error("offline"); });
+      editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Fresh idea" }] });
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await flushPromises();
+      expect(wrapper.get(".save-state").text()).toBe("Not saved");
+      expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "Unsaved"]);
+    });
   });
 
   it("suggests matching existing labels while typing and applies a selected label", async () => {
