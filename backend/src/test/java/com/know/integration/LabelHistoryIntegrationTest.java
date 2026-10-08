@@ -340,6 +340,34 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresConcurrentCalendarRangeApplicationsKeepOneAssignment() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent calendar range assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent calendar range");
+    String date = "2026-05-04";
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> applyCalendarRangeTogether(owner, date, labelId, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> applyCalendarRangeTogether(owner, date, labelId, startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode day =
+        ok(
+                HttpMethod.GET,
+                "/api/v1/calendar/days?startDate=" + date + "&endDate=" + date,
+                owner,
+                null)
+            .get(0);
+    assertEquals(1, day.get("labels").size());
+    assertEquals(labelId, day.get("labels").get(0).get("labelId").asText());
+  }
+
+  @Test
   void postgresRequestedZoneBucketsTrackedTimeAcrossSpringForward() {
     org.junit.jupiter.api.Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -403,6 +431,24 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
             "/api/v1/calendar/days/" + date,
             token,
             "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.25}]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int applyCalendarRangeTogether(
+      String token, String date, String labelId, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return exchange(
+            HttpMethod.PUT,
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\""
+                + date
+                + "\",\"endDate\":\""
+                + date
+                + "\",\"labels\":[{\"labelId\":\""
+                + labelId
+                + "\",\"portion\":0.25}]}")
         .getStatusCode()
         .value();
   }
