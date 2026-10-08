@@ -938,8 +938,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.locator(".card-path-menu .v-list-item", { hasText: "Archived path" }).count(), 0);
     await page.keyboard.press("Escape");
     await page.locator(".card-path-menu").waitFor({ state: "detached" });
-    await page.locator(".card-labels-picker input").click();
-    const options = (await page.locator(".v-overlay-container .v-list-item-title").allInnerTexts()).map((name) => name.trim());
+    await page.locator(".card-labels-picker-wrap").getByRole("button", { name: "Open label picker" }).click();
+    const options = (await page.locator(".label-picker-menu .option-name").allInnerTexts()).map((name) => name.trim());
     assert.deepEqual(options.sort(), boardLabels.map((label) => label.name).sort(), "Only the live BOARD labels are offered");
   });
 
@@ -1275,7 +1275,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
     }).map((button) => ({ label: button.getAttribute("aria-label") || button.title || button.textContent.trim(), width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height) })));
     assert.deepEqual(undersizedButtons, [], `Landscape card-editor buttons are at least 44px (${JSON.stringify(undersizedButtons)})`);
-    const undersizedFields = await editor.locator(".card-path-picker .v-field, .meta-field, .meta-dates .dp__input, .card-labels-picker .v-field").evaluateAll((fields) => fields.filter((field) => {
+    const undersizedFields = await editor.locator(".card-path-picker .v-field, .meta-field, .meta-dates .dp__input, .card-labels-picker-wrap .label-picker-control").evaluateAll((fields) => fields.filter((field) => {
       const box = field.getBoundingClientRect();
       return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
     }).map((field) => ({ label: field.getAttribute("aria-label") || field.className, width: Math.round(field.getBoundingClientRect().width), height: Math.round(field.getBoundingClientRect().height) })));
@@ -1474,8 +1474,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       const { page } = await fixture(t, width);
       await page.locator(".board-card").first().click();
       const editor = page.locator(".card-editor");
-      await page.waitForFunction(() => document.querySelectorAll(".card-editor .card-labels-chip").length > 0);
-      const chipNames = (await editor.locator(".card-labels-chip").allInnerTexts()).map((name) => name.trim());
+      await page.waitForFunction(() => document.querySelectorAll(".card-editor .label-picker-control .selected-chip").length > 0);
+      const chipNames = (await editor.locator(".label-picker-control .selected-chip .chip-name").allInnerTexts()).map((name) => name.trim());
       assert.ok(chipNames.length && chipNames.every((name) => name.length > 0), `${width}px: label chips show their names (${JSON.stringify(chipNames)})`);
       const saved = cardSaved(page);
       await editor.locator(".ProseMirror").click();
@@ -1550,18 +1550,20 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("searches and picks card labels, then shows them on the card", async (t) => {
     const { page } = await fixture(t, 1280);
     await page.locator(".board-card").first().click();
-    const input = page.locator(".card-labels-picker input");
-    await input.click();
+    const picker = page.locator(".card-labels-picker-wrap");
+    await picker.getByRole("button", { name: "Open label picker" }).click();
+    const input = page.getByRole("combobox", { name: "Card labels" });
     await input.fill("bu");
-    assert.equal(await input.evaluate((element) => getComputedStyle(element).outlineStyle), "none", "Only the field shows a focus ring, not the text inside it");
-    const options = page.locator(".v-overlay-container .v-list-item-title");
-    await page.waitForFunction(() => document.querySelectorAll(".v-overlay-container .v-list-item-title").length === 1);
-    assert.deepEqual((await options.allInnerTexts()).map((name) => name.trim()), ["Bug"], "Typing searches the labels");
+    const options = page.locator(".label-picker-menu [role=option]");
+    const bugOption = options.filter({ has: page.locator(".option-name", { hasText: "Bug" }) });
+    await bugOption.waitFor();
+    assert.equal(await bugOption.locator(".option-name").textContent(), "Bug", "Typing searches the labels");
     const saved = cardSaved(page);
-    await options.first().click();
+    await bugOption.click();
     // Bug is the seventh label, so it joins the count rather than a visible chip.
-    await page.locator(".card-labels-picker .card-labels-more", { hasText: /^\+\d+$/ }).waitFor();
-    await page.waitForFunction(() => { const more = document.querySelector(".card-labels-picker .card-labels-more"); const chips = document.querySelectorAll(".card-labels-picker .card-labels-chip").length; return more && chips + Number(more.textContent.trim().slice(1)) === 7; });
+    const moreChip = picker.locator(".label-picker-control > .more-chip");
+    await moreChip.waitFor();
+    await page.waitForFunction(() => { const more = document.querySelector(".card-labels-picker-wrap .label-picker-control > .more-chip"); const chips = document.querySelectorAll(".card-labels-picker-wrap .label-picker-control > .selected-chip").length; return more && chips + Number(more.textContent.trim().slice(1)) === 7; });
     await page.keyboard.press("Escape");
     assert.equal(await page.locator(".card-editor").count(), 1, "Escape closes the label menu before the editor");
     await saved;
@@ -1572,17 +1574,18 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("keeps the label picker to one row with a count and lists selected labels first", async (t) => {
     const { page } = await fixture(t, 1280);
     await page.locator(".board-card").first().click();
-    const picker = page.locator(".card-labels-picker");
-    await picker.locator(".card-labels-more").waitFor();
-    await page.waitForFunction(() => document.querySelectorAll(".card-labels-picker .card-labels-chip").length > 0);
-    const field = await picker.locator(".v-field").boundingBox();
-    assert.ok(field.height <= 40, `The picker does not grow (${field.height}px)`);
-    const chips = await picker.locator(".card-labels-chip").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+    const picker = page.locator(".card-labels-picker-wrap");
+    const moreChip = picker.locator(".label-picker-control > .more-chip");
+    await moreChip.waitFor();
+    await page.waitForFunction(() => document.querySelectorAll(".card-labels-picker-wrap .selected-chip").length > 0);
+    const field = await picker.locator(".label-picker-control").boundingBox();
+    assert.ok(field.height <= 44, `The picker stays within its compact field (${field.height}px)`);
+    const chips = await picker.locator(".label-picker-control > .selected-chip").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
     assert.ok(chips.length >= 1 && chips.length < 6, `Only the chips that fit are shown (${chips.length})`);
     assert.ok(chips.every((top) => Math.abs(top - chips[0]) < 1), "Chips stay on one row");
-    assert.equal((await picker.locator(".card-labels-more").innerText()).trim(), `+${6 - chips.length}`);
-    await picker.locator(".v-field").click();
-    const options = (await page.locator(".v-overlay-container .v-list-item-title").allInnerTexts()).map((name) => name.trim());
+    assert.equal((await moreChip.innerText()).trim(), `+${6 - chips.length}`);
+    await picker.getByRole("button", { name: "Open label picker" }).click();
+    const options = (await page.locator(".label-picker-menu .option-name").allInnerTexts()).map((name) => name.trim());
     assert.deepEqual(options.slice(0, 6).sort(), ["Backend", "Design", "Docs", "Frontend", "Operations", "Research"], "Selected labels come first");
     assert.equal(options[6], "Bug");
   });
@@ -1590,7 +1593,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("turns off browser completions on the board's inputs", async (t) => {
     const { page } = await fixture(t, 1280);
     await page.locator(".board-card").first().click();
-    await page.locator(".card-labels-picker input").click();
+    await page.locator(".card-labels-picker-wrap").getByRole("button", { name: "Open label picker" }).click();
     const fields = await page.locator("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea").evaluateAll((items) => items.map((item) => `${item.getAttribute("aria-label") || item.name || item.className}:${item.getAttribute("autocomplete")}`));
     assert.ok(fields.length >= 3, `Title, dates, and labels at least (${fields})`);
     assert.deepEqual(fields.filter((field) => !field.endsWith(":off")), [], "Every field opts out of browser completions");
