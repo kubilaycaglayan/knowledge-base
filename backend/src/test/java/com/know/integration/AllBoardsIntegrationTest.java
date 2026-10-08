@@ -303,6 +303,29 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresConcurrentBoardTabReordersKeepOneCompleteOrdering() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent board tab ordering case runs against PostgreSQL");
+    String token = token();
+    List<String> original =
+        List.of(board(token, "Order A"), board(token, "Order B"), board(token, "Order C"));
+    List<String> reversed = new ArrayList<>(original);
+    java.util.Collections.reverse(reversed);
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> reorderBoardsTogether(token, original, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> reorderBoardsTogether(token, reversed, startTogether));
+      assertEquals(List.of(204, 204), List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)).stream().sorted().toList());
+    }
+    List<String> current =
+        get("/api/v1/boards", token).getBody().findValuesAsText("id");
+    assertTrue(List.of(original, reversed).contains(current));
+  }
+
+  @Test
   void postgresGanttKeepsDateOnlyCardDatesWithoutZoneDrift() {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -347,6 +370,17 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     startTogether.await(5, TimeUnit.SECONDS);
     return put(
             "/api/v1/boards/" + boardId + "/statuses/order",
+            token,
+            "{\"ids\":[\"" + String.join("\",\"", ids) + "\"]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int reorderBoardsTogether(
+      String token, List<String> ids, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/boards/order",
             token,
             "{\"ids\":[\"" + String.join("\",\"", ids) + "\"]}")
         .getStatusCode()

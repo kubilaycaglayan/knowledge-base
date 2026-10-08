@@ -279,6 +279,36 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresConcurrentTimeEntryLabelReplacementsKeepOneAssignment() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent time-entry label assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent time assignment");
+    Instant start = at("2026-05-02T09:00:00Z");
+    String entryId = session(owner, start, start.plusSeconds(20));
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(
+              () ->
+                  replaceTimeEntryLabelsTogether(
+                      owner, entryId, labelId, start, start.plusSeconds(20), startTogether));
+      Future<Integer> second =
+          requests.submit(
+              () ->
+                  replaceTimeEntryLabelsTogether(
+                      owner, entryId, labelId, start, start.plusSeconds(20), startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode entry = ok(HttpMethod.GET, "/api/v1/time-entries/" + entryId, owner, null);
+    List<String> assignments = new java.util.ArrayList<>();
+    entry.get("labelIds").forEach(value -> assignments.add(value.asText()));
+    assertEquals(List.of(labelId), assignments);
+  }
+
+  @Test
   void postgresRequestedZoneBucketsTrackedTimeAcrossSpringForward() {
     org.junit.jupiter.api.Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -306,6 +336,30 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
             "/api/v1/logs/" + logId + "/labels",
             token,
             "{\"labelIds\":[\"" + labelId + "\"]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int replaceTimeEntryLabelsTogether(
+      String token,
+      String entryId,
+      String labelId,
+      Instant start,
+      Instant end,
+      CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return exchange(
+            HttpMethod.PUT,
+            "/api/v1/time-entries/" + entryId,
+            token,
+            "{\"labelIds\":[\""
+                + labelId
+                + "\"],\"startedAt\":\""
+                + start
+                + "\",\"endedAt\":\""
+                + end
+                + "\",\"description\":\"Concurrent entry\"}")
         .getStatusCode()
         .value();
   }
