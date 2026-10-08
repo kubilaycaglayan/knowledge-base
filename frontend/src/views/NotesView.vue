@@ -13,7 +13,7 @@ import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
 import LabelPicker from "../components/LabelPicker.vue";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
-import { setLineHistory } from "../lib/line-history";
+import { plainText, setLineHistory } from "../lib/line-history";
 import { Editor } from "@tiptap/core";
 import { api } from "../lib/api";
 import NotesPageSizeSelect from "../components/NotesPageSizeSelect.vue";
@@ -280,7 +280,7 @@ async function save() {
   const snapshot = {
     title: title.value.trim(),
     content: JSON.stringify(editor.value.getJSON()),
-    contentText: editor.value.getText({ blockSeparator: "\n" }),
+    contentText: plainText(editor.value.state.doc),
     tags: [...tags.value],
   };
   try {

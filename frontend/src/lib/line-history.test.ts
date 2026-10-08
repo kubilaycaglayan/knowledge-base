@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { alignTimes, contentLines, documentLines, formatLineTime, sameLine, setLineHistory } from "./line-history";
+import { alignTimes, contentLines, documentLines, formatLineTime, plainText, sameLine, setLineHistory } from "./line-history";
 import { RICH_TEXT_CLASS, richTextExtensions } from "./rich-text";
 import "../rich-text.css";
 
@@ -152,10 +152,10 @@ describe("line history", () => {
       expect(status(editor).textContent).toBe("");
 
       setLineHistory(editor, { content: JSON.stringify({ type: "doc", content: [content.content[0]] }), times: ["2026-10-08T10:00:00Z"] });
-      expect(status(editor).textContent).toBe(`Line edited ${formatLineTime("2026-10-08T10:00:00Z").full}`);
+      expect(status(editor).textContent).toBe(`Line 1, edited ${formatLineTime("2026-10-08T10:00:00Z").full}`);
 
       editor.commands.setTextSelection(8);
-      expect(status(editor).textContent).toBe("Line not saved yet");
+      expect(status(editor).textContent).toBe("Line 2, not saved yet");
       // Moving within the same line does not repeat the announcement.
       status(editor).textContent = "read";
       editor.commands.setTextSelection(9);
@@ -176,6 +176,27 @@ describe("line history", () => {
       editor.destroy();
       expect(host.querySelector(".line-history-status")).toBeNull();
       host.remove();
+    });
+  });
+
+  describe("plain-text copy", () => {
+    it("has one line per body line, with no blank lines between blocks and no checkboxes", () => {
+      const editor = editorFor(JSON.stringify({ type: "doc", content: [
+        { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Plan" }] },
+        { type: "paragraph", content: [{ type: "text", text: "Alpha" }] },
+        { type: "paragraph" },
+        { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Item" }] }] }] },
+        { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [{ type: "paragraph", content: [{ type: "text", text: "Done" }] }] }] },
+        { type: "paragraph", content: [{ type: "text", text: "Last" }, { type: "hardBreak" }, { type: "text", text: "line" }] },
+      ] }));
+      expect(plainText(editor.state.doc)).toBe("Plan\nAlpha\n\nItem\nDone\nLast\nline");
+    });
+
+    it("rebuilds through the extension's paragraphs with every line time kept", () => {
+      const rich = JSON.stringify({ type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Item" }] }] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: false }, content: [{ type: "paragraph", content: [{ type: "text", text: "Open" }] }] }] }] });
+      const text = plainText(editorFor(rich).state.doc);
+      const paragraphs = JSON.stringify({ type: "doc", content: text.split("\n").map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })) });
+      expect(alignTimes(contentLines(rich), ["t1", "t2"], contentLines(paragraphs))).toEqual(["t1", "t2"]);
     });
   });
 });
