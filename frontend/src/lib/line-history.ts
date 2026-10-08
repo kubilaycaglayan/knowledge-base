@@ -71,6 +71,16 @@ export function documentLines(doc: ProseMirrorNode): DocumentLine[] {
   return lines;
 }
 
+/**
+ * A body's plain-text copy: one line per body line, without task checkboxes. The
+ * Chrome extension edits this copy and rebuilds the body from it, so it must not
+ * add blank lines between blocks the way a block-separated getText does.
+ */
+export function plainText(doc: ProseMirrorNode) {
+  return documentLines(doc).map((line) => line.text.replace(TASK_PREFIX, "")).join("\n");
+}
+const TASK_PREFIX = /^\[[x ]\] /;
+
 // Alignment cost is lines x lines; past this, only the common head and tail keep their times.
 const MAX_ALIGNMENT_CELLS = 2_000_000;
 
@@ -187,9 +197,11 @@ function decorations(doc: ProseMirrorNode, lines: Aligned | null) {
 }
 
 // What a screen reader hears for the caret's line; the gutter itself is hidden from assistive tech.
-export function lineAnnouncement(time: string | null, text: string) {
-  if (time) return `Line edited ${formatLineTime(time).full}`;
-  return text ? "Line not saved yet" : "";
+// The line number keeps neighbouring lines with the same time distinct, which
+// screen readers would otherwise skip as a repeated announcement.
+export function lineAnnouncement(time: string | null, text: string, line: number) {
+  if (time) return `Line ${line}, edited ${formatLineTime(time).full}`;
+  return text ? `Line ${line}, not saved yet` : "";
 }
 
 function caretLine(state: { selection: { from: number } }, lines: Aligned) {
@@ -210,7 +222,7 @@ function announcer(view: EditorView) {
   const announce = (current: EditorView) => {
     const lines = lineHistoryKey.getState(current.state)?.aligned;
     const index = lines ? caretLine(current.state, lines) : -1;
-    const message = lines && index >= 0 ? lineAnnouncement(lines.times[index], lines.lines[index].text) : "";
+    const message = lines && index >= 0 ? lineAnnouncement(lines.times[index], lines.lines[index].text, index + 1) : "";
     const key = lines ? `${index}:${message}` : "";
     if (key === last) return;
     last = key;

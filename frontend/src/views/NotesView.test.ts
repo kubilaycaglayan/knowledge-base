@@ -387,6 +387,21 @@ describe("NotesView", () => {
     expect(api).not.toHaveBeenCalledWith("/notes/note-1", expect.objectContaining({ method: "PUT" }));
   });
 
+  it("saves a plain-text copy with one line per body line, as the extension edits it", async () => {
+    const listNote = { ...note, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Intro" }] }, { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Item" }] }] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [{ type: "paragraph", content: [{ type: "text", text: "Done" }] }] }] }, { type: "paragraph", content: [{ type: "text", text: "End" }] }] }) };
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => (path === "/notes/note-1" && !options ? listNote : path === "/notes/note-1" ? { ...listNote, version: 1 } : undefined));
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Changed");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    const put = vi.mocked(api).mock.calls.find(([, options]) => options?.method === "PUT");
+    expect(JSON.parse(String(put?.[1]?.body)).contentText).toBe("Intro\nItem\nDone\nEnd");
+  });
+
   it("offers no line history toggle when the note carries no line times", async () => {
     const r = router();
     await r.push("/notes/note-1?lines=1");
