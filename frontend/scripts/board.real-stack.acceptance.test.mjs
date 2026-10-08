@@ -298,7 +298,9 @@ describe("board real-stack acceptance", () => {
     }, { id: boardId, statusId });
     assert.notEqual(firstPageData.nextCursor, null, "fixture must have a second page");
     await page.reload();
+    await boardSettled();
     const firstPageTitles = firstPageData.items.map((card) => card.title);
+    await page.getByRole("heading", { name: firstPageTitles[0], exact: true }).waitFor();
     const retryUrls = [];
     const pageRequest = "**/api/v1/boards/*/cards/page**";
     let failedOnce = false;
