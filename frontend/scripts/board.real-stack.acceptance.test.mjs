@@ -167,14 +167,14 @@ async function addCard(title) {
 }
 
 // Seeds cards straight over the API so pagination tests stay fast.
-async function seedCards(boardId, count, prefix, priority = "MEDIUM") {
+async function seedCards(boardId, count, prefix, priority = "MEDIUM", statusId) {
   await page.evaluate(async ({ boardId: id, count: total, prefix: label, priority: level }) => {
     const token = localStorage.getItem("know_token");
     for (let index = 0; index < total; index += 1) {
       const response = await fetch(`/api/v1/boards/${id}/cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: level }),
+        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: level, ...(statusId ? { statusId } : {}) }),
       });
       if (!response.ok) throw new Error(`Seeding ${label} card ${index} failed with ${response.status}`);
     }
@@ -284,10 +284,15 @@ describe("board real-stack acceptance", () => {
   it("retries a failed card page with the same cursor and without duplicate cards", async () => {
     const boardId = currentBoardId();
     const prefix = `Retry page ${Date.now()}`;
-    await seedCards(boardId, 35, prefix);
+    const statusId = await page.evaluate(async (id) => {
+      const response = await fetch(`/api/v1/boards/${id}/statuses`, { headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` } });
+      if (!response.ok) throw new Error(`Loading board statuses failed with ${response.status}`);
+      return (await response.json())[0].id;
+    }, boardId);
+    await seedCards(boardId, 35, prefix, "MEDIUM", statusId);
 
     const firstPageLoaded = page.waitForResponse((response) =>
-      response.url().includes("/cards/page") && response.request().method() === "GET" && response.status() === 200,
+      response.url().includes("/cards/page") && new URL(response.url()).searchParams.get("statusId") === statusId && response.request().method() === "GET" && response.status() === 200,
     );
     await page.reload();
     const firstPage = await firstPageLoaded;
