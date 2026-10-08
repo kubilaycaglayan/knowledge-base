@@ -131,6 +131,18 @@ async function searchFor(query, type, id) {
   return { dialog, option };
 }
 
+async function freshAuthenticatedPage() {
+  const directContext = await browser.newContext({
+    viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
+    ...(phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
+    colorScheme: "light", reducedMotion: "reduce",
+  });
+  await directContext.addInitScript((value) => localStorage.setItem("know_token", value), token);
+  const direct = await directContext.newPage();
+  direct.setDefaultTimeout(10000);
+  return { direct, close: () => directContext.close() };
+}
+
 async function activate(query, type, id, expectedPath, expectedVisible) {
   const { option } = await searchFor(query, type, id);
   const prior = page.url();
@@ -392,9 +404,12 @@ describe("search and direct routes against disposable real stack", () => {
   });
 
   it("canonicalizes an impossible calendar date to the fallback selection", async () => {
-    await page.goto(`${baseUrl}/calendar?date=2026-02-30`);
-    await page.waitForFunction(() => !new URL(location.href).searchParams.has("date"));
-    assert.equal(await page.locator('.calendar-day[aria-pressed="true"]').count(), 1);
+    for (const invalidDate of ["2026-02-30", "not-a-date"]) {
+      await page.goto(`${baseUrl}/calendar?date=${encodeURIComponent(invalidDate)}&view=month`);
+      await page.waitForFunction(() => !new URL(location.href).searchParams.has("date"));
+      assert.equal(new URL(page.url()).searchParams.get("view"), "month", "canonicalization preserves unrelated query state");
+      assert.equal(await page.locator('.calendar-day[aria-pressed="true"]').count(), 1);
+    }
   });
 
   it("opens calendar, board, and active card search destinations", async () => {
@@ -458,7 +473,7 @@ describe("search and direct routes against disposable real stack", () => {
       { path: `/board/archive?board=${fixtures.board.id}&card=${fixtures.archivedCard.id}`, kind: "archived-card" },
     ];
     for (const destination of destinations) {
-      const direct = await context.newPage();
+      const { direct, close } = await freshAuthenticatedPage();
       await direct.goto(`${baseUrl}${destination.path}`);
       await direct.waitForLoadState("networkidle");
       assert.equal(new URL(direct.url()).pathname + new URL(direct.url()).search, destination.path);
@@ -489,7 +504,7 @@ describe("search and direct routes against disposable real stack", () => {
             : destination.kind === "label" ? `${text} Label` : `${text} Session`;
         await direct.waitForFunction((value) => document.body.innerText.includes(value), expected);
       }
-      await direct.close();
+      await close();
     }
   });
 
