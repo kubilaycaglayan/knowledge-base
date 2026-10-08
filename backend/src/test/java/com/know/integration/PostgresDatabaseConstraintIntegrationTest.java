@@ -184,6 +184,83 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
     assertEquals(1L, jdbc.queryForObject("select count(*) from path where id = ?", Long.class, UUID.fromString(pathId)));
   }
 
+  @Test
+  void postgresPathMergeRollsBackEarlierSessionMovesWhenBoardMoveFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String sourcePathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"Merge source\"}")
+            .get("id")
+            .asText();
+    String targetPathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"Merge target\"}")
+            .get("id")
+            .asText();
+    String entryId =
+        api.created(
+                "POST",
+                "/api/v1/time-entries",
+                token,
+                "{\"pathId\":\""
+                    + sourcePathId
+                    + "\",\"labelIds\":[],\"startedAt\":\"2026-05-05T10:00:00Z\",\"endedAt\":\"2026-05-05T10:01:00Z\"}")
+            .get("id")
+            .asText();
+    JsonNode boardViews = api.get("/api/v1/boards?includeHidden=true", token).json();
+    String sourceBoardId = null;
+    for (JsonNode board : boardViews) {
+      if (sourcePathId.equals(board.path("pathId").asText()))
+        sourceBoardId = board.get("id").asText();
+    }
+    assertNotNull(sourceBoardId);
+    api.created(
+        "POST",
+        "/api/v1/boards/" + sourceBoardId + "/cards",
+        token,
+        "{\"title\":\"Rollback card\"}");
+
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_merge_" + suffix;
+    String triggerName = "fail_merge_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced merge failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + triggerName
+            + " before update on board_cards for each row execute function "
+            + functionName
+            + "()");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/paths/" + sourcePathId + "/merge",
+              token,
+              "{\"targetPathId\":\"" + targetPathId + "\"}");
+      assertEquals(500, failed.status(), failed.toString());
+    } finally {
+      jdbc.execute("drop trigger if exists " + triggerName + " on board_cards");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+
+    assertEquals(
+        UUID.fromString(sourcePathId),
+        jdbc.queryForObject(
+            "select path_id from time_entry where id = ?", UUID.class, UUID.fromString(entryId)));
+    assertNull(
+        jdbc.queryForObject(
+            "select deleted_at from path where id = ?",
+            Timestamp.class,
+            UUID.fromString(sourcePathId)));
+    assertEquals(
+        UUID.fromString(sourceBoardId),
+        jdbc.queryForObject(
+            "select board_id from board_cards where title = ?", UUID.class, "Rollback card"));
+  }
+
   private void insertEntry(
       UUID id, UUID userId, UUID pathId, Instant startedAt, Instant endedAt, Long durationSeconds) {
     jdbc.update(
