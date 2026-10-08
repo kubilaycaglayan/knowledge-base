@@ -19,14 +19,15 @@ environment.
 
 ## Tasks
 
-- [ ] Record the current two distinct controls before writing assertions:
+- [x] Record the current two distinct controls before writing assertions:
   application auth throttling permits 10 attempts per 60-second window per
-  `request.getRemoteAddr() + "|" + normalized email` (Google uses the fixed
-  key `google`), while the optional Cloudflare rules use a 60-second window
-  keyed by colo and source IP, with limits of 20 auth, 12 imports, 60
-  search/report, and 300 total API requests. Verify these values against the
-  implementation and Terraform when the milestone starts because policy can
-  change.
+  `request.getRemoteAddr() + "|" + normalized email` (Google uses
+  `request.getRemoteAddr() + "|google"`), while the optional Cloudflare rules
+  use a 60-second window keyed by colo and source IP, with limits of 20 auth,
+  12 imports, 60 search/report, and 300 total API requests. Verify these values
+  against the implementation and Terraform when the milestone starts because
+  policy can change. The complete source-backed route matrix and test evidence
+  are in the [HARD-04 acceptance checklist](04-acceptance-checklist.md).
 - [ ] Add controller/integration tests that exceed login/register/Google
   authentication budgets and assert the current 429 response, error body,
   behavior for a different email/key, and behavior immediately after reset.
@@ -34,9 +35,11 @@ environment.
   assert one unless the API contract is intentionally updated.
 - [ ] Test limiter boundaries: exactly the tenth and eleventh application
   attempts, a request after the minute window, concurrent attempts for the
-  same key, expiry cleanup when the map exceeds its cleanup threshold, and
-  memory behavior under many distinct keys. Use a controllable time source or
-  another deterministic test seam rather than sleeping for a minute.
+  same key, expiry cleanup when the map exceeds its 1,000-entry threshold, and
+  memory behavior under many distinct keys. The current map has no hard size
+  cap; characterize growth and route any unacceptable resource behavior as a
+  separate defect. Use a controllable time source or another deterministic
+  test seam rather than sleeping for a minute.
 - [ ] Verify the limiter's client identity behind the actual reverse proxy.
   `AuthController` uses `HttpServletRequest.getRemoteAddr()` and does not
   directly read `X-Forwarded-For`; establish what address the production-shaped
@@ -46,9 +49,10 @@ environment.
 - [ ] Add contract tests linking the API route inventory to Cloudflare WAF
   rate-limit expressions for auth, imports, expensive search/report endpoints,
   and general API traffic. A static text check alone is insufficient; assert
-  semantic route coverage against the declared policy. Verify that the narrow
-  rules coexist with and are ordered ahead of the broad API ceiling, and test
-  representative included and excluded paths/methods.
+  semantic route coverage against the declared policy. Verify interactions
+  between narrow and broad overlapping rules against Cloudflare's documented
+  semantics; do not infer precedence solely from Terraform list order. Test
+  representative included and excluded paths and method behavior.
 - [ ] If a Cloudflare staging/test account is available, perform a bounded,
   isolated enforcement check and retain rule/version/evidence. Otherwise,
   explicitly document that live edge enforcement remains unverified; do not
@@ -76,6 +80,8 @@ environment.
 - `backend/src/main/java/com/know/security/AuthAttemptLimiter.java`
 - `backend/src/test/java/com/know/security/AuthAttemptLimiterTest.java`
 - `backend/src/test/java/com/know/api/AuthControllerApiTest.java`
+- `backend/src/main/java/com/know/api/ApiExceptionHandler.java`
 - `scripts/check-cloudflare-waf.mjs`
 - `deployment/cloudflare/`
+- `deployment/Caddyfile.cloudflare`
 - `backend/src/main/java/com/know/realtime/TimerWebSocketHandler.java`
