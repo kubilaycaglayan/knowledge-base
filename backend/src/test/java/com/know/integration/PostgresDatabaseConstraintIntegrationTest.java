@@ -185,6 +185,39 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresEnforcesCoreProgressLabelImportAndPreferenceChecksOnDirectWrites() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Database-level constraints require the PostgreSQL integration profile");
+    UUID userId = subject(api.register());
+
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into import_batch (id, user_id, source) values (?, ?, ?)",
+                UUID.randomUUID(),
+                userId,
+                "UNSUPPORTED"));
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into user_preferences (user_id, theme) values (?, ?)",
+                userId,
+                "unsupported"));
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "insert into labels (id, user_id, name, color) values (?, ?, ?, ?)",
+                UUID.randomUUID(),
+                userId,
+                "Invalid label color",
+                "red"));
+  }
+
+  @Test
   void postgresPathMergeRollsBackEarlierSessionMovesWhenBoardMoveFails() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
