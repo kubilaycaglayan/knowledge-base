@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, inject, onMounted, ref, watch } from "vue";
+import { routeLocationKey, routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 import { formatTrackedDuration } from "../lib/format";
 import PromptDialog from "../components/PromptDialog.vue";
 import FloatingTimeTracker from "../components/FloatingTimeTracker.vue";
-import LabelPicker from "../components/LabelPicker.vue";
+import SessionEditForm, { type SessionDraft } from "../components/SessionEditForm.vue";
+import SessionDialog from "../components/SessionDialog.vue";
 import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 import {
@@ -24,14 +26,6 @@ type Path = {
   status: string;
   color?: string | null;
 };
-type Draft = {
-  pathId: string;
-  labelIds: string[];
-  startedAt: string;
-  endedAt: string;
-  description: string;
-  source: string;
-};
 type SessionGroup = { key: string; label: string; sessions: Session[] };
 
 const sessions = ref<Session[]>([]);
@@ -42,14 +36,24 @@ const reportsStore = useReportsStore();
 const { paths } = storeToRefs(pathsStore);
 const sessionLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const editingId = ref("");
-const draft = ref<Draft | null>(null);
 const error = ref("");
 const saving = ref(false);
 const page = ref(1);
 const totalPages = ref(1);
 const totalSessions = ref(0);
-const sources = ["WEB", "IOS", "CHROME_EXTENSION", "MANUAL", "IMPORT"];
 const promptDialog = ref<InstanceType<typeof PromptDialog> | null>(null);
+const router = inject(routerKey, undefined);
+const route = inject(routeLocationKey, undefined);
+// /sessions/:id opens one session over the list, whichever page it is on.
+const routeSessionId = computed(() => (typeof route?.params.id === "string" ? route.params.id : ""));
+function closeSessionDialog() {
+  if (router) void router.replace({ path: "/" });
+}
+async function sessionChanged() {
+  sessionsStore.clearPages();
+  reportsStore.clear();
+  await load(page.value, true);
+}
 
 const pathFor = (id?: string) => paths.value.find((path) => path.id === id);
 const sessionTitleStyle = (session: Session) => {
@@ -63,12 +67,6 @@ const sessionLabelStyle = (labelId: string) => {
   return color ? { "--session-label-color": color } : undefined;
 };
 const sessionLabelIds = (session: Session) => session.labelIds || [];
-const localDateTime = (iso?: string) => {
-  if (!iso) return "";
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
 const isoDateTime = (value: string) => new Date(value).toISOString();
 const sessionDate = (iso: string) => formatDateTime(iso);
 const duration = (session: Session) =>
@@ -164,22 +162,13 @@ async function load(nextPage = page.value, force = false) {
 }
 function beginEdit(session: Session) {
   editingId.value = session.id;
-  draft.value = {
-    pathId: session.pathId || "",
-    labelIds: session.labelIds || [],
-    startedAt: localDateTime(session.startedAt),
-    endedAt: localDateTime(session.endedAt),
-    description: session.description || "",
-    source: session.source,
-  };
   error.value = "";
 }
 function cancelEdit() {
   editingId.value = "";
-  draft.value = null;
 }
-async function save(session: Session) {
-  if (!draft.value || !draft.value.startedAt || !draft.value.endedAt) {
+async function save(session: Session, draft: SessionDraft) {
+  if (!draft.startedAt || !draft.endedAt) {
     error.value = "A session needs both a start and an end time.";
     return;
   }
@@ -189,12 +178,12 @@ async function save(session: Session) {
     await api(`/time-entries/${session.id}`, {
       method: "PUT",
       body: JSON.stringify({
-        pathId: draft.value.pathId || null,
-        labelIds: draft.value.labelIds,
-        startedAt: isoDateTime(draft.value.startedAt),
-        endedAt: isoDateTime(draft.value.endedAt),
-        description: draft.value.description || null,
-        source: draft.value.source,
+        pathId: draft.pathId || null,
+        labelIds: draft.labelIds,
+        startedAt: isoDateTime(draft.startedAt),
+        endedAt: isoDateTime(draft.endedAt),
+        description: draft.description || null,
+        source: draft.source,
       }),
     });
     cancelEdit();
@@ -249,6 +238,14 @@ onMounted(load);
 <template>
   <FloatingTimeTracker inline @changed="load(1, true)" />
   <PromptDialog ref="promptDialog" />
+  <SessionDialog
+    v-if="routeSessionId"
+    :session-id="routeSessionId"
+    :paths="paths"
+    :labels="sessionLabels"
+    @close="closeSessionDialog"
+    @changed="sessionChanged"
+  />
   <section>
     <p v-if="error" class="notice" role="alert" aria-live="polite">
       {{ error }}
@@ -352,83 +349,15 @@ onMounted(load);
                 </button>
               </div>
             </div>
-            <form
-              v-else-if="draft"
-              class="session-edit"
-              @keydown.ctrl.enter.prevent="save(session)"
-              @keydown.meta.enter.prevent="save(session)"
-              @submit.prevent="save(session)"
-            >
-              <label class="session-edit-path"
-                >Path<select
-                  v-model="draft.pathId"
-                  name="session-path"
-                  autocomplete="off"
-                  aria-label="Edit session path"
-                >
-                  <option value="">Unassigned</option>
-                  <option v-for="path in paths" :key="path.id" :value="path.id">
-                    {{ path.name }}
-                  </option>
-                </select></label
-              >
-              <div class="session-edit-grid">
-                <label class="session-edit-description"
-                  >Description <span>(optional)</span
-                  ><textarea
-                    v-model="draft.description"
-                    name="session-description"
-                    autocomplete="off"
-                    aria-label="Edit session description"
-                    maxlength="5000"
-                    rows="1"
-                    placeholder="What did you work on…"
-                  ></textarea>
-                </label>
-                <fieldset class="session-edit-labels">
-                  <legend>Labels</legend>
-                  <LabelPicker v-if="draft" v-model="draft.labelIds" :labels="sessionLabels" label="Session labels" />
-                </fieldset>
-                <label
-                  >Source<select
-                    v-model="draft.source"
-                    name="session-source"
-                    autocomplete="off"
-                    aria-label="Edit session source"
-                  >
-                    <option v-for="source in sources" :key="source">
-                      {{ source }}
-                    </option>
-                  </select></label
-                >
-                <label
-                  >Started<input
-                    v-model="draft.startedAt"
-                    type="datetime-local"
-                    name="session-started-at"
-                    autocomplete="off"
-                    aria-label="Edit session start"
-                    required
-                /></label>
-                <label
-                  >Ended<input
-                    v-model="draft.endedAt"
-                    type="datetime-local"
-                    name="session-ended-at"
-                    autocomplete="off"
-                    aria-label="Edit session end"
-                    required
-                /></label>
-              </div>
-              <div class="session-actions">
-                <button class="primary" :disabled="saving">
-                  {{ saving ? "Saving…" : "Save session" }}
-                </button>
-                <button type="button" class="text-button" @click="cancelEdit">
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <SessionEditForm
+              v-else
+              :session="session"
+              :paths="paths"
+              :labels="sessionLabels"
+              :saving="saving"
+              @save="save(session, $event)"
+              @cancel="cancelEdit"
+            />
           </article>
         </div>
       </section>

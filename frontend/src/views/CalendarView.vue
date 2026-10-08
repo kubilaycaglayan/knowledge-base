@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, inject, onMounted, ref, watch } from "vue";
+import { routeLocationKey, routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import {
   addMonths,
@@ -7,6 +8,8 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  isSameMonth,
+  isValid,
   parseISO,
   startOfMonth,
   startOfWeek,
@@ -37,8 +40,18 @@ const everyLabelScope: LabelScope[] = [
 // The picker's "Create “…”" item carries the typed name in its id.
 type Assignment = CalendarDay["labels"][number];
 type Day = CalendarDay;
-const month = ref(startOfMonth(new Date()));
-const selected = ref(format(new Date(), "yyyy-MM-dd"));
+const router = inject(routerKey, undefined);
+const route = inject(routeLocationKey, undefined);
+/** The day named by ?date=YYYY-MM-DD, when it is a real calendar date. */
+function requestedDate() {
+  const value = route?.query.date;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = parseISO(value);
+  return isValid(date) && format(date, "yyyy-MM-dd") === value ? value : null;
+}
+const initialDate = requestedDate();
+const month = ref(startOfMonth(initialDate ? parseISO(initialDate) : new Date()));
+const selected = ref(initialDate ?? format(new Date(), "yyyy-MM-dd"));
 const labelsStore = useLabelsStore();
 const calendarStore = useCalendarStore();
 const reportsStore = useReportsStore();
@@ -312,6 +325,24 @@ function cancelRange() {
   selectDay(parseISO(selected.value));
 }
 onMounted(load);
+// The selected day lives in the URL, so a day can be linked to and Back returns to it.
+watch(selected, (value) => {
+  if (router && route && route.query.date !== value)
+    void router.replace({ query: { ...route.query, date: value } });
+});
+watch(
+  () => route?.query.date,
+  () => {
+    const value = requestedDate();
+    if (!value || value === selected.value) return;
+    const date = parseISO(value);
+    const monthChanges = !isSameMonth(date, month.value);
+    month.value = startOfMonth(date);
+    selected.value = value;
+    if (monthChanges) void load();
+    else selectDay(date);
+  },
+);
 </script>
 
 <template>

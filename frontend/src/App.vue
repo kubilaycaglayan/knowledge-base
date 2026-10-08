@@ -5,6 +5,7 @@ import { routeLocationKey, routerKey } from "vue-router";
 import AuthView from "./views/AuthView.vue";
 import FloatingTimeTracker from "./components/FloatingTimeTracker.vue";
 import AppSnackbar from "./components/AppSnackbar.vue";
+import GlobalSearch from "./components/GlobalSearch.vue";
 import { isDarkTheme, theme, themePreference, toggleTheme } from "./lib/theme";
 import { useAuthStore } from "./stores/auth";
 import { useBoardsStore } from "./stores/boards";
@@ -61,6 +62,7 @@ const showFloatingTracker = () =>
   auth.isAuthenticated &&
   route?.path !== "/" &&
   route?.path !== "/sessions" &&
+  !route?.path.startsWith("/sessions/") &&
   !focusedTextInput.value;
 onMounted(() => {
   document.addEventListener("focusin", updateFocusedTextInput);
@@ -72,10 +74,13 @@ onBeforeUnmount(() => {
 });
 watchEffect(() => {
   const path = route?.path || "/";
+  // A single record's address (/notes/:id, /logs/:id, …) is titled by its kind.
+  const detail: Record<string, string> = { notes: "Note", sessions: "Session", logs: "Log", paths: "Path", labels: "Label" };
+  const [section, id] = path.slice(1).split("/");
   const page = !auth.isAuthenticated
     ? "Sign in"
-    : path.startsWith("/notes/")
-      ? "Note"
+    : id && detail[section]
+      ? detail[section]
       : path === "/" || path === "/sessions"
         ? "Sessions"
         : path.slice(1);
@@ -123,6 +128,7 @@ function authenticated() {
         <RouterLink to="/development">Development</RouterLink>
       </nav>
       <div class="shell-actions">
+        <GlobalSearch v-if="auth.isAuthenticated && router" />
         <RouterLink
           v-if="auth.isAuthenticated"
           class="settings-link"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { routeLocationKey, routerKey } from "vue-router";
 import { storeToRefs } from "pinia";
 import { api } from "../lib/api";
 import { formatDate } from "../lib/date";
@@ -271,7 +272,39 @@ async function inspect(path: Path) {
 }
 function closeHistory() {
   historyPath.value = null;
+  if (router && routePathId.value) void router.replace({ path: "/paths" });
 }
+// /paths/:id opens that path's history over the list.
+const router = inject(routerKey, undefined);
+const route = inject(routeLocationKey, undefined);
+const routePathId = computed(() => (typeof route?.params.id === "string" ? route.params.id : ""));
+function openHistory(path: Path) {
+  if (router) void router.push({ path: `/paths/${path.id}` });
+  else void inspect(path);
+}
+async function openRoutePath(id: string) {
+  await pathsStore.load().catch(() => undefined);
+  if (routePathId.value !== id) return;
+  let path = paths.value.find((value) => value.id === id) as Path | undefined;
+  if (!path) {
+    try {
+      // The list holds the most recent paths only; older ones load on their own.
+      path = await api<Path>(`/paths/${id}`);
+    } catch {
+      if (routePathId.value === id) error.value = "That path doesn’t exist any more. It may have been removed.";
+      return;
+    }
+  }
+  if (routePathId.value === id) await inspect(path);
+}
+watch(
+  routePathId,
+  (id) => {
+    if (id) void openRoutePath(id);
+    else historyPath.value = null;
+  },
+  { immediate: true },
+);
 const localDateTime = (iso?: string) => {
   if (!iso) return "";
   const date = new Date(iso);
@@ -673,7 +706,7 @@ onBeforeUnmount(() => {
             <button
               class="text-button"
               aria-haspopup="dialog"
-              @click="inspect(path)"
+              @click="openHistory(path)"
             >
               History</button
             ><button class="text-button" @click="startEdit(path)">Edit</button

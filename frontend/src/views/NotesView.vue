@@ -40,8 +40,9 @@ const router = useRouter();
 const notesStore = useNotesStore();
 const labelsStore = useLabelsStore();
 const { notes, selected, existingLabels } = storeToRefs(notesStore);
-const query = ref("");
-const showArchived = ref(false);
+// ?q= and ?archived=1 make the list's search and archive view linkable.
+const query = ref(typeof route.query.q === "string" ? route.query.q : "");
+const showArchived = ref(route.query.archived === "1");
 const page = ref(0);
 const size = ref(20);
 const pageSizes = [20, 50, 100];
@@ -391,6 +392,26 @@ function nextPage() {
   }
 }
 watch(query, searchLater);
+watch([query, showArchived], ([q, archived]) => {
+  if (isEditor.value) return;
+  const wanted = { q: q.trim() || undefined, archived: archived ? "1" : undefined };
+  if ((route.query.q || undefined) === wanted.q && (route.query.archived || undefined) === wanted.archived) return;
+  void router.replace({ query: { ...route.query, ...wanted } });
+});
+watch(
+  () => [route.query.q, route.query.archived],
+  ([q, archived]) => {
+    if (isEditor.value) return;
+    const nextQuery = typeof q === "string" ? q : "";
+    const nextArchived = archived === "1";
+    if (nextArchived !== showArchived.value) {
+      showArchived.value = nextArchived;
+      query.value = nextQuery;
+      page.value = 0;
+      void loadNotes();
+    } else if (nextQuery.trim() !== query.value.trim()) query.value = nextQuery;
+  },
+);
 watch(size, () => {
   page.value = 0;
   loadNotes();
