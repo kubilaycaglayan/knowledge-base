@@ -1,5 +1,8 @@
 # Testing
 
+See the root [test hardening index](../harden-tests/README.md) for the current
+inventory, planned coverage, run-record template, and failure-triage summary.
+
 The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, boards, and Flyway migrations. Board checks should cover default statuses, nested ownership, invalid date ranges, status archive safeguards, card archive/restore, cursor pages, and Gantt overlap filtering for single, open-ended, and inclusive ranges.
 
 Three backend integration suites guard the API as a whole (see
@@ -75,7 +78,10 @@ a new one, then checks Orca's speech log:
   and, after the autosave, "Line 3, edited …";
 - Orca never reads the gutter stamps aloud.
 
-The `ios` CI job runs on `macos-latest`:
+The `ios` job definition is retained in GitHub Actions but is unconditionally
+disabled (`if: ${{ false }}`); a repository variable cannot enable it. The
+steps below describe the historical workflow and remain useful for manual
+macOS verification:
 - it generates `ios/Know.xcodeproj` with XcodeGen and builds the app for an
   iPhone simulator, ad-hoc signed so the keychain test works;
 - it runs every `KnowTests` case, plus the notes UI tests, including

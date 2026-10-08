@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import vm from "node:vm";
 import { after, before, describe, it } from "node:test";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
 // Per-line edit times ("Line history") against the real API, PostgreSQL,
@@ -73,6 +73,8 @@ function timesByText(note) {
 const without = (times, ...lines) => Object.fromEntries(Object.entries(times).filter(([line]) => !lines.includes(line)));
 
 let browser;
+const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
+const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
 let page;
 const pageErrors = [];
 const paragraph = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
@@ -88,7 +90,13 @@ async function signIn(target) {
 }
 
 async function newPage(options = {}) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light", reducedMotion: "reduce", ...options });
+  const context = await browser.newContext({
+    viewport: iphoneProfile ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+    ...(iphoneProfile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
+    colorScheme: "light",
+    reducedMotion: "reduce",
+    ...options,
+  });
   context.setDefaultTimeout(10000);
   const created = await context.newPage();
   created.on("pageerror", (error) => pageErrors.push(error.message));
@@ -143,7 +151,7 @@ async function assertGutterLayout(target, scope) {
 }
 
 before(async () => {
-  browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
+  browser = await browserType.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
   page = await newPage();
   await page.goto(`${baseUrl}/`);
   await page.getByRole("button", { name: /New here\? Create an account/ }).click();

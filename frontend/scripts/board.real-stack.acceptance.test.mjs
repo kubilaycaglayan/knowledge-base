@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
 const baseUrl = process.env.BOARD_E2E_BASE_URL;
@@ -10,6 +10,8 @@ if (!baseUrl || !email || !password) throw new Error("BOARD_E2E_BASE_URL, BOARD_
 
 let browser;
 let page;
+const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
+const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
 let activeBoardName;
 const consoleLog = [];
 const isoDate = (value) => value.toISOString().slice(0, 10);
@@ -17,8 +19,13 @@ const timelineStart = isoDate(new Date());
 const timelineEnd = isoDate(new Date(Date.now() + 2 * 86_400_000));
 
 before(async () => {
-  browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "light", reducedMotion: "reduce" });
+  browser = await browserType.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
+  const context = await browser.newContext({
+    viewport: iphoneProfile ? { width: 390, height: 844 } : { width: 1440, height: 900 },
+    ...(iphoneProfile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
+    colorScheme: "light",
+    reducedMotion: "reduce",
+  });
   context.setDefaultTimeout(10000);
   page = await context.newPage();
   page.on("console", (message) => { if (message.type() === "error" || message.type() === "warning") consoleLog.push(`${message.type()}: ${message.text()}`); });
@@ -177,6 +184,7 @@ async function seedCards(boardId, count, prefix, priority = "MEDIUM") {
 // Boards are created from the Boards dialog's Add board button; the New board
 // dialog closes only once the store has created and loaded the new board.
 async function createBoard(name) {
+  const previousBoardId = currentBoardId();
   await boardAction("Manage boards");
   await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name: "Add board" }).click();
   const dialog = page.getByRole("dialog", { name: "New board" });
@@ -187,14 +195,39 @@ async function createBoard(name) {
     field.press("Enter"),
   ]);
   await dialog.waitFor({ state: "detached" });
-  await selectedTab().filter({ hasText: new RegExp(`^${escapeRe(name)}$`) }).waitFor();
+  await page.waitForFunction((previousId) => {
+    const selectedId = new URL(location.href).searchParams.get("board");
+    return selectedId !== null && selectedId !== previousId;
+  }, previousBoardId);
+  await boardSettled();
+  activeBoardName = name;
+}
+
+// Most cases need a fresh board as fixture data, not a second test of the
+// board-creation dialog. Seed it through the authenticated API and select its
+// route so setup remains stable after the visible tabs overflow into More.
+async function seedSelectedBoard(name) {
+  const created = await page.evaluate(async (boardName) => {
+    const response = await fetch("/api/v1/boards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` },
+      body: JSON.stringify({ name: boardName }),
+    });
+    if (!response.ok) throw new Error(`Creating board fixture failed with ${response.status}`);
+    return response.json();
+  }, name);
+  await page.goto(`${baseUrl}/board?board=${encodeURIComponent(created.id)}`);
+  await page.getByRole("heading", { name: "Boards" }).waitFor();
+  await page.waitForFunction((id) => new URL(location.href).searchParams.get("board") === id, created.id);
+  await boardSettled();
   activeBoardName = name;
 }
 
 beforeEach(async () => {
+  await page.setViewportSize(iphoneProfile ? { width: 390, height: 844 } : { width: 1440, height: 900 });
   await page.goto(`${baseUrl}/board`);
   await page.getByRole("heading", { name: "Boards" }).waitFor();
-  await createBoard(`Board E2E ${Date.now()}`);
+  await seedSelectedBoard(`Board E2E ${Date.now()}`);
 });
 
 after(async () => { await browser?.close(); });
@@ -377,6 +410,7 @@ describe("board real-stack acceptance", () => {
   });
 
   it("keeps the Kanban/Gantt switch in the board menu on phones", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${baseUrl}/board`);
     await page.getByRole("heading", { name: "Boards" }).waitFor();
 
@@ -794,7 +828,12 @@ describe("board real-stack acceptance", () => {
   it("restores the board state in a new session", async () => {
     const token = await page.evaluate(() => localStorage.getItem("know_token"));
     const signedIn = async () => {
-      const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+        ...(iphoneProfile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
+        colorScheme: "light",
+        reducedMotion: "reduce",
+      });
       context.setDefaultTimeout(10000);
       await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
       return context;
@@ -823,7 +862,7 @@ describe("board real-stack acceptance", () => {
         const query = Object.fromEntries(new URL(fresh.url()).searchParams);
         assert.deepEqual(query, { board: board.id, view: "gantt", from: stored.ganttFrom, to: stored.ganttTo, q: "needle" });
         assert.equal(await fresh.locator("#board-search-input").inputValue(), "needle");
-        assert.ok((await fresh.locator(".board-tab.selected").textContent()).includes(board.name));
+        await fresh.waitForFunction((id) => new URL(location.href).searchParams.get("board") === id, board.id);
       } finally {
         await second.close();
       }

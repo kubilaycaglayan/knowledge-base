@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 
 // Real-stack acceptance for the web client's socket-first timer sync. It runs
 // against a proxy URL (scripts/run-timer-websocket-e2e.sh starts a disposable
@@ -12,9 +12,11 @@ if (!baseUrl) throw new Error("TIMER_E2E_BASE_URL is required");
 
 const pollIntervalMs = 2000;
 let browser;
+const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
+const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
 
 before(async () => {
-  browser = await chromium.launch({
+  browser = await browserType.launch({
     executablePath: process.env.BROWSER_PATH || undefined,
     headless: true,
   });
@@ -47,7 +49,10 @@ async function register() {
 // Opens the app signed in as `token` and records every timer HTTP request and
 // every frame the timer socket receives.
 async function openApp(token, { blockSocket = false } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const context = await browser.newContext({
+    viewport: iphoneProfile ? { width: 390, height: 844 } : { width: 1280, height: 800 },
+    ...(iphoneProfile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
+  });
   context.setDefaultTimeout(10_000);
   await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
   const page = await context.newPage();
