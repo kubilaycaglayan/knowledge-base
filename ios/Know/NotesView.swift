@@ -265,7 +265,7 @@ struct NotesView: View {
             .foregroundStyle(WorkspaceTheme.muted(scheme))
         }
       }.frame(maxWidth: 900, alignment: .leading).padding(16)
-    }.task { focused = .title }
+    }.scrollDismissesKeyboard(.interactively).task { focused = .title }
   }
 
   // When each line of the body was last edited, like the web editor's gutter. A
@@ -307,14 +307,16 @@ struct NotesView: View {
         ForEach(editorDraft?.tags ?? [], id: \.self) { tag in
           HStack(spacing: 4) {
             Text(tag)
-            Button("×") {
+            Button {
               editorDraft?.tags.removeAll { $0 == tag }
               scheduleSave()
+            } label: {
+              Text("×").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
             }.accessibilityLabel("Remove \(tag)")
-          }.padding(.horizontal, 8).padding(.vertical, 5).background(
+          }.padding(.leading, 8).background(
             WorkspaceTheme.selected(scheme))
         }
-        TextField("Add label and press Enter…", text: $labelInput).textFieldStyle(.roundedBorder)
+        TextField("Add label…", text: $labelInput).textFieldStyle(.roundedBorder)
           .focused($focused, equals: .label).accessibilityLabel("Add label")
           .accessibilityIdentifier("notes.label").onSubmit { addLabel() }.onChange(of: labelInput) {
             _, _ in labelIndex = 0

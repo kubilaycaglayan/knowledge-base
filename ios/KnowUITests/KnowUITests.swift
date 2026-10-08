@@ -1064,6 +1064,11 @@ final class KnowUITests: XCTestCase {
     // Apple's accessibility audit (the checks behind Accessibility Inspector) over
     // the editor with the Line history list showing: element descriptions, hit
     // regions, contrast, Dynamic Type, and more. VoiceOver itself cannot run in CI.
+    // Dismiss the keyboard first: the system suggestion bar has no app labels, and text
+    // under the keyboard fails contrast against it.
+    app.scrollViews.firstMatch.swipeDown()
+    expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.keyboards.firstMatch)
+    waitForExpectations(timeout: 5)
     // One category per call: a whole-screen audit can outlast the CI simulator's time limit.
     let audits: [XCUIAccessibilityAuditType] = [
       .sufficientElementDescription, .hitRegion, .contrast, .elementDetection, .trait,
