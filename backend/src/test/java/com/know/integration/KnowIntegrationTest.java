@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.time.Instant;
 import java.time.Clock;
 import java.time.ZoneOffset;
@@ -38,6 +39,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Full integration test suite.
@@ -62,6 +64,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   @Autowired TestRestTemplate rest;
 
   @Autowired ObjectMapper mapper;
+
+  @Autowired JdbcTemplate jdbc;
 
   @Autowired TimerWebSocketHandler timerSockets;
 
@@ -734,6 +738,181 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         .noneMatch("Rollback-only path"::equals));
     assertTrue(get("/api/v1/imports/knowledge-base/batches", token).getBody().isEmpty());
     assertFalse(exportCsv(token).getBody().contains(pathId.toString()));
+  }
+
+  @Test
+  void postgresClockifyUndoRollsBackEarlierEntryDeleteWhenBatchUpdateFails() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Clockify transaction rollback requires PostgreSQL");
+    String token = freshToken();
+    String payload =
+        "{\"timeentries\":[{\"_id\":\"undo-rollback-"
+            + UUID.randomUUID()
+            + "\",\"description\":\"Undo rollback\",\"timeInterval\":{\"start\":\"2024-07-05T08:00:00Z\",\"end\":\"2024-07-05T09:00:00Z\"}}]}";
+    String batchId = post("/api/v1/imports/clockify", token, payload).getBody().get("batchId").asText();
+    UUID batchUuid = UUID.fromString(batchId);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_clockify_undo_" + suffix;
+    String triggerName = functionName;
+    installBatchUpdateFailure(batchUuid, functionName, triggerName);
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          delete("/api/v1/imports/clockify/batches/" + batchId, token).getStatusCode());
+    } finally {
+      removeTrigger(triggerName, "import_batch", functionName);
+    }
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry where import_batch_id = ?", Long.class, batchUuid));
+    assertNull(
+        jdbc.queryForObject(
+            "select undone_at from import_batch where id = ?", java.sql.Timestamp.class, batchUuid));
+  }
+
+  @Test
+  void postgresKnowledgeBaseUndoRollsBackEarlierDeletesWhenBatchUpdateFails() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Knowledge Base transaction rollback requires PostgreSQL");
+    String token = freshToken();
+    UUID pathId = UUID.randomUUID();
+    UUID noteId = UUID.randomUUID();
+    String created = "2024-02-29T12:00:00Z";
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                pathId,
+                "{\"name\":\"Undo rollback path\",\"status\":\"ACTIVE\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + created
+                    + "\"}")
+            + csvRow(
+                "note",
+                noteId,
+                "{\"title\":\"Undo rollback note\",\"content\":\"body\",\"pathId\":\""
+                    + pathId
+                    + "\"}");
+    String batchId = importCsv(token, csv).getBody().get("batchId").asText();
+    UUID batchUuid = UUID.fromString(batchId);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_kb_undo_" + suffix;
+    String triggerName = functionName;
+    installBatchUpdateFailure(batchUuid, functionName, triggerName);
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          delete("/api/v1/imports/knowledge-base/batches/" + batchId, token).getStatusCode());
+    } finally {
+      removeTrigger(triggerName, "import_batch", functionName);
+    }
+    assertEquals(
+        1L,
+        jdbc.queryForObject("select count(*) from note where id = ?", Long.class, noteId));
+    assertEquals(
+        1L,
+        jdbc.queryForObject("select count(*) from path where id = ?", Long.class, pathId));
+    assertNull(
+        jdbc.queryForObject(
+            "select undone_at from import_batch where id = ?", java.sql.Timestamp.class, batchUuid));
+  }
+
+  @Test
+  void postgresCalendarRangeFailureRollsBackEarlierDayAndAssignments() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Calendar transaction rollback requires PostgreSQL");
+    String token = freshToken();
+    String labelId =
+        post(
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Range rollback\",\"scopes\":[\"CALENDAR\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    java.time.LocalDate failedDate = java.time.LocalDate.of(2026, 5, 21);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_calendar_range_" + suffix;
+    String triggerName = functionName;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin if new.record_date = date '"
+            + failedDate
+            + "' then raise exception 'forced calendar range failure'; end if; return new; end $$");
+    jdbc.execute(
+        "create trigger "
+            + triggerName
+            + " before insert on daily_record for each row execute function "
+            + functionName
+            + "()");
+    try {
+      ResponseEntity<JsonNode> failed =
+          put(
+              "/api/v1/calendar/days/range",
+              token,
+              "{\"startDate\":\"2026-05-20\",\"endDate\":\""
+                  + failedDate
+                  + "\",\"labels\":[{\"labelId\":\""
+                  + labelId
+                  + "\",\"portion\":0.25}]}");
+      assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failed.getStatusCode());
+    } finally {
+      removeTrigger(triggerName, "daily_record", functionName);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from daily_record where user_id = ? and record_date between ? and ?",
+            Long.class,
+            authenticatedUserId(token),
+            java.sql.Date.valueOf("2026-05-20"),
+            java.sql.Date.valueOf(failedDate)));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from daily_record_label a join daily_record d on d.id = a.daily_record_id where d.user_id = ? and d.record_date between ? and ?",
+            Long.class,
+            authenticatedUserId(token),
+            java.sql.Date.valueOf("2026-05-20"),
+            java.sql.Date.valueOf(failedDate)));
+  }
+
+  private void installBatchUpdateFailure(UUID batchId, String functionName, String triggerName) {
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin if new.id = '"
+            + batchId
+            + "'::uuid then raise exception 'forced import undo failure'; end if; return new; end $$");
+    jdbc.execute(
+        "create trigger "
+            + triggerName
+            + " before update on import_batch for each row execute function "
+            + functionName
+            + "()");
+  }
+
+  private void removeTrigger(String triggerName, String tableName, String functionName) {
+    jdbc.execute("drop trigger if exists " + triggerName + " on " + tableName);
+    jdbc.execute("drop function if exists " + functionName + "()");
+  }
+
+  private UUID authenticatedUserId(String token) {
+    try {
+      return UUID.fromString(
+          mapper
+              .readTree(Base64.getUrlDecoder().decode(token.split("\\.")[1]))
+              .get("sub")
+              .asText());
+    } catch (Exception exception) {
+      throw new AssertionError("Could not read test user from token", exception);
+    }
   }
 
   @Test
