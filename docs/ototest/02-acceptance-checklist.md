@@ -381,8 +381,10 @@ browser interaction evidence remains a separate layer.
   priority order across boards, isolation from board-local modes, reset, and
   invalid values (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
   and `columnPagesFollowTheColumnSort`).
-- [ ] `GET /api/v1/boards/all/gantt` covers inclusive date range behavior and
-  excludes cards that do not meet the documented active-board/status rules.
+- [x] `GET /api/v1/boards/all/gantt` covers reversed range validation, returns
+  dated and undated cards regardless of the requested window, and excludes
+  archived boards and hidden path boards
+  (`AllBoardsIntegrationTest.ganttCoversEveryTabBoard`).
 - [ ] Multi-record board mutations cover transaction rollback when any
   operation in the mutation fails.
 
