@@ -247,8 +247,8 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
   optional page/size pagination metadata.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
-- [ ] `PUT /api/v1/time-entries/{id}` covers completed-entry editing and
-  invalid interval boundaries.
+- [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
+  persisted targets/duration, foreign ownership, and invalid interval boundaries.
 - [ ] `DELETE /api/v1/time-entries/{id}` covers soft-delete behavior and
   subsequent visibility.
 - [ ] `GET /api/v1/statistics` covers tracked-seconds and date/path/label
