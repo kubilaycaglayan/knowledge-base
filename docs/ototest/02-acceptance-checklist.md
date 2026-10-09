@@ -327,8 +327,9 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/boards/{id}/statuses/{statusId}/restore` covers active
   response/readback state, stable identity, position, and board ownership
   (`BoardStatusRestoreIntegrationTest.restoredStatusPersistsItsActiveStateIdentityAndPosition`).
-- [ ] `GET /api/v1/boards/{id}/cards` covers status, archive, and default
-  filtering.
+- [x] `GET /api/v1/boards/{id}/cards` covers active default, status filter,
+  archived filter, and foreign board isolation
+  (`BoardCardListIntegrationTest.cardListDefaultsFiltersStatusesAndListsArchivedCardsForOwner`).
 - [ ] `GET /api/v1/boards/{id}/cards/page` covers cursor boundaries, page size
   limits, and each supported status sort mode.
 - [ ] `POST /api/v1/boards/{id}/cards` covers card creation and validation of
