@@ -192,11 +192,11 @@ browser interaction evidence remains a separate layer.
   owned labels with LOG scope.
 - [ ] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
-- [ ] `GET /api/v1/activities` covers each supported `from`, `to`, `pathId`,
+- [x] `GET /api/v1/activities` covers each supported `from`, `to`, `pathId`,
   and `type` filter independently.
-- [ ] Activity filtering covers inclusive/exclusive boundary behavior as
+- [x] Activity filtering covers inclusive/exclusive boundary behavior as
   documented for each supported date/time input.
-- [ ] Activity results do not reveal another user's records through direct or
+- [x] Activity results do not reveal another user's records through direct or
   referenced IDs.
 
 ## Flow: Cover timers and time entries
