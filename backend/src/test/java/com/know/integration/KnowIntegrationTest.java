@@ -1068,6 +1068,28 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertTrue(summary.getBody().get("trackedSeconds").asLong() >= 300);
   }
 
+  @Test
+  void mergingAPathIntoItselfIsRejectedWithoutChangingThePath() {
+    String token = freshToken();
+    String pathId =
+        post("/api/v1/paths", token, "{\"name\":\"Self merge\"}")
+            .getBody()
+            .get("id")
+            .asText();
+
+    ResponseEntity<JsonNode> rejected =
+        post(
+            "/api/v1/paths/" + pathId + "/merge",
+            token,
+            "{\"targetPathId\":\"" + pathId + "\"}");
+
+    assertEquals(HttpStatus.BAD_REQUEST, rejected.getStatusCode());
+    ResponseEntity<JsonNode> unchanged = get("/api/v1/paths/" + pathId, token);
+    assertEquals(HttpStatus.OK, unchanged.getStatusCode());
+    assertEquals("Self merge", unchanged.getBody().get("name").asText());
+    assertEquals("ACTIVE", unchanged.getBody().get("status").asText());
+  }
+
   // Criteria: paths have colors
 
   @Test
