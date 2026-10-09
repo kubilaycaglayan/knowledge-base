@@ -374,9 +374,9 @@ browser interaction evidence remains a separate layer.
   stable-ID duplicate handling, and legacy formats documented as supported.
 - [ ] `POST /api/v1/imports/knowledge-base` covers malformed CSV, unsupported
   values, and documented rollback/partial-result behavior.
-- [ ] `GET /api/v1/imports/knowledge-base/batches` covers owner-scoped batch
+- [x] `GET /api/v1/imports/knowledge-base/batches` covers owner-scoped batch
   list behavior.
-- [ ] `DELETE /api/v1/imports/knowledge-base/batches/{id}` covers undo,
+- [x] `DELETE /api/v1/imports/knowledge-base/batches/{id}` covers undo,
   imported-log removal, foreign-batch rejection, and repeat behavior.
 - [ ] Import and export coverage verifies labels/scopes and linked path,
   session, note, calendar, and log data according to the format contract.

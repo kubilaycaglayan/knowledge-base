@@ -667,6 +667,44 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void knowledgeBaseBatchListAndUndoAreOwnerScopedAndRepeatedUndoIsIdempotent() {
+    String owner = freshToken();
+    String other = freshToken();
+    UUID pathId = UUID.randomUUID();
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                pathId,
+                "{\"name\":\"Batch-owned path\",\"description\":null,\"color\":\"#123456\",\"status\":\"ACTIVE\"}");
+
+    ResponseEntity<JsonNode> imported = importCsv(owner, csv);
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(1, imported.getBody().get("imported").asInt());
+    JsonNode ownerBatches = get("/api/v1/imports/knowledge-base/batches", owner).getBody();
+    assertEquals(1, ownerBatches.size());
+    String batchId = ownerBatches.get(0).get("id").asText();
+
+    assertTrue(get("/api/v1/imports/knowledge-base/batches", other).getBody().isEmpty());
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, other).getStatusCode());
+    assertEquals(HttpStatus.OK, get("/api/v1/paths/" + pathId, owner).getStatusCode());
+
+    ResponseEntity<JsonNode> undo =
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, owner);
+    assertEquals(HttpStatus.OK, undo.getStatusCode());
+    assertEquals(1, undo.getBody().get("deletedPaths").asInt());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + pathId, owner).getStatusCode());
+
+    ResponseEntity<JsonNode> repeatedUndo =
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, owner);
+    assertEquals(HttpStatus.OK, repeatedUndo.getStatusCode());
+    assertEquals(0, repeatedUndo.getBody().get("deletedPaths").asInt());
+    assertEquals(1, get("/api/v1/imports/knowledge-base/batches", owner).getBody().size());
+  }
+
+  @Test
   void knowledgeBaseImportSkipsDuplicatesWithinFileAndPreservesOtherUsersData() {
     String ownerToken = freshToken();
     String importingToken = freshToken();
