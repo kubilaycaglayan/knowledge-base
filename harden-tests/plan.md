@@ -37,14 +37,19 @@ failure-state requirements, and acceptance evidence.
 ### Backend integration
 
 - Existing H2 integration coverage includes malformed and oversized input, ownership, stale note versions, and API behavior; PostgreSQL search has a dedicated opt-in integration test.
-- [ ] Expand coverage for rate limits, time boundaries, empty and large result sets, and PostgreSQL behavior that H2 cannot represent. Existing tests cover stale note/card versions and concurrent board writes.
+- [x] Complete application authentication rate-limit coverage, including HTTP responses and proxy identity behavior; see [HARD-04](milestones/04-rate-limits-and-security.md).
+- [ ] Expand time-boundary, empty/high-volume, and PostgreSQL-only behavior that H2 cannot represent. Existing tests cover stale note/card versions and concurrent board writes.
 - [ ] Keep PostgreSQL tests isolated to an empty disposable database migrated by Flyway; do not point test jobs at persistent data.
 
 See [HARD-03](milestones/03-postgres-and-boundaries.md) for database-sensitive
 areas, deterministic time cases, scale coverage, and disposable-database gates.
 See [HARD-04](milestones/04-rate-limits-and-security.md) for HTTP limiter and
-Cloudflare policy verification. The existing limiter unit test and WAF static
-contract check are partial evidence, not completion of those tasks.
+Cloudflare policy verification. HARD-04 is complete: request-level auth
+budgets, deterministic limiter boundaries, proxy identity behavior, semantic
+WAF route contracts, and desktop/mobile-size Chromium recovery are covered.
+Cloudflare live enforcement and production replica count remain unverified;
+see the [acceptance checklist](milestones/04-acceptance-checklist.md) and
+[separate run reports](runs/).
 
 ### Performance
 
