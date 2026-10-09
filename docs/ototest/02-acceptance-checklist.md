@@ -491,8 +491,9 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover imports and exports
 
-- [ ] `POST /api/v1/imports/clockify` covers supported payload creation,
-  project-to-path mapping, and persisted import-batch ownership.
+- [x] `POST /api/v1/imports/clockify` covers supported payload creation,
+  project-to-path mapping, and persisted import-batch ownership
+  (`KnowIntegrationTest.clockifyImportCreatesEntriesAndPaths`).
 - [ ] `POST /api/v1/imports/clockify` covers duplicate source IDs and repeated
   import behavior.
 - [ ] `POST /api/v1/imports/clockify` covers malformed and unsupported input,

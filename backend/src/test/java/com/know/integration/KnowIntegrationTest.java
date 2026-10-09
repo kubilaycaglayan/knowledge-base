@@ -2089,18 +2089,30 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(1, imported.getBody().get("imported").asInt());
     assertEquals(0, imported.getBody().get("skipped").asInt());
     assertEquals(1, imported.getBody().get("createdPaths").asInt());
-    assertNotNull(imported.getBody().get("batchId").asText());
+    String batchId = imported.getBody().get("batchId").asText();
+    assertNotNull(batchId);
 
     // Path was created from project name
     ResponseEntity<JsonNode> paths = get("/api/v1/paths", token);
-    boolean pathFound = false;
+    String pathId = null;
     for (JsonNode n : paths.getBody()) {
       if (uniqueProject.equalsIgnoreCase(n.get("name").asText())) {
-        pathFound = true;
+        pathId = n.get("id").asText();
         break;
       }
     }
-    assertTrue(pathFound, "Clockify project path should be created");
+    assertNotNull(pathId, "Clockify project path should be created");
+
+    JsonNode entries = get("/api/v1/time-entries", token).getBody();
+    assertEquals(1, entries.size());
+    assertEquals("Reading session", entries.get(0).get("description").asText());
+    assertEquals(pathId, entries.get(0).get("pathId").asText());
+
+    JsonNode batches = get("/api/v1/imports/clockify/batches", token).getBody();
+    assertEquals(1, batches.size());
+    assertEquals(batchId, batches.get(0).get("id").asText());
+    assertEquals("IMPORT", batches.get(0).get("source").asText());
+    assertEquals(1, batches.get(0).get("imported").asInt());
   }
 
   @Test
