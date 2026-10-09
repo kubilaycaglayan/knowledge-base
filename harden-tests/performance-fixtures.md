@@ -8,7 +8,7 @@ dates are deterministic; account email and IDs are unique per run.
 
 | Profile | Paths | Notes | Sessions | Custom boards | Statuses / custom board | Cards / custom board | Labels |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| sparse | 3 | 12 | 20 | 1 | 3 | 48 | 4 |
+| sparse | 3 | 12 | 20 | 1 | 4 | 48 | 4 |
 | dense | 12 | 120 | 200 | 2 | 5 | 120 | 12 |
 
 Each path also creates its normal path board and default status set. Custom

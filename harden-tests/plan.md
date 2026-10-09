@@ -52,11 +52,11 @@ contract check are partial evidence, not completion of those tasks.
 - [ ] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture current machine load and runtime/image metadata for every run.
 - [ ] Keep initial baselines report-only. Consider a 20% gate only after comparable repeated batches establish variance and a documented absolute floor, refresh, rerun, and override policy.
 
-The report-only API sampler and per-run performance report fields are in place;
-it captures request duration and raw response data, not browser rendering or
-server-only latency. HARD-05 remains in progress until deterministic fixture
-setup, browser journey collection, and comparable idle-machine runs are
-recorded. See [HARD-05](milestones/05-performance-baselines.md) and the
+The report-only API sampler, deterministic sparse/dense fixture generator, and
+per-run performance report fields are in place. The collector captures request
+duration and raw response data, not browser rendering or server-only latency.
+HARD-05 remains in progress until browser journey collection and comparable
+idle-machine runs are recorded. See [HARD-05](milestones/05-performance-baselines.md) and the
 [acceptance checklist](milestones/05-acceptance-checklist.md).
 
 See [HARD-05](milestones/05-performance-baselines.md) for fixture sizes,

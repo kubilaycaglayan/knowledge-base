@@ -16,7 +16,7 @@ if (!output.includes(`${resolve("harden-tests/local-artifacts")}/`)) {
   throw new Error("PERFORMANCE_FIXTURE_OUTPUT must stay under harden-tests/local-artifacts/");
 }
 const sizes = {
-  sparse: { paths: 3, notes: 12, sessions: 20, boards: 1, statuses: 3, cardsPerBoard: 48, labels: 4 },
+  sparse: { paths: 3, notes: 12, sessions: 20, boards: 1, statuses: 4, cardsPerBoard: 48, labels: 4 },
   dense: { paths: 12, notes: 120, sessions: 200, boards: 2, statuses: 5, cardsPerBoard: 120, labels: 12 },
 };
 const size = sizes[profile];

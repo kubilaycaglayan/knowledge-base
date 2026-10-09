@@ -68,16 +68,19 @@ and [`TimerController`](../../backend/src/main/java/com/know/api/TimerController
 
 ## Measurement method
 
-- [ ] Use one versioned deterministic fixture profile per workload. Define
+- [x] Use one versioned deterministic fixture profile per workload. Define
   sparse and dense account sizes as explicit counts for paths, notes, sessions,
   boards, statuses, cards, labels, and search terms; define card counts that
   cross the 20-card UI page boundary and include a documented larger case.
   Record seeded text lengths, date distribution, exact/near-match terms, and
   expected result counts. Do not use wall-clock/random data to decide fixture
-  contents.
-- [ ] Record fixture seed/version, setup command, cleanup owner/project, and a
+  contents. See [`performance-fixtures.md`](../performance-fixtures.md) and
+  its linked versioned generator.
+- [x] Record fixture seed/version, setup command, cleanup owner/project, and a
   post-setup count summary. Assert fixture counts before timing, and verify the
-  benchmark user/data are disposable before and after the run.
+  benchmark user/data are disposable before and after the run. The generator
+  validates its account's counts and records the unique project for scoped
+  Compose teardown; generated fixture artifacts are ignored and mode `0600`.
 - [ ] Define at least 3 unmeasured warmups followed by at least 30 measured
   samples per proposed gated journey and profile; record every raw sample.
   If setup or run cost prevents this, label the smaller sample set exploratory
