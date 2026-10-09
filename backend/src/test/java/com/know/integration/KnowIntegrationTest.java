@@ -2499,6 +2499,9 @@ class KnowIntegrationTest extends IntegrationTestSupport {
                 + "\",\"portion\":1.0}]}");
     assertEquals(HttpStatus.OK, applied.getStatusCode());
     assertEquals(3, applied.getBody().size());
+    assertEquals(
+        List.of("2026-09-09", "2026-09-10", "2026-09-11"),
+        applied.getBody().findValuesAsText("date"));
     for (JsonNode day : applied.getBody()) {
       assertTrue(day.get("labels").toString().contains("Sick leave"));
       assertEquals(
@@ -2509,6 +2512,16 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     JsonNode middle = applied.getBody().get(1);
     assertEquals("Existing record", middle.get("note").asText());
     assertTrue(middle.get("labels").toString().contains("Milestone"));
+    JsonNode persistedRange =
+        get("/api/v1/calendar/days?startDate=2026-09-09&endDate=2026-09-11", token).getBody();
+    assertEquals(
+        List.of("2026-09-09", "2026-09-10", "2026-09-11"),
+        persistedRange.findValuesAsText("date"));
+    JsonNode persistedMiddle = persistedRange.get(1);
+    assertEquals("Existing record", persistedMiddle.get("note").asText());
+    assertEquals(2, persistedMiddle.get("labels").size());
+    assertTrue(persistedMiddle.get("labels").toString().contains("Milestone"));
+    assertTrue(persistedMiddle.get("labels").toString().contains("Sick leave"));
     JsonNode report = get("/api/v1/reports?period=MONTH&anchor=2026-09-10", token).getBody();
     JsonNode sickSummary = null;
     for (JsonNode label : report.get("calendarLabels"))
