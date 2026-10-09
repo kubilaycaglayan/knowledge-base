@@ -2159,6 +2159,35 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void calendarDayDeleteIsOwnerScopedAndIdempotent() {
+    String owner = freshToken();
+    String other = freshToken();
+    String date = "2026-09-06";
+    ResponseEntity<JsonNode> saved =
+        put("/api/v1/calendar/days/" + date, owner, "{\"note\":\"Owner's day\",\"labels\":[]}");
+    assertEquals(HttpStatus.OK, saved.getStatusCode());
+
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/calendar/days/" + date, other).getStatusCode());
+    JsonNode ownerDays =
+        get("/api/v1/calendar/days?startDate=" + date + "&endDate=" + date, owner).getBody();
+    assertEquals(1, ownerDays.size());
+    assertEquals("Owner's day", ownerDays.get(0).get("note").asText());
+    assertEquals(
+        0,
+        get("/api/v1/calendar/days?startDate=" + date + "&endDate=" + date, other)
+            .getBody()
+            .size());
+
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/calendar/days/" + date, owner).getStatusCode());
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/calendar/days/" + date, owner).getStatusCode());
+    assertEquals(
+        0,
+        get("/api/v1/calendar/days?startDate=" + date + "&endDate=" + date, owner)
+            .getBody()
+            .size());
+  }
+
+  @Test
   void calendarLabelsAreOwnerScopedAndAppearSeparatelyInReports() {
     String owner = freshToken();
     String other = freshToken();
