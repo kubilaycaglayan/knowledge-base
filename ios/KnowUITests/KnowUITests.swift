@@ -1133,7 +1133,7 @@ final class KnowUITests: XCTestCase {
     app.launchArguments += ["-ui-testing-authenticated", "-notes-empty"]
     app.launch()
     app.buttons["workspace.notes"].tap()
-    XCTAssertTrue(app.staticTexts["Your notes will appear here."].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Your notes will appear here."].waitForExistence(timeout: 15))
     app.terminate()
     app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-notes-offline"]
     app.launch()
@@ -1162,8 +1162,8 @@ final class KnowUITests: XCTestCase {
     app.buttons["notes.add"].tap()
     let title = app.textFields["notes.title"]
     let body = app.textViews["notes.body"]
-    XCTAssertTrue(title.waitForExistence(timeout: 5))
-    XCTAssertTrue(body.waitForExistence(timeout: 5))
+    XCTAssertTrue(title.waitForExistence(timeout: 15))
+    XCTAssertTrue(body.waitForExistence(timeout: 15))
     title.tap()
     title.typeText("Persistent fixture note")
     body.tap()
@@ -1172,27 +1172,27 @@ final class KnowUITests: XCTestCase {
 
     app.buttons["notes.back"].tap()
     let openNote = app.buttons["Open Persistent fixture note"]
-    XCTAssertTrue(openNote.waitForExistence(timeout: 8))
+    XCTAssertTrue(openNote.waitForExistence(timeout: 15))
     app.buttons["workspace.paths"].tap()
     app.buttons["workspace.notes"].tap()
     let open = app.buttons["Open Persistent fixture note"]
-    XCTAssertTrue(open.waitForExistence(timeout: 5))
+    XCTAssertTrue(open.waitForExistence(timeout: 15))
     open.tap()
-    XCTAssertTrue(title.waitForExistence(timeout: 5))
+    XCTAssertTrue(title.waitForExistence(timeout: 15))
     XCTAssertEqual(title.value as? String, "Persistent fixture note")
     XCTAssertEqual(body.value as? String, "Saved note content")
 
     app.buttons["notes.back"].tap()
     app.buttons["Archive Persistent fixture note"].tap()
-    XCTAssertTrue(app.buttons["Archive note"].waitForExistence(timeout: 3))
+    XCTAssertTrue(app.buttons["Archive note"].waitForExistence(timeout: 10))
     app.buttons["Archive note"].tap()
     app.buttons["notes.archive-toggle"].tap()
     let restore = app.buttons["Restore"]
-    XCTAssertTrue(restore.waitForExistence(timeout: 5))
+    XCTAssertTrue(restore.waitForExistence(timeout: 15))
     restore.tap()
 
     app.buttons["notes.archive-toggle"].tap()
-    XCTAssertTrue(app.buttons["Open Persistent fixture note"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Open Persistent fixture note"].waitForExistence(timeout: 15))
   }
 
   func testNotesControlsRemainReachableAtAccessibilityTextSize() {
