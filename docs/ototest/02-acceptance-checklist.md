@@ -253,8 +253,12 @@ browser interaction evidence remains a separate layer.
   isolation, and subsequent detail/history visibility.
 - [x] `GET /api/v1/statistics` covers tracked-seconds and date/path/label
   aggregation arithmetic, including cross-owner isolation.
-- [ ] Timer duration assertions use server responses/persisted values rather
-  than client-calculated historical duration.
+- [x] Timer duration assertions use server responses or persisted rows:
+  `TimerPauseIntegrationTest.pauseRecordsTheSegmentAndKeepsTheSessionContext`
+  compares pause response, draft, and recorded entry; `finishEndsAPausedSession`
+  compares paused response with persisted segment; `ManualTimeEntryIntegrationTest`
+  verifies response/readback duration; `TimerServiceEdgeTest` verifies stop
+  threshold behavior from the service result.
 
 ## Flow: Cover timer WebSocket transport
 
