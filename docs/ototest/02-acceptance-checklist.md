@@ -190,7 +190,7 @@ browser interaction evidence remains a separate layer.
 
 - [x] `GET /api/v1/logs` covers owner-scoped newest-first order and empty
   results. The endpoint has no filter or pagination query parameters.
-- [ ] `GET /api/v1/logs/{id}` covers owned, missing, and foreign log IDs.
+- [x] `GET /api/v1/logs/{id}` covers owned, missing, and foreign log IDs.
 - [ ] `POST /api/v1/logs` covers creation, occurrence timestamp, and persisted
   body and labels.
 - [ ] `PUT /api/v1/logs/{id}` covers update and optimistic version conflict
