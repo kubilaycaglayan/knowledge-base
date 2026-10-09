@@ -203,34 +203,34 @@ covered” row.
 
 ### FLOW-03 — Timeline and Logs
 
-- [ ] **FLOW-03.01** Open `/timeline`; inventory activity loading, empty state,
+- [x] **FLOW-03.01** Open `/timeline`; inventory activity loading, empty state,
   date/filter controls, initial range, and current URL behavior.
-- [ ] **FLOW-03.02** Filter Timeline by activity type and Path; record submit,
+- [x] **FLOW-03.02** Filter Timeline by activity type and Path; record submit,
   clear, selected-filter feedback, URL representation if any, and empty result.
-- [ ] **FLOW-03.03** Set Timeline start/end dates and 7-day/30-day presets;
+- [x] **FLOW-03.03** Set Timeline start/end dates and 7-day/30-day presets;
   record inclusive boundaries, same-day range, reversed range validation,
   timezone display, and browser history behavior.
-- [ ] **FLOW-03.04** Open a Timeline activity's related record; record target
+- [x] **FLOW-03.04** Open a Timeline activity's related record; record target
   route/deep link and return-to-filtered-timeline behavior.
-- [ ] **FLOW-03.05** Add or edit an activity note; record inline editor,
+- [x] **FLOW-03.05** Add or edit an activity note; record inline editor,
   keyboard submission, save/cancel, live feedback, and network failure retry.
-- [ ] **FLOW-03.06** Open `/logs` and `/logs/:id`; record list/detail URL,
+- [x] **FLOW-03.06** Open `/logs` and `/logs/:id`; record list/detail URL,
   direct-load behavior, search state, and invalid or foreign ID response.
-- [ ] **FLOW-03.07** Create a Log with text and timestamp; record defaults,
+- [x] **FLOW-03.07** Create a Log with text and timestamp; record defaults,
   browser-time reset, keyboard submission, whitespace/empty validation,
   long-text handling, and successful list placement.
-- [ ] **FLOW-03.08** Edit Log text and time inline and from its detail route;
+- [x] **FLOW-03.08** Edit Log text and time inline and from its detail route;
   record save/cancel, validation, concurrency/stale response handling, and
   persistence after reload.
-- [ ] **FLOW-03.09** Assign and remove LOG labels; record picker search/create,
+- [x] **FLOW-03.09** Assign and remove LOG labels; record picker search/create,
   selected chips, allowed label scopes, and feedback on save.
-- [ ] **FLOW-03.10** Search Logs and clear search; record shortcut, URL query,
+- [x] **FLOW-03.10** Search Logs and clear search; record shortcut, URL query,
   no-match state, retained query after reload/back, and focus restoration.
-- [ ] **FLOW-03.11** Page through grouped Logs; record grouping boundary,
+- [x] **FLOW-03.11** Page through grouped Logs; record grouping boundary,
   pagination controls, page loading/error/retry, and scroll restoration.
-- [ ] **FLOW-03.12** Delete a Log; record confirmation, cancel, success,
+- [x] **FLOW-03.12** Delete a Log; record confirmation, cancel, success,
   failure recovery, and state after returning from a deep link.
-- [ ] **FLOW-03.13** Exercise Timeline/Logs forms and lists in mobile Chrome;
+- [x] **FLOW-03.13** Exercise Timeline/Logs forms and lists in mobile Chrome;
   record date picker/keyboard behavior, touch targets, long-text layout, and
   horizontal overflow.
 
