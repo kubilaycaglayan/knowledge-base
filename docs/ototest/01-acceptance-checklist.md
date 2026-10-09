@@ -424,39 +424,39 @@ covered” row.
 
 ### FLOW-09 — Notes
 
-- [ ] **FLOW-09.01** Open `/notes` with default query, `?q=`, and
+- [x] **FLOW-09.01** Open `/notes` with default query, `?q=`, and
   `?archived=1`; record list/filter state, URL restoration, empty state, and
   loading/error feedback.
-- [ ] **FLOW-09.02** Create a Note; record initial title/body, focus policy,
+- [x] **FLOW-09.02** Create a Note; record initial title/body, focus policy,
   blank-note handling, URL/id creation, and list placement.
-- [ ] **FLOW-09.03** Open a Note from the list and `/notes/:id`; record deep-link
+- [x] **FLOW-09.03** Open a Note from the list and `/notes/:id`; record deep-link
   load, editor state, missing/foreign/archived ID behavior, and browser
   Back/Forward.
-- [ ] **FLOW-09.04** Edit title and body; record autosave timing/indicator,
+- [x] **FLOW-09.04** Edit title and body; record autosave timing/indicator,
   input retention while saving, empty/long text, and failure/retry behavior.
-- [ ] **FLOW-09.05** Apply every rich-text toolbar action (text style, bold,
+- [x] **FLOW-09.05** Apply every rich-text toolbar action (text style, bold,
   italic, underline, strike, lists, checklist, quote, code); inventory output,
   selection retention, keyboard shortcuts, and plain-text/Markdown behavior.
-- [ ] **FLOW-09.06** Paste plain text, rich HTML, and long content; record
+- [x] **FLOW-09.06** Paste plain text, rich HTML, and long content; record
   sanitization/normalization, resilient layout, saved result, and undo behavior.
-- [ ] **FLOW-09.07** Assign/remove labels; record picker search, scope, create,
+- [x] **FLOW-09.07** Assign/remove labels; record picker search, scope, create,
   chip update, save status, and error recovery.
-- [ ] **FLOW-09.08** Pin/unpin and reorder Notes; record order persistence,
+- [x] **FLOW-09.08** Pin/unpin and reorder Notes; record order persistence,
   filtered/archived behavior, drag/keyboard operation, and mobile alternative.
-- [ ] **FLOW-09.09** Search Notes and switch active/archive views; record
+- [x] **FLOW-09.09** Search Notes and switch active/archive views; record
   query-to-list mapping, empty/no-match state, page size, and back/forward
   restoration.
-- [ ] **FLOW-09.10** Archive and restore a Note; record confirmation or
+- [x] **FLOW-09.10** Archive and restore a Note; record confirmation or
   reversible feedback, list membership, direct URL behavior, and preserved
   labels/content.
-- [ ] **FLOW-09.11** Delete a Note if offered; record confirmation, undo/recovery
+- [x] **FLOW-09.11** Delete a Note if offered; record confirmation, undo/recovery
   window, cancellation, and link behavior after deletion.
-- [ ] **FLOW-09.12** Navigate away during a pending edit; record unsaved-change
+- [x] **FLOW-09.12** Navigate away during a pending edit; record unsaved-change
   warning, stay/leave actions, focus, and whether pending save is flushed.
-- [ ] **FLOW-09.13** Edit the same Note from another tab/client; record conflict
+- [x] **FLOW-09.13** Edit the same Note from another tab/client; record conflict
   detection, stale-write handling, user recovery choice, and no silent data
   loss.
-- [ ] **FLOW-09.14** Exercise Note list/editor/toolbar in mobile Chrome;
+- [x] **FLOW-09.14** Exercise Note list/editor/toolbar in mobile Chrome;
   record visible editing controls, text selection, viewport resize, scroll
   ownership, toolbar wrapping, and keyboard overlap.
 
