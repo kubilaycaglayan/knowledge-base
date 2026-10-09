@@ -344,8 +344,9 @@ browser interaction evidence remains a separate layer.
   owned-reference updates, foreign reference rejection, and stale
   `expectedUpdatedAt` conflict behavior
   (`BoardCardUpdateIntegrationTest` and `BoardControllerApiTest`).
-- [ ] `POST /api/v1/boards/{id}/cards/{cardId}/move` covers position updates,
-  target status ownership, and rejection of archived targets.
+- [x] `POST /api/v1/boards/{id}/cards/{cardId}/move` covers persisted target
+  status/position order and rejection of foreign and archived statuses
+  (`BoardCardMoveIntegrationTest.cardMovePersistsDestinationPositionAndRejectsForeignOrArchivedStatuses`).
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
   or creating the target column and persisted placement.
 - [ ] `POST /api/v1/boards/{id}/cards/in-column` covers card creation in an
