@@ -498,6 +498,119 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresPathOrderRollsBackEarlierRowsWhenLaterUpdateFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String firstPathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"First ordered path\"}")
+            .get("id")
+            .asText();
+    String secondPathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"Second ordered path\"}")
+            .get("id")
+            .asText();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String sequenceName = "fail_path_order_count_" + suffix;
+    String functionName = "fail_path_order_update_" + suffix;
+    String triggerName = functionName;
+    createFailOnNthUpdate("path", sequenceName, functionName, triggerName, 2);
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/paths/order",
+              token,
+              "{\"pathIds\":[\"" + firstPathId + "\",\"" + secondPathId + "\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropUpdateTrigger("path", sequenceName, triggerName, functionName);
+    }
+    assertEquals(
+        2L,
+        jdbc.queryForObject(
+            "select count(*) from path where id in (?, ?) and sort_order is null",
+            Long.class,
+            UUID.fromString(firstPathId),
+            UUID.fromString(secondPathId)));
+  }
+
+  @Test
+  void postgresPathRenameRollsBackWhenAssociatedBoardRenameFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String pathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"Original paired name\"}")
+            .get("id")
+            .asText();
+    String trigger = failOnUpdateTrigger("boards");
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/paths/" + pathId,
+              token,
+              "{\"name\":\"Changed paired name\",\"description\":\"changed\"}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      jdbc.execute("drop trigger if exists " + trigger + " on boards");
+      jdbc.execute("drop function if exists " + trigger + "()");
+    }
+    UUID pathUuid = UUID.fromString(pathId);
+    assertEquals(
+        "Original paired name",
+        jdbc.queryForObject("select name from path where id = ?", String.class, pathUuid));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from boards where path_id = ? and name = ?",
+            Long.class,
+            pathUuid,
+            "Original paired name"));
+  }
+
+  @Test
+  void postgresNoteOrderRollsBackEarlierRowsWhenLaterUpdateFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String firstNoteId =
+        api.created(
+                "POST", "/api/v1/notes", token, "{\"title\":\"First ordered note\",\"content\":\"body\"}")
+            .get("id")
+            .asText();
+    String secondNoteId =
+        api.created(
+                "POST", "/api/v1/notes", token, "{\"title\":\"Second ordered note\",\"content\":\"body\"}")
+            .get("id")
+            .asText();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String sequenceName = "fail_note_order_count_" + suffix;
+    String functionName = "fail_note_order_update_" + suffix;
+    String triggerName = functionName;
+    createFailOnNthUpdate("note", sequenceName, functionName, triggerName, 2);
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/notes/order",
+              token,
+              "{\"noteIds\":[\"" + firstNoteId + "\",\"" + secondNoteId + "\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropUpdateTrigger("note", sequenceName, triggerName, functionName);
+    }
+    assertEquals(
+        2L,
+        jdbc.queryForObject(
+            "select count(*) from note where id in (?, ?) and sort_order is null",
+            Long.class,
+            UUID.fromString(firstNoteId),
+            UUID.fromString(secondNoteId)));
+  }
+
+  @Test
   void postgresCreateOperationsRollBackParentsWhenAssociationWritesFail() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -970,6 +1083,34 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
             + functionName
             + "()");
     return functionName;
+  }
+
+  private void createFailOnNthUpdate(
+      String tableName, String sequenceName, String functionName, String triggerName, int nth) {
+    jdbc.execute("create sequence " + sequenceName);
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin if nextval('"
+            + sequenceName
+            + "') >= "
+            + nth
+            + " then raise exception 'forced update failure'; end if; return new; end $$");
+    jdbc.execute(
+        "create trigger "
+            + triggerName
+            + " before update on "
+            + tableName
+            + " for each row execute function "
+            + functionName
+            + "()");
+  }
+
+  private void dropUpdateTrigger(
+      String tableName, String sequenceName, String triggerName, String functionName) {
+    jdbc.execute("drop trigger if exists " + triggerName + " on " + tableName);
+    jdbc.execute("drop function if exists " + functionName + "()");
+    jdbc.execute("drop sequence if exists " + sequenceName);
   }
 
   private void insertEntry(
