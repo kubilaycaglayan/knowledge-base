@@ -71,6 +71,7 @@ const expectedMatches = {
   rate_limit_search_and_reports: (path) => /^\/api\/v1\/(search|reports)(\/|$)/.test(path),
   rate_limit_api_requests: (path) => /^\/api\/v1(\/|$)/.test(path),
 };
+const methods = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
 
 check(main.includes('phase       = "http_request_firewall_managed"'), "managed WAF phase exists");
 check(main.includes('phase       = "http_request_firewall_custom"'), "custom WAF phase exists");
@@ -89,6 +90,7 @@ for (const [ref, expected] of Object.entries(rules)) {
   const encodedExpression = block.match(/expression\s*=\s*"((?:\\.|[^"\\])*)"/)?.[1];
   const expression = encodedExpression === undefined ? undefined : JSON.parse(`"${encodedExpression}"`);
   check(expression === expected.expression, `${ref} expression matches its route contract`);
+  check(expression?.includes('http.host eq "${var.domain}" and '), `${ref} requires the configured host`);
   check(block.includes('action      = "block"'), `${ref} blocks after its threshold`);
   check(block.includes('characteristics     = ["cf.colo.id", "ip.src"]'), `${ref} uses colo and source IP characteristics`);
   check(new RegExp(`period\\s+=\\s+60\\b`).test(block), `${ref} counts a 60-second period`);
@@ -97,6 +99,13 @@ for (const [ref, expected] of Object.entries(rules)) {
 
   for (const path of paths)
     check(expected.path.test(path) === expectedMatches[ref](path), `${ref} path behavior for ${path}`);
+  for (const host of ["knowledge.example.test", "alternate.example.test", ""]) {
+    const expressionHost = expression?.match(/^http\.host eq "\$\{var\.domain\}" and /);
+    const actualMatch = Boolean(expressionHost && host === "knowledge.example.test");
+    check(actualMatch === (host === "knowledge.example.test"), `${ref} host boundary for ${host || "missing host"}`);
+  }
+  for (const method of methods)
+    check(!/http\.request\.method/.test(expression || "") && Boolean(method), `${ref} method-independent match for ${method}`);
 }
 
 const controllerInventory = [
