@@ -56,6 +56,26 @@ test-hardening milestone does not silently classify the failed cases as
 passing or repair product behavior. The Keychain failure is consistent with
 the unsigned test configuration, but does not by itself prove the cause.
 
+### Source-level triage (not yet reproduced or verified)
+
+Inspection after the run found several plausible test-harness or query issues.
+These are leads for follow-up, not resolutions; each remains a failed test
+until a focused rerun on the supported simulator demonstrates the fix.
+
+| Failure | Source observation | Follow-up evidence needed |
+| --- | --- | --- |
+| Three calendar day queries | `CalendarModel` receives its default `Date()` in `WorkspaceView`, while the saved fixture and assertions use September 2026. The run date was October 2026, so the visible month may not contain the fixture's expected day identifiers. | Freeze the UI fixture's calendar, locale, and date consistently, then rerun all calendar UI cases and check month navigation/API date keys. |
+| Labels Calendar switch query | The editor constructs each switch with `scope.title`, but the test queries `app.switches["Calendar"]` as though that string were a stable identifier. | Inspect the failure snapshot and query by an explicit accessible identifier/label; verify VoiceOver names and selected state rather than weakening the assertion. |
+| Notes line-history toggle | The control exposes an accessibility value and toggles state; the test reads the value immediately after tapping. | Use a condition-based wait for the value and verify the history list appears/disappears through the accessible tree. If the value does not update, route the behavior through bug-fix workflow. |
+| Paths merge button | The button is nested in the edit form's final section and the test does not scroll before asserting it exists. | Determine whether the control is outside the sheet's accessible viewport; scroll the form and verify the merge confirmation and undo flow. |
+| Session label ordering | The assertion compares `minY` for chips rendered in a horizontal row; equal vertical coordinates do not establish their order. | Assert horizontal order (`minX`) and selected-first behavior, then rerun the picker case. |
+
+The seven UI failures have not been repaired in this documentation-only
+milestone. The follow-up must preserve accessibility checks and distinguish
+test-query mistakes from native behavior defects. Do not change the disabled
+workflow until a full supported-host run passes with the documented signing
+configuration.
+
 ## Keychain signing diagnostic
 
 | Field | Value |
