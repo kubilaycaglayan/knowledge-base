@@ -998,7 +998,9 @@ final class KnowUITests: XCTestCase {
       NSPredicate(format: "label == %@", "Notes")
     ).firstMatch
     XCTAssertTrue(notesScope.exists)
-    let calendarScope = app.switches["labels.scope.calendar"]
+    let calendarScope = app.switches.matching(
+      NSPredicate(format: "label == %@", "Calendar")
+    ).firstMatch
     let switchSummary = app.switches.allElementsBoundByIndex.map {
       "\($0.identifier)=\($0.label)"
     }.joined(separator: ", ")

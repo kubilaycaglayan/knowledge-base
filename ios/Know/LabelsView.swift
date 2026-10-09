@@ -135,6 +135,7 @@ struct LabelsView: View {
         Section("Don’t show in") {
           ForEach(LabelScope.allCases) { scope in
             Toggle(
+              scope.title,
               isOn: Binding(
                 get: { !draft.wrappedValue.scopes.contains(scope) },
                 set: {
@@ -143,10 +144,7 @@ struct LabelsView: View {
                   } else {
                     draft.wrappedValue.scopes.insert(scope)
                   }
-                }),
-              label: { Text(scope.title) }
-            ).accessibilityLabel(Text(scope.title))
-              .accessibilityIdentifier("labels.scope.\(scope.rawValue.lowercased())")
+                }))
           }
         }
         if let error = model.error { Text(error).foregroundStyle(WorkspaceTheme.danger(scheme)) }
