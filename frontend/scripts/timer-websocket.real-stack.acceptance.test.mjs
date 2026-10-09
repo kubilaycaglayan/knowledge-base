@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { after, before, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
+import { resolve } from "node:path";
+import { browserFailureArtifacts } from "./browser-failure-artifacts.mjs";
 
 // Real-stack acceptance for the web client's socket-first timer sync. It runs
 // against a proxy URL (scripts/run-timer-websocket-e2e.sh starts a disposable
@@ -14,6 +16,25 @@ const pollIntervalMs = 2000;
 let browser;
 const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
 const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
+const failureArtifacts = browserFailureArtifacts({
+  directory: process.env.TIMER_E2E_ARTIFACT_DIR || resolve(process.cwd(), "../harden-tests/local-artifacts", `timer-${Date.now()}-${process.env.BROWSER_PROFILE || "default"}`),
+  engine: process.env.BROWSER_ENGINE || "chromium",
+  profile: process.env.BROWSER_PROFILE || "default",
+});
+
+function it(name, run) {
+  nodeIt(name, async (testContext) => {
+    await failureArtifacts.begin(name);
+    try {
+      await run(testContext);
+    } catch (error) {
+      await failureArtifacts.end(error);
+      throw error;
+    } finally {
+      await failureArtifacts.end();
+    }
+  });
+}
 
 before(async () => {
   browser = await browserType.launch({
@@ -53,6 +74,7 @@ async function openApp(token, { blockSocket = false } = {}) {
     viewport: iphoneProfile ? { width: 390, height: 844 } : { width: 1280, height: 800 },
     ...(iphoneProfile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
   });
+  await failureArtifacts.addContext(context);
   context.setDefaultTimeout(10_000);
   await context.addInitScript((value) => localStorage.setItem("know_token", value), token);
   const page = await context.newPage();
@@ -145,6 +167,9 @@ describe("timer WebSocket in the web app", () => {
         settledCurrentReads,
         "remote timer changes were fetched over HTTP instead of the socket",
       );
+    } catch (error) {
+      await failureArtifacts.end(error);
+      throw error;
     } finally {
       await context.close();
     }
@@ -171,6 +196,49 @@ describe("timer WebSocket in the web app", () => {
       await tracker
         .getByRole("button", { name: "Start timer" })
         .waitFor({ timeout: pollIntervalMs * 3 });
+    } catch (error) {
+      await failureArtifacts.end(error);
+      throw error;
+    } finally {
+      await context.close();
+    }
+  });
+
+  it("keeps a timer draft after a failed save and lets the user retry", async () => {
+    const token = await register();
+    const { context, page, tracker } = await openApp(token, { blockSocket: true });
+    let draftWrites = 0;
+    await page.route("**/api/v1/timers/draft", async (route) => {
+      if (route.request().method() !== "PUT") return route.continue();
+      draftWrites += 1;
+      if (draftWrites === 1)
+        return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+      return route.continue();
+    });
+    try {
+      await tracker.getByRole("button", { name: "Expand tracker" }).click();
+      const description = tracker.getByRole("textbox", { name: "Timer description" });
+      await description.fill("Draft survives a timer save failure");
+      await description.press("Tab"); // change is committed on blur
+      await page.getByRole("alert").getByText("Could not save the active timer settings.").waitFor();
+      assert.equal(await description.inputValue(), "Draft survives a timer save failure");
+      assert.equal(draftWrites, 1, "the first save should fail exactly once");
+
+      const successfulSave = page.waitForResponse((response) =>
+        new URL(response.url()).pathname === "/api/v1/timers/draft" &&
+        response.request().method() === "PUT" && response.status() === 200,
+      );
+      await description.focus();
+      await description.press("End");
+      await description.type(" and retry");
+      await description.press("Tab");
+      await successfulSave;
+      const savedDraft = await api("/timers/draft", {}, token);
+      assert.equal(savedDraft.description, "Draft survives a timer save failure and retry");
+      assert.equal(draftWrites, 2, "a single retry should produce one successful draft write");
+    } catch (error) {
+      await failureArtifacts.end(error);
+      throw error;
     } finally {
       await context.close();
     }

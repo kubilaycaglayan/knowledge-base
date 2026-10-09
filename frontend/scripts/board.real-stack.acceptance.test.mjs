@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, describe, it } from "node:test";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { after, before, beforeEach, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { scrubPlaywrightTrace } from "./browser-failure-artifacts.mjs";
 
 const baseUrl = process.env.BOARD_E2E_BASE_URL;
 const email = process.env.BOARD_E2E_EMAIL;
@@ -14,6 +18,51 @@ const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
 const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
 let activeBoardName;
 const consoleLog = [];
+const artifactDir = process.env.BOARD_E2E_ARTIFACT_DIR
+  ? resolve(fileURLToPath(new URL("../../", import.meta.url)), process.env.BOARD_E2E_ARTIFACT_DIR)
+  : undefined;
+let artifactSequence = 0;
+function it(name, run) {
+  nodeIt(name, async (testContext) => {
+    const context = page?.context();
+    if (artifactDir && context) await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+    let traceSaved = false;
+    try {
+      await run(testContext);
+    } catch (error) {
+      if (artifactDir && context) {
+        mkdirSync(artifactDir, { recursive: true });
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 72);
+        const stem = `${String(++artifactSequence).padStart(2, "0")}-${slug}`;
+        const tracePath = join(artifactDir, `${stem}.zip`);
+        try {
+          await page.screenshot({ path: join(artifactDir, `${stem}.png`), fullPage: true });
+        } catch {
+          // The page may have closed during the failing case; still retain the trace.
+        }
+        await context.tracing.stop({ path: tracePath });
+        traceSaved = true;
+        try {
+          scrubPlaywrightTrace(tracePath);
+        } catch (scrubError) {
+          rmSync(tracePath, { force: true });
+          throw new Error("Playwright trace scrub failed; the unsanitized trace was removed.", { cause: scrubError });
+        }
+        writeFileSync(join(artifactDir, `${stem}.json`), JSON.stringify({
+          test: name,
+          commit: process.env.GITHUB_SHA || "recorded by the run report",
+          url: page?.url() || "unavailable",
+          failure: String(error?.stack || error),
+          console: consoleLog.slice(-20),
+          capturedAt: new Date().toISOString(),
+        }, null, 2));
+      }
+      throw error;
+    } finally {
+      if (artifactDir && context && !traceSaved) await context.tracing.stop();
+    }
+  });
+}
 const isoDate = (value) => value.toISOString().slice(0, 10);
 const timelineStart = isoDate(new Date());
 const timelineEnd = isoDate(new Date(Date.now() + 2 * 86_400_000));
@@ -47,6 +96,18 @@ const escapeRe = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const boardTab = (name, target = page) => target.locator(".board-tab").filter({ hasText: new RegExp(`^${escapeRe(name)}$`) });
 const selectedTab = (target = page) => target.locator(".board-tab.selected");
 const currentBoardId = (target = page) => new URL(target.url()).searchParams.get("board");
+async function api(target, method, path, body) {
+  return target.evaluate(async ({ method, path, body }) => {
+    const response = await fetch(`/api/v1${path}`, {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("know_token")}` },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!response.ok) throw new Error(`${method} ${path} -> ${response.status}`);
+    if (response.status === 204) return null;
+    return response.json();
+  }, { method, path, body });
+}
 
 // "Loading board…" is on screen while the store swaps boards; waiting it out
 // keeps the next action from racing a half-loaded column set.
@@ -167,18 +228,18 @@ async function addCard(title) {
 }
 
 // Seeds cards straight over the API so pagination tests stay fast.
-async function seedCards(boardId, count, prefix, priority = "MEDIUM") {
-  await page.evaluate(async ({ boardId: id, count: total, prefix: label, priority: level }) => {
+async function seedCards(boardId, count, prefix, priority = "MEDIUM", statusId) {
+  await page.evaluate(async ({ boardId: id, count: total, prefix: label, priority: level, statusId: targetStatusId }) => {
     const token = localStorage.getItem("know_token");
     for (let index = 0; index < total; index += 1) {
       const response = await fetch(`/api/v1/boards/${id}/cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: level }),
+        body: JSON.stringify({ title: `${label} card ${index}`, body: "{}", priority: level, ...(targetStatusId ? { statusId: targetStatusId } : {}) }),
       });
       if (!response.ok) throw new Error(`Seeding ${label} card ${index} failed with ${response.status}`);
     }
-  }, { boardId, count, prefix, priority });
+  }, { boardId, count, prefix, priority, statusId });
 }
 
 // Boards are created from the Boards dialog's Add board button; the New board
@@ -252,14 +313,26 @@ describe("board real-stack acceptance", () => {
     await createBoard(secondBoard);
     const secondId = currentBoardId();
     await addCard("Second board card");
+    // Rebuild the store after fixture creation so the first board is not served
+    // from the warm view cache when selected below.
+    await page.reload();
+    await boardSettled();
 
     let releaseFirstPage;
+    let reportFirstPageHeld;
     const firstPageReleased = new Promise((resolve) => { releaseFirstPage = resolve; });
+    const firstPageHeld = new Promise((resolve) => { reportFirstPageHeld = resolve; });
     let held = false;
-    const heldPattern = `**/api/v1/boards/${firstId}/cards/page*`;
+    const heldPattern = "**/api/v1/boards/*/statuses";
     await page.route(heldPattern, async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.pathname !== `/api/v1/boards/${firstId}/statuses`) {
+        await route.continue();
+        return;
+      }
       if (!held) {
         held = true;
+        reportFirstPageHeld();
         await firstPageReleased;
       }
       // The route may already be unhandled/handled by the time the hold is
@@ -268,7 +341,10 @@ describe("board real-stack acceptance", () => {
     });
     try {
       await selectBoard(firstBoard, { settle: false });
-      await page.waitForTimeout(100);
+      await Promise.race([
+        firstPageHeld,
+        page.waitForTimeout(5000).then(() => assert.fail(`No status request was held for board ${firstId}`)),
+      ]);
       await selectBoard(secondBoard, { settle: false });
       await page.getByRole("heading", { name: "Second board card" }).waitFor();
       assert.equal(currentBoardId(), secondId);
@@ -278,6 +354,124 @@ describe("board real-stack acceptance", () => {
       // loadBoard() pending forever and hangs every later test on this page.
       releaseFirstPage();
       await page.unroute(heldPattern);
+    }
+  });
+
+  it("retries a failed card page with the same cursor and without duplicate cards", async () => {
+    const boardId = currentBoardId();
+    const prefix = `Retry page ${Date.now()}`;
+    const statusId = await page.evaluate(async (id) => {
+      const response = await fetch(`/api/v1/boards/${id}/statuses`, { headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` } });
+      if (!response.ok) throw new Error(`Loading board statuses failed with ${response.status}`);
+      return (await response.json())[0].id;
+    }, boardId);
+    await seedCards(boardId, 35, prefix, "MEDIUM", statusId);
+
+    const firstPageData = await page.evaluate(async ({ id, statusId: selectedStatus }) => {
+      const response = await fetch(`/api/v1/boards/${id}/cards/page?statusId=${selectedStatus}&cursor=-1&limit=20`, { headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` } });
+      if (!response.ok) throw new Error(`Loading first card page failed with ${response.status}`);
+      return response.json();
+    }, { id: boardId, statusId });
+    assert.notEqual(firstPageData.nextCursor, null, "fixture must have a second page");
+    await page.reload();
+    await boardSettled();
+    const firstPageTitles = firstPageData.items.map((card) => card.title);
+    await page.getByRole("heading", { name: firstPageTitles[0], exact: true }).waitFor();
+    const retryUrls = [];
+    const pageRequest = "**/api/v1/boards/*/cards/page**";
+    let failedOnce = false;
+    await page.route(pageRequest, async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      retryUrls.push(route.request().url());
+      if (!failedOnce) {
+        failedOnce = true;
+        await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+        return;
+      }
+      await route.continue();
+    });
+
+    const sentinel = page.locator(".load-more-sentinel").first();
+    await sentinel.scrollIntoViewIfNeeded();
+    const retry = page.getByRole("button", { name: "Retry loading cards" });
+    await retry.waitFor();
+    assert.equal(await page.getByRole("alert").filter({ hasText: "Unable to load more cards" }).count(), 1);
+    await retry.focus();
+    assert.equal(await retry.evaluate((element) => element === document.activeElement), true, "retry must be keyboard reachable");
+    await retry.press("Enter");
+
+    await page.getByRole("heading", { name: `${prefix} card 34` }).waitFor();
+    assert.equal(retryUrls.length, 2, "one failed page request should be followed by exactly one retry");
+    assert.equal(new URL(retryUrls[0]).searchParams.get("cursor"), new URL(retryUrls[1]).searchParams.get("cursor"), "retry should use the failed cursor");
+    for (const title of firstPageTitles) {
+      assert.equal(await page.getByRole("heading", { name: title, exact: true }).count(), 1, `${title} should appear once`);
+    }
+    assert.equal(await page.getByRole("heading", { name: `${prefix} card 34`, exact: true }).count(), 1);
+    assert.equal(await retry.count(), 0, "successful retry removes the recovery action");
+    await page.unroute(pageRequest);
+  });
+
+  it("preserves a card draft through a failed save and retries against the latest server version", async () => {
+    await addCard("Card before retry");
+    const boardId = currentBoardId();
+    const cardElement = page.locator(".board-card", { hasText: "Card before retry" });
+    const cardId = (await cardElement.getAttribute("id")).replace("board-card-", "");
+    await cardElement.click();
+    const title = page.getByRole("textbox", { name: "Title", exact: true });
+    const draft = "My retried card draft";
+    const retryUrl = `**/api/v1/boards/${boardId}/cards/${cardId}`;
+    const writeStatuses = [];
+    let failedFirstWrite = false;
+    const recordResponse = (response) => {
+      if (response.request().method() === "PUT" && new URL(response.url()).pathname.endsWith(`/cards/${cardId}`)) writeStatuses.push(response.status());
+    };
+    page.on("response", recordResponse);
+    await page.route(retryUrl, async (route) => {
+      if (route.request().method() !== "PUT" || failedFirstWrite) return route.continue();
+      failedFirstWrite = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    });
+    const otherPage = await page.context().newPage();
+    try {
+      await title.fill(draft);
+      const initialError = page.getByRole("alert").filter({ hasText: "Could not save card. Your edits are kept." });
+      await initialError.waitFor();
+      assert.equal(await title.inputValue(), draft, "a failed save must preserve the title draft");
+
+      await otherPage.goto(`${baseUrl}/board?board=${boardId}`);
+      await otherPage.getByRole("heading", { name: "Boards" }).waitFor();
+      const latestBeforeExternalEdit = await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`);
+      await api(otherPage, "PUT", `/boards/${boardId}/cards/${cardId}`, {
+        title: "Changed in another window",
+        body: latestBeforeExternalEdit.body,
+        priority: latestBeforeExternalEdit.priority,
+        startDate: latestBeforeExternalEdit.startDate,
+        dueDate: latestBeforeExternalEdit.dueDate,
+        pathIds: latestBeforeExternalEdit.pathIds,
+        labelIds: latestBeforeExternalEdit.labelIds,
+        expectedUpdatedAt: latestBeforeExternalEdit.updatedAt,
+      });
+
+      const conflict = page.getByRole("alert").filter({ hasText: "This card changed elsewhere. Retry to save your version." });
+      await initialError.getByRole("button", { name: "Retry" }).press("Enter");
+      await conflict.waitFor();
+      assert.equal(await title.inputValue(), draft, "a conflict refresh must not replace the user's draft");
+      const refreshed = await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`);
+      assert.equal(refreshed.title, "Changed in another window", "the retry conflict must preserve current server state");
+
+      const successfulRetry = page.waitForResponse((response) =>
+        new URL(response.url()).pathname.endsWith(`/cards/${cardId}`) && response.request().method() === "PUT" && response.status() === 200,
+      );
+      await conflict.getByRole("button", { name: "Retry" }).press("Enter");
+      await successfulRetry;
+      await page.getByRole("heading", { name: draft, exact: true }).waitFor();
+      assert.deepEqual(writeStatuses, [503, 409, 200], "the draft is retried once after the current version is refreshed");
+      assert.equal((await api(otherPage, "GET", `/boards/${boardId}/cards/${cardId}`)).title, draft);
+      await conflict.waitFor({ state: "detached" });
+    } finally {
+      page.off("response", recordResponse);
+      await page.unroute(retryUrl);
+      await otherPage.close();
     }
   });
 

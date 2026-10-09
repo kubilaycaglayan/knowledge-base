@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import vm from "node:vm";
-import { after, before, describe, it } from "node:test";
+import { after, before, describe, it as nodeIt } from "node:test";
 import { chromium, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import { resolve } from "node:path";
+import { browserFailureArtifacts } from "./browser-failure-artifacts.mjs";
 
 // Per-line edit times ("Line history") against the real API, PostgreSQL,
 // proxy, and browser: typing, autosave, conflicts, keyboard use, dark theme,
@@ -75,6 +77,11 @@ const without = (times, ...lines) => Object.fromEntries(Object.entries(times).fi
 let browser;
 const browserType = process.env.BROWSER_ENGINE === "webkit" ? webkit : chromium;
 const iphoneProfile = process.env.BROWSER_PROFILE === "iphone";
+const failureArtifacts = browserFailureArtifacts({
+  directory: process.env.LINE_HISTORY_E2E_ARTIFACT_DIR || resolve(process.cwd(), "../harden-tests/local-artifacts", `line-history-${Date.now()}-${process.env.BROWSER_PROFILE || "default"}`),
+  engine: process.env.BROWSER_ENGINE || "chromium",
+  profile: process.env.BROWSER_PROFILE || "default",
+});
 let page;
 const pageErrors = [];
 const paragraph = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
@@ -97,10 +104,25 @@ async function newPage(options = {}) {
     reducedMotion: "reduce",
     ...options,
   });
+  await failureArtifacts.addContext(context);
   context.setDefaultTimeout(10000);
   const created = await context.newPage();
   created.on("pageerror", (error) => pageErrors.push(error.message));
   return created;
+}
+
+function it(name, run) {
+  nodeIt(name, async (testContext) => {
+    await failureArtifacts.begin(name, [page?.context()]);
+    try {
+      await run(testContext);
+    } catch (error) {
+      await failureArtifacts.end(error);
+      throw error;
+    } finally {
+      await failureArtifacts.end();
+    }
+  });
 }
 
 // API calls from the signed-in page, standing in for "another window".
@@ -130,11 +152,20 @@ async function assertGutterLayout(target, scope) {
     const problems = [];
     for (const stamp of root.querySelectorAll(".line-history-stamp")) {
       const block = stamp.parentElement;
-      const range = document.createRange();
-      range.selectNodeContents(block);
-      const text = [...range.getClientRects()].filter((rect) => rect.width > 0 && !document.elementFromPoint(rect.left + 1, rect.top + 1)?.closest(".line-history-stamp"));
       const box = stamp.getBoundingClientRect();
-      if (box.width && text.some((rect) => rect.left < box.right - 0.5 && rect.top < box.bottom && rect.bottom > box.top)) problems.push(block.textContent);
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      let textNode;
+      let overlapsStamp = false;
+      while ((textNode = walker.nextNode())) {
+        if (textNode.parentElement?.closest(".line-history-stamp")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(textNode);
+        if ([...range.getClientRects()].some((rect) => rect.width > 0 && rect.left < box.right - 0.5 && rect.top < box.bottom && rect.bottom > box.top)) {
+          overlapsStamp = true;
+          break;
+        }
+      }
+      if (box.width && overlapsStamp) problems.push(block.textContent);
     }
     return problems;
   });
@@ -168,6 +199,21 @@ after(async () => {
 });
 
 describe("note line history", () => {
+  it("shows an empty notes state and makes its create action keyboard reachable", async () => {
+    await page.goto(`${baseUrl}/notes`);
+    await page.getByText("Your notes will appear here.", { exact: true }).waitFor();
+    const create = page.getByRole("button", { name: "Create new note" });
+    await create.focus();
+    assert.equal(await create.evaluate((element) => element === document.activeElement), true);
+    await create.press("Enter");
+    await page.getByRole("textbox", { name: "Note title" }).waitFor();
+    const noteId = new URL(page.url()).pathname.split("/").at(-1);
+    assert.ok(noteId, "new note route includes the created note id");
+    await api(page, "DELETE", `/notes/${noteId}`);
+    await page.goto(`${baseUrl}/notes`);
+    await page.getByText("Your notes will appear here.", { exact: true }).waitFor();
+  });
+
   it("stamps only the lines typed in the browser and keeps the times across reloads", async () => {
     const note = await api(page, "POST", "/notes", { title: "Line history", content: doc("Alpha", "Bravo", "Charlie"), contentText: "Alpha\nBravo\nCharlie", tags: [] });
     const original = (await api(page, "GET", `/notes/${note.id}`)).lineEdits.map(iso);
@@ -237,20 +283,84 @@ describe("note line history", () => {
     assert.deepEqual(await stamps(page, ".rich-editor"), server.lineEdits.map(iso));
   });
 
+  it("keeps a note draft after a network failure and replays it against the latest server version", async () => {
+    const note = await api(page, "POST", "/notes", { title: "Note before retry", content: doc("Preserve this body"), contentText: "Preserve this body", tags: [] });
+    await page.goto(`${baseUrl}/notes/${note.id}`);
+    const title = page.getByRole("textbox", { name: "Note title" });
+    await title.waitFor();
+    const draft = "My note draft after recovery";
+    const noteUrl = `**/api/v1/notes/${note.id}`;
+    const writeStatuses = [];
+    let failedFirstWrite = false;
+    const recordResponse = (response) => {
+      if (response.request().method() === "PUT" && new URL(response.url()).pathname === `/api/v1/notes/${note.id}`) writeStatuses.push(response.status());
+    };
+    page.on("response", recordResponse);
+    await page.route(noteUrl, async (route) => {
+      if (route.request().method() !== "PUT" || failedFirstWrite) return route.continue();
+      failedFirstWrite = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    });
+    const otherPage = await page.context().newPage();
+    try {
+      await title.fill(draft);
+      await page.getByRole("status").filter({ hasText: "Not saved" }).waitFor();
+      assert.equal(await title.inputValue(), draft, "a failed autosave must preserve the title draft");
+
+      await otherPage.goto(`${baseUrl}/notes/${note.id}`);
+      await otherPage.getByRole("textbox", { name: "Note title" }).waitFor();
+      const latest = await api(otherPage, "GET", `/notes/${note.id}`);
+      await api(otherPage, "PUT", `/notes/${note.id}`, {
+        title: "Changed in another window",
+        content: latest.content,
+        contentText: latest.contentText,
+        tags: latest.tags,
+        version: latest.version,
+      });
+
+      // Re-trigger autosave while returning the field to the same draft value.
+      await title.press("End");
+      await title.type(" ");
+      await title.press("Backspace");
+      await page.locator(".save-state").filter({ hasText: /^Saved$/ }).waitFor();
+      assert.deepEqual(writeStatuses, [503, 409, 200], "autosave must retry after refreshing the server version");
+      const savedNote = await api(otherPage, "GET", `/notes/${note.id}`);
+      assert.equal(savedNote.title, draft);
+      assert.equal(savedNote.contentText, "Preserve this body");
+      assert.equal(await title.inputValue(), draft);
+    } finally {
+      page.off("response", recordResponse);
+      await page.unroute(noteUrl);
+      await otherPage.close();
+    }
+  });
+
   it("fits a phone in the dark theme and passes an Axe audit", async () => {
-    const note = await api(page, "POST", "/notes", { title: "Phone", content: JSON.stringify({ type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "A heading that runs long enough to wrap on a phone screen" }] }, paragraph("A paragraph that is also long enough to wrap onto a second line on narrow screens."), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Item")] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Done")] }] }, { type: "codeBlock", content: [{ type: "text", text: "a = 1\nb = 2" }] }] }), contentText: "", tags: [] });
+    const longNoteLine = `${"Long note content must wrap without clipping. ".repeat(14)}NoteBodyEndingRemainsReachable`;
+    const note = await api(page, "POST", "/notes", { title: "Phone", content: JSON.stringify({ type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "A heading that runs long enough to wrap on a phone screen" }] }, paragraph(longNoteLine), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Item")] }] }, { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Done")] }] }, { type: "codeBlock", content: [{ type: "text", text: "a = 1\nb = 2" }] }] }), contentText: longNoteLine, tags: [] });
     const phone = await newPage({ viewport: { width: 390, height: 844 }, colorScheme: "dark", isMobile: true, hasTouch: true });
     await signIn(phone);
     await phone.goto(`${baseUrl}/notes/${note.id}?lines=1`);
     await phone.locator(".rich-editor .line-history-stamp time").first().waitFor();
     // Six lines carry times; the editor's own trailing paragraph after the code block has an empty stamp.
     assert.equal(await phone.locator(".rich-editor .line-history-stamp time").count(), 6);
+    if (screenshots) await phone.screenshot({ path: `${screenshots}/note-phone-long-content-before-layout-assertion.png`, fullPage: true });
+    assert.ok((await phone.locator(".rich-editor .ProseMirror").innerText()).includes("NoteBodyEndingRemainsReachable"));
     assert.ok(await phone.evaluate(() => getComputedStyle(document.documentElement).colorScheme.includes("dark") || document.documentElement.dataset.theme === "dark"), "dark theme is active");
     await assertGutterLayout(phone, ".rich-editor");
     const results = await new AxeBuilder({ page: phone }).include(".rich-editor").analyze();
     assert.deepEqual(results.violations.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target).join(", ")}`), []);
     if (screenshots) await phone.screenshot({ path: `${screenshots}/note-phone-dark.png` });
     await phone.context().close();
+
+    const desktop = await newPage({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
+    await signIn(desktop);
+    await desktop.goto(`${baseUrl}/notes/${note.id}?lines=1`);
+    await desktop.locator(".rich-editor .line-history-stamp time").first().waitFor();
+    assert.ok((await desktop.locator(".rich-editor .ProseMirror").innerText()).includes("NoteBodyEndingRemainsReachable"));
+    await assertGutterLayout(desktop, ".rich-editor");
+    if (screenshots) await desktop.screenshot({ path: `${screenshots}/note-desktop-long-content.png`, fullPage: true });
+    await desktop.context().close();
   });
 });
 
@@ -350,9 +460,9 @@ describe("line history for assistive technology", () => {
 });
 
 describe("board card line history", () => {
-  async function openCard(target, body) {
+  async function openCard(target, body, title = "Card") {
     const board = await api(target, "POST", "/boards", { name: `Lines ${Date.now()}` });
-    const card = await api(target, "POST", `/boards/${board.id}/cards`, { title: "Card", body, priority: "MEDIUM" });
+    const card = await api(target, "POST", `/boards/${board.id}/cards`, { title, body, priority: "MEDIUM" });
     await target.goto(`${baseUrl}/board?board=${board.id}&card=${card.id}&cardBoard=${board.id}&lines=1`);
     await target.locator(".card-body-editor .line-history-stamp time").first().waitFor();
     return { board, card };
@@ -391,12 +501,13 @@ describe("board card line history", () => {
     assert.deepEqual(await stamps(page, ".card-body-editor"), server.lineEdits.map(iso));
   });
 
-  it("fits the card dialog on a phone", async () => {
-    const phone = await newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-    await signIn(phone);
-    await openCard(phone, doc("A card line long enough to wrap in the phone dialog", "Short"));
-    await assertGutterLayout(phone, ".card-body-editor");
-    if (screenshots) await phone.screenshot({ path: `${screenshots}/card-phone-light.png` });
-    await phone.context().close();
+  it("keeps long card titles and bodies reachable without phone-width overflow", async () => {
+    const longTitle = `Research card ${"Long title ".repeat(12)}Visible ending`;
+    const longBody = `${"Card body text must wrap and remain available in the editor. ".repeat(14)}CardBodyEndingRemainsReachable`;
+    await openCard(page, doc(longBody), longTitle);
+    assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), longTitle);
+    assert.ok((await page.locator(".card-body-editor .ProseMirror").innerText()).includes("CardBodyEndingRemainsReachable"));
+    await assertGutterLayout(page, ".card-body-editor");
+    if (screenshots) await page.screenshot({ path: `${screenshots}/card-long-content-${iphoneProfile ? "phone" : "desktop"}.png` });
   });
 });

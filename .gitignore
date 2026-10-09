@@ -33,3 +33,4 @@ import-logs-draft.sql
 docs/ios-milestone-5-notes-parity.md
 docs/ios-milestone-*.md
 .zed/settings.json
+/harden-tests/local-artifacts/

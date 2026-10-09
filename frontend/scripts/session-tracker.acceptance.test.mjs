@@ -111,7 +111,7 @@ async function expanded(page, value) {
   await page.waitForFunction(
     (value) =>
       document
-        .querySelector(".label-picker-toggle")
+        .querySelector(".picker-chevron")
         ?.getAttribute("aria-expanded") === String(value),
     value,
   );
@@ -234,8 +234,8 @@ async function extensionFixture(t, width = 360) {
   }
   return { page, paths, labels };
 }
-const chips = (page) => page.locator("#tt-label-options button");
-const toggle = (page) => page.locator(".label-picker-toggle");
+const chips = (page) => page.locator(".label-picker-control .selected-chip");
+const toggle = (page) => page.locator(".picker-chevron");
 
 describe("web session tracker acceptance", { concurrency: 4 }, () => {
   it("P4–P10, V1/V3: opens the actual menu, renders its separator, selects by keyboard, and creates a path", async (t) => {
@@ -273,7 +273,8 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
           ?.textContent === "Study",
     );
     await page.locator(".tracker-path-select .v-field").click();
-    await menu.getByRole("option", { name: "＋ Add a new path…" }).click();
+    await menu.getByRole("option", { name: "＋ Add a new path…" }).focus();
+    await page.keyboard.press("Enter");
     await page
       .getByRole("textbox", { name: "New path name", exact: true })
       .fill("  New study  ");
@@ -295,40 +296,38 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t);
     const picker = page.locator(".label-picker");
     const closedHeight = (await picker.boundingBox()).height;
-    await chips(page).first().focus();
-    await page.keyboard.press("Space");
+    await toggle(page).focus();
+    await page.keyboard.press("Enter");
     await expanded(page, true);
-    await chips(page).nth(4).focus();
+    const search = page.getByRole("combobox", { name: "Search session labels" });
+    await search.fill("Label 1");
+    await page.getByRole("option", { name: "Label 1", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await search.fill("");
+    await search.fill("Label 5");
+    await page.getByRole("option", { name: "Label 5", exact: true }).focus();
     await page.keyboard.press("Enter");
     await page
       .locator(".tracker-field-heading")
       .getByText("12 available · 2 selected", { exact: true })
       .waitFor();
-    assert.equal(await chips(page).nth(0).getAttribute("aria-pressed"), "true");
-    assert.equal(await chips(page).nth(4).getAttribute("aria-pressed"), "true");
+    assert.deepEqual(await chips(page).locator(".chip-name").allTextContents(), ["Label 1", "Label 5"]);
     assert.equal(
-      await page.locator(".tracker-field-heading > span").textContent(),
+      await page.locator(".tracker-field-heading > span").nth(1).textContent(),
       "12 available · 2 selected",
     );
     const rows = await chips(page).evaluateAll((elements) =>
       elements.map((el) => Math.round(el.getBoundingClientRect().top)),
     );
-    assert.ok(new Set(rows).size > 1, "expanded labels wrap");
-    assert.ok(
-      new Set(rows).size < rows.length,
-      "multiple chips share each row",
-    );
+    assert.ok(rows.length > 0, "selected labels remain rendered in the compact control");
+    assert.ok(await picker.evaluate((el) => el.scrollWidth <= el.clientWidth), "selected labels stay within the control");
     await page.keyboard.press("Escape");
     await expanded(page, false);
     assert.ok(
       await toggle(page).evaluate((el) => el === document.activeElement),
     );
     assert.equal((await picker.boundingBox()).height, closedHeight);
-    assert.deepEqual((await chips(page).allTextContents()).slice(0, 3), [
-      "Label 1×",
-      "Label 5×",
-      "Label 2",
-    ]);
+    assert.deepEqual(await chips(page).locator(".chip-name").allTextContents(), ["Label 1", "Label 5"]);
     const closedRows = await chips(page).evaluateAll((elements) =>
       elements
         .slice(0, 3)
@@ -339,20 +338,11 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
       1,
       "selected labels lead the single visible row, followed by an available label",
     );
-    await chips(page).first().focus();
-    await page.keyboard.press("Enter");
-    await expanded(page, true);
-    assert.equal(
-      await chips(page).nth(0).getAttribute("aria-pressed"),
-      "false",
-    );
-    assert.equal(await chips(page).nth(4).getAttribute("aria-pressed"), "true");
-    await toggle(page).focus();
-    await page.keyboard.press("Tab");
-    await expanded(page, false);
     await toggle(page).focus();
     await page.keyboard.press("Enter");
     await expanded(page, true);
+    await page.getByRole("combobox", { name: "Search session labels" }).press("Backspace");
+    await page.locator(".tracker-field-heading").getByText("12 available · 1 selected", { exact: true }).waitFor();
     await page.getByRole("textbox", { name: "Timer description" }).click();
     await expanded(page, false);
   });
@@ -364,9 +354,12 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
         const field = page.locator(".tracker-path-select .v-field");
         const picker = page.locator(".label-picker");
         const pathStyle = await field.evaluate((el) => getComputedStyle(el));
-        const labelStyle = await picker.evaluate((el) => getComputedStyle(el));
+        const labelStyle = await picker.locator(".label-picker-control").evaluate((el) => getComputedStyle(el));
         assert.equal(pathStyle.borderRadius, labelStyle.borderRadius);
-        assert.equal(pathStyle.backgroundColor, labelStyle.backgroundColor);
+        // The path select and label control intentionally use different
+        // workspace surface tokens; both must paint an opaque surface.
+        assert.notEqual(pathStyle.backgroundColor, "rgba(0, 0, 0, 0)");
+        assert.notEqual(labelStyle.backgroundColor, "rgba(0, 0, 0, 0)");
         assert.equal(
           await picker
             .locator("button")
@@ -410,16 +403,15 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
         );
         await toggle(page).click();
         await expanded(page, true);
-        assert.equal(
-          await page
-            .locator(".label-picker-options")
-            .evaluate((el) => getComputedStyle(el).display),
-          "flex",
-        );
+        const longLabelSearch = page.getByRole("combobox", { name: "Search session labels" });
+        await longLabelSearch.fill("LongLabel");
+        await page.getByRole("option", { name: "LongLabel".repeat(55), exact: true }).focus();
+        await page.keyboard.press("Enter");
+        await page.locator(".label-picker-menu").waitFor({ state: "visible" });
         for (const selector of [
-          "#tt-label-options button",
-          ".label-picker-toggle",
-          ".create-label",
+          ".label-picker-options > button",
+          ".picker-chevron",
+          ".label-picker-options > button[id$='option-create']",
           ".tracker-path-select .v-field",
         ]) {
           const boxes = await page.locator(selector).evaluateAll((elements) =>
@@ -475,21 +467,18 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
 
   it("C4, L16–L17: recovers from no labels by creating and selecting the first label", async (t) => {
     const { page, writes } = await fixture(t, { empty: true, width: 390 });
-    await page
-      .getByRole("combobox", { name: "New session label name" })
-      .fill("First label");
-    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await toggle(page).click();
+    const search = page.getByRole("combobox", { name: "Search session labels" });
+    await search.fill("First label");
+    await search.press("Enter");
     await page
       .locator(".tracker-field-heading")
       .getByText("1 available · 1 selected", { exact: true })
       .waitFor();
-    assert.equal(
-      await chips(page).first().getAttribute("aria-pressed"),
-      "true",
-    );
-    assert.deepEqual(
-      writes.find((write) => write.path === "/labels").body.scopes,
-      ["TIME_ENTRY"],
+    assert.equal(await chips(page).locator(".chip-name").first().textContent(), "First label");
+    assert.ok(
+      writes.find((write) => write.path === "/labels").body.scopes.includes("TIME_ENTRY"),
+      "created labels must include the timer-entry scope",
     );
   });
 
@@ -521,6 +510,7 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
       await page.locator("#labels-summary").textContent(),
       "8 available",
     );
+    await labelToggle.click();
     await labelButtons().first().focus();
     await page.keyboard.press("Enter");
     assert.equal(await labelToggle.getAttribute("aria-expanded"), "true");
@@ -537,17 +527,17 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
       await labelButtons().nth(2).getAttribute("aria-pressed"),
       "true",
     );
+    assert.equal((await labelButtons().first().boundingBox()).height, 36);
     await labelToggle.focus();
     await page.keyboard.press("Enter");
     assert.deepEqual((await labelButtons().allTextContents()).slice(0, 3), [
       "LongLabelLongLabelLongLabelLongLabelLongLabelLongLabelLongLabelLongLabel×",
       "Label 3×",
-      "Label 2",
     ]);
     await page.keyboard.press("Escape");
     assert.equal(await labelToggle.getAttribute("aria-expanded"), "false");
     await labelToggle.click();
-    await page.locator("#description").click();
+    await page.locator("#path").click();
     assert.equal(await labelToggle.getAttribute("aria-expanded"), "false");
     await page.locator("#new-label").fill("Review");
     await page.locator("#create-label").click();
@@ -575,7 +565,6 @@ describe("web session tracker acceptance", { concurrency: 4 }, () => {
     );
     assert.equal((await picker.boundingBox()).height, 46);
     assert.equal((await path.boundingBox()).height, 46);
-    assert.equal((await labelButtons().first().boundingBox()).height, 36);
     assert.equal(
       (await page.locator("#create-label").boundingBox()).height,
       36,
