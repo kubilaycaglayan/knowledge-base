@@ -46,7 +46,7 @@ an active automated gate.
 - [ ] Make simulator tests deterministic around locale, calendar/time zone,
   animation, network fixtures, and asynchronous waits. Capture screenshots and
   `.xcresult` on failure without sensitive data.
-- [ ] Keep Linux `check-ios-note-document.sh` as a focused portability check,
+- [x] Keep Linux `check-ios-note-document.sh` as a focused portability check,
   and state clearly that it is not evidence of SwiftUI or simulator success.
 
 ## Acceptance evidence

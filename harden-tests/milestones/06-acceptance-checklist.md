@@ -33,7 +33,7 @@ checks are not evidence of SwiftUI or simulator behavior.
   checkout before proposing any workflow change. Both existing iOS jobs in
   `.github/workflows/verify.yml` are hard-disabled with `if: ${{ false }}`;
   repository variables cannot enable them.
-- [ ] Keep `check-ios-note-document.sh` identified as Foundation-only Linux
+- [x] Keep `check-ios-note-document.sh` identified as Foundation-only Linux
   validation; do not report it as a SwiftUI build or simulator pass.
 
 ### Current evidence map
@@ -101,8 +101,11 @@ model behavior but cannot satisfy a rendered UI row.
   to the documented artifact policy.
 - [ ] Capture relevant screenshots and logs on failure with credentials,
   tokens, and personal data removed.
-- [ ] Use isolated disposable simulator accounts/data and document setup and
+- [x] Use isolated disposable simulator accounts/data and document setup and
   cleanup without committing secrets.
+  Default fixture UI tests require no account; the opt-in API case's disposable
+  account policy and cleanup are documented in
+  [`06-supported-validation.md`](06-supported-validation.md).
 - [ ] Distinguish manual evidence from automated CI in the test map and report
   exact host/runtime versions for each result.
 - [ ] Link the complete test inventory and a supported-host run before marking
