@@ -69,6 +69,7 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     assertFalse(body.get("ganttWide").asBoolean());
     assertEquals(0, body.get("recentPathIds").size());
     assertEquals(HttpStatus.UNAUTHORIZED, preferences(null).getStatusCode());
+    assertEquals(HttpStatus.UNAUTHORIZED, update(null, "{}").getStatusCode());
   }
 
   // UP-02
