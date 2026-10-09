@@ -430,7 +430,9 @@ class KnowIntegrationTest extends IntegrationTestSupport {
 
     ResponseEntity<JsonNode> restored = post("/api/v1/paths/" + pathId + "/restore", token, "{}");
     assertEquals(HttpStatus.OK, restored.getStatusCode());
-    assertEquals(HttpStatus.OK, get("/api/v1/paths/" + pathId, token).getStatusCode());
+    ResponseEntity<JsonNode> activeAgain = get("/api/v1/paths/" + pathId, token);
+    assertEquals(HttpStatus.OK, activeAgain.getStatusCode());
+    assertEquals("ACTIVE", activeAgain.getBody().get("status").asText());
   }
 
   @Test
