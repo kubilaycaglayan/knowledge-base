@@ -234,7 +234,9 @@ browser interaction evidence remains a separate layer.
   (`TimerPauseIntegrationTest.pauseRecordsTheSegmentAndKeepsTheSessionContext`).
 - [x] `POST /api/v1/timers/resume` covers resumed segments and carried
   duration (`TimerPauseIntegrationTest.resumeContinuesThePausedSession`).
-- [ ] `POST /api/v1/timers/finish` covers completion of a paused session.
+- [x] `POST /api/v1/timers/finish` covers completion of a paused session and
+  confirms the recorded segment duration remains persisted
+  (`TimerPauseIntegrationTest.finishEndsAPausedSession`).
 - [ ] Pause, resume, and finish invalid-state requests cover documented
   conflict behavior.
 - [ ] Resume after a selected path becomes inactive covers validation and
