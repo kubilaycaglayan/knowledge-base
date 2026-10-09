@@ -429,8 +429,9 @@ browser interaction evidence remains a separate layer.
   `CalendarLabelPickerIntegrationTest.anotherUsersLabelIsStillRejected`,
   `KnowIntegrationTest.calendarDayWritesPersistEverySupportedPortionAndMarkerValue`,
   and `KnowIntegrationTest.noMarkerCalendarLabelsPersistButDoNotAppearInReports`).
-- [ ] Calendar range operations cover invalid dates, reversed ranges, and
-  supported maximum span boundaries.
+- [x] Calendar range operations cover malformed dates, reversed and over-year
+  ranges, and acceptance of the one-year maximum span
+  (`KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`).
 
 ## Flow: Cover Reports, Search, and Preferences
 
