@@ -337,7 +337,9 @@ browser interaction evidence remains a separate layer.
   paths/labels, requested status/position, and date/status/path/label
   validation (`KnowIntegrationTest.boardCardsAcceptMultiplePathsAndBoardScopedLabels`
   and `BoardControllerApiTest`).
-- [ ] `GET /api/v1/boards/{id}/cards/{cardId}` covers nested card ownership.
+- [x] `GET /api/v1/boards/{id}/cards/{cardId}` covers owned detail plus missing,
+  foreign, and wrong-board card IDs
+  (`BoardCardDetailIntegrationTest.cardDetailReturnsOwnedCardAndHidesMissingOrMisnestedCards`).
 - [ ] `PUT /api/v1/boards/{id}/cards/{cardId}` covers update, referenced-ID
   ownership, and stale `expectedUpdatedAt` conflict behavior.
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/move` covers position updates,
