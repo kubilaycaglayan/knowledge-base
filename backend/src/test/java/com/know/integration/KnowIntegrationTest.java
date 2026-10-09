@@ -1970,6 +1970,52 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent() {
+    String owner = freshToken();
+    String other = freshToken();
+    String firstExternalId = "batch-first-" + UUID.randomUUID();
+    String secondExternalId = "batch-second-" + UUID.randomUUID();
+    String firstPayload =
+        "{\"timeentries\":[{\"_id\":\""
+            + firstExternalId
+            + "\",\"description\":\"First batch\",\"timeInterval\":{"
+            + "\"start\":\"2024-07-03T08:00:00Z\",\"end\":\"2024-07-03T09:00:00Z\",\"duration\":3600}}]}";
+    String secondPayload =
+        "{\"timeentries\":[{\"_id\":\""
+            + secondExternalId
+            + "\",\"description\":\"Second batch\",\"timeInterval\":{"
+            + "\"start\":\"2024-07-04T08:00:00Z\",\"end\":\"2024-07-04T09:00:00Z\",\"duration\":3600}}]}";
+    ResponseEntity<JsonNode> first = post("/api/v1/imports/clockify", owner, firstPayload);
+    ResponseEntity<JsonNode> second = post("/api/v1/imports/clockify", owner, secondPayload);
+    assertEquals(HttpStatus.OK, first.getStatusCode());
+    assertEquals(HttpStatus.OK, second.getStatusCode());
+    String firstBatchId = first.getBody().get("batchId").asText();
+    String secondBatchId = second.getBody().get("batchId").asText();
+
+    JsonNode listed = get("/api/v1/imports/clockify/batches", owner).getBody();
+    assertEquals(2, listed.size());
+    assertEquals(secondBatchId, listed.get(0).get("id").asText(), "Batch list is newest first");
+    assertEquals(firstBatchId, listed.get(1).get("id").asText());
+    assertTrue(get("/api/v1/imports/clockify/batches", other).getBody().isEmpty());
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        delete("/api/v1/imports/clockify/batches/" + secondBatchId, other).getStatusCode());
+    assertEquals(2, get("/api/v1/time-entries", owner).getBody().size());
+
+    ResponseEntity<JsonNode> undo =
+        delete("/api/v1/imports/clockify/batches/" + secondBatchId, owner);
+    assertEquals(HttpStatus.OK, undo.getStatusCode());
+    assertEquals(1, undo.getBody().get("deletedEntries").asInt());
+    assertEquals(1, get("/api/v1/time-entries", owner).getBody().size());
+
+    ResponseEntity<JsonNode> repeatedUndo =
+        delete("/api/v1/imports/clockify/batches/" + secondBatchId, owner);
+    assertEquals(HttpStatus.OK, repeatedUndo.getStatusCode());
+    assertEquals(0, repeatedUndo.getBody().get("deletedEntries").asInt());
+    assertEquals(1, get("/api/v1/time-entries", owner).getBody().size());
+  }
+
+  @Test
   void clockifyImportPreservesIndividualSessionIntervals() {
     String token = freshToken();
 
