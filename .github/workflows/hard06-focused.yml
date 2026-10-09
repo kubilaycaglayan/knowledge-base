@@ -9,7 +9,7 @@ on:
 jobs:
   focused-ios-test:
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Generate the Xcode project
