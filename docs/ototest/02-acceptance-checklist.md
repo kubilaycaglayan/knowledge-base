@@ -498,8 +498,11 @@ browser interaction evidence remains a separate layer.
   payload and across repeated imports, without duplicate persisted entries, and
   retains an audit batch per request
   (`KnowIntegrationTest.clockifyImportIsIdempotentOnDuplicateExternalId`).
-- [ ] `POST /api/v1/imports/clockify` covers malformed and unsupported input,
-  validation, and documented partial/rollback behavior.
+- [x] `POST /api/v1/imports/clockify` covers malformed and unsupported input,
+  interval validation, and rollback of a partially processed request
+  (`KnowIntegrationTest.clockifyImportRejectsMalformedAndUnsupportedPayloadsWithoutPersistingData`
+  and PostgreSQL-only
+  `KnowIntegrationTest.postgresClockifyImportRollsBackEarlierPathEntryAndBatchOnLaterInvalidInterval`).
 - [x] `GET /api/v1/imports/clockify/batches` covers owner-scoped batch listing
   and ordering.
 - [x] `DELETE /api/v1/imports/clockify/batches/{id}` covers undo effects,
