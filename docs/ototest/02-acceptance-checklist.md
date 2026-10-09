@@ -208,8 +208,8 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover timers and time entries
 
-- [ ] `GET /api/v1/timers/current` covers empty, running, and paused timer
-  states.
+- [x] `GET /api/v1/timers/current` covers empty, running, and paused timer
+  states (paused sessions have no current running timer and remain in the draft).
 - [ ] `GET /api/v1/timers/draft` covers default and persisted idle selection
   state.
 - [ ] `PUT /api/v1/timers/draft` covers save, validation, owner-scoped path and
