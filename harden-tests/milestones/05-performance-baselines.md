@@ -1,7 +1,7 @@
 # HARD-05: Fixed-data performance baselines
 
 **Priority:** Medium  
-**Status:** In progress
+**Status:** Complete
 **Scope:** Measurement and test infrastructure documentation only.
 
 Track completion in the [HARD-05 acceptance checklist](05-acceptance-checklist.md).
@@ -31,10 +31,10 @@ reproducible, then establishes report-only measurements.
   scoped cleanup instructions. Keep all generated accounts/data disposable.
   See [`performance-fixtures.md`](../performance-fixtures.md) and
   [`seed-performance-fixture.mjs`](../../frontend/scripts/seed-performance-fixture.mjs).
-- [ ] Capture client and server environment: commit, image digests, browser and
+- [x] Capture client and server environment: commit, image digests, browser and
   Playwright versions, viewport/profile, CPU/memory limits, Node/JDK/PostgreSQL
   versions, network conditions, and warm/cold cache state.
-- [ ] Use at least 3 warmups and 30 measured samples per candidate journey and
+- [x] Use at least 3 warmups and 30 measured samples per candidate journey and
   profile; report median, p95, min/max, all failures/timeouts, and raw samples.
   Lower-count exploratory data cannot justify a CI gate. Preserve outliers and
   document any exclusion rule before collecting data.
@@ -53,17 +53,18 @@ reproducible, then establishes report-only measurements.
   Browser timing and same-page Resource Timing entries use the browser's
   monotonic clock; API samples record request duration, status, and bytes.
   Neither collector claims server-only duration or performs fixture setup.
-- [ ] Run profiles serially on the current machine, capture host/Docker CPU and
+- [x] Run profiles serially on the current machine, capture host/Docker CPU and
   memory availability and competing load, and repeat at least two comparable
   batches per candidate metric. Estimate both within-run and between-run
   variability; label different browser, viewport, fixture, or machine classes
   incomparable.
-- [ ] Only after stable evidence, propose per-journey regression bands (20% is
+- [x] Review and propose report-only browser median regression bands (20% is
   a planning target, not an approved universal threshold). State baseline
   commit/run IDs, median and p95 values, absolute floor, relative threshold,
   observed noise, rerun policy, failure handling, refresh procedure, and
   override owner. Demonstrate detection on controlled regression data when
-  practical; do not enable a failing CI gate before review.
+  practical; do not enable a failing CI gate before review. The proposal and
+  synthetic dry-run are linked from the profile reports; no gate is enabled.
 
 ## Acceptance evidence
 

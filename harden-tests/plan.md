@@ -48,16 +48,16 @@ contract check are partial evidence, not completion of those tasks.
 
 ### Performance
 
-- [ ] Measure fixed-data startup, search, board paging, Gantt, reports, note save, timer, and WebSocket journeys and their API requests with explicit boundaries and raw samples.
-- [ ] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture current machine load and runtime/image metadata for every run.
-- [ ] Keep initial baselines report-only. Consider a 20% gate only after comparable repeated batches establish variance and a documented absolute floor, refresh, rerun, and override policy.
+- [x] Measure fixed-data startup, search, board paging, Gantt, reports, note save, timer, and WebSocket journeys and their API requests with explicit boundaries and raw samples.
+- [x] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture machine load and runtime/image metadata in each run record.
+- [x] Keep initial baselines report-only. A browser median gate proposal includes repeated-run variance, an absolute floor, refresh, rerun, and override policy; no CI gate is active.
 
 The report-only API and browser samplers, deterministic sparse/dense fixture
 generator, and per-run performance report fields are in place. The browser
 report includes engine/version, Playwright version, user agent, viewport, touch,
 and device scale. Collectors capture browser-observed and request durations
-separately; they do not measure server-only latency. HARD-05 remains in progress
-until comparable idle-machine runs are recorded. See [HARD-05](milestones/05-performance-baselines.md) and the
+separately; they do not measure server-only latency. HARD-05 is complete with
+report-only measurements and no active CI gate. See [HARD-05](milestones/05-performance-baselines.md) and the
 [acceptance checklist](milestones/05-acceptance-checklist.md).
 
 See [HARD-05](milestones/05-performance-baselines.md) for fixture sizes,
