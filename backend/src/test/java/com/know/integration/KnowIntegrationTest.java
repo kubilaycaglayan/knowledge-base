@@ -1777,11 +1777,11 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         "{\"timeentries\":["
             + "{\"_id\":\"valid-first\",\"projectName\":\""
             + project
-            + "\",\"description\":\"first row\",\"timeInterval\":{" 
+            + "\",\"description\":\"first row\",\"timeInterval\":{"
             + "\"start\":\"2024-07-01T10:00:00Z\",\"end\":\"2024-07-01T11:00:00Z\"}},"
             + "{\"_id\":\"invalid-later\",\"projectName\":\""
             + project
-            + "\",\"description\":\"invalid row\",\"timeInterval\":{" 
+            + "\",\"description\":\"invalid row\",\"timeInterval\":{"
             + "\"start\":\"2024-07-01T12:00:00Z\",\"end\":\"2024-07-01T11:00:00Z\"}}]}";
 
     ResponseEntity<JsonNode> result = post("/api/v1/imports/clockify", token, payload);
