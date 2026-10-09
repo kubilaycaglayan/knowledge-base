@@ -327,7 +327,11 @@ class PathBoardIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.OK, pinned.getStatusCode());
     assertTrue(pinned.getBody().get("pinned").asBoolean());
     assertEquals(List.of("Pinned path", "Pinnable"), boards(token, "").stream().map(b -> b.get("name").asText()).toList());
-    assertFalse(post("/api/v1/boards/" + custom + "/pin", token, "{\"pinned\":false}").getBody().get("pinned").asBoolean());
+    ResponseEntity<JsonNode> unpinned = post("/api/v1/boards/" + custom + "/pin", token, "{\"pinned\":false}");
+    assertEquals(HttpStatus.OK, unpinned.getStatusCode());
+    assertFalse(unpinned.getBody().get("pinned").asBoolean());
+    assertFalse(get("/api/v1/boards/" + custom, token).getBody().get("pinned").asBoolean());
+    assertTrue(get("/api/v1/boards/" + pathBoard, token).getBody().get("pinned").asBoolean());
   }
 
   // PB-18
