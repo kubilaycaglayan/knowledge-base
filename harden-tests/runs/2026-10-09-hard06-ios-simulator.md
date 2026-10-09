@@ -80,9 +80,13 @@ its accessible label on both an explicit-label variant and the original
 `Toggle(scope.title, ...)` source. The latter run is
 [37903974831](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37903974831).
 This confirms a test query/visibility issue rather than a product defect. A
-combined rerun of all seven cases and a clean full-scheme run are still needed;
-the original full-scheme failure remains the authoritative release-gate result
-until those runs pass.
+combined rerun of all seven cases passed at commit `98c1a63`: 7 tests, 0
+failures, on the same hosted Mac and iPhone 17 Pro / iOS 26.5 destination. See
+[run 37904668069](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37904668069).
+The full `Know` scheme is being rerun with the documented ad hoc signing
+settings in [run 37905570002](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37905570002);
+until it completes, the original full-scheme failure remains the authoritative
+release-gate result.
 
 ## Keychain signing diagnostic
 
