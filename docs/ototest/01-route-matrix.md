@@ -7,6 +7,8 @@
 
 “Component” means a Vue/Vitest assertion; it does not prove browser history, real API persistence, or visual layout. Rows marked gap have no assertion located for the stated route behavior. All unresolved route gaps are owned by Knowledge Base maintainers. `/development` is temporary tooling and excluded from supported route completeness.
 
+Source reconciliation at the recorded baseline found 19 registered Vue route entries; all 19 paths are represented below. Route behaviors in the acceptance checklist map to these rows: WEB-01 through WEB-14 cover their named paths, WEB-15 the shared authenticated-route row, WEB-16 the shared shell, and WEB-17 through WEB-19 the desktop/mobile/accessibility evidence section. A route's browser assertion can remain a gap while its inventory row is complete.
+
 | Route / state | Source | Existing evidence | Evidence class | Gap / next evidence |
 | --- | --- | --- | --- | --- |
 | `/` Sessions | `frontend/src/main.ts`, `views/SessionsView.vue` | `views/SessionsView.test.ts` (`SessionsView`); `scripts/session-tracker.acceptance.test.mjs` | Component; browser | Direct-load, auth recovery, and real persisted journey not established by component test |

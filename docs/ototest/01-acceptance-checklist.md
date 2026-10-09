@@ -20,24 +20,24 @@ These items require inventory rows and links to current source/evidence. The
 imperative examples below describe the behavior to map; they are not steps to
 execute against the running application during OTOTEST-01.
 
-- [ ] **AC-01** Each inventory row identifies the product surface and the
+- [x] **AC-01** Each inventory row identifies the product surface and the
   source location that defines its behavior.
-- [ ] **AC-02** Each row classifies evidence as unit/component, service/API,
+- [x] **AC-02** Each row classifies evidence as unit/component, service/API,
   real browser, manual, unsupported, or gap. Existing test names are linked
   only when their assertions establish the stated behavior.
-- [ ] **AC-03** Each actionable row records the control or user action, expected
+- [x] **AC-03** Each actionable row records the control or user action, expected
   result, visible feedback/recovery, and keyboard or touch interaction when
   applicable.
-- [ ] **AC-04** Each route or flow records applicable loading, empty, invalid
+- [x] **AC-04** Each route or flow records applicable loading, empty, invalid
   input, failed request, retry/cancel, missing resource, and ownership behavior.
-- [ ] **AC-05** The inventory distinguishes desktop Chrome from mobile Chrome
+- [x] **AC-05** The inventory distinguishes desktop Chrome from mobile Chrome
   where viewport, pointer type, browser history, text entry, or popup behavior
   changes the user journey.
-- [ ] **AC-06** Coverage gaps and unresolved support decisions are explicit;
+- [x] **AC-06** Coverage gaps and unresolved support decisions are explicit;
   a component or test filename similarity alone is not evidence.
-- [ ] **AC-07** The inventory records source revision, review date, reviewer,
+- [x] **AC-07** The inventory records source revision, review date, reviewer,
   and the exact command/workflow associated with any named automated evidence.
-- [ ] **AC-08** Existing evidence is classified without running tests as part of
+- [x] **AC-08** Existing evidence is classified without running tests as part of
   this milestone's checklist authoring. Execution belongs to a later acceptance
   or release review.
 
@@ -46,58 +46,58 @@ execute against the running application during OTOTEST-01.
 Source of route registration: `frontend/src/main.ts`. Shared authenticated
 shell and responsive navigation: `frontend/src/App.vue`.
 
-- [ ] **WEB-01** Inventory `/` as the Sessions workspace and `/sessions` as a
+- [x] **WEB-01** Inventory `/` as the Sessions workspace and `/sessions` as a
   redirect to `/`; record resulting URL and browser Back behavior.
-- [ ] **WEB-02** Inventory `/sessions/:id` as a session detail/edit deep link,
+- [x] **WEB-02** Inventory `/sessions/:id` as a session detail/edit deep link,
   including unknown, deleted, and another user's ID outcomes.
-- [ ] **WEB-03** Inventory `/paths` and `/paths/:id`, including direct-load
+- [x] **WEB-03** Inventory `/paths` and `/paths/:id`, including direct-load
   history/detail state, invalid IDs, and related-record navigation.
-- [ ] **WEB-04** Inventory `/timeline`, including supported filter fields,
+- [x] **WEB-04** Inventory `/timeline`, including supported filter fields,
   submission/reset actions, URL state if present, empty results, and stale or
   failed loads.
-- [ ] **WEB-05** Inventory `/logs` and `/logs/:id`, including list/composer,
+- [x] **WEB-05** Inventory `/logs` and `/logs/:id`, including list/composer,
   search, paging, detail/edit/delete, direct loading, and missing/foreign IDs.
-- [ ] **WEB-06** Inventory `/reports`, including query-driven date/range state,
+- [x] **WEB-06** Inventory `/reports`, including query-driven date/range state,
   SPA navigation restoration, direct reload behavior, presets, charts/tables,
   and empty/error states.
-- [ ] **WEB-07** Inventory `/calendar`, including query-selected date, month
+- [x] **WEB-07** Inventory `/calendar`, including query-selected date, month
   navigation, day/range selection, day edits, labels, and date-boundary states.
-- [ ] **WEB-08** Inventory `/imports` and its settings-embedded counterpart,
+- [x] **WEB-08** Inventory `/imports` and its settings-embedded counterpart,
   covering supported source formats, validation, result summaries, history,
   paging, undo, and failure recovery.
-- [ ] **WEB-09** Inventory `/settings`, its tabs/sections, account actions,
+- [x] **WEB-09** Inventory `/settings`, its tabs/sections, account actions,
   appearance/preferences, import/export actions, save feedback, and reload
   persistence.
-- [ ] **WEB-10** Inventory `/labels` and `/labels/:id`, including management,
+- [x] **WEB-10** Inventory `/labels` and `/labels/:id`, including management,
   scope/color editing, history, related-label/record links, and invalid IDs.
-- [ ] **WEB-11** Inventory `/board` with board query selection, card deep links,
+- [x] **WEB-11** Inventory `/board` with board query selection, card deep links,
   All boards, Kanban/Gantt modes, and direct-load fallback when a selected
   board is no longer available.
-- [ ] **WEB-12** Inventory `/board/archive`, including query-selected archived
+- [x] **WEB-12** Inventory `/board/archive`, including query-selected archived
   board/card/status focus, restoration, empty archive, invalid IDs, and return
   navigation.
-- [ ] **WEB-13** Inventory `/notes` and `/notes/:id`, including query filters
+- [x] **WEB-13** Inventory `/notes` and `/notes/:id`, including query filters
   (`archived`, `q`), direct note editing, missing/foreign/archived note
   behavior, and URL/history restoration.
-- [ ] **WEB-14** Record `/development` as directly addressable temporary
+- [x] **WEB-14** Record `/development` as directly addressable temporary
   tooling, excluded from supported product routes and authenticated navigation;
   state the exclusion rationale.
-- [ ] **WEB-15** For every supported route, inventory signed-out redirect and
+- [x] **WEB-15** For every supported route, inventory signed-out redirect and
   return path; invalid/expired session recovery; page title; loading/empty/error
   states; direct refresh; browser Back/Forward; and missing/foreign resource
   handling where relevant.
-- [ ] **WEB-16** Inventory shared shell actions: brand/home link, main
+- [x] **WEB-16** Inventory shared shell actions: brand/home link, main
   navigation, responsive navigation/menu, skip-to-content, global search,
   theme selection, logout, snackbar/announcements, and floating tracker
   visibility and placement.
-- [ ] **WEB-17** For desktop Chrome, record normal pointer, keyboard, focus,
+- [x] **WEB-17** For desktop Chrome, record normal pointer, keyboard, focus,
   link open-in-new-tab, dialogs, menus, and wide-layout behaviors for shared
   shell and page actions.
-- [ ] **WEB-18** For mobile Chrome, record narrow and coarse-pointer layouts,
+- [x] **WEB-18** For mobile Chrome, record narrow and coarse-pointer layouts,
   touch target reachability, browser viewport/keyboard effects, scrolling and
   overflow, tap alternatives for drag/range gestures, browser back behavior,
   and dialogs/menus with the on-screen keyboard open.
-- [ ] **WEB-19** Inventory cross-cutting accessible outcomes: meaningful
+- [x] **WEB-19** Inventory cross-cutting accessible outcomes: meaningful
   accessible names, focus entry/return and visible focus, live feedback,
   non-color status cues, reduced-motion behavior, zoom/reflow, and keyboard
   alternatives for pointer-only actions.
@@ -500,7 +500,7 @@ Inventory Spring mappings from `backend/src/main/java/com/know/api/` and
 confirm how the web stores and extension call them. The API matrix is part of
 OTOTEST-01 because it defines the server behavior behind the client journeys.
 
-- [ ] **API-01** Include each composed controller and method mapping as a
+- [x] **API-01** Include each composed controller and method mapping as a
   distinct HTTP verb + full path row. Preserve aliases as separate rows when
   verb, route shape, request/response, or behavior differs.
 - [ ] **API-02** For each row, record controller/method, path/query/body

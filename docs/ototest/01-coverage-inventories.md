@@ -57,9 +57,9 @@ and explicit gaps. This is the baseline for the rest of `#ototest`.
    cancel, undo/restore, and unsaved-change states where applicable. Record
    exact source location and whether the state is reproducible in a fixture or
    requires a service/browser.
-5. Inventory `chrome-extension/manifest.json` entrypoints, permissions,
-   host matches, message channels and external handoffs; tie every permission
-   to the feature that needs it.
+5. Inventory Manifest V3 entrypoints from `chrome-extension/wxt.config.ts`,
+   permissions, host matches, message channels and external handoffs; tie every
+   permission to the feature that needs it.
 6. Reconcile all rows against named test declarations and workflow commands.
    Capture source revision/date and reviewer; use `gap` when no assertion
    proves the behavior. This is source/evidence classification only: do not
@@ -92,6 +92,11 @@ page-region and edge-case decomposition.
 - [Extension and feature map](01-extension-and-feature-map.md): manifest
   permissions, entrypoints, feature evidence, commands, exclusions, and ranked
   gaps are recorded.
+- Static source reconciliation found all 19 router entries and all 106
+  controller verb/path variants in the corresponding matrices. The acceptance
+  checklist now records which inventory checkpoints are documented; remaining
+  unchecked items describe incomplete operation/control traceability and
+  maintainer review, not permission to advance to a later milestone.
 - Source review is complete for the baseline revision, but a maintainer must
   review the exclusions and assertion classifications before this milestone
   can be marked complete.

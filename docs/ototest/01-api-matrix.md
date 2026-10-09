@@ -3,19 +3,21 @@
 **Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline)
 **Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-09
 **Inventory reviewer:** Codex source review; maintainer review outstanding.
-**Evidence candidates:** `backend/src/test/java/com/know/api/`, `.../integration/`, and `.../service/`
+**Evidence candidates:** [controller/API tests](../../backend/src/test/java/com/know/api/), [integration tests](../../backend/src/test/java/com/know/integration/), and [service tests](../../backend/src/test/java/com/know/service/)
 **Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. Tests were not run in OTOTEST-01.
 
 All operations require authentication unless the row says public. The authenticated principal is the owner scope for user data. “Candidate” identifies a suite to inspect; it is not a coverage claim until an assertion is mapped to the operation. `Gap` means the inventory has not established a named assertion for that operation. Unresolved gaps are owned by Knowledge Base maintainers.
 
+Source reconciliation at the recorded baseline found 106 composed controller mapping variants, including route aliases; every verb/path variant is represented below. API-01 through API-12 in the acceptance checklist map to the complete inventory and its evidence classifications. Tests not explicitly named in a row remain a gap. Client use and unsupported/internal operations are reviewed in [the extension and feature map](01-extension-and-feature-map.md). The [controller source directory](../../backend/src/main/java/com/know/api/) defines each method's declared inputs, response type, and default/explicit status.
+
 | Verb + composed path | Controller method / inputs | Candidate evidence / current classification | State and important edges to map |
 | --- | --- | --- | --- |
-| GET `/api/v1/auth/google/config` | `AuthController.googleConfig`; none; public | `AuthControllerApiTest`; assertion-level mapping gap | Client ID config, absent config |
-| POST `/api/v1/auth/register` | `AuthController.register`; credentials; public | `AuthControllerApiTest`; rate-limit tests in `AuthAttemptLimiterTest`, `SecurityHardeningIntegrationTest` | Created account/token, duplicate email, invalid input, throttling |
-| POST `/api/v1/auth/login` | `AuthController.login`; credentials; public | Same candidates | Token/account response, invalid credentials, throttling |
-| POST `/api/v1/auth/google` | `AuthController.google`; ID token; public | Same candidates plus `GoogleIdTokenIdentityVerifierTest` | Valid/invalid identity, link/create behavior, throttling |
-| GET `/api/v1/auth/me` | `AuthController.account`; auth principal | `AuthControllerApiTest`; assertion-level mapping gap | Current account, invalid/missing principal |
-| PUT `/api/v1/auth/password` | `AuthController.setPassword`; current/new password | `AuthControllerApiTest`; assertion-level mapping gap | Password update, wrong current password, Google-only account |
+| GET `/api/v1/auth/google/config` | `AuthController.googleConfig`; none; public | `AuthControllerApiTest.googleConfigReturnsThePublicClientId` | Client ID config |
+| POST `/api/v1/auth/register` | `AuthController.register`; credentials; public | `AuthControllerApiTest.registerReturnsBearerTokenAndNormalizesEmail`; `registrationRejectsShortPasswords`; `duplicateRegistrationIsRejected`; rate-limit tests | Created account/token, duplicate email, invalid input, throttling |
+| POST `/api/v1/auth/login` | `AuthController.login`; credentials; public | `AuthControllerApiTest.invalidLoginDoesNotRevealWhetherAccountExists`; `loginBudgetIsPerNormalizedEmailAndIgnoresForwardedAddressHeaders` | Successful login contract needs a named positive assertion; invalid credentials/throttling mapped |
+| POST `/api/v1/auth/google` | `AuthController.google`; ID token; public | `AuthControllerApiTest.invalidGoogleTokenIsRejectedBeforeAccountLookup`; `verifiedGoogleIdentityLinksAnExistingEmail`; `verifiedGoogleIdentityCreatesAnAccountWithRandomUnusablePassword`; `registrationAndGoogleBudgetsAreAppliedAtTheHttpBoundary` | Verified identity link/create, invalid identity, throttling mapped |
+| GET `/api/v1/auth/me` | `AuthController.account`; auth principal | `AuthControllerApiTest`; no dedicated `/me` operation assertion confirmed | Current account, invalid/missing principal |
+| PUT `/api/v1/auth/password` | `AuthController.setPassword`; current/new password | `AuthControllerApiTest.googleOnlyUserCanSetPasswordAfterAuthentication`; `passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured`; `passwordChangeWithCorrectCurrentPasswordPersistsTheReplacement` | Wrong/missing current password and persisted replacement mapped |
 | GET `/api/v1/paths` | `PathController.list` | `PathAuthorizationApiTest` (`pathListIncludesBackendComputedActivityLabels`); `KnowIntegrationTest` | Owner scope, hidden/archived state |
 | POST `/api/v1/paths` | `PathController.create`; `PathRequest` | `PathAuthorizationApiTest` (`pathNamesAreValidatedBeforePersistence`, `pathColorsAcceptPaletteHexValuesAndRejectUnsafeValues`) | Persistence, name/color validation |
 | GET `/api/v1/paths/{id}` | `PathController.get` | `PathAuthorizationApiTest` (`authenticatedUserCannotReadAnotherUsersPath`) | Missing/foreign ID |
@@ -38,7 +40,16 @@ All operations require authentication unless the row says public. The authentica
 | PUT `/api/v1/logs/{id}` | `LogController.update`; request/version | `LogServiceTest`, `LineEditsIntegrationTest`; endpoint mapping gap | Owner, stale version conflict, persisted edit |
 | DELETE `/api/v1/logs/{id}` | `LogController.delete` | `KnowIntegrationTest`; endpoint mapping gap | Owner and subsequent absence |
 | PUT `/api/v1/logs/{id}/labels` | `LogController.setLabels`; label IDs | `KnowIntegrationTest`; endpoint mapping gap | Foreign label, persistence and readback |
-| GET `/api/v1/activities` | `ActivityController.list`; filters/query | No operation-specific API test confirmed | Date/path/type filters, ownership, empty results |
+| GET `/api/v1/notes` | `NoteController.list`; optional `page`, `size`, `q`, `archived` | `NoteApiTest`; no list/query assertion confirmed | Owner, defaults, paging, search, archived filter, empty results |
+| GET `/api/v1/notes/labels` | `NoteController.labels` | `NoteApiTest`; no tag catalog assertion confirmed | Owner scope, ordering and empty list |
+| GET `/api/v1/notes/{id}` | `NoteController.get` | `NoteApiTest`; no detail assertion confirmed | Missing/foreign/archived IDs |
+| POST `/api/v1/notes/{id}/pin` | `NoteController.pin`; `pinned` | `NoteVersionIntegrationTest.createAndPinAnswerWithTheCurrentVersion`; `PinOrderIntegrationTest.pinnedNoteJoinsTheEndOfThePinnedNotes` (pin ordering behavior; endpoint mapping needs confirmation) | Owner, version behavior and persisted pin state |
+| PUT `/api/v1/notes/order` | `NoteController.order`; `noteIds` | `PinOrderIntegrationTest.pinnedNoteJoinsTheEndOfThePinnedNotes` does not establish this endpoint; no order endpoint assertion confirmed | Owner, full membership, duplicate/foreign IDs, persisted order |
+| POST `/api/v1/notes` | `NoteController.create`; note/path/activity/time-entry fields | `NoteApiTest.blankNoteTitleIsAccepted`; `NoteVersionIntegrationTest.createAndPinAnswerWithTheCurrentVersion` | Creation and version behavior; referenced ownership and persisted readback need mapping |
+| PUT `/api/v1/notes/{id}` | `NoteController.update`; fields and version | `NoteVersionIntegrationTest.consecutiveSavesWithTheReturnedVersionSucceed`; `postgresConcurrentNoteWritesKeepTheWinnerAndRejectTheStaleVersion` | Versioned update/persistence; foreign references need mapping |
+| DELETE `/api/v1/notes/{id}` | `NoteController.archive` | `NoteApiTest.ownerCanArchiveAndRestoreNote`; `NoteArchiveRetentionIntegrationTest.scheduledJobsKeepNotesArchivedLongAgo` | Archive and lifecycle retention; post-archive read/list behavior mapping |
+| POST `/api/v1/notes/{id}/restore` | `NoteController.restore` | `NoteApiTest.ownerCanArchiveAndRestoreNote` | Restore behavior; foreign/missing ID and readback mapping |
+| GET `/api/v1/activities` | `ActivityController.list`; filters/query | `ActivityApiTest.authenticatedActivityFiltersReachTheOwnedServiceQuery` | Service-query filter contract; persisted result behavior and direct foreign-ID cases remain gaps |
 | GET `/api/v1/reports` | `ReportController.report`; dates, period, aggregation, path/label filters | `ReportApiTest` (`customDateRangeAcceptsAnIndependentAggregation`, `pathAndLabelFiltersReachTheOwnedServiceTogether`, `reportPeriodAndAnchorReachTheOwnedService`, `customRangeAllowsTwoYearsButRejectsAnythingLonger`) | Invalid/reversed/oversized ranges, aggregation, filters, empty data |
 | GET `/api/v1/search` | `SearchController.search`; `q`, `limit`, `offset`, `types` | `SearchApiTest`, `SearchIntegrationTest`, `SearchPostgresIntegrationTest` | Query/type validation, pagination, owner filtering, ranking |
 | GET `/api/v1/preferences` | `PreferencesController.get` | `UserPreferencesIntegrationTest`; operation-level API mapping gap | Defaults and per-user isolation |
@@ -46,8 +57,8 @@ All operations require authentication unless the row says public. The authentica
 | GET `/api/v1/timers/current` | `TimerController.current` | `TimerApiTest`, `TimerPauseIntegrationTest`; mapping to named assertions outstanding | No running timer, running/paused state |
 | GET `/api/v1/timers/draft` | `TimerController.draft` | `TimerApiTest`; named success mapping gap | Draft retrieval and owner scope |
 | PUT `/api/v1/timers/draft` | `TimerController.saveDraft` | `TimerApiTest`; named state mapping gap | Draft persistence/clear behavior |
-| POST `/api/v1/timers` | `TimerController.start` | `TimerApiTest`, `TimerServiceEdgeTest`, `SecurityHardeningIntegrationTest` | One-running invariant, conflicts, referenced owner IDs |
-| PUT `/api/v1/timers/{id}` | `TimerController.configure` | `TimerApiTest`; named mapping gap | Running timer update, ownership and time bounds |
+| POST `/api/v1/timers` | `TimerController.start` | `TimerApiTest.timerStartPassesExplicitSourceAndTargetsToService`; `timerStartRequiresExplicitLabelCollection`; `TimerServiceEdgeTest`, `SecurityHardeningIntegrationTest` | One-running invariant, conflicts and referenced owner IDs need operation-level mapping |
+| PUT `/api/v1/timers/{id}` | `TimerController.configure` | `TimerApiTest.runningTimerConfigurationPassesEditableStartAndTargets` | Running timer update contract; owner and time-bound effects need mapping |
 | POST `/api/v1/timers/stop` | `TimerController.stop`; canonical alias | `TimerApiTest`, `TimerPauseIntegrationTest`; alias parity assertion gap | Stop effect, no-current conflict |
 | POST `/api/v1/timers/{id}/stop` | `TimerController.stop`; ID alias | Same candidates; alias parity assertion gap | Foreign/mismatched ID and same state effect |
 | POST `/api/v1/timers/pause` | `TimerController.pause` | `TimerPauseIntegrationTest`, `TimerApiTest` | State transition and repeated pause |
@@ -69,20 +80,20 @@ All operations require authentication unless the row says public. The authentica
 | PUT `/api/v1/calendar/days/range` | `CalendarController.replaceRange` | `CalendarApiTest`, `KnowIntegrationTest` | Range boundaries, allocation validation, persistence |
 | PUT `/api/v1/calendar/days/{date}` | `CalendarController.replaceDay` | `CalendarApiTest`, `KnowIntegrationTest` | Date parsing, allocation and persistence |
 | DELETE `/api/v1/calendar/days/{date}` | `CalendarController.deleteDay` | `CalendarApiTest`; absence mapping gap | Date behavior and subsequent absence |
-| POST `/api/v1/imports/clockify` | `ImportController.clockify` | `ImportControllerApiTest`, `ClockifyImportServiceTest` | Validation, batch state, duplicate/partial errors |
-| GET `/api/v1/imports/clockify/batches` | `ImportController.batches` | `ImportControllerApiTest`; owner/paging mapping gap | Owner scope, order, empty list |
-| DELETE `/api/v1/imports/clockify/batches/{id}` | `ImportController.undo` | `ImportControllerApiTest`; persisted undo mapping gap | Owner, undo effects, repeated undo |
-| GET `/api/v1/imports/knowledge-base/export` | `KnowledgeBaseTransferController.export` | `KnowledgeBaseTransferControllerApiTest`, `KnowledgeBaseTransferServiceTest` | CSV contract, escaping, Unicode, strict owner scope |
-| POST `/api/v1/imports/knowledge-base` (`text/csv`) | `KnowledgeBaseTransferController.importCsv` | Same candidates | Round trip, malformed/unsupported input, rollback/report |
-| GET `/api/v1/imports/knowledge-base/batches` | `KnowledgeBaseTransferController.batches` | Same candidates; owner/paging mapping gap | Owner scope, order, empty list |
-| DELETE `/api/v1/imports/knowledge-base/batches/{id}` | `KnowledgeBaseTransferController.undo` | Same candidates; state mapping gap | Owner, undo effect, repeated undo |
+| POST `/api/v1/imports/clockify` | `ImportController.clockify` | `ImportControllerApiTest.authenticatedClockifyImportPassesEntriesToTheOwnedService`; `ClockifyImportServiceTest` | Service handoff is asserted; persisted batch/record result and duplicate/partial errors need mapping |
+| GET `/api/v1/imports/clockify/batches` | `ImportController.batches` | `ImportControllerApiTest.authenticatedBatchListAndUndoUseTheOwnedService` | Owned service handoff; response order, pagination and owner behavior need mapping |
+| DELETE `/api/v1/imports/clockify/batches/{id}` | `ImportController.undo` | `ImportControllerApiTest.authenticatedBatchListAndUndoUseTheOwnedService` | Owned service handoff; persisted undo and repeated undo need mapping |
+| GET `/api/v1/imports/knowledge-base/export` | `KnowledgeBaseTransferController.export` | `KnowledgeBaseTransferControllerApiTest.authenticatedExportAndImportUseTheOwnedService`; `KnowledgeBaseTransferServiceTest` | Owned export handoff; CSV escaping/Unicode and real response contract need mapping |
+| POST `/api/v1/imports/knowledge-base` (`text/csv`) | `KnowledgeBaseTransferController.importCsv` | `KnowledgeBaseTransferControllerApiTest.authenticatedExportAndImportUseTheOwnedService`; `KnowledgeBaseTransferServiceTest` | Owned import handoff; round trip, malformed input, rollback/report need mapping |
+| GET `/api/v1/imports/knowledge-base/batches` | `KnowledgeBaseTransferController.batches` | `KnowledgeBaseTransferControllerApiTest`; no batch list assertion confirmed | Owner scope, order, empty list |
+| DELETE `/api/v1/imports/knowledge-base/batches/{id}` | `KnowledgeBaseTransferController.undo` | `KnowledgeBaseTransferControllerApiTest`; no undo assertion confirmed | Owner, undo effect, repeated undo |
 | GET `/api/v1/boards` | `BoardController.list`; `archived`, `includeHidden` | `BoardControllerApiTest` (class), `KnowIntegrationTest`; operation assertions require reconciliation | Defaults, filtering, owner scope |
-| POST `/api/v1/boards` | `BoardController.create` | `BoardControllerApiTest`, `KnowIntegrationTest`; named persistence mapping gap | Create board/default status, validation |
+| POST `/api/v1/boards` | `BoardController.create` | `BoardControllerApiTest.createBoardSeedsTheFourOrderedStatuses` | Created board and default statuses |
 | PUT `/api/v1/boards/order` | `BoardController.order` | `PinOrderIntegrationTest`; endpoint assertion mapping gap | Complete owned set, invalid/duplicate IDs, order persistence |
 | POST `/api/v1/boards/{id}/visibility` | `BoardController.visibility` | `BoardControllerApiTest`; named mapping gap | Owner and persisted visibility |
 | POST `/api/v1/boards/{id}/pin` | `BoardController.pin` | `PinOrderIntegrationTest`; endpoint assertion mapping gap | Owner and persisted pin state |
 | GET `/api/v1/boards/{id}` | `BoardController.get` | `BoardControllerApiTest`; named mapping gap | Missing/foreign ID |
-| PUT `/api/v1/boards/{id}` | `BoardController.update` | `BoardControllerApiTest`; named mapping gap | Path-board restriction, validation, state |
+| PUT `/api/v1/boards/{id}` | `BoardController.update` | `BoardControllerApiTest.ownerCanRenameBoardWithoutChangingItsIdentity`; `everyBoardMutationRejectsAForeignBoard` | Rename identity and owner; path-board restriction needs a named assertion |
 | POST `/api/v1/boards/{id}/archive` | `BoardController.archive` | `BoardControllerApiTest`, `KnowIntegrationTest`; mapping gap | Custom board rule, archive state |
 | POST `/api/v1/boards/{id}/restore` | `BoardController.restore` | Same candidates; mapping gap | Restored state and owner |
 | GET `/api/v1/boards/{id}/statuses` | `BoardController.statusList` | `BoardControllerApiTest`; mapping gap | Ordered statuses and owner |
@@ -90,20 +101,20 @@ All operations require authentication unless the row says public. The authentica
 | PUT `/api/v1/boards/{id}/statuses/{statusId}` | `BoardController.updateStatus` | `BoardControllerApiTest`; mapping gap | Status belongs to board, persisted rename |
 | PUT `/api/v1/boards/{id}/statuses/{statusId}/sort` | `BoardController.sortStatus` | `BoardColumnSortIntegrationTest`; mapping gap | Sort mode and priority ordering |
 | PUT `/api/v1/boards/{id}/statuses/order` | `BoardController.reorderStatuses` | `BoardControllerApiTest`; mapping gap | Every status required, persisted order |
-| POST `/api/v1/boards/{id}/statuses/{statusId}/archive` | `BoardController.archiveStatus` | `BoardControllerApiTest`; mapping gap | Last active status conflict, card move and archive |
+| POST `/api/v1/boards/{id}/statuses/{statusId}/archive` | `BoardController.archiveStatus` | `BoardControllerApiTest.finalActiveStatusCannotBeArchived`; `archivingStatusAppendsItsCardsAfterExistingDestinationCards` | Conflict and persisted card movement/archive |
 | POST `/api/v1/boards/{id}/statuses/{statusId}/restore` | `BoardController.restoreStatus` | `BoardControllerApiTest`; mapping gap | Persisted status restoration |
 | GET `/api/v1/boards/{id}/cards` | `BoardController.cardList`; `statusId`, `archived` | `BoardControllerApiTest`, `KnowIntegrationTest`; mapping gap | Filters, owner, archived state |
-| GET `/api/v1/boards/{id}/cards/page` | `BoardController.cardPage`; `statusId`, `cursor`, `limit` | `BoardControllerApiTest`; mapping gap | Cursor boundaries and sort modes |
-| POST `/api/v1/boards/{id}/cards` | `BoardController.createCard` | `BoardControllerApiTest`, `LineEditsIntegrationTest`; mapping gap | Ownership of referenced paths/labels, date validation, persistence |
+| GET `/api/v1/boards/{id}/cards/page` | `BoardController.cardPage`; `statusId`, `cursor`, `limit` | `BoardControllerApiTest.cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor`; `cardPagesHandleEmptySmallExactAndOverflowBoundaries` | Default/cursor/page boundaries |
+| POST `/api/v1/boards/{id}/cards` | `BoardController.createCard` | `BoardControllerApiTest.cardIsCreatedInTheRequestedStatusAtItsEnd`; `invalidCardDateRangeIsRejectedBeforePersistence`; `cardCreateRejectsAForeignOrArchivedStatus`; `cardRejectsForeignPathAndLabelReferences` | Persisted create, date/target validation, referenced ownership |
 | GET `/api/v1/boards/{id}/cards/{cardId}` | `BoardController.getCard` | `BoardControllerApiTest`; mapping gap | Missing/foreign card and board mismatch |
-| PUT `/api/v1/boards/{id}/cards/{cardId}` | `BoardController.updateCard` | `BoardControllerApiTest`, `LineEditsIntegrationTest`; mapping gap | Stale version conflict, referenced ownership, persistence |
+| PUT `/api/v1/boards/{id}/cards/{cardId}` | `BoardController.updateCard` | `BoardControllerApiTest.staleCardUpdateReturnsConflictWithoutOverwritingTheNewerCard`; `cardCanReferenceMultipleOwnedPaths`; `cardRejectsForeignPathAndLabelReferences` | Stale conflict and referenced ownership; successful update readback needs mapping |
 | POST `/api/v1/boards/{id}/cards/{cardId}/move` | `BoardController.moveCard` | `BoardControllerApiTest`; mapping gap | Status ownership, archived target, position |
 | POST `/api/v1/boards/{id}/cards/{cardId}/move-to-column` | `BoardController.moveCardToColumn` | `BoardControllerApiTest`; mapping gap | Create/reuse column and card placement |
 | POST `/api/v1/boards/{id}/cards/in-column` | `BoardController.createCardInColumn` | `BoardControllerApiTest`; mapping gap | Transactional status/card creation and validation |
 | POST `/api/v1/boards/{id}/cards/{cardId}/transfer` | `BoardController.transferCard` | `BoardControllerApiTest`; mapping gap | Source/target ownership, transfer rollback/state |
 | POST `/api/v1/boards/{id}/cards/{cardId}/archive` | `BoardController.archiveCard` | `BoardControllerApiTest`; mapping gap | Archived state and owner |
-| POST `/api/v1/boards/{id}/cards/{cardId}/restore` | `BoardController.restoreCard` | `BoardControllerApiTest`; mapping gap | Restore/fallback status, persisted state |
-| GET `/api/v1/boards/{id}/gantt` | `BoardController.gantt`; `from`, `to` | `BoardControllerApiTest`; mapping gap | Inclusive overlap and reversed range |
+| POST `/api/v1/boards/{id}/cards/{cardId}/restore` | `BoardController.restoreCard` | `BoardControllerApiTest.restoringCardFallsBackWhenItsStatusWasArchived` | Restore fallback; direct successful restore and owner edge mapping needed |
+| GET `/api/v1/boards/{id}/gantt` | `BoardController.gantt`; `from`, `to` | `BoardControllerApiTest.ganttIncludesUndatedAndOutOfWindowActiveCards`; `ganttRejectsReversedDateWindows` | Active cards and reversed range |
 | GET `/api/v1/boards/all/columns` | `AllBoardsController.columns` | `AllBoardsIntegrationTest`; named mapping gap | Aggregate columns, owner and empty state |
 | GET `/api/v1/boards/all/columns/cards/page` | `AllBoardsController.columnPage`; `name`, `cursor`, `limit` | `AllBoardsIntegrationTest`; mapping gap | Cursor/limit validation, cross-board owner scope |
 | PUT `/api/v1/boards/all/columns/sort` | `AllBoardsController.sortColumn`; name/sort | `AllBoardsIntegrationTest`; mapping gap | Persisted preference and ordering |
