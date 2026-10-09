@@ -39,14 +39,16 @@ cases, ownership/security, extension entrypoints, and required evidence layers.
 - [OTOTEST-04 — Real-stack and extension journeys](04-real-stack-and-extension.md)
 - [OTOTEST-05 — Traceability and ongoing gates](05-traceability-and-gates.md)
 
-## Related product acceptance checklist
+## Milestone acceptance checklists
 
-- [Web routes and controls milestone acceptance](03-acceptance-checklist.md)
-  covers supported web routes and their user-visible controls in desktop and
-  mobile Chrome.
-- [Web authentication milestone acceptance](02-web-auth-acceptance-checklist.md)
-  covers the sign-in, registration, and session flows in desktop web and
-  mobile Chrome.
+- [OTOTEST-01 inventory acceptance](01-acceptance-checklist.md)
+  covers route, API, feature, and control inventory traceability.
+- [OTOTEST-02 backend API behavior acceptance](02-acceptance-checklist.md)
+  covers endpoint contracts, state effects, ownership, validation, and
+  evidence traceability.
+- [OTOTEST-03 web routes and controls acceptance](03-acceptance-checklist.md)
+  covers supported web routes and user-visible controls in desktop and mobile
+  Chrome.
 
 ## Out of scope
 

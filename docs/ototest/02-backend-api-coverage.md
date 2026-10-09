@@ -4,6 +4,9 @@
 **Status:** Proposed  
 **Dependencies:** OTOTEST-01
 
+Track evidence and completion criteria in the [OTOTEST-02 acceptance
+checklist](02-acceptance-checklist.md).
+
 ## Goal
 
 Ensure each API operation has explicit tests for its successful contract and

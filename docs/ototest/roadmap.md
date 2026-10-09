@@ -52,6 +52,7 @@ Each milestone has its own task and acceptance document:
 
 - [OTOTEST-01 — Coverage inventories](01-coverage-inventories.md)
 - [OTOTEST-02 — Backend API behavior](02-backend-api-coverage.md)
+  - [OTOTEST-02 acceptance checklist](02-acceptance-checklist.md)
 - [OTOTEST-03 — Web routes and controls](03-web-routes-and-controls.md)
 - [OTOTEST-04 — Real-stack and extension journeys](04-real-stack-and-extension.md)
 - [OTOTEST-05 — Traceability and ongoing gates](05-traceability-and-gates.md)
