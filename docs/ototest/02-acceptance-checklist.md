@@ -364,9 +364,9 @@ browser interaction evidence remains a separate layer.
   import behavior.
 - [ ] `POST /api/v1/imports/clockify` covers malformed and unsupported input,
   validation, and documented partial/rollback behavior.
-- [ ] `GET /api/v1/imports/clockify/batches` covers owner-scoped batch listing
+- [x] `GET /api/v1/imports/clockify/batches` covers owner-scoped batch listing
   and ordering.
-- [ ] `DELETE /api/v1/imports/clockify/batches/{id}` covers undo effects,
+- [x] `DELETE /api/v1/imports/clockify/batches/{id}` covers undo effects,
   foreign batch rejection, and repeated-undo behavior.
 - [x] `GET /api/v1/imports/knowledge-base/export` covers CSV content type,
   escaping, and export of the authenticated user's records only.
