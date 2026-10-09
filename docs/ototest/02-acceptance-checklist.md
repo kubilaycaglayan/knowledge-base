@@ -134,7 +134,7 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/paths/{id}/restore` covers restoration and a subsequent
   read of the active state.
 - [x] `POST /api/v1/paths/{id}/pin` covers pin and unpin outcomes.
-- [ ] `PUT /api/v1/paths/order` covers complete ordering, invalid/missing IDs,
+- [x] `PUT /api/v1/paths/order` covers complete ordering, invalid/missing IDs,
   and persisted order.
 
 ## Flow: Cover Labels operations
