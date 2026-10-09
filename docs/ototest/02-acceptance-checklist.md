@@ -262,8 +262,10 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover timer WebSocket transport
 
-- [ ] The authenticated `/ws/timers` endpoint covers initial authentication,
-  `READY`, state snapshots, and heartbeat behavior.
+- [x] The authenticated `/ws/timers` endpoint covers initial authentication,
+  `READY`, state snapshots, and heartbeat behavior
+  (`timerWebSocketReceivesCommittedStateForTheAuthenticatedUser`,
+  `timerWebSocketPingsAuthenticatedClientsOftenEnoughForIdleProxies`).
 - [ ] The WebSocket endpoint covers unauthorized or malformed first-message
   behavior.
 - [ ] WebSocket disconnect/reconnect evidence verifies REST remains
