@@ -2361,6 +2361,39 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void calendarDaysUseInclusiveBoundsAndRejectInvalidRanges() {
+    String token = freshToken();
+    for (String date :
+        List.of("2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"))
+      assertEquals(
+          HttpStatus.OK,
+          put("/api/v1/calendar/days/" + date, token, "{\"note\":\"" + date + "\",\"labels\":[]}")
+              .getStatusCode());
+
+    JsonNode inclusive =
+        get("/api/v1/calendar/days?startDate=2026-10-01&endDate=2026-10-03", token).getBody();
+    assertEquals(
+        List.of("2026-10-01", "2026-10-02", "2026-10-03"),
+        inclusive.findValuesAsText("date"));
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/calendar/days?startDate=2026-10-03&endDate=2026-10-01", token)
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/calendar/days?startDate=2025-10-01&endDate=2026-10-02", token)
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        get("/api/v1/calendar/days?startDate=2025-10-01&endDate=2026-10-01", token)
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/calendar/days?startDate=not-a-date&endDate=2026-10-01", token)
+            .getStatusCode());
+  }
+
+  @Test
   void calendarDayDeleteIsOwnerScopedAndIdempotent() {
     String owner = freshToken();
     String other = freshToken();
