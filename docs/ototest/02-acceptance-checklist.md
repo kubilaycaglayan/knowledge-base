@@ -419,8 +419,10 @@ browser interaction evidence remains a separate layer.
   (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`).
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
   subsequent absence, foreign-user isolation, and repeated deletion.
-- [ ] `PUT /api/v1/calendar/days/range` covers inclusive range mutation while
-  preserving existing assignments not requested for removal.
+- [x] `PUT /api/v1/calendar/days/range` covers inclusive start/end mutation,
+  preserves an existing note and label assignment, and confirms all changes
+  through a subsequent range read
+  (`KnowIntegrationTest.calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels`).
 - [ ] Calendar day writes cover owned-label validation without mutating label
   scopes and each supported marker/portion value.
 - [ ] Calendar range operations cover invalid dates, reversed ranges, and
