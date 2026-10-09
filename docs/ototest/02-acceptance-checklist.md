@@ -354,8 +354,11 @@ browser interaction evidence remains a separate layer.
   existing or newly created column, response metadata, persisted placement,
   and invalid/foreign requests
   (`AllBoardsIntegrationTest.createInColumnCreatesAMissingColumn`).
-- [ ] `POST /api/v1/boards/{id}/cards/{cardId}/transfer` covers source and
-  destination board ownership and persisted transfer.
+- [x] `POST /api/v1/boards/{id}/cards/{cardId}/transfer` covers existing/new
+  target columns, persisted transfer readback, path-board references, and
+  foreign/archived board rejection
+  (`AllBoardsIntegrationTest.transferMovesACardToAnotherBoard` and
+  `transferRejectsForeignAndArchivedBoards`).
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/archive` covers archived state
   and list visibility.
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/restore` covers restoration
