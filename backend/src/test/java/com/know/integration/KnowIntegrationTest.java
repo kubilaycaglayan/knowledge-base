@@ -2144,6 +2144,26 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void clockifyImportRejectsMalformedAndUnsupportedPayloadsWithoutPersistingData() {
+    String token = freshToken();
+    String[] invalidPayloads = {
+      "{\"timeentries\":[",
+      "{}",
+      "{\"timeentries\":\"unsupported\"}",
+      "{\"timeentries\":[{\"timeInterval\":{\"end\":\"2024-07-01T11:00:00Z\"}}]}",
+      "{\"timeentries\":[{\"timeInterval\":{\"start\":\"2024-07-01T12:00:00Z\",\"end\":\"2024-07-01T11:00:00Z\"}}]}"
+    };
+
+    for (String payload : invalidPayloads) {
+      ResponseEntity<JsonNode> response = post("/api/v1/imports/clockify", token, payload);
+      assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(), payload);
+      assertTrue(get("/api/v1/paths", token).getBody().isEmpty(), payload);
+      assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty(), payload);
+      assertTrue(get("/api/v1/imports/clockify/batches", token).getBody().isEmpty(), payload);
+    }
+  }
+
+  @Test
   void clockifyImportIsIdempotentOnDuplicateExternalId() {
     String token = freshToken();
     String entryId = "dup-" + UUID.randomUUID();
