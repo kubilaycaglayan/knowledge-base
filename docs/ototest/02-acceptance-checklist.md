@@ -218,7 +218,7 @@ browser interaction evidence remains a separate layer.
   and one-running-timer behavior.
 - [x] Concurrent `POST /api/v1/timers` requests preserve the one-running-timer
   invariant (`TimerPauseIntegrationTest.concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant`).
-- [ ] `PUT /api/v1/timers/{id}` covers update, optional stop/end-time behavior,
+- [x] `PUT /api/v1/timers/{id}` covers update, optional stop/end-time behavior,
   and owner-scoped timer IDs.
 - [x] `POST /api/v1/timers/stop` covers stopping the current timer.
 - [x] `POST /api/v1/timers/{id}/stop` covers the explicit-ID alias and its
