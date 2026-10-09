@@ -330,8 +330,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/{id}/cards` covers active default, status filter,
   archived filter, and foreign board isolation
   (`BoardCardListIntegrationTest.cardListDefaultsFiltersStatusesAndListsArchivedCardsForOwner`).
-- [ ] `GET /api/v1/boards/{id}/cards/page` covers cursor boundaries, page size
-  limits, and each supported status sort mode.
+- [x] `GET /api/v1/boards/{id}/cards/page` covers empty/small/exact/overflow
+  boundaries, safe default page size, stable cursor, PRIORITY and PRIORITY_LAST
+  page walks (`BoardControllerApiTest` and `BoardColumnSortIntegrationTest`).
 - [ ] `POST /api/v1/boards/{id}/cards` covers card creation and validation of
   paths, labels, status, and date fields.
 - [ ] `GET /api/v1/boards/{id}/cards/{cardId}` covers nested card ownership.
