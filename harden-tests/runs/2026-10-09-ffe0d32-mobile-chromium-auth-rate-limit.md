@@ -37,6 +37,10 @@
   removed; successful-run screenshots and raw logs were not retained. Test
   accounts used `.invalid` addresses in the temporary database, which was
   destroyed at cleanup.
+- Screenshot follow-up: The mobile-size state was recaptured and visually
+  inspected during the isolated 01:07:08–01:07:24 UTC follow-up. The local
+  screenshot is `harden-tests/local-artifacts/hard04-2026-10-09/mobile.png`;
+  both credential fields were blank in the capture.
 - Fixed-data performance: Not measured.
 
 ## Run notes
