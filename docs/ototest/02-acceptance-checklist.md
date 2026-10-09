@@ -232,7 +232,7 @@ browser interaction evidence remains a separate layer.
 - [ ] `POST /api/v1/time-entries` covers manual entry creation and valid
   duration/time boundaries.
 - [ ] `GET /api/v1/time-entries` covers owner-scoped ordering and list filters.
-- [ ] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
+- [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [ ] `PUT /api/v1/time-entries/{id}` covers completed-entry editing and
   invalid interval boundaries.
 - [ ] `DELETE /api/v1/time-entries/{id}` covers soft-delete behavior and
