@@ -314,8 +314,9 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/boards/{id}/statuses/{statusId}` covers persisted rename,
   stable identity/position, and nested board ownership
   (`BoardStatusRenameIntegrationTest.statusRenamePersistsAndRejectsAStatusFromAnotherBoard`).
-- [ ] `PUT /api/v1/boards/{id}/statuses/{statusId}/sort` covers each supported
-  card sort mode.
+- [x] `PUT /api/v1/boards/{id}/statuses/{statusId}/sort` covers MANUAL,
+  PRIORITY, and PRIORITY_LAST, priority ordering, and invalid/foreign/archived
+  restrictions (`BoardColumnSortIntegrationTest`).
 - [ ] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate
   IDs, missing IDs, and foreign status IDs.
 - [ ] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
