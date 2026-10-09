@@ -294,7 +294,8 @@ browser interaction evidence remains a separate layer.
   (`PathBoardIntegrationTest.anyBoardCanBePinned`,
   `pathBoardMutationsRejectForeignBoards`, and
   `PinOrderIntegrationTest.pinnedBoardJoinsTheEndOfThePinnedBoards`).
-- [ ] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs.
+- [x] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs
+  (`BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`).
 - [ ] `PUT /api/v1/boards/{id}` covers rename behavior and path-board conflict.
 - [ ] `POST /api/v1/boards/{id}/archive` covers archive state and restrictions.
 - [ ] `POST /api/v1/boards/{id}/restore` covers restored state.
