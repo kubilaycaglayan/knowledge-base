@@ -270,8 +270,9 @@ browser interaction evidence remains a separate layer.
   invalid-token first-message behavior with policy-violation closure
   (`TimerWebSocketAuthIntegrationTest.malformedMissingAndWrongTypeFirstMessagesAreRejected`,
   `KnowIntegrationTest.timerWebSocketClosesAnInvalidAuthenticationWithPolicyViolation`).
-- [ ] WebSocket disconnect/reconnect evidence verifies REST remains
-  authoritative and current timer state can be recovered after reconnect.
+- [x] WebSocket disconnect/reconnect evidence verifies REST remains
+  authoritative and current timer state can be recovered after reconnect
+  (`TimerWebSocketReconnectIntegrationTest.restRemainsAuthoritativeAndRecoversCurrentTimerAfterReconnect`).
 
 ## Flow: Cover Board and All boards operations
 
