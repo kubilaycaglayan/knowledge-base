@@ -385,15 +385,8 @@ browser interaction evidence remains a separate layer.
   dated and undated cards regardless of the requested window, and excludes
   archived boards and hidden path boards
   (`AllBoardsIntegrationTest.ganttCoversEveryTabBoard`).
-- [x] Multi-record board mutations cover PostgreSQL transaction rollback for
-  board/status ordering, status archive card moves, card moves, and creating a
-  status together with a card operation
-  (`PostgresDatabaseConstraintIntegrationTest.postgresBoardTabOrderRollsBackEarlierRowsWhenLaterUpdateFails`,
-  `postgresStatusOrderRollsBackEarlierRowsWhenLaterUpdateFails`,
-  `postgresStatusArchiveRollsBackEarlierCardMovesWhenALaterMoveFails`,
-  `postgresCardMoveRollsBackEarlierPositionUpdatesWhenLaterUpdateFails`,
-  `postgresMoveToNewColumnRollsBackColumnWhenCardMoveFails`, and
-  `postgresCardCreateRollsBackNewColumnWhenCardInsertFails`).
+- [ ] Multi-record board mutations cover transaction rollback when any
+  operation in the mutation fails.
 
 ## Flow: Cover Calendar operations
 
