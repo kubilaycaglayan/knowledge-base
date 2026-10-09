@@ -579,6 +579,144 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresCardUpdateRestoresTitleAndPreviousLabelsWhenReplacementFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String boardId =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Card update rollback\"}")
+            .get("id")
+            .asText();
+    String originalLabelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Original card update label\",\"scopes\":[\"BOARD\"]}")
+            .get("id")
+            .asText();
+    String replacementLabelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Replacement card update label\",\"scopes\":[\"BOARD\"]}")
+            .get("id")
+            .asText();
+    String cardId =
+        api.created(
+                "POST",
+                "/api/v1/boards/" + boardId + "/cards",
+                token,
+                "{\"title\":\"Original card title\",\"labelIds\":[\""
+                    + originalLabelId
+                    + "\"],\"pathIds\":[]}")
+            .get("id")
+            .asText();
+    String trigger = failOnInsertTrigger("board_card_labels");
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/boards/" + boardId + "/cards/" + cardId,
+              token,
+              "{\"title\":\"Changed card title\",\"labelIds\":[\""
+                  + replacementLabelId
+                  + "\"],\"pathIds\":[]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("board_card_labels", trigger);
+    }
+    assertEquals(
+        "Original card title",
+        jdbc.queryForObject(
+            "select title from board_cards where id = ?", String.class, UUID.fromString(cardId)));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from board_card_labels where card_id = ? and label_id = ?",
+            Long.class,
+            UUID.fromString(cardId),
+            UUID.fromString(originalLabelId)));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from board_card_labels where card_id = ? and label_id = ?",
+            Long.class,
+            UUID.fromString(cardId),
+            UUID.fromString(replacementLabelId)));
+  }
+
+  @Test
+  void postgresCalendarLabelCreateRollsBackLabelWhenScopeInsertFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    UUID userId = subject(token);
+    String trigger = failOnInsertTrigger("label_scope");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/calendar/labels",
+              token,
+              "{\"name\":\"Calendar label rollback\",\"color\":\"#2878D5\"}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("label_scope", trigger);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from labels where user_id = ? and name = ?",
+            Long.class,
+            userId,
+            "Calendar label rollback"));
+  }
+
+  @Test
+  void postgresPathRestoreRollsBackPathWhenBoardRestoreFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String sourcePathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"Restore rollback source\"}")
+            .get("id")
+            .asText();
+    String targetPathId =
+        api.created("POST", "/api/v1/paths", token, "{\"name\":\"Restore rollback target\"}")
+            .get("id")
+            .asText();
+    assertEquals(
+        204,
+        api.post(
+                "/api/v1/paths/" + sourcePathId + "/merge",
+                token,
+                "{\"targetPathId\":\"" + targetPathId + "\"}")
+            .status());
+    String trigger = failOnUpdateTrigger("boards");
+    try {
+      ApiClient.Reply failed =
+          api.post("/api/v1/paths/" + sourcePathId + "/restore", token, "{}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      jdbc.execute("drop trigger if exists " + trigger + " on boards");
+      jdbc.execute("drop function if exists " + trigger + "()");
+    }
+    assertNotNull(
+        jdbc.queryForObject(
+            "select deleted_at from path where id = ?",
+            Timestamp.class,
+            UUID.fromString(sourcePathId)));
+    assertNotNull(
+        jdbc.queryForObject(
+            "select archived_at from boards where path_id = ?",
+            Timestamp.class,
+            UUID.fromString(sourcePathId)));
+  }
+
+  @Test
   void postgresPathOrderRollsBackEarlierRowsWhenLaterUpdateFails() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
