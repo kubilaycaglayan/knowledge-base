@@ -493,17 +493,23 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     String work = board(token, "Work");
     String home = board(token, "Home");
     String hidden = board(token, "Archived");
-    for (String[] c : new String[][] {{work, "work-dated"}, {home, "home-dated"}, {hidden, "archived-board"}}) {
+    String hiddenPathBoard = pathBoard(token, path(token, "Hidden path"));
+    for (String[] c : new String[][] {{work, "work-dated"}, {home, "home-dated"}, {hidden, "archived-board"}, {hiddenPathBoard, "hidden-path-board"}}) {
       String body = "{\"title\":\"" + c[1] + "\",\"priority\":\"LOW\",\"startDate\":\"2026-09-02\",\"dueDate\":\"2026-09-03\"}";
       assertEquals(HttpStatus.CREATED, post("/api/v1/boards/" + c[0] + "/cards", token, body).getStatusCode());
     }
+    String outOfWindow = "{\"title\":\"out-of-window\",\"priority\":\"LOW\",\"startDate\":\"2026-10-02\",\"dueDate\":\"2026-10-03\"}";
+    assertEquals(HttpStatus.CREATED, post("/api/v1/boards/" + work + "/cards", token, outOfWindow).getStatusCode());
     card(token, work, "Backlog", "undated", "LOW");
     post("/api/v1/boards/" + hidden + "/archive", token, null);
+    post("/api/v1/boards/" + hiddenPathBoard + "/visibility", token, "{\"hidden\":true}");
 
     JsonNode items = get("/api/v1/boards/all/gantt?from=2026-09-01&to=2026-09-10", token).getBody();
     List<String> titles = titles(items);
-    assertTrue(titles.containsAll(List.of("work-dated", "home-dated", "undated")));
-    assertEquals(3, titles.size());
+    assertTrue(titles.containsAll(List.of("work-dated", "home-dated", "undated", "out-of-window")));
+    assertEquals(4, titles.size());
+    assertFalse(titles.contains("archived-board"));
+    assertFalse(titles.contains("hidden-path-board"));
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/gantt?from=2026-09-10&to=2026-09-01", token).getStatusCode());
   }
 
