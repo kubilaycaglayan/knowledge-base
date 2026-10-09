@@ -23,6 +23,11 @@ already been completed. Existing global-search API and fixture coverage is
 tracked in `docs/global-search-acceptance-checklist.md`; HARD-01 adds the
 missing cross-profile real-stack evidence.
 
+HARD-05 is the active milestone. Its deterministic fixture profiles and
+report-only API/browser collectors are documented in
+[`performance-fixtures.md`](performance-fixtures.md); no performance baseline
+has been reported yet, and no CI regression gate is enabled.
+
 The real-stack runners select engine and viewport independently. Use
 `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop` for desktop Chromium,
 `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone` for mobile-size Chromium with
