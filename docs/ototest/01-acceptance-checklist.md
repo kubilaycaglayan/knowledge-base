@@ -113,53 +113,53 @@ covered” row.
 
 ### FLOW-01 — Sessions and timer
 
-- [ ] **FLOW-01.01** Open Sessions from main navigation and by direct `/` URL;
+- [x] **FLOW-01.01** Open Sessions from main navigation and by direct `/` URL;
   inventory page load, title, session list, tracker placement, and initial
   empty/loading/error states.
-- [ ] **FLOW-01.02** Open `/sessions` and confirm the inventory captures the
+- [x] **FLOW-01.02** Open `/sessions` and confirm the inventory captures the
   redirect to `/`, resulting location, and browser Back/Forward behavior.
-- [ ] **FLOW-01.03** Open a session from its row and from `/sessions/:id`;
+- [x] **FLOW-01.03** Open a session from its row and from `/sessions/:id`;
   record dialog/editor fields, URL, close/back behavior, and return-to-list
   context.
-- [ ] **FLOW-01.04** Select a Path in the tracker and record active, deleted,
+- [x] **FLOW-01.04** Select a Path in the tracker and record active, deleted,
   missing, and no-available-Path states.
-- [ ] **FLOW-01.05** Search/select a session label, remove a selected label,
+- [x] **FLOW-01.05** Search/select a session label, remove a selected label,
   and create a label from the tracker; record label scope/default visibility,
   duplicate/blank handling, and confirmation feedback.
-- [ ] **FLOW-01.06** Enter a description, start a timer, and verify the
+- [x] **FLOW-01.06** Enter a description, start a timer, and verify the
   displayed running state and description; inventory keyboard shortcut and
   plain Enter behavior separately.
-- [ ] **FLOW-01.07** Attempt to start while another timer is running; record
+- [x] **FLOW-01.07** Attempt to start while another timer is running; record
   prevention/conflict feedback and the state shown by the server-owned timer.
-- [ ] **FLOW-01.08** Let a timer run and record elapsed display, source of
+- [x] **FLOW-01.08** Let a timer run and record elapsed display, source of
   duration, refresh/reconnect behavior, and whether browser sleep/reload
   changes the authoritative session.
-- [ ] **FLOW-01.09** Stop/save a running timer; record completed session,
+- [x] **FLOW-01.09** Stop/save a running timer; record completed session,
   preserved Path/labels/description, tracker reset/draft behavior, and
   duplicate-submit feedback.
-- [ ] **FLOW-01.10** Cancel/discard a running timer; record confirmation if
+- [x] **FLOW-01.10** Cancel/discard a running timer; record confirmation if
   present, discarded data, draft behavior, and recovery if cancellation fails.
-- [ ] **FLOW-01.11** Pause a running timer; record frozen elapsed total,
+- [x] **FLOW-01.11** Pause a running timer; record frozen elapsed total,
   paused indicator, available Resume/Stop actions, and server draft context.
-- [ ] **FLOW-01.12** Resume a paused timer; record carried duration, resumed
+- [x] **FLOW-01.12** Resume a paused timer; record carried duration, resumed
   state and context, plus behavior if the Path was removed while paused.
-- [ ] **FLOW-01.13** Stop/finish a paused timer; record that no paused interval
+- [x] **FLOW-01.13** Stop/finish a paused timer; record that no paused interval
   is added, pause state clears, and tracker fields follow the documented
   finished-session behavior.
-- [ ] **FLOW-01.14** Change the timer from another tab/client; record socket or
+- [x] **FLOW-01.14** Change the timer from another tab/client; record socket or
   REST reconciliation, stale-state prevention, and whether local draft edits
   survive the update.
-- [ ] **FLOW-01.15** Edit a completed session's start/end, Path, description,
+- [x] **FLOW-01.15** Edit a completed session's start/end, Path, description,
   and labels; record field validation, save/cancel, persisted result, and
   invalid time range handling.
-- [ ] **FLOW-01.16** Delete a session; record the confirmation, accessible
+- [x] **FLOW-01.16** Delete a session; record the confirmation, accessible
   name, successful removal, cancel path, and failed-delete recovery.
-- [ ] **FLOW-01.17** Start a new timer from a prior session; record copied
+- [x] **FLOW-01.17** Start a new timer from a prior session; record copied
   context, fields intentionally not copied, and resulting tracker state.
-- [ ] **FLOW-01.18** Page through session history and open a related record;
+- [x] **FLOW-01.18** Page through session history and open a related record;
   record page boundaries, loading/error/retry, and whether returning restores
   the prior page/scroll position.
-- [ ] **FLOW-01.19** Exercise session/timer controls in mobile Chrome with the
+- [x] **FLOW-01.19** Exercise session/timer controls in mobile Chrome with the
   software keyboard open and closed; record reachable controls, viewport
   resizing, scrolling, touch targets, and narrow-width overflow.
 
