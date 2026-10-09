@@ -28,14 +28,16 @@ Run setup and measurement serially on an idle machine. Use fresh unique
 `PERFORMANCE_COMPOSE_PROJECT` values that contain `perf`; do not reuse the
 persistent development project. Set local `JWT_SECRET` and
 `POSTGRES_PASSWORD` values for the disposable stack, unique tags such as
-`knowledge-base-api:perf-<run-id>` and `knowledge-base-web:perf-<run-id>`, and
+`knowledge-base-api:perf-20261009010000-<commit12>` and
+`knowledge-base-web:perf-20261009010000-<commit12>`, and
 an unassigned `PROXY_HTTP_PORT`. Start only its `db`, `api`, `web`, and `proxy`
 services using all three Compose files:
 
 ```bash
 export PERFORMANCE_COMPOSE_PROJECT=knowledge-base-perf-20261009-01
-export PERFORMANCE_API_IMAGE=knowledge-base-api:perf-20261009-01
-export PERFORMANCE_WEB_IMAGE=knowledge-base-web:perf-20261009-01
+export PERFORMANCE_IMAGE_TAG="perf-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short=12 HEAD)"
+export PERFORMANCE_API_IMAGE="knowledge-base-api:$PERFORMANCE_IMAGE_TAG"
+export PERFORMANCE_WEB_IMAGE="knowledge-base-web:$PERFORMANCE_IMAGE_TAG"
 export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
 export JWT_SECRET="$(openssl rand -hex 32)"
 export PROXY_HTTP_PORT=26381  # Choose an unassigned local port for each run.
@@ -43,6 +45,11 @@ docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" \
   -f docker-compose.yml -f docker-compose.smoke.yml -f docker-compose.performance.yml \
   up -d --build db api web proxy
 ```
+
+The project-scoped image retention script recognizes the timestamped
+`perf-<UTC timestamp>-<12-hex commit>` tags and keeps the newest three per
+application image repository. It never force-removes images used by running
+containers. Do not use global image prune commands.
 
 Record immutable image IDs with `docker image inspect --format '{{.Id}}'` for
 the two unique application tags before collecting any samples. Finish building
