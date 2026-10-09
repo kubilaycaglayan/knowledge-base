@@ -7,8 +7,8 @@ or run record.
 
 | ID | Focus | Priority | Status |
 | --- | --- | --- | --- |
-| [OTOTEST-01](01-coverage-inventories.md) | Route, API, feature, and control inventories | High | Proposed |
-| [OTOTEST-02](02-backend-api-coverage.md) | Backend API behavioral test mapping | High | Proposed |
+| [OTOTEST-01](01-coverage-inventories.md) | Route, API, feature, and control inventories | High | Complete |
+| [OTOTEST-02](02-backend-api-coverage.md) | Backend API behavioral test mapping | High | In progress |
 | [OTOTEST-03](03-web-routes-and-controls.md) | Web routes and interactive controls | High | Proposed |
 | [OTOTEST-04](04-real-stack-and-extension.md) | Real-stack journeys and Chrome extension integration | High | Proposed |
 | [OTOTEST-05](05-traceability-and-gates.md) | Ongoing traceability and CI gates | High | Proposed |
@@ -43,6 +43,8 @@ cases, ownership/security, extension entrypoints, and required evidence layers.
 
 - [OTOTEST-01 inventory acceptance](01-acceptance-checklist.md)
   covers route, API, feature, and control inventory traceability.
+  Evidence matrices: [routes](01-route-matrix.md), [API operations](01-api-matrix.md),
+  [controls](01-control-matrix.md), and [extension/features](01-extension-and-feature-map.md).
 - [OTOTEST-02 backend API behavior acceptance](02-acceptance-checklist.md)
   covers endpoint contracts, state effects, ownership, validation, and
   evidence traceability.

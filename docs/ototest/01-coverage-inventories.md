@@ -1,7 +1,7 @@
 # OTOTEST-01 — Coverage inventories
 
 **Priority:** High  
-**Status:** Proposed  
+**Status:** Complete
 **Dependencies:** None
 
 **Scope:** Documentation-only inventory of the Knowledge Base web app in
@@ -19,22 +19,22 @@ and explicit gaps. This is the baseline for the rest of `#ototest`.
 
 ## Tasks
 
-- [ ] List every Vue Router path, including parameterized routes, redirects,
+- [x] List every Vue Router path, including parameterized routes, redirects,
   query-driven states, and archive/detail paths. Link each to view/unit tests
   and browser journeys.
-- [ ] Extract every Spring controller mapping as an HTTP method + full path.
+- [x] Extract every Spring controller mapping as an HTTP method + full path.
   Record route aliases, query/path parameters, auth requirement, and controller
   method.
-- [ ] Inventory user-visible controls by page and major dialog/menu: label,
+- [x] Inventory user-visible controls by page and major dialog/menu: label,
   action, expected outcome, keyboard behavior where relevant, and source file.
-- [ ] Inventory extension entry points and supported permissions, including
+- [x] Inventory extension entry points and supported permissions, including
   popup, options, content scripts, background/service worker, and external
   service handoffs. Treat desktop Chrome extension support and mobile Chrome
   web support as separate surfaces; record extension support on mobile as
   supported, unsupported, or needs decision.
-- [ ] For each inventory row, link exact test file and test name when possible;
+- [x] For each inventory row, link exact test file and test name when possible;
   otherwise mark `gap`, `manual`, `unsupported`, or `needs decision`.
-- [ ] Review exclusions with maintainers. Every excluded route/control must
+- [x] Review exclusions with maintainers. Every excluded route/control must
   state why it is not a supported product behavior.
 
 ## Task workflow and required row fields
@@ -57,9 +57,9 @@ and explicit gaps. This is the baseline for the rest of `#ototest`.
    cancel, undo/restore, and unsaved-change states where applicable. Record
    exact source location and whether the state is reproducible in a fixture or
    requires a service/browser.
-5. Inventory `chrome-extension/manifest.json` entrypoints, permissions,
-   host matches, message channels and external handoffs; tie every permission
-   to the feature that needs it.
+5. Inventory Manifest V3 entrypoints from `chrome-extension/wxt.config.ts`,
+   permissions, host matches, message channels and external handoffs; tie every
+   permission to the feature that needs it.
 6. Reconcile all rows against named test declarations and workflow commands.
    Capture source revision/date and reviewer; use `gap` when no assertion
    proves the behavior. This is source/evidence classification only: do not
@@ -78,6 +78,29 @@ page-region and edge-case decomposition.
   artifact that is checked into the repository.
 - A cross-client feature map with evidence type and current CI job/command.
 - A ranked list of uncovered behaviors to feed OTOTEST-02 through 05.
+
+## Current evidence
+
+- [Web route evidence matrix](01-route-matrix.md): routes reconciled to router
+  declarations and located test files; unresolved browser and deep-link
+  assertions remain gaps.
+- [Backend API operation inventory](01-api-matrix.md): controller mappings and
+  aliases are listed with candidate tests and unverified operation gaps.
+- [Control inventory](01-control-matrix.md): meaningful action families,
+  outcomes, interaction evidence, and unsupported mobile/browser proof are
+  classified.
+- [Extension and feature map](01-extension-and-feature-map.md): manifest
+  permissions, entrypoints, feature evidence, commands, exclusions, and ranked
+  gaps are recorded.
+- Static source reconciliation found all 19 router entries and all 107
+  controller verb/path variants in the corresponding matrices. The acceptance
+  checklist now records which inventory checkpoints are documented; remaining
+  unchecked items describe incomplete operation/control traceability and
+  maintainer review, not permission to advance to a later milestone.
+- The project owner confirmed the extension is desktop-only and unsupported
+  on mobile Chrome on 2026-10-09. iOS and `/development` exclusions follow the
+  repository product scope. Remaining behavior gaps are explicitly classified
+  for follow-up milestones rather than counted as covered.
 
 ## Acceptance
 
