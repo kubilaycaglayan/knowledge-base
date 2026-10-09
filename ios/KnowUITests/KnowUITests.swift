@@ -1111,14 +1111,14 @@ final class KnowUITests: XCTestCase {
     XCTAssertTrue((body.value as? String)?.contains("R") == true)
 
     let saveState = app.staticTexts["notes.save-state"]
-    let failed = NSPredicate(format: "label == %@", "Not saved")
-    expectation(for: failed, evaluatedWith: saveState)
-    waitForExpectations(timeout: 8)
-
+    let saveError = app.staticTexts["notes.save-error"]
     XCTAssertTrue(
-      app.staticTexts[
-        "Unable to save this note. Your draft is still here; try again."
-      ].waitForExistence(timeout: 5))
+      saveError.waitForExistence(timeout: 8),
+      "Save state after the injected failure: \(saveState.label)")
+    XCTAssertEqual(saveState.label, "Not saved")
+
+    XCTAssertEqual(
+      saveError.label, "Unable to save this note. Your draft is still here; try again.")
     XCTAssertTrue(app.buttons["Retry note save"].exists)
     XCTAssertTrue((body.value as? String)?.contains("R") == true)
     app.buttons["Retry note save"].tap()

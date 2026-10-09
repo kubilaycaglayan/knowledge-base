@@ -22,7 +22,7 @@ server.
 | Paths | `testNewPathDraftRequiresDiscardConfirmation`, `testPathsHistoryAndEditControlsAreReachable`, `testPathsEmptyAndOfflineFixturesOfferRecovery`, `testPathsMergeRequiresConfirmationAndRemoveOffersUndo`, `testPathsControlsRemainReachableAtAccessibilityTextSize`, `testPathsAccessibilityNamesAndRemovalRecoveryAnnouncement` | Fixture UI checks draft discard, merge/remove affordances, empty/offline recovery and accessible names. No server-backed CRUD/undo verification. |
 | Logs | `testLogsComposerEditDeleteAndLabelsAreReachable`, `testLogsCreateAnnouncesSuccess`, `testLogsEmptyAndOfflineFixturesOfferRecovery`, `testLogsControlsRemainReachableAtAccessibilityTextSize`, `testLogsAppearanceScreenshots` | Fixture UI checks composer, edit/delete, labels, empty/offline, announcement and layout. No backend persistence/relaunch check. |
 | Labels | `testLabelsListAndCreateControlsAreReachable`, `testLabelsEmptyAndOfflineFixturesOfferRecovery` | Fixture UI checks list/create and empty/offline states; edit/delete, validation failures, color accessibility, and API persistence are not covered in UI. |
-| Notes | `testNotesListEditorAndArchiveControlsAreReachable`, `testNotesLineHistoryListsEachLineWithItsEditTime`, `testNotesEmptyAndOfflineFixturesOfferRecovery`, `testArchivedNotesCanBeRestored`, `testNotesControlsRemainReachableAtAccessibilityTextSize`, `testNotesAppearanceScreenshots` | Fixture UI checks list/editor/archive/restore and line-history rendering. Saved line conversion also has Foundation unit coverage, but native save-to-server, conflict retry, relaunch persistence, and rendered recovery are not covered. |
+| Notes | `testNotesListEditorAndArchiveControlsAreReachable`, `testNotesLineHistoryListsEachLineWithItsEditTime`, `testNotesEmptyAndOfflineFixturesOfferRecovery`, `testArchivedNotesCanBeRestored`, `testNotesControlsRemainReachableAtAccessibilityTextSize`, `testNotesAppearanceScreenshots`, `testNotesCreateEditArchiveRestorePersistsAcrossWorkspaceNavigationInMemoryFixture`, `testNotesSaveFailureKeepsDraftAndOffersRetry` | The added navigation test proves create/edit/archive/restore survives section changes in one in-memory `NotesFixture`; it does not prove API persistence or relaunch behavior. The save-failure test checks draft retention and explicit retry through a fixture. Native save-to-server, conflict retry, relaunch persistence, and live API recovery remain unverified. |
 | Sessions/timer | `testSessionsTimerAndMultipleLabelCreation`, `testSessionLabelsPickerHasSummaryCompactPriorityAndKeyboardAccessibleToggle`, `testSessionLabelsCanBeCreatedFromAnEmptyStateWithoutAChevron`, `testSessionEditPersistsAndDeletionRequiresConfirmation`, `testSessionUnsavedChangesCanBeKeptOrDiscarded`, `testSessionsOfflineRetryAndEmptyState`, `testSessionsAppearanceScreenshots` | UI fixture checks timer/selection/editor states and recovery. “Persists” in the test name is fixture/model state, not live API persistence. No native live WebSocket/reconnect/background flow. |
 
 `testReportsLiveAPIFlowWhenExplicitlyConfigured` is the sole opt-in real API UI
@@ -41,7 +41,7 @@ run record for this milestone yet.
 | Required flow | Current automated evidence | Disposition of uncovered behavior |
 | --- | --- | --- |
 | Launch and auth | `KnowTests.testPasswordLoginTrimsEmailAndPreservesPassword`, `testRegistrationUsesSharedEndpoint`, `testGoogle*`, `testRejectedCredentialsShowErrorAndAllowRetry`, `testRefreshUnauthorizedExpiresCurrentSession`; UI auth methods listed above | Deferred: real backend login/register, restore/expiry rendered states, Google consent outcomes, and systematic keyboard/accessibility states. |
-| Notes | `NotesTests` conversion, line rules, pagination, create/archive model, conflict/replay; Notes UI methods listed above | Deferred: API persistence after navigation/relaunch, server-backed archive/restore, save conflict/retry and failure recovery. |
+| Notes | `NotesTests` conversion, line rules, pagination, create/archive model, conflict/replay; Notes UI methods listed above | Deferred: API persistence after navigation/relaunch and server-backed archive/restore. The UI failure/retry path is fixture-backed only; a live API conflict/retry and outage recovery remain deferred. |
 | Sessions/timer | `SessionsTests` start/stop snapshot, retry, stale poll, socket snapshot; session UI methods listed above | Deferred: live API/WebSocket, server one-running invariant, reconnect/background/foreground and two-client delivery. |
 | Logs | `LogsTests` create/edit/delete, conflict, retry and unauthorized; Logs UI methods listed above | Deferred: rendered server-backed persistence, empty/history and full mutation failure flows. |
 | Paths | `PathsTests` CRUD model, merge/remove transport, undo and recovery; Paths UI methods listed above | Deferred: rendered server persistence, confirmation/undo across navigation, ownership and VoiceOver traversal. |
@@ -55,6 +55,24 @@ accessibility case. Systematic VoiceOver, keyboard, safe-area, rotation,
 device-size, appearance, and locale/time-zone evidence remains deferred. Mobile
 Chrome is a web-client validation category and must be reported separately;
 the mobile browser run is not native simulator evidence.
+
+## Related server-side note persistence evidence
+
+These backend integration tests exercise the API and PostgreSQL-backed service
+with isolated registered users. They complement, but do not replace, native
+UI tests:
+
+| Test | Server-backed evidence | Remaining gap |
+| --- | --- | --- |
+| `NoteVersionIntegrationTest.consecutiveSavesWithTheReturnedVersionSucceed` | Creates a note, updates it twice with returned versions, and reads its version back through the authenticated API. | Does not exercise native editor navigation or relaunch. |
+| `NoteArchiveRetentionIntegrationTest.scheduledJobsKeepNotesArchivedLongAgo` | Archives a note, confirms it remains in the archived API list, restores it, and reads it as active. | Does not exercise native UI navigation or relaunch. |
+| `LineEditsIntegrationTest.noteSavesRestampOnlyEditedLines` | Reads line history after create and edits, verifying saved timestamps persist and unchanged lines keep their times. | Does not exercise native line-history UI or app relaunch. |
+
+The simulator navigation test
+`KnowUITests.testNotesCreateEditArchiveRestorePersistsAcrossWorkspaceNavigationInMemoryFixture`
+uses a mutable in-memory fixture. Its name explicitly identifies that
+boundary: it verifies state across workspace navigation only, not API-backed
+storage or process relaunch.
 
 ## Unit/model/API test suites
 

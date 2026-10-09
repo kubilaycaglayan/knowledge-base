@@ -25,6 +25,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$device" \
             -resultBundlePath "$PWD/harden-tests/artifacts/HARD06-notes.xcresult" \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            -only-testing:KnowTests/NotesTests/testSaveFailureSetsFailedStateAndRecoveryMessage \
             -only-testing:KnowUITests/KnowUITests/testNotesCreateEditArchiveRestorePersistsAcrossWorkspaceNavigationInMemoryFixture \
             -only-testing:KnowUITests/KnowUITests/testNotesSaveFailureKeepsDraftAndOffersRetry
       - name: Keep simulator result bundle
