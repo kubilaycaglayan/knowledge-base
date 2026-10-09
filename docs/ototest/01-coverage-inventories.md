@@ -4,6 +4,13 @@
 **Status:** Proposed  
 **Dependencies:** None
 
+**Scope:** Documentation-only inventory of the Knowledge Base web app in
+desktop and mobile Chrome, its `/api/v1` operations used by supported clients,
+and the Manifest V3 Chrome extension in its supported Chrome environment.
+Inventory existing source and evidence; do not implement product changes, add
+tests, or run test suites as part of OTOTEST-01. Real-stack journey execution
+belongs to OTOTEST-04.
+
 ## Goal
 
 Create a source-backed inventory of supported routes, backend API operations,
@@ -22,7 +29,9 @@ and explicit gaps. This is the baseline for the rest of `#ototest`.
   action, expected outcome, keyboard behavior where relevant, and source file.
 - [ ] Inventory extension entry points and supported permissions, including
   popup, options, content scripts, background/service worker, and external
-  service handoffs.
+  service handoffs. Treat desktop Chrome extension support and mobile Chrome
+  web support as separate surfaces; record extension support on mobile as
+  supported, unsupported, or needs decision.
 - [ ] For each inventory row, link exact test file and test name when possible;
   otherwise mark `gap`, `manual`, `unsupported`, or `needs decision`.
 - [ ] Review exclusions with maintainers. Every excluded route/control must
@@ -53,7 +62,8 @@ and explicit gaps. This is the baseline for the rest of `#ototest`.
    to the feature that needs it.
 6. Reconcile all rows against named test declarations and workflow commands.
    Capture source revision/date and reviewer; use `gap` when no assertion
-   proves the behavior.
+   proves the behavior. This is source/evidence classification only: do not
+   execute suites or add test/product code for OTOTEST-01.
 
 Minimum feature domains: authentication/shared shell; Sessions and timer;
 Paths; Timeline; Logs; Reports; Calendar; Imports/transfer; Settings and
@@ -94,4 +104,7 @@ page-region and edge-case decomposition.
 Link this milestone's review to the inventory files, source revision, and
 reviewer/date. This phase does not require running every test suite; it requires
 correctly classifying existing evidence and identifying commands for later
-execution.
+execution. Do not run tests, add test code, change application behavior, or
+perform real-stack user journeys as OTOTEST-01 acceptance work. The inventory
+may cite previously recorded real-stack/manual evidence, clearly labeled by
+source and browser profile.

@@ -2,8 +2,10 @@
 
 This checklist expands [OTOTEST-01 — Coverage inventories](01-coverage-inventories.md)
 into the product behaviors and surfaces that its inventory must account for.
-It describes acceptance requirements for the documentation milestone; it is
-not a test plan and does not claim that any item has been exercised.
+It is a documentation acceptance checklist: inspect product source and
+classify existing evidence, but do not execute test suites, create product
+records, or perform real-stack acceptance journeys under this milestone. Those
+execution activities belong to later #ototest milestones.
 
 **Status:** Not started  
 **Scope:** Knowledge Base web app in desktop and mobile Chrome; Chrome extension
@@ -13,6 +15,10 @@ surfaces where the extension is supported
 manifest/entrypoints and existing product tree in the current worktree.
 
 ## Completion rules
+
+These items require inventory rows and links to current source/evidence. The
+imperative examples below describe the behavior to map; they are not steps to
+execute against the running application during OTOTEST-01.
 
 - [ ] **AC-01** Each inventory row identifies the product surface and the
   source location that defines its behavior.
@@ -96,7 +102,7 @@ shell and responsive navigation: `frontend/src/App.vue`.
   non-color status cues, reduced-motion behavior, zoom/reflow, and keyboard
   alternatives for pointer-only actions.
 
-## Web application: product actions and edge states
+## Web application: user action and edge-state inventory
 
 Use the source-backed [product test tree](product-test-tree.md) as the detailed
 feature decomposition. Each checkbox below is an individual inventory
@@ -585,93 +591,46 @@ Manifest source: `chrome-extension/wxt.config.ts`; popup/options markup under
   workflow/command, whether it is mocked or uses a real API/browser, any
   required disposable account/data, and the current known gap.
 
-### Merged user journeys
+### Cross-client journey map inventory
 
-Inventory each journey as ordered checkpoints. Give each numbered step its
-own row in the route/control matrices and link the transition to the next
-surface, API operation, and persisted record. The following are separate
-journeys, even where they reuse the same page controls.
+For each journey below, create ordered inventory rows for its transitions.
+Each row links the web route/control, extension entry point where applicable,
+API operation, persisted entity/effect, existing named assertion or run
+record, evidence class, and uncovered behavior. These are candidate journeys
+for the inventory and handoff only: do not seed data or execute them in
+OTOTEST-01. Real-stack execution belongs to OTOTEST-04.
 
-- [ ] **MERGE-01.01** Create a Path from `/paths` and record its name, color,
-  ownership, and default board creation.
-- [ ] **MERGE-01.02** Open the newly created Path board and record tab
-  visibility, Path association, and initial statuses.
-- [ ] **MERGE-01.03** Create a card on the Path board and record the enforced
-  Path association and resulting card deep link.
-- [ ] **MERGE-01.04** Start a timer from the eligible card and record the
-  carried Path/title in the server-owned timer.
-- [ ] **MERGE-01.05** Stop/save the timer and record the resulting Session
-  linked to the Path, then confirm it appears in Sessions and Path history.
-- [ ] **MERGE-02.01** Create or select a reusable Label and record its scope
-  and visibility settings.
-- [ ] **MERGE-02.02** Assign the Label in Sessions, Notes, Logs, Calendar, and
-  Board cards, one context at a time; record each picker's scope rules and
-  saved relationship.
-- [ ] **MERGE-02.03** Open Label history and record how those related records
-  appear and how each link returns to its owning feature.
-- [ ] **MERGE-03.01** Create a Log with text, time, and label, then record its
-  Timeline/list placement and deep-link URL.
-- [ ] **MERGE-03.02** Open the Log from Timeline and from global search; record
-  consistent detail/edit state and return navigation.
-- [ ] **MERGE-03.03** Edit and delete the Log from its detail flow; record
-  updated search/history state and destructive recovery behavior.
-- [ ] **MERGE-04.01** Select a Calendar day, add a note and label allocation,
-  and record day persistence and marker setting.
-- [ ] **MERGE-04.02** Open Reports for a range including that day; record
-  Calendar log inclusion/exclusion according to marker state.
-- [ ] **MERGE-04.03** Follow a report source link back to the Calendar day and
-  record date selection and return-to-report range.
-- [ ] **MERGE-05.01** Create and format a Note in the web app; record title,
-  rich body, label, and persisted note address.
-- [ ] **MERGE-05.02** Open the same Note in the Chrome extension; record
-  Markdown/body fidelity, title/body editing, and restored open-note state.
-- [ ] **MERGE-05.03** Save an extension edit and reopen the Note on the web;
-  record cross-client persistence, formatting, conflict handling, and owner.
-- [ ] **MERGE-06.01** Import a supported Knowledge Base or Clockify dataset;
-  record validation and batch/result identity.
-- [ ] **MERGE-06.02** Open imported Paths, Sessions, Logs, labels, or other
-  supported records in their product pages; record ownership and relationship
-  preservation for each included type.
-- [ ] **MERGE-06.03** Undo the import batch and record which imported records
-  are removed, what pre-existing data remains, and how each page refreshes.
-- [ ] **MERGE-07.01** Search globally for a Page name and open it; record the
-  route jump and search dismissal/focus behavior.
-- [ ] **MERGE-07.02** Search for each supported record kind (Path, Label,
-  Session, Log, Note, Board/card, Calendar day); record grouped result,
-  accessible name, correct deep-link/query, and missing/archived behavior.
-- [ ] **MERGE-07.03** Open a result, edit the record, then use browser Back or
-  the in-app return control; record list/filter/scroll restoration.
-- [ ] **MERGE-08.01** Merge one Path into another and record transferred
-  Sessions, board cards, status mapping, archived items, and source board
-  lifecycle.
-- [ ] **MERGE-08.02** Open the destination Path history and board; record that
-  transferred records resolve to the destination and remain editable.
-- [ ] **MERGE-08.03** Open Reports or Timeline for the destination and record
-  how transferred history is attributed after the merge.
-- [ ] **MERGE-09.01** Start a timer in the web app, then open the extension;
-  record cross-client current timer, elapsed time, Path, labels, and description.
-- [ ] **MERGE-09.02** Pause, resume, or stop through a supported client and
-  inspect the other client; record sync/reconciliation, unavailable controls,
-  and no duplicate running timer.
-- [ ] **MERGE-09.03** Sign out, expire the session, or revoke API access in a
-  disposable context; record recovery in both clients and ensure cached user
-  data is not shown as the active account's data.
-- [ ] **MERGE-10.01** Exercise every merged journey above in desktop Chrome and
-  the supported mobile Chrome web experience; record viewport-specific
-  transitions, browser history, touch alternatives, and any journey step that
-  is unavailable on mobile.
-- [ ] **MERGE-10.02** Classify every extension step separately for mobile
-  Chrome; document actual platform support/decision and do not substitute a
-  desktop extension result for mobile web acceptance.
+- [ ] **MERGE-01** Map Path creation → Path board initialization → card
+  creation → timer start → completed Session and its Path/history views.
+- [ ] **MERGE-02** Map reusable Label creation → assignment in each supported
+  context → Label history and related-record navigation.
+- [ ] **MERGE-03** Map Log creation → Timeline/search discovery → detail/edit →
+  deletion and resulting list/search state.
+- [ ] **MERGE-04** Map Calendar day note/label allocation → report aggregation
+  for the selected range → source link back to the Calendar day.
+- [ ] **MERGE-05** Map Note create/edit on web → extension Notes view → saved
+  extension change → web reload, including supported format/version behavior.
+- [ ] **MERGE-06** Map supported import submission → imported records and
+  relationships → batch undo and affected-resource state.
+- [ ] **MERGE-07** Map global search for a page and each record kind → result
+  deep link → detail return/history state.
+- [ ] **MERGE-08** Map Path merge → transferred Sessions/cards and board
+  lifecycle → resulting Path history, board, Reports, or Timeline references.
+- [ ] **MERGE-09** Map web/extension timer state sharing, including current
+  timer, pause/resume/stop, session ownership, and stale/replaced auth state.
+- [ ] **MERGE-10** Classify which candidate web journeys apply to desktop
+  Chrome and mobile Chrome; classify extension-only steps separately by
+  documented platform support. Do not count desktop extension evidence as
+  mobile web evidence.
 
 ## Exclusions and handoff
 
 - [ ] **SCOPE-01** Exclude native iOS targets, simulator behavior, SwiftUI
   controls, and iOS-only authentication from all inventory rows in this
   milestone.
-- [ ] **SCOPE-02** Retain API behavior shared with iOS in the backend/API
-  inventory only where the API operation is part of the web or Chrome product
-  journey; do not create iOS acceptance obligations.
+- [ ] **SCOPE-02** Inventory shared API behavior only where an operation
+  supports the web or Chrome extension product; do not create acceptance
+  obligations for unsupported client surfaces.
 - [ ] **SCOPE-03** Keep `/development` excluded from supported route completeness
   while recording its current route and why it is excluded.
 - [ ] **SCOPE-04** Review browser support assumptions for the Chrome extension
