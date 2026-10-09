@@ -373,8 +373,10 @@ browser interaction evidence remains a separate layer.
   scope, hidden/archived/foreign exclusions, and empty/authenticated behavior
   (`AllBoardsIntegrationTest.columnsMergeByNameInTabOrder` and
   `columnsCoverOnlyTheUsersTabBoards`).
-- [ ] `GET /api/v1/boards/all/columns/cards/page` covers merged-column cursor
-  paging and boundary validation.
+- [x] `GET /api/v1/boards/all/columns/cards/page` covers cross-board cursors,
+  many-page stability, empty/unknown columns, invalid limits, foreign-user
+  isolation, and sort modes (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
+  `columnCursorWalkRemainsStableAcrossManyPages`, and `columnPagesFollowTheColumnSort`).
 - [ ] `PUT /api/v1/boards/all/columns/sort` covers sort changes across the
   applicable boards/statuses.
 - [ ] `GET /api/v1/boards/all/gantt` covers inclusive date range behavior and
