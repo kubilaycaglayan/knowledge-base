@@ -317,8 +317,9 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/boards/{id}/statuses/{statusId}/sort` covers MANUAL,
   PRIORITY, and PRIORITY_LAST, priority ordering, and invalid/foreign/archived
   restrictions (`BoardColumnSortIntegrationTest`).
-- [ ] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate
-  IDs, missing IDs, and foreign status IDs.
+- [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
+  missing, and foreign status IDs, with saved order preserved after rejected
+  requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`).
 - [ ] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
   active cards and preventing removal of the final active status.
 - [ ] `POST /api/v1/boards/{id}/statuses/{statusId}/restore` covers restored
