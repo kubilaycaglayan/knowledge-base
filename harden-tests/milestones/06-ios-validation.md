@@ -1,7 +1,7 @@
 # HARD-06: A usable iOS validation path
 
 **Priority:** Medium  
-**Status:** Closed by decision (work not planned; acceptance incomplete)
+**Status:** Closed by decision (iOS app not currently in use; acceptance incomplete)
 **Scope:** Validation workflow planning and documentation only.
 
 > Future agents: the iOS application is not currently in use, so iOS test

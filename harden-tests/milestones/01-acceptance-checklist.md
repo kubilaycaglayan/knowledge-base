@@ -1,5 +1,7 @@
 # HARD-01 acceptance checklist: search and direct routes
 
+**Status:** Complete
+
 Use this checklist with [HARD-01](01-browser-journeys.md). Check an item only
 when its linked test or run report provides the named evidence.
 

@@ -1,5 +1,7 @@
 # HARD-06 acceptance checklist: iOS validation
 
+**Status:** Closed by decision (iOS app not currently in use; acceptance incomplete)
+
 Use this checklist with [HARD-06](06-ios-validation.md). Linux portability
 checks are not evidence of SwiftUI or simulator behavior.
 

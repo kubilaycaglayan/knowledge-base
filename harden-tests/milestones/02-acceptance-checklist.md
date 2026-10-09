@@ -1,5 +1,7 @@
 # HARD-02 acceptance checklist: browser resilience and triage
 
+**Status:** Complete
+
 Use this checklist with [HARD-02](02-browser-resilience.md). Every failure
 disposition must cite observed evidence; a green rerun alone does not explain a
 previous failure.

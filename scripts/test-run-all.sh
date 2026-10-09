@@ -145,7 +145,7 @@ main() {
   run_step "Chrome extension tests" extension_tests
 
   run_step "Contract checks" \
-    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && ./scripts/check-image-prune.sh'
+    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && node scripts/check-hardening-status.mjs && ./scripts/check-image-prune.sh'
 
   run_step "Shell script syntax" \
     bash -c 'bash -n scripts/*.sh deployment/backup.sh deployment/preflight.sh && sh -n deployment/backup-loop.sh deployment/backup-db-refresh.sh'
