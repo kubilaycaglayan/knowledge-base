@@ -1,7 +1,7 @@
 # OTOTEST-02 acceptance checklist: backend API behavior coverage
 
 **Milestone:** [OTOTEST-02 — Backend API behavior coverage](02-backend-api-coverage.md)  
-**Status:** Draft acceptance checklist; no criteria are marked passed  
+**Status:** In progress; checked criteria have named test evidence in the API matrix
 **Product surface:** Knowledge Base `/api/v1` operations used by supported web and Chrome clients  
 **Out of scope:** Native client behavior, UI-route acceptance, and installing or exercising the Chrome extension as a browser journey (covered by OTOTEST-03/04)
 
@@ -149,11 +149,11 @@ browser interaction evidence remains a separate layer.
   assignment removal while preserving the assigned records.
 - [x] `DELETE /api/v1/labels/{id}` covers conflict behavior when assignments
   exist and assignment removal was not explicitly requested.
-- [ ] `GET /api/v1/labels/{id}/history` covers owner scope, timezone
+- [x] `GET /api/v1/labels/{id}/history` covers owner scope, timezone
   validation, totals, timeline, hourly values, and related labels.
-- [ ] `GET /api/v1/labels/{id}/history/records` covers every supported record
+- [x] `GET /api/v1/labels/{id}/history/records` covers every supported record
   kind, pagination, ordering, preview limits, and empty pages.
-- [ ] Label history excludes deleted or archived record types according to the
+- [x] Label history excludes deleted or archived record types according to the
   documented contract.
 
 ## Flow: Cover Notes operations
