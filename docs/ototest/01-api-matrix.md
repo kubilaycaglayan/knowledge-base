@@ -109,7 +109,7 @@ before API-02 can be accepted.
 | GET `/api/v1/labels` | `LabelController.list`; optional `scope` query | `KnowIntegrationTest.labelCatalogIsOwnerScopedForUnfilteredAndScopeFilteredLists`; `KnowIntegrationTest.labelCatalogSupportsLabelsHiddenFromCalendar` | Unfiltered owner scope and scope filters for NOTE/TIME_ENTRY |
 | GET `/api/v1/labels/{id}/history` | `LabelController.history`; `id` path, optional `zone` query | `LabelHistoryIntegrationTest`; API named assertion gap | History traversal, cycles, foreign ID |
 | GET `/api/v1/labels/{id}/history/records` | `LabelController.records`; `id` path, `kind` and optional `page` query | `LabelHistoryIntegrationTest`; API named assertion gap | Related record list, paging/empty/foreign |
-| POST `/api/v1/labels` | `LabelController.create`; request | `LabelApiTest` (`invalidLabelPayloadIsRejected`) | Validation, duplicate and persisted label |
+| POST `/api/v1/labels` | `LabelController.create`; request | `KnowIntegrationTest.labelCreationPersistsOptionalColorAndScopeDefaults`; `LabelApiTest.invalidLabelPayloadIsRejected` | Null color/empty-scope defaults, explicit color/scope persistence and validation |
 | PUT `/api/v1/labels/{id}` | `LabelController.update`; request | `LabelApiTest`; named persisted update assertion not established | Ownership, scope/color/name update |
 | DELETE `/api/v1/labels/{id}` | `LabelController.delete`; `id` path, `removeAssignments` query | `LabelApiTest`; named post-delete assertion not established | Ownership, usages, subsequent absence |
 | GET `/api/v1/logs` | `LogController.get`; list/query inputs | `KnowIntegrationTest`, `InputValidationIntegrationTest`; exact mapping gap | Filter/paging/order, empty list, owner scope |
