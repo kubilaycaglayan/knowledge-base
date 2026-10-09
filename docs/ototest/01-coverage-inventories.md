@@ -84,8 +84,17 @@ page-region and edge-case decomposition.
 - [Web route evidence matrix](01-route-matrix.md): routes reconciled to router
   declarations and located test files; unresolved browser and deep-link
   assertions remain gaps.
-- API operation, control, extension, and cross-client evidence matrices are
-  still outstanding. This milestone remains in progress.
+- [Backend API operation inventory](01-api-matrix.md): controller mappings and
+  aliases are listed with candidate tests and unverified operation gaps.
+- [Control inventory](01-control-matrix.md): meaningful action families,
+  outcomes, interaction evidence, and unsupported mobile/browser proof are
+  classified.
+- [Extension and feature map](01-extension-and-feature-map.md): manifest
+  permissions, entrypoints, feature evidence, commands, exclusions, and ranked
+  gaps are recorded.
+- Source review is complete for the baseline revision, but a maintainer must
+  review the exclusions and assertion classifications before this milestone
+  can be marked complete.
 
 ## Acceptance
 

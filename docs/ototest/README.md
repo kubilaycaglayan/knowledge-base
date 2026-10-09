@@ -43,6 +43,8 @@ cases, ownership/security, extension entrypoints, and required evidence layers.
 
 - [OTOTEST-01 inventory acceptance](01-acceptance-checklist.md)
   covers route, API, feature, and control inventory traceability.
+  Evidence matrices: [routes](01-route-matrix.md), [API operations](01-api-matrix.md),
+  [controls](01-control-matrix.md), and [extension/features](01-extension-and-feature-map.md).
 - [OTOTEST-02 backend API behavior acceptance](02-acceptance-checklist.md)
   covers endpoint contracts, state effects, ownership, validation, and
   evidence traceability.
