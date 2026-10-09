@@ -6,7 +6,7 @@ This directory is the working index for test coverage, planned gaps, and durable
 
 | Area | CI workflow jobs | Local/opt-in/platform-limited | What it covers and boundary |
 | --- | --- | --- | --- |
-| Backend | `backend` job runs Dockerized `gradle test`; `backend-postgres` runs all backend tests on PostgreSQL 16 and validates migrated startup | `scripts/test-run-all.sh`; guarded disposable PostgreSQL profile | HARD-03 evidence records 417 PostgreSQL tests, Flyway v67, and migrated startup. See [run record](runs/2026-10-08-hard03-postgres.md). |
+| Backend | `backend` job runs Dockerized `gradle test`; `backend-postgres` runs all backend tests on PostgreSQL 16 and validates migrated startup | `scripts/test-run-all.sh`; guarded disposable PostgreSQL profile | HARD-03 evidence records 421 PostgreSQL tests, Flyway v67, and migrated startup. See [run record](runs/2026-10-08-hard03-postgres.md). |
 | Web | `web-and-extension` job runs `npm ci`, `npm test`, and build | `scripts/test-run-all.sh` also invokes tracker/board/nav fixture suites | Vue components, stores, API client, and views; fixture coverage is distinct from real-stack browser coverage. |
 | Browser acceptance | Timer WebSocket and line-history real-stack suites run in dedicated CI jobs | Board/nav/tracker and selectable desktop/mobile/WebKit profiles are available locally | CI Chromium jobs do not prove the complete desktop/mobile profile matrix. See separate [run records](runs/README.md). |
 | Extension | `web-and-extension` job runs extension tests/build and permission checks | Local extension `npm test` | Manifest V3 client and timer behavior. |
