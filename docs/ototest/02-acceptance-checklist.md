@@ -377,8 +377,10 @@ browser interaction evidence remains a separate layer.
   many-page stability, empty/unknown columns, invalid limits, foreign-user
   isolation, and sort modes (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
   `columnCursorWalkRemainsStableAcrossManyPages`, and `columnPagesFollowTheColumnSort`).
-- [ ] `PUT /api/v1/boards/all/columns/sort` covers sort changes across the
-  applicable boards/statuses.
+- [x] `PUT /api/v1/boards/all/columns/sort` covers per-user sort persistence,
+  priority order across boards, isolation from board-local modes, reset, and
+  invalid values (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
+  and `columnPagesFollowTheColumnSort`).
 - [ ] `GET /api/v1/boards/all/gantt` covers inclusive date range behavior and
   excludes cards that do not meet the documented active-board/status rules.
 - [ ] Multi-record board mutations cover transaction rollback when any
