@@ -2,7 +2,7 @@
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
-import { chromium, webkit } from "playwright";
+import { chromium, devices, webkit } from "playwright";
 
 const fixtureFile = process.argv[2];
 if (!fixtureFile) {
@@ -37,7 +37,16 @@ if (!((engine === "chromium" && ["desktop", "iphone"].includes(profile)) || (eng
 const browserType = engine === "webkit" ? webkit : chromium;
 const browser = await browserType.launch({ headless: true });
 const viewport = profile === "desktop" ? { width: 1440, height: 900 } : { width: 390, height: 844 };
-const mobileOptions = profile === "iphone" ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {};
+const mobileOptions = profile === "iphone"
+  ? {
+      isMobile: true,
+      hasTouch: true,
+      deviceScaleFactor: 3,
+      ...(engine === "webkit"
+        ? { userAgent: devices["iPhone 13"].userAgent, screen: { width: 390, height: 844 } }
+        : {}),
+    }
+  : {};
 const board = fixture.boards[0];
 const noteId = fixture.noteIds[0];
 const rows = [];
