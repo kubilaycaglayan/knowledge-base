@@ -435,6 +435,46 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresCardMoveRollsBackEarlierPositionUpdatesWhenLaterUpdateFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    UUID boardId =
+        UUID.fromString(
+            api.created("POST", "/api/v1/boards", token, "{\"name\":\"Move rollback board\"}")
+                .get("id")
+                .asText());
+    List<UUID> statusIds =
+        jdbc.query(
+            "select id from board_statuses where board_id = ? order by position",
+            (rs, row) -> rs.getObject(1, UUID.class),
+            boardId);
+    UUID sourceStatusId = statusIds.get(0);
+    UUID targetStatusId = statusIds.get(1);
+    String movedCardId = createBoardCard(token, boardId, sourceStatusId, "Move rollback selected");
+    String remainingSourceCardId = createBoardCard(token, boardId, sourceStatusId, "Move rollback source");
+    String targetCardId = createBoardCard(token, boardId, targetStatusId, "Move rollback target");
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String sequenceName = "fail_card_move_count_" + suffix;
+    String functionName = "fail_card_move_update_" + suffix;
+    createFailOnNthUpdate("board_cards", sequenceName, functionName, functionName, 2);
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/boards/" + boardId + "/cards/" + movedCardId + "/move",
+              token,
+              "{\"statusId\":\"" + targetStatusId + "\",\"position\":0}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropUpdateTrigger("board_cards", sequenceName, functionName, functionName);
+    }
+    assertCardPlacement(movedCardId, boardId, sourceStatusId, 0);
+    assertCardPlacement(remainingSourceCardId, boardId, sourceStatusId, 1);
+    assertCardPlacement(targetCardId, boardId, targetStatusId, 0);
+  }
+
+  @Test
   void postgresCardCreateRollsBackNewColumnWhenCardInsertFails() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -1124,6 +1164,34 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
             + functionName
             + "()");
     return functionName;
+  }
+
+  private String createBoardCard(String token, UUID boardId, UUID statusId, String title)
+      throws Exception {
+    return api.created(
+            "POST",
+            "/api/v1/boards/" + boardId + "/cards",
+            token,
+            "{\"title\":\""
+                + title
+                + "\",\"statusId\":\""
+                + statusId
+                + "\"}")
+        .get("id")
+        .asText();
+  }
+
+  private void assertCardPlacement(String cardId, UUID boardId, UUID statusId, int position) {
+    UUID cardUuid = UUID.fromString(cardId);
+    assertEquals(
+        boardId,
+        jdbc.queryForObject("select board_id from board_cards where id = ?", UUID.class, cardUuid));
+    assertEquals(
+        statusId,
+        jdbc.queryForObject("select status_id from board_cards where id = ?", UUID.class, cardUuid));
+    assertEquals(
+        position,
+        jdbc.queryForObject("select position from board_cards where id = ?", Integer.class, cardUuid));
   }
 
   private void createFailOnNthUpdate(
