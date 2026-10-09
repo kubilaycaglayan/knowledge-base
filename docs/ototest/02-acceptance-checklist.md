@@ -494,8 +494,10 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/imports/clockify` covers supported payload creation,
   project-to-path mapping, and persisted import-batch ownership
   (`KnowIntegrationTest.clockifyImportCreatesEntriesAndPaths`).
-- [ ] `POST /api/v1/imports/clockify` covers duplicate source IDs and repeated
-  import behavior.
+- [x] `POST /api/v1/imports/clockify` covers duplicate source IDs within one
+  payload and across repeated imports, without duplicate persisted entries, and
+  retains an audit batch per request
+  (`KnowIntegrationTest.clockifyImportIsIdempotentOnDuplicateExternalId`).
 - [ ] `POST /api/v1/imports/clockify` covers malformed and unsupported input,
   validation, and documented partial/rollback behavior.
 - [x] `GET /api/v1/imports/clockify/batches` covers owner-scoped batch listing

@@ -2148,22 +2148,30 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     String token = freshToken();
     String entryId = "dup-" + UUID.randomUUID();
 
-    String payload =
-        "{"
-            + "\"timeentries\":[{"
-            + "\"_id\":\""
+    String item =
+        "{\"_id\":\""
             + entryId
-            + "\","
-            + "\"description\":\"First import\","
-            + "\"timeInterval\":{\"start\":\"2024-07-02T09:00:00Z\","
-            + "\"end\":\"2024-07-02T10:00:00Z\",\"duration\":3600}"
-            + "}]}";
+            + "\",\"description\":\"First import\",\"timeInterval\":{"
+            + "\"start\":\"2024-07-02T09:00:00Z\",\"end\":\"2024-07-02T10:00:00Z\",\"duration\":3600}}";
+    String payload = "{\"timeentries\":[" + item + "," + item + "]}";
 
-    post("/api/v1/imports/clockify", token, payload);
+    ResponseEntity<JsonNode> first = post("/api/v1/imports/clockify", token, payload);
+    assertEquals(HttpStatus.OK, first.getStatusCode());
+    assertEquals(1, first.getBody().get("imported").asInt());
+    assertEquals(1, first.getBody().get("skipped").asInt());
     ResponseEntity<JsonNode> second = post("/api/v1/imports/clockify", token, payload);
     assertEquals(HttpStatus.OK, second.getStatusCode());
     assertEquals(0, second.getBody().get("imported").asInt());
     assertEquals(1, second.getBody().get("skipped").asInt());
+    assertNotEquals(first.getBody().get("batchId").asText(), second.getBody().get("batchId").asText());
+
+    JsonNode entries = get("/api/v1/time-entries", token).getBody();
+    assertEquals(1, entries.size(), "Duplicate payload entries must produce only one persisted record");
+    assertEquals("First import", entries.get(0).get("description").asText());
+    JsonNode batches = get("/api/v1/imports/clockify/batches", token).getBody();
+    assertEquals(2, batches.size(), "Each successful import request has an auditable batch");
+    assertEquals(1, batches.get(0).get("imported").asInt() + batches.get(1).get("imported").asInt());
+    assertEquals(2, batches.get(0).get("skipped").asInt() + batches.get(1).get("skipped").asInt());
   }
 
   @Test
