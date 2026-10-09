@@ -85,6 +85,45 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
     assertTrue(ok(HttpMethod.GET, "/api/v1/calendar/labels", emptyUser, null).isEmpty());
   }
 
+  @Test
+  void calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors() {
+    String token = token();
+    JsonNode noColor =
+        ok(HttpMethod.POST, "/api/v1/calendar/labels", token, "{\"name\":\"  Travel  \"}");
+    JsonNode colored =
+        ok(
+            HttpMethod.POST,
+            "/api/v1/calendar/labels",
+            token,
+            "{\"name\":\"Conference\",\"color\":\"#2878D5\"}");
+
+    assertEquals("Travel", noColor.get("name").asText());
+    assertTrue(noColor.get("color").isNull());
+    assertEquals("#2878D5", colored.get("color").asText());
+    JsonNode list = ok(HttpMethod.GET, "/api/v1/calendar/labels", token, null);
+    assertEquals(2, list.size());
+    assertEquals("#2878D5", list.get(0).get("color").asText());
+    assertTrue(list.get(1).get("color").isNull());
+
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        exchange(
+                HttpMethod.POST,
+                "/api/v1/calendar/labels",
+                token,
+                "{\"name\":\"Unsupported color\",\"color\":\"#123456\"}")
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        exchange(
+                HttpMethod.POST,
+                "/api/v1/calendar/labels",
+                token,
+                "{\"name\":\"Malformed color\",\"color\":\"blue\"}")
+            .getStatusCode());
+    assertEquals(2, ok(HttpMethod.GET, "/api/v1/calendar/labels", token, null).size());
+  }
+
   /** A label hidden from Calendar, as created outside the Calendar page. */
   String hiddenLabel(String token, String name) {
     return ok(
