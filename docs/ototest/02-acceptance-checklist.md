@@ -266,8 +266,10 @@ browser interaction evidence remains a separate layer.
   `READY`, state snapshots, and heartbeat behavior
   (`timerWebSocketReceivesCommittedStateForTheAuthenticatedUser`,
   `timerWebSocketPingsAuthenticatedClientsOftenEnoughForIdleProxies`).
-- [ ] The WebSocket endpoint covers unauthorized or malformed first-message
-  behavior.
+- [x] The WebSocket endpoint covers malformed, missing-token, wrong-type, and
+  invalid-token first-message behavior with policy-violation closure
+  (`TimerWebSocketAuthIntegrationTest.malformedMissingAndWrongTypeFirstMessagesAreRejected`,
+  `KnowIntegrationTest.timerWebSocketClosesAnInvalidAuthenticationWithPolicyViolation`).
 - [ ] WebSocket disconnect/reconnect evidence verifies REST remains
   authoritative and current timer state can be recovered after reconnect.
 
