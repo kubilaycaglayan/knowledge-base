@@ -188,7 +188,8 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover Logs and Activity operations
 
-- [ ] `GET /api/v1/logs` covers owner-scoped list order and supported filters.
+- [x] `GET /api/v1/logs` covers owner-scoped newest-first order and empty
+  results. The endpoint has no filter or pagination query parameters.
 - [ ] `GET /api/v1/logs/{id}` covers owned, missing, and foreign log IDs.
 - [ ] `POST /api/v1/logs` covers creation, occurrence timestamp, and persisted
   body and labels.
