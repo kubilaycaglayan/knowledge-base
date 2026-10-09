@@ -324,8 +324,9 @@ browser interaction evidence remains a separate layer.
   active cards after existing destination cards, persisted archive state, and
   preventing removal of the final active status
   (`BoardStatusArchiveIntegrationTest`).
-- [ ] `POST /api/v1/boards/{id}/statuses/{statusId}/restore` covers restored
-  status state.
+- [x] `POST /api/v1/boards/{id}/statuses/{statusId}/restore` covers active
+  response/readback state, stable identity, position, and board ownership
+  (`BoardStatusRestoreIntegrationTest.restoredStatusPersistsItsActiveStateIdentityAndPosition`).
 - [ ] `GET /api/v1/boards/{id}/cards` covers status, archive, and default
   filtering.
 - [ ] `GET /api/v1/boards/{id}/cards/page` covers cursor boundaries, page size
