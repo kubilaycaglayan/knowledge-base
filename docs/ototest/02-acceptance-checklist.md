@@ -230,7 +230,8 @@ browser interaction evidence remains a separate layer.
 - [x] Stop behavior covers the under-two-second discard boundary
   (`TimerServiceEdgeTest.stoppingATimerUnderTwoSecondsDiscardsItInsteadOfSavingASession`;
   exactly two seconds is covered by `stoppingATimerAtTwoSecondsPersistsTheSession`).
-- [ ] `POST /api/v1/timers/pause` covers pause state and accumulated duration.
+- [x] `POST /api/v1/timers/pause` covers pause state and accumulated duration
+  (`TimerPauseIntegrationTest.pauseRecordsTheSegmentAndKeepsTheSessionContext`).
 - [ ] `POST /api/v1/timers/resume` covers resumed segments and carried
   duration.
 - [ ] `POST /api/v1/timers/finish` covers completion of a paused session.
