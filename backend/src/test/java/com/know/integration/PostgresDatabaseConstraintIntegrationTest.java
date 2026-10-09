@@ -435,6 +435,43 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresBoardTabOrderRollsBackEarlierRowsWhenLaterUpdateFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String firstBoardId =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"First tab rollback\"}")
+            .get("id")
+            .asText();
+    String secondBoardId =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Second tab rollback\"}")
+            .get("id")
+            .asText();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String sequenceName = "fail_board_order_count_" + suffix;
+    String functionName = "fail_board_order_update_" + suffix;
+    createFailOnNthUpdate("boards", sequenceName, functionName, functionName, 2);
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/boards/order",
+              token,
+              "{\"ids\":[\"" + firstBoardId + "\",\"" + secondBoardId + "\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropUpdateTrigger("boards", sequenceName, functionName, functionName);
+    }
+    assertEquals(
+        2L,
+        jdbc.queryForObject(
+            "select count(*) from boards where id in (?, ?) and sort_order is null",
+            Long.class,
+            UUID.fromString(firstBoardId),
+            UUID.fromString(secondBoardId)));
+  }
+
+  @Test
   void postgresCardMoveRollsBackEarlierPositionUpdatesWhenLaterUpdateFails() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -472,6 +509,55 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
     assertCardPlacement(movedCardId, boardId, sourceStatusId, 0);
     assertCardPlacement(remainingSourceCardId, boardId, sourceStatusId, 1);
     assertCardPlacement(targetCardId, boardId, targetStatusId, 0);
+  }
+
+  @Test
+  void postgresMoveToNewColumnRollsBackColumnWhenCardMoveFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String boardId =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Move column rollback\"}")
+            .get("id")
+            .asText();
+    String cardId =
+        api.created(
+                "POST",
+                "/api/v1/boards/" + boardId + "/cards",
+                token,
+                "{\"title\":\"Move into new column\"}")
+            .get("id")
+            .asText();
+    String trigger = failOnUpdateTrigger("board_cards");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/boards/" + boardId + "/cards/" + cardId + "/move-to-column",
+              token,
+              "{\"columnName\":\"Rollback moved column\",\"position\":0}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      jdbc.execute("drop trigger if exists " + trigger + " on board_cards");
+      jdbc.execute("drop function if exists " + trigger + "()");
+    }
+    UUID boardUuid = UUID.fromString(boardId);
+    UUID originalStatusId =
+        jdbc.queryForObject(
+            "select id from board_statuses where board_id = ? order by position limit 1",
+            UUID.class,
+            boardUuid);
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from board_statuses where board_id = ? and name = ?",
+            Long.class,
+            boardUuid,
+            "Rollback moved column"));
+    assertEquals(
+        originalStatusId,
+        jdbc.queryForObject(
+            "select status_id from board_cards where id = ?", UUID.class, UUID.fromString(cardId)));
   }
 
   @Test
