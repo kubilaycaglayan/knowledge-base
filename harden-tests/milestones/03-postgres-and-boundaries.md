@@ -57,10 +57,11 @@ time boundaries and empty/large result sets.
   the disposable database guard and cleanup behavior.
 
 The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
-passes the full PostgreSQL suite and migrated startup check. The milestone
-remains in progress because rollback breadth and additional direct-constraint
-coverage remain open. The report and timer services now accept an injectable UTC
-clock; `LabelHistoryService` continues to use wall time directly.
+passes the full PostgreSQL suite (417 tests) and migrated startup check. The
+milestone remains in progress because rollback breadth still needs a complete
+audit across multi-write operations. The report and timer services now accept
+an injectable UTC clock; `LabelHistoryService` continues to use wall time
+directly.
 
 ## Acceptance evidence
 

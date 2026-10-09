@@ -102,7 +102,7 @@ criteria.
 HARD-03 remains **In Progress**. The test inventory, CI gate, migration paths,
 guard, timer/note/card and board/status ordering races, label/assignment join
 races, clock/DST boundaries, rollback across the covered transaction families,
-representative PostgreSQL constraint and volume checks, and ignored failure
-logs are complete. Remaining criteria cover other multi-write transactions and
-further direct constraint families. See the dated
+representative active-schema PostgreSQL constraint and volume checks, and
+ignored failure logs are complete. The rollback criterion remains open pending
+an audit of other multi-write transactions. See the dated
 [run evidence](../runs/2026-10-08-hard03-postgres.md).
