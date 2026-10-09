@@ -139,7 +139,8 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover Labels operations
 
-- [ ] `GET /api/v1/labels` covers the unfiltered list and scope filtering.
+- [x] `GET /api/v1/labels` covers the unfiltered list, scope filtering, and
+  owner isolation.
 - [ ] `POST /api/v1/labels` covers creation, defaults, colors, and scopes.
 - [ ] `PUT /api/v1/labels/{id}` covers update, invalid scope/color values, and
   assignment-sensitive restrictions.
