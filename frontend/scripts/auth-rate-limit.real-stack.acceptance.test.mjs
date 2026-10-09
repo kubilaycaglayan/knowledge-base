@@ -73,6 +73,13 @@ describe(`authentication rate-limit feedback (${mobileProfile ? "mobile-size Chr
       assert.match(await alert.innerText(), /Could not authenticate/);
       const retry = page.getByRole("button", { name: "Try again" });
       await retry.waitFor();
+      if (process.env.AUTH_RATE_LIMIT_SCREENSHOT_PATH) {
+        await page.getByRole("textbox", { name: "Email" }).fill("");
+        await page.getByRole("textbox", { name: "Password" }).fill("");
+        const screenshotPath = process.env.AUTH_RATE_LIMIT_SCREENSHOT_PATH.replace("{profile}", mobileProfile ? "mobile" : "desktop");
+        await page.screenshot({ path: screenshotPath, fullPage: true });
+        await page.getByRole("textbox", { name: "Password" }).fill("wrong-password");
+      }
       await page.getByRole("textbox", { name: "Email" }).fill(correctedEmail);
       const retryResponsePromise = page.waitForResponse((response) =>
         new URL(response.url()).pathname === "/api/v1/auth/login",

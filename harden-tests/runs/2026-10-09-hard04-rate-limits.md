@@ -13,6 +13,12 @@
   [mobile-size Chromium report](2026-10-09-ffe0d32-mobile-chromium-auth-rate-limit.md).
 - Stack exit status: 0. It used no Compose project; the unique network and all
   test containers were removed. The PostgreSQL data directory was tmpfs.
+- Follow-up screenshot run: 01:07:08–01:07:24 UTC, source working tree based
+  on `84ec8c9` plus the optional screenshot hook in the browser test. The
+  isolated proxy and both browser profiles passed again. Desktop and
+  mobile-size screenshots were inspected and retained locally at
+  `harden-tests/local-artifacts/hard04-2026-10-09/{desktop,mobile}.png`;
+  both credential fields were blank in the captures. They are not committed.
 - Cloudflare state: no authorized staging account or deployed policy version
   was available. Live Cloudflare enforcement remains unverified; production
   endpoints and credentials were not used.
@@ -45,4 +51,6 @@ served the current frontend build and passed.
 - Active limiter keys have no hard cardinality cap. Tests show 2,000 active
   keys remain tracked; process memory usage was not measured.
 - The isolated browser reports retain the run metadata and outcomes but no
-  successful-run screenshots or raw container logs.
+  raw container logs. A subsequent isolated run captured and visually
+  inspected desktop and mobile-size screenshots; the local artifacts are
+  excluded from commits because they were generated during account testing.
