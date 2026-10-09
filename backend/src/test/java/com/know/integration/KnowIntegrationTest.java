@@ -1582,6 +1582,35 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void labelCreationPersistsOptionalColorAndScopeDefaults() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> defaults =
+        post("/api/v1/labels", token, "{\"name\":\"Unscoped label\"}");
+    assertEquals(HttpStatus.CREATED, defaults.getStatusCode());
+    assertTrue(defaults.getBody().get("color").isNull());
+    assertTrue(defaults.getBody().get("scopes").isEmpty());
+
+    ResponseEntity<JsonNode> configured =
+        post(
+            "/api/v1/labels",
+            token,
+            "{\"name\":\"Configured label\",\"color\":\"#4C6FFF\","
+                + "\"scopes\":[\"NOTE\",\"TIME_ENTRY\"]}");
+    assertEquals(HttpStatus.CREATED, configured.getStatusCode());
+    assertEquals("#4C6FFF", configured.getBody().get("color").asText());
+    assertEquals(2, configured.getBody().get("scopes").size());
+
+    JsonNode persisted = get("/api/v1/labels", token).getBody();
+    JsonNode reloaded = null;
+    for (JsonNode label : persisted)
+      if (label.get("id").asText().equals(configured.getBody().get("id").asText()))
+        reloaded = label;
+    assertNotNull(reloaded);
+    assertEquals("#4C6FFF", reloaded.get("color").asText());
+    assertEquals(2, reloaded.get("scopes").size());
+  }
+
+  @Test
   void manualTimeEntryIsCreated() {
     String token = freshToken();
     String start = Instant.now().minus(2, ChronoUnit.HOURS).toString();
