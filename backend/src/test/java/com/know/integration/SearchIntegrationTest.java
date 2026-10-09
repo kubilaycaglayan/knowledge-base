@@ -548,6 +548,27 @@ class SearchIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void everyRecordTypeCanBeSelectedIndividually() {
+    String marker = "typefilter" + UUID.randomUUID().toString().replace("-", "");
+    path(marker + " path");
+    label(marker + " label");
+    note(marker + " note", "body");
+    log(marker + " log");
+    session(null, marker + " session", List.of());
+    String boardId = board(marker + " board");
+    card(boardId, marker + " card", doc("body"));
+    calendarDay("2026-09-04", marker + " calendar day", List.of());
+
+    for (String type :
+        List.of("PATH", "BOARD", "LABEL", "NOTE", "CARD", "LOG", "SESSION", "CALENDAR_DAY")) {
+      JsonNode response = search(marker, "&types=" + type);
+      assertEquals(1, response.get("groups").size(), type);
+      assertEquals(type, response.get("groups").get(0).get("type").asText());
+      assertFalse(response.get("groups").get(0).get("results").isEmpty(), type);
+    }
+  }
+
+  @Test
   void groupsWithTheStrongestMatchComeFirst() {
     note("Mentions a heron in passing", "x");
     path("Heron");

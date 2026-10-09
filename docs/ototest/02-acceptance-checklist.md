@@ -455,7 +455,10 @@ browser interaction evidence remains a separate layer.
   (`ReportServiceTest.monthlyReportShowsDailyPathAndLabelBreakdownsWithClippedIntervals`,
   `KnowIntegrationTest.postgresReportRangeUsesUtcLeapDayAndExactHalfOpenInstantBoundaries`,
   and `KnowIntegrationTest.postgresRunningEntryReportUsesInjectedNowAtUtcDayBoundary`).
-- [ ] `GET /api/v1/search` covers each supported record type and type filter.
+- [x] `GET /api/v1/search` covers every supported record type individually and
+  a multi-type filter (`SearchIntegrationTest.findsEveryRecordTypeByItsOwnText`,
+  `SearchIntegrationTest.everyRecordTypeCanBeSelectedIndividually`, and
+  `SearchIntegrationTest.typesFilterNarrowsTheGroups`).
 - [ ] `GET /api/v1/search` covers query length/term limits, limit/offset
   boundaries, unknown types, and invalid fuzzy-mode values.
 - [ ] Search assertions cover literal ranking, fuzzy fallback, per-type cap,
