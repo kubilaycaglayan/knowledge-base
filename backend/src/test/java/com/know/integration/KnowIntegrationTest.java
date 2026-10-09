@@ -1650,6 +1650,34 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertFalse(summary.getBody().has("itemIds"), "summary should not expose removed items");
   }
 
+  @Test
+  void pathSummaryAddsPersistedEntryDurationsAcrossTheRequestedPath() {
+    String token = freshToken();
+    String pathId =
+        post("/api/v1/paths", token, "{\"name\":\"Exact summary\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    post(
+        "/api/v1/time-entries",
+        token,
+        "{\"pathId\":\""
+            + pathId
+            + "\",\"labelIds\":[],\"startedAt\":\"2026-01-01T00:00:00Z\","
+            + "\"endedAt\":\"2026-01-01T00:30:00Z\",\"description\":\"First interval\"}");
+    post(
+        "/api/v1/time-entries",
+        token,
+        "{\"pathId\":\""
+            + pathId
+            + "\",\"labelIds\":[],\"startedAt\":\"2026-01-01T00:30:00Z\","
+            + "\"endedAt\":\"2026-01-01T01:00:00Z\",\"description\":\"Second interval\"}");
+
+    ResponseEntity<JsonNode> summary = get("/api/v1/paths/" + pathId + "/summary", token);
+    assertEquals(HttpStatus.OK, summary.getStatusCode());
+    assertEquals(3600, summary.getBody().get("trackedSeconds").asLong());
+  }
+
   // Criteria: path ordering by most-recent use
 
   @Test
