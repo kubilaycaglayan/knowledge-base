@@ -350,11 +350,11 @@ browser interaction evidence remains a separate layer.
   exclusion as documented.
 - [ ] Search result assertions verify type-specific fields and owner-scoped
   path/label relationships.
-- [ ] `GET /api/v1/preferences` covers default and previously saved preference
+- [x] `GET /api/v1/preferences` covers default and previously saved preference
   values for the signed-in user.
-- [ ] `PUT /api/v1/preferences` covers successful round trip and invalid
+- [x] `PUT /api/v1/preferences` covers successful round trip and invalid
   preference values.
-- [ ] Preferences remain isolated between two disposable users.
+- [x] Preferences remain isolated between two disposable users.
 
 ## Flow: Cover imports and exports
 
