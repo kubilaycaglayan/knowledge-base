@@ -6,6 +6,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -180,6 +186,265 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertTrue(empty.get("nextCursor").isNull());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=0", token).getStatusCode());
     assertEquals(0, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=20", token()).getBody().get("items").size(), "Another user sees none of these cards");
+  }
+
+  @Test
+  void columnCursorWalkRemainsStableAcrossManyPages() {
+    String token = token();
+    String boardId = board(token, "Volume board");
+    String backlogId = statusId(token, boardId, "Backlog");
+    List<String> expected = new ArrayList<>();
+    for (int index = 0; index < 55; index++) {
+      String title = "Volume card " + String.format("%03d", index);
+      ResponseEntity<JsonNode> created =
+          post(
+              "/api/v1/boards/" + boardId + "/cards",
+              token,
+              "{\"title\":\"" + title + "\",\"statusId\":\"" + backlogId + "\"}");
+      assertEquals(HttpStatus.CREATED, created.getStatusCode(), String.valueOf(created.getBody()));
+      expected.add(title);
+    }
+
+    List<String> actual = walkColumn(token, "Backlog", 7);
+    assertEquals(expected, actual);
+    assertEquals(expected.size(), actual.stream().distinct().count());
+  }
+
+  @Test
+  void postgresConcurrentCardUpdatesRejectAStaleExpectedTimestamp() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This optimistic card update race runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Concurrent card board");
+    String labelId =
+        post(
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Concurrent board label\",\"scopes\":[\"BOARD\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    String pathId =
+        post("/api/v1/paths", token, "{\"name\":\"Concurrent board path\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    JsonNode card = card(token, boardId, "Backlog", "Initial card", "LOW");
+    String cardId = card.get("id").asText();
+    String expectedUpdatedAt = card.get("updatedAt").asText();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner A", labelId, pathId, startTogether));
+      Future<Integer> second =
+          requests.submit(
+              () -> updateCardTogether(boardId, cardId, token, expectedUpdatedAt, "Winner B", labelId, pathId, startTogether));
+      int firstStatus = first.get(10, TimeUnit.SECONDS);
+      int secondStatus = second.get(10, TimeUnit.SECONDS);
+      assertEquals(1, List.of(firstStatus, secondStatus).stream().filter(s -> s == 200).count());
+      assertEquals(1, List.of(firstStatus, secondStatus).stream().filter(s -> s == 409).count());
+      JsonNode persisted = get("/api/v1/boards/" + boardId + "/cards/" + cardId, token).getBody();
+      assertTrue(List.of("Winner A", "Winner B").contains(persisted.get("title").asText()));
+      assertEquals(1, persisted.get("labelIds").size());
+      assertEquals(labelId, persisted.get("labelIds").get(0).asText());
+      assertEquals(1, persisted.get("pathIds").size());
+      assertEquals(pathId, persisted.get("pathIds").get(0).asText());
+    }
+  }
+
+  @Test
+  void postgresConcurrentCardMovesKeepOneWinnerForTheExpectedTimestamp() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent board move race runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Concurrent card move board");
+    String backlogId = statusId(token, boardId, "Backlog");
+    String doingId = statusId(token, boardId, "In Progress");
+    String doneId = statusId(token, boardId, "Done");
+    JsonNode initial = card(token, boardId, "Backlog", "Movable card", "LOW");
+    String cardId = initial.get("id").asText();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(
+              () ->
+                  moveCardTogether(boardId, cardId, token, doingId, startTogether));
+      Future<Integer> second =
+          requests.submit(
+              () ->
+                  moveCardTogether(boardId, cardId, token, doneId, startTogether));
+      List<Integer> statuses = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+      assertEquals(List.of(200, 200), statuses.stream().sorted().toList());
+      JsonNode persisted = get("/api/v1/boards/" + boardId + "/cards/" + cardId, token).getBody();
+      assertTrue(List.of(doingId, doneId).contains(persisted.get("statusId").asText()));
+      assertNotEquals(backlogId, persisted.get("statusId").asText());
+      assertEquals(
+          1,
+          get("/api/v1/boards/" + boardId + "/cards", token)
+              .getBody()
+              .findValuesAsText("id")
+              .stream()
+              .filter(cardId::equals)
+              .count());
+    }
+  }
+
+  @Test
+  void postgresConcurrentStatusReordersKeepOneCompleteOrdering() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent status ordering case runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Concurrent status order board");
+    List<String> original =
+        get("/api/v1/boards/" + boardId + "/statuses", token)
+            .getBody()
+            .findValuesAsText("id");
+    List<String> reversed = new ArrayList<>(original);
+    java.util.Collections.reverse(reversed);
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> reorderStatusesTogether(boardId, token, original, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> reorderStatusesTogether(boardId, token, reversed, startTogether));
+      assertEquals(List.of(200, 200), List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)).stream().sorted().toList());
+    }
+    JsonNode current = get("/api/v1/boards/" + boardId + "/statuses", token).getBody();
+    List<String> currentOrder = current.findValuesAsText("id");
+    assertTrue(List.of(original, reversed).contains(currentOrder));
+    assertEquals(List.of(0, 1, 2, 3), current.findValuesAsText("position").stream().map(Integer::valueOf).toList());
+  }
+
+  @Test
+  void postgresConcurrentBoardTabReordersKeepOneCompleteOrdering() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent board tab ordering case runs against PostgreSQL");
+    String token = token();
+    List<String> original =
+        List.of(board(token, "Order A"), board(token, "Order B"), board(token, "Order C"));
+    List<String> reversed = new ArrayList<>(original);
+    java.util.Collections.reverse(reversed);
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> reorderBoardsTogether(token, original, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> reorderBoardsTogether(token, reversed, startTogether));
+      assertEquals(List.of(204, 204), List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)).stream().sorted().toList());
+    }
+    List<String> current =
+        get("/api/v1/boards", token).getBody().findValuesAsText("id");
+    assertTrue(List.of(original, reversed).contains(current));
+  }
+
+  @Test
+  void postgresGanttKeepsDateOnlyCardDatesWithoutZoneDrift() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This date-only board range case runs against PostgreSQL");
+    String token = token();
+    String boardId = board(token, "Inclusive Gantt board");
+    createDatedCard(token, boardId, "Before range", "2024-03-09", "2024-03-09");
+    createDatedCard(token, boardId, "Starts at range", "2024-03-10", "2024-03-10");
+    createDatedCard(token, boardId, "Ends at range", "2024-03-11", "2024-03-11");
+    createDatedCard(token, boardId, "After range", "2024-03-12", "2024-03-12");
+
+    JsonNode gantt =
+        get("/api/v1/boards/all/gantt?from=2024-03-10&to=2024-03-11", token).getBody();
+    assertEquals(
+        List.of("Before range", "Starts at range", "Ends at range", "After range"),
+        titles(gantt));
+    assertEquals("2024-03-10", gantt.get(1).get("startDate").asText());
+    assertEquals("2024-03-11", gantt.get(2).get("dueDate").asText());
+  }
+
+  private int moveCardTogether(
+      String boardId,
+      String cardId,
+      String token,
+      String targetStatusId,
+      CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return post(
+            "/api/v1/boards/" + boardId + "/cards/" + cardId + "/move",
+            token,
+            "{\"statusId\":\""
+                + targetStatusId
+                + "\",\"position\":0}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int reorderStatusesTogether(
+      String boardId, String token, List<String> ids, CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/boards/" + boardId + "/statuses/order",
+            token,
+            "{\"ids\":[\"" + String.join("\",\"", ids) + "\"]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int reorderBoardsTogether(
+      String token, List<String> ids, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/boards/order",
+            token,
+            "{\"ids\":[\"" + String.join("\",\"", ids) + "\"]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private void createDatedCard(
+      String token, String boardId, String title, String startDate, String dueDate) {
+    ResponseEntity<JsonNode> result =
+        post(
+            "/api/v1/boards/" + boardId + "/cards",
+            token,
+            "{\"title\":\""
+                + title
+                + "\",\"startDate\":\""
+                + startDate
+                + "\",\"dueDate\":\""
+                + dueDate
+                + "\"}");
+    assertEquals(HttpStatus.CREATED, result.getStatusCode(), String.valueOf(result.getBody()));
+  }
+
+  private int updateCardTogether(
+      String boardId,
+      String cardId,
+      String token,
+      String expectedUpdatedAt,
+      String title,
+      String labelId,
+      String pathId,
+      CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/boards/" + boardId + "/cards/" + cardId,
+            token,
+            "{\"title\":\""
+                + title
+                + "\",\"labelIds\":[\""
+                + labelId
+                + "\"],\"pathIds\":[\""
+                + pathId
+                + "\"],\"expectedUpdatedAt\":\""
+                + expectedUpdatedAt
+                + "\"}")
+        .getStatusCode()
+        .value();
   }
 
   // AB-03, AB-04

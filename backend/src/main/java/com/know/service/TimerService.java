@@ -19,6 +19,7 @@ public class TimerService {
   private final LabelScopeRepository scopes;
   private final TimeEntryLabelRepository entryLabels;
   private final TimerEventPublisher timerEvents;
+  private final Clock clock;
   @Autowired private TrackerDraftRepository drafts;
   @Autowired private UserRepository users;
 
@@ -78,7 +79,6 @@ public class TimerService {
     this(entries, paths, labels, entryLabels, scopes, null);
   }
 
-  @org.springframework.beans.factory.annotation.Autowired
   public TimerService(
       TimeEntryRepository entries,
       PathRepository paths,
@@ -86,12 +86,25 @@ public class TimerService {
       TimeEntryLabelRepository entryLabels,
       LabelScopeRepository scopes,
       TimerEventPublisher timerEvents) {
+    this(entries, paths, labels, entryLabels, scopes, timerEvents, Clock.systemUTC());
+  }
+
+  @Autowired
+  public TimerService(
+      TimeEntryRepository entries,
+      PathRepository paths,
+      LabelRepository labels,
+      TimeEntryLabelRepository entryLabels,
+      LabelScopeRepository scopes,
+      TimerEventPublisher timerEvents,
+      Clock clock) {
     this.entries = entries;
     this.paths = paths;
     this.labels = labels;
     this.entryLabels = entryLabels;
     this.scopes = scopes;
     this.timerEvents = timerEvents;
+    this.clock = clock;
   }
 
   public record TimeView(
@@ -193,7 +206,7 @@ public class TimerService {
               new TimeEntry(
                   userId,
                   pathId,
-                  Instant.now(),
+                  clock.instant(),
                   description,
                   source == null ? TimeSource.WEB : source));
     } catch (DataIntegrityViolationException ex) {
@@ -216,7 +229,7 @@ public class TimerService {
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Timer not found"));
     if (!e.running()) return view(e);
-    e.stop(Instant.now());
+    e.stop(clock.instant());
     TimeView stopped = view(e);
     rememberDraft(userId, e);
     if (stopped.durationSeconds() < MINIMUM_SAVED_TIMER_SECONDS) {
@@ -243,7 +256,7 @@ public class TimerService {
             .findByUserIdAndEndedAtIsNull(userId)
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.CONFLICT, "No timer is running"));
-    e.stop(Instant.now());
+    e.stop(clock.instant());
     rememberDraft(userId, e);
     long recorded = e.getDurationSeconds();
     if (recorded < MINIMUM_SAVED_TIMER_SECONDS) {
@@ -274,7 +287,7 @@ public class TimerService {
         new TimeEntry(
             userId,
             draft.getPathId(),
-            Instant.now(),
+            clock.instant(),
             draft.getDescription(),
             source == null ? TimeSource.WEB : source);
     e.carry(draft.getPausedSeconds());
@@ -332,7 +345,7 @@ public class TimerService {
       Instant startedAt,
       Instant endedAt,
       String description) {
-    Instant now = Instant.now();
+    Instant now = clock.instant();
     lockUser(userId);
     if (startedAt == null || startedAt.isAfter(now))
       throw new ResponseStatusException(
@@ -342,7 +355,7 @@ public class TimerService {
     validateTargets(userId, pathId, labelIds);
     TimeEntry e =
         entries
-            .findByIdAndUserId(id, userId)
+            .findByIdAndUserIdForUpdate(id, userId)
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Timer not found"));
     if (!e.running())
@@ -430,7 +443,7 @@ public class TimerService {
     validateTargets(userId, pathId, labelIds);
     TimeEntry e =
         entries
-            .findByIdAndUserId(id, userId)
+            .findByIdAndUserIdForUpdate(id, userId)
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time entry not found"));
     if (e.running())
@@ -466,7 +479,7 @@ public class TimerService {
   }
 
   public Statistics statistics(UUID userId) {
-    Instant now = Instant.now();
+    Instant now = clock.instant();
     java.time.LocalDate date = java.time.LocalDate.now(java.time.ZoneOffset.UTC);
     Instant dayStart = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
     Instant weekStart = date.minusDays(6).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();

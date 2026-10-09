@@ -2,6 +2,7 @@ package com.know.domain;
 
 import java.time.Instant;
 import java.util.*;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
@@ -28,6 +29,11 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
   Optional<TimeEntry> findByUserIdAndEndedAtIsNull(UUID userId);
 
   Optional<TimeEntry> findByIdAndUserId(UUID id, UUID userId);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select t from TimeEntry t where t.id = :id and t.userId = :userId")
+  Optional<TimeEntry> findByIdAndUserIdForUpdate(
+      @Param("id") UUID id, @Param("userId") UUID userId);
 
   @Query(
       value = "select * from time_entry where id = :id and user_id = :userId",

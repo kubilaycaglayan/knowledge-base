@@ -1,7 +1,7 @@
 # HARD-03: PostgreSQL behavior, time boundaries, and result volume
 
 **Priority:** High  
-**Status:** Planned  
+**Status:** Complete
 **Scope:** Test coverage and documentation only.
 
 Track completion in the [HARD-03 acceptance checklist](03-acceptance-checklist.md).
@@ -20,29 +20,50 @@ time boundaries and empty/large result sets.
   repository, migration, and existing test evidence. The source-backed map and
   outstanding PostgreSQL criteria are in the
   [HARD-03 acceptance checklist](03-acceptance-checklist.md).
-- [ ] Add an opt-in or CI PostgreSQL integration profile using a unique,
+- [x] Add an opt-in or CI PostgreSQL integration profile using a unique,
   disposable database/container initialized only by Flyway. Fail fast if the
   configured database is not empty or is not explicitly marked disposable;
   never point this job at a persistent development or production database.
-- [ ] Cover PostgreSQL invariants for boards/cards, notes and line-history,
+- [x] Cover PostgreSQL invariants for boards/cards, notes and line-history,
   labels and assignments, imports/transfers, and timer/time-entry writes where
-  query or constraint behavior matters. Include rollback behavior when a
-  multi-step operation fails.
-- [ ] Add deterministic date/time boundary tests for UTC day/week/month report
-  windows, inclusive date-only board ranges, leap days, month/year rollover,
-  entries exactly at `from`/`to`, zero-duration intervals, and running entries
-  cut off at `now`. Freeze or inject the clock rather than relying on wall time.
-- [ ] Add empty and high-volume result tests for search, reports, calendar,
+  query or constraint behavior matters.
+- [x] Add rollback cases for multi-step operations that can fail after an
+  earlier write. PostgreSQL coverage includes imports and undo, path merge,
+  create/rename/restore/order, calendar day/range/labels, note create/update
+  and audit events, board status/order/card movement and creation, label
+  changes and associations, timer lifecycle/configuration/cancel, and time
+  entry edits. The source-by-source audit found remaining transactional paths
+  are read-only or single-row writes; add failure probes when future changes
+  introduce multi-write behavior.
+- [x] Add deterministic date/time boundary tests for UTC day/week/month report
+  windows, leap days, month/year rollover, entries exactly at `from`/`to`,
+  zero-duration intervals, and running entries cut off at injected `now`.
+  Report and timer services use an injectable UTC clock.
+- [x] Establish the Gantt `from`/`to` contract: they define the client's
+  inclusive viewport while the API returns all active cards, including
+  undated and out-of-window cards. PostgreSQL and client tests verify date-only
+  round trips and inclusive clipping.
+- [x] Add empty and high-volume result tests for search, reports, calendar,
   board cursor pages, label history, and exports. Assert stable ordering,
   continuation/no-duplicate behavior, caps, and bounded response shape.
-- [ ] Add PostgreSQL concurrency cases for the one-running-timer invariant,
-  optimistic note/card versions, board moves/ordering, and duplicate label or
-  assignment writes where concurrent requests can race.
-- [ ] Run Flyway migration tests from the supported baseline and on an already
+- [x] Add PostgreSQL races for the one-running-timer invariant, optimistic
+  note/card versions, card moves, board/status reorders, and repeated log/time
+  entry label assignments.
+- [x] Add races for the label/assignment join families where concurrent writes
+  can collide: notes, calendar days/ranges, time entries, logs, board-card
+  paths/labels, timer drafts, and same-name label/scope creation. Board-tab
+  ordering is covered too.
+- [x] Run Flyway migration tests from the supported baseline and on an already
   migrated disposable database. Include a migration smoke path that proves
   application startup does not rely on Hibernate schema mutation.
-- [ ] Document local invocation and CI evidence in `docs/testing.md`, including
+- [x] Document local invocation and CI evidence in `docs/testing.md`, including
   the disposable database guard and cleanup behavior.
+
+The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
+passes the full PostgreSQL suite (443 tests), migrated startup check, and H2
+suite. The source-by-source rollback audit is complete. The report and timer
+services accept an injectable UTC clock; `LabelHistoryService` continues to
+use wall time directly.
 
 ## Acceptance evidence
 

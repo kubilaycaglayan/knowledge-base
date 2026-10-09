@@ -240,7 +240,7 @@ public class KnowledgeService {
       Long expectedVersion) {
     Note note =
         notes
-            .findByIdAndUserId(id, userId)
+            .findActiveByIdAndUserIdForUpdate(id, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found"));
     if (expectedVersion != null && note.getVersion() != expectedVersion) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Note changed in another window");

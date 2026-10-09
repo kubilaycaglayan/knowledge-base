@@ -20,29 +20,63 @@ Global search is covered by `SearchIntegrationTest` (every record type,
 ownership, matching through paths and labels, ranking, paging, archived and
 deleted records, near-miss spellings, LIKE wildcards, and validation). The
 integration suites run on H2, which registers `com.know.service.Trigrams` as
-`word_similarity` in place of pg_trgm. `SearchPostgresIntegrationTest` runs
-the same suite against real PostgreSQL migrated by Flyway, so the pg_trgm
-operators and trigram indexes are exercised too; it runs only when
-`KB_TEST_POSTGRES_URL` names an empty, disposable database.
+`word_similarity` in place of pg_trgm. Set `KB_TEST_POSTGRES_URL` to run the
+integration suites against PostgreSQL 16 with Flyway migrations and Hibernate
+validation. Before Spring starts, the test harness requires
+`KB_TEST_POSTGRES_DISPOSABLE=true`, a database named `kb_test_<unique-suffix>`,
+and an empty database. It prints the database name and server version; Flyway
+logs its migration result. The guard fails before migrations and fixtures when
+the marker, name, loopback-host, or empty-database check fails. The alternate
+`KB_TEST_POSTGRES_MODE=migrated` is only for a database that was initialized by
+the empty mode: it requires successful Flyway history and exercises Hibernate
+validation/startup against the migrated schema. It still requires the explicit
+disposable marker, unique test database name, and loopback host. Neither mode
+drops a database or volume; stop and remove only the disposable container you
+created.
 
-The current opt-in test class enables Flyway and Hibernate validation, but does
-not verify that the configured database is empty or disposable before it
-connects. Create a new database as shown below, use only an isolated local or
-CI database, and do not point this test at the persistent development or
-production database. A future database guard should fail before migrations or
-fixtures run when this precondition is not met.
-
-Example disposable PostgreSQL 16 invocation:
+Example disposable PostgreSQL 16 invocation (the generated suffix makes the
+database unique to this run):
 
 ```bash
-docker run -d --rm --name kb-search-pg -e POSTGRES_PASSWORD=pw postgres:16-alpine
-docker exec kb-search-pg sh -c 'until pg_isready -q; do sleep 1; done; createdb -U postgres kbtest'
-docker run --rm --network container:kb-search-pg \
-  -e KB_TEST_POSTGRES_URL=jdbc:postgresql://localhost:5432/kbtest -e KB_TEST_POSTGRES_PASSWORD=pw \
+test_id="$(date -u +%Y%m%d%H%M%S)_$$"
+test_database="kb_test_local_${test_id}"
+test_container="knowledge-base-postgres-test-${test_id}"
+cleanup_postgres_test() {
+  cleanup_status=$?
+  if [ "$cleanup_status" -ne 0 ]; then
+    mkdir -p backend/build
+    docker logs "$test_container" > "backend/build/${test_container}-postgres.log" 2>&1 || true
+  fi
+  docker stop "$test_container" >/dev/null 2>&1 || true
+}
+trap cleanup_postgres_test EXIT
+docker run -d --rm --name "$test_container" -e POSTGRES_PASSWORD=local-only-password \
+  -e POSTGRES_DB="$test_database" -p 5432:5432 postgres:16-alpine
+until docker exec "$test_container" pg_isready -q; do sleep 1; done
+docker run --rm --network host \
+  -e KB_TEST_POSTGRES_URL="jdbc:postgresql://localhost:5432/${test_database}" \
+  -e KB_TEST_POSTGRES_USER=postgres -e KB_TEST_POSTGRES_PASSWORD=local-only-password \
+  -e KB_TEST_POSTGRES_DISPOSABLE=true \
   -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 \
-  gradle test --no-daemon --tests '*SearchPostgres*' --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
-docker stop kb-search-pg
+  gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
+docker run --rm --network host \
+  -e KB_TEST_POSTGRES_URL="jdbc:postgresql://localhost:5432/${test_database}" \
+  -e KB_TEST_POSTGRES_USER=postgres -e KB_TEST_POSTGRES_PASSWORD=local-only-password \
+  -e KB_TEST_POSTGRES_DISPOSABLE=true -e KB_TEST_POSTGRES_MODE=migrated \
+  -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 \
+  gradle test --no-daemon --tests '*SearchPostgresIntegrationTest' \
+    --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"
 ```
+
+The trap stops only this disposable container. On a failed test or migration,
+it also saves the PostgreSQL container log under ignored `backend/build/` for
+diagnosis; successful runs discard that log.
+
+The `backend-postgres` job in `.github/workflows/verify.yml` runs the full
+backend suite against a per-workflow-run PostgreSQL 16 service database, then
+restarts the search integration test against the already migrated database.
+GitHub Actions prints the database version and Flyway result from the test
+reports and removes the service container after the job.
 
 Board browser coverage has two layers: `(cd frontend && npm run test:board)` runs
 `frontend/scripts/board.acceptance.test.mjs`, which uses fast isolated API
