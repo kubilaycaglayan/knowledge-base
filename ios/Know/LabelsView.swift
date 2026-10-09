@@ -145,6 +145,8 @@ struct LabelsView: View {
                     draft.wrappedValue.scopes.insert(scope)
                   }
                 }))
+              .accessibilityLabel(scope.title)
+              .accessibilityIdentifier("labels.scope.\(scope.rawValue.lowercased())")
           }
         }
         if let error = model.error { Text(error).foregroundStyle(WorkspaceTheme.danger(scheme)) }
