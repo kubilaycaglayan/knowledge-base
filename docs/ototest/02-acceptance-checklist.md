@@ -449,8 +449,12 @@ browser interaction evidence remains a separate layer.
   `ReportServiceTest.customReportPreservesEverySupportedSankeyAggregation`,
   `ReportApiTest.pathAndLabelFiltersReachTheOwnedServiceTogether`, and
   `ReportServiceTest.labelFilterCombinesWithPathFilterAndKeepsOnlyMatchingEntries`).
-- [ ] Report assertions verify totals and category aggregation arithmetic,
-  including timezone/calendar boundary behavior.
+- [x] Report assertions verify daily totals equal the report total, path and
+  label category sums, clipped UTC boundary intervals, and exact leap-day
+  half-open interval arithmetic
+  (`ReportServiceTest.monthlyReportShowsDailyPathAndLabelBreakdownsWithClippedIntervals`,
+  `KnowIntegrationTest.postgresReportRangeUsesUtcLeapDayAndExactHalfOpenInstantBoundaries`,
+  and `KnowIntegrationTest.postgresRunningEntryReportUsesInjectedNowAtUtcDayBoundary`).
 - [ ] `GET /api/v1/search` covers each supported record type and type filter.
 - [ ] `GET /api/v1/search` covers query length/term limits, limit/offset
   boundaries, unknown types, and invalid fuzzy-mode values.
