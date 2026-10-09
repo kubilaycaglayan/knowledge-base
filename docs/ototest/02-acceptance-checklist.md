@@ -251,8 +251,8 @@ browser interaction evidence remains a separate layer.
   persisted targets/duration, foreign ownership, and invalid interval boundaries.
 - [x] `DELETE /api/v1/time-entries/{id}` covers soft-delete behavior, owner
   isolation, and subsequent detail/history visibility.
-- [ ] `GET /api/v1/statistics` covers tracked-seconds and date/path/label
-  aggregation arithmetic.
+- [x] `GET /api/v1/statistics` covers tracked-seconds and date/path/label
+  aggregation arithmetic, including cross-owner isolation.
 - [ ] Timer duration assertions use server responses/persisted values rather
   than client-calculated historical duration.
 
