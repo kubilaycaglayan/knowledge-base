@@ -165,39 +165,39 @@ covered” row.
 
 ### FLOW-02 — Paths
 
-- [ ] **FLOW-02.01** Open `/paths` directly and through navigation; record list
+- [x] **FLOW-02.01** Open `/paths` directly and through navigation; record list
   loading, empty state, title, search/filter controls, and URL state.
-- [ ] **FLOW-02.02** Create a Path with a valid name; record required fields,
+- [x] **FLOW-02.02** Create a Path with a valid name; record required fields,
   default color/description, submit feedback, and corresponding path-board
   creation/visibility in the Board experience.
-- [ ] **FLOW-02.03** Submit an empty, whitespace-only, duplicate, and overlong
+- [x] **FLOW-02.03** Submit an empty, whitespace-only, duplicate, and overlong
   Path name; record inline validation, focus placement, server error, and
   whether typing/paste remains available.
-- [ ] **FLOW-02.04** Edit a Path name, description, and color; record save,
+- [x] **FLOW-02.04** Edit a Path name, description, and color; record save,
   cancel, error retry, and name propagation to its path board.
-- [ ] **FLOW-02.05** Select colors through the palette using pointer and
+- [x] **FLOW-02.05** Select colors through the palette using pointer and
   keyboard; record accessible names, selected state, visible non-color
   indication, and contrast treatment.
-- [ ] **FLOW-02.06** Reorder Paths by drag and keyboard; record order after
+- [x] **FLOW-02.06** Reorder Paths by drag and keyboard; record order after
   reload, first/last boundaries, focus behavior, and mobile touch alternative.
-- [ ] **FLOW-02.07** Pin/unpin a Path if offered; record state feedback and
+- [x] **FLOW-02.07** Pin/unpin a Path if offered; record state feedback and
   ordering/persistence effect separately from Board tab pinning.
-- [ ] **FLOW-02.08** Change “Show on board” visibility; record immediate show,
+- [x] **FLOW-02.08** Change “Show on board” visibility; record immediate show,
   confirmation before hide, cancel/confirm outcomes, announcement, and card
   preservation when hidden.
-- [ ] **FLOW-02.09** Open a Path using `/paths/:id`; inventory direct-load
+- [x] **FLOW-02.09** Open a Path using `/paths/:id`; inventory direct-load
   detail/history, unknown/foreign/deleted ID behavior, and close/back return.
-- [ ] **FLOW-02.10** Review Path history and open each related session/log/note
+- [x] **FLOW-02.10** Review Path history and open each related session/log/note
   or board-card link; record supported record types and return context.
-- [ ] **FLOW-02.11** Merge one Path into another; record searchable target
+- [x] **FLOW-02.11** Merge one Path into another; record searchable target
   selection, self/foreign target rejection, confirmation, session/card
   transfer, matching-status behavior, source Path/board lifecycle, and final
   user feedback.
-- [ ] **FLOW-02.12** Delete/archive a Path; record confirmation, referenced
+- [x] **FLOW-02.12** Delete/archive a Path; record confirmation, referenced
   data behavior, whether deletion is reversible, and visible recovery route.
-- [ ] **FLOW-02.13** Restore a Path; record restored status, preserved history,
+- [x] **FLOW-02.13** Restore a Path; record restored status, preserved history,
   board visibility, and behavior if its board already exists.
-- [ ] **FLOW-02.14** Exercise Path list, edit, merge, and visibility journeys
+- [x] **FLOW-02.14** Exercise Path list, edit, merge, and visibility journeys
   in mobile Chrome; record dialog fit, keyboard overlap, scrolling, target
   sizes, and drag alternatives.
 
