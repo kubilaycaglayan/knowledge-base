@@ -12,7 +12,7 @@ the repository's bug-fix workflow.
 | --- | --- | --- | --- |
 | [HARD-01](01-browser-journeys.md) | Real-stack search and deep-link journeys | High | Planned |
 | [HARD-02](02-browser-resilience.md) | Browser failure states and unresolved flake triage | High | Planned |
-| [HARD-03](03-postgres-and-boundaries.md) | PostgreSQL behavior, time boundaries, volume cases | High | In Progress |
+| [HARD-03](03-postgres-and-boundaries.md) | PostgreSQL behavior, time boundaries, volume cases | High | Complete |
 | [HARD-04](04-rate-limits-and-security.md) | HTTP rate limits and deployed security controls | High | Planned |
 | [HARD-05](05-performance-baselines.md) | Fixed-data performance baselines | Medium | Planned |
 | [HARD-06](06-ios-validation.md) | A usable iOS validation path | Medium | Planned |

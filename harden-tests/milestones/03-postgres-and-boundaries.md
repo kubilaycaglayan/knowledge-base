@@ -1,7 +1,7 @@
 # HARD-03: PostgreSQL behavior, time boundaries, and result volume
 
 **Priority:** High  
-**Status:** In Progress
+**Status:** Complete
 **Scope:** Test coverage and documentation only.
 
 Track completion in the [HARD-03 acceptance checklist](03-acceptance-checklist.md).
@@ -27,11 +27,14 @@ time boundaries and empty/large result sets.
 - [x] Cover PostgreSQL invariants for boards/cards, notes and line-history,
   labels and assignments, imports/transfers, and timer/time-entry writes where
   query or constraint behavior matters.
-- [ ] Add rollback cases for each multi-step operation that can fail after an
-  earlier write; PostgreSQL coverage now proves rollback across Clockify and
-  Knowledge Base import/undo, path merge, calendar range, association-backed
-  creation, and label assignment cleanup. Audit remaining multi-write
-  transactions before closing this criterion.
+- [x] Add rollback cases for multi-step operations that can fail after an
+  earlier write. PostgreSQL coverage includes imports and undo, path merge,
+  create/rename/restore/order, calendar day/range/labels, note create/update
+  and audit events, board status/order/card movement and creation, label
+  changes and associations, timer lifecycle/configuration/cancel, and time
+  entry edits. The source-by-source audit found remaining transactional paths
+  are read-only or single-row writes; add failure probes when future changes
+  introduce multi-write behavior.
 - [x] Add deterministic date/time boundary tests for UTC day/week/month report
   windows, leap days, month/year rollover, entries exactly at `from`/`to`,
   zero-duration intervals, and running entries cut off at injected `now`.
@@ -57,11 +60,10 @@ time boundaries and empty/large result sets.
   the disposable database guard and cleanup behavior.
 
 The run recorded in [HARD-03 PostgreSQL evidence](../runs/2026-10-08-hard03-postgres.md)
-passes the full PostgreSQL suite (417 tests) and migrated startup check. The
-milestone remains in progress because rollback breadth still needs a complete
-audit across multi-write operations. The report and timer services now accept
-an injectable UTC clock; `LabelHistoryService` continues to use wall time
-directly.
+passes the full PostgreSQL suite (443 tests), migrated startup check, and H2
+suite. The source-by-source rollback audit is complete. The report and timer
+services accept an injectable UTC clock; `LabelHistoryService` continues to
+use wall time directly.
 
 ## Acceptance evidence
 

@@ -22,7 +22,7 @@ criteria.
 | Native and locked repository queries | [`TimeEntryRepository`](../../backend/src/main/java/com/know/domain/TimeEntryRepository.java) contains native user-scoped lookup, import identity, and recent-path SQL; [`PathRepository`](../../backend/src/main/java/com/know/domain/PathRepository.java) contains native ordered lookup, including-deleted lookup, and restore SQL; [`BoardCardRepository`](../../backend/src/main/java/com/know/domain/BoardCardRepository.java) contains native priority-page SQL and a locked card update; [`DailyRecordRepository`](../../backend/src/main/java/com/know/domain/DailyRecordRepository.java) locks existing calendar rows; [`UserRepository`](../../backend/src/main/java/com/know/domain/UserRepository.java) locks an owner while creating missing calendar dates and labels. | Run the affected repository/service paths on PostgreSQL and assert UUID mapping/casts, null ordering, stable tie ordering, deleted-row scope, updates, and page boundaries. |
 | Time and date storage | Migrations use `timestamptz` for instants and `date` for daily records and card ranges. [`ReportService`](../../backend/src/main/java/com/know/service/ReportService.java) and [`TimerService`](../../backend/src/main/java/com/know/service/TimerService.java) use an injectable UTC `Clock`. `KnowIntegrationTest` pins report time and checks UTC day/week/month windows, leap day, exact half-open instants, rollover, and a running-entry cutoff on PostgreSQL. [`LabelHistoryIntegrationTest`](../../backend/src/test/java/com/know/integration/LabelHistoryIntegrationTest.java) checks requested-zone month/hour conversion and the New York spring-forward transition on PostgreSQL. Gantt `from`/`to` define a client viewport: the API returns every active card, including undated and out-of-window cards, and preserves card dates as `LocalDate`; the client clips bars to the inclusive visible days. | `LabelHistoryService` still uses the system clock. Keep the documented Gantt viewport behavior and date-only round-trip coverage aligned. |
 | Pages and result volume | `SearchIntegrationTest` checks a 1,003-result cap and page boundaries on PostgreSQL; `AllBoardsIntegrationTest` checks a 55-card cursor walk; `KnowIntegrationTest` checks a full leap year of calendar days, 48 report entries, and stable ordering for 60 exported logs; `LabelHistoryIntegrationTest` checks six ordered pages of 55 sessions. Existing empty search/history/page/export cases also run on PostgreSQL through the shared profile. | Add any newly introduced endpoint family's empty/high-volume PostgreSQL case to this inventory. |
-| Concurrency and rollback | PostgreSQL integration tests race timer starts, note versions, card timestamps/moves, board-tab order, status reorders, every active label/assignment join family, and same-name label/scope creation. Rollback tests force failures after writes in Clockify/Knowledge Base imports and undo, path merge and board seeding, calendar range updates, note create/update, card/time-entry/label creation, timer start/pause, status archive, and label cleanup. | Finish the source-by-source audit of remaining multi-write transactional flows and add failure-after-write cases where appropriate. |
+| Concurrency and rollback | PostgreSQL integration tests race timer starts, note versions, card timestamps/moves, board-tab order, status reorders, every active label/assignment join family, and same-name label/scope creation. Rollback tests force failures after writes in imports and undo, path merge/create/rename/restore/order, calendar updates and labels, note create/update/audit events, board status/order/card flows, label updates/assignments, timer lifecycle/configuration/cancel, and time-entry edits. | The source-by-source audit found remaining transactional paths are read-only or single-row writes. Add failure-after-write cases when a future change introduces multi-write behavior. |
 
 - [x] Review each row for newly added native queries, constraints, indexes,
   cascades, or transaction behavior and link the resulting PostgreSQL test.
@@ -50,13 +50,14 @@ criteria.
 - [x] Exercise PostgreSQL boards/cards, note versions and line history, labels
   and assignments, imports/transfers, and timer/time-entry writes when schema
   or query behavior is database-sensitive.
-- [ ] Cover rollback after each multi-step operation fails after an earlier
-  write; assert no partial child, association, or audit data remains. PostgreSQL
-  failure-after-write cases cover Clockify and Knowledge Base import/undo,
-  path merge and board seeding, calendar range, note create/update,
-  card/time-entry/label creation, timer start/pause, status archive, and label
-  assignment cleanup. The source-by-source audit of remaining multi-write
-  transactions is still open.
+- [x] Cover rollback after multi-step operations fail after an earlier write;
+  assert no partial child, association, or audit data remains. PostgreSQL
+  failure-after-write cases cover import and undo, path merge/create/rename/
+  restore/order, board seeding/status/card movement/order/create, calendar
+  day/range/label updates, note create/update and audit writes, label
+  assignments and changes, timer start/stop/pause/resume/configure/cancel,
+  time-entry edits, and association cleanup. The source-by-source audit found
+  remaining transactional paths are read-only or single-row writes.
 - [x] Concurrently attempt to start timers for one user and prove exactly one
   running timer remains and all returned responses reflect persisted state.
 - [x] Race stale note/card versions and assert the documented conflict response
@@ -101,10 +102,9 @@ criteria.
 - [x] Link CI or release-gate results and name every omitted database-sensitive
   area before marking the milestone complete.
 
-HARD-03 remains **In Progress**. The test inventory, CI gate, migration paths,
-guard, timer/note/card and board/status ordering races, label/assignment join
-races, clock/DST boundaries, rollback across the covered transaction families,
-representative active-schema PostgreSQL constraint and volume checks, and
-ignored failure logs are complete. The rollback criterion remains open pending
-an audit of other multi-write transactions. See the dated
-[run evidence](../runs/2026-10-08-hard03-postgres.md).
+HARD-03 is **Complete**. The test inventory, CI gate, migration paths, target
+guard, concurrency races, clock/DST boundaries, active-schema PostgreSQL
+constraints, volume checks, and rollback coverage are complete. The audit
+found no remaining multi-write transactional paths without failure-after-write
+coverage; future multi-write changes should add matching rollback probes. See
+the dated [run evidence](../runs/2026-10-08-hard03-postgres.md).
