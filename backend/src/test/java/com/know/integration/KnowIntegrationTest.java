@@ -2578,11 +2578,25 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(3, report.get("days").size());
     for (int index = 0; index < 3; index++) {
       JsonNode day = report.get("days").get(index);
+      assertEquals("2026-09-0" + (index + 1), day.get("date").asText());
       assertEquals("Release week", day.get("calendarNote").asText());
       assertEquals("Release", day.get("calendarLabels").get(0).get("label").asText());
       assertEquals("#805AD5", day.get("calendarLabels").get(0).get("color").asText());
       assertEquals(1.0, day.get("calendarLabels").get(0).get("portion").asDouble(), 0.001);
     }
+  }
+
+  @Test
+  void customReportAcceptsTheTwoYearMaximumWindowIncludingBothEndpoints() {
+    String token = freshToken();
+    JsonNode report =
+        get("/api/v1/reports?startDate=2024-09-09&endDate=2026-09-09", token).getBody();
+
+    assertEquals("2024-09-09", report.get("from").asText());
+    assertEquals("2026-09-09", report.get("to").asText());
+    assertEquals(731, report.get("days").size());
+    assertEquals("2024-09-09", report.get("days").get(0).get("date").asText());
+    assertEquals("2026-09-09", report.get("days").get(730).get("date").asText());
   }
 
   @Test
