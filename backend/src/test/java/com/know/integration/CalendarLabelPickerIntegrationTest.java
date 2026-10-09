@@ -50,6 +50,41 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
     return res.getBody();
   }
 
+  @Test
+  void calendarLabelListIncludesOnlyOwnedCalendarScopedLabelsInNameOrder() {
+    String owner = token();
+    String other = token();
+    String emptyUser = token();
+    String gamma =
+        ok(HttpMethod.POST, "/api/v1/calendar/labels", owner, "{\"name\":\"Gamma\"}")
+            .get("id")
+            .asText();
+    String alpha =
+        ok(HttpMethod.POST, "/api/v1/calendar/labels", owner, "{\"name\":\"Alpha\"}")
+            .get("id")
+            .asText();
+    String sharedScope =
+        ok(
+                HttpMethod.POST,
+                "/api/v1/labels",
+                owner,
+                "{\"name\":\"Beta\",\"scopes\":[\"CALENDAR\",\"NOTE\"]}")
+            .get("id")
+            .asText();
+    String nonCalendar = hiddenLabel(owner, "Hidden");
+    String foreign =
+        ok(HttpMethod.POST, "/api/v1/calendar/labels", other, "{\"name\":\"Foreign\"}")
+            .get("id")
+            .asText();
+
+    JsonNode labels = ok(HttpMethod.GET, "/api/v1/calendar/labels", owner, null);
+    assertEquals(List.of("Alpha", "Beta", "Gamma"), labels.findValuesAsText("name"));
+    assertEquals(List.of(alpha, sharedScope, gamma), labels.findValuesAsText("id"));
+    assertFalse(labels.findValuesAsText("id").contains(nonCalendar));
+    assertFalse(labels.findValuesAsText("id").contains(foreign));
+    assertTrue(ok(HttpMethod.GET, "/api/v1/calendar/labels", emptyUser, null).isEmpty());
+  }
+
   /** A label hidden from Calendar, as created outside the Calendar page. */
   String hiddenLabel(String token, String name) {
     return ok(
