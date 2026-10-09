@@ -119,8 +119,8 @@ browser interaction evidence remains a separate layer.
 
 - [x] `GET /api/v1/paths` covers the default active-only list, owner scope,
   and ordering. The endpoint has no filter or archived-visibility query.
-- [ ] `POST /api/v1/paths` covers successful creation and persisted values.
-- [ ] `GET /api/v1/paths/{id}` covers owned, missing, and foreign IDs.
+- [x] `POST /api/v1/paths` covers successful creation and persisted values.
+- [x] `GET /api/v1/paths/{id}` covers owned, missing, and foreign IDs.
 - [ ] `GET /api/v1/paths/{id}/summary` covers aggregation values and date/time
   boundaries.
 - [ ] `PUT /api/v1/paths/{id}` covers successful update, invalid values, and
