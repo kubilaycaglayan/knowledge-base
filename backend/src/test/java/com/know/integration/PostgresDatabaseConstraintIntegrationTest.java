@@ -394,6 +394,44 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresCardCreateRollsBackNewColumnWhenCardInsertFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String boardId =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Column rollback board\"}")
+            .get("id")
+            .asText();
+    String trigger = failOnInsertTrigger("board_cards");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/boards/" + boardId + "/cards/in-column",
+              token,
+              "{\"columnName\":\"Rollback new column\",\"title\":\"Card write fails\",\"pathIds\":[],\"labelIds\":[]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("board_cards", trigger);
+    }
+    UUID boardUuid = UUID.fromString(boardId);
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from board_statuses where board_id = ? and name = ?",
+            Long.class,
+            boardUuid,
+            "Rollback new column"));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from board_cards where board_id = ? and title = ?",
+            Long.class,
+            boardUuid,
+            "Card write fails"));
+  }
+
+  @Test
   void postgresCreateOperationsRollBackParentsWhenAssociationWritesFail() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -637,6 +675,176 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
             Long.class,
             userId,
             "Replacement rollback tag"));
+  }
+
+  @Test
+  void postgresCalendarDayReplacementRollsBackNoteAndOldLabelsWhenNewAssignmentFails()
+      throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String originalLabelId =
+        api.created(
+                "POST",
+                "/api/v1/calendar/labels",
+                token,
+                "{\"name\":\"Original calendar rollback label\"}")
+            .get("id")
+            .asText();
+    String replacementLabelId =
+        api.created(
+                "POST",
+                "/api/v1/calendar/labels",
+                token,
+                "{\"name\":\"Replacement calendar rollback label\"}")
+            .get("id")
+            .asText();
+    api.put(
+        "/api/v1/calendar/days/2026-06-01",
+        token,
+        "{\"note\":\"Original calendar note\",\"labels\":[{\"labelId\":\""
+            + originalLabelId
+            + "\",\"portion\":0.25}]}");
+    String trigger = failOnInsertTrigger("daily_record_label");
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/calendar/days/2026-06-01",
+              token,
+              "{\"note\":\"Changed calendar note\",\"labels\":[{\"labelId\":\""
+                  + replacementLabelId
+                  + "\",\"portion\":0.75}]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("daily_record_label", trigger);
+    }
+    UUID userId = subject(token);
+    assertEquals(
+        "Original calendar note",
+        jdbc.queryForObject(
+            "select note from daily_record where user_id = ? and record_date = ?",
+            String.class,
+            userId,
+            java.sql.Date.valueOf("2026-06-01")));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from daily_record_label a join daily_record r on r.id = a.daily_record_id where r.user_id = ? and a.label_id = ?",
+            Long.class,
+            userId,
+            UUID.fromString(originalLabelId)));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from daily_record_label a join daily_record r on r.id = a.daily_record_id where r.user_id = ? and a.label_id = ?",
+            Long.class,
+            userId,
+            UUID.fromString(replacementLabelId)));
+  }
+
+  @Test
+  void postgresLabelUpdateRollsBackNameAndScopesWhenScopeInsertionFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String labelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Original scope label\",\"scopes\":[\"NOTE\"]}")
+            .get("id")
+            .asText();
+    String trigger = failOnInsertTrigger("label_scope");
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/labels/" + labelId,
+              token,
+              "{\"name\":\"Changed scope label\",\"scopes\":[\"NOTE\",\"TIME_ENTRY\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("label_scope", trigger);
+    }
+    UUID labelUuid = UUID.fromString(labelId);
+    assertEquals(
+        "Original scope label",
+        jdbc.queryForObject("select name from labels where id = ?", String.class, labelUuid));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from label_scope where label_id = ? and scope = 'NOTE'",
+            Long.class,
+            labelUuid));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from label_scope where label_id = ? and scope = 'TIME_ENTRY'",
+            Long.class,
+            labelUuid));
+  }
+
+  @Test
+  void postgresLogLabelReplacementRestoresOldAssignmentWhenNewInsertFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String originalLabelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Original log rollback label\",\"scopes\":[\"LOG\"]}")
+            .get("id")
+            .asText();
+    String replacementLabelId =
+        api.created(
+                "POST",
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Replacement log rollback label\",\"scopes\":[\"LOG\"]}")
+            .get("id")
+            .asText();
+    String logId =
+        api.created(
+                "POST",
+                "/api/v1/logs",
+                token,
+                "{\"body\":\"Log replacement rollback\",\"occurredAt\":\"2026-06-01T12:00:00Z\"}")
+            .get("id")
+            .asText();
+    api.put(
+        "/api/v1/logs/" + logId + "/labels",
+        token,
+        "{\"labelIds\":[\"" + originalLabelId + "\"]}");
+    String trigger = failOnInsertTrigger("log_label");
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/logs/" + logId + "/labels",
+              token,
+              "{\"labelIds\":[\"" + replacementLabelId + "\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("log_label", trigger);
+    }
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from log_label where log_id = ? and label_id = ?",
+            Long.class,
+            UUID.fromString(logId),
+            UUID.fromString(originalLabelId)));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from log_label where log_id = ? and label_id = ?",
+            Long.class,
+            UUID.fromString(logId),
+            UUID.fromString(replacementLabelId)));
   }
 
   private String failOnInsertTrigger(String tableName) {

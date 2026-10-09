@@ -209,6 +209,59 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
             userId(owner)));
   }
 
+  @Test
+  void postgresResumeFailureRollsBackNewTimerAndKeepsPausedDraft() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer resume transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Resume rollback label");
+    assertEquals(
+        HttpStatus.CREATED,
+        post("/api/v1/timers", owner, "{\"labelIds\":[],\"description\":\"resume rollback\"}")
+            .getStatusCode());
+    assertEquals(HttpStatus.OK, post("/api/v1/timers/pause", owner, "{}").getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/timers/draft",
+                owner,
+                "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"paused draft\"}")
+            .getStatusCode());
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_resume_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced resume label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on time_entry_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/resume", owner, "{}").getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+
+    assertNull(get("/api/v1/timers/current", owner).getBody());
+    JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
+    assertTrue(draft.hasNonNull("pausedSeconds"));
+    assertEquals("paused draft", draft.get("description").asText());
+    assertEquals(labelId, draft.get("labelIds").get(0).asText());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry where user_id = ? and ended_at is null",
+            Long.class,
+            userId(owner)));
+  }
+
   private UUID userId(String token) {
     try {
       return UUID.fromString(
