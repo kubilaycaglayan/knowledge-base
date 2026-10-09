@@ -57,7 +57,7 @@ public class LogService {
     if (expectedVersion != null && log.getVersion() != expectedVersion)
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Log changed in another window");
     log.update(cleanBody(body), requiredTimestamp(occurredAt));
-    return view(logs.save(log));
+    return view(logs.saveAndFlush(log));
   }
 
   @Transactional
