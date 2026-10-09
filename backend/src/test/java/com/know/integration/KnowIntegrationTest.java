@@ -2350,6 +2350,14 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(1, replacement.getBody().get("labels").size());
     assertEquals("Milestone", replacement.getBody().get("labels").get(0).get("name").asText());
     assertTrue(replacement.getBody().get("labels").get(0).get("portion").isNull());
+    JsonNode persistedReplacement =
+        get("/api/v1/calendar/days?startDate=2026-09-04&endDate=2026-09-04", token)
+            .getBody()
+            .get(0);
+    assertEquals("Recovery milestone", persistedReplacement.get("note").asText());
+    assertEquals(1, persistedReplacement.get("labels").size());
+    assertEquals(milestoneId, persistedReplacement.get("labels").get(0).get("labelId").asText());
+    assertTrue(persistedReplacement.get("labels").get(0).get("portion").isNull());
 
     assertEquals(
         HttpStatus.NO_CONTENT, delete("/api/v1/calendar/days/2026-09-04", token).getStatusCode());
