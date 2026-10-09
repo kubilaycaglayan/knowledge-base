@@ -7,7 +7,7 @@ classify existing evidence, but do not execute test suites, create product
 records, or perform real-stack acceptance journeys under this milestone. Those
 execution activities belong to later #ototest milestones.
 
-**Status:** Not started  
+**Status:** In progress
 **Scope:** Knowledge Base web app in desktop and mobile Chrome; Chrome extension
 surfaces where the extension is supported  
 **Excluded:** Native iOS application and iOS-only flows  

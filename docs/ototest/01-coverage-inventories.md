@@ -1,7 +1,7 @@
 # OTOTEST-01 — Coverage inventories
 
 **Priority:** High  
-**Status:** Proposed  
+**Status:** In progress
 **Dependencies:** None
 
 **Scope:** Documentation-only inventory of the Knowledge Base web app in
@@ -78,6 +78,14 @@ page-region and edge-case decomposition.
   artifact that is checked into the repository.
 - A cross-client feature map with evidence type and current CI job/command.
 - A ranked list of uncovered behaviors to feed OTOTEST-02 through 05.
+
+## Current evidence
+
+- [Web route evidence matrix](01-route-matrix.md): routes reconciled to router
+  declarations and located test files; unresolved browser and deep-link
+  assertions remain gaps.
+- API operation, control, extension, and cross-client evidence matrices are
+  still outstanding. This milestone remains in progress.
 
 ## Acceptance
 
