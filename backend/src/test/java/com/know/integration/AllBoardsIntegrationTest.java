@@ -147,6 +147,8 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
   @Test
   void columnsCoverOnlyTheUsersTabBoards() {
     String token = token();
+    String emptyUser = token();
+    assertTrue(columns(emptyUser).isEmpty());
     String kept = board(token, "Kept");
     String archived = board(token, "Old");
     post("/api/v1/boards/" + archived + "/statuses", token, "{\"name\":\"Archived board column\"}");
