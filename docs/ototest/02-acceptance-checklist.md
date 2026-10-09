@@ -158,7 +158,7 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover Notes operations
 
-- [ ] `GET /api/v1/notes` covers active, archived, paginated, and query-filtered
+- [x] `GET /api/v1/notes` covers active, archived, paginated, and query-filtered
   list behavior.
 - [ ] `GET /api/v1/notes/labels` covers available NOTE labels and owner scope.
 - [ ] `GET /api/v1/notes/{id}` covers owned, missing, and foreign note IDs.
