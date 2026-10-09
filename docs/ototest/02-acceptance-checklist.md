@@ -193,8 +193,8 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/logs/{id}` covers owned, missing, and foreign log IDs.
 - [x] `POST /api/v1/logs` covers creation, occurrence timestamp, and persisted
   body. Log labels are assigned through the separate labels operation.
-- [ ] `PUT /api/v1/logs/{id}` covers update and optimistic version conflict
-  behavior.
+- [x] `PUT /api/v1/logs/{id}` covers persisted body/time update and optimistic
+  version conflict behavior.
 - [ ] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
   owned labels with LOG scope.
 - [ ] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
