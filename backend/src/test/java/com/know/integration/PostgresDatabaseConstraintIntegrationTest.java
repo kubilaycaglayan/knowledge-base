@@ -412,7 +412,8 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
               "{\"columnName\":\"Rollback new column\",\"title\":\"Card write fails\",\"pathIds\":[],\"labelIds\":[]}");
       assertEquals(500, failed.status(), failed.body());
     } finally {
-      dropInsertTrigger("board_cards", trigger);
+      jdbc.execute("drop trigger if exists " + trigger + " on board_cards");
+      jdbc.execute("drop function if exists " + trigger + "()");
     }
     UUID boardUuid = UUID.fromString(boardId);
     assertEquals(
@@ -472,7 +473,8 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
               "{\"boardId\":\"" + targetBoardId + "\"}");
       assertEquals(500, failed.status(), failed.body());
     } finally {
-      dropInsertTrigger("board_cards", trigger);
+      jdbc.execute("drop trigger if exists " + trigger + " on board_cards");
+      jdbc.execute("drop function if exists " + trigger + "()");
     }
     assertEquals(
         0L,
