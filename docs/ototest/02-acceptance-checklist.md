@@ -213,12 +213,12 @@ browser interaction evidence remains a separate layer.
   invariant.
 - [ ] `PUT /api/v1/timers/{id}` covers update, optional stop/end-time behavior,
   and owner-scoped timer IDs.
-- [ ] `POST /api/v1/timers/stop` covers stopping the current timer.
-- [ ] `POST /api/v1/timers/{id}/stop` covers the explicit-ID alias and its
+- [x] `POST /api/v1/timers/stop` covers stopping the current timer.
+- [x] `POST /api/v1/timers/{id}/stop` covers the explicit-ID alias and its
   parity with the canonical stop behavior.
-- [ ] `POST /api/v1/timers/cancel` covers canceling the current timer without
+- [x] `POST /api/v1/timers/cancel` covers canceling the current timer without
   recording tracked time.
-- [ ] `POST /api/v1/timers/{id}/cancel` covers the explicit-ID alias and its
+- [x] `POST /api/v1/timers/{id}/cancel` covers the explicit-ID alias and its
   parity with canonical cancel behavior.
 - [ ] Stop behavior covers the under-two-second discard boundary.
 - [ ] `POST /api/v1/timers/pause` covers pause state and accumulated duration.

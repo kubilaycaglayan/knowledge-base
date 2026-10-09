@@ -137,13 +137,13 @@ before API-02 can be accepted.
 | PUT `/api/v1/timers/draft` | `TimerController.saveDraft`; `StartRequest` body | `TimerApiTest`; named state mapping gap | Draft persistence/clear behavior |
 | POST `/api/v1/timers` | `TimerController.start` | `TimerApiTest.timerStartPassesExplicitSourceAndTargetsToService`; `timerStartRequiresExplicitLabelCollection`; `TimerServiceEdgeTest`, `SecurityHardeningIntegrationTest` | One-running invariant, conflicts and referenced owner IDs need operation-level mapping |
 | PUT `/api/v1/timers/{id}` | `TimerController.configure`; `id` path and `RunningUpdateRequest` body | `TimerApiTest.runningTimerConfigurationPassesEditableStartAndTargets` | Running timer update contract; owner and time-bound effects need mapping |
-| POST `/api/v1/timers/stop` | `TimerController.stop`; canonical alias; no bound ID | `TimerApiTest`, `TimerPauseIntegrationTest`; alias parity assertion gap | Stop effect, no-current conflict |
-| POST `/api/v1/timers/{id}/stop` | `TimerController.stop`; optional `id` path alias | Same candidates; alias parity assertion gap | Foreign/mismatched ID and same state effect |
+| POST `/api/v1/timers/stop` | `TimerController.stop`; canonical alias; no bound ID | `TimerApiTest.canonicalAndExplicitStopRoutesUseTheSameTimerAndResponse` | Returns the stopped timer and resolves current ID; alias parity verified |
+| POST `/api/v1/timers/{id}/stop` | `TimerController.stop`; optional `id` path alias | `TimerApiTest.canonicalAndExplicitStopRoutesUseTheSameTimerAndResponse` | Same status/body and service call as canonical alias when the explicit ID matches current timer |
 | POST `/api/v1/timers/pause` | `TimerController.pause` | `TimerPauseIntegrationTest`, `TimerApiTest` | State transition and repeated pause |
 | POST `/api/v1/timers/resume` | `TimerController.resume` | `TimerPauseIntegrationTest`, `TimerApiTest` | State transition, repeated resume |
 | POST `/api/v1/timers/finish` | `TimerController.finish` | `TimerApiTest`, `TimerServiceEdgeTest` | Persisted entry/duration and invariant |
-| POST `/api/v1/timers/cancel` | `TimerController.cancel`; canonical alias; no bound ID | `TimerApiTest`; alias parity mapping gap | Cancellation and no-current conflict |
-| POST `/api/v1/timers/{id}/cancel` | `TimerController.cancel`; optional `id` path alias | Same candidates; alias parity mapping gap | Foreign/mismatched ID and same effect |
+| POST `/api/v1/timers/cancel` | `TimerController.cancel`; canonical alias; no bound ID | `TimerApiTest.canonicalAndExplicitCancelRoutesCancelTheSameTimer` | Returns 204 and invokes cancellation for the running timer |
+| POST `/api/v1/timers/{id}/cancel` | `TimerController.cancel`; optional `id` path alias | `TimerApiTest.canonicalAndExplicitCancelRoutesCancelTheSameTimer` | Same 204 response and service call as canonical alias when the explicit ID matches current timer |
 | POST `/api/v1/time-entries` | `TimerController.manual` | `TimerApiTest`, `KnowIntegrationTest` | Persisted manual entry, times/labels/path validation |
 | GET `/api/v1/time-entries` | `TimerController.history`; optional `page`, `size` query | `TimerApiTest`, `KnowIntegrationTest` | Owner, filtering, paging and order |
 | GET `/api/v1/time-entries/{id}` | `TimerController.get` | `TimerApiTest`; named owner assertion mapping gap | Missing/foreign ID |
