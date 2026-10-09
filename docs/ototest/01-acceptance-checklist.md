@@ -362,63 +362,63 @@ covered” row.
 
 ### FLOW-08 — Boards, All boards, and archive
 
-- [ ] **FLOW-08.01** Open `/board` without query and with a board query;
+- [x] **FLOW-08.01** Open `/board` without query and with a board query;
   record default board/All boards selection, invalid or hidden board fallback,
   title, and URL state.
-- [ ] **FLOW-08.02** Open Manage boards; record list ordering, pin groups,
+- [x] **FLOW-08.02** Open Manage boards; record list ordering, pin groups,
   row actions, keyboard movement, drag handles, dialog Back, and focus return.
-- [ ] **FLOW-08.03** Create a custom board; record dialog validation, default
+- [x] **FLOW-08.03** Create a custom board; record dialog validation, default
   statuses, selected board, save feedback, and new-board empty state.
-- [ ] **FLOW-08.04** Rename and archive a custom board; record confirmation,
+- [x] **FLOW-08.04** Rename and archive a custom board; record confirmation,
   archive navigation, pinned/order behavior, and Path-board restrictions.
-- [ ] **FLOW-08.05** Pin/unpin and reorder boards; record group movement,
+- [x] **FLOW-08.05** Pin/unpin and reorder boards; record group movement,
   persistence, keyboard alternative, and independence from Paths page order.
-- [ ] **FLOW-08.06** Select an individual board and All boards; record board
+- [x] **FLOW-08.06** Select an individual board and All boards; record board
   selector, query, cards grouped/combined by column, board badges, and
   available actions.
-- [ ] **FLOW-08.07** Create, rename, reorder, sort, and archive a status;
+- [x] **FLOW-08.07** Create, rename, reorder, sort, and archive a status;
   record active/archived status behavior, sort cycle, keyboard/drag support,
   and last-active-status conflict.
-- [ ] **FLOW-08.08** Add a card from a column and from the editor; record
+- [x] **FLOW-08.08** Add a card from a column and from the editor; record
   default status/board, blank-title behavior, creation feedback, and
   persistence after reload.
-- [ ] **FLOW-08.09** Edit card title/body with rich-text toolbar; inventory
+- [x] **FLOW-08.09** Edit card title/body with rich-text toolbar; inventory
   every toolbar action and shortcut, save/close behavior, line history where
   enabled, long/pasted content, and save conflict/failure recovery.
-- [ ] **FLOW-08.10** Change card Path, board, status, priority, dates, and
+- [x] **FLOW-08.10** Change card Path, board, status, priority, dates, and
   labels; record available fields per path/custom board/All boards, validation,
   cross-board move, and persisted result.
-- [ ] **FLOW-08.11** Start a timer from an eligible card; record visibility
+- [x] **FLOW-08.11** Start a timer from an eligible card; record visibility
   rules, button accessible name, Path/title carried to timer, and behavior when
   a timer already runs.
-- [ ] **FLOW-08.12** Archive a card and restore it; record confirmation,
+- [x] **FLOW-08.12** Archive a card and restore it; record confirmation,
   archive link, status fallback if original status is archived, deep-link
   focus, and restored placement.
-- [ ] **FLOW-08.13** Sort cards manually and by priority; record sort direction,
+- [x] **FLOW-08.13** Sort cards manually and by priority; record sort direction,
   stability, whether manual reorder is disabled, and behavior across All boards.
-- [ ] **FLOW-08.14** Drag/reorder a card within and across columns; record
+- [x] **FLOW-08.14** Drag/reorder a card within and across columns; record
   whole-column/order result, ownership/status rules, optimistic feedback,
   failed-save rollback, and touch/keyboard alternative.
-- [ ] **FLOW-08.15** Load more cards and retry a failed page; record cursor,
+- [x] **FLOW-08.15** Load more cards and retry a failed page; record cursor,
   no-duplicate behavior, stale response handling after board/sort changes, and
   end-of-list state.
-- [ ] **FLOW-08.16** Open Gantt and navigate previous/next/today/date bounds;
+- [x] **FLOW-08.16** Open Gantt and navigate previous/next/today/date bounds;
   record visible date window, query/persistence, and behavior for invalid or
   reversed ranges.
-- [ ] **FLOW-08.17** Toggle Gantt card list visibility and full-width layout;
+- [x] **FLOW-08.17** Toggle Gantt card list visibility and full-width layout;
   record sticky gutter, horizontal scroll, saved preference, and return state.
-- [ ] **FLOW-08.18** Drag a scheduled Gantt bar to move its dates and drag each
+- [x] **FLOW-08.18** Drag a scheduled Gantt bar to move its dates and drag each
   resize handle; record whole-day snapping, inclusive dates, save/failure
   feedback, pointer cancel/lost capture, and keyboard alternative.
-- [ ] **FLOW-08.19** Set dates for an unscheduled Gantt card by click and by
+- [x] **FLOW-08.19** Set dates for an unscheduled Gantt card by click and by
   range gesture; record one-day versus inclusive-range outcome and cancel path.
-- [ ] **FLOW-08.20** Use offscreen-date arrows and open a card from Gantt;
+- [x] **FLOW-08.20** Use offscreen-date arrows and open a card from Gantt;
   record target date visibility, deep-linked card query, editor open/close, and
   list scroll behavior.
-- [ ] **FLOW-08.21** Open `/board/archive` directly or from Board; inventory
+- [x] **FLOW-08.21** Open `/board/archive` directly or from Board; inventory
   archived boards/statuses/cards, empty state, query-selected focus, restore
   actions, invalid/foreign IDs, and return-to-board context.
-- [ ] **FLOW-08.22** Exercise Manage boards, Kanban, Gantt, card dialogs, and
+- [x] **FLOW-08.22** Exercise Manage boards, Kanban, Gantt, card dialogs, and
   archive in mobile Chrome; record responsive mode, menu access, touch drag
   alternatives, keyboard overlap, target sizes, and horizontal overflow.
 
