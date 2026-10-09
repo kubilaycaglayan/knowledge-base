@@ -1,6 +1,7 @@
 package com.know.api;
 
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -160,7 +161,15 @@ class PathAuthorizationApiTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.pinned").value(true));
     assertTrue(path.isPinned());
-    verify(paths).save(path);
+    mvc.perform(
+            post("/api/v1/paths/" + pathId + "/pin")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pinned\":false}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.pinned").value(false));
+    assertFalse(path.isPinned());
+    verify(paths, times(2)).save(path);
   }
 
   @Test

@@ -133,7 +133,7 @@ browser interaction evidence remains a separate layer.
   or same-target requests, and the resulting record reassignment.
 - [x] `POST /api/v1/paths/{id}/restore` covers restoration and a subsequent
   read of the active state.
-- [ ] `POST /api/v1/paths/{id}/pin` covers pin and unpin outcomes.
+- [x] `POST /api/v1/paths/{id}/pin` covers pin and unpin outcomes.
 - [ ] `PUT /api/v1/paths/order` covers complete ordering, invalid/missing IDs,
   and persisted order.
 
