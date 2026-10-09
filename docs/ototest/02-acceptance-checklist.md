@@ -414,8 +414,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/calendar/days` covers inclusive start/end records, invalid
   date text, reversed and over-year ranges, and the accepted one-year boundary
   (`KnowIntegrationTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges`).
-- [ ] `PUT /api/v1/calendar/days/{date}` covers replacement semantics for one
-  day's note and label assignments.
+- [x] `PUT /api/v1/calendar/days/{date}` covers replacing one day's note and
+  label assignments, including persisted readback and omitted marker portions
+  (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`).
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
   subsequent absence, foreign-user isolation, and repeated deletion.
 - [ ] `PUT /api/v1/calendar/days/range` covers inclusive range mutation while
