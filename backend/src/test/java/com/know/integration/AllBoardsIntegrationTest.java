@@ -514,6 +514,10 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.CREATED, existing.getStatusCode());
     assertFalse(existing.getBody().get("statusCreated").asBoolean());
     assertEquals(statusId(token, work, "Done"), existing.getBody().get("card").get("statusId").asText());
+    String existingCardId = existing.getBody().get("card").get("id").asText();
+    JsonNode existingReadback = get("/api/v1/boards/" + work + "/cards/" + existingCardId, token).getBody();
+    assertEquals("Shipped", existingReadback.get("title").asText());
+    assertEquals(statusId(token, work, "Done"), existingReadback.get("statusId").asText());
 
     ResponseEntity<JsonNode> created = post("/api/v1/boards/" + work + "/cards/in-column", token, "{\"columnName\":\" Review \",\"title\":\"Check\",\"priority\":\"HIGH\"}");
     assertEquals(HttpStatus.CREATED, created.getStatusCode());
@@ -522,6 +526,10 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(4, created.getBody().get("status").get("position").asInt());
     assertEquals(created.getBody().get("status").get("id"), created.getBody().get("card").get("statusId"));
     assertEquals(List.of("Backlog", "Pending", "In Progress", "Done", "Review"), statusNames(token, work));
+    String createdCardId = created.getBody().get("card").get("id").asText();
+    JsonNode createdReadback = get("/api/v1/boards/" + work + "/cards/" + createdCardId, token).getBody();
+    assertEquals("Check", createdReadback.get("title").asText());
+    assertEquals(created.getBody().get("status").get("id"), createdReadback.get("statusId"));
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/in-column", token(), "{\"columnName\":\"Review\",\"title\":\"x\",\"priority\":\"LOW\"}").getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/in-column", token, "{\"columnName\":\" \",\"title\":\"x\",\"priority\":\"LOW\"}").getStatusCode());
   }
