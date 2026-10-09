@@ -329,34 +329,34 @@ covered” row.
 
 ### FLOW-07 — Labels
 
-- [ ] **FLOW-07.01** Open `/labels` directly; record default scope/filter,
+- [x] **FLOW-07.01** Open `/labels` directly; record default scope/filter,
   list loading, empty state, search field, and URL query behavior.
-- [ ] **FLOW-07.02** Search Labels and clear the query; record `/` shortcut,
+- [x] **FLOW-07.02** Search Labels and clear the query; record `/` shortcut,
   Escape behavior, matching, no-results state, URL restoration, and focus.
-- [ ] **FLOW-07.03** Create a Label with valid name, color, and scopes; record
+- [x] **FLOW-07.03** Create a Label with valid name, color, and scopes; record
   required fields, default Calendar visibility, selected scope cues, and save
   feedback.
-- [ ] **FLOW-07.04** Submit blank, whitespace, duplicate, or overlong Label
+- [x] **FLOW-07.04** Submit blank, whitespace, duplicate, or overlong Label
   names and invalid scope combinations; record inline/server validation and
   correction path.
-- [ ] **FLOW-07.05** Edit Label name, color, scope, and visibility; record
+- [x] **FLOW-07.05** Edit Label name, color, scope, and visibility; record
   existing assignments, immediate/persisted updates, cancel, and failed-save
   recovery.
-- [ ] **FLOW-07.06** Remove a Label; record confirmation, usage constraints,
+- [x] **FLOW-07.06** Remove a Label; record confirmation, usage constraints,
   affected assignment behavior, cancel, and recovery where supported.
-- [ ] **FLOW-07.07** Open Label history from row action and `/labels/:id`;
+- [x] **FLOW-07.07** Open Label history from row action and `/labels/:id`;
   record URL, initial/last use, counts, monthly hours, hours-of-day, and
   related-label data states.
-- [ ] **FLOW-07.08** Follow a related-label trail and return; record cycle
+- [x] **FLOW-07.08** Follow a related-label trail and return; record cycle
   prevention, loading/error/retry, empty related list, and focus/URL behavior.
-- [ ] **FLOW-07.09** Open a related Session, Log, Note, or Calendar record;
+- [x] **FLOW-07.09** Open a related Session, Log, Note, or Calendar record;
   record deep-link target, unavailable-record behavior, and return context.
-- [ ] **FLOW-07.10** Use Label pickers from Sessions, Logs, Notes, Calendar,
+- [x] **FLOW-07.10** Use Label pickers from Sessions, Logs, Notes, Calendar,
   and Board cards; inventory scope filtering, search, create, add/remove,
   selected chips, and save feedback separately per context.
-- [ ] **FLOW-07.11** Record hidden-from-surface labels already assigned to
+- [x] **FLOW-07.11** Record hidden-from-surface labels already assigned to
   records, empty history, missing/deleted related items, and API failures.
-- [ ] **FLOW-07.12** Exercise label rows, dialogs, color/scope controls, and
+- [x] **FLOW-07.12** Exercise label rows, dialogs, color/scope controls, and
   pickers in mobile Chrome; record touch target, scrolling, keyboard overlap,
   and non-color status cues.
 
