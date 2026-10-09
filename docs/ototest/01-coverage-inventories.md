@@ -19,20 +19,20 @@ and explicit gaps. This is the baseline for the rest of `#ototest`.
 
 ## Tasks
 
-- [ ] List every Vue Router path, including parameterized routes, redirects,
+- [x] List every Vue Router path, including parameterized routes, redirects,
   query-driven states, and archive/detail paths. Link each to view/unit tests
   and browser journeys.
-- [ ] Extract every Spring controller mapping as an HTTP method + full path.
+- [x] Extract every Spring controller mapping as an HTTP method + full path.
   Record route aliases, query/path parameters, auth requirement, and controller
   method.
-- [ ] Inventory user-visible controls by page and major dialog/menu: label,
+- [x] Inventory user-visible controls by page and major dialog/menu: label,
   action, expected outcome, keyboard behavior where relevant, and source file.
-- [ ] Inventory extension entry points and supported permissions, including
+- [x] Inventory extension entry points and supported permissions, including
   popup, options, content scripts, background/service worker, and external
   service handoffs. Treat desktop Chrome extension support and mobile Chrome
   web support as separate surfaces; record extension support on mobile as
   supported, unsupported, or needs decision.
-- [ ] For each inventory row, link exact test file and test name when possible;
+- [x] For each inventory row, link exact test file and test name when possible;
   otherwise mark `gap`, `manual`, `unsupported`, or `needs decision`.
 - [ ] Review exclusions with maintainers. Every excluded route/control must
   state why it is not a supported product behavior.
