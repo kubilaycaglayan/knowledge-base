@@ -125,7 +125,6 @@ function authenticated() {
         </RouterLink
         ><RouterLink to="/paths">Paths</RouterLink>
         <RouterLink to="/labels">Labels</RouterLink>
-        <RouterLink to="/development">Development</RouterLink>
       </nav>
       <div class="shell-actions">
         <GlobalSearch v-if="auth.isAuthenticated && router" />

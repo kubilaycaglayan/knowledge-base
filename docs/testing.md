@@ -2,6 +2,14 @@
 
 See the root [test hardening index](../harden-tests/README.md) for the current
 inventory, planned coverage, run-record template, and failure-triage summary.
+See the [test coverage audit](test-coverage-audit.md) for the cross-platform
+review of tested surfaces and identified gaps.
+The follow-up [#ototest coverage roadmap](ototest-roadmap.md) breaks those gaps
+into milestone documents and acceptance criteria.
+Use the [#ototest product test tree](ototest/product-test-tree.md) as the
+source-backed outline for route, page-region, control, gesture, security, and
+edge-case inventories. `/development` is temporary tooling and excluded from
+supported product route coverage and navigation.
 
 The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, boards, and Flyway migrations. Board checks should cover default statuses, nested ownership, invalid date ranges, status archive safeguards, card archive/restore, cursor pages, and Gantt overlap filtering for single, open-ended, and inclusive ranges.
 
