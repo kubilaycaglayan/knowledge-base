@@ -232,8 +232,8 @@ browser interaction evidence remains a separate layer.
   exactly two seconds is covered by `stoppingATimerAtTwoSecondsPersistsTheSession`).
 - [x] `POST /api/v1/timers/pause` covers pause state and accumulated duration
   (`TimerPauseIntegrationTest.pauseRecordsTheSegmentAndKeepsTheSessionContext`).
-- [ ] `POST /api/v1/timers/resume` covers resumed segments and carried
-  duration.
+- [x] `POST /api/v1/timers/resume` covers resumed segments and carried
+  duration (`TimerPauseIntegrationTest.resumeContinuesThePausedSession`).
 - [ ] `POST /api/v1/timers/finish` covers completion of a paused session.
 - [ ] Pause, resume, and finish invalid-state requests cover documented
   conflict behavior.
