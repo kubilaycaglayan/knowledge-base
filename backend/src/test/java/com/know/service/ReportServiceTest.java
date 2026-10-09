@@ -171,9 +171,12 @@ class ReportServiceTest {
     assertEquals("Wander", report.days().getFirst().paths().getFirst().label());
     assertEquals("#123456", report.days().getFirst().paths().getFirst().color());
     assertEquals(600, report.days().get(11).totalSeconds());
+    assertEquals(
+        report.totalSeconds(), report.days().stream().mapToLong(ReportService.Day::totalSeconds).sum());
     assertEquals(630, report.paths().getFirst().seconds());
     assertEquals("Walking", report.sessionLabels().getFirst().label());
     assertEquals("#2878D5", report.sessionLabels().getFirst().color());
+    assertEquals(630, report.sessionLabels().getFirst().seconds());
     assertEquals("WEEK", report.sankey().granularity());
     assertEquals(2, report.sankey().nodes().size());
     assertEquals(1, report.sankey().links().size());
