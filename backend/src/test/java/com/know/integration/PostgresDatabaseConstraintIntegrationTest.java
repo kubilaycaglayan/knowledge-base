@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -317,6 +318,79 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
             Long.class,
             userId,
             "Rollback seeded path"));
+  }
+
+  @Test
+  void postgresStatusArchiveRollsBackEarlierCardMovesWhenALaterMoveFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    JsonNode board =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Archive rollback board\"}");
+    UUID boardId = UUID.fromString(board.get("id").asText());
+    List<UUID> statusIds =
+        jdbc.query(
+            "select id from board_statuses where board_id = ? order by position",
+            (rs, row) -> rs.getObject(1, UUID.class),
+            boardId);
+    UUID sourceStatusId = statusIds.get(0);
+    for (String title : List.of("First rollback card", "Second rollback card"))
+      api.created(
+          "POST",
+          "/api/v1/boards/" + boardId + "/cards",
+          token,
+          "{\"title\":\"" + title + "\",\"statusId\":\"" + sourceStatusId + "\"}");
+
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String sequenceName = "fail_archive_count_" + suffix;
+    String functionName = "fail_archive_move_" + suffix;
+    String triggerName = "fail_archive_move_" + suffix;
+    jdbc.execute("create sequence " + sequenceName);
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin if nextval('"
+            + sequenceName
+            + "') >= 2 then raise exception 'forced second card move failure'; end if; return new; end $$");
+    jdbc.execute(
+        "create trigger "
+            + triggerName
+            + " before update on board_cards for each row execute function "
+            + functionName
+            + "()");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/boards/" + boardId + "/statuses/" + sourceStatusId + "/archive",
+              token,
+              "{}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      jdbc.execute("drop trigger if exists " + triggerName + " on board_cards");
+      jdbc.execute("drop function if exists " + functionName + "()");
+      jdbc.execute("drop sequence if exists " + sequenceName);
+    }
+
+    assertNull(
+        jdbc.queryForObject(
+            "select archived_at from board_statuses where id = ?",
+            Timestamp.class,
+            sourceStatusId));
+    assertEquals(
+        2L,
+        jdbc.queryForObject(
+            "select count(*) from board_cards where board_id = ? and status_id = ? and archived_at is null",
+            Long.class,
+            boardId,
+            sourceStatusId));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from board_cards where board_id = ? and status_id = ?",
+            Long.class,
+            boardId,
+            statusIds.get(1)));
   }
 
   @Test
