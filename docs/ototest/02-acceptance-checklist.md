@@ -308,8 +308,9 @@ browser interaction evidence remains a separate layer.
   results plus missing and foreign board IDs
   (`BoardCreationIntegrationTest.creatingCustomBoardReturnsAndPersistsBoardWithDefaultStatuses`,
   `BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`).
-- [ ] `POST /api/v1/boards/{id}/statuses` covers status creation and initial
-  position.
+- [x] `POST /api/v1/boards/{id}/statuses` covers creation response, persisted
+  board ownership, appended initial position, and foreign board protection
+  (`BoardStatusCreateIntegrationTest.creatingStatusAppendsItAfterDefaultsAndPersistsItsBoardOwnership`).
 - [ ] `PUT /api/v1/boards/{id}/statuses/{statusId}` covers rename and nested
   ownership.
 - [ ] `PUT /api/v1/boards/{id}/statuses/{statusId}/sort` covers each supported
