@@ -244,7 +244,8 @@ browser interaction evidence remains a separate layer.
   preservation of the paused draft (`TimerPauseIntegrationTest.resumeRequiresAPausedSession`).
 - [x] `POST /api/v1/time-entries` covers manual entry creation, persisted
   duration/time, and missing/reversed interval validation.
-- [ ] `GET /api/v1/time-entries` covers owner-scoped ordering and list filters.
+- [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
+  optional page/size pagination metadata.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [ ] `PUT /api/v1/time-entries/{id}` covers completed-entry editing and
   invalid interval boundaries.
