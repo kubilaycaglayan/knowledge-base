@@ -19,6 +19,7 @@ import java.time.Clock;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -2601,6 +2602,41 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             .getStatusCode());
     report = get("/api/v1/reports?startDate=2026-09-01&endDate=2026-09-03", token).getBody();
     assertEquals(1, report.get("calendarLabels").get(0).get("markers").asInt());
+  }
+
+  @Test
+  void calendarDayWritesPersistEverySupportedPortionAndMarkerValue() {
+    String token = freshToken();
+    String labelId =
+        post("/api/v1/calendar/labels", token, "{\"name\":\"Portion choices\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    List<String> portions = Arrays.asList("0", "0.25", "0.50", "0.75", "1.00", null);
+    List<String> dates =
+        List.of(
+            "2026-10-11", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16");
+
+    for (int i = 0; i < dates.size(); i++) {
+      String assignment = "{\"labelId\":\"" + labelId + "\"";
+      if (portions.get(i) != null) assignment += ",\"portion\":" + portions.get(i);
+      assertEquals(
+          HttpStatus.OK,
+          put(
+                  "/api/v1/calendar/days/" + dates.get(i),
+                  token,
+                  "{\"labels\":[" + assignment + "}]}")
+              .getStatusCode());
+    }
+
+    JsonNode persisted =
+        get("/api/v1/calendar/days?startDate=2026-10-11&endDate=2026-10-16", token).getBody();
+    assertEquals(dates, persisted.findValuesAsText("date"));
+    for (int i = 0; i < portions.size(); i++) {
+      JsonNode portion = persisted.get(i).get("labels").get(0).get("portion");
+      if (portions.get(i) == null) assertTrue(portion.isNull());
+      else assertEquals(Double.parseDouble(portions.get(i)), portion.asDouble(), 0.001);
+    }
   }
 
   @Test
