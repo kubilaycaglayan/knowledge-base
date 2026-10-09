@@ -538,6 +538,9 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertFalse(moved.get("statusCreated").asBoolean());
     assertEquals(statusId(token, work, "Done"), moved.get("card").get("statusId").asText());
     assertEquals(0, moved.get("card").get("position").asInt());
+    JsonNode movedReadback = get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody();
+    assertEquals(statusId(token, work, "Done"), movedReadback.get("statusId").asText());
+    assertEquals(0, movedReadback.get("position").asInt());
 
     ResponseEntity<JsonNode> created = post("/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column", token, "{\"columnName\":\"Blocked\",\"position\":3}");
     assertEquals(HttpStatus.OK, created.getStatusCode());
@@ -545,6 +548,9 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals("Blocked", created.getBody().get("status").get("name").asText());
     assertEquals(0, created.getBody().get("card").get("position").asInt());
     assertEquals(statusId(token, work, "Blocked"), created.getBody().get("card").get("statusId").asText());
+    JsonNode createdReadback = get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody();
+    assertEquals(statusId(token, work, "Blocked"), createdReadback.get("statusId").asText());
+    assertEquals(0, createdReadback.get("position").asInt());
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column", token(), "{\"columnName\":\"Done\",\"position\":0}").getStatusCode());
   }
 
