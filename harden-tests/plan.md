@@ -85,6 +85,10 @@ The Keychain unit test passed in a targeted rerun with ad hoc simulator
 signing; the seven UI failures remain. See the
 [HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md). This is failure
 evidence, not an active CI gate, and the historical iOS jobs remain disabled.
+The Foundation-only Linux portability check passed all seven `NoteDocTests`;
+its result is recorded separately in the
+[Linux run report](runs/2026-10-09-hard06-linux-note-document.md) and does not
+change the native simulator status.
 
 ## Acceptance
 
