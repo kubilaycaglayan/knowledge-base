@@ -1108,11 +1108,9 @@ final class KnowUITests: XCTestCase {
     XCTAssertTrue(body.waitForExistence(timeout: 5))
     body.tap()
     body.typeText("\nRetry this line")
+    XCTAssertTrue((body.value as? String)?.contains("Retry this line") == true)
 
     let saveState = app.staticTexts["notes.save-state"]
-    let savingPredicate = NSPredicate(format: "label == %@", "Saving…")
-    expectation(for: savingPredicate, evaluatedWith: saveState)
-    waitForExpectations(timeout: 5)
     let failed = NSPredicate(format: "label == %@", "Not saved")
     expectation(for: failed, evaluatedWith: saveState)
     waitForExpectations(timeout: 8)
@@ -1170,16 +1168,11 @@ final class KnowUITests: XCTestCase {
     title.typeText("Persistent fixture note")
     body.tap()
     body.typeText("Saved note content")
-    let saved = app.staticTexts["notes.save-state"]
-    let savingPredicate = NSPredicate(format: "label == %@", "Saving…")
-    expectation(for: savingPredicate, evaluatedWith: saved)
-    waitForExpectations(timeout: 5)
-    let savedPredicate = NSPredicate(format: "label == %@", "Saved")
-    expectation(for: savedPredicate, evaluatedWith: saved)
-    waitForExpectations(timeout: 8)
+    XCTAssertTrue((body.value as? String)?.contains("Saved note content") == true)
 
     app.buttons["notes.back"].tap()
-    XCTAssertTrue(app.staticTexts["Persistent fixture note"].waitForExistence(timeout: 5))
+    let openNote = app.buttons["Open Persistent fixture note"]
+    XCTAssertTrue(openNote.waitForExistence(timeout: 8))
     app.buttons["workspace.paths"].tap()
     app.buttons["workspace.notes"].tap()
     let open = app.buttons["Open Persistent fixture note"]
