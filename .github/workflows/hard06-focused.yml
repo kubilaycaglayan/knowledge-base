@@ -1,4 +1,4 @@
-name: HARD-06 focused simulator probe
+name: HARD-06 full simulator validation
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       - name: Generate the Xcode project
         working-directory: ios
         run: brew install xcodegen && xcodegen generate --spec project.yml
-      - name: Run focused HARD-06 simulator cases
+      - name: Run the complete Know scheme
         run: |
           mkdir -p harden-tests/artifacts
           device="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r,l in sorted(d.items(), reverse=True) if "iOS" in r for x in l if x["name"].startswith("iPhone")))')"
@@ -23,20 +23,13 @@ jobs:
             -project ios/Know.xcodeproj \
             -scheme Know \
             -destination "platform=iOS Simulator,id=$device" \
-            -resultBundlePath "$PWD/harden-tests/artifacts/HARD06-focused.xcresult" \
-            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
-            -only-testing:KnowUITests/KnowUITests/testCalendarLoadingAndExpiredSessionFixtures \
-            -only-testing:KnowUITests/KnowUITests/testCalendarLongPressAndTapCompleteInclusiveRange \
-            -only-testing:KnowUITests/KnowUITests/testCalendarSavedFixtureShowsAccessibleDayAndRangeControls \
-            -only-testing:KnowUITests/KnowUITests/testLabelsListAndCreateControlsAreReachable \
-            -only-testing:KnowUITests/KnowUITests/testNotesLineHistoryListsEachLineWithItsEditTime \
-            -only-testing:KnowUITests/KnowUITests/testPathsMergeRequiresConfirmationAndRemoveOffersUndo \
-            -only-testing:KnowUITests/KnowUITests/testSessionLabelsPickerHasSummaryCompactPriorityAndKeyboardAccessibleToggle
+            -resultBundlePath "$PWD/harden-tests/artifacts/HARD06-full.xcresult" \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
       - name: Keep simulator result bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hard06-focused-${{ github.run_id }}
-          path: harden-tests/artifacts/HARD06-focused.xcresult
+          name: hard06-full-${{ github.run_id }}
+          path: harden-tests/artifacts/HARD06-full.xcresult
           if-no-files-found: warn
           retention-days: 14
