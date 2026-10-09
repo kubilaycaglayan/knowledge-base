@@ -333,8 +333,10 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/{id}/cards/page` covers empty/small/exact/overflow
   boundaries, safe default page size, stable cursor, PRIORITY and PRIORITY_LAST
   page walks (`BoardControllerApiTest` and `BoardColumnSortIntegrationTest`).
-- [ ] `POST /api/v1/boards/{id}/cards` covers card creation and validation of
-  paths, labels, status, and date fields.
+- [x] `POST /api/v1/boards/{id}/cards` covers persisted card creation with
+  paths/labels, requested status/position, and date/status/path/label
+  validation (`KnowIntegrationTest.boardCardsAcceptMultiplePathsAndBoardScopedLabels`
+  and `BoardControllerApiTest`).
 - [ ] `GET /api/v1/boards/{id}/cards/{cardId}` covers nested card ownership.
 - [ ] `PUT /api/v1/boards/{id}/cards/{cardId}` covers update, referenced-ID
   ownership, and stale `expectedUpdatedAt` conflict behavior.
