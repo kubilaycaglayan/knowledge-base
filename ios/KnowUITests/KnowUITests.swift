@@ -1099,6 +1099,35 @@ final class KnowUITests: XCTestCase {
     XCTAssertFalse(saved.exists)
   }
 
+  func testNotesSaveFailureKeepsDraftAndOffersRetry() {
+    app.launchArguments += ["-ui-testing-authenticated", "-notes-save-error"]
+    app.launch()
+    app.buttons["workspace.notes"].tap()
+    app.buttons["Open Design notes"].tap()
+    let body = app.textViews["notes.body"]
+    XCTAssertTrue(body.waitForExistence(timeout: 5))
+    body.tap()
+    body.typeText("\nRetry this line")
+
+    let saveState = app.staticTexts["notes.save-state"]
+    let failed = NSPredicate(format: "label == %@", "Not saved")
+    expectation(for: failed, evaluatedWith: saveState)
+    waitForExpectations(timeout: 8)
+
+    XCTAssertTrue(
+      app.staticTexts[
+        "Unable to save this note. Your draft is still here; try again."
+      ].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Retry note save"].exists)
+    XCTAssertTrue((body.value as? String)?.contains("Retry this line") == true)
+    app.buttons["Retry note save"].tap()
+    let saved = NSPredicate(format: "label == %@", "Saved")
+    expectation(for: saved, evaluatedWith: saveState)
+    waitForExpectations(timeout: 8)
+    XCTAssertFalse(
+      app.staticTexts["Unable to save this note. Your draft is still here; try again."].exists)
+  }
+
   func testNotesEmptyAndOfflineFixturesOfferRecovery() {
     app.launchArguments += ["-ui-testing-authenticated", "-notes-empty"]
     app.launch()
@@ -1121,6 +1150,50 @@ final class KnowUITests: XCTestCase {
     app.buttons["notes.archive-toggle"].tap()
     XCTAssertTrue(app.buttons["Restore"].waitForExistence(timeout: 5))
     app.buttons["Restore"].tap()
+  }
+
+  func testNotesCreateEditArchiveRestorePersistsAcrossWorkspaceNavigationInMemoryFixture() {
+    app.launchArguments += ["-ui-testing-authenticated", "-notes-empty"]
+    app.launch()
+    app.buttons["workspace.notes"].tap()
+    XCTAssertTrue(app.staticTexts["Your notes will appear here."].waitForExistence(timeout: 5))
+
+    app.buttons["notes.add"].tap()
+    let title = app.textFields["notes.title"]
+    let body = app.textViews["notes.body"]
+    XCTAssertTrue(title.waitForExistence(timeout: 5))
+    XCTAssertTrue(body.waitForExistence(timeout: 5))
+    title.tap()
+    title.typeText("Persistent fixture note")
+    body.tap()
+    body.typeText("Saved note content")
+    let saved = app.staticTexts["notes.save-state"]
+    let savedPredicate = NSPredicate(format: "label == %@", "Saved")
+    expectation(for: savedPredicate, evaluatedWith: saved)
+    waitForExpectations(timeout: 8)
+
+    app.buttons["notes.back"].tap()
+    XCTAssertTrue(app.staticTexts["Persistent fixture note"].waitForExistence(timeout: 5))
+    app.buttons["workspace.paths"].tap()
+    app.buttons["workspace.notes"].tap()
+    let open = app.buttons["Open Persistent fixture note"]
+    XCTAssertTrue(open.waitForExistence(timeout: 5))
+    open.tap()
+    XCTAssertTrue(title.waitForExistence(timeout: 5))
+    XCTAssertEqual(title.value as? String, "Persistent fixture note")
+    XCTAssertEqual(body.value as? String, "Saved note content")
+
+    app.buttons["notes.back"].tap()
+    app.buttons["Archive Persistent fixture note"].tap()
+    XCTAssertTrue(app.buttons["Archive note"].waitForExistence(timeout: 3))
+    app.buttons["Archive note"].tap()
+    app.buttons["notes.archive-toggle"].tap()
+    let restore = app.buttons["Restore"]
+    XCTAssertTrue(restore.waitForExistence(timeout: 5))
+    restore.tap()
+
+    app.buttons["notes.archive-toggle"].tap()
+    XCTAssertTrue(app.buttons["Open Persistent fixture note"].waitForExistence(timeout: 5))
   }
 
   func testNotesControlsRemainReachableAtAccessibilityTextSize() {
