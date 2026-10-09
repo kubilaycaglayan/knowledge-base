@@ -4,6 +4,8 @@
 **Status:** Proposed  
 **Dependencies:** OTOTEST-01
 
+Product flow criteria: see the [OTOTEST-03 acceptance checklist](03-acceptance-checklist.md).
+
 ## Goal
 
 Map every supported web route and meaningful interactive control to a test

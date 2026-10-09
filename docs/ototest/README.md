@@ -41,6 +41,9 @@ cases, ownership/security, extension entrypoints, and required evidence layers.
 
 ## Related product acceptance checklist
 
+- [Web routes and controls milestone acceptance](03-acceptance-checklist.md)
+  covers supported web routes and their user-visible controls in desktop and
+  mobile Chrome.
 - [Web authentication milestone acceptance](02-web-auth-acceptance-checklist.md)
   covers the sign-in, registration, and session flows in desktop web and
   mobile Chrome.
