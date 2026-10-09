@@ -594,6 +594,50 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void knowledgeBaseCsvExportHasDownloadHeadersIsOwnerScopedAndRoundTripsEscapedText() {
+    String owner = freshToken();
+    String importer = freshToken();
+    String other = freshToken();
+    String name = "Café, \"Focus\"";
+    String description = "first line, comma\nsecond line — 東京";
+    ResponseEntity<JsonNode> created =
+        post(
+            "/api/v1/paths",
+            owner,
+            "{\"name\":\"Café, \\\"Focus\\\"\",\"description\":\"first line, comma\\nsecond line — 東京\"}");
+    assertEquals(HttpStatus.CREATED, created.getStatusCode());
+    String pathId = created.getBody().get("id").asText();
+    ResponseEntity<JsonNode> foreignPath =
+        post("/api/v1/paths", other, "{\"name\":\"Private export row\"}");
+    String foreignPathId = foreignPath.getBody().get("id").asText();
+
+    ResponseEntity<String> exported = exportCsv(owner);
+    assertEquals(HttpStatus.OK, exported.getStatusCode());
+    assertTrue(exported.getHeaders().getContentType().isCompatibleWith(MediaType.parseMediaType("text/csv")));
+    assertEquals("UTF-8", exported.getHeaders().getContentType().getCharset().name());
+    assertEquals(
+        "attachment; filename=knowledge-base-export.csv",
+        exported.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION));
+    assertTrue(exported.getBody().contains("Café"));
+    assertTrue(exported.getBody().contains(pathId));
+    assertTrue(exported.getBody().contains("first line, comma\\nsecond line — 東京"));
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + pathId, importer).getStatusCode());
+    assertFalse(exported.getBody().contains("Private export row"));
+    assertFalse(exported.getBody().contains(foreignPathId));
+
+    UUID roundTripId = UUID.randomUUID();
+    ResponseEntity<JsonNode> imported =
+        importCsv(importer, exported.getBody().replace(pathId, roundTripId.toString()));
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(1, imported.getBody().get("imported").asInt());
+    ResponseEntity<JsonNode> reloaded = get("/api/v1/paths/" + roundTripId, importer);
+    assertEquals(HttpStatus.OK, reloaded.getStatusCode(), String.valueOf(reloaded.getBody()));
+    JsonNode roundTripped = reloaded.getBody();
+    assertEquals(name, roundTripped.get("name").asText());
+    assertEquals(description, roundTripped.get("description").asText());
+  }
+
+  @Test
   void knowledgeBaseImportRestoresSoftDeletedRecordsAndUndoRemovesRestoredRecords() {
     String token = freshToken();
     String pathId =

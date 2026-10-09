@@ -368,7 +368,7 @@ browser interaction evidence remains a separate layer.
   and ordering.
 - [ ] `DELETE /api/v1/imports/clockify/batches/{id}` covers undo effects,
   foreign batch rejection, and repeated-undo behavior.
-- [ ] `GET /api/v1/imports/knowledge-base/export` covers CSV content type,
+- [x] `GET /api/v1/imports/knowledge-base/export` covers CSV content type,
   escaping, and export of the authenticated user's records only.
 - [ ] `POST /api/v1/imports/knowledge-base` covers valid CSV round trip,
   stable-ID duplicate handling, and legacy formats documented as supported.
