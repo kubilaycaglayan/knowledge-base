@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -443,6 +444,66 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
             "select count(*) from tracker_draft where user_id = ?",
             Long.class,
             userId(owner)));
+  }
+
+  @Test
+  void postgresTimeEntryEditRestoresPreviousValuesAndLabelsWhenReplacementFails() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Time-entry edit transaction rollback requires PostgreSQL");
+    String owner = token();
+    String originalLabelId = label(owner, "Original edit rollback label");
+    String replacementLabelId = label(owner, "Replacement edit rollback label");
+    JsonNode created =
+        post(
+                "/api/v1/time-entries",
+                owner,
+                "{\"labelIds\":[\""
+                    + originalLabelId
+                    + "\"],\"startedAt\":\"2026-06-01T10:00:00Z\",\"endedAt\":\"2026-06-01T10:05:00Z\",\"description\":\"original entry\",\"source\":\"MANUAL\"}")
+            .getBody();
+    String entryId = created.get("id").asText();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_entry_edit_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced entry edit label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on time_entry_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          put(
+                  "/api/v1/time-entries/" + entryId,
+                  owner,
+                  "{\"labelIds\":[\""
+                      + replacementLabelId
+                      + "\"],\"startedAt\":\"2026-06-02T11:00:00Z\",\"endedAt\":\"2026-06-02T11:05:00Z\",\"description\":\"changed entry\",\"source\":\"MANUAL\"}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+
+    UUID entryUuid = UUID.fromString(entryId);
+    assertEquals(
+        "original entry",
+        jdbc.queryForObject("select description from time_entry where id = ?", String.class, entryUuid));
+    assertEquals(
+        Timestamp.from(Instant.parse("2026-06-01T10:00:00Z")),
+        jdbc.queryForObject("select started_at from time_entry where id = ?", Timestamp.class, entryUuid));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry_label where time_entry_id = ? and label_id = ?",
+            Long.class,
+            entryUuid,
+            UUID.fromString(originalLabelId)));
   }
 
   private UUID userId(String token) {
