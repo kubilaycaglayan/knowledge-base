@@ -9,6 +9,15 @@ Never commit secrets or personal data. See the [local browser validation
 runbook](../local-browser-validation.md) for exact engine/profile combinations
 and machine preflight commands.
 
+## HARD-05 performance reports
+
+- [Desktop Chromium](2026-10-09-hard05-desktop-chromium.md)
+- [Mobile-size Chromium](2026-10-09-hard05-mobile-chromium.md)
+- [Emulated iPhone 13 WebKit](2026-10-09-hard05-iphone-webkit.md)
+- [API request sampler](2026-10-09-hard05-api.md)
+- [Report-only threshold proposal](2026-10-09-hard05-gate-proposal.md)
+- [Environment preflight and benchmark snapshot](2026-10-09-hard05-environment-preflight.md)
+
 ## Required report template
 
 ```markdown

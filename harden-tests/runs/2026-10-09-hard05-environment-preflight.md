@@ -24,9 +24,36 @@
   53.67% CPU and 1.337 GiB / 3 GiB memory in the instantaneous Docker sample.
 - Network/cache: no network shaping; browser cache state is a fresh-context
   cache for any future browser run and is not a cold server/database cache.
-- Result: **not suitable for timed baseline collection**. No performance
-  samples were collected; the active development stack must not be stopped or
-  altered for this task. Re-run the preflight when the machine is idle.
+- Result at 01:28 UTC: preflight only; no performance samples had been collected
+  at that time. This snapshot alone was not a blocker and the persistent
+  development stack remained untouched. The later benchmark collection is
+  documented in the linked profile reports below.
 
-This record is a time-bound preflight only. It does not satisfy a performance
-baseline, identify a stable machine class, or establish browser journey timing.
+## Follow-up benchmark environment
+
+- Captured (UTC): 2026-10-09 05:54
+- Benchmark project: `knowledge-base-perf-20261009-hard05`; isolated from the
+  active `knowledge-base-dev` project.
+- Host: Ubuntu 26.04.1, Linux 7.0.0-38-generic, x86_64; 32 logical CPUs;
+  Docker 29.8.2 with 32 CPUs and 32,728,072,192 bytes available to the daemon.
+- Resource snapshot: 30 GiB host RAM, 17 GiB available, 470 GiB disk free;
+  load average 4.26 / 4.56 / 3.73. The active dev API used 38.57% of one core
+  and 1.356 GiB / 3 GiB; Docker API and database benchmark containers had no
+  explicit CPU or memory limits. Linux CPU governor observed as `powersave`.
+- Runtime: Node 22.23.3 / npm 10.9.9; Playwright 1.63.0; API Temurin Java
+  21.0.12.1; PostgreSQL 16.15; Chromium 153.0.8010.12; WebKit 26.6.
+- Network/cache: loopback without shaping; browser contexts were fresh per
+  sample and warm reloads were separately measured. No explicit CPU or network
+  throttling was configured. No other builds, tests, or benchmarks overlapped
+  timed samples. Persistent Knowledge Base and AI/RAG services remained active.
+- Limits: this is a post-run snapshot, not a per-sample resource time series.
+  Browser and API reports preserve their own sample times, statuses, and raw
+  timings; none attributes a slow observation to a component from end-to-end
+  duration alone.
+- Results: [desktop Chromium](2026-10-09-hard05-desktop-chromium.md),
+  [mobile-size Chromium](2026-10-09-hard05-mobile-chromium.md),
+  [iPhone WebKit](2026-10-09-hard05-iphone-webkit.md), and
+  [API requests](2026-10-09-hard05-api.md). The desktop and mobile Chromium
+  profiles and iPhone WebKit each have two comparable, independent-fixture
+  batches with 3 warmups and 30 measured samples per journey. Initial results
+  remain report-only.
