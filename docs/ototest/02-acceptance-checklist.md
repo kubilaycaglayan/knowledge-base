@@ -311,8 +311,9 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/boards/{id}/statuses` covers creation response, persisted
   board ownership, appended initial position, and foreign board protection
   (`BoardStatusCreateIntegrationTest.creatingStatusAppendsItAfterDefaultsAndPersistsItsBoardOwnership`).
-- [ ] `PUT /api/v1/boards/{id}/statuses/{statusId}` covers rename and nested
-  ownership.
+- [x] `PUT /api/v1/boards/{id}/statuses/{statusId}` covers persisted rename,
+  stable identity/position, and nested board ownership
+  (`BoardStatusRenameIntegrationTest.statusRenamePersistsAndRejectsAStatusFromAnotherBoard`).
 - [ ] `PUT /api/v1/boards/{id}/statuses/{statusId}/sort` covers each supported
   card sort mode.
 - [ ] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate
