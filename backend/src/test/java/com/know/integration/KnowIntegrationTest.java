@@ -1611,6 +1611,36 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void labelUpdatePersistsNameColorAndReplacementScopes() {
+    String token = freshToken();
+    String labelId =
+        post(
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Before update\",\"scopes\":[\"NOTE\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+
+    ResponseEntity<JsonNode> updated =
+        put(
+            "/api/v1/labels/" + labelId,
+            token,
+            "{\"name\":\"After update\",\"color\":\"#2878D5\","
+                + "\"scopes\":[\"TIME_ENTRY\"]}");
+    assertEquals(HttpStatus.OK, updated.getStatusCode());
+    assertEquals("After update", updated.getBody().get("name").asText());
+    assertEquals("#2878D5", updated.getBody().get("color").asText());
+    assertEquals(1, updated.getBody().get("scopes").size());
+
+    JsonNode reloaded = get("/api/v1/labels?scope=TIME_ENTRY", token).getBody().get(0);
+    assertEquals(labelId, reloaded.get("id").asText());
+    assertEquals("After update", reloaded.get("name").asText());
+    assertEquals("#2878D5", reloaded.get("color").asText());
+    assertTrue(get("/api/v1/labels?scope=NOTE", token).getBody().isEmpty());
+  }
+
+  @Test
   void manualTimeEntryIsCreated() {
     String token = freshToken();
     String start = Instant.now().minus(2, ChronoUnit.HOURS).toString();

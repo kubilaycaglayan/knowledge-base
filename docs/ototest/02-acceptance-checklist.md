@@ -142,7 +142,7 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/labels` covers the unfiltered list, scope filtering, and
   owner isolation.
 - [x] `POST /api/v1/labels` covers creation, defaults, colors, and scopes.
-- [ ] `PUT /api/v1/labels/{id}` covers update, invalid scope/color values, and
+- [x] `PUT /api/v1/labels/{id}` covers update, invalid scope/color values, and
   assignment-sensitive restrictions.
 - [ ] `DELETE /api/v1/labels/{id}` covers unassigned deletion.
 - [ ] `DELETE /api/v1/labels/{id}?removeAssignments=true` covers explicit
