@@ -459,8 +459,13 @@ browser interaction evidence remains a separate layer.
   a multi-type filter (`SearchIntegrationTest.findsEveryRecordTypeByItsOwnText`,
   `SearchIntegrationTest.everyRecordTypeCanBeSelectedIndividually`, and
   `SearchIntegrationTest.typesFilterNarrowsTheGroups`).
-- [ ] `GET /api/v1/search` covers query length/term limits, limit/offset
-  boundaries, unknown types, and invalid fuzzy-mode values.
+- [x] `GET /api/v1/search` covers query length/term limits, inclusive limit/offset
+  boundaries, unknown types, and invalid fuzzy-mode values
+  (`SearchApiTest.searchRejectsUnboundedQueryInput`,
+  `SearchApiTest.searchAcceptsInclusiveQueryAndPageBoundaries`,
+  `SearchApiTest.searchRejectsOutOfRangePagesAndUnknownTypes`, and
+  `SearchIntegrationTest.invalidParametersAreRejected` /
+  `manyTermsAreCappedRatherThanRejected`).
 - [ ] Search assertions cover literal ranking, fuzzy fallback, per-type cap,
   incomplete/time-out behavior, archived visibility, and deleted-record
   exclusion as documented.

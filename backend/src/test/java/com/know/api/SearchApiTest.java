@@ -90,6 +90,37 @@ class SearchApiTest {
   }
 
   @Test
+  void searchAcceptsInclusiveQueryAndPageBoundaries() throws Exception {
+    when(search.search(any(), any(), any(), anyInt(), anyInt(), any()))
+        .thenReturn(new SearchService.Response(List.of(), false, false));
+
+    mvc.perform(
+            get("/api/v1/search")
+                .param("q", "x".repeat(200))
+                .param("limit", "1")
+                .param("offset", "0")
+                .with(authentication(auth)))
+        .andExpect(status().isOk());
+    verify(search)
+        .search(
+            eq(user), eq("x".repeat(200)), eq(EnumSet.noneOf(SearchService.Type.class)), eq(1), eq(0), isNull());
+
+    reset(search);
+    when(search.search(any(), any(), any(), anyInt(), anyInt(), any()))
+        .thenReturn(new SearchService.Response(List.of(), false, false));
+    mvc.perform(
+            get("/api/v1/search")
+                .param("q", "x")
+                .param("limit", "50")
+                .param("offset", "1000")
+                .with(authentication(auth)))
+        .andExpect(status().isOk());
+    verify(search)
+        .search(
+            eq(user), eq("x"), eq(EnumSet.noneOf(SearchService.Type.class)), eq(50), eq(1000), isNull());
+  }
+
+  @Test
   void searchRequiresAuthentication() throws Exception {
     mvc.perform(get("/api/v1/search").param("q", "java")).andExpect(status().isUnauthorized());
   }
