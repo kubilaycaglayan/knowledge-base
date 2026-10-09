@@ -476,8 +476,13 @@ browser interaction evidence remains a separate layer.
   `SearchApiTest.searchResponseExposesIncompleteTimeoutSignal`,
   `SearchIntegrationTest.archivedRecordsAreIncludedAndFlagged`,
   `deletedSessionsAndPathsAreLeftOut`, and `deletedLogsDisappear`).
-- [ ] Search result assertions verify type-specific fields and owner-scoped
-  path/label relationships.
+- [x] Search result assertions verify type-specific fields and owner-scoped
+  path/label relationships
+  (`SearchIntegrationTest.findsEveryRecordTypeByItsOwnText`,
+  `SearchIntegrationTest.recordsMatchThroughTheirPathAndLabels`,
+  `SearchIntegrationTest.directMatchesRankAboveMatchesThroughALabel`,
+  `SearchIntegrationTest.anotherUsersLabelOrPathNeverCausesAMatch`, and
+  `SearchIntegrationTest.otherUsersNeverSeeTheResults`).
 - [x] `GET /api/v1/preferences` covers default and previously saved preference
   values for the signed-in user.
 - [x] `PUT /api/v1/preferences` covers successful round trip and invalid

@@ -174,6 +174,10 @@ class SearchIntegrationTest extends IntegrationTestSupport {
     assertTrue(ids(response, "CARD").contains(cardId));
     assertEquals(List.of("2026-09-03"), titles(response, "CALENDAR_DAY"));
 
+    assertEquals("Zephyr label", result(response, "LABEL", labelId).get("title").asText());
+    assertEquals("Zephyr note", result(response, "NOTE", noteId).get("title").asText());
+    assertEquals("Zephyr board", result(response, "BOARD", boardId).get("title").asText());
+
     JsonNode card = result(response, "CARD", cardId);
     assertEquals(boardId, card.get("boardId").asText());
     assertEquals("Zephyr board", card.get("boardName").asText());
@@ -428,10 +432,16 @@ class SearchIntegrationTest extends IntegrationTestSupport {
     String mine = log("Plain entry");
     String myToken = token;
     token = api.register();
-    label(marker);
-    path(marker);
+    String foreignLabel = label(marker);
+    String foreignPath = path(marker);
+    note("Foreign path note", "x", foreignPath, List.of());
+    session(foreignPath, "Foreign path session", List.of());
+    String foreignLog = log("Foreign labelled log");
+    api.created(
+        "PUT", "/api/v1/logs/" + foreignLog + "/labels", token,
+        "{\"labelIds\":[" + json(foreignLabel) + "]}");
     token = myToken;
-    assertTrue(ids(search(marker), "LOG").isEmpty());
+    assertEquals(0, search(marker).get("groups").size());
     assertFalse(ids(search("plain"), "LOG").isEmpty());
     assertEquals(List.of(mine), ids(search("plain"), "LOG"));
   }
