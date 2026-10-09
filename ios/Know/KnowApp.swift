@@ -582,6 +582,12 @@ struct RootView: View {
   @EnvironmentObject var model: AppModel
   var body: some View {
     Group { if model.signedIn { WorkspaceView(app: model) } else { LoginView() } }
+      .transaction {
+        if isUITesting() {
+          $0.animation = nil
+          $0.disablesAnimations = true
+        }
+      }
       .alert(
         "Knowledge Base",
         isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })

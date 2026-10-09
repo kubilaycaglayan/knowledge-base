@@ -6,7 +6,10 @@ final class KnowUITests: XCTestCase {
   override func setUpWithError() throws {
     continueAfterFailure = false
     app = XCUIApplication()
-    app.launchArguments += ["-ui-testing"]
+    app.launchEnvironment["TZ"] = "UTC"
+    app.launchArguments += [
+      "-ui-testing", "-AppleLocale", "en_US_POSIX", "-AppleLanguages", "(en)",
+    ]
   }
 
   override func tearDownWithError() throws {
@@ -850,8 +853,10 @@ final class KnowUITests: XCTestCase {
     app.launch()
     app.buttons["workspace.paths"].tap()
     app.buttons["paths.edit.00000000-0000-4000-8000-000000000001"].tap()
-    XCTAssertTrue(app.buttons["paths.merge"].waitForExistence(timeout: 5))
-    app.buttons["paths.merge"].tap()
+    let mergeButton = app.buttons["paths.merge"]
+    for _ in 0..<3 where !mergeButton.exists { app.swipeUp() }
+    XCTAssertTrue(mergeButton.waitForExistence(timeout: 5))
+    mergeButton.tap()
     XCTAssertTrue(
       app.buttons["paths.merge.target.00000000-0000-4000-8000-000000000003"].waitForExistence(
         timeout: 5))
@@ -990,10 +995,12 @@ final class KnowUITests: XCTestCase {
       NSPredicate(format: "label == %@", "Notes")
     ).firstMatch
     XCTAssertTrue(notesScope.exists)
-    let calendarScope = app.switches.matching(
-      NSPredicate(format: "label == %@", "Calendar")
-    ).firstMatch
-    XCTAssertTrue(calendarScope.exists)
+    let calendarScope = app.switches["labels.scope.calendar"]
+    let switchSummary = app.switches.allElementsBoundByIndex.map {
+      "\($0.identifier)=\($0.label)"
+    }.joined(separator: ", ")
+    XCTAssertTrue(calendarScope.exists, "Switches: \(switchSummary)")
+    XCTAssertEqual(calendarScope.label, "Calendar", "Switches: \(switchSummary)")
     XCTAssertEqual(calendarScope.value as? String, "1")
     app.buttons["Cancel"].firstMatch.tap()
   }
@@ -1078,8 +1085,12 @@ final class KnowUITests: XCTestCase {
     attachment.lifetime = .keepAlways
     add(attachment)
 
+    // Dismiss the editor keyboard before tapping the toolbar toggle again.
+    body.swipeDown()
     toggle.tap()
-    XCTAssertEqual(toggle.value as? String, "Off")
+    let hidden = NSPredicate(format: "value == %@", "Off")
+    expectation(for: hidden, evaluatedWith: toggle)
+    waitForExpectations(timeout: 5)
     XCTAssertFalse(saved.exists)
   }
 
@@ -1194,7 +1205,7 @@ final class KnowUITests: XCTestCase {
     XCTAssertEqual(toggle.value as? String, "Collapsed")
     XCTAssertTrue(firstLabel.exists)
     XCTAssertTrue(secondLabel.exists)
-    XCTAssertLessThan(secondLabel.frame.minY, nextUnselectedLabel.frame.minY)
+    XCTAssertLessThan(secondLabel.frame.minX, nextUnselectedLabel.frame.minX)
     toggle.tap()
     XCTAssertEqual(toggle.value as? String, "Expanded")
     firstLabel.tap()
