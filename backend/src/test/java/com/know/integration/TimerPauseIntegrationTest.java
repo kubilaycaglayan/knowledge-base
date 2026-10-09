@@ -695,8 +695,9 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
     String token = token();
     assertEquals(HttpStatus.CONFLICT, post("/api/v1/timers/finish", token, "{}").getStatusCode());
     String pathId = path(token, "Finish path");
-    startedMinutesAgo(token, pathId, null, 2);
-    post("/api/v1/timers/pause", token, "{}");
+    JsonNode segment = startedMinutesAgo(token, pathId, null, 2);
+    long pausedSeconds =
+        post("/api/v1/timers/pause", token, "{}").getBody().get("pausedSeconds").asLong();
 
     ResponseEntity<JsonNode> finished = post("/api/v1/timers/finish", token, "{}");
     assertEquals(HttpStatus.OK, finished.getStatusCode());
@@ -705,6 +706,10 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
     JsonNode draft = get("/api/v1/timers/draft", token).getBody();
     assertTrue(draft.get("pausedSeconds").isNull());
     assertEquals("Deep work", draft.get("description").asText());
+    JsonNode persistedSegment =
+        get("/api/v1/time-entries/" + segment.get("id").asText(), token).getBody();
+    assertFalse(persistedSegment.get("running").asBoolean());
+    assertEquals(pausedSeconds, persistedSegment.get("durationSeconds").asLong());
     assertEquals(HttpStatus.CONFLICT, post("/api/v1/timers/resume", token, "{}").getStatusCode());
     assertTrue(noCurrentTimer(token));
   }
