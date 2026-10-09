@@ -144,10 +144,10 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/labels` covers creation, defaults, colors, and scopes.
 - [x] `PUT /api/v1/labels/{id}` covers update, invalid scope/color values, and
   assignment-sensitive restrictions.
-- [ ] `DELETE /api/v1/labels/{id}` covers unassigned deletion.
-- [ ] `DELETE /api/v1/labels/{id}?removeAssignments=true` covers explicit
+- [x] `DELETE /api/v1/labels/{id}` covers unassigned deletion.
+- [x] `DELETE /api/v1/labels/{id}?removeAssignments=true` covers explicit
   assignment removal while preserving the assigned records.
-- [ ] `DELETE /api/v1/labels/{id}` covers conflict behavior when assignments
+- [x] `DELETE /api/v1/labels/{id}` covers conflict behavior when assignments
   exist and assignment removal was not explicitly requested.
 - [ ] `GET /api/v1/labels/{id}/history` covers owner scope, timezone
   validation, totals, timeline, hourly values, and related labels.
