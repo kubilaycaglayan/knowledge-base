@@ -285,8 +285,12 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertFalse(get("/api/v1/boards", token).getBody().findValuesAsText("id").contains(boardId));
     assertTrue(get("/api/v1/boards/" + boardId, token).getBody().get("archived").asBoolean());
 
+    ResponseEntity<JsonNode> restoreResponse = post("/api/v1/boards/" + boardId + "/restore", token, "{}");
+    assertEquals(HttpStatus.OK, restoreResponse.getStatusCode());
+    assertFalse(restoreResponse.getBody().get("archived").asBoolean());
     assertEquals(HttpStatus.OK, post("/api/v1/boards/" + boardId + "/restore", token, "{}").getStatusCode());
-    assertEquals(HttpStatus.OK, post("/api/v1/boards/" + boardId + "/restore", token, "{}").getStatusCode());
+    assertFalse(get("/api/v1/boards/" + boardId, token).getBody().get("archived").asBoolean());
+    assertTrue(get("/api/v1/boards", token).getBody().findValuesAsText("id").contains(boardId));
   }
 
   // Criteria: password-hashed registration / login and JWT auth
