@@ -29,8 +29,9 @@ an active automated gate.
 - [x] Decide and document a supported validation path: a manually owned
   release gate on macOS with retained `.xcresult`. The exact generation,
   simulator, signing, full-test, and artifact procedure is documented in
-  [`06-supported-validation.md`](06-supported-validation.md). It remains
-  unverified on the actual supported host.
+  [`06-supported-validation.md`](06-supported-validation.md). A clean-checkout
+  run was completed on the supported macOS host; its test failures are recorded
+  in the [HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
 - [x] Record that the current workspace host is Linux and lacks `xcodebuild`
   and `xcodegen`; the Foundation-only conversion workflow is the available
   host-side check, not a native-app validation path.
@@ -66,9 +67,10 @@ an active automated gate.
   disabled state is changed.
 
 The source inventory and proposed manual release path are documented, but this
-milestone remains in progress until a clean-checkout run succeeds on macOS and
-the remaining behavior matrix gaps are either covered or explicitly accepted
-as manual/deferred with evidence.
+milestone remains in progress: the clean-checkout macOS run failed eight tests,
+and the remaining behavior matrix gaps still need coverage or explicit
+manual/deferred evidence. See the
+[HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
 
 ## Relevant sources
 

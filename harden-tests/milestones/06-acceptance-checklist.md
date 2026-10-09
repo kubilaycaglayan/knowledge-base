@@ -22,17 +22,22 @@ checks are not evidence of SwiftUI or simulator behavior.
   test or explicit gap; do not infer rendered UI coverage from model tests.
   The source-level behavior disposition is recorded in the inventory; no
   manual simulator run has been claimed.
-- [ ] Select a supported macOS/Xcode host and document Xcode, XcodeGen,
+- [x] Select a supported macOS/Xcode host and document Xcode, XcodeGen,
   simulator runtime/device, scheme, test destination, and signing assumptions.
+  The hosted macOS 26.6.2 / Xcode 26.6, XcodeGen 2.46.0, and iOS 26.5
+  simulator selection are recorded in the
+  [HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
 - [x] Provide a reproducible command or active CI job that generates the
   project, builds the app, and runs the intended unit and UI test sets.
   The full-scheme `xcodebuild test` command is documented in
   [`06-supported-validation.md`](06-supported-validation.md); its execution is
   tracked separately below.
-- [ ] Verify the chosen path on the actual supported host with a clean
+- [x] Verify the chosen path on the actual supported host with a clean
   checkout before proposing any workflow change. Both existing iOS jobs in
   `.github/workflows/verify.yml` are hard-disabled with `if: ${{ false }}`;
-  repository variables cannot enable them.
+  repository variables cannot enable them. The full command ran from a clean
+  checkout on the selected hosted Mac; the result is a failed validation, not
+  a passing gate. See the linked run report for all test failures.
 - [x] Keep `check-ios-note-document.sh` identified as Foundation-only Linux
   validation; do not report it as a SwiftUI build or simulator pass.
 
@@ -97,16 +102,18 @@ model behavior but cannot satisfy a rendered UI row.
 
 ## Artifacts and privacy
 
-- [ ] Retain `.xcresult` for failures and successful release-gate runs according
+- [x] Retain `.xcresult` for failures and successful release-gate runs according
   to the documented artifact policy.
-- [ ] Capture relevant screenshots and logs on failure with credentials,
+- [x] Capture relevant screenshots and logs on failure with credentials,
   tokens, and personal data removed.
 - [x] Use isolated disposable simulator accounts/data and document setup and
   cleanup without committing secrets.
   Default fixture UI tests require no account; the opt-in API case's disposable
   account policy and cleanup are documented in
   [`06-supported-validation.md`](06-supported-validation.md).
-- [ ] Distinguish manual evidence from automated CI in the test map and report
+- [x] Distinguish manual evidence from automated CI in the test map and report
   exact host/runtime versions for each result.
-- [ ] Link the complete test inventory and a supported-host run before marking
+- [x] Link the complete test inventory and a supported-host run before marking
   the milestone complete.
+  The linked hosted run failed, so this evidence does not satisfy the remaining
+  passing-suite and behavior-coverage requirements.

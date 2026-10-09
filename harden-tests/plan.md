@@ -78,6 +78,12 @@ See [HARD-06](milestones/06-ios-validation.md) for a supported automated or
 manual simulator validation path. Until that work is completed, disabled
 workflow jobs must not be counted as active iOS CI coverage.
 
+The documented full-scheme command was executed from a clean checkout on a
+GitHub-hosted macOS runner on 2026-10-09. Project generation and build passed,
+but one of 128 unit tests and seven of 67 UI tests failed; see the
+[HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md). This is failure
+evidence, not an active CI gate, and the historical iOS jobs remain disabled.
+
 ## Acceptance
 
 The full acceptance set is listed in `README.md` and the repository's testing guidance. At minimum, run the existing unit/integration suites, web build, extension tests, accessibility/security/cleanup checks, and disposable full-stack smoke. Run and record desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit as distinct browser profiles for the journeys that support them. Store baseline measurements first without failing builds; promote the 20% gate only after repeatable observations support it.
