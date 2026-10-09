@@ -4,7 +4,7 @@ See the root [test hardening index](../harden-tests/README.md) for the current
 inventory, planned coverage, run-record template, and failure-triage summary.
 See the [test coverage audit](test-coverage-audit.md) for the cross-platform
 review of tested surfaces and identified gaps.
-The follow-up [#ototest coverage roadmap](ototest-roadmap.md) breaks those gaps
+The follow-up [#ototest coverage roadmap](ototest/roadmap.md) breaks those gaps
 into milestone documents and acceptance criteria.
 Use the [#ototest product test tree](ototest/product-test-tree.md) as the
 source-backed outline for route, page-region, control, gesture, security, and

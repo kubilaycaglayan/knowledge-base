@@ -687,7 +687,7 @@ journeys, even where they reuse the same page controls.
 
 ## Source references
 
-- [OTOTEST roadmap](../ototest-roadmap.md)
+- [OTOTEST roadmap](roadmap.md)
 - [OTOTEST-01 milestone brief](01-coverage-inventories.md)
 - [Product test tree](product-test-tree.md)
 - [Current coverage audit](../test-coverage-audit.md)

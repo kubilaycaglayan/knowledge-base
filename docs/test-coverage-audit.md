@@ -80,7 +80,7 @@ inventory and explicit mapping from each requirement to test names.
 ## Existing references
 
 - [Testing guide](testing.md)
-- [#ototest coverage roadmap](ototest-roadmap.md)
+- [#ototest coverage roadmap](ototest/roadmap.md)
 - [Test hardening index](../harden-tests/README.md)
 - [Native iOS test inventory and gaps](../harden-tests/milestones/06-test-inventory.md)
 - [API documentation](api.md)

@@ -1,6 +1,6 @@
 # #ototest milestone index
 
-This index breaks the [test coverage roadmap](../ototest-roadmap.md) into
+This index breaks the [test coverage roadmap](roadmap.md) into
 reviewable work packages. Update a milestone's status here, in the roadmap,
 and in its own document together. Link evidence by test name, command, CI job,
 or run record.
@@ -38,6 +38,12 @@ cases, ownership/security, extension entrypoints, and required evidence layers.
 - [OTOTEST-03 — Web routes and controls](03-web-routes-and-controls.md)
 - [OTOTEST-04 — Real-stack and extension journeys](04-real-stack-and-extension.md)
 - [OTOTEST-05 — Traceability and ongoing gates](05-traceability-and-gates.md)
+
+## Related product acceptance checklist
+
+- [Web authentication milestone acceptance](02-web-auth-acceptance-checklist.md)
+  covers the sign-in, registration, and session flows in desktop web and
+  mobile Chrome.
 
 ## Out of scope
 

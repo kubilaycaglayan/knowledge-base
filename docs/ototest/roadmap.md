@@ -3,9 +3,9 @@
 **Codename:** `#ototest`  
 **Status:** Proposed  
 **Owner:** Knowledge Base maintainers  
-**Source review:** [Test coverage audit](test-coverage-audit.md)
+**Source review:** [Test coverage audit](../test-coverage-audit.md)
 
-**Product map:** [Navigable route and feature test tree](ototest/product-test-tree.md)
+**Product map:** [Navigable route and feature test tree](product-test-tree.md)
 
 ## Objective
 
@@ -34,8 +34,8 @@ to shared tests or be marked as non-interactive with a reason.
   supported route coverage; the navbar test asserts its absence.
 - iOS is out of scope for `#ototest` while the app is not in use. No iOS test
   flows or milestones are included.
-- See [the audit](test-coverage-audit.md) and
-  [the existing hardening program](../harden-tests/README.md) for supporting
+- See [the audit](../test-coverage-audit.md) and
+  [the existing hardening program](../../harden-tests/README.md) for supporting
   inventory and constraints.
 
 ## Milestones
@@ -50,13 +50,13 @@ to shared tests or be marked as non-interactive with a reason.
 
 Each milestone has its own task and acceptance document:
 
-- [OTOTEST-01 — Coverage inventories](ototest/01-coverage-inventories.md)
-- [OTOTEST-02 — Backend API behavior](ototest/02-backend-api-coverage.md)
-- [OTOTEST-03 — Web routes and controls](ototest/03-web-routes-and-controls.md)
-- [OTOTEST-04 — Real-stack and extension journeys](ototest/04-real-stack-and-extension.md)
-- [OTOTEST-05 — Traceability and ongoing gates](ototest/05-traceability-and-gates.md)
-- [Milestone index](ototest/README.md)
-- [Product test tree: routes → page regions → actions → edge/security cases](ototest/product-test-tree.md)
+- [OTOTEST-01 — Coverage inventories](01-coverage-inventories.md)
+- [OTOTEST-02 — Backend API behavior](02-backend-api-coverage.md)
+- [OTOTEST-03 — Web routes and controls](03-web-routes-and-controls.md)
+- [OTOTEST-04 — Real-stack and extension journeys](04-real-stack-and-extension.md)
+- [OTOTEST-05 — Traceability and ongoing gates](05-traceability-and-gates.md)
+- [Milestone index](README.md)
+- [Product test tree: routes → page regions → actions → edge/security cases](product-test-tree.md)
 
 ## Delivery sequence
 
