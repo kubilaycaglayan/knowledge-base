@@ -11,6 +11,7 @@ project="knowledge-base-timer-ws-smoke-${BASHPID:-$$}-$(date +%s%N)"
 # Uncommon, unassigned host port, distinct from the smoke (26080/26090) and
 # board E2E (26180) stacks so they can run at the same time.
 port="${TIMER_E2E_PROXY_PORT:-26290}"
+cors_origin="${CORS_ORIGINS:-http://localhost:5177}"
 artifact_dir="${TIMER_E2E_ARTIFACT_DIR:-$PWD/harden-tests/local-artifacts/timer-ws-$(date +%s%N)}"
 compose=(docker compose -p "$project" -f docker-compose.yml -f docker-compose.smoke.yml)
 cleanup() { "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true; }
@@ -20,7 +21,6 @@ export COMPOSE_PROJECT_NAME="$project"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-Timer-e2e-$(date +%s%N)}"
 export JWT_SECRET="${JWT_SECRET:-timer-e2e-jwt-secret-$(date +%s%N)}"
 export PROXY_CLOUDFLARE_PORT="$port"
-export CORS_ORIGINS="http://localhost:${port}"
 "${compose[@]}" up -d --build db api web proxy-cloudflare >/dev/null
 for attempt in {1..90}; do
   api_status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "http://localhost:${port}/api/v1/auth/me" || true)"
@@ -34,7 +34,7 @@ for attempt in {1..90}; do
   sleep 2
 done
 
-AUTH_RATE_LIMIT_JWT_SECRET="$JWT_SECRET" node scripts/check-auth-rate-limit-proxy.mjs "http://localhost:${port}"
+AUTH_RATE_LIMIT_JWT_SECRET="$JWT_SECRET" AUTH_RATE_LIMIT_CORS_ORIGIN="${cors_origin%%,*}" node scripts/check-auth-rate-limit-proxy.mjs "http://localhost:${port}"
 AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop npm run test:auth:rate-limit:e2e --prefix frontend
 AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone npm run test:auth:rate-limit:e2e --prefix frontend
 node scripts/check-timer-websocket.mjs "http://localhost:${port}" --round-trip

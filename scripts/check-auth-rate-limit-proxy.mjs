@@ -5,7 +5,7 @@ if (!baseUrl) {
   console.error("Usage: node scripts/check-auth-rate-limit-proxy.mjs <base-url>");
   process.exit(2);
 }
-const allowedOrigin = new URL(baseUrl).origin;
+const allowedOrigin = process.env.AUTH_RATE_LIMIT_CORS_ORIGIN ?? "http://localhost:5177";
 
 const unique = crypto.randomUUID();
 const email = `rate-limit-${unique}@example.invalid`;
