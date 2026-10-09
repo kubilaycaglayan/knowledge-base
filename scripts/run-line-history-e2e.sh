@@ -13,7 +13,18 @@ email="lines-e2e-$(date +%s%N)@example.com"
 port="${LINE_HISTORY_E2E_PROXY_PORT:-26380}"
 artifact_dir="${LINE_HISTORY_E2E_ARTIFACT_DIR:-$PWD/harden-tests/local-artifacts/line-history-$(date +%s%N)}"
 compose=(docker compose -p "$project" -f docker-compose.yml -f docker-compose.smoke.yml)
-cleanup() { "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true; }
+cleanup() {
+  local exit_status=$?
+  trap - EXIT
+  if (( exit_status != 0 )); then
+    mkdir -p "$artifact_dir"
+    printf 'Runner exit status: %s\nCompose project: %s\n' "$exit_status" "$project" > "$artifact_dir/runner-failure.txt"
+    "${compose[@]}" ps --all > "$artifact_dir/compose-ps.txt" 2>&1 || true
+    "${compose[@]}" logs --no-color > "$artifact_dir/stack.log" 2>&1 || true
+  fi
+  "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
+  exit "$exit_status"
+}
 trap cleanup EXIT
 
 export COMPOSE_PROJECT_NAME="$project"
