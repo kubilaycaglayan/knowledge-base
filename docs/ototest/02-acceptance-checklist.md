@@ -466,9 +466,16 @@ browser interaction evidence remains a separate layer.
   `SearchApiTest.searchRejectsOutOfRangePagesAndUnknownTypes`, and
   `SearchIntegrationTest.invalidParametersAreRejected` /
   `manyTermsAreCappedRatherThanRejected`).
-- [ ] Search assertions cover literal ranking, fuzzy fallback, per-type cap,
-  incomplete/time-out behavior, archived visibility, and deleted-record
-  exclusion as documented.
+- [x] Search assertions cover literal ranking, fuzzy fallback, per-type cap,
+  the incomplete/time-out response signal, archived visibility, and
+  deleted-record exclusion
+  (`SearchIntegrationTest.titlesRankExactThenPrefixThenContainedThenBody`,
+  `SearchIntegrationTest.nearMissSpellingsMatchLongerTermsWhenNothingMatchesLiterally`,
+  `SearchIntegrationTest.literalMatchesAnywhereKeepNearMissesOut`,
+  `SearchIntegrationTest.totalsAreCappedAtTheCandidateLimit`,
+  `SearchApiTest.searchResponseExposesIncompleteTimeoutSignal`,
+  `SearchIntegrationTest.archivedRecordsAreIncludedAndFlagged`,
+  `deletedSessionsAndPathsAreLeftOut`, and `deletedLogsDisappear`).
 - [ ] Search result assertions verify type-specific fields and owner-scoped
   path/label relationships.
 - [x] `GET /api/v1/preferences` covers default and previously saved preference

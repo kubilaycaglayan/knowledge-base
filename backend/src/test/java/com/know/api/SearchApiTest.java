@@ -121,6 +121,18 @@ class SearchApiTest {
   }
 
   @Test
+  void searchResponseExposesIncompleteTimeoutSignal() throws Exception {
+    when(search.search(any(), any(), any(), anyInt(), anyInt(), any()))
+        .thenReturn(new SearchService.Response(List.of(), false, true));
+
+    mvc.perform(get("/api/v1/search").param("q", "java").with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.incomplete").value(true))
+        .andExpect(jsonPath("$.fuzzy").value(false))
+        .andExpect(jsonPath("$.groups").isArray());
+  }
+
+  @Test
   void searchRequiresAuthentication() throws Exception {
     mvc.perform(get("/api/v1/search").param("q", "java")).andExpect(status().isUnauthorized());
   }
