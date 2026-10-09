@@ -14,7 +14,7 @@ validation.
 
 This path has been exercised from a clean checkout on GitHub-hosted
 `macos-latest` with Xcode 26.6, XcodeGen 2.46.0, and an iPhone 17 Pro simulator
-on iOS 26.5. The exact OS/build details and failed test results are in the run
+on iOS 26.5. The exact OS/build details and passing test results are in the run
 record. The current workspace remains Linux. The project requires XcodeGen
 2.38.0 or newer, Swift 5.9 language mode, and iOS 17 or newer; record exact
 host/tool/runtime versions for every subsequent run.
@@ -75,10 +75,10 @@ Notes UI tests.
   personal credentials.
 - Before each run, use a newly booted simulator and launch the test runner's
   deterministic fixtures. Avoid dependence on a previously logged-in app,
-  Keychain contents, or persistent simulator state. The source suite currently
-  does not set a single global locale/time zone/animation policy; tests with
-  date behavior must set their own fixed calendar/time zone, and the remaining
-  device-wide determinism work is tracked in the acceptance checklist.
+  Keychain contents, or persistent simulator state. The UI suite pins English,
+  `en_US_POSIX`, and UTC; the calendar fixture pins its reference date; and UI
+  test mode disables animations. Other date-sensitive tests should still pin
+  their own calendar and time zone.
 - On failure, retain the `.xcresult` and only the screenshots or logs needed
   to diagnose it. Inspect attachments before sharing; remove credentials,
   bearer tokens, account identifiers, and personal records. Store artifacts in

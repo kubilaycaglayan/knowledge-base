@@ -116,6 +116,5 @@ model behavior but cannot satisfy a rendered UI row.
 - [x] Distinguish manual evidence from automated CI in the test map and report
   exact host/runtime versions for each result.
 - [x] Link the complete test inventory and a supported-host run before marking
-  the milestone complete.
-  The linked hosted run failed, so this evidence does not satisfy the remaining
-  passing-suite and behavior-coverage requirements.
+  the milestone complete. The complete hosted scheme passed; remaining
+  persistence and behavior-matrix gaps are listed above and in the run report.
