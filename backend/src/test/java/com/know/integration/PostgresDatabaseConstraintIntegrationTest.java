@@ -1076,6 +1076,47 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresNoteCreateRollsBackNoteAndTagWhenActivityWriteFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Note and activity transaction rollback requires PostgreSQL");
+    String token = api.register();
+    UUID userId = subject(token);
+    String trigger = failOnInsertTrigger("item_event");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/notes",
+              token,
+              "{\"title\":\"Audit rollback note\",\"content\":\"body\",\"tags\":[\"Audit rollback tag\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("item_event", trigger);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from note where user_id = ? and title = ?",
+            Long.class,
+            userId,
+            "Audit rollback note"));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from labels where user_id = ? and name = ?",
+            Long.class,
+            userId,
+            "Audit rollback tag"));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from item_event where user_id = ? and title = ?",
+            Long.class,
+            userId,
+            "Added note: Audit rollback note"));
+  }
+
+  @Test
   void postgresCalendarDayReplacementRollsBackNoteAndOldLabelsWhenNewAssignmentFails()
       throws Exception {
     Assumptions.assumeTrue(
