@@ -1169,6 +1169,10 @@ final class KnowUITests: XCTestCase {
     body.tap()
     body.typeText("Saved note content")
     XCTAssertTrue((body.value as? String)?.contains("Saved note content") == true)
+    let saveState = app.staticTexts["notes.save-state"]
+    expectation(
+      for: NSPredicate(format: "label == %@", "Saved"), evaluatedWith: saveState)
+    waitForExpectations(timeout: 15)
 
     app.buttons["notes.back"].tap()
     let openNote = app.buttons["Open Persistent fixture note"]
