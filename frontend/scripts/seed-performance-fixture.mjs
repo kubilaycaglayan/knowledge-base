@@ -137,8 +137,16 @@ const counts = {
   searchTerms: 2,
 };
 const observedPaths = await api("/paths");
-const observedNotes = await api("/notes");
-const observedSessions = await api("/time-entries");
+const firstNotesPage = await api("/notes?page=0&size=100");
+const observedNotes = firstNotesPage.items.length === 0 || firstNotesPage.totalPages <= 1
+  ? firstNotesPage.items
+  : (await Promise.all(Array.from({ length: firstNotesPage.totalPages - 1 }, (_, index) => api(`/notes?page=${index + 1}&size=100`))))
+    .reduce((items, page) => items.concat(page.items), [...firstNotesPage.items]);
+const firstSessionsPage = await api("/time-entries?page=0&size=50");
+const observedSessions = firstSessionsPage.sessions.length === 0 || firstSessionsPage.totalPages <= 1
+  ? firstSessionsPage.sessions
+  : (await Promise.all(Array.from({ length: firstSessionsPage.totalPages - 1 }, (_, index) => api(`/time-entries?page=${index + 1}&size=50`))))
+    .reduce((items, page) => items.concat(page.sessions), [...firstSessionsPage.sessions]);
 const observedBoards = await api("/boards");
 const observedLabels = await api("/labels");
 const observedStatuses = await Promise.all(boards.map((board) => api(`/boards/${board.id}/statuses`)));
