@@ -506,29 +506,29 @@ OTOTEST-01 because it defines the server behavior behind the client journeys.
 - [ ] **API-02** For each row, record controller/method, path/query/body
   inputs, response shape/status, authentication requirement, ownership-scoped
   identifiers, and persisted or externally visible effect.
-- [ ] **API-03** Map authentication and account operations, including password
+- [x] **API-03** Map authentication and account operations, including password
   sign-in/registration, Google configuration/exchange, refresh/logout or
   account settings as implemented, and rate-limit/invalid-credential outcomes.
-- [ ] **API-04** Map Paths and Labels operations, including referenced path or
+- [x] **API-04** Map Paths and Labels operations, including referenced path or
   label IDs, scopes/visibility, history, ordering, merge, archive/restore, and
   cross-user rejection where applicable.
-- [ ] **API-05** Map timer and session operations, including start/current/
+- [x] **API-05** Map timer and session operations, including start/current/
   draft, stop/cancel, pause/resume/finish, session list/detail/update/delete,
   and the one-running-timer and server-owned duration invariants.
-- [ ] **API-06** Map Logs, Timeline/Activity, Calendar, and Reports operations,
+- [x] **API-06** Map Logs, Timeline/Activity, Calendar, and Reports operations,
   including filters, date boundaries, pagination, label assignments, and
   source-record links used by the clients.
-- [ ] **API-07** Map Notes operations, including list/search/archive/detail,
+- [x] **API-07** Map Notes operations, including list/search/archive/detail,
   create/update/delete/restore, ordering/pinning, labels, and rich-text or
   line-history fields where exposed.
-- [ ] **API-08** Map Board and All boards operations, including boards,
+- [x] **API-08** Map Board and All boards operations, including boards,
   statuses, cards, ordering/pinning/visibility, archive/restore, merged
   columns, card paging/sorting, and date mutations used by Kanban/Gantt.
-- [ ] **API-09** Map imports, transfer/export, preferences, and global search,
+- [x] **API-09** Map imports, transfer/export, preferences, and global search,
   including import sources, batch undo, format/version boundaries, preference
   persistence, search result deep-link targets, and any streaming/download
   response behavior.
-- [ ] **API-10** For each operation, identify named success assertions and
+- [x] **API-10** For each operation, identify named success assertions and
   applicable validation, unauthenticated, foreign-owner/reference, conflict,
   and persistence assertions. Mark missing evidence as a gap; do not infer it
   from a broad authentication sweep.
