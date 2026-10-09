@@ -49,7 +49,7 @@ Refresh test names and omissions when the source changes.
 | Area | Current source evidence | What that evidence does not establish yet |
 | --- | --- | --- |
 | Authentication/session | [`KnowTests.swift`](../../ios/KnowTests/KnowTests.swift) covers API/session state and recovery; [`KnowUITests.swift`](../../ios/KnowUITests/KnowUITests.swift) includes login controls, registration validation/mode switching, password visibility, and sign-out cases. | Full live backend sign-in/registration or Google consent; every auth state rendered at supported text sizes; complete intended UI suite on an active macOS gate. |
-| Notes/document/line history | `NotesTests.swift` covers rich/plain document conversion, line-history rules, pagination cache, create/archive, conflict retry, pin/reorder contracts. | Native note editor end-to-end save against API, rendered line-history review/edit, relaunch persistence, accessibility and failure states on simulator. |
+| Notes/document/line history | `NotesTests.swift` covers rich/plain document conversion, line-history rules, pagination cache, create/archive, conflict retry, pin/reorder contracts. Backend `NoteVersionIntegrationTest`, `NoteArchiveRetentionIntegrationTest`, and `LineEditsIntegrationTest` verify API persistence through authenticated reads. Notes UI cases use in-memory fixtures. | Native note editor save against API and persistence after navigation/relaunch are not joined in one simulator flow; VoiceOver and broader device/accessibility checks remain open. |
 | Sessions/timer | `SessionsTests.swift` covers model load, start/stop, failures/retry, stale polling, WebSocket snapshot behavior, and local date grouping. | Full native timer UI interaction with real API/WebSocket, reconnection under app background/foreground, and rendered recovery in simulator. |
 | Logs | `LogsTests.swift` covers timestamp parsing, local grouping, create/edit/delete, conflicts, retry, and unauthorized recovery. | Native rendered list/detail/edit flows and persistence across navigation/relaunch on simulator. |
 | Paths | `PathsTests.swift` covers load/create/update, undo/merge transport, offline recovery, history formatting, and unauthorized handling. | Rendered navigation, confirmation/undo behavior, VoiceOver order, and API-backed persistence in simulator. |
@@ -86,7 +86,10 @@ model behavior but cannot satisfy a rendered UI row.
   evidence link; identify untested rows by name.
 - [ ] Verify create/edit/archive/restore persistence after navigation or relaunch
   where the domain supports those operations; distinguish server-backed from
-  in-memory fixture assertions.
+  in-memory fixture assertions. Backend integration tests cover server-backed
+  versioned saves, archive/restore, and line history; the simulator navigation
+  test uses a mutable in-memory fixture. The native API-to-UI persistence and
+  relaunch path remains unverified.
 - [ ] Cover network failure, retry, offline recovery, empty state, server
   validation, conflict, timeout, and unauthorized response with user-visible
   recovery for each relevant screen.
