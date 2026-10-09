@@ -33,5 +33,7 @@ for attempt in {1..90}; do
 done
 
 node scripts/check-auth-rate-limit-proxy.mjs "http://localhost:${port}"
+AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop npm run test:auth:rate-limit:e2e --prefix frontend
+AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone npm run test:auth:rate-limit:e2e --prefix frontend
 node scripts/check-timer-websocket.mjs "http://localhost:${port}" --round-trip
 TIMER_E2E_BASE_URL="http://localhost:${port}" npm run test:timer:e2e --prefix frontend

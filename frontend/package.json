@@ -12,6 +12,7 @@
     "test:nav": "node --test --test-concurrency=1 scripts/nav-shell.acceptance.test.mjs",
     "test:board": "node --test --test-concurrency=1 scripts/board.acceptance.test.mjs",
     "test:board:e2e": "node --test scripts/board.real-stack.acceptance.test.mjs",
+    "test:auth:rate-limit:e2e": "node --test --test-concurrency=1 scripts/auth-rate-limit.real-stack.acceptance.test.mjs",
     "test:timer:e2e": "node --test scripts/timer-websocket.real-stack.acceptance.test.mjs",
     "test:lines:e2e": "node --test --test-concurrency=1 scripts/line-history.real-stack.acceptance.test.mjs",
     "test:coverage": "vitest run --coverage",
