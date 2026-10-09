@@ -117,8 +117,8 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover Paths operations
 
-- [ ] `GET /api/v1/paths` covers default and filtered list behavior, including
-  archived visibility where supported.
+- [x] `GET /api/v1/paths` covers the default active-only list, owner scope,
+  and ordering. The endpoint has no filter or archived-visibility query.
 - [ ] `POST /api/v1/paths` covers successful creation and persisted values.
 - [ ] `GET /api/v1/paths/{id}` covers owned, missing, and foreign IDs.
 - [ ] `GET /api/v1/paths/{id}/summary` covers aggregation values and date/time

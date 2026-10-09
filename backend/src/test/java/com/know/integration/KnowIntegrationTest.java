@@ -428,6 +428,35 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void pathListIsOwnerScopedAndExcludesSoftDeletedPaths() {
+    String owner = freshToken();
+    String other = freshToken();
+    String activeId =
+        post("/api/v1/paths", owner, "{\"name\":\"Visible path\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    String deletedId =
+        post("/api/v1/paths", owner, "{\"name\":\"Deleted path\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    String foreignId =
+        post("/api/v1/paths", other, "{\"name\":\"Foreign path\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/paths/" + deletedId, owner).getStatusCode());
+
+    JsonNode listed = get("/api/v1/paths", owner).getBody();
+    List<String> ids = new ArrayList<>();
+    listed.forEach(path -> ids.add(path.get("id").asText()));
+    assertTrue(ids.contains(activeId));
+    assertFalse(ids.contains(deletedId));
+    assertFalse(ids.contains(foreignId));
+  }
+
+  @Test
   void pathColorValidationRejectsInvalidHex() {
     String token = freshToken();
     ResponseEntity<JsonNode> bad =
