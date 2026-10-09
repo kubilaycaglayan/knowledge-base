@@ -10,7 +10,7 @@
 - Exact profile: Chromium 153.0.8010.12, Playwright 1.63.0, 1440×900 CSS viewport, headless Linux user agent, no touch, device scale factor 1.
 - Compose project: `knowledge-base-perf-20261009-hard05`; loopback proxy `http://localhost:26381`.
 - Images: `knowledge-base-api:perf-20261009050732-9fe753a29931` (`sha256:df6da4d71188a68f36e30f20ef97452ddc532de11cf8f9f02293e9cb93c38970`); `knowledge-base-web:perf-20261009050732-9fe753a29931` (`sha256:42fd68d5fbfb4d3e5ff32a09947ce4856184003adc7cbd84399ecc47f49a1192`).
-- Database: PostgreSQL 16.15; disposable database healthy and Flyway migrations completed before fixture setup.
+- Database: PostgreSQL 16.15 (`postgres:16-alpine`, `sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea`); healthy with 63 successful Flyway migrations before fixture setup.
 - Environment: Ubuntu 26.04.1, Linux 7.0.0-38-generic, x86_64; 32 logical CPUs; Docker 29.8.2; host Node 22.23.3 / npm 10.9.9; API Temurin Java 21.0.12.1. Docker API/database containers had no explicit CPU or memory limits. Host RAM 30 GiB; 17 GiB available at the post-run snapshot; Docker reported 32,728,072,192 bytes.
 - Competing load: development Knowledge Base and local AI/RAG services remained active. At the 05:54 UTC post-run snapshot, load average was 4.26/4.56/3.73 across 32 CPUs and the dev API was using 38.57% of one core and 1.356 GiB of its configured 3 GiB. No other builds, tests, or benchmarks ran during timed samples. This is contextual telemetry, not a per-sample time series.
 - Network/cache: loopback, no shaping, fresh browser context/cache for each sample; warm reload performs an untimed navigation then reloads in the same context. API requests include connection setup when it occurs. No browser extensions.
@@ -40,6 +40,10 @@ Browser duration is measured from the journey start through its semantic complet
 
 Exact and near-match searches each returned the expected 12 note results during fixture validation. The browser search rendered its result and fuzzy-fallback signals. Board pagination returned 20 cards on each page; Gantt rendered 48 rows. Note autosave, timer start/stop, and second-page WebSocket assertions passed. In all 60 WebSocket samples the matching event was observed before the HTTP acknowledgment, so the residual-wait metric is left-censored at zero and is not a gate candidate.
 
+## Product-quality spot check
+
+On five settled routes (`/paths`, board, Gantt, reports, note), document width stayed within the 1440 px viewport and there were no page errors. Exact and near search each rendered 12 note results in desktop Chromium. Keyboard Enter opened global search and rendered the exact results. The desktop board and Gantt use horizontally scrollable content areas; their page roots did not overflow.
+
 ## Comparison and artifacts
 
 Median differences between comparable batches ranged from −6.7% to +4.4% for the measured browser journeys. The larger board-page maximum in Run B and all other extrema remain in the raw samples; no outlier policy removed them. The WebSocket residual value is censored as described above.
@@ -47,7 +51,7 @@ Median differences between comparable batches ranged from −6.7% to +4.4% for t
 - [Run A raw browser, request, and Resource Timing data](../local-artifacts/performance/20261009-hard05/run-a/desktop-chromium-v2.json)
 - [Run B raw browser, request, and Resource Timing data](../local-artifacts/performance/20261009-hard05/run-b-desktop-chromium.json)
 - [Sparse fixture and expected counts](../local-artifacts/performance/20261009-hard05/run-a/fixture.json)
-- [Desktop and mobile visual screenshots](../local-artifacts/performance/20261009-hard05/visual/)
+- Visual screenshots: [desktop paths](../local-artifacts/performance/20261009-hard05/visual/desktop-paths.png), [desktop board](../local-artifacts/performance/20261009-hard05/visual/desktop-board.png), [desktop Gantt](../local-artifacts/performance/20261009-hard05/visual/desktop-gantt.png), [desktop reports](../local-artifacts/performance/20261009-hard05/visual/desktop-reports.png), [desktop note](../local-artifacts/performance/20261009-hard05/visual/desktop-note.png).
 - [Shared report-only threshold proposal and dry-run](2026-10-09-hard05-gate-proposal.md)
 
 ## Failure groups and corrections

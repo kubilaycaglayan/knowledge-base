@@ -24,7 +24,20 @@ and second 20-card pages before writing its private output file.
 The output records min/max text lengths per content type and the fixed search
 term lengths so a report can verify generated text dimensions.
 
-Run setup and measurement serially on an idle machine. Use fresh unique
+## Validation record
+
+On 2026-10-09, the sparse fixture passed count, exact/fuzzy search, and
+pagination checks independently for desktop Chromium, mobile-size Chromium, and
+iPhone WebKit. The dense fixture also passed setup validation with 12 paths,
+120 notes, 200 sessions, 2 custom boards, 10 custom statuses, 240 cards, and 12
+labels. Count verification reads every notes and session page so results above
+the API's default page size are included.
+
+Run setup and measurement serially. Capture host load, memory/disk availability,
+Docker resource limits, and competing local services for each batch. Do not run
+unrelated builds, tests, or benchmarks concurrently; persistent development
+services may stay running and their measured resource use is context for the
+report, not an automatic stop condition. Use fresh unique
 `PERFORMANCE_COMPOSE_PROJECT` values that contain `perf`; do not reuse the
 persistent development project. Set local `JWT_SECRET` and
 `POSTGRES_PASSWORD` values for the disposable stack, unique tags such as
