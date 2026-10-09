@@ -197,7 +197,7 @@ browser interaction evidence remains a separate layer.
   version conflict behavior.
 - [x] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
   owned labels with LOG scope.
-- [ ] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
+- [x] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
 - [x] `GET /api/v1/activities` covers each supported `from`, `to`, `pathId`,
   and `type` filter independently.
