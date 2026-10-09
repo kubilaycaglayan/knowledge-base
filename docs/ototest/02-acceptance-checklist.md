@@ -401,8 +401,9 @@ browser interaction evidence remains a separate layer.
   authenticated user's CALENDAR-scoped labels, multi-scope inclusion, and the
   empty state
   (`CalendarLabelPickerIntegrationTest.calendarLabelListIncludesOnlyOwnedCalendarScopedLabelsInNameOrder`).
-- [ ] `POST /api/v1/calendar/labels` covers label creation and color
-  constraints.
+- [x] `POST /api/v1/calendar/labels` covers trimmed creation, optional color,
+  persisted palette color, and malformed or unsupported colors without creating
+  records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`).
 - [ ] `PUT /api/v1/calendar/labels/{id}` covers update and owner-scoped IDs.
 - [ ] `DELETE /api/v1/calendar/labels/{id}` covers deletion restrictions for
   labels referenced by historical calendar records.
