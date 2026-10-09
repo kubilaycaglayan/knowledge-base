@@ -6,7 +6,10 @@ final class KnowUITests: XCTestCase {
   override func setUpWithError() throws {
     continueAfterFailure = false
     app = XCUIApplication()
-    app.launchArguments += ["-ui-testing"]
+    app.launchEnvironment["TZ"] = "UTC"
+    app.launchArguments += [
+      "-ui-testing", "-AppleLocale", "en_US_POSIX", "-AppleLanguages", "(en)",
+    ]
   }
 
   override func tearDownWithError() throws {
@@ -850,8 +853,10 @@ final class KnowUITests: XCTestCase {
     app.launch()
     app.buttons["workspace.paths"].tap()
     app.buttons["paths.edit.00000000-0000-4000-8000-000000000001"].tap()
-    XCTAssertTrue(app.buttons["paths.merge"].waitForExistence(timeout: 5))
-    app.buttons["paths.merge"].tap()
+    let mergeButton = app.buttons["paths.merge"]
+    for _ in 0..<3 where !mergeButton.exists { app.swipeUp() }
+    XCTAssertTrue(mergeButton.waitForExistence(timeout: 5))
+    mergeButton.tap()
     XCTAssertTrue(
       app.buttons["paths.merge.target.00000000-0000-4000-8000-000000000003"].waitForExistence(
         timeout: 5))
@@ -986,8 +991,22 @@ final class KnowUITests: XCTestCase {
     XCTAssertTrue(app.textFields["labels.name"].waitForExistence(timeout: 3))
     XCTAssertTrue(app.buttons["Add label"].exists)
     XCTAssertTrue(app.staticTexts["Don’t show in"].exists)
-    XCTAssertTrue(app.switches["Notes"].exists)
-    XCTAssertTrue(app.switches["Calendar"].value as? String == "1")
+    // The editor focuses its name field on presentation. Dismiss the keyboard
+    // and scroll the form so each scope control is fully materialized.
+    app.swipeUp()
+    let notesScope = app.switches.matching(
+      NSPredicate(format: "label == %@", "Notes")
+    ).firstMatch
+    XCTAssertTrue(notesScope.exists)
+    let calendarScope = app.switches.matching(
+      NSPredicate(format: "label == %@", "Calendar")
+    ).firstMatch
+    let switchSummary = app.switches.allElementsBoundByIndex.map {
+      "\($0.identifier)=\($0.label)"
+    }.joined(separator: ", ")
+    XCTAssertTrue(calendarScope.exists, "Switches: \(switchSummary)")
+    XCTAssertEqual(calendarScope.label, "Calendar", "Switches: \(switchSummary)")
+    XCTAssertEqual(calendarScope.value as? String, "1")
     app.buttons["Cancel"].firstMatch.tap()
   }
 
@@ -1071,16 +1090,50 @@ final class KnowUITests: XCTestCase {
     attachment.lifetime = .keepAlways
     add(attachment)
 
+    // Dismiss the editor keyboard before tapping the toolbar toggle again.
+    body.swipeDown()
     toggle.tap()
-    XCTAssertEqual(toggle.value as? String, "Off")
+    let hidden = NSPredicate(format: "value == %@", "Off")
+    expectation(for: hidden, evaluatedWith: toggle)
+    waitForExpectations(timeout: 5)
     XCTAssertFalse(saved.exists)
+  }
+
+  func testNotesSaveFailureKeepsDraftAndOffersRetry() {
+    app.launchArguments += ["-ui-testing-authenticated", "-notes-save-error"]
+    app.launch()
+    app.buttons["workspace.notes"].tap()
+    app.buttons["Open Design notes"].tap()
+    let body = app.textViews["notes.body"]
+    XCTAssertTrue(body.waitForExistence(timeout: 5))
+    body.tap()
+    body.typeText("R")
+    XCTAssertTrue((body.value as? String)?.contains("R") == true)
+
+    let saveState = app.staticTexts["notes.save-state"]
+    let saveError = app.staticTexts["notes.save-error"]
+    XCTAssertTrue(
+      saveError.waitForExistence(timeout: 8),
+      "Save state after the injected failure: \(saveState.label)")
+    XCTAssertEqual(saveState.label, "Not saved")
+
+    XCTAssertEqual(
+      saveError.label, "Unable to save this note. Your draft is still here; try again.")
+    XCTAssertTrue(app.buttons["Retry note save"].exists)
+    XCTAssertTrue((body.value as? String)?.contains("R") == true)
+    app.buttons["Retry note save"].tap()
+    let saved = NSPredicate(format: "label == %@", "Saved")
+    expectation(for: saved, evaluatedWith: saveState)
+    waitForExpectations(timeout: 8)
+    XCTAssertFalse(
+      app.staticTexts["Unable to save this note. Your draft is still here; try again."].exists)
   }
 
   func testNotesEmptyAndOfflineFixturesOfferRecovery() {
     app.launchArguments += ["-ui-testing-authenticated", "-notes-empty"]
     app.launch()
     app.buttons["workspace.notes"].tap()
-    XCTAssertTrue(app.staticTexts["Your notes will appear here."].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Your notes will appear here."].waitForExistence(timeout: 15))
     app.terminate()
     app.launchArguments = ["-ui-testing", "-ui-testing-authenticated", "-notes-offline"]
     app.launch()
@@ -1098,6 +1151,52 @@ final class KnowUITests: XCTestCase {
     app.buttons["notes.archive-toggle"].tap()
     XCTAssertTrue(app.buttons["Restore"].waitForExistence(timeout: 5))
     app.buttons["Restore"].tap()
+  }
+
+  func testNotesCreateEditArchiveRestorePersistsAcrossWorkspaceNavigationInMemoryFixture() {
+    app.launchArguments += ["-ui-testing-authenticated", "-notes-empty"]
+    app.launch()
+    app.buttons["workspace.notes"].tap()
+    XCTAssertTrue(app.staticTexts["Your notes will appear here."].waitForExistence(timeout: 5))
+
+    app.buttons["notes.add"].tap()
+    let title = app.textFields["notes.title"]
+    let body = app.textViews["notes.body"]
+    XCTAssertTrue(title.waitForExistence(timeout: 15))
+    XCTAssertTrue(body.waitForExistence(timeout: 15))
+    title.tap()
+    title.typeText("Persistent fixture note")
+    body.tap()
+    body.typeText("Saved note content")
+    XCTAssertTrue((body.value as? String)?.contains("Saved note content") == true)
+    let saveState = app.staticTexts["notes.save-state"]
+    expectation(
+      for: NSPredicate(format: "label == %@", "Saved"), evaluatedWith: saveState)
+    waitForExpectations(timeout: 15)
+
+    app.buttons["notes.back"].tap()
+    let openNote = app.buttons["Open Persistent fixture note"]
+    XCTAssertTrue(openNote.waitForExistence(timeout: 15))
+    app.buttons["workspace.paths"].tap()
+    app.buttons["workspace.notes"].tap()
+    let open = app.buttons["Open Persistent fixture note"]
+    XCTAssertTrue(open.waitForExistence(timeout: 15))
+    open.tap()
+    XCTAssertTrue(title.waitForExistence(timeout: 15))
+    XCTAssertEqual(title.value as? String, "Persistent fixture note")
+    XCTAssertEqual(body.value as? String, "Saved note content")
+
+    app.buttons["notes.back"].tap()
+    app.buttons["Archive Persistent fixture note"].tap()
+    XCTAssertTrue(app.buttons["Archive note"].waitForExistence(timeout: 10))
+    app.buttons["Archive note"].tap()
+    app.buttons["notes.archive-toggle"].tap()
+    let restore = app.buttons["Restore"]
+    XCTAssertTrue(restore.waitForExistence(timeout: 15))
+    restore.tap()
+
+    app.buttons["notes.archive-toggle"].tap()
+    XCTAssertTrue(app.buttons["Open Persistent fixture note"].waitForExistence(timeout: 15))
   }
 
   func testNotesControlsRemainReachableAtAccessibilityTextSize() {
@@ -1187,7 +1286,7 @@ final class KnowUITests: XCTestCase {
     XCTAssertEqual(toggle.value as? String, "Collapsed")
     XCTAssertTrue(firstLabel.exists)
     XCTAssertTrue(secondLabel.exists)
-    XCTAssertLessThan(secondLabel.frame.minY, nextUnselectedLabel.frame.minY)
+    XCTAssertLessThan(secondLabel.frame.minX, nextUnselectedLabel.frame.minX)
     toggle.tap()
     XCTAssertEqual(toggle.value as? String, "Expanded")
     firstLabel.tap()

@@ -118,6 +118,22 @@ final class NotesTests: XCTestCase {
     XCTAssertEqual(model.selected?.version, 2)
   }
 
+  func testSaveFailureSetsFailedStateAndRecoveryMessage() async {
+    let fixture = NotesFixture(arguments: ["-notes-save-error"])
+    let model = NotesModel(transport: fixture)
+    await model.load()
+    await model.open(model.notes[0])
+
+    var draft = NoteDraft(model.selected!)
+    draft.body += "R"
+    let saved = await model.save(draft)
+
+    XCTAssertFalse(saved)
+    XCTAssertEqual(model.saveState, .failed)
+    XCTAssertEqual(
+      model.error, "Unable to save this note. Your draft is still here; try again.")
+  }
+
   func testPinAndReorderUseTheWebNoteContracts() async {
     let stub = NotesStub()
     let model = NotesModel(transport: stub)

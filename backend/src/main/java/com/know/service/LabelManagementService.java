@@ -15,6 +15,7 @@ public class LabelManagementService {
   private final TimeEntryLabelRepository timeAssignments;
   private final NoteTagRepository noteAssignments;
   private final LogLabelRepository logAssignments;
+  private final UserRepository users;
 
   public LabelManagementService(
       LabelRepository labels,
@@ -22,13 +23,15 @@ public class LabelManagementService {
       DailyRecordLabelRepository calendarAssignments,
       TimeEntryLabelRepository timeAssignments,
       NoteTagRepository noteAssignments,
-      LogLabelRepository logAssignments) {
+      LogLabelRepository logAssignments,
+      UserRepository users) {
     this.labels = labels;
     this.scopes = scopes;
     this.calendarAssignments = calendarAssignments;
     this.timeAssignments = timeAssignments;
     this.noteAssignments = noteAssignments;
     this.logAssignments = logAssignments;
+    this.users = users;
   }
 
   public record View(
@@ -46,6 +49,7 @@ public class LabelManagementService {
   @Transactional
   public View create(
       UUID userId, String name, String color, Collection<LabelScopeType> requestedScopes) {
+    users.findForUpdateById(userId);
     String normalized = normalize(name);
     Label label =
         labels

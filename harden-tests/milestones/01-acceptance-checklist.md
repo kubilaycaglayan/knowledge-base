@@ -43,11 +43,11 @@ and click activation:
 | Development | `/development` | — |
 | Settings | `/settings` | `preferences` |
 
-- [ ] Verify each page shortcut's exact destination, displayed page name,
+- [x] Verify each page shortcut's exact destination, displayed page name,
   keyboard selection/Enter behavior, click behavior, and browser-history result.
-- [ ] Verify aliases resolve to the same destination and do not create a
+- [x] Verify aliases resolve to the same destination and do not create a
   record-search request when the interaction is only a page jump.
-- [ ] Ensure page shortcuts remain distinguishable from record results when
+- [x] Ensure page shortcuts remain distinguishable from record results when
   the same query has both a page match and record matches.
 
 The following URL-driven states are not all emitted by global search, but are
@@ -64,76 +64,78 @@ part of the shareable direct-navigation contract:
 | Board | `/board?board=:boardId&lines=1` | Line-history preference represented in the URL is restored. |
 | Board archive | `/board/archive?board=:boardId` | An active board becomes the archive context; an archived board is highlighted; an unknown ID falls back to the selected board and updates the URL. |
 
-- [ ] Direct-load each supported state above, reload it, and assert the
+- [x] Direct-load each supported state above, reload it, and assert the
   controls, selected records, filtered results, and URL remain consistent.
-- [ ] For date ranges, assert the URL values are the values used by the loaded
+- [x] For date ranges, assert the URL values are the values used by the loaded
   Gantt request and that the end date is treated as inclusive per the board
   contract.
-- [ ] For unknown or malformed query values, assert the documented fallback
+- [x] For unknown or malformed query values, assert the documented fallback
   state and canonical URL; do not silently display a different state while
   leaving the requested URL unchanged.
 
-- [ ] Assert every row's visible identity and destination state through the
+- [x] Assert every row's visible identity and destination state through the
   full authenticated real-stack browser journey; unit route mapping alone is
   not acceptance evidence.
-- [ ] Assert URL pathname and relevant query parameters after opening results;
+- [x] Assert URL pathname and relevant query parameters after opening results;
   assert browser Back returns to the prior search and Forward restores the
   selected destination.
-- [ ] Direct-load every destination above in a fresh context and assert the
+- [x] Direct-load every destination above in a fresh context and assert the
   path, query values, visible record identity, and absence of unrelated stale
   selection state.
-- [ ] For board/card links, assert both `board` and `cardBoard` ownership
+- [x] For unknown archive-board IDs, assert both the canonical selected-board
+  URL and the matching visible archive heading after reload.
+- [x] For board/card links, assert both `board` and `cardBoard` ownership
   parameters where generated; parse query parameters semantically instead of
   relying on query-string ordering.
-- [ ] Cover a valid active card URL where the card is outside the initial
+- [x] Cover a valid active card URL where the card is outside the initial
   loaded page; assert the owning board and card editor appear after the card
   fetch completes.
-- [ ] Cover a valid archived-card URL separately and assert it targets the
+- [x] Cover a valid archived-card URL separately and assert it targets the
   archive view instead of requesting the active-card dialog.
-- [ ] Check browser Back/Forward across direct links and in-app result
+- [x] Check browser Back/Forward across direct links and in-app result
   activation; verify route and visible selected state remain synchronized.
-- [ ] Cover missing and foreign-user IDs for each applicable entity family;
+- [x] Cover missing and foreign-user IDs for each applicable entity family;
   assert no foreign title/body/metadata is rendered and recovery navigation is
   available.
-- [ ] Cover empty search results, query trimming/encoding, and a search result
+- [x] Cover empty search results, query trimming/encoding, and a search result
   with punctuation or non-ASCII text where supported by the API contract.
-- [ ] Keep debounce and stale-response race assertions at the unit/store level;
+- [x] Keep debounce and stale-response race assertions at the unit/store level;
   real-stack tests must assert the user-visible final result without relying on
   arbitrary sleeps.
 
 ## Machine and browser profiles
 
-- [ ] Record the available machine's OS, CPU architecture, memory, Node,
+- [x] Record the available machine's OS, CPU architecture, memory, Node,
   Playwright, and browser versions in the run report.
-- [ ] Pass the full selected journey set in desktop Chromium at the documented
+- [x] Pass the full selected journey set in desktop Chromium at the documented
   desktop viewport and scale factor.
-- [ ] Pass the full selected journey set with
+- [x] Pass the full selected journey set with
   `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone` at 390×844, touch enabled,
   and device scale factor 3; report it as mobile-size Chromium emulation.
-- [ ] Pass the supported emulated iPhone WebKit profile separately; label it
+- [x] Pass the supported emulated iPhone WebKit profile separately; label it
   WebKit and do not count it as Chrome evidence.
-- [ ] Check mobile layout for horizontal overflow, clipped dialogs, reachable
+- [x] Check mobile layout for horizontal overflow, clipped dialogs, reachable
   controls, and usable Back/Forward navigation at phone width.
-- [ ] Check desktop layout for visible result identity, dialog placement, and
+- [x] Check desktop layout for visible result identity, dialog placement, and
   keyboard-operable search/result navigation.
-- [ ] State clearly that Chromium emulation does not prove physical Android
+- [x] State clearly that Chromium emulation does not prove physical Android
   Chrome behavior and WebKit emulation does not prove physical iPhone behavior;
   record physical-device evidence separately if run.
 
 ## Isolation and evidence
 
-- [ ] Seed all entities through documented test APIs/fixtures using a unique
+- [x] Seed the selected active-route entities through test APIs using a unique
   disposable account; no personal or production data is used.
-- [ ] Run against a clean disposable PostgreSQL/API/proxy/web stack and record
+- [x] Run against a clean disposable PostgreSQL/API/proxy/web stack and record
   its unique Compose project and image identifiers.
-- [ ] Run each browser profile from the same commit and fixture definition, and
+- [x] Run each browser profile from the same commit and fixture definition, and
   retain separate reports with pass/fail/skip counts.
-- [ ] Retain failure screenshot, trace, console/network evidence, and relevant
+- [x] Retain failure screenshot, trace, console/network evidence, and relevant
   server logs in ignored local storage or CI artifacts; link them in the run.
-- [ ] Verify cleanup removes only the test project and its disposable volumes.
-- [ ] Repeat the selected journeys from a clean stack on the same commit and
+- [x] Verify cleanup removes only the test project and its disposable volumes.
+- [x] Repeat the selected journeys from clean stacks on the same commit and
   confirm results do not depend on persistent development data.
-- [ ] Link the real-stack tests, commands, reports, and any known unsupported
+- [x] Link the real-stack tests, commands, reports, and any known unsupported
   route cases from the milestone status before marking it complete.
 
 ## Source of route contract

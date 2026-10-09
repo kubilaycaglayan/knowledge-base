@@ -1,6 +1,8 @@
 package com.know.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 
 import com.know.domain.BoardCardRepository;
 import com.know.domain.BoardStatusRepository;
@@ -11,8 +13,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -23,6 +30,7 @@ import org.springframework.scheduling.config.ScheduledTaskHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
@@ -31,6 +39,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Full integration test suite.
@@ -56,9 +65,13 @@ class KnowIntegrationTest extends IntegrationTestSupport {
 
   @Autowired ObjectMapper mapper;
 
+  @Autowired JdbcTemplate jdbc;
+
   @Autowired TimerWebSocketHandler timerSockets;
 
   @Autowired ScheduledTaskHolder scheduledTasks;
+
+  @MockBean Clock clock;
 
   @Autowired BoardCardRepository boardCards;
 
@@ -69,6 +82,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   @BeforeEach
   void setUp() {
     base = "http://localhost:" + port;
+    doAnswer(invocation -> Instant.now()).when(clock).instant();
+    doReturn(ZoneOffset.UTC).when(clock).getZone();
   }
 
   // Helpers
@@ -690,6 +705,214 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(
         HttpStatus.NOT_FOUND,
         get("/api/v1/paths/" + foreignPathId, importingToken).getStatusCode());
+  }
+
+  @Test
+  void postgresImportRollsBackEarlierRowsWhenALaterRecordViolatesAConstraint() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This rollback boundary runs against PostgreSQL");
+    }
+    String token = freshToken();
+    UUID pathId = UUID.randomUUID();
+    UUID noteId = UUID.randomUUID();
+    String created = "2024-02-29T12:00:00Z";
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                pathId,
+                "{\"name\":\"Rollback-only path\",\"status\":\"ACTIVE\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + created
+                    + "\"}")
+            + csvRow(
+                "note",
+                noteId,
+                "{\"pathId\":\"" + pathId + "\",\"content\":\"late invalid note\"}");
+
+    ResponseEntity<JsonNode> failed = importCsv(token, csv);
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failed.getStatusCode());
+    assertTrue(get("/api/v1/paths", token).getBody().findValuesAsText("name").stream()
+        .noneMatch("Rollback-only path"::equals));
+    assertTrue(get("/api/v1/imports/knowledge-base/batches", token).getBody().isEmpty());
+    assertFalse(exportCsv(token).getBody().contains(pathId.toString()));
+  }
+
+  @Test
+  void postgresClockifyUndoRollsBackEarlierEntryDeleteWhenBatchUpdateFails() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Clockify transaction rollback requires PostgreSQL");
+    String token = freshToken();
+    String payload =
+        "{\"timeentries\":[{\"_id\":\"undo-rollback-"
+            + UUID.randomUUID()
+            + "\",\"description\":\"Undo rollback\",\"timeInterval\":{\"start\":\"2024-07-05T08:00:00Z\",\"end\":\"2024-07-05T09:00:00Z\"}}]}";
+    String batchId = post("/api/v1/imports/clockify", token, payload).getBody().get("batchId").asText();
+    UUID batchUuid = UUID.fromString(batchId);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_clockify_undo_" + suffix;
+    String triggerName = functionName;
+    installBatchUpdateFailure(batchUuid, functionName, triggerName);
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          delete("/api/v1/imports/clockify/batches/" + batchId, token).getStatusCode());
+    } finally {
+      removeTrigger(triggerName, "import_batch", functionName);
+    }
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry where import_batch_id = ?", Long.class, batchUuid));
+    assertNull(
+        jdbc.queryForObject(
+            "select undone_at from import_batch where id = ?", java.sql.Timestamp.class, batchUuid));
+  }
+
+  @Test
+  void postgresKnowledgeBaseUndoRollsBackEarlierDeletesWhenBatchUpdateFails() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Knowledge Base transaction rollback requires PostgreSQL");
+    String token = freshToken();
+    UUID pathId = UUID.randomUUID();
+    UUID noteId = UUID.randomUUID();
+    String created = "2024-02-29T12:00:00Z";
+    String csv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                pathId,
+                "{\"name\":\"Undo rollback path\",\"status\":\"ACTIVE\",\"createdAt\":\""
+                    + created
+                    + "\",\"updatedAt\":\""
+                    + created
+                    + "\"}")
+            + csvRow(
+                "note",
+                noteId,
+                "{\"title\":\"Undo rollback note\",\"content\":\"body\",\"pathId\":\""
+                    + pathId
+                    + "\"}");
+    String batchId = importCsv(token, csv).getBody().get("batchId").asText();
+    UUID batchUuid = UUID.fromString(batchId);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_kb_undo_" + suffix;
+    String triggerName = functionName;
+    installBatchUpdateFailure(batchUuid, functionName, triggerName);
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          delete("/api/v1/imports/knowledge-base/batches/" + batchId, token).getStatusCode());
+    } finally {
+      removeTrigger(triggerName, "import_batch", functionName);
+    }
+    assertEquals(
+        1L,
+        jdbc.queryForObject("select count(*) from note where id = ?", Long.class, noteId));
+    assertEquals(
+        1L,
+        jdbc.queryForObject("select count(*) from path where id = ?", Long.class, pathId));
+    assertNull(
+        jdbc.queryForObject(
+            "select undone_at from import_batch where id = ?", java.sql.Timestamp.class, batchUuid));
+  }
+
+  @Test
+  void postgresCalendarRangeFailureRollsBackEarlierDayAndAssignments() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Calendar transaction rollback requires PostgreSQL");
+    String token = freshToken();
+    String labelId =
+        post(
+                "/api/v1/labels",
+                token,
+                "{\"name\":\"Range rollback\",\"scopes\":[\"CALENDAR\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    java.time.LocalDate failedDate = java.time.LocalDate.of(2026, 5, 21);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_calendar_range_" + suffix;
+    String triggerName = functionName;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin if new.record_date = date '"
+            + failedDate
+            + "' then raise exception 'forced calendar range failure'; end if; return new; end $$");
+    jdbc.execute(
+        "create trigger "
+            + triggerName
+            + " before insert on daily_record for each row execute function "
+            + functionName
+            + "()");
+    try {
+      ResponseEntity<JsonNode> failed =
+          put(
+              "/api/v1/calendar/days/range",
+              token,
+              "{\"startDate\":\"2026-05-20\",\"endDate\":\""
+                  + failedDate
+                  + "\",\"labels\":[{\"labelId\":\""
+                  + labelId
+                  + "\",\"portion\":0.25}]}");
+      assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failed.getStatusCode());
+    } finally {
+      removeTrigger(triggerName, "daily_record", functionName);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from daily_record where user_id = ? and record_date between ? and ?",
+            Long.class,
+            authenticatedUserId(token),
+            java.sql.Date.valueOf("2026-05-20"),
+            java.sql.Date.valueOf(failedDate)));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from daily_record_label a join daily_record d on d.id = a.daily_record_id where d.user_id = ? and d.record_date between ? and ?",
+            Long.class,
+            authenticatedUserId(token),
+            java.sql.Date.valueOf("2026-05-20"),
+            java.sql.Date.valueOf(failedDate)));
+  }
+
+  private void installBatchUpdateFailure(UUID batchId, String functionName, String triggerName) {
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin if new.id = '"
+            + batchId
+            + "'::uuid then raise exception 'forced import undo failure'; end if; return new; end $$");
+    jdbc.execute(
+        "create trigger "
+            + triggerName
+            + " before update on import_batch for each row execute function "
+            + functionName
+            + "()");
+  }
+
+  private void removeTrigger(String triggerName, String tableName, String functionName) {
+    jdbc.execute("drop trigger if exists " + triggerName + " on " + tableName);
+    jdbc.execute("drop function if exists " + functionName + "()");
+  }
+
+  private UUID authenticatedUserId(String token) {
+    try {
+      return UUID.fromString(
+          mapper
+              .readTree(Base64.getUrlDecoder().decode(token.split("\\.")[1]))
+              .get("sub")
+              .asText());
+    } catch (Exception exception) {
+      throw new AssertionError("Could not read test user from token", exception);
+    }
   }
 
   @Test
@@ -1338,6 +1561,166 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresReportRangeUsesUtcLeapDayAndExactHalfOpenInstantBoundaries() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This timestamp boundary case is part of the PostgreSQL integration profile");
+    }
+    doReturn(Instant.parse("2024-03-01T00:00:10Z")).when(clock).instant();
+    String token = freshToken();
+    for (String entry :
+        new String[] {
+          "\"startedAt\":\"2024-02-28T23:59:50Z\",\"endedAt\":\"2024-02-29T00:00:00Z\",\"description\":\"ends at range start\"",
+          "\"startedAt\":\"2024-02-29T00:00:00Z\",\"endedAt\":\"2024-02-29T00:00:10Z\",\"description\":\"starts at range start\"",
+          "\"startedAt\":\"2024-02-29T12:00:00Z\",\"endedAt\":\"2024-02-29T12:00:00Z\",\"description\":\"zero duration\"",
+          "\"startedAt\":\"2024-03-01T00:00:00Z\",\"endedAt\":\"2024-03-01T00:00:10Z\",\"description\":\"starts at exclusive end\""
+        }) {
+      ResponseEntity<JsonNode> created =
+          post("/api/v1/time-entries", token, "{" + entry + ",\"labelIds\":[]}");
+      assertEquals(HttpStatus.OK, created.getStatusCode(), String.valueOf(created.getBody()));
+    }
+
+    ResponseEntity<JsonNode> response =
+        get("/api/v1/reports?startDate=2024-02-29&endDate=2024-02-29", token);
+    assertEquals(HttpStatus.OK, response.getStatusCode(), String.valueOf(response.getBody()));
+    JsonNode report = response.getBody();
+    assertEquals("2024-02-29", report.get("from").asText());
+    assertEquals("2024-02-29", report.get("to").asText());
+    assertEquals(10, report.get("totalSeconds").asLong());
+    assertEquals("2024-02-29", report.get("days").get(0).get("date").asText());
+    assertEquals(10, report.get("days").get(0).get("totalSeconds").asLong());
+
+    for (String[] period :
+        new String[][] {
+          {"WEEK", "2024-02-26", "2024-03-03"},
+          {"MONTH", "2024-02-01", "2024-02-29"},
+          {"YEAR", "2024-01-01", "2024-12-31"}
+        }) {
+      JsonNode window =
+          get("/api/v1/reports?period=" + period[0] + "&anchor=2024-02-29", token).getBody();
+      assertEquals(period[1], window.get("from").asText(), period[0]);
+      assertEquals(period[2], window.get("to").asText(), period[0]);
+    }
+    JsonNode rollover =
+        get("/api/v1/reports?period=WEEK&anchor=2024-12-31", token).getBody();
+    assertEquals("2024-12-30", rollover.get("from").asText());
+    assertEquals("2025-01-05", rollover.get("to").asText());
+  }
+
+  @Test
+  void postgresRunningEntryReportUsesInjectedNowAtUtcDayBoundary() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This injected-clock running-entry case runs against PostgreSQL");
+    }
+    Instant startedAt = Instant.parse("2024-03-10T06:59:20Z");
+    Instant now = Instant.parse("2024-03-10T07:00:00Z");
+    doReturn(startedAt).when(clock).instant();
+    String token = freshToken();
+    ResponseEntity<JsonNode> started =
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Frozen running entry\",\"source\":\"WEB\"}");
+    assertEquals(HttpStatus.CREATED, started.getStatusCode(), String.valueOf(started.getBody()));
+    doReturn(now).when(clock).instant();
+
+    ResponseEntity<JsonNode> response =
+        get("/api/v1/reports?startDate=2024-03-10&endDate=2024-03-10", token);
+    assertEquals(HttpStatus.OK, response.getStatusCode(), String.valueOf(response.getBody()));
+    assertEquals("2024-03-10", response.getBody().get("from").asText());
+    assertEquals("2024-03-10", response.getBody().get("to").asText());
+    assertEquals(40, response.getBody().get("totalSeconds").asLong());
+  }
+
+  @Test
+  void postgresReportAndCalendarKeepOneYearResultShapesBoundedAndComplete() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This one-year volume case runs against PostgreSQL");
+    }
+    String token = freshToken();
+    Instant base = Instant.parse("2024-03-31T12:00:00Z");
+    for (int index = 0; index < 48; index++) {
+      Instant start = base.plusSeconds(index * 60L);
+      ResponseEntity<JsonNode> created =
+          post(
+              "/api/v1/time-entries",
+              token,
+              "{\"startedAt\":\""
+                  + start
+                  + "\",\"endedAt\":\""
+                  + start.plusSeconds(5)
+                  + "\",\"labelIds\":[],\"description\":\"volume entry "
+                  + index
+                  + "\"}");
+      assertEquals(HttpStatus.OK, created.getStatusCode(), String.valueOf(created.getBody()));
+    }
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/calendar/days/range",
+                token,
+                "{\"startDate\":\"2024-01-01\",\"endDate\":\"2024-12-31\","
+                    + "\"note\":\"volume calendar\",\"labels\":[]}")
+            .getStatusCode());
+
+    JsonNode report =
+        get("/api/v1/reports?startDate=2024-01-01&endDate=2024-12-31", token).getBody();
+    assertEquals(366, report.get("days").size());
+    assertEquals(240, report.get("totalSeconds").asLong());
+    assertTrue(report.get("days").get(90).get("calendarNote").asText().equals("volume calendar"));
+    JsonNode calendar =
+        get("/api/v1/calendar/days?startDate=2024-01-01&endDate=2024-12-31", token).getBody();
+    assertEquals(366, calendar.size());
+    assertEquals("2024-01-01", calendar.get(0).get("date").asText());
+    assertEquals("2024-12-31", calendar.get(365).get("date").asText());
+  }
+
+  @Test
+  void postgresExportKeepsHighVolumeLogRecordsStablyOrdered() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This export volume case runs against PostgreSQL");
+    }
+    String token = freshToken();
+    List<UUID> ids = new ArrayList<>();
+    StringBuilder csv = new StringBuilder("entity,id,payload\n");
+    for (int index = 0; index < 60; index++) {
+      UUID id = UUID.randomUUID();
+      ids.add(id);
+      String occurredAt = Instant.parse("2024-01-01T00:00:00Z").plusSeconds(index).toString();
+      csv.append(
+          csvRow(
+              "log",
+              id,
+              "{\"body\":\"Export volume "
+                  + index
+                  + "\",\"occurredAt\":\""
+                  + occurredAt
+                  + "\",\"createdAt\":\""
+                  + occurredAt
+                  + "\",\"updatedAt\":\""
+                  + occurredAt
+                  + "\",\"labelIds\":[]}"));
+    }
+    ResponseEntity<JsonNode> imported = importCsv(token, csv.toString());
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(60, imported.getBody().get("imported").asInt());
+
+    String exported = exportCsv(token).getBody();
+    String[] lines = exported.strip().split("\\n");
+    List<String> exportedLogIds =
+        java.util.Arrays.stream(lines)
+            .filter(line -> line.startsWith("log,"))
+            .map(line -> line.split(",", 3)[1])
+            .toList();
+    assertEquals(60, exportedLogIds.size());
+    assertEquals(ids.reversed().stream().map(UUID::toString).toList(), exportedLogIds);
+    assertTrue(exported.length() < 25_000_000);
+  }
+
+  @Test
   void reportBadPeriodIsRejected() {
     String token = freshToken();
     ResponseEntity<JsonNode> result = get("/api/v1/reports?period=INVALID", token);
@@ -1380,6 +1763,34 @@ class KnowIntegrationTest extends IntegrationTestSupport {
       }
     }
     assertTrue(pathFound, "Clockify project path should be created");
+  }
+
+  @Test
+  void postgresClockifyImportRollsBackEarlierPathEntryAndBatchOnLaterInvalidInterval() {
+    if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "This Clockify transaction rollback case runs against PostgreSQL");
+    }
+    String token = freshToken();
+    String project = "RollbackProject-" + UUID.randomUUID();
+    String payload =
+        "{\"timeentries\":["
+            + "{\"_id\":\"valid-first\",\"projectName\":\""
+            + project
+            + "\",\"description\":\"first row\",\"timeInterval\":{"
+            + "\"start\":\"2024-07-01T10:00:00Z\",\"end\":\"2024-07-01T11:00:00Z\"}},"
+            + "{\"_id\":\"invalid-later\",\"projectName\":\""
+            + project
+            + "\",\"description\":\"invalid row\",\"timeInterval\":{"
+            + "\"start\":\"2024-07-01T12:00:00Z\",\"end\":\"2024-07-01T11:00:00Z\"}}]}";
+
+    ResponseEntity<JsonNode> result = post("/api/v1/imports/clockify", token, payload);
+    assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode(), String.valueOf(result.getBody()));
+    assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/imports/clockify/batches", token).getBody().isEmpty());
+    for (JsonNode board : get("/api/v1/boards?includeHidden=true", token).getBody())
+      assertFalse(project.equals(board.path("name").asText(null)));
   }
 
   @Test

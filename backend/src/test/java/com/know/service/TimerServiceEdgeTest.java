@@ -148,6 +148,7 @@ class TimerServiceEdgeTest {
     TimeEntry running =
         new TimeEntry(user, null, Instant.now().minusSeconds(20), "live", TimeSource.WEB);
     when(entries.findByIdAndUserId(id, user)).thenReturn(Optional.of(running));
+    when(entries.findByIdAndUserIdForUpdate(id, user)).thenReturn(Optional.of(running));
 
     assertThrows(
         ResponseStatusException.class,

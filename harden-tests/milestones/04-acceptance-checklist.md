@@ -6,133 +6,105 @@ controls separately.
 
 ## Source-backed current state
 
-The values below were checked against application code and Terraform in this
-source audit. Refresh them when either source changes. Configured Terraform
-values are not evidence that the Cloudflare ruleset is currently deployed.
+The values below were checked against application code and Terraform during
+HARD-04. Configured Terraform values are not evidence that Cloudflare currently
+enforces the rules.
 
-| Control | Current configured contract | Current evidence and limitation |
+| Control | Configured contract | HARD-04 evidence and limitation |
 | --- | --- | --- |
-| Application auth budget | 10 attempts per fixed 60-second window, keyed by `request.getRemoteAddr() + "\|" + normalizedEmail`; `normalizedEmail` is trimmed and lowercased with `Locale.ROOT`. Google uses the same remote address plus the shared key value `google`. | [`AuthAttemptLimiter`](../../backend/src/main/java/com/know/security/AuthAttemptLimiter.java) uses an atomic `ConcurrentHashMap.compute` and `System.nanoTime()`. [`AuthController`](../../backend/src/main/java/com/know/api/AuthController.java) calls it for valid login, register, and Google requests. [`AuthAttemptLimiterTest`](../../backend/src/test/java/com/know/security/AuthAttemptLimiterTest.java) only covers ten allowed attempts, the next blocked attempt, and a different email on the same address. |
-| Application response | Blocked attempts throw HTTP 429 with reason `Too many authentication attempts; try again shortly`; [`ApiExceptionHandler`](../../backend/src/main/java/com/know/api/ApiExceptionHandler.java) serializes `{ "error": "…" }`. No `Retry-After` header is set by this path. | [`AuthControllerApiTest`](../../backend/src/test/java/com/know/api/AuthControllerApiTest.java) mocks the limiter and does not exercise a real budget or 429 response. |
-| Application reset and cleanup | A window resets when the next request arrives at/after its original `resetAt`; it is fixed, not sliding. Expired entries are removed during requests only when map size exceeds 1,000. | Current code has no injected time source and no hard cardinality cap. Cleanup does not establish bounded memory while many distinct keys remain active. |
-| Application deployment scope | The limiter stores windows in a component-local `ConcurrentHashMap`; state is local to one application process. | Verify production API process/replica count and routing. If multiple processes serve traffic, measure whether a client can receive an independent per-process budget and report that limitation. |
-| Cloudflare auth | Host plus exact path regex for `/api/v1/auth/(login|register|google)`, 20 requests per 60 seconds per `cf.colo.id` and `ip.src`, 300-second mitigation. | Configured in [`main.tf`](../../deployment/cloudflare/main.tf); no live deployment/enforcement record is present in this repository. |
-| Cloudflare imports | Host plus `/api/v1/imports/` path prefix, 12 requests per 60 seconds per colo/IP, 300-second mitigation. | The prefix covers Clockify and Knowledge Base import routes; the rule is path-based and does not declare an HTTP method condition. |
-| Cloudflare search/reports | Host plus `/api/v1/search` or `/api/v1/reports` exact path or descendant path, 60 requests per 60 seconds per colo/IP, 120-second mitigation. | The rule is path-based and does not declare an HTTP method condition. |
-| Cloudflare general API | Host plus `/api/v1` exact path or descendant path, 300 requests per 60 seconds per colo/IP, 60-second mitigation. | Every narrow API path also matches the general API expression. Keep the overlapping configured budgets visible when assessing effective behavior. |
-| Cloudflare enablement | `enable_rate_limits` defaults to `true`; [`terraform.tfvars.example`](../../deployment/cloudflare/terraform.tfvars.example) also sets it true. | Actual deployment variables and Cloudflare state are not available from checked-in source; report live status as unverified unless independently observed in an authorized staging account. |
-| Static policy check | [`check-cloudflare-waf.mjs`](../../scripts/check-cloudflare-waf.mjs) checks nine source markers, including phases, rule refs, shared characteristics, and token sensitivity. | Marker presence is configuration lint only. It does not evaluate expressions against controller mappings, prove rule interactions, or verify live Cloudflare enforcement. |
+| Application auth budget | 10 attempts per fixed 60-second window, keyed by `request.getRemoteAddr() + "|" + normalizedEmail`; email is trimmed and lowercased using `Locale.ROOT`. Google uses `request.getRemoteAddr() + "|google"`. | [`AuthAttemptLimiter`](../../backend/src/main/java/com/know/security/AuthAttemptLimiter.java) uses an atomic `ConcurrentHashMap.compute` and monotonic time. Deterministic time, concurrent attempts, expiry cleanup, and 2,000 active keys are covered in [`AuthAttemptLimiterTest`](../../backend/src/test/java/com/know/security/AuthAttemptLimiterTest.java). Active key count grows without a hard cap; process RSS was not measured. |
+| Application response | HTTP 429 with `{ "error": "Too many authentication attempts; try again shortly" }`. No `Retry-After` header. | [`AuthControllerApiTest`](../../backend/src/test/java/com/know/api/AuthControllerApiTest.java) exercises the real limiter through MockMvc for login, registration, and Google. The proxy probe also checks the 429 body and absent header. |
+| Reset and cleanup | A fixed window resets when a request arrives at or after `resetAt`. Expired entries are removed during requests only when the map exceeds 1,000 entries. | Exact one-minute boundary and reclamation after 1,001 keys are tested without sleeping. Distinct active keys remain until expiry and subsequent cleanup. |
+| Deployment scope | Limiter state is local to one Spring application process. | The isolated stack used one API process. The production replica count and routing are not in repository configuration and remain unknown; a multi-process deployment would have a per-process budget, not a shared distributed budget. |
+| Reverse-proxy identity | The app uses Servlet `getRemoteAddr()` and does not directly trust `X-Forwarded-For`. Cloudflare separately keys by colo and source IP. | The isolated [`Caddyfile.cloudflare`](../../deployment/Caddyfile.cloudflare) to Tomcat probe exhausted a budget while changing forwarding and identity headers; those headers did not change the app key. The peer address is the proxy connection seen by the app. |
+| Cloudflare auth | Configured-host exact path for `/api/v1/auth/(login|register|google)`, 20 requests per 60 seconds per colo/IP, 300-second mitigation. | Terraform config only; live zone enforcement is unverified. |
+| Cloudflare imports | Configured-host `/api/v1/imports/` prefix, 12 requests per 60 seconds per colo/IP, 300-second mitigation. | Covers Clockify and Knowledge Base import paths. No method predicate. |
+| Cloudflare search/reports | Configured-host `/api/v1/search` or `/api/v1/reports` exact path or descendant path, 60 requests per 60 seconds per colo/IP, 120-second mitigation. | Suffix boundaries are asserted. No method predicate. |
+| Cloudflare general API | Configured-host `/api/v1` exact path or descendant path, 300 requests per 60 seconds per colo/IP, 60-second mitigation. | Every narrow API path also matches the broad expression. Actual deployed state is unavailable. |
+| Cloudflare enablement | `enable_rate_limits` defaults to true in Terraform and the example tfvars. | The module is optional and actual deployment variables/state are unavailable. Do not infer deployed enablement. |
+| Static policy check | [`check-cloudflare-waf.mjs`](../../scripts/check-cloudflare-waf.mjs) asserts route expression shape and policy configuration. | 174 semantic contract assertions passed. This is repository configuration evidence, not Cloudflare expression-engine or live-enforcement evidence. |
 
 ### Route expression matrix
 
-The controller path inventory below was compared with
+The source mapping checks cover
 [`AuthController`](../../backend/src/main/java/com/know/api/AuthController.java),
 [`ImportController`](../../backend/src/main/java/com/know/api/ImportController.java),
 [`KnowledgeBaseTransferController`](../../backend/src/main/java/com/know/api/KnowledgeBaseTransferController.java),
 [`SearchController`](../../backend/src/main/java/com/know/api/SearchController.java),
 and [`ReportController`](../../backend/src/main/java/com/know/api/ReportController.java).
 
-| Route family | Current controller paths/methods | Edge rule match | Exclusion/boundary assertions |
+| Route family | Current controller paths/methods | Narrow edge expression | Tested boundaries |
 | --- | --- | --- | --- |
-| Authentication | `POST /api/v1/auth/login`, `/register`, `/google` | Exact auth path regex; also broad API expression. | `/api/v1/auth/google/config`, `/me`, and `/password` do not match the narrow auth regex; they still match the broad API expression. |
-| Imports | Clockify: `POST /api/v1/imports/clockify`, `GET /api/v1/imports/clockify/batches`, `DELETE /api/v1/imports/clockify/batches/{id}`. Knowledge Base: `POST /api/v1/imports/knowledge-base`, `GET .../export`, `GET .../batches`, `DELETE .../batches/{id}`. | Import path prefix; also broad API expression. | `/api/v1/imports` without the trailing slash does not match the narrow prefix; `/api/v1/imports-other/...` is outside the prefix. |
-| Search and reports | `GET /api/v1/search`, `GET /api/v1/reports`. | Exact endpoint or descendant regex; also broad API expression. | `/api/v1/searchx` and `/api/v1/reports-old` do not match the narrow expression; they still match the broad API expression. |
-| All API routes | Every route under `/api/v1` from the controller inventory. | `/api/v1` or any descendant path. | `/api/v10/...`, `/health`, and non-API web routes do not match the broad expression. |
-| Host scope | All four rate-limit expressions require `http.host eq var.domain`; the custom WAF has a separate unexpected-Host block. | Rate-limit rules only match the configured hostname. | Test configured host, an alternate host, and a missing/invalid host against rate-limit matching and the custom host rule separately. |
-| Method scope | The custom WAF allows GET, HEAD, POST, PUT, PATCH, DELETE, and OPTIONS; the rate-limit rules have no method predicate. | Any method to a matching path reaches the same rate-limit expression. | Verify custom method allow/block behavior independently from path-based rate limiting. |
+| Authentication | `POST /api/v1/auth/login`, `/register`, `/google` | Exact auth path regex; also broad API expression. | `google/config`, `me`, and `password` are outside the narrow auth rule but inside the broad API rule. |
+| Imports | Clockify `POST /clockify`, `GET /clockify/batches`, `DELETE /clockify/batches/{id}` under `/api/v1/imports`; Knowledge Base `POST /api/v1/imports/knowledge-base`, `GET /export`, `GET /batches`, `DELETE /batches/{id}`. | `/api/v1/imports/` prefix; also broad API. | Missing trailing slash `/api/v1/imports` and sibling `/api/v1/imports-other/...` are excluded from the narrow rule. |
+| Search/reports | `GET /api/v1/search`, `GET /api/v1/reports`. | Exact endpoint or descendant path; also broad API. | `/searchx` and `/reports-old` miss the narrow rule and match only broad API. |
+| All API routes | Every `/api/v1` route. | `/api/v1` exact path or descendant. | `/api/v10/...` and `/health` are excluded. |
+| Host/method | Rate-limit rules require `http.host eq var.domain`; none has a method predicate. | Host scope is included in each expression. | Configured, alternate, and absent hosts plus GET, HEAD, POST, PUT, PATCH, DELETE, and OPTIONS behavior are checked. The separate custom WAF method allowlist remains independent. |
 
-The current Terraform rate-limit expressions do not constrain HTTP method.
-Assert that each actual controller method maps to the expected path rule, and
-record that a different method to the same path still matches the rate-limit
-expression. The separate custom WAF method rule allows GET, HEAD, POST, PUT,
-PATCH, DELETE, and OPTIONS. The narrow rules appear before the broad rule in
-the Terraform list, but tests must establish Cloudflare's actual handling of
-overlapping rate-limit rules before describing that order as precedence.
-
-The application key includes the socket peer reported by Servlet and does not
-read `X-Forwarded-For` directly. The production-shaped
-[`Caddyfile.cloudflare`](../../deployment/Caddyfile.cloudflare) reverse
-proxies `/api/*` to the API and does not configure a custom trusted-proxy
-identity rule. Source inspection alone does not establish the actual
-`getRemoteAddr()` value seen inside Tomcat or how multiple API replicas share
-this in-memory limiter; capture those runtime facts in a local disposable-stack
-report.
+Cloudflare states that rate-limit rules are evaluated in order and a
+terminating `Block` stops later rule evaluation. The narrow rules are listed
+before the broad API rule, but a request blocked by a narrow rule does not
+reach later rate-limit rules. The repository test verifies configured order
+and expression boundaries; it does not claim to execute Cloudflare's runtime
+engine. See [rate limiting rules](https://developers.cloudflare.com/waf/rate-limiting-rules/)
+and [security feature interoperability](https://developers.cloudflare.com/waf/feature-interoperability/).
 
 ## Application authentication limiter
 
-- [x] Document the configured threshold, window, key construction,
-  normalization, response status/body, and reset semantics from current code
-  in the table above; confirm deployed values separately when available.
-- [ ] Exercise login, registration, and Google authentication through the HTTP
-  controller/integration boundary; assert the configured budget and 429
-  response shape rather than only testing the counter class.
-- [ ] Test exact boundary requests (last allowed and first rejected), then
-  verify another normalized email/key has an independent budget.
-- [ ] Make window-expiry tests deterministic. The current implementation uses
-  `System.nanoTime()` directly and exposes no clock seam; do not use a
-  one-minute sleep as the only reset test.
-- [ ] Race concurrent attempts for the same key and prove the threshold cannot
-  be bypassed or exceeded by a check-then-increment race.
-- [ ] Exercise expiry cleanup when the map exceeds 1,000 entries and characterize
-  many distinct active keys. Assert expired-entry reclamation, report observed
-  cardinality/cost, and do not imply a hard memory bound that the current map
-  does not provide.
-- [ ] Verify process scope: determine whether the live deployment has one or
-  multiple API processes and whether the same client can rotate between them.
-  Document the effective per-process budget and any distributed-limit gap.
-- [ ] Determine the remote address seen through the production-shaped
-  Caddy/Tomcat path; test whether spoofed forwarding headers alter the limiter
-  key and document the observed trust boundary.
-- [ ] State whether `Retry-After` is part of the contract; assert it only if
-  implemented and documented.
+- [x] Document threshold, fixed window, key construction, normalization,
+  response body/status, reset semantics, and lack of `Retry-After`.
+- [x] Exercise login, registration, and Google through the HTTP controller
+  boundary with the real limiter; verify 429 response shape.
+- [x] Assert the tenth attempt is allowed, the eleventh is rejected, and a
+  different normalized email has an independent key.
+- [x] Advance a controllable clock to test reset at the minute boundary.
+- [x] Race concurrent attempts and prove only ten are allowed.
+- [x] Test cleanup beyond 1,000 keys and characterize 2,000 simultaneous active
+  keys. Record the lack of a hard size cap; no RSS claim is made.
+- [x] Record per-process state and the unknown production replica count. A
+  distributed budget is not claimed.
+- [x] Exercise the production-shaped Caddy/Tomcat path with changing
+  `X-Forwarded-For` and spoofed identity headers; confirm they do not bypass the
+  application budget or protected-route authentication.
+- [x] State that `Retry-After` is not part of the current API contract.
 
 ## Edge policy and route coverage
 
-- [x] Inventory current controller method/path pairs for auth, import, search,
-  reports, and general APIs in the route matrix above. Refresh after controller
-  or Terraform route changes.
-- [ ] Verify current edge thresholds, time window, key dimensions, optional
-  enablement, rule expressions, and ordering from Terraform/configuration.
-- [ ] Add semantic assertions for every included and excluded route family in
-  the matrix, including the `/api/v1` boundary, import slash boundary, search
-  and reports suffix boundary, and auth `google/config` exclusion.
-- [ ] Verify interactions between narrow and broad budgets against Cloudflare
-  rule semantics; record whether list order affects evaluation instead of
-  assuming precedence from Terraform text order alone.
-- [ ] Keep app-level email/remote-address limits distinct from edge colo/IP
-  limits in code, reports, and documentation.
-- [ ] Treat static Terraform text checks as configuration evidence only; record
-  explicitly whether live Cloudflare enforcement was exercised.
-- [ ] If live testing is available, use an isolated staging zone with bounded
-  requests and retain policy version and evidence; never load-test production.
-- [ ] Until staging evidence exists, label Cloudflare enforcement unverified
-  and do not treat the example tfvars value or static check as deployment
-  state.
+- [x] Inventory controller method/path pairs and current Terraform limits,
+  keys, time windows, mitigation windows, optional enablement, and host scope.
+- [x] Add semantic route assertions for included/excluded auth, imports,
+  search/reports, and broad API paths, including suffix and slash boundaries.
+- [x] Assert method-independent path matching and separate host boundaries.
+- [x] Document ordered narrow and broad rule interaction using Cloudflare's
+  published evaluation semantics; do not claim list order alone proves
+  precedence or that every overlapping rule blocks the same request.
+- [x] Keep app email/socket-peer limits distinct from Cloudflare colo/IP
+  controls in tests and documentation.
+- [x] Label Terraform checks as configuration evidence only.
+- [x] Record live Cloudflare enforcement as unverified. No authorized staging
+  zone was available; no production requests or credentials were used.
 
-## Regression matrix
+## Security regression review
 
-| Existing baseline | Current evidence | Additional HARD-04 evidence needed |
+| Security area | Existing or new evidence | Boundary |
 | --- | --- | --- |
-| Protected and public routes, invalid/expired JWTs, unknown user, CORS, headers | [`SecurityHardeningIntegrationTest`](../../backend/src/test/java/com/know/integration/SecurityHardeningIntegrationTest.java) discovers controller routes and exercises these contracts in the H2 integration profile. | Repeat relevant routes through the local and production-shaped Caddy paths; report origin/host and forwarded-header behavior. |
-| Cross-user reads/writes, reference ownership, list/search isolation, export access | [`CrossUserIsolationIntegrationTest`](../../backend/src/test/java/com/know/integration/CrossUserIsolationIntegrationTest.java) exercises ownership and transfer/export boundaries in H2. | Preserve these cases while reviewing rate-limited imports/exports and deployed proxy behavior; verify response/log bodies do not reveal foreign data. |
-| Timer WebSocket authentication and user-specific updates | [`TimerWebSocketHandlerTest`](../../backend/src/test/java/com/know/realtime/TimerWebSocketHandlerTest.java) and [`KnowIntegrationTest`](../../backend/src/test/java/com/know/integration/KnowIntegrationTest.java) cover handler auth and integration behavior. | Retain the production-proxy WebSocket smoke and explicitly attempt a cross-user subscription through that path. |
-| Import/export API behavior | [`ImportControllerApiTest`](../../backend/src/test/java/com/know/api/ImportControllerApiTest.java) covers controller/service delegation; H2 integration tests cover import flows and ownership. | Add request-size/type boundary evidence through the deployed-shaped proxy and link it to the Cloudflare import path budget. |
+| Protected/public routes, malformed and expired JWTs, CORS, security headers | [`SecurityHardeningIntegrationTest`](../../backend/src/test/java/com/know/integration/SecurityHardeningIntegrationTest.java), existing smoke checks, and the HARD-04 Caddy/Tomcat probe for unauthenticated, malformed, and expired-token responses, CORS, and proxy headers. | Expired-token unit/integration coverage remains in the app test profile; the proxy probe uses a disposable locally signed expired token. |
+| Ownership and cross-user leakage | [`CrossUserIsolationIntegrationTest`](../../backend/src/test/java/com/know/integration/CrossUserIsolationIntegrationTest.java), [`KnowIntegrationTest`](../../backend/src/test/java/com/know/integration/KnowIntegrationTest.java), and [`TimerWebSocketHandlerTest`](../../backend/src/test/java/com/know/realtime/TimerWebSocketHandlerTest.java). | Existing isolated integration/unit coverage; no production data used. |
+| WebSocket auth/ownership | Handler rejects invalid auth and sends timer updates only to the owning authenticated user; required timer/WebSocket real-stack job remains in CI. | HARD-04 reviewed the current suite and retained its real-stack proxy runner. |
+| Import size/type and export ownership | Existing API/integration tests, transfer ownership cases, and deployed-shaped smoke import/export paths. | Boundary and ownership assertions are app/integration coverage; rate-limit expression includes all import methods by path. |
+| Auth rate-limit UI recovery | [`auth-rate-limit.real-stack.acceptance.test.mjs`](../../frontend/scripts/auth-rate-limit.real-stack.acceptance.test.mjs) asserts the same 429 body for a known and unknown email, accessible alert, retry button, and corrected email in both Chromium profiles. | Browser uses disposable accounts in a temporary local database. |
+| Failure disclosure | Generic auth response is asserted; cross-user suites assert owner data is not disclosed; run records contain no credentials or personal data. | Logs from production are not accessed. |
 
-- [ ] Verify invalid/expired tokens, protected routes, intended public routes,
-  CORS origin/method behavior, and security headers through local and
-  production-shaped proxy paths.
-- [ ] Verify WebSocket authentication and ownership, including cross-user
-  subscription attempts.
-- [ ] Verify import size/type limits and export ownership with boundary and
-  rejection cases.
-- [ ] Verify spoofed identity/forwarding headers cannot bypass rate limits or
-  authorization.
-- [ ] Ensure failures never include secrets or another user's data in logs or
-  response bodies.
-- [ ] Exercise the auth form's 429 feedback in desktop Chromium and mobile-size
-  Chromium: assert the existing accessible alert and retry action remain
-  reachable and the email can be corrected. Assert the 429 response itself is
-  the same for existing and unknown identities; document any separate account
-  enumeration behavior instead of attributing it to the rate-limit response.
-- [ ] Link tests, source route inventory, policy version, and environment of
-  each run before marking the milestone complete.
+- [x] Review and link the auth, token, CORS, WebSocket, import/export,
+  ownership, and security-header regression inventory.
+- [x] Verify spoofed forwarding/identity headers cannot bypass the limiter or
+  protected-route authentication in the local production-shaped proxy stack.
+- [x] Exercise accessible auth 429 feedback and retry in desktop and
+  mobile-size Chromium; verify the email can be corrected and the rate-limit
+  response is identical for known/unknown identities.
+- [x] Link tests, route inventory, configured policy, and local run environment
+  in the dated [HARD-04 run report](../runs/2026-10-09-hard04-rate-limits.md).
+
+HARD-04 is **Complete**. Cloudflare live enforcement and the production API
+replica count remain explicitly unverified because neither deployment state
+nor an authorized staging account is available in this repository workspace.

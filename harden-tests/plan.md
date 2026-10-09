@@ -26,8 +26,12 @@ for completion criteria, including reconciliation of the existing run records.
 - [x] Add selectable desktop Chromium and emulated iPhone WebKit profiles with touch emulation to the existing real-stack browser suites.
 - [x] Run desktop Chromium and emulated iPhone WebKit real-stack journeys for board/card edits, pagination, note conflicts, timer sync/fallback, delayed board responses, and session restoration; keep reports separate by browser profile.
 - [x] Confirm the existing real-stack suites support mobile-size Chromium by combining `BROWSER_ENGINE=chromium` with `BROWSER_PROFILE=iphone`; report it as mobile Chromium emulation, not physical Android Chrome.
-- [ ] Run and record a mobile-size Chromium profile separately from desktop Chromium and iPhone WebKit, with engine, viewport, touch, scale factor, and machine details.
-- [ ] Add global search and direct deep-link journeys to both profiles.
+- [x] Run and record a mobile-size Chromium profile separately from desktop Chromium and iPhone WebKit, with engine, viewport, touch, scale factor, and machine details.
+- [x] Complete global search and direct deep-link journeys across the route
+  matrix. The HARD-01 real-stack suite passes in desktop Chromium, mobile-size
+  Chromium, and iPhone WebKit; archived routes, ownership, URL states, and
+  error recovery are recorded in its acceptance checklist and run reports at
+  commit `1978af6`.
 - [ ] Expand explicit empty and long-content, delayed-response, network-failure, and retry states across the remaining journeys. Existing coverage includes delayed board responses, timer HTTP fallback, and note retry.
 
 See [HARD-01](milestones/01-browser-journeys.md) and
@@ -36,21 +40,34 @@ failure-state requirements, and acceptance evidence.
 
 ### Backend integration
 
-- Existing H2 integration coverage includes malformed and oversized input, ownership, stale note versions, and API behavior; PostgreSQL search has a dedicated opt-in integration test.
-- [ ] Expand coverage for rate limits, time boundaries, empty and large result sets, and PostgreSQL behavior that H2 cannot represent. Existing tests cover stale note/card versions and concurrent board writes.
-- [ ] Keep PostgreSQL tests isolated to an empty disposable database migrated by Flyway; do not point test jobs at persistent data.
+- Existing H2 integration coverage includes malformed and oversized input, ownership, stale note versions, and API behavior. The `backend-postgres` CI job now runs the complete integration suite against a guarded PostgreSQL 16 database and repeats the search suite against its migrated schema.
+- [x] Complete HARD-03 PostgreSQL behavior that H2 cannot represent. The final run passed 443 PostgreSQL tests; the source-by-source transaction audit and rollback coverage are recorded in the [HARD-03 checklist](milestones/03-acceptance-checklist.md) and [run evidence](runs/2026-10-08-hard03-postgres.md).
+- [x] Keep PostgreSQL tests isolated to an empty disposable database migrated by Flyway; do not point test jobs at persistent data.
+- [x] Complete application authentication rate-limit coverage, including HTTP responses and proxy identity behavior; see [HARD-04](milestones/04-rate-limits-and-security.md).
 
 See [HARD-03](milestones/03-postgres-and-boundaries.md) for database-sensitive
 areas, deterministic time cases, scale coverage, and disposable-database gates.
 See [HARD-04](milestones/04-rate-limits-and-security.md) for HTTP limiter and
-Cloudflare policy verification. The existing limiter unit test and WAF static
-contract check are partial evidence, not completion of those tasks.
+Cloudflare policy verification. HARD-04 is complete: request-level auth
+budgets, deterministic limiter boundaries, proxy identity behavior, semantic
+WAF route contracts, and desktop/mobile-size Chromium recovery are covered.
+Cloudflare live enforcement and production replica count remain unverified;
+see the [acceptance checklist](milestones/04-acceptance-checklist.md) and
+[separate run reports](runs/).
 
 ### Performance
 
-- [ ] Measure fixed-data startup, search, board paging, Gantt, reports, note save, timer, and WebSocket journeys and their API requests with explicit boundaries and raw samples.
-- [ ] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture current machine load and runtime/image metadata for every run.
-- [ ] Keep initial baselines report-only. Consider a 20% gate only after comparable repeated batches establish variance and a documented absolute floor, refresh, rerun, and override policy.
+- [x] Measure fixed-data startup, search, board paging, Gantt, reports, note save, timer, and WebSocket journeys and their API requests with explicit boundaries and raw samples.
+- [x] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture machine load and runtime/image metadata in each run record.
+- [x] Keep initial baselines report-only. A browser median gate proposal includes repeated-run variance, an absolute floor, refresh, rerun, and override policy; no CI gate is active.
+
+The report-only API and browser samplers, deterministic sparse/dense fixture
+generator, and per-run performance report fields are in place. The browser
+report includes engine/version, Playwright version, user agent, viewport, touch,
+and device scale. Collectors capture browser-observed and request durations
+separately; they do not measure server-only latency. HARD-05 is complete with
+report-only measurements and no active CI gate. See [HARD-05](milestones/05-performance-baselines.md) and the
+[acceptance checklist](milestones/05-acceptance-checklist.md).
 
 See [HARD-05](milestones/05-performance-baselines.md) for fixture sizes,
 journeys, environment fields, and gate promotion criteria.
@@ -69,6 +86,18 @@ journeys, environment fields, and gate promotion criteria.
 See [HARD-06](milestones/06-ios-validation.md) for a supported automated or
 manual simulator validation path. Until that work is completed, disabled
 workflow jobs must not be counted as active iOS CI coverage.
+
+The documented full-scheme command was executed from a clean checkout on a
+GitHub-hosted macOS runner on 2026-10-09. The corrected full scheme passed 128
+unit tests and 66 UI tests with one opt-in live API test skipped; its `.xcresult`
+is retained in the [HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md).
+This is run evidence, not an active CI gate, and the historical iOS jobs remain
+disabled. Server-persistence and manual device/accessibility acceptance gaps
+remain documented in HARD-06.
+The Foundation-only Linux portability check passed all seven `NoteDocTests`;
+its result is recorded separately in the
+[Linux run report](runs/2026-10-09-hard06-linux-note-document.md) and does not
+change the native simulator status.
 
 ## Acceptance
 

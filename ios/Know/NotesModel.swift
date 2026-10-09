@@ -116,10 +116,10 @@ import Observation
       busy = false
       saveState = .failed
       fail(error, "Unable to save this note. Your draft is still here; try again.")
-      if let next = queuedDraft {
-        queuedDraft = nil
-        Task { await self.save(next) }
-      }
+      // Keep the editor's latest draft in place for an explicit retry. Starting
+      // another queued save here can hide the failure and silently retry a
+      // request that the user should be told failed.
+      queuedDraft = nil
       return false
     }
   }

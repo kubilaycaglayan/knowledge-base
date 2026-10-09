@@ -257,6 +257,15 @@ struct NotesView: View {
             })
         ).frame(minHeight: 300).modifier(WorkspaceControl()).focused($focused, equals: .body)
           .accessibilityLabel("Note content").accessibilityIdentifier("notes.body")
+        if model.saveState == .failed {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Unable to save this note. Your draft is still here; try again.")
+              .foregroundStyle(WorkspaceTheme.danger(scheme))
+              .accessibilityIdentifier("notes.save-error")
+            Button("Retry note save") { retrySave() }
+              .buttonStyle(WorkspaceButton())
+          }
+        }
         if showLineHistory, let note = model.selected, let lineEdits = note.lineEdits {
           lineHistory(note: note, lineEdits: lineEdits)
         }
@@ -372,6 +381,11 @@ struct NotesView: View {
       guard !Task.isCancelled, let draft = editorDraft else { return }
       _ = await model.save(draft)
     }
+  }
+  private func retrySave() {
+    saveTask?.cancel()
+    guard let draft = editorDraft else { return }
+    Task { _ = await model.save(draft) }
   }
   private func undo() {
     guard let old = undoStack.popLast(), var draft = editorDraft else { return }

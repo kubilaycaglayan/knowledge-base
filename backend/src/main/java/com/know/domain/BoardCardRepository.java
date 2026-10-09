@@ -2,7 +2,9 @@ package com.know.domain;
 
 import java.time.LocalDate;
 import java.util.*;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +22,9 @@ public interface BoardCardRepository extends JpaRepository<BoardCard, UUID> {
   List<BoardCard> findPriorityLastPage(@Param("boardId") UUID boardId, @Param("statusId") UUID statusId, @Param("offset") int offset, @Param("limit") int limit);
   List<BoardCard> findAllByStatusIdInAndArchivedAtIsNull(Collection<UUID> statusIds);
   Optional<BoardCard> findByIdAndBoardId(UUID id, UUID boardId);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select c from BoardCard c where c.id = :id and c.boardId = :boardId")
+  Optional<BoardCard> findByIdAndBoardIdForUpdate(@Param("id") UUID id, @Param("boardId") UUID boardId);
   @Query("select c from BoardCard c where c.boardId = :boardId and c.archivedAt is null and not exists (select s.id from BoardStatus s where s.id = c.statusId and s.archivedAt is not null) order by coalesce(c.startDate, c.dueDate), c.position")
   List<BoardCard> findGanttCards(@Param("boardId") UUID boardId);
 }

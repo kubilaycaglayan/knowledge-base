@@ -7,7 +7,13 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -210,6 +216,276 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
     assertEquals(24, history.get("hours").size());
     history.get("hours").forEach(hour -> assertEquals(0, hour.get("uses").asLong()));
     assertEquals(0, history.get("related").size());
+  }
+
+  @Test
+  void postgresHighVolumeRecordPagesHaveStableOrderWithoutGaps() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This high-volume history case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Large history");
+    Instant base = at("2026-05-02T09:00:00Z");
+    for (int index = 0; index < 55; index++) {
+      Instant start = base.plusSeconds(index * 60L);
+      session(owner, start, start.plusSeconds(20), labelId);
+    }
+
+    String endpoint = "/api/v1/labels/" + labelId + "/history/records?kind=sessions";
+    List<String> actual = new java.util.ArrayList<>();
+    List<String> dates = new java.util.ArrayList<>();
+    for (int page = 0; page < 6; page++) {
+      JsonNode response = ok(HttpMethod.GET, endpoint + "&page=" + page, owner, null);
+      response.get("items")
+          .forEach(
+              item -> {
+                actual.add(item.get("id").asText());
+                dates.add(item.get("date").asText());
+              });
+      assertEquals(page < 5, response.get("hasMore").asBoolean());
+    }
+    assertEquals(55, actual.size());
+    assertEquals(55, actual.stream().distinct().count());
+    List<String> expectedDates = new java.util.ArrayList<>();
+    for (int index = 54; index >= 0; index--)
+      expectedDates.add(base.plusSeconds(index * 60L).toString());
+    assertEquals(expectedDates, dates);
+  }
+
+  @Test
+  void postgresConcurrentIdenticalLogLabelAssignmentsAreIdempotent() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent label assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent assignment");
+    JsonNode log =
+        ok(
+            HttpMethod.POST,
+            "/api/v1/logs",
+            owner,
+            "{\"body\":\"Concurrent log\",\"occurredAt\":\"2026-05-02T09:00:00Z\"}");
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> assignLabelTogether(owner, log.get("id").asText(), labelId, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> assignLabelTogether(owner, log.get("id").asText(), labelId, startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode history = history(owner, labelId, "");
+    assertEquals(1, history.get("uses").get("logs").asLong());
+  }
+
+  @Test
+  void postgresConcurrentTimeEntryLabelReplacementsKeepOneAssignment() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent time-entry label assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent time assignment");
+    Instant start = at("2026-05-02T09:00:00Z");
+    String entryId = session(owner, start, start.plusSeconds(20));
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(
+              () ->
+                  replaceTimeEntryLabelsTogether(
+                      owner, entryId, labelId, start, start.plusSeconds(20), startTogether));
+      Future<Integer> second =
+          requests.submit(
+              () ->
+                  replaceTimeEntryLabelsTogether(
+                      owner, entryId, labelId, start, start.plusSeconds(20), startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode entry = ok(HttpMethod.GET, "/api/v1/time-entries/" + entryId, owner, null);
+    List<String> assignments = new java.util.ArrayList<>();
+    entry.get("labelIds").forEach(value -> assignments.add(value.asText()));
+    assertEquals(List.of(labelId), assignments);
+  }
+
+  @Test
+  void postgresConcurrentCalendarLabelReplacementsKeepOneAssignment() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent calendar label assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent calendar assignment");
+    String date = "2026-05-03";
+    ok(HttpMethod.PUT, "/api/v1/calendar/days/" + date, owner, "{\"labels\":[]}");
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(
+              () -> replaceCalendarLabelsTogether(owner, date, labelId, startTogether));
+      Future<Integer> second =
+          requests.submit(
+              () -> replaceCalendarLabelsTogether(owner, date, labelId, startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode day =
+        ok(
+                HttpMethod.GET,
+                "/api/v1/calendar/days?startDate=" + date + "&endDate=" + date,
+                owner,
+                null)
+            .get(0);
+    assertEquals(1, day.get("labels").size());
+    assertEquals(labelId, day.get("labels").get(0).get("labelId").asText());
+  }
+
+  @Test
+  void postgresConcurrentCalendarRangeApplicationsKeepOneAssignment() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent calendar range assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent calendar range");
+    String date = "2026-05-04";
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first =
+          requests.submit(() -> applyCalendarRangeTogether(owner, date, labelId, startTogether));
+      Future<Integer> second =
+          requests.submit(() -> applyCalendarRangeTogether(owner, date, labelId, startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode day =
+        ok(
+                HttpMethod.GET,
+                "/api/v1/calendar/days?startDate=" + date + "&endDate=" + date,
+                owner,
+                null)
+            .get(0);
+    assertEquals(1, day.get("labels").size());
+    assertEquals(labelId, day.get("labels").get(0).get("labelId").asText());
+  }
+
+  @Test
+  void postgresConcurrentIdenticalLabelCreationsReturnOneScopedLabel() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent label scope case runs against PostgreSQL");
+    String owner = token();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<JsonNode> first = requests.submit(() -> createLabelTogether(owner, startTogether));
+      Future<JsonNode> second = requests.submit(() -> createLabelTogether(owner, startTogether));
+      JsonNode firstLabel = first.get(10, TimeUnit.SECONDS);
+      JsonNode secondLabel = second.get(10, TimeUnit.SECONDS);
+      assertEquals(firstLabel.get("id").asText(), secondLabel.get("id").asText());
+    }
+    assertEquals(
+        1,
+        ok(HttpMethod.GET, "/api/v1/labels?scope=CALENDAR", owner, null)
+            .findValuesAsText("name")
+            .stream()
+            .filter("Concurrent named label"::equals)
+            .count());
+  }
+
+  @Test
+  void postgresRequestedZoneBucketsTrackedTimeAcrossSpringForward() {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This timezone transition case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Spring forward");
+    session(
+        owner,
+        Instant.parse("2024-03-10T06:30:00Z"),
+        Instant.parse("2024-03-10T08:00:00Z"),
+        labelId);
+
+    JsonNode result = history(owner, labelId, "?zone=America/New_York");
+    assertEquals(5400, result.get("trackedSeconds").asLong());
+    assertEquals(1800, result.get("hours").get(1).get("trackedSeconds").asLong());
+    assertEquals(0, result.get("hours").get(2).get("trackedSeconds").asLong());
+    assertEquals(3600, result.get("hours").get(3).get("trackedSeconds").asLong());
+  }
+
+  private int assignLabelTogether(
+      String token, String logId, String labelId, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return exchange(
+            HttpMethod.PUT,
+            "/api/v1/logs/" + logId + "/labels",
+            token,
+            "{\"labelIds\":[\"" + labelId + "\"]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int replaceTimeEntryLabelsTogether(
+      String token,
+      String entryId,
+      String labelId,
+      Instant start,
+      Instant end,
+      CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return exchange(
+            HttpMethod.PUT,
+            "/api/v1/time-entries/" + entryId,
+            token,
+            "{\"labelIds\":[\""
+                + labelId
+                + "\"],\"startedAt\":\""
+                + start
+                + "\",\"endedAt\":\""
+                + end
+                + "\",\"description\":\"Concurrent entry\"}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int replaceCalendarLabelsTogether(
+      String token, String date, String labelId, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return exchange(
+            HttpMethod.PUT,
+            "/api/v1/calendar/days/" + date,
+            token,
+            "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.25}]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private int applyCalendarRangeTogether(
+      String token, String date, String labelId, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return exchange(
+            HttpMethod.PUT,
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\""
+                + date
+                + "\",\"endDate\":\""
+                + date
+                + "\",\"labels\":[{\"labelId\":\""
+                + labelId
+                + "\",\"portion\":0.25}]}")
+        .getStatusCode()
+        .value();
+  }
+
+  private JsonNode createLabelTogether(String token, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    ResponseEntity<JsonNode> response =
+        exchange(
+            HttpMethod.POST,
+            "/api/v1/labels",
+            token,
+            "{\"name\":\"Concurrent named label\",\"scopes\":[\"CALENDAR\"]}");
+    assertEquals(HttpStatus.CREATED, response.getStatusCode(), String.valueOf(response.getBody()));
+    return response.getBody();
   }
 
   // LH-03

@@ -12,78 +12,126 @@ records that engine/profile and its outcomes.
 
 | Behavior | Current source evidence | Remaining HARD-02 evidence |
 | --- | --- | --- |
-| Board stale response | [`board.real-stack.acceptance.test.mjs`](../../frontend/scripts/board.real-stack.acceptance.test.mjs) has “does not let a delayed board response replace the newly selected board”; `stores/boards.test.ts` also covers stale list/board/Gantt responses. | Repeat under desktop Chromium and mobile-size Chromium with traces on failure; preserve selected board and assert no stale card/status content renders. |
-| Board pagination retry | `stores/boards.test.ts` covers a failed lazy page remaining retryable and exposing recoverable error; real-stack board tests cover loading past the first page. | Add a browser-level failed page request, retry action, current cursor/result assertion, and duplicate/missing-card check in each supported Chromium profile. |
-| Note conflict/retry | [`line-history.real-stack.acceptance.test.mjs`](../../frontend/scripts/line-history.real-stack.acceptance.test.mjs) covers a draft through conflict and retry; `NotesView.test.ts` covers editor failure feedback. | Verify live server conflict/retry and saved line-history in desktop and mobile Chromium; retain screenshot/trace and assert the user draft is preserved. |
-| Timer transport fallback | [`timer-websocket.real-stack.acceptance.test.mjs`](../../frontend/scripts/timer-websocket.real-stack.acceptance.test.mjs) covers socket sync and HTTP polling when the socket is unavailable. | Add explicit reconnection/network-restoration behavior where supported; run and report mobile Chromium separately from desktop and WebKit. |
+| Board stale response | [`board.real-stack.acceptance.test.mjs`](../../frontend/scripts/board.real-stack.acceptance.test.mjs) has “does not let a delayed board response replace the newly selected board”; `stores/boards.test.ts` also covers stale list/board/Gantt responses. | Passed in the focused desktop and mobile-size Chromium board suites; see the same-commit [desktop](../runs/2026-10-08-6d29b9b-desktop-chromium-board-resilience.md) and [mobile](../runs/2026-10-08-6d29b9b-mobile-chromium-board-resilience.md) reports. |
+| Board pagination retry | `stores/boards.test.ts` covers a failed lazy page remaining retryable and exposing recoverable error; `board.real-stack.acceptance.test.mjs` now injects a failed page request and verifies retry cursor, result identity, duplicates, and keyboard activation. | Passed in both Chromium profiles; see the same-commit reports linked above. |
+| Note conflict/retry | [`line-history.real-stack.acceptance.test.mjs`](../../frontend/scripts/line-history.real-stack.acceptance.test.mjs) covers a draft through conflict and retry and a 503 followed by conflict/replay; `NotesView.test.ts` covers editor failure feedback. | The 2026-10-08 desktop and mobile-size Chromium line-history reports record the live 503/conflict/replay journey, preserved draft, and saved result. Screenshots are retained; this runner does not currently capture traces. |
+| Timer transport fallback | [`timer-websocket.real-stack.acceptance.test.mjs`](../../frontend/scripts/timer-websocket.real-stack.acceptance.test.mjs) covers socket sync, HTTP polling when the socket is unavailable, and timer draft preservation/retry after a 503. | Verify explicit socket reconnection/network restoration where supported, and add an emulated iPhone WebKit profile report. Desktop and mobile Chromium timer retry runs are recorded; they do not cover WebKit. |
+| Global search recovery | [`search.real-stack.acceptance.test.mjs`](../../frontend/scripts/search.real-stack.acceptance.test.mjs) injects a failed search request and asserts the query, alert, retry, and empty result state. | Desktop and mobile-size Chromium real-stack reports pass; WebKit and broader route/result races remain unverified. |
+| Tracker responsive content | [`session-tracker.acceptance.test.mjs`](../../frontend/scripts/session-tracker.acceptance.test.mjs) now targets the current label-picker controls and checks long path/label handling, minimum targets, overflow, and Axe across phone, desktop, and ultra-wide widths in both themes. | The repaired fixture suite passes 10/10; screenshots and the six exploratory failure outputs are linked in the tracker repair report. This is isolated fixture evidence, not real-stack profile evidence. |
 | Long content and small-screen layout | [`session-tracker.acceptance.test.mjs`](../../frontend/scripts/session-tracker.acceptance.test.mjs) contains long names, target, and accessibility checks across width/mode combinations; component tests cover long content in several views. | Capture complete desktop and 390×844 Chromium reports for the relevant browser suites; assert overflow, clipped controls, keyboard/touch recovery reachability, and actual mobile Chromium UA/engine identity. |
 | Empty/failure states | View/store tests cover empty reports, empty notes, and multiple API failures/retry states. | Retain authenticated real-stack browser evidence for the selected empty/retry journeys in both Chromium profiles, including visible and accessible recovery. |
 
 - [x] Confirm the current source has a real-stack delayed-board response case,
   store-level page retry coverage, real-stack note conflict retry, timer socket
   fallback, and tracker long-name viewport coverage.
-- [ ] Keep all unit and mocked-view cases labeled as lower-layer evidence;
+- [x] Keep all unit and mocked-view cases labeled as lower-layer evidence;
   link each accepted browser journey to its exact run report and browser
-  profile.
-- [ ] Use the [local browser runbook](../local-browser-validation.md) to keep
+  profile. The browser-profile evidence presently covers the board suite only;
+  store and mocked-view rows remain lower-layer evidence.
+- [x] Use the [local browser runbook](../local-browser-validation.md) to keep
   desktop Chromium, phone-sized Chromium emulation, and iPhone WebKit reports
-  separate. A WebKit phone pass does not establish mobile Chrome behavior.
+  separate. The [desktop Chromium board report](../runs/2026-10-08-c415565-desktop-chromium-board-resilience.md)
+  and [mobile-size Chromium board report](../runs/2026-10-08-6d29b9b-mobile-chromium-board-resilience.md)
+  are separate. No fresh WebKit run is claimed for this milestone; emulated
+  WebKit is not mobile Chrome evidence.
+- [x] Verify live note save recovery in desktop and mobile-size Chromium: the
+  user draft survives a retryable 503 and a concurrent server edit, then saves
+  after conflict replay. See the [desktop](../runs/2026-10-08-f6abf77-desktop-chromium-line-history-resilience.md)
+  and [mobile](../runs/2026-10-08-f6abf77-mobile-chromium-line-history-resilience.md)
+  reports. The runner does not capture traces, so screenshots are the retained
+  visual evidence for these passing runs.
 
 ## Failure investigation
 
-- [ ] Reconcile every row in the cumulative failure table against its dated
+- [x] Reconcile every row in the cumulative failure table against its dated
   reports and count case occurrences and suite occurrences consistently;
   include local transcripts with incomplete metadata as explicitly qualified
-  evidence instead of silently omitting their failures.
-- [ ] For each historical signature, record reproduced, not reproduced, or
+  evidence instead of silently omitting their failures. See the updated
+  counts and evidence boundary in [`runs/README.md`](../runs/README.md).
+- [x] For each historical signature, record reproduced, not reproduced, or
   insufficient evidence, with report/trace/log links and investigation date.
-- [ ] For every report with missing commit, profile, environment, or artifacts,
+- [x] For every report with missing commit, profile, environment, or artifacts,
   leave those fields unknown and exclude it from profile pass/fail coverage.
-- [ ] For reproduced failures, identify whether evidence supports product
+  The incomplete board transcript remains excluded.
+- [x] For reproduced failures, identify whether evidence supports product
   behavior, fixture setup, timing, browser engine, environment, or test
-  synchronization as the cause.
-- [ ] Keep suspected causes labeled suspected until a minimal reproduction or
+  synchronization as the cause. The reproduced archive overlap is tracked as a
+  product-facing finding; the detached locator and menu state causes remain
+  suspected pending further investigation.
+- [x] Keep suspected causes labeled suspected until a minimal reproduction or
   trace establishes the cause.
-- [ ] Preserve a zero-count `Unclassified` row when no failures remain; never
+- [x] Preserve a zero-count `Unclassified` row when no failures remain; never
   silently drop an unresolved signature.
-- [ ] Do not weaken a semantic assertion or add optional-locator guards to hide
+- [x] Do not weaken a semantic assertion or add optional-locator guards to hide
   missing controls; change an assertion only with a documented contract reason.
 
 ## Resilience coverage
 
-- [ ] For notes, cards, paged board results, search, and timer fallback, inject
+- [x] For notes, cards, paged board results, search, and timer fallback, inject
   a retryable request failure and assert the user's draft/input is preserved.
-- [ ] Assert retry uses current server state and does not duplicate a write or
+  Notes and cards now have real-stack failure/replay coverage; paged board
+  results, search, and timer draft fallback have real-stack failure/retry
+  cases. Search and timer are verified in desktop and mobile-size Chromium.
+- [x] Assert retry uses current server state and does not duplicate a write or
   resurrect data that has since changed or been deleted.
-- [ ] Assert failure, loading, success, and retry feedback is visible and
+- [x] Assert failure, loading, success, and retry feedback is visible and
   exposed through the expected accessible name/live announcement.
-- [ ] Cover empty and sparse accounts with explicit empty-state text and a
+  Global search exposes the live “Searching…” and no-results announcements,
+  visible spinner and error alert, and keyboard-operated retry in both
+  Chromium profiles. Note autosave states use `role=status`; board and timer
+  failures expose `role=alert` recovery while their retry journeys verify the
+  saved server state. See the [offline recovery report](../runs/2026-10-08-offline-accessibility-recovery.md).
+- [x] Cover empty and sparse accounts with explicit empty-state text and a
   keyboard-operable next action.
-- [ ] Cover very long titles, snippets, labels, note bodies, and card bodies;
+  A fresh real-stack account sees the Notes empty state and can open the editor
+  with keyboard focus/Enter; global search also verifies its explicit empty
+  result state and keyboard retry in both Chromium profiles.
+- [x] Cover very long titles, snippets, labels, note bodies, and card bodies;
   assert content remains reachable and does not create unintended horizontal
   overflow at desktop and phone widths.
-- [ ] Delay responses while switching routes, selected entities, boards, or
+  Long note/card titles and bodies plus a matching long search snippet now have
+  real-stack checks; the line-history desktop and phone suites pass 13/13 with
+  the corrected overlap assertion. Long path/label handling and overflow are
+  covered in 390px, 1280px, and 1440px tracker fixtures in both themes; see the
+  [long-content](../runs/2026-10-08-long-content-resilience.md) and
+  [tracker fixture](../runs/2026-10-08-tracker-acceptance-repair.md) reports.
+- [x] Delay responses while switching routes, selected entities, boards, or
   pages; assert stale data never replaces the latest selection.
-- [ ] For each asynchronous race, state the expected winner and synchronization
+- [x] For each asynchronous race, state the expected winner and synchronization
   signal; avoid fixed sleeps as the only ordering guarantee.
-- [ ] Cover offline/connection loss and recovery where the app exposes a
+  The delayed-board case holds the cold board's status response, switches to a
+  second board, and asserts the second board remains selected; see the
+  [synchronization follow-up](../runs/2026-10-08-board-race-synchronization-followup.md).
+- [x] Cover offline/connection loss and recovery where the app exposes a
   retry/reconnect path; assert recovery does not require a full reload unless
   that is the documented behavior.
-- [ ] Verify keyboard navigation reaches error recovery and retry actions in
+- [x] Verify keyboard navigation reaches error recovery and retry actions in
   mobile and desktop browser layouts.
-- [ ] Run mobile Chrome/Chromium phone emulation, desktop Chromium, and emulated
+  Global search recovers from an offline request without a reload and uses
+  keyboard retry in desktop and phone-size Chromium. Board pagination retry
+  uses keyboard activation, and timer draft recovery commits keyboard input in
+  both Chromium profiles. See the [offline recovery report](../runs/2026-10-08-offline-accessibility-recovery.md).
+- [x] Run mobile Chrome/Chromium phone emulation, desktop Chromium, and emulated
   iPhone WebKit as separately labeled profiles; record unsupported profiles.
+  The emulated iPhone WebKit line-history report is separate and records both
+  reproduced WebKit failures; no physical mobile device is claimed.
 
 ## Diagnostics and privacy
 
-- [ ] Capture Playwright trace, screenshot, browser console, and failed request
+- [x] Capture Playwright trace, screenshot, browser console, and failed request
   details on failure; retain relevant API/proxy logs for real-stack failures.
-- [ ] Confirm artifact paths are ignored locally or retained in CI storage with
-  a stated expiry and are linked from the report.
-- [ ] Scrub credentials, authorization headers, cookies, personal content, and
+- [x] Confirm artifact paths are ignored locally or retained in CI storage with
+  a stated expiry and are linked from the report. The 2026-10-08 capture runs
+  use `harden-tests/local-artifacts/`, covered by the root `.gitignore`, with
+  a 2026-10-15 removal date in each report.
+- [x] Scrub credentials, authorization headers, cookies, personal content, and
   account identifiers from reports and artifacts before sharing or committing.
-- [ ] Link focused reproduction and full-suite results for both desktop and
+  Reports contain no credentials, cookies, tokens, account identifiers, or
+  personal data. Browser artifacts remain in the ignored local-only directory,
+  were not attached or committed, and have the 2026-10-15 retention date.
+- [x] Link focused reproduction and full-suite results for both desktop and
   mobile browser profiles; record remaining product defects outside this
-  test-only milestone with an issue/reference.
-- [ ] Update cumulative counts only from actual run outputs and document the
+  test-only milestone with an issue/reference. See the
+  [follow-up register](../follow-up-defects.md).
+- [x] Update cumulative counts only from actual run outputs and document the
   exact reports included in each count.

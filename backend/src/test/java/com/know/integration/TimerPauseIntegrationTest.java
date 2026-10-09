@@ -7,15 +7,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -25,12 +31,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Pausing and resuming sessions (docs/session-pause-acceptance-checklist.md). */
 class TimerPauseIntegrationTest extends IntegrationTestSupport {
   @LocalServerPort int port;
   @Autowired TestRestTemplate rest;
   @Autowired ObjectMapper mapper;
+  @Autowired JdbcTemplate jdbc;
   String base;
 
   @BeforeEach
@@ -62,6 +70,463 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
 
   ResponseEntity<JsonNode> put(String path, String token, String body) {
     return exchange(HttpMethod.PUT, path, token, body);
+  }
+
+  @Test
+  void concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This race is PostgreSQL-specific and runs in the opt-in PostgreSQL suite");
+    String token = token();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first = requests.submit(() -> startTimerTogether(token, startTogether));
+      Future<Integer> second = requests.submit(() -> startTimerTogether(token, startTogether));
+      int firstStatus = first.get(10, TimeUnit.SECONDS);
+      int secondStatus = second.get(10, TimeUnit.SECONDS);
+
+      assertEquals(1, java.util.List.of(firstStatus, secondStatus).stream().filter(s -> s == 201).count());
+      assertEquals(1, java.util.List.of(firstStatus, secondStatus).stream().filter(s -> s == 409).count());
+      JsonNode current = get("/api/v1/timers/current", token).getBody();
+      assertNotNull(current);
+      assertTrue(current.get("running").asBoolean());
+      assertEquals(HttpStatus.OK, post("/api/v1/timers/stop", token, "{}").getStatusCode());
+    }
+  }
+
+  private int startTimerTogether(String token, CyclicBarrier startTogether) throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return post("/api/v1/timers", token, "{\"labelIds\":[],\"description\":\"concurrent start\"}")
+        .getStatusCode()
+        .value();
+  }
+
+  @Test
+  void postgresConcurrentDraftLabelReplacementsKeepOneAssignment() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "This concurrent draft label assignment case runs against PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Concurrent draft label");
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
+      Future<Integer> first = requests.submit(() -> saveDraftTogether(owner, labelId, startTogether));
+      Future<Integer> second = requests.submit(() -> saveDraftTogether(owner, labelId, startTogether));
+      assertEquals(200, first.get(10, TimeUnit.SECONDS));
+      assertEquals(200, second.get(10, TimeUnit.SECONDS));
+    }
+    JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
+    assertEquals(1, draft.get("labelIds").size());
+    assertEquals(labelId, draft.get("labelIds").get(0).asText());
+  }
+
+  @Test
+  void postgresPauseFailureRollsBackStoppedSegmentWhenDraftLabelsFail() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Pause transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Pause rollback label");
+    JsonNode running = startedMinutesAgo(owner, null, labelId, 3);
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_pause_draft_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced pause draft failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on tracker_draft_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/pause", owner, "{}").getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on tracker_draft_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    JsonNode current = get("/api/v1/timers/current", owner).getBody();
+    assertTrue(current.get("running").asBoolean());
+    assertEquals(running.get("id").asText(), current.get("id").asText());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+  }
+
+  @Test
+  void postgresStartFailureRollsBackNewTimerAndPreservesDraft() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer start transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Start rollback label");
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/timers/draft",
+                owner,
+                "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"preserved draft\"}")
+            .getStatusCode());
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_start_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced start label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on time_entry_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post(
+                  "/api/v1/timers",
+                  owner,
+                  "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"preserved draft\"}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+
+    assertNull(get("/api/v1/timers/current", owner).getBody());
+    JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
+    assertEquals("preserved draft", draft.get("description").asText());
+    assertEquals(labelId, draft.get("labelIds").get(0).asText());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry where user_id = ? and ended_at is null",
+            Long.class,
+            userId(owner)));
+  }
+
+  @Test
+  void postgresResumeFailureRollsBackNewTimerAndKeepsPausedDraft() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer resume transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Resume rollback label");
+    assertEquals(
+        HttpStatus.CREATED,
+        post("/api/v1/timers", owner, "{\"labelIds\":[],\"description\":\"resume rollback\"}")
+            .getStatusCode());
+    assertEquals(HttpStatus.OK, post("/api/v1/timers/pause", owner, "{}").getStatusCode());
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/timers/draft",
+                owner,
+                "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"paused draft\"}")
+            .getStatusCode());
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_resume_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced resume label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on time_entry_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/resume", owner, "{}").getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+
+    assertNull(get("/api/v1/timers/current", owner).getBody());
+    JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
+    assertTrue(draft.hasNonNull("pausedSeconds"));
+    assertEquals("paused draft", draft.get("description").asText());
+    assertEquals(labelId, draft.get("labelIds").get(0).asText());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry where user_id = ? and ended_at is null",
+            Long.class,
+            userId(owner)));
+  }
+
+  @Test
+  void postgresConfigureFailureRollsBackTimerChangesWhenNewLabelFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer configuration transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Configure rollback label");
+    JsonNode started =
+        post("/api/v1/timers", owner, "{\"labelIds\":[],\"description\":\"original timer\"}")
+            .getBody();
+    Instant start = Instant.parse(started.get("startedAt").asText());
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_configure_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced configure label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on time_entry_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          put(
+                  "/api/v1/timers/" + started.get("id").asText(),
+                  owner,
+                  "{\"labelIds\":[\""
+                      + labelId
+                      + "\"],\"startedAt\":\""
+                      + start.minusSeconds(1)
+                      + "\",\"endedAt\":null,\"description\":\"changed timer\"}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+
+    JsonNode current = get("/api/v1/timers/current", owner).getBody();
+    assertEquals("original timer", current.get("description").asText());
+    assertTrue(current.get("running").asBoolean());
+    assertTrue(current.get("labelIds").isEmpty());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry_label where time_entry_id = ?",
+            Long.class,
+            UUID.fromString(started.get("id").asText())));
+  }
+
+  @Test
+  void postgresDraftReplacementFailureRollsBackDraftWhenLabelWriteFails() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Tracker draft transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Draft rollback label");
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_draft_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced draft label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on tracker_draft_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          put(
+                  "/api/v1/timers/draft",
+                  owner,
+                  "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"failed draft\"}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on tracker_draft_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+    JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
+    assertTrue(draft.get("labelIds").isEmpty());
+    assertTrue(draft.path("description").isMissingNode() || draft.path("description").isNull());
+  }
+
+  @Test
+  void postgresStopFailureRollsBackTimerWhenDraftLabelsFail() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer stop transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Stop rollback label");
+    JsonNode running =
+        post(
+                "/api/v1/timers",
+                owner,
+                "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"stop rollback\"}")
+            .getBody();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_stop_draft_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced stop draft failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on tracker_draft_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/stop", owner, "{}").getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on tracker_draft_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    JsonNode current = get("/api/v1/timers/current", owner).getBody();
+    assertEquals(running.get("id").asText(), current.get("id").asText());
+    assertTrue(current.get("running").asBoolean());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+  }
+
+  @Test
+  void postgresCancelFailureRollsBackDraftWhenTimerDeletionFails() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer cancel transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Cancel rollback label");
+    JsonNode running =
+        post(
+                "/api/v1/timers",
+                owner,
+                "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"cancel rollback\"}")
+            .getBody();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_cancel_delete_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced timer delete failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before delete on time_entry for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/" + running.get("id").asText() + "/cancel", owner, "{}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    JsonNode current = get("/api/v1/timers/current", owner).getBody();
+    assertEquals(running.get("id").asText(), current.get("id").asText());
+    assertTrue(current.get("running").asBoolean());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+  }
+
+  @Test
+  void postgresTimeEntryEditRestoresPreviousValuesAndLabelsWhenReplacementFails() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Time-entry edit transaction rollback requires PostgreSQL");
+    String owner = token();
+    String originalLabelId = label(owner, "Original edit rollback label");
+    String replacementLabelId = label(owner, "Replacement edit rollback label");
+    JsonNode created =
+        post(
+                "/api/v1/time-entries",
+                owner,
+                "{\"labelIds\":[\""
+                    + originalLabelId
+                    + "\"],\"startedAt\":\"2026-06-01T10:00:00Z\",\"endedAt\":\"2026-06-01T10:05:00Z\",\"description\":\"original entry\",\"source\":\"MANUAL\"}")
+            .getBody();
+    String entryId = created.get("id").asText();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_entry_edit_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced entry edit label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on time_entry_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          put(
+                  "/api/v1/time-entries/" + entryId,
+                  owner,
+                  "{\"labelIds\":[\""
+                      + replacementLabelId
+                      + "\"],\"startedAt\":\"2026-06-02T11:00:00Z\",\"endedAt\":\"2026-06-02T11:05:00Z\",\"description\":\"changed entry\",\"source\":\"MANUAL\"}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+
+    UUID entryUuid = UUID.fromString(entryId);
+    assertEquals(
+        "original entry",
+        jdbc.queryForObject("select description from time_entry where id = ?", String.class, entryUuid));
+    assertEquals(
+        Timestamp.from(Instant.parse("2026-06-01T10:00:00Z")),
+        jdbc.queryForObject("select started_at from time_entry where id = ?", Timestamp.class, entryUuid));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from time_entry_label where time_entry_id = ? and label_id = ?",
+            Long.class,
+            entryUuid,
+            UUID.fromString(originalLabelId)));
+  }
+
+  private UUID userId(String token) {
+    try {
+      return UUID.fromString(
+          mapper
+              .readTree(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]))
+              .get("sub")
+              .asText());
+    } catch (Exception exception) {
+      throw new AssertionError("Could not read test user from token", exception);
+    }
+  }
+
+  private int saveDraftTogether(String token, String labelId, CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(5, TimeUnit.SECONDS);
+    return put(
+            "/api/v1/timers/draft",
+            token,
+            "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"shared draft\"}")
+        .getStatusCode()
+        .value();
   }
 
   String path(String token, String name) {

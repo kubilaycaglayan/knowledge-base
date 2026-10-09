@@ -261,7 +261,7 @@ class BoardControllerApiTest {
     BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
     BoardCard card = new BoardCard(boardId, status.getId(), 0);
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
-    when(cards.findByIdAndBoardId(any(), eq(boardId))).thenReturn(Optional.of(card));
+    when(cards.findByIdAndBoardIdForUpdate(any(), eq(boardId))).thenReturn(Optional.of(card));
     when(cards.save(any(BoardCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
     mvc.perform(put("/api/v1/boards/" + boardId + "/cards/" + card.getId()).with(authentication(auth()))
         .contentType(MediaType.APPLICATION_JSON)

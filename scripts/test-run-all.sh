@@ -145,7 +145,7 @@ main() {
   run_step "Chrome extension tests" extension_tests
 
   run_step "Contract checks" \
-    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-smoke-cleanup.mjs && ./scripts/check-image-prune.sh'
+    bash -c 'node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && ./scripts/check-image-prune.sh'
 
   run_step "Shell script syntax" \
     bash -c 'bash -n scripts/*.sh deployment/backup.sh deployment/preflight.sh && sh -n deployment/backup-loop.sh deployment/backup-db-refresh.sh'
@@ -218,10 +218,15 @@ main() {
     node scripts/check-timer-websocket.mjs "http://localhost:${stack_cloudflare_port}" --round-trip &&
       TIMER_E2E_BASE_URL="http://localhost:${stack_cloudflare_port}" npm run test:timer:e2e --prefix frontend
   }
+  search_browser_tests() {
+    SEARCH_E2E_BASE_URL="http://localhost:${stack_proxy_port}" \
+      SEARCH_E2E_EMAIL="search-e2e-$(date +%s%N)@example.com" \
+      SEARCH_E2E_PASSWORD="Search-e2e-$(date +%s%N)" npm run test:search:e2e --prefix frontend
+  }
 
   if (( quick == 0 )); then
     smoke_step="Full-stack smoke test (proxies, timer WebSocket, backup/restore)"
-    browser_steps=("Board real-stack browser tests" "Timer WebSocket real-stack browser tests" "Line history real-stack browser tests")
+    browser_steps=("Board real-stack browser tests" "Timer WebSocket real-stack browser tests" "Line history real-stack browser tests" "Search/deep-link real-stack browser tests")
     if run_step "Build test images" \
       env COMPOSE_PROJECT_NAME=knowledge-base-test-images "${test_compose[@]}" build api web; then
       stack_created=1
@@ -234,6 +239,7 @@ main() {
         run_step "${browser_steps[0]}" board_browser_tests
         run_step "${browser_steps[1]}" timer_browser_tests
         run_step "${browser_steps[2]}" line_history_browser_tests
+        run_step "${browser_steps[3]}" search_browser_tests
       else
         for name in "${browser_steps[@]}"; do skip_step "$name" "the test stack is not serving"; done
         failures=$(( failures + 1 ))

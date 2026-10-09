@@ -13,6 +13,9 @@ chrome-extension/.wxt-dev.log
 chrome-extension/.wxt-dev.pid
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
+/harden-tests/artifacts/
+/harden-tests/local-artifacts/
+frontend/harden-tests/artifacts/
 backend/build/
 .gradle/
 .DS_Store
@@ -31,3 +34,4 @@ import-logs-draft.sql
 docs/ios-milestone-5-notes-parity.md
 docs/ios-milestone-*.md
 .zed/settings.json
+/harden-tests/local-artifacts/
