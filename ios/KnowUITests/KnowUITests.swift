@@ -1110,6 +1110,9 @@ final class KnowUITests: XCTestCase {
     body.typeText("\nRetry this line")
 
     let saveState = app.staticTexts["notes.save-state"]
+    let savingPredicate = NSPredicate(format: "label == %@", "Saving…")
+    expectation(for: savingPredicate, evaluatedWith: saveState)
+    waitForExpectations(timeout: 5)
     let failed = NSPredicate(format: "label == %@", "Not saved")
     expectation(for: failed, evaluatedWith: saveState)
     waitForExpectations(timeout: 8)
@@ -1168,6 +1171,9 @@ final class KnowUITests: XCTestCase {
     body.tap()
     body.typeText("Saved note content")
     let saved = app.staticTexts["notes.save-state"]
+    let savingPredicate = NSPredicate(format: "label == %@", "Saving…")
+    expectation(for: savingPredicate, evaluatedWith: saved)
+    waitForExpectations(timeout: 5)
     let savedPredicate = NSPredicate(format: "label == %@", "Saved")
     expectation(for: savedPredicate, evaluatedWith: saved)
     waitForExpectations(timeout: 8)
