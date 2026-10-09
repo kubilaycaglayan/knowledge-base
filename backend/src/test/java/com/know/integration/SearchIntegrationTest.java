@@ -633,7 +633,9 @@ class SearchIntegrationTest extends IntegrationTestSupport {
   @Test
   void manyTermsAreCappedRatherThanRejected() {
     String noteId = note("one two three four five six seven eight", "x");
+    note("ninthmarker", "x");
     // Terms past the eighth are ignored.
-    assertEquals(List.of(noteId), ids(search("one two three four five six seven eight nine ten"), "NOTE"));
+    String query = "one two three four five six seven eight ninthmarker";
+    assertEquals(List.of(noteId), ids(search(query), "NOTE"));
   }
 }
