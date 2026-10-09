@@ -44,7 +44,18 @@ class NoteArchiveRetentionIntegrationTest extends IntegrationTestSupport {
 
     JsonNode archived = api.get("/api/v1/notes?archived=true&page=0&size=50", token).json();
     assertTrue(archived.toString().contains(noteId), "archived note was deleted: " + archived);
+    long archivedVersion = archived.get("items").get(0).get("version").asLong();
     assertEquals(204, api.post("/api/v1/notes/" + noteId + "/restore", token, null).status());
-    assertEquals(200, api.get("/api/v1/notes/" + noteId, token).status());
+    JsonNode restored = api.get("/api/v1/notes/" + noteId, token).json();
+    assertEquals(noteId, restored.get("id").asText());
+    assertTrue(restored.get("deletedAt").isNull());
+    assertEquals(archivedVersion + 1, restored.get("version").asLong());
+    assertTrue(api.get("/api/v1/notes", token).json().toString().contains(noteId));
+    assertEquals(
+        0,
+        api.get("/api/v1/notes?archived=true&page=0&size=50", token)
+            .json()
+            .get("totalItems")
+            .asLong());
   }
 }
