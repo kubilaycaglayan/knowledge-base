@@ -191,8 +191,8 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/logs` covers owner-scoped newest-first order and empty
   results. The endpoint has no filter or pagination query parameters.
 - [x] `GET /api/v1/logs/{id}` covers owned, missing, and foreign log IDs.
-- [ ] `POST /api/v1/logs` covers creation, occurrence timestamp, and persisted
-  body and labels.
+- [x] `POST /api/v1/logs` covers creation, occurrence timestamp, and persisted
+  body. Log labels are assigned through the separate labels operation.
 - [ ] `PUT /api/v1/logs/{id}` covers update and optimistic version conflict
   behavior.
 - [ ] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
