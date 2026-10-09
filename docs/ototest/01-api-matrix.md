@@ -198,6 +198,12 @@ before API-02 can be accepted.
 | PUT `/api/v1/boards/all/columns/sort` | `AllBoardsController.sortColumn`; `ColumnSortRequest` name/sort body | `AllBoardsIntegrationTest`; mapping gap | Persisted preference and ordering |
 | GET `/api/v1/boards/all/gantt` | `AllBoardsController.gantt`; `from`, `to` | `AllBoardsIntegrationTest`; mapping gap | Inclusive overlap, active statuses, reversed range |
 
+## Realtime transport
+
+| Endpoint | Handler and first-message contract | Exact test evidence | Behavior asserted |
+|---|---|---|---|
+| WebSocket `/ws/timers` | `TimerWebSocketConfig` → `TimerWebSocketHandler`; first text message authenticates with `{"type":"AUTH","token":"…"}` | `KnowIntegrationTest.timerWebSocketReceivesCommittedStateForTheAuthenticatedUser`; `timerWebSocketPingsAuthenticatedClientsOftenEnoughForIdleProxies`; `timerWebSocketClosesAnInvalidAuthenticationWithPolicyViolation` | Valid auth receives `READY`; committed timer start/stop events publish `TIMER_STATE`; heartbeat interval is at most 60 seconds and a ping does not interrupt subsequent state delivery; invalid token closes with policy violation |
+
 ## Client operation map and evidence commands
 
 The Vue client funnels HTTP calls through [`frontend/src/lib/api.ts`](../../frontend/src/lib/api.ts).
