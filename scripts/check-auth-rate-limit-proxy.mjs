@@ -80,15 +80,22 @@ for (const [header, value] of [
   ["x-content-type-options", "nosniff"],
   ["x-frame-options", "DENY"],
   ["referrer-policy", "strict-origin-when-cross-origin"],
+  ["permissions-policy", "camera=(), microphone=(), geolocation=()"],
 ]) {
   if (page.headers.get(header) !== value) throw new Error(`Proxy header ${header} was not set as expected`);
 }
+if (!page.headers.get("content-security-policy")) {
+  throw new Error("The proxy path omitted Content-Security-Policy");
+}
 const allowedCors = await fetch(protectedRoute, {
   method: "OPTIONS",
-  headers: { Origin: "http://localhost", "Access-Control-Request-Method": "GET" },
+  headers: { Origin: "http://localhost", "Access-Control-Request-Method": "PUT" },
 });
-if (allowedCors.headers.get("access-control-allow-origin") !== "http://localhost") {
-  throw new Error("The proxy path did not preserve the configured local CORS origin");
+if (
+  allowedCors.headers.get("access-control-allow-origin") !== "http://localhost" ||
+  !allowedCors.headers.get("access-control-allow-methods")?.includes("PUT")
+) {
+  throw new Error("The proxy path did not preserve the configured CORS origin and method");
 }
 const deniedCors = await fetch(protectedRoute, {
   method: "OPTIONS",
@@ -96,6 +103,13 @@ const deniedCors = await fetch(protectedRoute, {
 });
 if (deniedCors.headers.has("access-control-allow-origin")) {
   throw new Error("The proxy path allowed an untrusted CORS origin");
+}
+const deniedMethod = await fetch(protectedRoute, {
+  method: "OPTIONS",
+  headers: { Origin: "http://localhost", "Access-Control-Request-Method": "TRACE" },
+});
+if (deniedMethod.status !== 403 || deniedMethod.headers.has("access-control-allow-methods")) {
+  throw new Error(`The proxy path did not reject an unconfigured CORS method (${deniedMethod.status})`);
 }
 
 console.log(
