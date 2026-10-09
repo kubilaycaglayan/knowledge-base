@@ -3,7 +3,9 @@ package com.know.api;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.know.service.LabelHistoryService;
 import com.know.service.LabelManagementService;
@@ -44,5 +46,18 @@ class LabelApiTest {
                 .contentType("application/json")
                 .content("{\"name\":\" \",\"scopes\":[\"CALENDAR\"]}"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void invalidLabelUpdatePayloadIsRejectedBeforeServiceInvocation() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    mvc.perform(
+            put("/api/v1/labels/" + UUID.randomUUID())
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{\"name\":\"Work\",\"color\":\"blue\",\"scopes\":[\"NOTE\"]}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(service);
   }
 }
