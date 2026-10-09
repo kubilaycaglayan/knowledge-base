@@ -295,35 +295,35 @@ covered” row.
 
 ### FLOW-06 — Import/export and account
 
-- [ ] **FLOW-06.01** Open `/imports` directly and from Settings; record active
+- [x] **FLOW-06.01** Open `/imports` directly and from Settings; record active
   import source, embedded navigation, URL behavior, and initial loading/empty
   states.
-- [ ] **FLOW-06.02** Select Clockify import; record required inputs, source
+- [x] **FLOW-06.02** Select Clockify import; record required inputs, source
   validation, supported file/paste path, progress, summary counts, and errors.
-- [ ] **FLOW-06.03** Select Knowledge Base transfer/import; record accepted
+- [x] **FLOW-06.03** Select Knowledge Base transfer/import; record accepted
   format/version, file or text input, validation, and preview/submit behavior.
-- [ ] **FLOW-06.04** Submit malformed, oversized, unsupported-version, or
+- [x] **FLOW-06.04** Submit malformed, oversized, unsupported-version, or
   invalid-encoding input; record field/error message, focus, retained data,
   and correction/retry path.
-- [ ] **FLOW-06.05** Complete a valid import; record created/skipped/failed
+- [x] **FLOW-06.05** Complete a valid import; record created/skipped/failed
   counts, generated records, ownership scope, and persistence after reload.
-- [ ] **FLOW-06.06** Open import batch history and paginate; record batch
+- [x] **FLOW-06.06** Open import batch history and paginate; record batch
   detail, timestamps/counts, page boundaries, and loading/failure states.
-- [ ] **FLOW-06.07** Undo an import batch; record confirmation, affected data,
+- [x] **FLOW-06.07** Undo an import batch; record confirmation, affected data,
   success/failure feedback, behavior on second undo, and concurrent changes.
-- [ ] **FLOW-06.08** Export Knowledge Base data; record format choice, download
+- [x] **FLOW-06.08** Export Knowledge Base data; record format choice, download
   filename/type, included data domains, Unicode/date/time handling, and empty
   dataset behavior.
-- [ ] **FLOW-06.09** Verify the user-facing contract for import/export that
+- [x] **FLOW-06.09** Verify the user-facing contract for import/export that
   another account's records are never included or modified; classify evidence
   as API/service versus browser-visible evidence.
-- [ ] **FLOW-06.10** Open Settings account controls; record email/account
+- [x] **FLOW-06.10** Open Settings account controls; record email/account
   information, password change/add flows, Google account behavior, validation,
   sign-out, and recovery from rejected credentials.
-- [ ] **FLOW-06.11** Change theme or other user preference; record immediate
+- [x] **FLOW-06.11** Change theme or other user preference; record immediate
   appearance, persistence after reload/new tab, system-default behavior, and
   API failure recovery.
-- [ ] **FLOW-06.12** Exercise import forms, file inputs, account controls, and
+- [x] **FLOW-06.12** Exercise import forms, file inputs, account controls, and
   export actions in mobile Chrome; record keyboard/file picker, button
   reachability, download behavior, and responsive overflow.
 
