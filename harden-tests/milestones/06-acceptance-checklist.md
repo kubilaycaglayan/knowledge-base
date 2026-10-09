@@ -24,8 +24,11 @@ checks are not evidence of SwiftUI or simulator behavior.
   manual simulator run has been claimed.
 - [ ] Select a supported macOS/Xcode host and document Xcode, XcodeGen,
   simulator runtime/device, scheme, test destination, and signing assumptions.
-- [ ] Provide a reproducible command or active CI job that generates the
+- [x] Provide a reproducible command or active CI job that generates the
   project, builds the app, and runs the intended unit and UI test sets.
+  The full-scheme `xcodebuild test` command is documented in
+  [`06-supported-validation.md`](06-supported-validation.md); its execution is
+  tracked separately below.
 - [ ] Verify the chosen path on the actual supported host with a clean
   checkout before proposing any workflow change. Both existing iOS jobs in
   `.github/workflows/verify.yml` are hard-disabled with `if: ${{ false }}`;
