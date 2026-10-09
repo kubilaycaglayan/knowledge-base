@@ -182,9 +182,22 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
     JsonNode second = ok(HttpMethod.GET, endpoint + "?kind=sessions&page=1", owner, null);
     assertEquals(1, second.get("items").size());
     assertFalse(second.get("hasMore").asBoolean());
+    JsonNode emptyPage = ok(HttpMethod.GET, endpoint + "?kind=sessions&page=2", owner, null);
+    assertEquals(0, emptyPage.get("items").size());
+    assertFalse(emptyPage.get("hasMore").asBoolean());
     log(owner, at("2026-05-02T09:00:00Z"), labelId);
     assertEquals("Log", ok(HttpMethod.GET, endpoint + "?kind=logs", owner, null)
         .get("items").get(0).get("title").asText());
+    String longBody = "x".repeat(400);
+    String longLogId = ok(HttpMethod.POST, "/api/v1/logs", owner,
+        "{\"body\":\"" + longBody + "\",\"occurredAt\":\"2026-05-03T09:00:00Z\"}")
+        .get("id").asText();
+    ok(HttpMethod.PUT, "/api/v1/logs/" + longLogId + "/labels", owner,
+        "{\"labelIds\":" + ids(labelId) + "}");
+    JsonNode longPreview = ok(HttpMethod.GET, endpoint + "?kind=logs&page=0", owner, null)
+        .get("items").get(0).get("preview");
+    assertEquals(321, longPreview.asText().length());
+    assertTrue(longPreview.asText().endsWith("…"));
     ok(HttpMethod.PUT, "/api/v1/calendar/days/2026-05-02", owner,
         "{\"note\":\"A good day\",\"labels\":[{\"labelId\":\"" + labelId + "\"}]}");
     assertEquals("2026-05-02", ok(HttpMethod.GET, endpoint + "?kind=dates", owner, null)
@@ -200,6 +213,9 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.NOT_FOUND, exchange(HttpMethod.GET, endpoint + "?kind=logs", token(), null).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, exchange(HttpMethod.GET, endpoint + "?kind=sessions&page=-1", owner, null).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, exchange(HttpMethod.GET, endpoint + "?kind=unknown", owner, null).getStatusCode());
+    JsonNode emptyDates = ok(HttpMethod.GET, endpoint + "?kind=dates&page=1", owner, null);
+    assertEquals(0, emptyDates.get("items").size());
+    assertFalse(emptyDates.get("hasMore").asBoolean());
   }
 
   @Test
