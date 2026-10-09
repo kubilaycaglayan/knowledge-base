@@ -163,7 +163,7 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/notes/labels` covers available NOTE labels and owner scope.
 - [x] `GET /api/v1/notes/{id}` covers owned, missing, foreign, and archived
   note IDs.
-- [ ] `POST /api/v1/notes` covers standalone note creation and each supported
+- [x] `POST /api/v1/notes` covers standalone note creation and each supported
   path/activity/time-entry association.
 - [ ] `POST /api/v1/notes` covers rich-text content and server-derived
   `contentText` behavior.
