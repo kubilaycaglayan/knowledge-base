@@ -1,7 +1,7 @@
 # HARD-05 environment preflight (not a performance run)
 
-- Captured (UTC): 2026-10-09 01:09
-- Commit: `77fca3a` (fresh `origin/main` before HARD-05 edits)
+- Captured (UTC): 2026-10-09 01:28
+- Commit: `b204090` (HARD-05 implementation on fresh `origin/main`)
 - Compose project: `knowledge-base-dev` was active; no benchmark project was
   started
 - Fixture revision: not applicable; no fixture was generated
@@ -18,10 +18,10 @@
   not launched for this preflight
 - Browser cache: Chromium revision `1243` and WebKit revision `2359` are cached
 - Repository disk: 470 GiB free
-- Load average: 1.19, 1.41, 1.38
+- Load average: 0.74, 0.90, 1.03
 - Competing load: the persistent local Knowledge Base development Compose
   project and other local services were running. The dev API container showed
-  41.43% CPU and 1.402 GiB / 3 GiB memory in the instantaneous Docker sample.
+  53.67% CPU and 1.337 GiB / 3 GiB memory in the instantaneous Docker sample.
 - Network/cache: no network shaping; browser cache state is a fresh-context
   cache for any future browser run and is not a cold server/database cache.
 - Result: **not suitable for timed baseline collection**. No performance
