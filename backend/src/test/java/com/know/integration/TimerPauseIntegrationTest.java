@@ -648,21 +648,25 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.CONFLICT, post("/api/v1/timers/resume", token, "{}").getStatusCode());
 
     String pathId = path(token, "Soon deleted");
-    startedMinutesAgo(token, pathId, null, 3);
+    String labelId = label(token, "Paused label");
+    startedMinutesAgo(token, pathId, labelId, 3);
     assertEquals(HttpStatus.OK, post("/api/v1/timers/pause", token, "{}").getStatusCode());
     // A fresh start is allowed while paused and drops the pause.
     assertEquals(
         HttpStatus.CREATED, post("/api/v1/timers", token, "{\"labelIds\":[]}").getStatusCode());
     post("/api/v1/timers/stop", token, "{}");
-    startedMinutesAgo(token, pathId, null, 3);
+    startedMinutesAgo(token, pathId, labelId, 3);
     long pausedSeconds =
         post("/api/v1/timers/pause", token, "{}").getBody().get("pausedSeconds").asLong();
     exchange(HttpMethod.DELETE, "/api/v1/paths/" + pathId, token, null);
 
     assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/timers/resume", token, "{}").getStatusCode());
     assertTrue(noCurrentTimer(token));
-    assertEquals(
-        pausedSeconds, get("/api/v1/timers/draft", token).getBody().get("pausedSeconds").asLong());
+    JsonNode pausedDraft = get("/api/v1/timers/draft", token).getBody();
+    assertEquals(pausedSeconds, pausedDraft.get("pausedSeconds").asLong());
+    assertEquals(pathId, pausedDraft.get("pathId").asText());
+    assertEquals(labelId, pausedDraft.get("labelIds").get(0).asText());
+    assertEquals("Deep work", pausedDraft.get("description").asText());
   }
 
   // SP-03

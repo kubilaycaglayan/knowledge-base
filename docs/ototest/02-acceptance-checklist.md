@@ -240,8 +240,8 @@ browser interaction evidence remains a separate layer.
 - [x] Pause, resume, and finish invalid-state requests cover documented
   conflict behavior (`pauseWithoutARunningTimerConflicts`,
   `resumeRequiresAPausedSession`, and `finishEndsAPausedSession`).
-- [ ] Resume after a selected path becomes inactive covers validation and
-  preservation of the paused draft.
+- [x] Resume after a selected path becomes inactive covers validation and
+  preservation of the paused draft (`TimerPauseIntegrationTest.resumeRequiresAPausedSession`).
 - [ ] `POST /api/v1/time-entries` covers manual entry creation and valid
   duration/time boundaries.
 - [ ] `GET /api/v1/time-entries` covers owner-scoped ordering and list filters.
