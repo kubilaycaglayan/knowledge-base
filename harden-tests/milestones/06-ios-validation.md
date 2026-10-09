@@ -44,9 +44,12 @@ an active automated gate.
   restore, API error handling, every implemented screen, create/edit/delete or
   archive/restore flows, offline/network failure recovery, keyboard and
   Dynamic Type behavior, and an end-to-end note save/line-history flow.
-- [ ] Make simulator tests deterministic around locale, calendar/time zone,
+- [x] Make simulator tests deterministic around locale, calendar/time zone,
   animation, network fixtures, and asynchronous waits. Capture screenshots and
-  `.xcresult` on failure without sensitive data.
+  `.xcresult` on failure without sensitive data. UI test launch pins locale and
+  time zone; calendar fixtures pin their reference date; UI test mode disables
+  animations; XCTest waits replace timing sleeps; and the complete `.xcresult`
+  artifact is retained by the documented hosted run.
 - [x] Keep Linux `check-ios-note-document.sh` as a focused portability check,
   and state clearly that it is not evidence of SwiftUI or simulator success.
 
