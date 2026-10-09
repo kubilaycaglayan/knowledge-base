@@ -265,31 +265,31 @@ covered” row.
 
 ### FLOW-05 — Calendar
 
-- [ ] **FLOW-05.01** Open `/calendar` with no query and with `?date=YYYY-MM-DD`;
+- [x] **FLOW-05.01** Open `/calendar` with no query and with `?date=YYYY-MM-DD`;
   record selected day, initial month, invalid-date fallback, title, and
   browser history behavior.
-- [ ] **FLOW-05.02** Navigate previous/next month and year; record month/year
+- [x] **FLOW-05.02** Navigate previous/next month and year; record month/year
   boundaries, leap day, selected-day behavior, and URL changes.
-- [ ] **FLOW-05.03** Select Today; record resulting month/day and feedback,
+- [x] **FLOW-05.03** Select Today; record resulting month/day and feedback,
   including behavior when Today is already selected.
-- [ ] **FLOW-05.04** Select one calendar day by pointer, touch, and keyboard;
+- [x] **FLOW-05.04** Select one calendar day by pointer, touch, and keyboard;
   record selected state, focus handling, and date details panel.
-- [ ] **FLOW-05.05** Select a date range; record inclusive endpoints,
+- [x] **FLOW-05.05** Select a date range; record inclusive endpoints,
   reversal/cancel behavior, keyboard/tap alternative, and range visualization.
-- [ ] **FLOW-05.06** Edit and save the selected day's note; record empty and
+- [x] **FLOW-05.06** Edit and save the selected day's note; record empty and
   long text behavior, autosave/manual save, failure feedback, and reload
   persistence.
-- [ ] **FLOW-05.07** Add an existing label to a day, including one hidden from
+- [x] **FLOW-05.07** Add an existing label to a day, including one hidden from
   Calendar; record that visibility is preserved and label appears as expected.
-- [ ] **FLOW-05.08** Create a label from Calendar; record its default scopes,
+- [x] **FLOW-05.08** Create a label from Calendar; record its default scopes,
   display name/color, duplicate handling, and resulting label-chip behavior.
-- [ ] **FLOW-05.09** Change label color and marker/no-marker status; record
+- [x] **FLOW-05.09** Change label color and marker/no-marker status; record
   visual/status cues and impact on report inclusion.
-- [ ] **FLOW-05.10** Add, edit, and remove label allocations/portions; record
+- [x] **FLOW-05.10** Add, edit, and remove label allocations/portions; record
   totals, zero/over-allocation validation, save/cancel, and removal behavior.
-- [ ] **FLOW-05.11** Record empty month/day, no available labels, hidden but
+- [x] **FLOW-05.11** Record empty month/day, no available labels, hidden but
   already assigned label, and failed-load/save states with retry or recovery.
-- [ ] **FLOW-05.12** Exercise month/day/range editing in mobile Chrome;
+- [x] **FLOW-05.12** Exercise month/day/range editing in mobile Chrome;
   record touch selection, keyboard behavior, grid fit, safe scrolling, and
   software-keyboard overlap.
 
