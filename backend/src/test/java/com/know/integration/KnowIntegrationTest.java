@@ -1508,6 +1508,37 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(3600L, entry.getBody().get("durationSeconds").asLong(), 5L);
   }
 
+  @Test
+  void timeEntryDetailReturnsOwnedEntryAndHidesMissingOrForeignIds() {
+    String owner = freshToken();
+    String other = freshToken();
+    String start = "2026-10-09T08:00:00Z";
+    String end = "2026-10-09T09:00:00Z";
+    ResponseEntity<JsonNode> created =
+        post(
+            "/api/v1/time-entries",
+            owner,
+            "{\"startedAt\":\""
+                + start
+                + "\",\"endedAt\":\""
+                + end
+                + "\",\"labelIds\":[],\"description\":\"Owned entry detail\"}");
+    assertEquals(HttpStatus.OK, created.getStatusCode());
+    String entryId = created.getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> detail = get("/api/v1/time-entries/" + entryId, owner);
+    assertEquals(HttpStatus.OK, detail.getStatusCode());
+    assertEquals(entryId, detail.getBody().get("id").asText());
+    assertEquals("Owned entry detail", detail.getBody().get("description").asText());
+    assertEquals(3600, detail.getBody().get("durationSeconds").asLong());
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        get("/api/v1/time-entries/" + entryId, other).getStatusCode());
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        get("/api/v1/time-entries/" + UUID.randomUUID(), owner).getStatusCode());
+  }
+
   // Criteria: statistics (today / week / month, path/label breakdowns)
 
   @Test

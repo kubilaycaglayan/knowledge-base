@@ -146,7 +146,7 @@ before API-02 can be accepted.
 | POST `/api/v1/timers/{id}/cancel` | `TimerController.cancel`; optional `id` path alias | `TimerApiTest.canonicalAndExplicitCancelRoutesCancelTheSameTimer` | Same 204 response and service call as canonical alias when the explicit ID matches current timer |
 | POST `/api/v1/time-entries` | `TimerController.manual` | `TimerApiTest`, `KnowIntegrationTest` | Persisted manual entry, times/labels/path validation |
 | GET `/api/v1/time-entries` | `TimerController.history`; optional `page`, `size` query | `TimerApiTest`, `KnowIntegrationTest` | Owner, filtering, paging and order |
-| GET `/api/v1/time-entries/{id}` | `TimerController.get` | `TimerApiTest`; named owner assertion mapping gap | Missing/foreign ID |
+| GET `/api/v1/time-entries/{id}` | `TimerController.get` | `KnowIntegrationTest.timeEntryDetailReturnsOwnedEntryAndHidesMissingOrForeignIds`; `CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources` | Persisted response fields for owned entry; missing and foreign IDs return 404 |
 | PUT `/api/v1/time-entries/{id}` | `TimerController.edit`; `id` path and `ManualRequest` body | `TimerApiTest`, `KnowIntegrationTest` | Persisted edit, validation, foreign ID |
 | DELETE `/api/v1/time-entries/{id}` | `TimerController.remove` | `TimerApiTest`, `KnowIntegrationTest` | Delete followed by absence, foreign ID |
 | GET `/api/v1/statistics` | `TimerController.statistics` | `TimerApiTest`, `ReportServiceTest`; API assertion gap | Date boundaries, empty data, owner scope |
