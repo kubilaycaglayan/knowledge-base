@@ -2678,6 +2678,28 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             token,
             "{\"startDate\":\"2026-01-01\",\"endDate\":\"2027-01-02\",\"labels\":[]}");
     assertEquals(HttpStatus.BAD_REQUEST, oversizedRange.getStatusCode());
+
+    ResponseEntity<JsonNode> reversedRange =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-01-02\",\"endDate\":\"2026-01-01\",\"labels\":[]}");
+    assertEquals(HttpStatus.BAD_REQUEST, reversedRange.getStatusCode());
+
+    ResponseEntity<JsonNode> malformedDate =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-02-30\",\"endDate\":\"2026-03-01\",\"labels\":[]}");
+    assertEquals(HttpStatus.BAD_REQUEST, malformedDate.getStatusCode());
+
+    ResponseEntity<JsonNode> maximumRange =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-01-01\",\"endDate\":\"2027-01-01\",\"labels\":[]}");
+    assertEquals(HttpStatus.OK, maximumRange.getStatusCode());
+    assertTrue(maximumRange.getBody().isEmpty());
   }
 
   @Test
