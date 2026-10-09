@@ -585,6 +585,60 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
         jdbc.queryForObject("select count(*) from log_label where label_id = ?", Long.class, labelUuid));
   }
 
+  @Test
+  void postgresNoteUpdateRollsBackContentAndOldTagsWhenReplacementTagWriteFails()
+      throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    UUID userId = subject(token);
+    JsonNode note =
+        api.created(
+            "POST",
+            "/api/v1/notes",
+            token,
+            "{\"title\":\"Original note\",\"content\":\"Original body\",\"tags\":[\"Original rollback tag\"]}");
+    UUID noteId = UUID.fromString(note.get("id").asText());
+    UUID originalLabelId =
+        jdbc.queryForObject(
+            "select label_id from note_label where note_id = ?",
+            UUID.class,
+            noteId);
+    String trigger = failOnInsertTrigger("note_label");
+    try {
+      ApiClient.Reply failed =
+          api.put(
+              "/api/v1/notes/" + noteId,
+              token,
+              "{\"title\":\"Changed note\",\"content\":\"Changed body\",\"tags\":[\"Replacement rollback tag\"]}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("note_label", trigger);
+    }
+
+    assertEquals(
+        "Original body",
+        jdbc.queryForObject("select content from note where id = ?", String.class, noteId));
+    assertEquals(
+        "Original note",
+        jdbc.queryForObject("select title from note where id = ?", String.class, noteId));
+    assertEquals(
+        1L,
+        jdbc.queryForObject(
+            "select count(*) from note_label where note_id = ? and label_id = ?",
+            Long.class,
+            noteId,
+            originalLabelId));
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from labels where user_id = ? and name = ?",
+            Long.class,
+            userId,
+            "Replacement rollback tag"));
+  }
+
   private String failOnInsertTrigger(String tableName) {
     String suffix = UUID.randomUUID().toString().replace("-", "");
     String functionName = "fail_insert_" + suffix;
