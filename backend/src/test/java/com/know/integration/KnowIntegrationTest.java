@@ -2612,6 +2612,12 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             "{\"name\":\"Vacation\",\"color\":\"#E05D44\"}");
     assertEquals(HttpStatus.OK, changed.getStatusCode());
     assertEquals("#E05D44", changed.getBody().get("color").asText());
+    JsonNode listedLabel = null;
+    for (JsonNode label : get("/api/v1/calendar/labels", owner).getBody())
+      if (labelId.equals(label.get("id").asText())) listedLabel = label;
+    assertNotNull(listedLabel, "Updated label missing from calendar list");
+    assertEquals("Vacation", listedLabel.get("name").asText());
+    assertEquals("#E05D44", listedLabel.get("color").asText());
     put(
         "/api/v1/calendar/days/2026-09-12",
         owner,

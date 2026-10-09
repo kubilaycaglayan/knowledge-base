@@ -404,7 +404,9 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/calendar/labels` covers trimmed creation, optional color,
   persisted palette color, and malformed or unsupported colors without creating
   records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`).
-- [ ] `PUT /api/v1/calendar/labels/{id}` covers update and owner-scoped IDs.
+- [x] `PUT /api/v1/calendar/labels/{id}` covers owner-only updates, response
+  and list readback, day-assignment propagation, and invalid palette colors
+  (`KnowIntegrationTest.calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords`).
 - [ ] `DELETE /api/v1/calendar/labels/{id}` covers deletion restrictions for
   labels referenced by historical calendar records.
 - [ ] `GET /api/v1/calendar/days` covers date-range validation and inclusive
