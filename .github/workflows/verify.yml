@@ -60,7 +60,7 @@ jobs:
         working-directory: frontend
         run: npm ci && npm test && npm run build
       - name: Validate extension and deployment scripts
-        run: cd chrome-extension && npm ci && npm test && npm run build && node -e "const m=JSON.parse(require('fs').readFileSync('.output/chrome-mv3/manifest.json')); if(m.optional_host_permissions || m.host_permissions.some(p => p.includes('*/*'))) throw Error('extension permissions are too broad')" && cd .. && node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js chrome-extension/google-auth.test.js chrome-extension/api-config.test.js chrome-extension/clockify-validation.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+        run: cd chrome-extension && npm ci && npm test && npm run build && node -e "const m=JSON.parse(require('fs').readFileSync('.output/chrome-mv3/manifest.json')); if(m.optional_host_permissions || m.host_permissions.some(p => p.includes('*/*'))) throw Error('extension permissions are too broad')" && cd .. && node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js chrome-extension/google-auth.test.js chrome-extension/api-config.test.js chrome-extension/clockify-validation.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && node scripts/check-hardening-status.mjs && bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
   smoke:
     runs-on: ubuntu-latest
@@ -91,7 +91,22 @@ jobs:
         working-directory: frontend
         run: npm ci && npx playwright install --with-deps chromium
       - name: Timer WebSocket through the production proxy config
+        env:
+          TIMER_E2E_ARTIFACT_DIR: ${{ runner.temp }}/timer-websocket-e2e-artifacts
         run: ./scripts/run-timer-websocket-e2e.sh
+      - name: Upload timer WebSocket failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: timer-websocket-e2e-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/timer-websocket-e2e-artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Link timer WebSocket failure evidence
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: echo "Failure logs and scrubbed browser evidence are attached to this [workflow run]($RUN_URL) and retained for 14 days." >> "$GITHUB_STEP_SUMMARY"
 
   line-history-e2e:
     runs-on: ubuntu-latest
@@ -106,7 +121,22 @@ jobs:
         working-directory: frontend
         run: npm ci && npx playwright install --with-deps chromium
       - name: Note and card line history in a real browser
+        env:
+          LINE_HISTORY_E2E_ARTIFACT_DIR: ${{ runner.temp }}/line-history-e2e-artifacts
         run: ./scripts/run-line-history-e2e.sh
+      - name: Upload line history failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: line-history-e2e-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/line-history-e2e-artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Link line history failure evidence
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: echo "Failure logs and scrubbed browser evidence are attached to this [workflow run]($RUN_URL) and retained for 14 days." >> "$GITHUB_STEP_SUMMARY"
 
   ios-note-document:
     if: ${{ false }}

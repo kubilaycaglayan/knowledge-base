@@ -1,7 +1,13 @@
 # HARD-06 acceptance checklist: iOS validation
 
+**Status:** Closed by decision (iOS app not currently in use; acceptance incomplete)
+
 Use this checklist with [HARD-06](06-ios-validation.md). Linux portability
 checks are not evidence of SwiftUI or simulator behavior.
+
+> HARD-06 is closed by decision. Do not complete or extend this checklist
+> unless the user explicitly reopens the milestone. Unchecked items below are
+> known, intentionally unresolved validation gaps.
 
 ## Test inventory and supported host
 
@@ -43,8 +49,8 @@ checks are not evidence of SwiftUI or simulator behavior.
 
 ### Current evidence map
 
-This is an initial source inventory, not a claim that the milestone is done.
-Refresh test names and omissions when the source changes.
+This source inventory records the current known gaps. It is not a claim that
+the milestone's acceptance criteria have been met.
 
 | Area | Current source evidence | What that evidence does not establish yet |
 | --- | --- | --- |

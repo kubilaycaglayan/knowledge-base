@@ -1,5 +1,7 @@
 # HARD-04 acceptance checklist: rate limits and security
 
+**Status:** Complete
+
 Use this checklist with [HARD-04](04-rate-limits-and-security.md). Verify
 limits from source at implementation time and report application and edge
 controls separately.

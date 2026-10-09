@@ -28,6 +28,11 @@ Android-device evidence.
 - [Report-only threshold proposal](2026-10-09-hard05-gate-proposal.md)
 - [Environment preflight and benchmark snapshot](2026-10-09-hard05-environment-preflight.md)
 
+## HARD-07 environment audit
+
+- [2026-10-09 environment preflight (not a test or performance run)](2026-10-09-hard07-environment-preflight.md)
+- [Required CI verification](2026-10-09-hard07-ci.md)
+
 ## Required report template
 
 ```markdown
@@ -35,18 +40,19 @@ Android-device evidence.
 
 - Date (UTC):
 - Start/end time (UTC):
-- Commit:
+- Commit (full SHA; note whether the worktree was clean at run start):
 - Exact command and relevant environment overrides (redact generated secrets):
 - Exit status:
+- Suites (name and passed/failed/skipped counts for each):
 - Compose project:
-- Stack retained? reuse window and project-scoped cleanup command:
+- Stack retained? If yes, planned window, expiry, and exact project-scoped cleanup command:
 - Images (tag and immutable ID):
 - Database engine/version and migration result (for stack-backed runs):
-- Browser engine/version and profile (viewport, user agent, touch, scale factor):
+- Browser engine/version and profile (viewport and screen, user agent, touch, scale factor):
 - Environment (OS/version/architecture, Node, Playwright, Docker, CPU/memory/disk limits):
-- Suite outcomes (passed/failed/skipped):
 - Failed cases:
-- Artifacts/logs:
+- Failure classification and evidence (confirmed, suspected, or unclassified):
+- Artifacts/logs (reviewer-accessible links; storage location, access, and expiry):
 - Fixed-data performance (fixture/profile, journey/API, warmups, samples, median, p95, min/max, failures/timeouts, baseline):
 - Performance environment (machine load, CPU/memory limits, runtime versions, cache/network state):
 - Performance raw data / trace artifacts:
@@ -67,6 +73,43 @@ value, write `Not recorded` and retain it as unknown; never copy metadata from a
 nearby run. Link artifacts at a location reviewers can access and record their
 retention or expiry. Local `/tmp` paths are provenance notes only until the
 artifact is copied to durable ignored storage or CI artifacts.
+
+For new failed browser runs, retain the runner output, scrubbed Playwright
+trace, screenshot, browser console/request diagnostics, and scoped container
+logs when available. Before sharing, inspect generated JSON and screenshots,
+use the trace scrubber supplied by the real-stack runners, and remove any
+unsanitized trace if scrubbing fails. Keep private local artifacts under
+`harden-tests/local-artifacts/` or `frontend/harden-tests/local-artifacts/`;
+these paths are ignored and are not reviewer-accessible. For a PR review, link
+only an artifact uploaded to an access-controlled CI run or another explicitly
+reviewer-accessible store, and include its expiry. Historical reports may link
+local-only evidence or state that it is unavailable; do not imply reviewers can
+open a local path.
+
+## Disposable stack reuse and cleanup
+
+By default, each focused runner creates a unique project and removes it on
+exit; `scripts/test-run-all.sh` reuses one unique project only within that
+single invocation. If a maintainer explicitly plans a longer local reuse
+window, keep it within one work session and no longer than four hours. Record
+the unique project, image tags and immutable IDs, start time, and expiry in the
+run report. Never reuse the development project or a project with a protected
+external volume. At expiry, stop only the recorded project. For the standard
+smoke stack, run:
+
+```bash
+docker compose -p "$COMPOSE_PROJECT_NAME" -f docker-compose.yml -f docker-compose.smoke.yml down --volumes --remove-orphans --rmi local
+```
+
+For a performance stack, include its compose file in the project-scoped stop
+command:
+
+```bash
+docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" -f docker-compose.yml -f docker-compose.smoke.yml -f docker-compose.performance.yml down --volumes --remove-orphans
+```
+
+Confirm the project name is the disposable test project before running either
+command. Never use global prune commands or remove protected external volumes.
 
 For a HARD-05 performance report, add these sections beneath the common run
 metadata. Keep each desktop Chromium, mobile-size Chromium, and emulated iPhone
@@ -140,6 +183,14 @@ occurrences across 11 failure-group suite occurrences: 40 cases from the six
 complete dated reports and 3 from the partial transcript. The partial
 transcript is included for failure history only and does not count as
 browser-profile coverage.
+
+Later focused HARD-02 runs update that initial 43-case subset to the current
+tracked total of 138 case occurrences across 58 failure-group suite
+occurrences, as summarized below. The 2026-10-09 HARD-04 browser reports and
+HARD-05 timed profile reports report no failed cases. HARD-05 notes exploratory
+collector diagnostics but does not record their run or case counts; those
+attempts are therefore not folded into the 138 counted occurrences and remain
+uncounted rather than being guessed.
 
 ## HARD-02 investigation update (2026-10-08)
 

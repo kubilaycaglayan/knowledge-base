@@ -1,5 +1,7 @@
 # HARD-03 acceptance checklist: PostgreSQL, time, and volume
 
+**Status:** Complete
+
 Use this checklist with [HARD-03](03-postgres-and-boundaries.md). H2 results
 may supplement PostgreSQL evidence but cannot satisfy PostgreSQL-specific
 criteria.

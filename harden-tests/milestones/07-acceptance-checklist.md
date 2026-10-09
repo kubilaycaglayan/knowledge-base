@@ -1,5 +1,7 @@
 # HARD-07 acceptance checklist: run evidence and plan hygiene
 
+**Status:** Complete
+
 Use this checklist with [HARD-07](07-run-evidence-and-plan-hygiene.md). A
 checkbox is complete only when the report or repository artifact exists.
 
@@ -10,26 +12,29 @@ checkbox is complete only when the report or repository artifact exists.
   [`docs/test-hardening-plan.md`](../../docs/test-hardening-plan.md) labels
   TH-01–TH-19 as the completed historical first phase and links the active
   plan.
-- [x] Audit current dated reports and cumulative failure totals. Six complete
-  profile/suite reports plus one explicitly partial transcript exist; they
-  record 43 observed failing case occurrences across 11 failure-group suite
-  occurrences. This reconciles the current cumulative table, but does not make
-  the missing raw `/tmp` logs or metadata recoverable.
-- [x] Verify current evidence limitations: run reports generally omit exact
-  start/end time, exit code, full machine/runtime detail, and durable raw
-  artifacts; the initial Chromium run is not the desktop profile, and no
-  mobile-size Chromium pass is recorded. The partial board transcript remains
-  unclassified and cannot establish profile coverage.
-- [ ] Name one current plan in the hardening index and label historical plans
+- [x] Audit current dated reports and cumulative failure totals. The initial
+  six complete profile/suite reports plus one explicitly partial transcript
+  recorded 43 observed failing case occurrences; later focused HARD-02 runs
+  bring the tracked table to 138 case occurrences across 58 failure-group
+  suite occurrences. HARD-05 diagnostic attempts lack countable run records
+  and remain explicitly uncounted. Missing historical raw logs and metadata
+  are not reconstructed; see the explanation in [`runs/README.md`](../runs/README.md).
+- [x] Verify current evidence limitations: some historical reports omit exact
+  start/end time, exit code, full machine/runtime detail, or reviewer-accessible
+  artifacts, and those gaps remain unknown rather than copied from later runs.
+  Separate desktop Chromium, mobile-size Chromium, and emulated iPhone WebKit
+  reports now exist; the partial board transcript remains unclassified and
+  cannot establish profile coverage.
+- [x] Name one current plan in the hardening index and label historical plans
   with their completed scope/date and a prominent link to the active plan.
-- [ ] Reconcile every active-plan checkbox with source, scripts, CI, and run
+- [x] Reconcile every active-plan checkbox with source, scripts, CI, and run
   reports; mark complete only when evidence meets its stated environment and
-  profile scope.
-- [ ] Distinguish required CI, opt-in local, manual, platform-limited, disabled,
-  and not-yet-implemented coverage in the test map.
-- [ ] Keep each milestone status synchronized between summary plan, milestone
+  profile scope. The remaining journey/coverage gap is still unchecked.
+- [x] Distinguish required CI, opt-in local, manual, platform-limited, disabled,
+  closed-by-decision, and not-yet-implemented coverage in the test map.
+- [x] Keep each milestone status synchronized between summary plan, milestone
   index, milestone document, and acceptance checklist.
-- [ ] Link tests, command, report, and known limitations for every completed
+- [x] Link tests, command, report, and known limitations for every completed
   milestone; retain incomplete items as unchecked.
 
 ### Initial run-record audit
@@ -53,38 +58,42 @@ be repaired by copying values from a different commit, profile, or stack.
 
 ## Per-run report completeness
 
-- [ ] Record date/time UTC, commit, exact command, exit status, and pass/fail/
-  skip counts for every suite.
-- [ ] Record unique Compose project, image tags and immutable IDs, and database
-  type/version and migration result for stack-backed runs.
-- [ ] Record browser name/version, profile, viewport, scale factor, touch
-  setting, OS, Node, Playwright, and relevant machine constraints.
-- [ ] Attach a dated local machine preflight for comparison/performance runs;
+- [x] Require date/time UTC, commit/worktree state, exact command, exit status,
+  and pass/fail/skip counts per suite in all new run reports. Preserve missing
+  historical values as unknown.
+- [x] Require the unique Compose project, image tags and immutable IDs, and
+  database type/version and migration result for new stack-backed reports.
+- [x] Require browser name/version, profile, viewport/screen, scale factor,
+  touch setting, OS, Node, Playwright, and relevant machine constraints.
+- [x] Attach a dated local machine preflight for comparison/performance runs;
   re-capture CPU, memory, Docker, disk, runtime, and browser inventory rather
-  than copying a historical snapshot as current evidence.
-- [ ] Keep desktop Chromium, mobile Chrome/Chromium emulation, and iPhone
-  WebKit reports separate; do not infer physical-device support from emulation.
-- [ ] List failed/skipped cases and classify every observed failure as
-  confirmed, suspected, or unclassified with supporting evidence.
-- [ ] Include artifact/log links, retention location/expiry, and performance
-  sample details when measurements were collected.
-- [ ] Reconcile cumulative case and suite counts with dated run reports and
-  retain an `Unclassified` row when needed.
-- [ ] State whether a stack was retained; if so, record the exact project-scoped
-  stop/cleanup command and bounded reuse window.
+  than copying a historical snapshot as current evidence. HARD-05 and HARD-07
+  preflights are linked from the run index.
+- [x] Keep desktop Chromium, mobile-size Chromium, and iPhone WebKit reports
+  separate; do not infer physical-device support from emulation.
+- [x] Require failed/skipped cases and a confirmed, suspected, or unclassified
+  disposition with evidence for new reports.
+- [x] Require artifact links, storage/access/expiry, and performance sample
+  details when collected. Historical local-only paths are labeled as such.
+- [x] Reconcile counted case and suite occurrences with dated reports and
+  retain an `Unclassified` row; document diagnostic attempts whose counts are
+  unavailable rather than inferring their contribution.
+- [x] State stack retention explicitly; if retained, record project-scoped
+  stop/cleanup command and the bounded reuse window.
 
 ## Artifact safety and cleanup
 
-- [ ] Retain traces, screenshots, console/network logs, container logs, and
-  command output for failed runs in ignored storage or CI artifacts.
-- [ ] Verify artifact access and expiry are documented and links resolve for
-  reviewers.
-- [ ] Scan reports/artifacts for credentials, cookies, tokens, private config,
-  personal data, and protected production details before committing or sharing.
-- [ ] Verify test cleanup is scoped to its unique project; no global prune or
-  protected-volume deletion is part of the documented workflow.
-- [ ] Preserve evidence of cleanup and avoid committing bulky generated
-  artifacts when durable CI storage is available.
+- [x] Retain traces, screenshots, console/request diagnostics, container logs,
+  and command output for failed timer and line-history CI runs. Store local
+  artifacts under ignored paths.
+- [x] Set CI artifact retention to 14 days and link the workflow run from its
+  job summary; local-only artifacts are explicitly not reviewer-accessible.
+- [x] Require inspection/scrubbing before sharing; Playwright traces are
+  scrubbed by the browser failure helper and removed if scrubbing fails.
+- [x] Verify cleanup remains project-scoped; no global prune or protected
+  volume deletion is documented for run teardown.
+- [x] Preserve cleanup metadata in run reports and keep generated artifacts
+  ignored or in expiring CI storage rather than committing bulky files.
 
 ## Coverage source classification
 
@@ -95,5 +104,5 @@ be repaired by copying values from a different commit, profile, or stack.
 | Timer WebSocket and line-history real-stack browser checks | Required CI real-stack jobs on their configured Chromium paths; not proof of desktop/mobile profile matrix completion. | Workflow `timer-websocket-e2e` and `line-history-e2e`; retain their exact invocation and profile metadata. |
 | Board, nav, tracker and selectable browser profiles | Local runner paths unless separately added to CI; profile support does not prove profile was run. | `scripts/test-run-all.sh`, `frontend/package.json`, and dated browser reports. |
 | PostgreSQL search | Opt-in test requiring explicit disposable PostgreSQL configuration; ordinary H2 test results do not imply it ran. | `docs/testing.md` and HARD-03 checklist. |
-| iOS unit/UI validation | Platform-limited to macOS/Xcode; both historical workflow jobs are hard-disabled with `if: ${{ false }}`. | `.github/workflows/verify.yml`; Linux `check-ios-note-document.sh` is Foundation-only and its CI job is also disabled. |
+| iOS unit/UI validation | Platform-limited to macOS/Xcode; both historical workflow jobs are hard-disabled with `if: ${{ false }}`. Test hardening is closed by decision because the iOS app is not currently in use. | `.github/workflows/verify.yml`; Linux `check-ios-note-document.sh` is Foundation-only and its CI job is also disabled. |
 | Cloudflare live enforcement | Not established by repository tests; Terraform/static markers are configuration evidence only. | HARD-04 checklist; require authorized isolated staging evidence for live behavior. |

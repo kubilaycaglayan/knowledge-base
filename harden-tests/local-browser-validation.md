@@ -93,8 +93,11 @@ single disposable stack across its smoke and real-stack suites for each run.
    immutable IDs, browser version, viewport, user agent, touch, scale factor,
    and suite pass/fail/skip counts in a separate report for each profile.
 5. On failure, retain the trace, screenshot, browser console/request details,
-   and relevant container logs. Review them for credentials and personal data
-   before linking or sharing.
+   runner output, and relevant container logs under the ignored
+   `harden-tests/local-artifacts/` path. Review them for credentials and
+   personal data before sharing. A local path is not reviewer-accessible; upload
+   a scrubbed copy to an access-controlled CI artifact or other shared store,
+   and record its link and expiry before including it in review evidence.
 6. Confirm the runner removed only its own Compose project. Preserve active
    development resources and protected volumes; never use global prune.
 7. If collecting performance data, use fixed fixtures, record host and Docker
@@ -103,6 +106,22 @@ single disposable stack across its smoke and real-stack suites for each run.
    timed samples. Persistent services are part of the captured environment, not
    an automatic blocker. Do not compare measurements across profiles as if
    they were the same workload.
+
+Focused runners remove their unique stack at exit. `test-run-all.sh` reuses one
+generated project only during that invocation. If a maintainer explicitly
+plans a longer reuse window, limit it to one work session and four hours, and
+record the unique Compose project, image tags and immutable IDs, start time,
+and expiry. Never reuse `knowledge-base-dev` or a project with a protected
+external volume. Stop an intentionally retained standard smoke stack only by
+its recorded project name:
+
+```bash
+docker compose -p "$COMPOSE_PROJECT_NAME" -f docker-compose.yml -f docker-compose.smoke.yml down --volumes --remove-orphans --rmi local
+```
+
+For performance stacks, include `-f docker-compose.performance.yml` and use
+the recorded `PERFORMANCE_COMPOSE_PROJECT`. Confirm the project name is the
+disposable test project before cleanup. Never use global prune commands.
 
 Do not mark a browser profile or journey complete from a viewport screenshot
 alone. Acceptance requires the named interaction assertions and retained run

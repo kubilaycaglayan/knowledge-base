@@ -16,6 +16,7 @@ frontend/tsconfig.tsbuildinfo
 /harden-tests/artifacts/
 /harden-tests/local-artifacts/
 frontend/harden-tests/artifacts/
+frontend/harden-tests/local-artifacts/
 backend/build/
 .gradle/
 .DS_Store

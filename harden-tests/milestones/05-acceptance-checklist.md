@@ -1,5 +1,7 @@
 # HARD-05 acceptance checklist: performance baselines
 
+**Status:** Complete
+
 Use this checklist with [HARD-05](05-performance-baselines.md). Start with
 report-only measurements; thresholds require repeatable evidence.
 

@@ -10,12 +10,27 @@ Detailed executable task lists and acceptance evidence are maintained in
 [the hardening milestones](milestones/README.md). Keep this document as the
 summary status; update both the summary and milestone status when work lands.
 
+### Milestone status
+
+Keep these statuses synchronized with the [milestone index](milestones/README.md),
+each milestone document, and its acceptance checklist.
+
+| Milestone | Status |
+| --- | --- |
+| HARD-01 — Search and direct routes | Complete |
+| HARD-02 — Browser resilience and triage | Complete |
+| HARD-03 — PostgreSQL behavior and boundaries | Complete |
+| HARD-04 — Rate limits and security | Complete |
+| HARD-05 — Performance baselines | Complete |
+| HARD-06 — iOS validation | Closed by decision (iOS app not currently in use; acceptance incomplete) |
+| HARD-07 — Run evidence and plan hygiene | Complete |
+
 ### Durable inventory and run records
 
 - [x] Add a root `harden-tests/` index, this plan, and a run-record directory.
 - [x] Define the required E2E report fields and failure-group workflow.
-- [ ] Record every desktop Chromium and emulated iPhone WebKit pass separately, including the commit, Compose project, image references, outcomes, failures, and artifact/log links.
-- [ ] Maintain cumulative failure counts and revise classifications after root-cause investigation.
+- [x] Record each desktop Chromium, mobile-size Chromium, and emulated iPhone WebKit pass in its own report. Historical reports retain unavailable metadata as unknown; see the run index and HARD-07 checklist.
+- [x] Reconcile the counted failure groups against dated reports and preserve unresolved or uncountable historical signatures explicitly; see the cumulative table in [`runs/README.md`](runs/README.md).
 
 See [HARD-07: Durable run evidence and plan consistency](milestones/07-run-evidence-and-plan-hygiene.md)
 for completion criteria, including reconciliation of the existing run records.
@@ -75,7 +90,7 @@ journeys, environment fields, and gate promotion criteria.
 ### Docker lifecycle and cleanup
 
 - Existing `scripts/test-run-all.sh` builds once and reuses one unique stack across smoke and real-stack browser suites in a run.
-- [ ] For longer reuse windows, retain the uniquely named test stack only for the planned window and record its project and image IDs/tags.
+- [x] Document bounded stack reuse, project/image metadata, and exact scoped stop commands. Normal runners remove their stacks on exit; any planned reuse is limited to one work session and four hours (see [`runs/README.md`](runs/README.md)).
 - [x] Preserve project-scoped cleanup. Never use global prune commands; protect active container images, shared development images, protected volumes, and named reusable tags. Retain the newest three disposable build tags.
 
 ### iOS workflow
@@ -83,9 +98,13 @@ journeys, environment fields, and gate promotion criteria.
 - [x] Retain native iOS source and both workflow job definitions, but use unconditional `if: ${{ false }}` so repository variables cannot enable them.
 - [x] Remove variable-based enablement instructions. Keep historical iOS docs and source available.
 
-See [HARD-06](milestones/06-ios-validation.md) for a supported automated or
-manual simulator validation path. Until that work is completed, disabled
-workflow jobs must not be counted as active iOS CI coverage.
+HARD-06 is closed because the iOS application is not currently in use; do not
+resume its remaining work unless the user explicitly reopens it. The documented
+simulator run is evidence, not an active CI gate, and disabled workflow jobs
+must not be counted as active iOS CI coverage. Native
+server-persistence/relaunch and manual device/accessibility gaps remain known
+and intentionally unaddressed; see
+[HARD-06](milestones/06-ios-validation.md).
 
 The documented full-scheme command was executed from a clean checkout on a
 GitHub-hosted macOS runner on 2026-10-09. The corrected full scheme passed 128
@@ -93,7 +112,8 @@ unit tests and 66 UI tests with one opt-in live API test skipped; its `.xcresult
 is retained in the [HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md).
 This is run evidence, not an active CI gate, and the historical iOS jobs remain
 disabled. Server-persistence and manual device/accessibility acceptance gaps
-remain documented in HARD-06.
+remain documented in the closed HARD-06 milestone and are not planned for work
+unless the user explicitly reopens it.
 The Foundation-only Linux portability check passed all seven `NoteDocTests`;
 its result is recorded separately in the
 [Linux run report](runs/2026-10-09-hard06-linux-note-document.md) and does not
