@@ -578,12 +578,17 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(1, same.get("card").get("position").asInt(), "Lands at the end of the column");
     assertFalse(same.get("statusCreated").asBoolean());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/boards/" + work + "/cards/" + first, token).getStatusCode());
+    JsonNode transferredReadback = get("/api/v1/boards/" + home + "/cards/" + first, token).getBody();
+    assertEquals(home, transferredReadback.get("boardId").asText());
+    assertEquals(statusId(token, home, "Pending"), transferredReadback.get("statusId").asText());
+    assertEquals(1, transferredReadback.get("position").asInt());
 
     String review = card(token, work, "Review", "Look", "LOW").get("id").asText();
     JsonNode created = post("/api/v1/boards/" + work + "/cards/" + review + "/transfer", token, "{\"boardId\":\"" + home + "\"}").getBody();
     assertTrue(created.get("statusCreated").asBoolean());
     assertEquals("Review", created.get("status").get("name").asText());
     assertEquals(home, created.get("status").get("boardId").asText());
+    assertEquals(home, get("/api/v1/boards/" + home + "/cards/" + review, token).getBody().get("boardId").asText());
 
     String pathId = path(token, "Garden");
     String pathBoard = pathBoard(token, pathId);
