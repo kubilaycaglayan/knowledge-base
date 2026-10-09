@@ -236,30 +236,30 @@ covered” row.
 
 ### FLOW-04 — Reports
 
-- [ ] **FLOW-04.01** Open `/reports` directly; record default range, initial
+- [x] **FLOW-04.01** Open `/reports` directly; record default range, initial
   report section/tab, page title, query string, and loading/empty/error states.
-- [ ] **FLOW-04.02** Choose each date preset and custom start/end dates; record
+- [x] **FLOW-04.02** Choose each date preset and custom start/end dates; record
   inclusive range, validation, displayed values, and resulting query string.
-- [ ] **FLOW-04.03** Move to previous/next report interval and clear/reset the
+- [x] **FLOW-04.03** Move to previous/next report interval and clear/reset the
   range; record interval size, resulting URL, and returned default state.
-- [ ] **FLOW-04.04** Navigate away from Reports and return through SPA
+- [x] **FLOW-04.04** Navigate away from Reports and return through SPA
   navigation; record whether its picked query/range is restored.
-- [ ] **FLOW-04.05** Reload a Reports URL with query parameters; record direct
+- [x] **FLOW-04.05** Reload a Reports URL with query parameters; record direct
   URL initialization and behavior for malformed or incomplete parameters.
-- [ ] **FLOW-04.06** Switch report tabs/sections; record active state, URL
+- [x] **FLOW-04.06** Switch report tabs/sections; record active state, URL
   behavior, keyboard access, and whether date range is preserved.
-- [ ] **FLOW-04.07** Review tracked-time totals and breakdowns; record
+- [x] **FLOW-04.07** Review tracked-time totals and breakdowns; record
   aggregation period, labels, zero values, and agreement with the selected
   date range as an inventory requirement.
-- [ ] **FLOW-04.08** Review charts and tables; inventory each legend, tooltip,
+- [x] **FLOW-04.08** Review charts and tables; inventory each legend, tooltip,
   tabular alternative, accessible label, empty-data display, and locale-aware
   number/duration formatting.
-- [ ] **FLOW-04.09** Open a report source link to its Session, Log, Calendar
+- [x] **FLOW-04.09** Open a report source link to its Session, Log, Calendar
   day, Path, or Label; record deep-link destination and return context.
-- [ ] **FLOW-04.10** Record behavior for no data, zero-duration data,
+- [x] **FLOW-04.10** Record behavior for no data, zero-duration data,
   overlapping sessions, missing Paths/labels, very large ranges, and
   timezone/DST boundaries.
-- [ ] **FLOW-04.11** Exercise the date selector, tabs, charts, and source links
+- [x] **FLOW-04.11** Exercise the date selector, tabs, charts, and source links
   in mobile Chrome; record control reachability, chart/table alternative,
   horizontal scrolling, and viewport/keyboard effects.
 
