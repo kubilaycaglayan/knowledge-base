@@ -397,8 +397,10 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover Calendar operations
 
-- [ ] `GET /api/v1/calendar/labels` covers only the authenticated user's
-  CALENDAR-scoped labels.
+- [x] `GET /api/v1/calendar/labels` covers alphabetical results, only the
+  authenticated user's CALENDAR-scoped labels, multi-scope inclusion, and the
+  empty state
+  (`CalendarLabelPickerIntegrationTest.calendarLabelListIncludesOnlyOwnedCalendarScopedLabelsInNameOrder`).
 - [ ] `POST /api/v1/calendar/labels` covers label creation and color
   constraints.
 - [ ] `PUT /api/v1/calendar/labels/{id}` covers update and owner-scoped IDs.
