@@ -1,8 +1,8 @@
 # OTOTEST-01 — Visible control and action inventory
 
-**Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline).  
-**Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-09.  
-**Inventory reviewer:** Codex source review; maintainer review outstanding.  
+**Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline).
+**Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-09.
+**Inventory reviewer:** Codex source review; maintainer review outstanding.
 **Test command:** `cd frontend && npm test` (Vitest); browser suites are individual `frontend/package.json` scripts. Not executed during this documentation-only milestone.
 
 The matrix records meaningful action families rather than counting rendered controls as covered. Each family points to its source page/component and best located test. Any assertion about an exact action is a candidate until the named test body is checked; test-file presence by itself is not evidence. Keyboard/touch rows remain gaps unless the behavior has a specific assertion.

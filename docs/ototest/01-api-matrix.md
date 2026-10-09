@@ -1,9 +1,9 @@
 # OTOTEST-01 — Backend API operation inventory
 
-**Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline)  
-**Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-09  
-**Inventory reviewer:** Codex source review; maintainer review outstanding.  
-**Evidence candidates:** `backend/src/test/java/com/know/api/`, `.../integration/`, and `.../service/`  
+**Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline)
+**Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-09
+**Inventory reviewer:** Codex source review; maintainer review outstanding.
+**Evidence candidates:** `backend/src/test/java/com/know/api/`, `.../integration/`, and `.../service/`
 **Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. Tests were not run in OTOTEST-01.
 
 All operations require authentication unless the row says public. The authenticated principal is the owner scope for user data. “Candidate” identifies a suite to inspect; it is not a coverage claim until an assertion is mapped to the operation. `Gap` means the inventory has not established a named assertion for that operation.
