@@ -2682,4 +2682,65 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/logs/" + id, owner).getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/logs/" + id, owner).getStatusCode());
   }
+
+  @Test
+  void labelDeleteRequiresOptInForAssignmentsAndPreservesAssignedRecords() {
+    String token = freshToken();
+    String unassignedId =
+        post("/api/v1/labels", token, "{\"name\":\"Unassigned\",\"scopes\":[\"LOG\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    assertEquals(
+        HttpStatus.NO_CONTENT,
+        delete("/api/v1/labels/" + unassignedId, token).getStatusCode());
+    assertFalse(
+        get("/api/v1/labels?scope=LOG", token)
+            .getBody()
+            .findValuesAsText("id")
+            .contains(unassignedId));
+
+    String assignedId =
+        post("/api/v1/labels", token, "{\"name\":\"Assigned\",\"scopes\":[\"LOG\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    String logId =
+        post(
+                "/api/v1/logs",
+                token,
+                "{\"body\":\"Keep this log\",\"occurredAt\":\"2026-09-11T10:15:00Z\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    assertEquals(
+        HttpStatus.OK,
+        put(
+                "/api/v1/logs/" + logId + "/labels",
+                token,
+                "{\"labelIds\":[\"" + assignedId + "\"]}")
+            .getStatusCode());
+
+    assertEquals(
+        HttpStatus.CONFLICT,
+        delete("/api/v1/labels/" + assignedId, token).getStatusCode());
+    assertTrue(
+        get("/api/v1/labels?scope=LOG", token)
+            .getBody()
+            .findValuesAsText("id")
+            .contains(assignedId));
+    assertEquals(
+        HttpStatus.NO_CONTENT,
+        delete("/api/v1/labels/" + assignedId + "?removeAssignments=true", token).getStatusCode());
+
+    ResponseEntity<JsonNode> preservedLog = get("/api/v1/logs/" + logId, token);
+    assertEquals(HttpStatus.OK, preservedLog.getStatusCode());
+    assertEquals("Keep this log", preservedLog.getBody().get("body").asText());
+    assertTrue(preservedLog.getBody().get("labelIds").isEmpty());
+    assertFalse(
+        get("/api/v1/labels?scope=LOG", token)
+            .getBody()
+            .findValuesAsText("id")
+            .contains(assignedId));
+  }
 }
