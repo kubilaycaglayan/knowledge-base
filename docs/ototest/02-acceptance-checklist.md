@@ -289,7 +289,11 @@ browser interaction evidence remains a separate layer.
   active-list visibility, card preservation, custom-board conflict, and foreign
   ownership (`PathBoardIntegrationTest.hidingAPathBoardKeepsItsCards`,
   `visibilityOnlyAppliesToPathBoards`, and `pathBoardMutationsRejectForeignBoards`).
-- [ ] `POST /api/v1/boards/{id}/pin` covers pin/unpin changes.
+- [x] `POST /api/v1/boards/{id}/pin` covers pinning path and custom boards,
+  persisted unpin state, pin ordering, and foreign ownership
+  (`PathBoardIntegrationTest.anyBoardCanBePinned`,
+  `pathBoardMutationsRejectForeignBoards`, and
+  `PinOrderIntegrationTest.pinnedBoardJoinsTheEndOfThePinnedBoards`).
 - [ ] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs.
 - [ ] `PUT /api/v1/boards/{id}` covers rename behavior and path-board conflict.
 - [ ] `POST /api/v1/boards/{id}/archive` covers archive state and restrictions.
