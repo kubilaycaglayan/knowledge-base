@@ -83,7 +83,7 @@ and set `API_BASE_URL` to an isolated local stack. Create data with
 using the same Compose project. Fixture output contains a disposable account
 token, is written with mode `0600`, and belongs under the ignored
 `harden-tests/local-artifacts/` path. Tear down only that named project using
-`docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" -f docker-compose.yml -f docker-compose.smoke.yml down --volumes --remove-orphans`.
+`docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" -f docker-compose.yml -f docker-compose.smoke.yml -f docker-compose.performance.yml down --volumes --remove-orphans`.
 The sampler includes response
 body download, does not isolate connection setup, and does not measure browser
 rendering or server-only time. It is not evidence for a browser journey unless

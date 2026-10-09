@@ -27,8 +27,27 @@ term lengths so a report can verify generated text dimensions.
 Run setup and measurement serially on an idle machine. Use fresh unique
 `PERFORMANCE_COMPOSE_PROJECT` values that contain `perf`; do not reuse the
 persistent development project. Set local `JWT_SECRET` and
-`POSTGRES_PASSWORD` values for the disposable stack, start only its `db`,
-`api`, `web`, and `proxy` services with `docker-compose.smoke.yml`, then run:
+`POSTGRES_PASSWORD` values for the disposable stack, unique tags such as
+`knowledge-base-api:perf-<run-id>` and `knowledge-base-web:perf-<run-id>`, and
+an unassigned `PROXY_HTTP_PORT`. Start only its `db`, `api`, `web`, and `proxy`
+services using all three Compose files:
+
+```bash
+export PERFORMANCE_COMPOSE_PROJECT=knowledge-base-perf-20261009-01
+export PERFORMANCE_API_IMAGE=knowledge-base-api:perf-20261009-01
+export PERFORMANCE_WEB_IMAGE=knowledge-base-web:perf-20261009-01
+export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+export JWT_SECRET="$(openssl rand -hex 32)"
+export PROXY_HTTP_PORT=26381  # Choose an unassigned local port for each run.
+docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" \
+  -f docker-compose.yml -f docker-compose.smoke.yml -f docker-compose.performance.yml \
+  up -d --build db api web proxy
+```
+
+Record immutable image IDs with `docker image inspect --format '{{.Id}}'` for
+the two unique application tags before collecting any samples. Finish building
+before preflight/timing; do not build during measurement. Then run the fixture
+generator:
 
 ```bash
 API_BASE_URL=http://localhost:<isolated-proxy-port> \
@@ -64,8 +83,8 @@ node frontend/scripts/performance-browser-baseline.mjs harden-tests/local-artifa
 ```
 
 Run again serially with `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone` for
-mobile-size Chromium, and separately with `BROWSER_ENGINE=webkit
-BROWSER_PROFILE=iphone` for the WebKit comparison group. The browser runner
+mobile-size Chromium, and separately with `BROWSER_ENGINE=webkit BROWSER_PROFILE=iphone`
+for the WebKit comparison group. The browser runner
 measures cold startup and same-context warm reload, exact/fuzzy search,
 first/next board pages, Gantt, reports, note autosave, timer start/stop, and
 second-page WebSocket receipt. It records
@@ -79,10 +98,16 @@ types for the second-page delivery sample.
 Use independent fixture/run IDs for desktop and mobile-size Chromium, and do
 not run timed samples concurrently. Both generated files must remain private;
 never commit them. Once all profile runs and artifacts are complete, remove
-only that disposable
-project with the exact project-scoped Compose `down --volumes --remove-orphans`
-command documented in the run template. Never use global cleanup or target a
-protected persistent volume.
+only that disposable project with the matching project-scoped command:
+
+```bash
+docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" \
+  -f docker-compose.yml -f docker-compose.smoke.yml -f docker-compose.performance.yml \
+  down --volumes --remove-orphans
+```
+
+On a failed run, capture relevant project-scoped logs before teardown with
+`docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" -f docker-compose.yml -f docker-compose.smoke.yml -f docker-compose.performance.yml logs --no-color db api web proxy` and store the scrubbed output under the ignored run artifact directory. Never use global cleanup or target a protected persistent volume.
 
 The fixture generator verifies setup counts, search results, and pagination.
 The browser runner captures UI timing and functional outcomes for each listed
