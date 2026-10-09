@@ -76,19 +76,24 @@ function attachPage(page) {
     const request = response.request();
     const row = request.__performanceRow;
     if (!row) return;
-    const task = (async () => {
-      row.status = response.status();
-      if (!response.ok()) row.failure = `HTTP ${response.status()}`;
+    row.status = response.status();
+    if (!response.ok()) row.failure = `HTTP ${response.status()}`;
+    void (async () => {
       try {
         row.responseBytes = (await response.body()).byteLength;
       } catch (error) {
-        row.failure = `response body unavailable: ${error.message}`;
+        const contentLength = Number(response.headers()["content-length"]);
+        row.responseBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : null;
+        row.responseBodyCaptureError = error.message;
       }
-      row.durationMs = Number((performance.now() - request.__performanceStart).toFixed(3));
-    })().finally(() => {
-      request.__performanceFinish();
-      pending.delete(request.__performanceDone);
-    });
+    })();
+  });
+  page.on("requestfinished", (request) => {
+    const row = request.__performanceRow;
+    if (!row) return;
+    row.durationMs = Number((performance.now() - request.__performanceStart).toFixed(3));
+    request.__performanceFinish();
+    pending.delete(request.__performanceDone);
   });
   page.on("requestfailed", (request) => {
     const row = request.__performanceRow;
@@ -266,6 +271,7 @@ async function runOnce(workload, phase, index) {
     if (workload === "gantt-range") {
       ({ page, settle } = await openPage(`/board?board=${board.id}&view=gantt&from=2026-01-01&to=2026-12-31`));
       await page.locator(".timeline-row").first().waitFor({ state: "visible" });
+      await page.waitForFunction((expectedRows) => document.querySelectorAll(".timeline-row").length >= expectedRows, board.cards);
       const ganttRows = await page.locator(".timeline-row").count();
       if (ganttRows !== board.cards) throw new Error(`expected ${board.cards} Gantt rows, received ${ganttRows}`);
       await settle();
@@ -371,7 +377,13 @@ async function runOnce(workload, phase, index) {
         if (!frames.some(({ payload }) => payload.type === "TIMER_STATE" && payload.timer?.id === timer.id)) throw new Error("second page did not receive timer update");
       }, sample);
       const delivered = frames.find(({ payload }) => payload.type === "TIMER_STATE" && payload.timer);
-      sample.websocketDeliveryMs = delivered && ackAt ? Number((delivered.at - ackAt).toFixed(3)) : null;
+      sample.websocketDeliveryMs = delivered && ackAt
+        ? Number(Math.max(0, delivered.at - ackAt).toFixed(3))
+        : null;
+      sample.websocketMutationStartToDeliveryMs = delivered
+        ? Number((delivered.at - sample.browserStartTimeMs).toFixed(3))
+        : null;
+      sample.websocketDeliveredBeforeApiAck = Boolean(delivered && ackAt && delivered.at < ackAt);
       sample.websocket = {
         path: socketRecords[0]?.path ?? "/ws/timers",
         readyObserved: socketRecords.some((record) => record.frames.some((frame) => frame.type === "READY")),
@@ -408,20 +420,23 @@ async function runOnce(workload, phase, index) {
     if (activeContext) {
       sample.browserResourceTimings = await Promise.all(activeContext.pages().map(async (page) => ({
         page: new URL(page.url()).pathname,
-        resources: await page.evaluate(() => performance.getEntriesByType("resource")
+        resources: await page.evaluate(({ startTimeMs, endTimeMs }) => performance.getEntriesByType("resource")
           .filter((entry) => entry.name.includes("/api/v1/"))
           .map((entry) => {
             const resource = entry;
             return {
               name: resource.name,
-              phase: resource.startTime >= sample.browserStartTimeMs && resource.startTime <= sample.browserEndTimeMs ? "measured" : "setup",
+              phase: resource.startTime >= startTimeMs && resource.startTime <= endTimeMs ? "measured" : "setup",
               startTimeMs: Number(resource.startTime.toFixed(3)),
               durationMs: Number(resource.duration.toFixed(3)),
               responseEndMs: Number(resource.responseEnd.toFixed(3)),
               transferSize: resource.transferSize,
               decodedBodySize: resource.decodedBodySize,
             };
-          })),
+          }), {
+            startTimeMs: sample.browserStartTimeMs ?? Number.POSITIVE_INFINITY,
+            endTimeMs: sample.browserEndTimeMs ?? Number.NEGATIVE_INFINITY,
+          }),
       })));
     }
     await closePage(error);
