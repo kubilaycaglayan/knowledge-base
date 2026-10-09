@@ -171,8 +171,9 @@ browser interaction evidence remains a separate layer.
   fields.
 - [x] `PUT /api/v1/notes/{id}` covers optimistic version success and stale
   version conflict behavior.
-- [ ] `PUT /api/v1/notes/{id}` covers ownership of every referenced path,
-  activity, time entry, and label ID.
+- [x] `PUT /api/v1/notes/{id}` covers ownership for its supported references:
+  the update body has no path, activity, time-entry, or label ID fields; tags
+  are names and a same-name foreign label is not reused or exposed.
 - [ ] `DELETE /api/v1/notes/{id}` covers archive state and subsequent list and
   detail behavior.
 - [ ] `POST /api/v1/notes/{id}/restore` covers restored state and returned
