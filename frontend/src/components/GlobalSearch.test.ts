@@ -73,6 +73,7 @@ async function setup(path = "/board") {
     history: createMemoryHistory(),
     routes: [
       { path: "/board", component: Page },
+      { path: "/board/archive", component: Page },
       { path: "/paths/:id", component: Page },
       { path: "/notes", component: Page },
       { path: "/notes/:id", component: Page },
@@ -183,6 +184,38 @@ describe("GlobalSearch", () => {
     // Five more notes are waiting.
     expect(document.querySelector(".global-search-more")?.textContent).toContain("Show 5 more notes");
     expect(document.getElementById("global-search-status")?.textContent).toBe("9 results.");
+  });
+
+  it("lists matching pages first, cards second, then other groups in API order", async () => {
+    vi.mocked(api).mockResolvedValue(
+      response([
+        group([result({ type: "PATH", id: "p1", title: "Board path" })]),
+        group([result({ type: "NOTE", id: "n1", title: "Board notes" })]),
+        group([result({ type: "CARD", id: "c1", title: "Board card", boardId: "b1" })]),
+        group([result({ type: "LOG", id: "g1", title: "Board log" })]),
+      ]),
+    );
+    await setup();
+    press("k", { ctrlKey: true });
+    await flushPromises();
+    await type("board");
+    const headings = Array.from(document.querySelectorAll('[role="group"] h2')).map((heading) => heading.textContent?.replace(/\s+/g, " ").trim());
+    expect(headings).toEqual(["Pages", "Cards 1", "Paths 1", "Notes 1", "Logs 1"]);
+    expect(options().map((option) => option.id)).toEqual([
+      "global-search-page-board",
+      "global-search-page-board-archive",
+      "global-search-card-c1",
+      "global-search-path-p1",
+      "global-search-note-n1",
+      "global-search-log-g1",
+    ]);
+    expect(input()!.getAttribute("aria-activedescendant")).toBe("global-search-page-board");
+    press("ArrowDown", {}, input()!);
+    await flushPromises();
+    expect(input()!.getAttribute("aria-activedescendant")).toBe("global-search-page-board-archive");
+    press("ArrowDown", {}, input()!);
+    await flushPromises();
+    expect(input()!.getAttribute("aria-activedescendant")).toBe("global-search-card-c1");
   });
 
   it("moves through results with the arrow keys, wrapping at the ends", async () => {

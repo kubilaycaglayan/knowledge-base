@@ -24,7 +24,7 @@ test.
 
 ## Results
 
-- [x] **GS-11** Results are grouped (Paths, Boards, Labels, Notes, Cards, Logs, Sessions, Calendar days) with counts ("1,000+" when capped); the strongest group comes first.
+- [x] **GS-11** Results are grouped (Paths, Boards, Labels, Notes, Cards, Logs, Sessions, Calendar days) with counts ("1,000+" when capped); matching pages come first, then Cards, then the remaining groups in API order.
 - [x] **GS-12** Matches are highlighted in titles and snippets; long titles and snippets are clipped with an ellipsis, and multi-line text shows " · " between lines.
 - [x] **GS-13** "Show N more …" loads up to 20 more of that type in place and moves the keyboard to the first new result.
 - [x] **GS-14** Arrow keys (wrapping) and Page Up/Down move through results; Enter opens; ⌘/Ctrl+Enter or a modified click opens a new tab; results are real links.
@@ -40,4 +40,4 @@ test.
 - [x] **GS-21** Archived notes open `/notes?archived=1&q=<title>`; archived cards and boards open `/board/archive` with the row scrolled to and marked.
 - [x] **GS-22** Log times and session dates in their lists link to the record's address.
 - [x] **GS-23** Logs, Labels, and the Board card search use `/` (outside text fields and dialogs) for their own filters.
-- [x] **GS-24** Typing a main page's name (or the start of any word in it, e.g. `board`, `arch`, `home`) lists it under Pages above the record results; the best page is active at once, so Enter goes there even before the record search answers. Page jumps aren't saved as recent searches.
+- [x] **GS-24** Typing a main page's name (or the start of any word in it, e.g. `board`, `arch`, `home`) lists it under Pages above the record results; Cards follow Pages and precede other record groups. The best page is active at once, so Enter goes there even before the record search answers. Page jumps aren't saved as recent searches.
