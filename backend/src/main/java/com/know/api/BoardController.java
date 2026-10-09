@@ -71,7 +71,7 @@ public class BoardController {
   }
   @PutMapping("/order") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional public void order(Authentication auth, @Valid @RequestBody OrderRequest request) {
     List<Board> owned = boards.findAllByUserIdAndIdIn(user(auth), request.ids());
-    if (owned.size() != request.ids().stream().distinct().count()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every board must be owned by the user");
+    if (owned.size() != request.ids().size()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every board must be owned by the user exactly once");
     Map<UUID, Board> byId = new HashMap<>(); owned.forEach(b -> byId.put(b.getId(), b));
     for (int i = 0; i < request.ids().size(); i++) byId.get(request.ids().get(i)).setSortOrder(i);
     boards.saveAll(owned);

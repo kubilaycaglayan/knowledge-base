@@ -282,8 +282,9 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/boards` covers custom board creation, trimmed response and
   readback, and the four ordered default statuses
   (`BoardCreationIntegrationTest.creatingCustomBoardReturnsAndPersistsBoardWithDefaultStatuses`).
-- [ ] `PUT /api/v1/boards/order` covers complete board ordering and invalid
-  board IDs.
+- [x] `PUT /api/v1/boards/order` covers complete board ordering, duplicate and
+  foreign board IDs, and unchanged order after rejected requests
+  (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`).
 - [ ] `POST /api/v1/boards/{id}/visibility` covers visibility changes.
 - [ ] `POST /api/v1/boards/{id}/pin` covers pin/unpin changes.
 - [ ] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs.
