@@ -145,8 +145,7 @@ struct LabelsView: View {
                   }
                 }),
               label: { Text(scope.title) }
-            ).accessibilityElement(children: .ignore)
-              .accessibilityLabel(Text(scope.title))
+            ).accessibilityLabel(Text(scope.title))
               .accessibilityIdentifier("labels.scope.\(scope.rawValue.lowercased())")
           }
         }

@@ -991,6 +991,9 @@ final class KnowUITests: XCTestCase {
     XCTAssertTrue(app.textFields["labels.name"].waitForExistence(timeout: 3))
     XCTAssertTrue(app.buttons["Add label"].exists)
     XCTAssertTrue(app.staticTexts["Don’t show in"].exists)
+    // The editor focuses its name field on presentation. Dismiss the keyboard
+    // and scroll the form so each scope control is fully materialized.
+    app.swipeUp()
     let notesScope = app.switches.matching(
       NSPredicate(format: "label == %@", "Notes")
     ).firstMatch
