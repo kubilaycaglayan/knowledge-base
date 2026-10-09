@@ -214,7 +214,7 @@ browser interaction evidence remains a separate layer.
   state.
 - [x] `PUT /api/v1/timers/draft` covers save, validation, owner-scoped path and
   label references, and running-timer conflict behavior.
-- [ ] `POST /api/v1/timers` covers server-owned start time, selected context,
+- [x] `POST /api/v1/timers` covers server-owned start time, selected context,
   and one-running-timer behavior.
 - [ ] Concurrent `POST /api/v1/timers` requests preserve the one-running-timer
   invariant.
