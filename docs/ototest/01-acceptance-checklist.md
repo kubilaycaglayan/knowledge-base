@@ -462,35 +462,35 @@ covered” row.
 
 ### FLOW-10 — Shared state and recovery checkpoints
 
-- [ ] **FLOW-10.01** For every route above, record initial loading and delayed
+- [x] **FLOW-10.01** For every route above, record initial loading and delayed
   loading feedback, including whether the loading shape preserves layout.
-- [ ] **FLOW-10.02** For every list/domain with no records, record empty-state
+- [x] **FLOW-10.02** For every list/domain with no records, record empty-state
   copy and the next useful action available to the user.
-- [ ] **FLOW-10.03** For every form, record incomplete submit, inline field
+- [x] **FLOW-10.03** For every form, record incomplete submit, inline field
   errors, first-error focus, correction, and successful resubmission.
-- [ ] **FLOW-10.04** For every API-backed read, record timeout/offline/server
+- [x] **FLOW-10.04** For every API-backed read, record timeout/offline/server
   error visibility, retry action, retained user input, and stale-result
   protection.
-- [ ] **FLOW-10.05** For every create/update/delete, record pending state,
+- [x] **FLOW-10.05** For every create/update/delete, record pending state,
   duplicate-submit prevention, success announcement, failure rollback/retry,
   and resulting persisted state.
-- [ ] **FLOW-10.06** For every destructive action, record confirmation or undo,
+- [x] **FLOW-10.06** For every destructive action, record confirmation or undo,
   cancel behavior, keyboard/focus management, and recovery after request
   failure.
-- [ ] **FLOW-10.07** For every deep link, record valid, missing, deleted,
+- [x] **FLOW-10.07** For every deep link, record valid, missing, deleted,
   archived, and foreign-resource behavior plus safe return navigation.
-- [ ] **FLOW-10.08** For every reorder/drag/date gesture, record pointer,
+- [x] **FLOW-10.08** For every reorder/drag/date gesture, record pointer,
   touch, keyboard/tap alternative, cancel/lost-capture recovery, and persisted
   final order/date.
-- [ ] **FLOW-10.09** For every route with filters, tabs, selected records, or
+- [x] **FLOW-10.09** For every route with filters, tabs, selected records, or
   pagination, record URL representation and Back/Forward/refresh restoration.
-- [ ] **FLOW-10.10** For every user-entered content surface, record blank,
+- [x] **FLOW-10.10** For every user-entered content surface, record blank,
   typical, very long, pasted, Unicode, and text-expansion/trailing-space
   behavior.
-- [ ] **FLOW-10.11** For every cross-client shared record, change it in one
+- [x] **FLOW-10.11** For every cross-client shared record, change it in one
   client then inspect the other; record sync mechanism, latency/evidence
   class, conflicts, and ownership boundary.
-- [ ] **FLOW-10.12** For desktop and mobile Chrome separately, record keyboard
+- [x] **FLOW-10.12** For desktop and mobile Chrome separately, record keyboard
   focus, touch target, zoom/reflow, reduced motion, responsive overflow, and
   screen-reader-visible labels/status feedback for each applicable flow.
 
