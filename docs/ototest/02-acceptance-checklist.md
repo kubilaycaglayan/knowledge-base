@@ -179,7 +179,7 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/notes/{id}/restore` returns 204; subsequent detail/list
   reads prove restored state and the incremented version. The restore response
   is intentionally empty, so the version is observed on the detail read.
-- [ ] `POST /api/v1/notes/{id}/pin` covers pin/unpin state, version, and pinned
+- [x] `POST /api/v1/notes/{id}/pin` covers pin/unpin state, version, and pinned
   ordering.
 - [x] `PUT /api/v1/notes/order` covers complete owned-note ordering and
   invalid or foreign note IDs.
