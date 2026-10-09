@@ -32,5 +32,6 @@ for attempt in {1..90}; do
   sleep 2
 done
 
+node scripts/check-auth-rate-limit-proxy.mjs "http://localhost:${port}"
 node scripts/check-timer-websocket.mjs "http://localhost:${port}" --round-trip
 TIMER_E2E_BASE_URL="http://localhost:${port}" npm run test:timer:e2e --prefix frontend

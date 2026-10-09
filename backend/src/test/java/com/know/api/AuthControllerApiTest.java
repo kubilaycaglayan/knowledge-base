@@ -13,11 +13,10 @@ import com.know.security.GoogleIdentityVerifier;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -29,7 +28,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @WebMvcTest(AuthController.class)
-@Import(com.know.security.SecurityConfig.class)
+@Import({com.know.security.SecurityConfig.class, com.know.security.AuthAttemptLimiter.class})
 @TestPropertySource(
     properties = {
       "app.jwt-secret=api-test-secret-with-at-least-32-characters",
@@ -40,14 +39,8 @@ class AuthControllerApiTest {
   @Autowired MockMvc mvc;
   @MockBean UserRepository users;
   @MockBean PasswordEncoder encoder;
-  @MockBean com.know.security.AuthAttemptLimiter limiter;
   @MockBean GoogleIdentityVerifier google;
   @Autowired CorsConfigurationSource corsConfigurationSource;
-
-  @BeforeEach
-  void allowAuthenticationAttempts() {
-    when(limiter.allow(anyString())).thenReturn(true);
-  }
 
   @Test
   void googleConfigReturnsThePublicClientId() throws Exception {
@@ -273,14 +266,66 @@ class AuthControllerApiTest {
 
   @Test
   void rateLimitedAuthenticationReturnsTooManyRequests() throws Exception {
-    when(limiter.allow(anyString())).thenReturn(false);
-    mvc.perform(
-            post("/api/v1/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    "{\"email\":\"person@example.com\",\"password\":\"correct-horse-battery\"}"))
-        .andExpect(status().isTooManyRequests());
+    for (int attempt = 0; attempt < 10; attempt++)
+      mvc.perform(authPost("/api/v1/auth/login", "limited@example.com", "198.51.100.53"))
+          .andExpect(status().isUnauthorized());
+    org.mockito.Mockito.reset(users, encoder);
+    mvc.perform(authPost("/api/v1/auth/login", "limited@example.com", "198.51.100.53"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.error").value(
+            "Too many authentication attempts; try again shortly"))
+        .andExpect(header().doesNotExist("Retry-After"));
     verifyNoInteractions(users, encoder);
+  }
+
+  @Test
+  void loginBudgetIsPerNormalizedEmailAndIgnoresForwardedAddressHeaders() throws Exception {
+    for (int attempt = 0; attempt < 10; attempt++)
+      mvc.perform(authPost("/api/v1/auth/login", "Person@Example.com", "198.51.100." + attempt))
+          .andExpect(status().isUnauthorized());
+    mvc.perform(authPost("/api/v1/auth/login", "person@example.com", "198.51.100.99"))
+        .andExpect(status().isTooManyRequests());
+    mvc.perform(authPost("/api/v1/auth/login", "other@example.com", "198.51.100.99"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void registrationAndGoogleBudgetsAreAppliedAtTheHttpBoundary() throws Exception {
+    when(users.findByEmailIgnoreCase("register@example.com")).thenReturn(Optional.empty());
+    when(encoder.encode("correct-horse-battery")).thenReturn("hash");
+    when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    for (int attempt = 0; attempt < 10; attempt++)
+      mvc.perform(authPost("/api/v1/auth/register", "register@example.com", "192.0.2.52"))
+          .andExpect(status().isOk());
+    mvc.perform(authPost("/api/v1/auth/register", "register@example.com", "192.0.2.52"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.error").value(
+            "Too many authentication attempts; try again shortly"));
+
+    for (int attempt = 0; attempt < 10; attempt++)
+      mvc.perform(googlePost("192.0.2.11")).andExpect(status().isUnauthorized());
+    mvc.perform(googlePost("192.0.2.11"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.error").value(
+            "Too many authentication attempts; try again shortly"));
+  }
+
+  private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authPost(
+      String path, String email, String forwardedFor) {
+    return post(path)
+        .with(request -> { request.setRemoteAddr("198.51.100.50"); return request; })
+        .header("X-Forwarded-For", forwardedFor)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"email\":\"" + email + "\",\"password\":\"correct-horse-battery\"}");
+  }
+
+  private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder googlePost(
+      String forwardedFor) {
+    return post("/api/v1/auth/google")
+        .with(request -> { request.setRemoteAddr("198.51.100.51"); return request; })
+        .header("X-Forwarded-For", forwardedFor)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"idToken\":\"bad-token\"}");
   }
 
   @Test
