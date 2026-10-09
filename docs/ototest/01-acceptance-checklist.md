@@ -545,32 +545,32 @@ Manifest source: `chrome-extension/wxt.config.ts`; popup/options markup under
 `chrome-extension/entrypoints/`; behavior in `chrome-extension/popup.js`,
 `options.js`, and `entrypoints/background.ts`.
 
-- [ ] **EXT-01** Inventory the Manifest V3 popup (`Timer`), its Tracker and
+- [x] **EXT-01** Inventory the Manifest V3 popup (`Timer`), its Tracker and
   Notes tabs, settings menu, sign-in states, loading/error states, and actions.
-- [ ] **EXT-02** Tracker inventory includes path selection/creation, session
+- [x] **EXT-02** Tracker inventory includes path selection/creation, session
   labels, description, start/stop, editable timer start time, recent sessions,
   sign-in/logout, live synchronization, and failure/expired-session recovery.
-- [ ] **EXT-03** Notes inventory includes list/create/open/back, title/body
+- [x] **EXT-03** Notes inventory includes list/create/open/back, title/body
   editing, Markdown shortcuts, autosave and save failure, restored open note,
   remembered adjustable height, and popup resize/scroll behavior.
-- [ ] **EXT-04** Options page inventory includes API URL entry, normalization,
+- [x] **EXT-04** Options page inventory includes API URL entry, normalization,
   permission request/grant/deny, save state, invalid URL, and recovery.
-- [ ] **EXT-05** Background/service-worker inventory includes installation
+- [x] **EXT-05** Background/service-worker inventory includes installation
   handling, popup-open fallback, Google sign-in handoff, Clockify import
   message validation, disabled setting, missing/expired authentication, API
   errors, redirect protection, and success summary.
-- [ ] **EXT-06** Inventory permissions and associate each with its user-visible
+- [x] **EXT-06** Inventory permissions and associate each with its user-visible
   feature: `storage`, `identity`, configured API host, and Clockify detailed
   report host access. Record optional permission prompts and denial outcomes.
-- [ ] **EXT-07** Inventory content-script/Clockify overlay/page entrypoints,
+- [x] **EXT-07** Inventory content-script/Clockify overlay/page entrypoints,
   supported URL match patterns, page-to-extension message channels, and
   visible enable/disable/import outcomes from the user's perspective.
-- [ ] **EXT-08** Classify the installed Chrome extension journey separately
+- [x] **EXT-08** Classify the installed Chrome extension journey separately
   from Node/module tests: install/load unpacked, configure API, grant host
   access, authenticate, use popup/options, and invoke supported Clockify
   integration. Link existing assertions without treating them as installed
   browser evidence.
-- [ ] **EXT-09** Record mobile Chrome support explicitly. If the extension
+- [x] **EXT-09** Record mobile Chrome support explicitly. If the extension
   cannot be installed or invoked in the target mobile Chrome environment,
   classify extension-only controls as unsupported there and evaluate the
   responsive Knowledge Base web app in mobile Chrome as the supported mobile
@@ -578,14 +578,14 @@ Manifest source: `chrome-extension/wxt.config.ts`; popup/options markup under
 
 ## Cross-client behavior and evidence map
 
-- [ ] **XCLIENT-01** Map each major user journey to the web route, applicable
+- [x] **XCLIENT-01** Map each major user journey to the web route, applicable
   Chrome extension surface, shared API/domain operation, persisted outcome,
   and evidence layer.
-- [ ] **XCLIENT-02** Identify shared behavior that should reconcile across web
+- [x] **XCLIENT-02** Identify shared behavior that should reconcile across web
   and extension: authenticated ownership, paths/labels, timer state and
   server-owned duration, notes edited in both clients, and Clockify import
   handoff where applicable.
-- [ ] **XCLIENT-03** Record which flows are web-only, extension-only, shared
+- [x] **XCLIENT-03** Record which flows are web-only, extension-only, shared
   API behavior, manual/browser-platform evidence, or intentionally unsupported.
 - [ ] **XCLIENT-04** Record evidence with the exact assertion name and source,
   workflow/command, whether it is mocked or uses a real API/browser, any
@@ -600,25 +600,25 @@ record, evidence class, and uncovered behavior. These are candidate journeys
 for the inventory and handoff only: do not seed data or execute them in
 OTOTEST-01. Real-stack execution belongs to OTOTEST-04.
 
-- [ ] **MERGE-01** Map Path creation → Path board initialization → card
+- [x] **MERGE-01** Map Path creation → Path board initialization → card
   creation → timer start → completed Session and its Path/history views.
-- [ ] **MERGE-02** Map reusable Label creation → assignment in each supported
+- [x] **MERGE-02** Map reusable Label creation → assignment in each supported
   context → Label history and related-record navigation.
-- [ ] **MERGE-03** Map Log creation → Timeline/search discovery → detail/edit →
+- [x] **MERGE-03** Map Log creation → Timeline/search discovery → detail/edit →
   deletion and resulting list/search state.
-- [ ] **MERGE-04** Map Calendar day note/label allocation → report aggregation
+- [x] **MERGE-04** Map Calendar day note/label allocation → report aggregation
   for the selected range → source link back to the Calendar day.
-- [ ] **MERGE-05** Map Note create/edit on web → extension Notes view → saved
+- [x] **MERGE-05** Map Note create/edit on web → extension Notes view → saved
   extension change → web reload, including supported format/version behavior.
-- [ ] **MERGE-06** Map supported import submission → imported records and
+- [x] **MERGE-06** Map supported import submission → imported records and
   relationships → batch undo and affected-resource state.
-- [ ] **MERGE-07** Map global search for a page and each record kind → result
+- [x] **MERGE-07** Map global search for a page and each record kind → result
   deep link → detail return/history state.
-- [ ] **MERGE-08** Map Path merge → transferred Sessions/cards and board
+- [x] **MERGE-08** Map Path merge → transferred Sessions/cards and board
   lifecycle → resulting Path history, board, Reports, or Timeline references.
-- [ ] **MERGE-09** Map web/extension timer state sharing, including current
+- [x] **MERGE-09** Map web/extension timer state sharing, including current
   timer, pause/resume/stop, session ownership, and stale/replaced auth state.
-- [ ] **MERGE-10** Classify which candidate web journeys apply to desktop
+- [x] **MERGE-10** Classify which candidate web journeys apply to desktop
   Chrome and mobile Chrome; classify extension-only steps separately by
   documented platform support. Do not count desktop extension evidence as
   mobile web evidence.

@@ -44,6 +44,26 @@ EXT-01 through EXT-09 map to the extension rows below. XCLIENT-01 through XCLIEN
 | Notes | `NotesView.test.ts`, note store tests | `NoteApiTest`, note archive/version integrations | Smoke covers create/update; no dedicated Notes browser journey found | URL filters/history, unsaved changes, archived/missing/foreign deep links |
 | Chrome extension | popup/options/core/google-auth/Clockify module test files | Uses `/api/v1` endpoints listed in `01-api-matrix.md` | `.github/workflows/verify.yml` runs `cd chrome-extension && npm ci && npm test && npm run build` and manifest check | Installed Chrome journey, real popup/background messaging, Chrome mobile exclusion evidence |
 
+## Ordered cross-client journeys
+
+These are source/evidence traces, not executed journeys. Endpoint paths refer to
+the operation rows in [`01-api-matrix.md`](01-api-matrix.md); action evidence
+refers to [`01-control-matrix.md`](01-control-matrix.md). An assertion listed
+for one transition does not establish the full journey.
+
+| Journey | Ordered transitions and shared operation | Existing evidence / class | Remaining gap |
+|---|---|---|---|
+| MERGE-01 Path → board → card → timer → Session | Web Paths create → `/paths`; board list/create → `/boards`; card create → `/boards/{id}/cards`; start/finish → `/timers`, `/timers/finish`; inspect Path/session history | `PathAuthorizationApiTest.pathNamesAreValidatedBeforePersistence`; `BoardControllerApiTest.createBoardSeedsTheFourOrderedStatuses`, `cardIsCreatedInTheRequestedStatusAtItsEnd`; `TimerApiTest`; smoke | One persisted browser journey and final cross-route readback are not recorded |
+| MERGE-02 Label → assignments → history | Create `/labels`; assign in Sessions, Logs, Calendar, Notes/cards; inspect `/labels/{id}/history` and `/records` | `LabelApiTest`, `LabelHistoryIntegrationTest`; Labels/Notes/Calendar/Board component tests | Per-scope assignment and link-through journey lacks a named end-to-end assertion |
+| MERGE-03 Log → Timeline/search → edit/delete | Create/list/update/delete `/logs`; query `/activities` and `/search`; open source record | `LogServiceTest`, `KnowIntegrationTest`, `ActivityApiTest.authenticatedActivityFiltersReachTheOwnedServiceQuery`, `SearchIntegrationTest`; smoke | Browser discovery/detail/history and post-delete search state are gaps |
+| MERGE-04 Calendar → report → source link | Replace `/calendar/days/{date}` or `/range`; query `/reports`; follow day/source link | `CalendarApiTest`, `CalendarLabelPickerIntegrationTest`, `ReportApiTest`; smoke date operations | Same allocation-to-aggregate-to-source browser journey and date-boundary result are gaps |
+| MERGE-05 Web Note ↔ extension Note | Web Notes create/update `/notes`; popup list/get/update `/notes`; compare returned version/content | `NotesView.test.ts`; `NoteVersionIntegrationTest`; extension `popup.test.js`; smoke | Installed Chrome cross-client round trip and format/version compatibility are gaps |
+| MERGE-06 Import → records → undo | Clockify or CSV import; inspect created records; delete batch via corresponding batch route | `ImportControllerApiTest`, `KnowledgeBaseTransferControllerApiTest`, service tests; smoke | Persisted record readback, repeat undo, and partial failure journey are gaps |
+| MERGE-07 Search → result deep link | Search `/search` for each supported kind; follow route and return to query | `SearchApiTest`, `SearchIntegrationTest`, `DeepLinks.test.ts` | Complete per-kind search-to-detail browser history assertions are gaps |
+| MERGE-08 Path merge → transferred records/board | Merge `/paths/{id}/merge`; inspect sessions, boards/cards and Path history/report references | `PathManagementServiceTest`, board transfer integration tests, Path API candidates | One owned, persisted merge readback across affected surfaces is a gap |
+| MERGE-09 Shared timer | Web `/timers/current`, `/draft`, start/pause/resume/stop; popup uses current/draft/start/configure/stop and `/time-entries`; WebSocket refresh | `TimerApiTest`, `TimerPauseIntegrationTest`, extension `popup.test.js`, timer WebSocket real-stack script | Installed extension plus web synchronized journey, stale auth and replace/conflict behavior are gaps |
+| MERGE-10 Browser/platform classification | Desktop Chrome web and extension; mobile Chrome web route; extension surface remains separate | Playwright scripts and repository extension Node tests; mobile board viewport cases | No installed mobile Chrome extension evidence; classify mobile extension as needs decision pending maintainer review |
+
 ## Ranked inventory gaps for follow-up milestones
 
 Rank is risk-based from the roadmap criteria; this is backlog input, not a claim that these behaviors are untested everywhere.
