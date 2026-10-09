@@ -13,12 +13,15 @@ checks are not evidence of SwiftUI or simulator behavior.
 - [x] Record current machine boundary: the checked-in runbook/workspace targets
   Linux, and this host has no `xcodebuild` or `xcodegen`. A Linux Swift check is
   not evidence of native SwiftUI or simulator behavior.
-- [ ] Inventory `KnowTests` and `KnowUITests` by screen, API flow, auth state,
+- [x] Inventory `KnowTests` and `KnowUITests` by screen, API flow, auth state,
   shared note conversion, and create/edit/archive/restore behavior. Use the
   coverage matrix below and link every automated row to concrete test names;
-  list missing behavior explicitly.
-- [ ] Mark each flow automated, manual, deferred, or unsupported and link its
+  list missing behavior explicitly in
+  [`06-test-inventory.md`](06-test-inventory.md).
+- [x] Mark each flow automated, manual, deferred, or unsupported and link its
   test or explicit gap; do not infer rendered UI coverage from model tests.
+  The source-level behavior disposition is recorded in the inventory; no
+  manual simulator run has been claimed.
 - [ ] Select a supported macOS/Xcode host and document Xcode, XcodeGen,
   simulator runtime/device, scheme, test destination, and signing assumptions.
 - [ ] Provide a reproducible command or active CI job that generates the
@@ -71,7 +74,7 @@ model behavior but cannot satisfy a rendered UI row.
 | Calendar | Month navigation; adjacent days; local timezone/DST; day note/portion; range selection; label assignment; draft retention; cache; concurrent/stale load; empty/failure/retry. | Freeze calendar/timezone/locale and verify both displayed date and API date key on simulator. |
 | Reports | Default/preset/custom ranges; filters; aggregation; empty/dense result; chart/bucket boundaries; load/error/timeout; stale response; theme/contrast; locale formatting. | Validate accessible chart labels/alternatives and rendered controls; model tests alone do not establish chart usability. |
 
-- [ ] Complete every row above with automated/manual/deferred status and
+- [x] Complete every row above with automated/manual/deferred status and
   evidence link; identify untested rows by name.
 - [ ] Verify create/edit/archive/restore persistence after navigation or relaunch
   where the domain supports those operations; distinguish server-backed from
@@ -85,9 +88,9 @@ model behavior but cannot satisfy a rendered UI row.
 - [ ] Freeze locale, timezone/calendar, animation, and fixture timing; use
   condition-based waits and deterministic in-memory or isolated API fixtures
   instead of timing sleeps.
-- [ ] Run mobile Chrome web acceptance separately at desktop and phone
+- [x] Keep mobile Chrome web acceptance separately at desktop and phone
   profiles; do not count a native iOS simulator result as mobile Chrome
-  coverage.
+  coverage. The evidence categories are separate in the run plan and inventory.
 
 ## Artifacts and privacy
 
