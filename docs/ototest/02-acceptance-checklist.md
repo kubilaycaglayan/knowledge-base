@@ -249,8 +249,8 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
   persisted targets/duration, foreign ownership, and invalid interval boundaries.
-- [ ] `DELETE /api/v1/time-entries/{id}` covers soft-delete behavior and
-  subsequent visibility.
+- [x] `DELETE /api/v1/time-entries/{id}` covers soft-delete behavior, owner
+  isolation, and subsequent detail/history visibility.
 - [ ] `GET /api/v1/statistics` covers tracked-seconds and date/path/label
   aggregation arithmetic.
 - [ ] Timer duration assertions use server responses/persisted values rather
