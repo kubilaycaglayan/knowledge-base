@@ -174,7 +174,7 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/notes/{id}` covers ownership for its supported references:
   the update body has no path, activity, time-entry, or label ID fields; tags
   are names and a same-name foreign label is not reused or exposed.
-- [ ] `DELETE /api/v1/notes/{id}` covers archive state and subsequent list and
+- [x] `DELETE /api/v1/notes/{id}` covers archive state and subsequent list and
   detail behavior.
 - [ ] `POST /api/v1/notes/{id}/restore` covers restored state and returned
   version.
