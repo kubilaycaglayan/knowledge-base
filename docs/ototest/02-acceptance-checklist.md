@@ -285,7 +285,10 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/boards/order` covers complete board ordering, duplicate and
   foreign board IDs, and unchanged order after rejected requests
   (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`).
-- [ ] `POST /api/v1/boards/{id}/visibility` covers visibility changes.
+- [x] `POST /api/v1/boards/{id}/visibility` covers persisted hide/unhide,
+  active-list visibility, card preservation, custom-board conflict, and foreign
+  ownership (`PathBoardIntegrationTest.hidingAPathBoardKeepsItsCards`,
+  `visibilityOnlyAppliesToPathBoards`, and `pathBoardMutationsRejectForeignBoards`).
 - [ ] `POST /api/v1/boards/{id}/pin` covers pin/unpin changes.
 - [ ] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs.
 - [ ] `PUT /api/v1/boards/{id}` covers rename behavior and path-board conflict.
