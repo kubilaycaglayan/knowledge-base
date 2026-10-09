@@ -148,4 +148,48 @@ class TimerApiTest {
 
     verifyNoInteractions(service);
   }
+
+  @Test
+  void canonicalAndExplicitStopRoutesUseTheSameTimerAndResponse() throws Exception {
+    UUID user = UUID.randomUUID(), timer = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+    var running =
+        new TimerService.TimeView(
+            timer, null, List.of(), Instant.parse("2026-10-09T10:00:00Z"), null, null, "Work", TimeSource.WEB, true);
+    var stopped =
+        new TimerService.TimeView(
+            timer, null, List.of(), Instant.parse("2026-10-09T10:00:00Z"), Instant.parse("2026-10-09T11:00:00Z"), 3600L, "Work", TimeSource.WEB, false);
+    when(service.current(user)).thenReturn(running);
+    when(service.stop(user, timer)).thenReturn(stopped);
+
+    mvc.perform(post("/api/v1/timers/stop").with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().json(
+            "{\"id\":\"" + timer + "\",\"durationSeconds\":3600}"));
+    mvc.perform(post("/api/v1/timers/" + timer + "/stop").with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().json(
+            "{\"id\":\"" + timer + "\",\"durationSeconds\":3600}"));
+
+    verify(service, times(2)).current(user);
+    verify(service, times(2)).stop(user, timer);
+  }
+
+  @Test
+  void canonicalAndExplicitCancelRoutesCancelTheSameTimer() throws Exception {
+    UUID user = UUID.randomUUID(), timer = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+    var running =
+        new TimerService.TimeView(
+            timer, null, List.of(), Instant.parse("2026-10-09T10:00:00Z"), null, null, "Work", TimeSource.WEB, true);
+    when(service.current(user)).thenReturn(running);
+
+    mvc.perform(post("/api/v1/timers/cancel").with(authentication(auth)))
+        .andExpect(status().isNoContent());
+    mvc.perform(post("/api/v1/timers/" + timer + "/cancel").with(authentication(auth)))
+        .andExpect(status().isNoContent());
+
+    verify(service, times(2)).current(user);
+    verify(service, times(2)).cancel(user, timer);
+  }
 }
