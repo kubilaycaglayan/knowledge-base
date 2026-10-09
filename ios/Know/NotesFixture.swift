@@ -4,14 +4,14 @@ actor NotesFixture: NotesTransport {
   let arguments: [String]
   private var notes: [UUID: Note]
   private var nextID = 0x23
-  private var failsNextUpdate: Bool
+  private var failUpdateContaining: String?
 
   private static let savedLine = "Keep the API contract close to the client."
   private static let fixtureDate = "2026-09-14T09:30:00.123456Z"
 
   init(arguments: [String]) {
     self.arguments = arguments
-    failsNextUpdate = arguments.contains("-notes-save-error")
+    failUpdateContaining = arguments.contains("-notes-save-error") ? "R" : nil
     let seeded: [Note] = arguments.contains("-notes-empty")
       ? []
       : [Self.designNote(id: UUID(uuidString: "00000000-0000-4000-8000-000000000020")!)]
@@ -77,8 +77,8 @@ actor NotesFixture: NotesTransport {
   }
 
   func update(id: UUID, draft: NoteDraft, version: Int) async throws -> Note {
-    if failsNextUpdate {
-      failsNextUpdate = false
+    if let marker = failUpdateContaining, draft.body.contains(marker) {
+      failUpdateContaining = nil
       throw APIError.http(status: 500, message: "Temporary fixture failure")
     }
     guard let existing = notes[id] else {
