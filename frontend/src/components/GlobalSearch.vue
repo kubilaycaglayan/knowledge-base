@@ -77,12 +77,17 @@ const totalResults = computed(() => groups.value.reduce((sum, group) => sum + gr
 const anyCapped = computed(() => groups.value.some((group) => group.capped));
 // Pages match on the typed text right away, without waiting for the server.
 const pages = computed(() => (tooLong.value ? [] : matchPages(trimmed.value)));
+// The palette prioritizes pages, then cards, regardless of the API's group order.
+const orderedGroups = computed(() => {
+  const cards = groups.value.filter((group) => group.type === "CARD");
+  return [...cards, ...groups.value.filter((group) => group.type !== "CARD")];
+});
 
 const options = computed<Option[]>(() => {
   if (!trimmed.value)
     return recent.value.map((value, index) => ({ kind: "recent", id: `global-search-recent-${index}`, query: value }));
   const list: Option[] = pages.value.map((page) => ({ kind: "page", id: `global-search-page-${page.id}`, page }));
-  for (const group of groups.value) {
+  for (const group of orderedGroups.value) {
     for (const result of group.results)
       list.push({ kind: "result", id: optionId(result), group, result });
     if (group.results.length < group.total)
@@ -559,7 +564,7 @@ const status = computed(() => {
                 </RouterLink>
               </div>
               <div
-                v-for="group in groups"
+                v-for="group in orderedGroups"
                 :key="group.type"
                 role="group"
                 class="global-search-group"
