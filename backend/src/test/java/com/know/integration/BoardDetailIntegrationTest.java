@@ -41,5 +41,7 @@ class BoardDetailIntegrationTest extends IntegrationTestSupport {
 
     assertEquals(404, api.get("/api/v1/boards/" + UUID.randomUUID(), owner).status());
     assertEquals(404, api.get("/api/v1/boards/" + foreignBoardId, owner).status());
+    assertEquals(404, api.get("/api/v1/boards/" + UUID.randomUUID() + "/statuses", owner).status());
+    assertEquals(404, api.get("/api/v1/boards/" + foreignBoardId + "/statuses", owner).status());
   }
 }

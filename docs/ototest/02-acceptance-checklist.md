@@ -304,8 +304,10 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/boards/{id}/restore` covers response/detail state, active
   list visibility, and repeated restore idempotence
   (`KnowIntegrationTest.archivedBoardsAreRetainedReadOnlyAndArchiveRestoreIsIdempotent`).
-- [ ] `GET /api/v1/boards/{id}/statuses` covers board-owned ordered status
-  results.
+- [x] `GET /api/v1/boards/{id}/statuses` covers board-owned ordered status
+  results plus missing and foreign board IDs
+  (`BoardCreationIntegrationTest.creatingCustomBoardReturnsAndPersistsBoardWithDefaultStatuses`,
+  `BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`).
 - [ ] `POST /api/v1/boards/{id}/statuses` covers status creation and initial
   position.
 - [ ] `PUT /api/v1/boards/{id}/statuses/{statusId}` covers rename and nested
