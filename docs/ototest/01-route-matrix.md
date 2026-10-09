@@ -1,7 +1,7 @@
 # OTOTEST-01 — Web route evidence matrix
 
 **Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline)
-**Source review:** `frontend/src/main.ts`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`
+**Source review:** `frontend/src/main.ts`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`, 2026-10-09
 **Inventory reviewer:** Codex source review; maintainer review outstanding.
 **Evidence command:** `cd frontend && npm test` (Vitest); browser suites use their named npm scripts. Tests were not run during this inventory milestone.
 

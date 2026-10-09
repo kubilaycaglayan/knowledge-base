@@ -625,23 +625,23 @@ OTOTEST-01. Real-stack execution belongs to OTOTEST-04.
 
 ## Exclusions and handoff
 
-- [ ] **SCOPE-01** Exclude native iOS targets, simulator behavior, SwiftUI
+- [x] **SCOPE-01** Exclude native iOS targets, simulator behavior, SwiftUI
   controls, and iOS-only authentication from all inventory rows in this
   milestone.
-- [ ] **SCOPE-02** Inventory shared API behavior only where an operation
+- [x] **SCOPE-02** Inventory shared API behavior only where an operation
   supports the web or Chrome extension product; do not create acceptance
   obligations for unsupported client surfaces.
-- [ ] **SCOPE-03** Keep `/development` excluded from supported route completeness
+- [x] **SCOPE-03** Keep `/development` excluded from supported route completeness
   while recording its current route and why it is excluded.
 - [ ] **SCOPE-04** Review browser support assumptions for the Chrome extension
   and mobile Chrome with maintainers; unresolved assumptions remain labeled
   `needs decision` rather than silently counted as supported.
-- [ ] **HANDOFF-01** Link the completed route, API, control, extension, and
+- [x] **HANDOFF-01** Link the completed route, API, control, extension, and
   cross-client inventories from the OTOTEST-01 milestone document and index.
-- [ ] **HANDOFF-02** Provide a prioritized set of genuine inventory gaps for
+- [x] **HANDOFF-02** Provide a prioritized set of genuine inventory gaps for
   OTOTEST-02 through OTOTEST-05, without implementing product/test changes as
   part of OTOTEST-01 documentation acceptance.
-- [ ] **HANDOFF-03** Record review date, source revision, reviewer, exclusions,
+- [x] **HANDOFF-03** Record review date, source revision, reviewer, exclusions,
   evidence limitations, and follow-up owner for each needs-decision item.
 
 ## Source references
