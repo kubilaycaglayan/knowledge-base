@@ -5,6 +5,7 @@ if (!baseUrl) {
   console.error("Usage: node scripts/check-auth-rate-limit-proxy.mjs <base-url>");
   process.exit(2);
 }
+const allowedOrigin = new URL(baseUrl).origin;
 
 const unique = crypto.randomUUID();
 const email = `rate-limit-${unique}@example.invalid`;
@@ -89,10 +90,10 @@ if (!page.headers.get("content-security-policy")) {
 }
 const allowedCors = await fetch(protectedRoute, {
   method: "OPTIONS",
-  headers: { Origin: "http://localhost", "Access-Control-Request-Method": "PUT" },
+  headers: { Origin: allowedOrigin, "Access-Control-Request-Method": "PUT" },
 });
 if (
-  allowedCors.headers.get("access-control-allow-origin") !== "http://localhost" ||
+  allowedCors.headers.get("access-control-allow-origin") !== allowedOrigin ||
   !allowedCors.headers.get("access-control-allow-methods")?.includes("PUT")
 ) {
   throw new Error("The proxy path did not preserve the configured CORS origin and method");
@@ -106,7 +107,7 @@ if (deniedCors.headers.has("access-control-allow-origin")) {
 }
 const deniedMethod = await fetch(protectedRoute, {
   method: "OPTIONS",
-  headers: { Origin: "http://localhost", "Access-Control-Request-Method": "TRACE" },
+  headers: { Origin: allowedOrigin, "Access-Control-Request-Method": "TRACE" },
 });
 if (deniedMethod.status !== 403 || deniedMethod.headers.has("access-control-allow-methods")) {
   throw new Error(`The proxy path did not reject an unconfigured CORS method (${deniedMethod.status})`);

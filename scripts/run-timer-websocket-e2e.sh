@@ -20,6 +20,7 @@ export COMPOSE_PROJECT_NAME="$project"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-Timer-e2e-$(date +%s%N)}"
 export JWT_SECRET="${JWT_SECRET:-timer-e2e-jwt-secret-$(date +%s%N)}"
 export PROXY_CLOUDFLARE_PORT="$port"
+export CORS_ORIGINS="http://localhost:${port}"
 "${compose[@]}" up -d --build db api web proxy-cloudflare >/dev/null
 for attempt in {1..90}; do
   api_status="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 "http://localhost:${port}/api/v1/auth/me" || true)"
