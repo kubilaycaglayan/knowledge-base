@@ -121,8 +121,9 @@ browser interaction evidence remains a separate layer.
   and ordering. The endpoint has no filter or archived-visibility query.
 - [x] `POST /api/v1/paths` covers successful creation and persisted values.
 - [x] `GET /api/v1/paths/{id}` covers owned, missing, and foreign IDs.
-- [ ] `GET /api/v1/paths/{id}/summary` covers aggregation values and date/time
-  boundaries.
+- [x] `GET /api/v1/paths/{id}/summary` covers aggregation values across
+  adjacent persisted intervals and elapsed running time. The endpoint has no
+  date range inputs.
 - [ ] `PUT /api/v1/paths/{id}` covers successful update, invalid values, and
   stale/conflicting state where applicable.
 - [ ] `DELETE /api/v1/paths/{id}` covers the documented delete/archive effect
