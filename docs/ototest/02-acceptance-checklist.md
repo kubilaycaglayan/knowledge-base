@@ -366,8 +366,9 @@ browser interaction evidence remains a separate layer.
   restoration, fallback to an active status after the prior status is archived,
   and persisted visibility/placement (`BoardCardRestoreIntegrationTest` and
   `KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
-- [ ] `GET /api/v1/boards/{id}/gantt` covers date-range validation,
-  inclusive-overlap behavior, and active-status filtering.
+- [x] `GET /api/v1/boards/{id}/gantt` covers window validation, active dated,
+  undated, and out-of-window cards per API behavior, plus archived-status
+  filtering (`KnowIntegrationTest` and `BoardControllerApiTest`).
 - [ ] `GET /api/v1/boards/all/columns` covers merged column names and ordering.
 - [ ] `GET /api/v1/boards/all/columns/cards/page` covers merged-column cursor
   paging and boundary validation.
