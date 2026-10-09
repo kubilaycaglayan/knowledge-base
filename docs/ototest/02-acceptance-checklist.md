@@ -276,8 +276,9 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover Board and All boards operations
 
-- [ ] `GET /api/v1/boards` covers active, archived, and include-hidden list
-  behavior.
+- [x] `GET /api/v1/boards` covers active, archived, include-hidden, and
+  owner-scoped list behavior
+  (`BoardListIntegrationTest.boardListDefaultsToVisibleActiveAndSupportsArchivedAndHiddenLists`).
 - [ ] `POST /api/v1/boards` covers custom board creation.
 - [ ] `PUT /api/v1/boards/order` covers complete board ordering and invalid
   board IDs.
