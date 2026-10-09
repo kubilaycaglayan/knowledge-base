@@ -347,8 +347,9 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/move` covers persisted target
   status/position order and rejection of foreign and archived statuses
   (`BoardCardMoveIntegrationTest.cardMovePersistsDestinationPositionAndRejectsForeignOrArchivedStatuses`).
-- [ ] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
-  or creating the target column and persisted placement.
+- [x] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
+  or creating the target column, persisted status/position, and foreign board
+  protection (`AllBoardsIntegrationTest.moveToColumnCreatesAMissingColumn`).
 - [ ] `POST /api/v1/boards/{id}/cards/in-column` covers card creation in an
   existing or newly created column.
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/transfer` covers source and
