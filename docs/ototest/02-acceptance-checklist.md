@@ -296,7 +296,8 @@ browser interaction evidence remains a separate layer.
   `PinOrderIntegrationTest.pinnedBoardJoinsTheEndOfThePinnedBoards`).
 - [x] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs
   (`BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`).
-- [ ] `PUT /api/v1/boards/{id}` covers rename behavior and path-board conflict.
+- [x] `PUT /api/v1/boards/{id}` covers persisted custom-board rename and the
+  path-board conflict (`BoardRenameIntegrationTest.customBoardRenamePersistsAndPathBoardRenameConflicts`).
 - [ ] `POST /api/v1/boards/{id}/archive` covers archive state and restrictions.
 - [ ] `POST /api/v1/boards/{id}/restore` covers restored state.
 - [ ] `GET /api/v1/boards/{id}/statuses` covers board-owned ordered status
