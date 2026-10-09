@@ -67,9 +67,11 @@ an active automated gate.
   disabled state is changed.
 
 The source inventory and proposed manual release path are documented, but this
-milestone remains in progress: the clean-checkout macOS run failed eight tests,
-and the remaining behavior matrix gaps still need coverage or explicit
-manual/deferred evidence. See the
+milestone remains in progress: the clean-checkout macOS run failed eight tests.
+Focused reruns have verified corrections for the seven UI failures, including
+the Labels case after scrolling and querying by accessible label; a combined
+rerun and a passing full-scheme run are still required. Persistence and device
+coverage gaps also need coverage or explicit manual/deferred evidence. See the
 [HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
 
 ## Relevant sources

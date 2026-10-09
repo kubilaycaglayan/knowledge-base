@@ -49,40 +49,40 @@ fixture setup; no account secrets were supplied.
 | `KnowUITests.testPathsMergeRequiresConfirmationAndRemoveOffersUndo` | The `paths.merge` button was absent after opening path edit (`KnowUITests.swift:853`). |
 | `KnowUITests.testSessionLabelsPickerHasSummaryCompactPriorityAndKeyboardAccessibleToggle` | The selected and unselected label rows shared the same vertical position, `424.0` (`KnowUITests.swift:1190`). |
 
-These are observed failures, not confirmed root causes. The result bundle and
-failure diagnostics are available from the linked Actions run. Triage the
-remaining UI test failures through the repository's bug-fix workflow; this
-test-hardening milestone does not silently classify the failed cases as
-passing or repair product behavior. The Keychain failure is consistent with
-the unsigned test configuration, but does not by itself prove the cause.
+These are observed failures from the first full run, not confirmed root causes.
+The result bundle and failure diagnostics are available from the linked Actions
+run. Subsequent focused runs have verified test-harness corrections for six UI
+cases and a locator/visibility correction for the Labels case, described below.
+The Keychain failure is consistent with the unsigned test configuration, but
+does not by itself prove the cause.
 
 ### Source-level triage (not yet reproduced or verified)
 
-Inspection after the run found several plausible test-harness or query issues.
-These are leads for follow-up, not resolutions; each remains a failed test
-until a focused rerun on the supported simulator demonstrates the fix.
+Inspection after the run found test-harness and query issues. Focused reruns
+now provide evidence for these corrections; the original full-scheme result
+remains failed until the complete scheme passes again.
 
 | Failure | Source observation | Follow-up evidence needed |
 | --- | --- | --- |
-| Three calendar day queries | `CalendarModel` receives its default `Date()` in `WorkspaceView`, while the saved fixture and assertions use September 2026. The run date was October 2026, so the visible month may not contain the fixture's expected day identifiers. | Freeze the UI fixture's calendar, locale, and date consistently, then rerun all calendar UI cases and check month navigation/API date keys. |
-| Labels Calendar switch | The XCTest log confirms a real accessibility gap in the observed build: the Notes switch had label `Notes`, while the Calendar switch appeared as `Switch, value: 0` with no label. The view supplies `scope.title`, so investigate why SwiftUI drops the label for this control. | Route the unlabeled native control through the bug-fix workflow; verify its VoiceOver name, selected state, and test query on the supported simulator. |
-| Notes line-history toggle | The control exposes an accessibility value and toggles state; the test reads the value immediately after tapping. | Use a condition-based wait for the value and verify the history list appears/disappears through the accessible tree. If the value does not update, route the behavior through bug-fix workflow. |
-| Paths merge button | The XCTest log confirms the editor opened and the test queried `paths.merge`, but the available log excerpt does not capture the form's accessibility hierarchy. The control is in the form's final section, making visibility/scrolling one possibility, not a confirmed cause. | Capture the failure hierarchy or inspect the retained `.xcresult`; verify scrolling and then the merge confirmation/undo flow. |
-| Session label ordering | The XCTest log confirms both compared chips had `minY == 424.0`. The source lays out the chips horizontally, so comparing their vertical positions cannot establish the intended selected-first order. | Compare horizontal order (`minX`) and selected-first behavior, then rerun the picker case. |
+| Three calendar day queries | `CalendarModel` used its default `Date()` while the fixture/assertions use September 2026. Initializing the UI fixture calendar to the fixture date made all three focused cases pass. | Keep the fixture date and timezone pinned; cover them in the combined focused and full-scheme reruns. |
+| Labels Calendar switch | The original test queried `app.switches["Calendar"]`, which matches an identifier, and ran while the editor's name field had focus. The partial-row snapshot showed a blank second switch. After scrolling the form and querying by accessible label, the case passed on the original `Toggle(scope.title, ...)` implementation. | Keep the scroll and label-based query; no product accessibility defect was reproduced. Verify the case in the combined focused and full-scheme reruns. |
+| Notes line-history toggle | The test edited text with the keyboard open and immediately tapped the toolbar toggle. Dismissing the keyboard and waiting for the value change made the focused case pass. | Keep keyboard dismissal and the condition-based wait; verify in combined focused and full-scheme reruns. |
+| Paths merge button | The merge action is in the edit form's final section. Scrolling to it before querying made the focused merge/undo case pass. | Keep the scroll-to-control behavior and verify in combined focused and full-scheme reruns. |
+| Session label ordering | The test compared `minY` for chips in one horizontal row. Comparing `minX` made the selected-first picker case pass. | Keep the horizontal ordering assertion and verify in combined focused and full-scheme reruns. |
 
-The focused run at commit `588c1cc` then exercised all seven failure cases on
-the same hosted Mac and iPhone 17 Pro / iOS 26.5 destination. Six passed after
-test-harness changes: the three calendar cases, Notes line history, Paths
-merge/undo, and the session-label ordering case. The Labels accessibility case
-still failed: its diagnostic showed `labels.scope.note=Notes, =`, with the
-Calendar switch lacking both identifier and label despite the first attempted
-accessibility modifier. See [focused run 37899618008](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37899618008).
+The focused run at commit `588c1cc` exercised all seven original failure cases
+on the hosted Mac and iPhone 17 Pro / iOS 26.5 destination. Six passed after
+test-harness changes; the Labels locator still failed. See
+[run 37899618008](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37899618008).
 
-A follow-up label construction change is in commit `22d222a`, and a second
-focused run is in progress at the time of this report update. Until that run
-completes, the Calendar switch defect is unresolved. Do not change the
-disabled workflow until the focused cases and a clean full-scheme run pass
-with the documented signing configuration.
+The Labels test then passed after scrolling the form and locating Calendar by
+its accessible label on both an explicit-label variant and the original
+`Toggle(scope.title, ...)` source. The latter run is
+[37903974831](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37903974831).
+This confirms a test query/visibility issue rather than a product defect. A
+combined rerun of all seven cases and a clean full-scheme run are still needed;
+the original full-scheme failure remains the authoritative release-gate result
+until those runs pass.
 
 ## Keychain signing diagnostic
 
