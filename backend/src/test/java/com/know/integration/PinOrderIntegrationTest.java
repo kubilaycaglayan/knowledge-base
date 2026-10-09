@@ -66,6 +66,30 @@ class PinOrderIntegrationTest extends IntegrationTestSupport {
     return names;
   }
 
+  List<String> noteTitles(String token) {
+    List<String> titles = new ArrayList<>();
+    exchange(HttpMethod.GET, "/api/v1/notes", token, null).getBody().forEach(note -> titles.add(note.get("title").asText()));
+    return titles;
+  }
+
+  @Test
+  void noteOrderEndpointPersistsCompleteOrderAndRejectsDuplicateOrForeignIds() {
+    String token = token(), other = token();
+    String a = create(token, "/api/v1/notes", "{\"title\":\"A\",\"content\":\"a\"}");
+    String b = create(token, "/api/v1/notes", "{\"title\":\"B\",\"content\":\"b\"}");
+    String c = create(token, "/api/v1/notes", "{\"title\":\"C\",\"content\":\"c\"}");
+    String foreign = create(other, "/api/v1/notes", "{\"title\":\"Foreign\",\"content\":\"foreign\"}");
+
+    order(token, "/api/v1/notes/order", "noteIds", c, a, b);
+    assertEquals(List.of("C", "A", "B"), noteTitles(token));
+
+    String duplicateIds = "{\"noteIds\":[\"" + c + "\",\"" + c + "\",\"" + b + "\"]}";
+    assertEquals(HttpStatus.BAD_REQUEST, exchange(HttpMethod.PUT, "/api/v1/notes/order", token, duplicateIds).getStatusCode());
+    String foreignIds = "{\"noteIds\":[\"" + c + "\",\"" + foreign + "\",\"" + b + "\"]}";
+    assertEquals(HttpStatus.BAD_REQUEST, exchange(HttpMethod.PUT, "/api/v1/notes/order", token, foreignIds).getStatusCode());
+    assertEquals(List.of("C", "A", "B"), noteTitles(token), "Rejected orders preserve the saved order");
+  }
+
   @Test
   void pinnedNoteJoinsTheEndOfThePinnedNotes() {
     String token = token();

@@ -175,7 +175,7 @@ browser interaction evidence remains a separate layer.
   version.
 - [ ] `POST /api/v1/notes/{id}/pin` covers pin/unpin state, version, and pinned
   ordering.
-- [ ] `PUT /api/v1/notes/order` covers complete owned-note ordering and
+- [x] `PUT /api/v1/notes/order` covers complete owned-note ordering and
   invalid or foreign note IDs.
 - [ ] Note line-history behavior covers unchanged lines, changed lines,
   first-edit migration behavior, and the documented large-document limit.
