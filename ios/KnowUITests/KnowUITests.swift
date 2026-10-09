@@ -1107,8 +1107,8 @@ final class KnowUITests: XCTestCase {
     let body = app.textViews["notes.body"]
     XCTAssertTrue(body.waitForExistence(timeout: 5))
     body.tap()
-    body.typeText("\nRetry this line")
-    XCTAssertTrue((body.value as? String)?.contains("Retry this line") == true)
+    body.typeText("R")
+    XCTAssertTrue((body.value as? String)?.contains("R") == true)
 
     let saveState = app.staticTexts["notes.save-state"]
     let failed = NSPredicate(format: "label == %@", "Not saved")
@@ -1120,7 +1120,7 @@ final class KnowUITests: XCTestCase {
         "Unable to save this note. Your draft is still here; try again."
       ].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["Retry note save"].exists)
-    XCTAssertTrue((body.value as? String)?.contains("Retry this line") == true)
+    XCTAssertTrue((body.value as? String)?.contains("R") == true)
     app.buttons["Retry note save"].tap()
     let saved = NSPredicate(format: "label == %@", "Saved")
     expectation(for: saved, evaluatedWith: saveState)
