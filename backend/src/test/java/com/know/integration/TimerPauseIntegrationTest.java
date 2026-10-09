@@ -314,6 +314,137 @@ class TimerPauseIntegrationTest extends IntegrationTestSupport {
             UUID.fromString(started.get("id").asText())));
   }
 
+  @Test
+  void postgresDraftReplacementFailureRollsBackDraftWhenLabelWriteFails() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Tracker draft transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Draft rollback label");
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_draft_label_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced draft label failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on tracker_draft_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          put(
+                  "/api/v1/timers/draft",
+                  owner,
+                  "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"failed draft\"}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on tracker_draft_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+    JsonNode draft = get("/api/v1/timers/draft", owner).getBody();
+    assertTrue(draft.get("labelIds").isEmpty());
+    assertTrue(draft.path("description").isMissingNode() || draft.path("description").isNull());
+  }
+
+  @Test
+  void postgresStopFailureRollsBackTimerWhenDraftLabelsFail() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer stop transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Stop rollback label");
+    JsonNode running =
+        post(
+                "/api/v1/timers",
+                owner,
+                "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"stop rollback\"}")
+            .getBody();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_stop_draft_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced stop draft failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before insert on tracker_draft_label for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/stop", owner, "{}").getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on tracker_draft_label");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    JsonNode current = get("/api/v1/timers/current", owner).getBody();
+    assertEquals(running.get("id").asText(), current.get("id").asText());
+    assertTrue(current.get("running").asBoolean());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+  }
+
+  @Test
+  void postgresCancelFailureRollsBackDraftWhenTimerDeletionFails() {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Timer cancel transaction rollback requires PostgreSQL");
+    String owner = token();
+    String labelId = label(owner, "Cancel rollback label");
+    JsonNode running =
+        post(
+                "/api/v1/timers",
+                owner,
+                "{\"labelIds\":[\"" + labelId + "\"],\"description\":\"cancel rollback\"}")
+            .getBody();
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_cancel_delete_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced timer delete failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before delete on time_entry for each row execute function "
+            + functionName
+            + "()");
+    try {
+      assertEquals(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          post("/api/v1/timers/" + running.get("id").asText() + "/cancel", owner, "{}")
+              .getStatusCode());
+    } finally {
+      jdbc.execute("drop trigger if exists " + functionName + " on time_entry");
+      jdbc.execute("drop function if exists " + functionName + "()");
+    }
+    JsonNode current = get("/api/v1/timers/current", owner).getBody();
+    assertEquals(running.get("id").asText(), current.get("id").asText());
+    assertTrue(current.get("running").asBoolean());
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from tracker_draft where user_id = ?",
+            Long.class,
+            userId(owner)));
+  }
+
   private UUID userId(String token) {
     try {
       return UUID.fromString(

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
@@ -391,6 +392,46 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
             Long.class,
             boardId,
             statusIds.get(1)));
+  }
+
+  @Test
+  void postgresStatusOrderRollsBackEarlierRowsWhenLaterUpdateFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    UUID boardId =
+        UUID.fromString(
+            api.created("POST", "/api/v1/boards", token, "{\"name\":\"Status order rollback\"}")
+                .get("id")
+                .asText());
+    List<UUID> originalOrder =
+        jdbc.query(
+            "select id from board_statuses where board_id = ? order by position",
+            (rs, row) -> rs.getObject(1, UUID.class),
+            boardId);
+    List<UUID> reversedOrder = new ArrayList<>(originalOrder);
+    java.util.Collections.reverse(reversedOrder);
+    String body =
+        "{\"ids\":["
+            + reversedOrder.stream().map(id -> "\"" + id + "\"").collect(java.util.stream.Collectors.joining(","))
+            + "]}";
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String sequenceName = "fail_status_order_count_" + suffix;
+    String functionName = "fail_status_order_update_" + suffix;
+    createFailOnNthUpdate("board_statuses", sequenceName, functionName, functionName, 2);
+    try {
+      ApiClient.Reply failed =
+          api.put("/api/v1/boards/" + boardId + "/statuses/order", token, body);
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropUpdateTrigger("board_statuses", sequenceName, functionName, functionName);
+    }
+    for (int position = 0; position < originalOrder.size(); position++)
+      assertEquals(
+          position,
+          jdbc.queryForObject(
+              "select position from board_statuses where id = ?", Integer.class, originalOrder.get(position)));
   }
 
   @Test
