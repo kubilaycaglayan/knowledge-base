@@ -212,7 +212,7 @@ browser interaction evidence remains a separate layer.
   states (paused sessions have no current running timer and remain in the draft).
 - [x] `GET /api/v1/timers/draft` covers default and persisted idle selection
   state.
-- [ ] `PUT /api/v1/timers/draft` covers save, validation, owner-scoped path and
+- [x] `PUT /api/v1/timers/draft` covers save, validation, owner-scoped path and
   label references, and running-timer conflict behavior.
 - [ ] `POST /api/v1/timers` covers server-owned start time, selected context,
   and one-running-timer behavior.
