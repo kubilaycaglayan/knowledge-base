@@ -80,7 +80,9 @@ workflow jobs must not be counted as active iOS CI coverage.
 
 The documented full-scheme command was executed from a clean checkout on a
 GitHub-hosted macOS runner on 2026-10-09. Project generation and build passed,
-but one of 128 unit tests and seven of 67 UI tests failed; see the
+but the unsigned run recorded one failing unit test and seven failing UI tests.
+The Keychain unit test passed in a targeted rerun with ad hoc simulator
+signing; the seven UI failures remain. See the
 [HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md). This is failure
 evidence, not an active CI gate, and the historical iOS jobs remain disabled.
 

@@ -39,15 +39,17 @@ xcodebuild test \
   -scheme Know \
   -destination 'platform=iOS Simulator,id=<IPHONE_SIMULATOR_UDID>' \
   -resultBundlePath "$PWD/../harden-tests/artifacts/Know.xcresult" \
-  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
 ```
 
 Create the artifact parent directory before running. Do not add
 `-only-testing` filters for the release gate. The scheme must run all unit and
 UI tests. Simulator execution does not need a development team or signing
-identity; if the selected Xcode requires signing, use simulator-only ad hoc
-configuration and never add a production certificate or provisioning profile
-to the repository.
+identity. Use the tested simulator-only ad hoc identity shown above; do not
+disable signing for this suite. In the first full run, the Keychain unit test
+failed with signing disabled, while a targeted rerun passed using this ad hoc
+configuration. Never add a production certificate or provisioning profile to
+the repository.
 
 The `Know` package target in `ios/Package.swift` is useful for package-level
 checks, but it does not include `KnowUITests`; the generated Xcode project and
@@ -84,9 +86,9 @@ Notes UI tests.
 
 ## Completion evidence still required
 
-This path becomes a passing release gate only after the failures recorded in
-the run report are triaged through the bug-fix workflow and a later clean
-full-scheme run succeeds with its exact host/tool/runtime/device versions and
-result bundle retained. Any move to CI requires a separately verified macOS
-runner, XcodeGen install, simulator selection, signing assumptions, and
+This path becomes a passing release gate only after the remaining UI failures
+recorded in the run report are triaged through the bug-fix workflow and a later
+clean full-scheme run succeeds with its exact host/tool/runtime/device versions
+and result bundle retained. Any move to CI requires a separately verified
+macOS runner, XcodeGen install, simulator selection, signing assumptions, and
 artifact retention before changing either disabled workflow job.
