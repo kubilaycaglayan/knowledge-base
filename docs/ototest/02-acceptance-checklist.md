@@ -324,8 +324,8 @@ browser interaction evidence remains a separate layer.
   endpoints.
 - [ ] `PUT /api/v1/calendar/days/{date}` covers replacement semantics for one
   day's note and label assignments.
-- [ ] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion and
-  subsequent absence.
+- [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
+  subsequent absence, foreign-user isolation, and repeated deletion.
 - [ ] `PUT /api/v1/calendar/days/range` covers inclusive range mutation while
   preserving existing assignments not requested for removal.
 - [ ] Calendar day writes cover owned-label validation without mutating label
