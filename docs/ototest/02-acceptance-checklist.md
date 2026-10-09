@@ -509,8 +509,11 @@ browser interaction evidence remains a separate layer.
   foreign batch rejection, and repeated-undo behavior.
 - [x] `GET /api/v1/imports/knowledge-base/export` covers CSV content type,
   escaping, and export of the authenticated user's records only.
-- [ ] `POST /api/v1/imports/knowledge-base` covers valid CSV round trip,
-  stable-ID duplicate handling, and legacy formats documented as supported.
+- [x] `POST /api/v1/imports/knowledge-base` covers valid CSV round trip,
+  stable-ID duplicate handling, and supported legacy rows without color fields
+  or log entities (`KnowIntegrationTest.knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo`,
+  `KnowIntegrationTest.knowledgeBaseCsvImportAcceptsLegacyRowsWithoutColorOrLogEntities`,
+  and `KnowledgeBaseTransferServiceTest.importingTheSameStableIdsSkipsExistingRecords`).
 - [ ] `POST /api/v1/imports/knowledge-base` covers malformed CSV, unsupported
   values, and documented rollback/partial-result behavior.
 - [x] `GET /api/v1/imports/knowledge-base/batches` covers owner-scoped batch

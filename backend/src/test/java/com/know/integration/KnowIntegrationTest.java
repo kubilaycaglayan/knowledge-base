@@ -652,6 +652,36 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void knowledgeBaseCsvImportAcceptsLegacyRowsWithoutColorOrLogEntities() {
+    String token = freshToken();
+    UUID pathId = UUID.randomUUID();
+    UUID labelId = UUID.randomUUID();
+    String csv =
+        "entity,id,payload\n"
+            + csvRow("path", pathId, "{\"name\":\"Legacy path\",\"description\":\"old export\"}")
+            + csvRow("label", labelId, "{\"name\":\"Legacy label\",\"scopes\":[\"NOTE\"]}");
+
+    ResponseEntity<JsonNode> imported = importCsv(token, csv);
+
+    assertEquals(HttpStatus.OK, imported.getStatusCode(), String.valueOf(imported.getBody()));
+    assertEquals(2, imported.getBody().get("imported").asInt());
+    JsonNode path = get("/api/v1/paths/" + pathId, token).getBody();
+    assertEquals("Legacy path", path.get("name").asText());
+    assertEquals("#E8754E", path.get("color").asText());
+    JsonNode labels = get("/api/v1/labels", token).getBody();
+    boolean legacyLabelFound = false;
+    for (JsonNode label : labels) {
+      if (labelId.toString().equals(label.get("id").asText())) {
+        assertEquals("Legacy label", label.get("name").asText());
+        legacyLabelFound = true;
+      }
+    }
+    assertTrue(legacyLabelFound);
+    assertTrue(get("/api/v1/logs", token).getBody().isEmpty());
+    assertEquals(2, get("/api/v1/imports/knowledge-base/batches", token).getBody().get(0).get("imported").asInt());
+  }
+
+  @Test
   void knowledgeBaseCsvExportHasDownloadHeadersIsOwnerScopedAndRoundTripsEscapedText() {
     String owner = freshToken();
     String importer = freshToken();
