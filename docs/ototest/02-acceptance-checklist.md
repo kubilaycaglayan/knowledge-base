@@ -435,7 +435,9 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover Reports, Search, and Preferences
 
-- [ ] `GET /api/v1/reports` covers each preset period and anchor-date boundary.
+- [x] `GET /api/v1/reports` covers WEEK, MONTH, and YEAR windows anchored on
+  leap day plus a WEEK window crossing a year boundary
+  (`KnowIntegrationTest.reportPresetsUseAnchorBoundariesForLeapDayAndYearRollover`).
 - [ ] `GET /api/v1/reports` covers custom inclusive ranges and the maximum
   supported range.
 - [ ] `GET /api/v1/reports` covers every supported aggregation interval and

@@ -1877,6 +1877,28 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void reportPresetsUseAnchorBoundariesForLeapDayAndYearRollover() {
+    String token = freshToken();
+    for (String[] window :
+        new String[][] {
+          {"WEEK", "2024-02-26", "2024-03-03"},
+          {"MONTH", "2024-02-01", "2024-02-29"},
+          {"YEAR", "2024-01-01", "2024-12-31"}
+        }) {
+      JsonNode report =
+          get("/api/v1/reports?period=" + window[0] + "&anchor=2024-02-29", token).getBody();
+      assertEquals(window[0], report.get("period").asText());
+      assertEquals(window[1], report.get("from").asText(), window[0]);
+      assertEquals(window[2], report.get("to").asText(), window[0]);
+    }
+
+    JsonNode yearRollover =
+        get("/api/v1/reports?period=WEEK&anchor=2024-12-31", token).getBody();
+    assertEquals("2024-12-30", yearRollover.get("from").asText());
+    assertEquals("2025-01-05", yearRollover.get("to").asText());
+  }
+
+  @Test
   void postgresReportRangeUsesUtcLeapDayAndExactHalfOpenInstantBoundaries() {
     if (System.getenv("KB_TEST_POSTGRES_URL") == null) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
