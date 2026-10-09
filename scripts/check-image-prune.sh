@@ -24,6 +24,11 @@ tags=(
   test-only
   aaaaaaaaaaa5
   aaaaaaaaaaa6
+  perf-20261009010000-111111111111
+  perf-20261009010001-222222222222
+  perf-20261009010002-333333333333
+  perf-20261009010003-444444444444
+  perf-20261009010004-555555555555
 )
 pids=()
 for index in "${!tags[@]}"; do
@@ -39,7 +44,7 @@ container="$(docker create "$repo:aaaaaaaaaaa1" /nonexistent)"
 KEEP_IMAGE_BUILDS=3 PRUNE_IMAGE_REPOS="$repo" "$repo_root/scripts/prune-production-images.sh"
 
 actual="$(docker images "$repo" --format '{{.Tag}}' | sort | tr '\n' ' ')"
-expected="aaaaaaaaaaa1 aaaaaaaaaaa4 aaaaaaaaaaa5 aaaaaaaaaaa6 diagnostic latest test-only "
+expected="aaaaaaaaaaa1 aaaaaaaaaaa4 aaaaaaaaaaa5 aaaaaaaaaaa6 diagnostic latest perf-20261009010002-333333333333 perf-20261009010003-444444444444 perf-20261009010004-555555555555 test-only "
 if [[ "$actual" != "$expected" ]]; then
   echo "Image prune check failed: expected tags [$expected], got [$actual]" >&2
   exit 1

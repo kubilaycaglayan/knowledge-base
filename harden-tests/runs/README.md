@@ -19,6 +19,15 @@ Both reports use the same isolated PostgreSQL/Caddy/Tomcat stack. They are
 separate browser-profile outcomes; mobile Chromium is emulation, not physical
 Android-device evidence.
 
+## HARD-05 performance reports
+
+- [Desktop Chromium](2026-10-09-hard05-desktop-chromium.md)
+- [Mobile-size Chromium](2026-10-09-hard05-mobile-chromium.md)
+- [Emulated iPhone 13 WebKit](2026-10-09-hard05-iphone-webkit.md)
+- [API request sampler](2026-10-09-hard05-api.md)
+- [Report-only threshold proposal](2026-10-09-hard05-gate-proposal.md)
+- [Environment preflight and benchmark snapshot](2026-10-09-hard05-environment-preflight.md)
+
 ## Required report template
 
 ```markdown
@@ -75,9 +84,31 @@ emulation and must not be labeled as a physical Android Chrome run.
 - Warm/cold cache and network shaping:
 - Warmups / measured samples / outlier policy:
 - Machine load and relevant resource limits:
+- API timing definition: monotonic request start through response body download;
+  state whether connection setup is included and do not call it server latency.
+- Browser timing definition: navigation/action start through the semantic UI
+  completion signal; retain trace/network data to separate request wait and
+  render wait.
+- Outlier policy (preserve raw values; any exclusion needs an observable cause):
 
 | Journey/API | Fixture | Warmups | Samples | Median | p95 | Min/max | Failed/timeouts | Raw data |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
+
+The report-only API sampler is [`frontend/scripts/performance-api-baseline.mjs`](../../frontend/scripts/performance-api-baseline.mjs).
+Use a private manifest copied from
+[`performance-api.manifest.example.json`](../performance-api.manifest.example.json)
+and set `API_BASE_URL` to an isolated local stack. Create data with
+[`seed-performance-fixture.mjs`](../../frontend/scripts/seed-performance-fixture.mjs)
+using the same Compose project. Fixture output contains a disposable account
+token, is written with mode `0600`, and belongs under the ignored
+`harden-tests/local-artifacts/` path. Tear down only that named project using
+`docker compose -p "$PERFORMANCE_COMPOSE_PROJECT" -f docker-compose.yml -f docker-compose.smoke.yml -f docker-compose.performance.yml down --volumes --remove-orphans`.
+The sampler includes response
+body download, does not isolate connection setup, and does not measure browser
+rendering or server-only time. It is not evidence for a browser journey unless
+paired with browser timing and functional assertions. Raw output should be
+written under an ignored artifact directory and reviewed for secrets before
+sharing.
 
 ## Baseline comparison
 

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "fixture": {
+    "id": "knowledge-base-perf-fixture-v1",
+    "profile": "sparse-or-dense",
+    "verification": "Record fixture counts and expected result counts in the run report before collection."
+  },
+  "workloads": [
+    {
+      "name": "search-exact-api",
+      "method": "GET",
+      "path": "/api/v1/search?q=PERF_EXACT_TERM&fuzzy=false",
+      "expectedStatus": [200]
+    },
+    {
+      "name": "search-near-match-api",
+      "method": "GET",
+      "path": "/api/v1/search?q=PERF_NEAR_MATCH_TERM&fuzzy=true",
+      "expectedStatus": [200]
+    },
+    {
+      "name": "board-first-page-api",
+      "method": "GET",
+      "path": "/api/v1/boards/{{BOARD_ID}}/cards/page?statusId={{STATUS_ID}}&cursor=-1&limit=20",
+      "expectedStatus": [200]
+    },
+    {
+      "name": "board-next-page-api",
+      "method": "GET",
+      "path": "/api/v1/boards/{{BOARD_ID}}/cards/page?statusId={{STATUS_ID}}&cursor={{NEXT_CURSOR}}&limit=20",
+      "expectedStatus": [200]
+    },
+    {
+      "name": "gantt-range-api",
+      "method": "GET",
+      "path": "/api/v1/boards/{{BOARD_ID}}/gantt?from=2026-01-01&to=2026-12-31",
+      "expectedStatus": [200]
+    },
+    {
+      "name": "report-range-api",
+      "method": "GET",
+      "path": "/api/v1/reports?startDate=2026-01-01&endDate=2026-12-31&aggregation=MONTH",
+      "expectedStatus": [200]
+    },
+    {
+      "name": "timer-current-api",
+      "method": "GET",
+      "path": "/api/v1/timers/current",
+      "expectedStatus": [200]
+    }
+  ]
+}

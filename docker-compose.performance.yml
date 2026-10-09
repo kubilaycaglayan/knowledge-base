@@ -1,0 +1,7 @@
+services:
+  # HARD-05 builds immutable, per-run tags so a benchmark never retags the
+  # shared development images or aliases another disposable run's images.
+  api:
+    image: ${PERFORMANCE_API_IMAGE:?Set PERFORMANCE_API_IMAGE to a unique per-run tag}
+  web:
+    image: ${PERFORMANCE_WEB_IMAGE:?Set PERFORMANCE_WEB_IMAGE to a unique per-run tag}

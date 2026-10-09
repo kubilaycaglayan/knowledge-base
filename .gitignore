@@ -13,7 +13,8 @@ chrome-extension/.wxt-dev.log
 chrome-extension/.wxt-dev.pid
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
-harden-tests/artifacts/
+/harden-tests/artifacts/
+/harden-tests/local-artifacts/
 frontend/harden-tests/artifacts/
 backend/build/
 .gradle/

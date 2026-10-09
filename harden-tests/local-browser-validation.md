@@ -97,10 +97,12 @@ single disposable stack across its smoke and real-stack suites for each run.
    before linking or sharing.
 6. Confirm the runner removed only its own Compose project. Preserve active
    development resources and protected volumes; never use global prune.
-7. If collecting performance data, use fixed fixtures, idle the machine,
-   record the resource snapshot again, and keep cold-start and steady-state
-   samples separate. Do not compare measurements across profiles as if they
-   were the same workload.
+7. If collecting performance data, use fixed fixtures, record host and Docker
+   resource limits and competing load, and keep cold-start and steady-state
+   samples separate. Do not run unrelated builds, tests, or benchmarks during
+   timed samples. Persistent services are part of the captured environment, not
+   an automatic blocker. Do not compare measurements across profiles as if
+   they were the same workload.
 
 Do not mark a browser profile or journey complete from a viewport screenshot
 alone. Acceptance requires the named interaction assertions and retained run

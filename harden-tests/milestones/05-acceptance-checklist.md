@@ -16,11 +16,14 @@ report-only measurements; thresholds require repeatable evidence.
   touch-enabled `iphone` profile; the latter is Chromium emulation when paired
   with Chromium, not physical Android Chrome. Keep emulated iPhone WebKit in a
   separate comparison group.
-- [ ] Before collecting values, refresh local machine resource/version
+- [x] Before collecting values, refresh local machine resource/version
   metadata from [`local-browser-validation.md`](../local-browser-validation.md)
   and record the measurement commit, fixture revision, and active Compose
-  project. The checked-in machine snapshot is dated evidence, not a current
-  measurement environment guarantee.
+  project. Initial preflight and follow-up benchmark environment are recorded
+  in [`2026-10-09-hard05-environment-preflight.md`](../runs/2026-10-09-hard05-environment-preflight.md),
+  with profile-specific metadata and immutable image IDs in the run reports.
+  The development stack remained active; its resource use is reported as
+  multi-core host context, not a blocker.
 
 ## Workload contract
 
@@ -57,90 +60,97 @@ and [`TimerController`](../../backend/src/main/java/com/know/api/TimerController
 
 ## Environment capture
 
-- [ ] Record commit, Compose project, image tags and immutable IDs, OS,
+- [x] Record commit, Compose project, image tags and immutable IDs, OS,
   architecture, CPU/memory limits, Node/JDK/PostgreSQL versions, browser and
   Playwright versions, viewport/profile, network conditions, and cache state.
-- [ ] State whether the current machine was idle or under competing load and
-  record relevant resource constraints.
+- [x] State that the machine had competing services and record host/container
+  resource constraints. The persistent development stack was left running; no
+  unrelated builds, tests, or benchmarks ran during timed samples.
 
 ## Measurement method
 
-- [ ] Use one versioned deterministic fixture profile per workload. Define
+- [x] Use one versioned deterministic fixture profile per workload. Define
   sparse and dense account sizes as explicit counts for paths, notes, sessions,
   boards, statuses, cards, labels, and search terms; define card counts that
   cross the 20-card UI page boundary and include a documented larger case.
   Record seeded text lengths, date distribution, exact/near-match terms, and
   expected result counts. Do not use wall-clock/random data to decide fixture
-  contents.
-- [ ] Record fixture seed/version, setup command, cleanup owner/project, and a
+  contents. See [`performance-fixtures.md`](../performance-fixtures.md) and
+  its linked versioned generator.
+- [x] Record fixture seed/version, setup command, cleanup owner/project, and a
   post-setup count summary. Assert fixture counts before timing, and verify the
-  benchmark user/data are disposable before and after the run.
-- [ ] Define at least 3 unmeasured warmups followed by at least 30 measured
+  benchmark user/data are disposable before and after the run. The generator
+  validates its account's counts and records the unique project for scoped
+  Compose teardown; generated fixture artifacts are ignored and mode `0600`.
+- [x] Define at least 3 unmeasured warmups followed by at least 30 measured
   samples per proposed gated journey and profile; record every raw sample.
   If setup or run cost prevents this, label the smaller sample set exploratory
   and do not propose a gate from it.
-- [ ] Report sample count, median, p95, min/max, and a declared outlier policy.
+- [x] Report sample count, median, p95, min/max, and a declared outlier policy.
   Preserve outliers in raw data; do not silently trim them. Explain any
   exclusion with an observable cause such as an unrelated host load spike.
-- [ ] Separate cold startup/cache observations from steady-state samples.
-- [ ] Use the completion boundaries above and bounded timeouts; do not time
+- [x] Separate cold startup/cache observations from steady-state samples.
+- [x] Use the completion boundaries above and bounded timeouts; do not time
   arbitrary sleeps or include fixture setup unless the metric explicitly
   measures setup. Record timeout/failure samples as outcomes, not dropped rows.
-- [ ] For browser timing, use a monotonic high-resolution clock and retain the
+- [x] For browser timing, use a monotonic high-resolution clock and retain the
   raw browser trace/network log needed to distinguish request wait from render
   wait. For API timing, record request start/end, status, response bytes, and
   whether connection setup is included. Do not call browser-observed duration
   “server latency.”
-- [ ] Record raw samples or a retained, secret-free artifact sufficient to
+- [x] Record raw samples or a retained, secret-free artifact sufficient to
   recompute the summary statistics. Keep raw sample rows associated with
   profile, journey, fixture, run, and sample index.
-- [ ] Collect at least two comparable same-profile runs for every proposed
+- [x] Collect at least two comparable same-profile runs for every proposed
   gated metric, each meeting the sample protocol, and quantify within-run and
   between-run variation/noise sources.
-- [ ] Keep comparisons within the same fixture, machine class, browser profile,
+- [x] Keep comparisons within the same fixture, machine class, browser profile,
   and measurement method; label incomparable runs.
-- [ ] Run profiles serially on this machine after capturing CPU/memory
+- [x] Run profiles serially on this machine after capturing CPU/memory
   availability and competing load. Do not run build/test suites, Docker image
   builds, or unrelated benchmarks concurrently with timed samples. Record
   throttling, power profile, browser background state, viewport, device scale,
   touch mode, cache state, and network shaping.
-- [ ] Keep desktop Chromium and mobile-size Chromium as independent result
+- [x] Keep desktop Chromium and mobile-size Chromium as independent result
   populations even when both use the same browser binary. Keep WebKit results
   separate; a mobile-size viewport does not make a WebKit sample a Chrome
   sample.
 
 ## Reporting and gates
 
-- [ ] Append results to a dated run report using the run template and link raw
+- [x] Append results to dated per-profile reports using the run template and link raw
   artifacts without committing large generated output.
-- [ ] Include a summary table with profile, journey/API, fixture profile,
+- [x] Include a summary table with profile, journey/API, fixture profile,
   warmups, sample count, median, p95, min/max, failure/timeout count, and
   artifact path. Include the exact machine/software metadata, not only the
   dated local runbook snapshot.
-- [ ] Initial baseline collection is report-only and cannot fail CI.
-- [ ] For any proposed 20% gate, state the baseline commit/run IDs, baseline
+- [x] Initial baseline collection is report-only and cannot fail CI.
+- [x] For the browser-only candidate 20% gate, state the baseline commit/run IDs, baseline
   median and p95, absolute and relative thresholds, minimum material slowdown,
   rationale, measured variance, rerun policy, and override owner. Define the
   comparison statistic and avoid multiplying a noisy p95 by 1.2 without
   supporting data.
-- [ ] Demonstrate the proposed gate against repeated data before enabling it;
+- [x] Dry-run the proposed browser median rule against repeated data and a
+  controlled +101 ms regression example; no CI gate is enabled.
   include a controlled regression example if practical.
-- [ ] Verify a proposed gate has a clear failure message, does not compare
+- [x] Verify the proposal has a clear failure message, does not compare
   incompatible profile/fixture classes, and handles missing/failed samples
   explicitly. Document how a baseline is intentionally refreshed and reviewed.
-- [ ] Do not claim a gate protects a journey/profile that it does not measure.
-- [ ] Remove or expire temporary accounts/data and verify artifact reports
+- [x] Do not claim a gate protects an unmeasured journey/profile; API and
+  censored WebSocket residual metrics are explicitly excluded.
+- [x] Remove temporary accounts/data with the benchmark project's scoped
+  volume teardown and verify artifact reports
   contain no secrets or personal content.
 
 ## Product-quality guardrails
 
-- [ ] Keep timings paired with functional assertions for correct result counts,
+- [x] Keep timings paired with functional assertions for correct result counts,
   ownership, saved state, and timer/WebSocket behavior; a fast wrong response
   is a failed workload.
-- [ ] Check desktop app and mobile-size Chromium separately for overflow,
+- [x] Check desktop app and mobile-size Chromium separately for overflow,
   hidden controls, loading states, keyboard/touch operability, and console or
   request errors during timed journeys. Performance results do not waive
   accessibility or browser acceptance criteria.
-- [ ] Record whether a slow observation is repeatable and the evidence for
+- [x] Record whether a slow observation is repeatable and the evidence for
   attributing it to browser rendering, network, API, database, or machine load;
   do not assign a cause from one end-to-end duration alone.

@@ -5,6 +5,12 @@ struct CalendarFixture: CalendarTransport {
   private let labelID = UUID(uuidString: "00000000-0000-4000-8000-000000000020")!
   private let dayDate = "2026-09-03"
 
+  static let referenceDate: Date = {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = .current
+    return calendar.date(from: DateComponents(year: 2026, month: 9, day: 3, hour: 12))!
+  }()
+
   func labels() async throws -> [KBLabel] {
     if arguments.contains("-calendar-loading") { try await Task.sleep(nanoseconds: 5_000_000_000) }
     if arguments.contains("-calendar-unauthorized") { throw APIError.unauthorized }

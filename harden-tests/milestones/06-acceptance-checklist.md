@@ -13,21 +13,32 @@ checks are not evidence of SwiftUI or simulator behavior.
 - [x] Record current machine boundary: the checked-in runbook/workspace targets
   Linux, and this host has no `xcodebuild` or `xcodegen`. A Linux Swift check is
   not evidence of native SwiftUI or simulator behavior.
-- [ ] Inventory `KnowTests` and `KnowUITests` by screen, API flow, auth state,
+- [x] Inventory `KnowTests` and `KnowUITests` by screen, API flow, auth state,
   shared note conversion, and create/edit/archive/restore behavior. Use the
   coverage matrix below and link every automated row to concrete test names;
-  list missing behavior explicitly.
-- [ ] Mark each flow automated, manual, deferred, or unsupported and link its
+  list missing behavior explicitly in
+  [`06-test-inventory.md`](06-test-inventory.md).
+- [x] Mark each flow automated, manual, deferred, or unsupported and link its
   test or explicit gap; do not infer rendered UI coverage from model tests.
-- [ ] Select a supported macOS/Xcode host and document Xcode, XcodeGen,
+  The source-level behavior disposition is recorded in the inventory; no
+  manual simulator run has been claimed.
+- [x] Select a supported macOS/Xcode host and document Xcode, XcodeGen,
   simulator runtime/device, scheme, test destination, and signing assumptions.
-- [ ] Provide a reproducible command or active CI job that generates the
+  The hosted macOS 26.6.2 / Xcode 26.6, XcodeGen 2.46.0, and iOS 26.5
+  simulator selection are recorded in the
+  [HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
+- [x] Provide a reproducible command or active CI job that generates the
   project, builds the app, and runs the intended unit and UI test sets.
-- [ ] Verify the chosen path on the actual supported host with a clean
+  The full-scheme `xcodebuild test` command is documented in
+  [`06-supported-validation.md`](06-supported-validation.md); its execution is
+  tracked separately below.
+- [x] Verify the chosen path on the actual supported host with a clean
   checkout before proposing any workflow change. Both existing iOS jobs in
   `.github/workflows/verify.yml` are hard-disabled with `if: ${{ false }}`;
-  repository variables cannot enable them.
-- [ ] Keep `check-ios-note-document.sh` identified as Foundation-only Linux
+  repository variables cannot enable them. The full command passed from a clean
+  checkout on the selected hosted Mac; the exact run and artifact are linked in
+  the run report.
+- [x] Keep `check-ios-note-document.sh` identified as Foundation-only Linux
   validation; do not report it as a SwiftUI build or simulator pass.
 
 ### Current evidence map
@@ -38,7 +49,7 @@ Refresh test names and omissions when the source changes.
 | Area | Current source evidence | What that evidence does not establish yet |
 | --- | --- | --- |
 | Authentication/session | [`KnowTests.swift`](../../ios/KnowTests/KnowTests.swift) covers API/session state and recovery; [`KnowUITests.swift`](../../ios/KnowUITests/KnowUITests.swift) includes login controls, registration validation/mode switching, password visibility, and sign-out cases. | Full live backend sign-in/registration or Google consent; every auth state rendered at supported text sizes; complete intended UI suite on an active macOS gate. |
-| Notes/document/line history | `NotesTests.swift` covers rich/plain document conversion, line-history rules, pagination cache, create/archive, conflict retry, pin/reorder contracts. | Native note editor end-to-end save against API, rendered line-history review/edit, relaunch persistence, accessibility and failure states on simulator. |
+| Notes/document/line history | `NotesTests.swift` covers rich/plain document conversion, line-history rules, pagination cache, create/archive, conflict retry, pin/reorder contracts. Backend `NoteVersionIntegrationTest`, `NoteArchiveRetentionIntegrationTest`, and `LineEditsIntegrationTest` verify API persistence through authenticated reads. Notes UI cases use in-memory fixtures. | Native note editor save against API and persistence after navigation/relaunch are not joined in one simulator flow; VoiceOver and broader device/accessibility checks remain open. |
 | Sessions/timer | `SessionsTests.swift` covers model load, start/stop, failures/retry, stale polling, WebSocket snapshot behavior, and local date grouping. | Full native timer UI interaction with real API/WebSocket, reconnection under app background/foreground, and rendered recovery in simulator. |
 | Logs | `LogsTests.swift` covers timestamp parsing, local grouping, create/edit/delete, conflicts, retry, and unauthorized recovery. | Native rendered list/detail/edit flows and persistence across navigation/relaunch on simulator. |
 | Paths | `PathsTests.swift` covers load/create/update, undo/merge transport, offline recovery, history formatting, and unauthorized handling. | Rendered navigation, confirmation/undo behavior, VoiceOver order, and API-backed persistence in simulator. |
@@ -71,33 +82,42 @@ model behavior but cannot satisfy a rendered UI row.
 | Calendar | Month navigation; adjacent days; local timezone/DST; day note/portion; range selection; label assignment; draft retention; cache; concurrent/stale load; empty/failure/retry. | Freeze calendar/timezone/locale and verify both displayed date and API date key on simulator. |
 | Reports | Default/preset/custom ranges; filters; aggregation; empty/dense result; chart/bucket boundaries; load/error/timeout; stale response; theme/contrast; locale formatting. | Validate accessible chart labels/alternatives and rendered controls; model tests alone do not establish chart usability. |
 
-- [ ] Complete every row above with automated/manual/deferred status and
+- [x] Complete every row above with automated/manual/deferred status and
   evidence link; identify untested rows by name.
 - [ ] Verify create/edit/archive/restore persistence after navigation or relaunch
   where the domain supports those operations; distinguish server-backed from
-  in-memory fixture assertions.
+  in-memory fixture assertions. Backend integration tests cover server-backed
+  versioned saves, archive/restore, and line history; the simulator navigation
+  test uses a mutable in-memory fixture. The native API-to-UI persistence and
+  relaunch path remains unverified.
 - [ ] Cover network failure, retry, offline recovery, empty state, server
   validation, conflict, timeout, and unauthorized response with user-visible
   recovery for each relevant screen.
 - [ ] Exercise Dynamic Type at standard and largest accessibility sizes,
   VoiceOver labels/focus order, keyboard input where available, safe-area
   layout, rotation/supported device sizes, and light/dark appearances.
-- [ ] Freeze locale, timezone/calendar, animation, and fixture timing; use
+- [x] Freeze locale, timezone/calendar, animation, and fixture timing; use
   condition-based waits and deterministic in-memory or isolated API fixtures
-  instead of timing sleeps.
-- [ ] Run mobile Chrome web acceptance separately at desktop and phone
+  instead of timing sleeps. UI tests launch with `en_US_POSIX`, English, and
+  `TZ=UTC`; the calendar UI fixture pins its reference date; UI test mode
+  disables SwiftUI animations; async assertions use XCTest waits/predicates.
+- [x] Keep mobile Chrome web acceptance separately at desktop and phone
   profiles; do not count a native iOS simulator result as mobile Chrome
-  coverage.
+  coverage. The evidence categories are separate in the run plan and inventory.
 
 ## Artifacts and privacy
 
-- [ ] Retain `.xcresult` for failures and successful release-gate runs according
+- [x] Retain `.xcresult` for failures and successful release-gate runs according
   to the documented artifact policy.
-- [ ] Capture relevant screenshots and logs on failure with credentials,
+- [x] Capture relevant screenshots and logs on failure with credentials,
   tokens, and personal data removed.
-- [ ] Use isolated disposable simulator accounts/data and document setup and
+- [x] Use isolated disposable simulator accounts/data and document setup and
   cleanup without committing secrets.
-- [ ] Distinguish manual evidence from automated CI in the test map and report
+  Default fixture UI tests require no account; the opt-in API case's disposable
+  account policy and cleanup are documented in
+  [`06-supported-validation.md`](06-supported-validation.md).
+- [x] Distinguish manual evidence from automated CI in the test map and report
   exact host/runtime versions for each result.
-- [ ] Link the complete test inventory and a supported-host run before marking
-  the milestone complete.
+- [x] Link the complete test inventory and a supported-host run before marking
+  the milestone complete. The complete hosted scheme passed; remaining
+  persistence and behavior-matrix gaps are listed above and in the run report.

@@ -59,6 +59,7 @@ struct WorkspaceView: View {
     self._calendar = State(
       initialValue: CalendarModel(
         transport: uiTesting ? CalendarFixture(arguments: arguments) : calendarAPI,
+        now: uiTesting ? CalendarFixture.referenceDate : Date(),
         unauthorized: { [weak app] in app?.signOut() },
         invalidateReports: { [weak app] in Task { await app?.refresh() } }
       ))

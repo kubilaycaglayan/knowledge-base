@@ -57,9 +57,17 @@ see the [acceptance checklist](milestones/04-acceptance-checklist.md) and
 
 ### Performance
 
-- [ ] Measure fixed-data startup, search, board paging, Gantt, reports, note save, timer, and WebSocket journeys and their API requests with explicit boundaries and raw samples.
-- [ ] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture current machine load and runtime/image metadata for every run.
-- [ ] Keep initial baselines report-only. Consider a 20% gate only after comparable repeated batches establish variance and a documented absolute floor, refresh, rerun, and override policy.
+- [x] Measure fixed-data startup, search, board paging, Gantt, reports, note save, timer, and WebSocket journeys and their API requests with explicit boundaries and raw samples.
+- [x] Keep desktop Chromium, mobile-size Chromium emulation, and iPhone WebKit in separate result populations; capture machine load and runtime/image metadata in each run record.
+- [x] Keep initial baselines report-only. A browser median gate proposal includes repeated-run variance, an absolute floor, refresh, rerun, and override policy; no CI gate is active.
+
+The report-only API and browser samplers, deterministic sparse/dense fixture
+generator, and per-run performance report fields are in place. The browser
+report includes engine/version, Playwright version, user agent, viewport, touch,
+and device scale. Collectors capture browser-observed and request durations
+separately; they do not measure server-only latency. HARD-05 is complete with
+report-only measurements and no active CI gate. See [HARD-05](milestones/05-performance-baselines.md) and the
+[acceptance checklist](milestones/05-acceptance-checklist.md).
 
 See [HARD-05](milestones/05-performance-baselines.md) for fixture sizes,
 journeys, environment fields, and gate promotion criteria.
@@ -78,6 +86,18 @@ journeys, environment fields, and gate promotion criteria.
 See [HARD-06](milestones/06-ios-validation.md) for a supported automated or
 manual simulator validation path. Until that work is completed, disabled
 workflow jobs must not be counted as active iOS CI coverage.
+
+The documented full-scheme command was executed from a clean checkout on a
+GitHub-hosted macOS runner on 2026-10-09. The corrected full scheme passed 128
+unit tests and 66 UI tests with one opt-in live API test skipped; its `.xcresult`
+is retained in the [HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md).
+This is run evidence, not an active CI gate, and the historical iOS jobs remain
+disabled. Server-persistence and manual device/accessibility acceptance gaps
+remain documented in HARD-06.
+The Foundation-only Linux portability check passed all seven `NoteDocTests`;
+its result is recorded separately in the
+[Linux run report](runs/2026-10-09-hard06-linux-note-document.md) and does not
+change the native simulator status.
 
 ## Acceptance
 
