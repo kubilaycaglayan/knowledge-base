@@ -16,11 +16,14 @@ report-only measurements; thresholds require repeatable evidence.
   touch-enabled `iphone` profile; the latter is Chromium emulation when paired
   with Chromium, not physical Android Chrome. Keep emulated iPhone WebKit in a
   separate comparison group.
-- [ ] Before collecting values, refresh local machine resource/version
+- [x] Before collecting values, refresh local machine resource/version
   metadata from [`local-browser-validation.md`](../local-browser-validation.md)
   and record the measurement commit, fixture revision, and active Compose
-  project. The checked-in machine snapshot is dated evidence, not a current
-  measurement environment guarantee.
+  project. The current preflight is recorded in
+  [`2026-10-09-hard05-environment-preflight.md`](../runs/2026-10-09-hard05-environment-preflight.md).
+  The active development stack was consuming CPU, so this was recorded as a
+  preflight only and no timed samples were collected. The checked-in machine
+  snapshot is dated evidence, not a current measurement environment guarantee.
 
 ## Workload contract
 

@@ -1,7 +1,7 @@
 # HARD-05: Fixed-data performance baselines
 
 **Priority:** Medium  
-**Status:** Planned  
+**Status:** In progress
 **Scope:** Measurement and test infrastructure documentation only.
 
 Track completion in the [HARD-05 acceptance checklist](05-acceptance-checklist.md).
@@ -15,7 +15,7 @@ reproducible, then establishes report-only measurements.
 
 ## Tasks
 
-- [ ] Implement or document the workload boundaries in the
+- [x] Implement or document the workload boundaries in the
   [acceptance checklist](05-acceptance-checklist.md): startup, exact and fuzzy
   search, first/next board page, Gantt range, reports, note save, timer
   start/stop, and second-page WebSocket receipt. Record the observed method and
@@ -40,10 +40,12 @@ reproducible, then establishes report-only measurements.
   duration. Define monotonic clock and start/end events; retain traces/network
   data sufficient to identify request wait versus render wait without claiming
   end-to-end time is server latency.
-- [ ] Add a report-only collection path and extend the per-run report template
+- [x] Add a report-only API collection path and extend the per-run report template
   in `harden-tests/runs/README.md` with environment metadata, fixture profile,
   workload boundaries, sampling method, summary table, artifact links, and
-  comparison class. Keep initial measurements non-gating.
+  comparison class. Keep initial measurements non-gating. The API collector is
+  [`performance-api-baseline.mjs`](../../frontend/scripts/performance-api-baseline.mjs);
+  it does not measure browser rendering or perform fixture setup.
 - [ ] Run profiles serially on the current machine, capture host/Docker CPU and
   memory availability and competing load, and repeat at least two comparable
   batches per candidate metric. Estimate both within-run and between-run

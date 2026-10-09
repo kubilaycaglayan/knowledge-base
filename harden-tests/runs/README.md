@@ -65,9 +65,25 @@ emulation and must not be labeled as a physical Android Chrome run.
 - Warm/cold cache and network shaping:
 - Warmups / measured samples / outlier policy:
 - Machine load and relevant resource limits:
+- API timing definition: monotonic request start through response body download;
+  state whether connection setup is included and do not call it server latency.
+- Browser timing definition: navigation/action start through the semantic UI
+  completion signal; retain trace/network data to separate request wait and
+  render wait.
+- Outlier policy (preserve raw values; any exclusion needs an observable cause):
 
 | Journey/API | Fixture | Warmups | Samples | Median | p95 | Min/max | Failed/timeouts | Raw data |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
+
+The report-only API sampler is [`frontend/scripts/performance-api-baseline.mjs`](../../frontend/scripts/performance-api-baseline.mjs).
+Use a private manifest copied from
+[`performance-api.manifest.example.json`](../performance-api.manifest.example.json)
+and set `API_BASE_URL` to an isolated local stack. The sampler includes response
+body download, does not isolate connection setup, and does not measure browser
+rendering or server-only time. It is not evidence for a browser journey unless
+paired with browser timing and functional assertions. Raw output should be
+written under an ignored artifact directory and reviewed for secrets before
+sharing.
 
 ## Baseline comparison
 
