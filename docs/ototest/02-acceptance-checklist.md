@@ -167,9 +167,9 @@ browser interaction evidence remains a separate layer.
   path/activity/time-entry association.
 - [x] `POST /api/v1/notes` covers rich-text content and server-derived
   `contentText` behavior.
-- [ ] `PUT /api/v1/notes/{id}` covers successful update and persisted document
+- [x] `PUT /api/v1/notes/{id}` covers successful update and persisted document
   fields.
-- [ ] `PUT /api/v1/notes/{id}` covers optimistic version success and stale
+- [x] `PUT /api/v1/notes/{id}` covers optimistic version success and stale
   version conflict behavior.
 - [ ] `PUT /api/v1/notes/{id}` covers ownership of every referenced path,
   activity, time entry, and label ID.
