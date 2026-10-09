@@ -2,7 +2,7 @@
 
 **Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline)
 **Source review:** `frontend/src/main.ts`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`, 2026-10-09
-**Inventory reviewer:** Codex source review; maintainer review outstanding.
+**Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Evidence command:** `cd frontend && npm test` (Vitest); browser suites use their named npm scripts. Tests were not run during this inventory milestone.
 
 “Component” means a Vue/Vitest assertion; it does not prove browser history, real API persistence, or visual layout. Rows marked gap have no assertion located for the stated route behavior. All unresolved route gaps are owned by Knowledge Base maintainers. `/development` is temporary tooling and excluded from supported route completeness.

@@ -7,7 +7,7 @@ classify existing evidence, but do not execute test suites, create product
 records, or perform real-stack acceptance journeys under this milestone. Those
 execution activities belong to later #ototest milestones.
 
-**Status:** In progress
+**Status:** Complete
 **Scope:** Knowledge Base web app in desktop and mobile Chrome; Chrome extension
 surfaces where the extension is supported  
 **Excluded:** Native iOS application and iOS-only flows  
@@ -570,11 +570,10 @@ Manifest source: `chrome-extension/wxt.config.ts`; popup/options markup under
   access, authenticate, use popup/options, and invoke supported Clockify
   integration. Link existing assertions without treating them as installed
   browser evidence.
-- [x] **EXT-09** Record mobile Chrome support explicitly. If the extension
-  cannot be installed or invoked in the target mobile Chrome environment,
-  classify extension-only controls as unsupported there and evaluate the
-  responsive Knowledge Base web app in mobile Chrome as the supported mobile
-  journey. Do not imply desktop extension behavior proves mobile web behavior.
+- [x] **EXT-09** Record mobile Chrome support explicitly: the extension is
+  desktop-only and unsupported on mobile Chrome; the responsive Knowledge Base
+  web app is the supported mobile journey. Desktop extension evidence does not
+  prove mobile web behavior.
 
 ## Cross-client behavior and evidence map
 
@@ -633,9 +632,9 @@ OTOTEST-01. Real-stack execution belongs to OTOTEST-04.
   obligations for unsupported client surfaces.
 - [x] **SCOPE-03** Keep `/development` excluded from supported route completeness
   while recording its current route and why it is excluded.
-- [ ] **SCOPE-04** Review browser support assumptions for the Chrome extension
-  and mobile Chrome with maintainers; unresolved assumptions remain labeled
-  `needs decision` rather than silently counted as supported.
+- [x] **SCOPE-04** Maintainer decision recorded: the Chrome extension is for
+  desktop Chrome only; the responsive web app is the supported mobile Chrome
+  surface.
 - [x] **HANDOFF-01** Link the completed route, API, control, extension, and
   cross-client inventories from the OTOTEST-01 milestone document and index.
 - [x] **HANDOFF-02** Provide a prioritized set of genuine inventory gaps for

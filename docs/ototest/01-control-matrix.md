@@ -2,7 +2,7 @@
 
 **Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline).
 **Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-09.
-**Inventory reviewer:** Codex source review; maintainer review outstanding.
+**Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Test command:** `cd frontend && npm test` (Vitest); browser suites are individual `frontend/package.json` scripts. Not executed during this documentation-only milestone.
 
 Test source directories: [web component tests](../../frontend/src/), [web browser acceptance scripts](../../frontend/scripts/), and [shared workflow definitions](../../.github/workflows/verify.yml).

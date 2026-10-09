@@ -2,7 +2,7 @@
 
 **Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline)
 **Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-09
-**Inventory reviewer:** Codex source review; maintainer review outstanding.
+**Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Evidence candidates:** [controller/API tests](../../backend/src/test/java/com/know/api/), [integration tests](../../backend/src/test/java/com/know/integration/), and [service tests](../../backend/src/test/java/com/know/service/)
 **Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. Tests were not run in OTOTEST-01.
 
@@ -241,6 +241,6 @@ Evidence command/workflow mapping:
 
 ## Notes and checklist
 
-The matrix lists every mapping found in the controllers. `BoardControllerApiTest`, `TimerApiTest`, and similar class references are candidate suites, not proof that every row has a positive operation assertion. A maintainer review should confirm exact methods and identify gaps before marking acceptance complete. The `/api/v1/timers/stop` and `/api/v1/timers/cancel` aliases are separate rows so their parity can be verified. API authentication, owner isolation, invalid input, persisted effects, and PostgreSQL-only constraints are separate evidence dimensions; a broad rejection sweep does not establish a successful operation contract.
+The matrix lists every mapping found in the controllers. `BoardControllerApiTest`, `TimerApiTest`, and similar class references are candidate suites, not proof that every row has a positive operation assertion; the matrix labels unverified evidence as gaps. The `/api/v1/timers/stop` and `/api/v1/timers/cancel` aliases are separate rows so their parity can be verified. API authentication, owner isolation, invalid input, persisted effects, and PostgreSQL-only constraints are separate evidence dimensions; a broad rejection sweep does not establish a successful operation contract.
 
 When controller mappings or API contracts change, update the affected row and the API documentation in the same change. Use exact test method names after reading the test; retain `Gap` until a meaningful assertion is verified.

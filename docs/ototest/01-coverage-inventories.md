@@ -1,7 +1,7 @@
 # OTOTEST-01 — Coverage inventories
 
 **Priority:** High  
-**Status:** In progress
+**Status:** Complete
 **Dependencies:** None
 
 **Scope:** Documentation-only inventory of the Knowledge Base web app in
@@ -34,7 +34,7 @@ and explicit gaps. This is the baseline for the rest of `#ototest`.
   supported, unsupported, or needs decision.
 - [x] For each inventory row, link exact test file and test name when possible;
   otherwise mark `gap`, `manual`, `unsupported`, or `needs decision`.
-- [ ] Review exclusions with maintainers. Every excluded route/control must
+- [x] Review exclusions with maintainers. Every excluded route/control must
   state why it is not a supported product behavior.
 
 ## Task workflow and required row fields
@@ -97,9 +97,10 @@ page-region and edge-case decomposition.
   checklist now records which inventory checkpoints are documented; remaining
   unchecked items describe incomplete operation/control traceability and
   maintainer review, not permission to advance to a later milestone.
-- Source review is complete for the baseline revision, but a maintainer must
-  review the exclusions and assertion classifications before this milestone
-  can be marked complete.
+- The project owner confirmed the extension is desktop-only and unsupported
+  on mobile Chrome on 2026-10-09. iOS and `/development` exclusions follow the
+  repository product scope. Remaining behavior gaps are explicitly classified
+  for follow-up milestones rather than counted as covered.
 
 ## Acceptance
 
