@@ -295,6 +295,31 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresPathCreateRollsBackWhenDefaultBoardStatusSeedingFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    UUID userId = subject(token);
+    String trigger = failOnInsertTrigger("board_statuses");
+    try {
+      ApiClient.Reply failed =
+          api.post("/api/v1/paths", token, "{\"name\":\"Rollback seeded path\"}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("board_statuses", trigger);
+    }
+
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from path where user_id = ? and name = ?",
+            Long.class,
+            userId,
+            "Rollback seeded path"));
+  }
+
+  @Test
   void postgresCreateOperationsRollBackParentsWhenAssociationWritesFail() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
