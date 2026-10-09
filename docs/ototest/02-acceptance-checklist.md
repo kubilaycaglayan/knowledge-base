@@ -242,8 +242,8 @@ browser interaction evidence remains a separate layer.
   `resumeRequiresAPausedSession`, and `finishEndsAPausedSession`).
 - [x] Resume after a selected path becomes inactive covers validation and
   preservation of the paused draft (`TimerPauseIntegrationTest.resumeRequiresAPausedSession`).
-- [ ] `POST /api/v1/time-entries` covers manual entry creation and valid
-  duration/time boundaries.
+- [x] `POST /api/v1/time-entries` covers manual entry creation, persisted
+  duration/time, and missing/reversed interval validation.
 - [ ] `GET /api/v1/time-entries` covers owner-scoped ordering and list filters.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [ ] `PUT /api/v1/time-entries/{id}` covers completed-entry editing and
