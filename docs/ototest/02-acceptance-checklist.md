@@ -340,8 +340,10 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/{id}/cards/{cardId}` covers owned detail plus missing,
   foreign, and wrong-board card IDs
   (`BoardCardDetailIntegrationTest.cardDetailReturnsOwnedCardAndHidesMissingOrMisnestedCards`).
-- [ ] `PUT /api/v1/boards/{id}/cards/{cardId}` covers update, referenced-ID
-  ownership, and stale `expectedUpdatedAt` conflict behavior.
+- [x] `PUT /api/v1/boards/{id}/cards/{cardId}` covers persisted scalar and
+  owned-reference updates, foreign reference rejection, and stale
+  `expectedUpdatedAt` conflict behavior
+  (`BoardCardUpdateIntegrationTest` and `BoardControllerApiTest`).
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/move` covers position updates,
   target status ownership, and rejection of archived targets.
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
