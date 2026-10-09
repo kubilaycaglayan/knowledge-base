@@ -129,7 +129,7 @@ browser interaction evidence remains a separate layer.
   has no optimistic version field.
 - [x] `DELETE /api/v1/paths/{id}` covers the documented delete/archive effect
   and subsequent read behavior.
-- [ ] `POST /api/v1/paths/{id}/merge` covers source/target ownership, invalid
+- [x] `POST /api/v1/paths/{id}/merge` covers source/target ownership, invalid
   or same-target requests, and the resulting record reassignment.
 - [x] `POST /api/v1/paths/{id}/restore` covers restoration and a subsequent
   read of the active state.
