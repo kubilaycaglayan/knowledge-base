@@ -298,7 +298,9 @@ browser interaction evidence remains a separate layer.
   (`BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`).
 - [x] `PUT /api/v1/boards/{id}` covers persisted custom-board rename and the
   path-board conflict (`BoardRenameIntegrationTest.customBoardRenamePersistsAndPathBoardRenameConflicts`).
-- [ ] `POST /api/v1/boards/{id}/archive` covers archive state and restrictions.
+- [x] `POST /api/v1/boards/{id}/archive` covers response/detail state, archived
+  and active list visibility, repeated archive idempotence, and mutation
+  restrictions (`KnowIntegrationTest.archivedBoardsAreRetainedReadOnlyAndArchiveRestoreIsIdempotent`).
 - [ ] `POST /api/v1/boards/{id}/restore` covers restored state.
 - [ ] `GET /api/v1/boards/{id}/statuses` covers board-owned ordered status
   results.
