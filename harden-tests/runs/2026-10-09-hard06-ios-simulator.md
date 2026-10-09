@@ -70,11 +70,19 @@ until a focused rerun on the supported simulator demonstrates the fix.
 | Paths merge button | The XCTest log confirms the editor opened and the test queried `paths.merge`, but the available log excerpt does not capture the form's accessibility hierarchy. The control is in the form's final section, making visibility/scrolling one possibility, not a confirmed cause. | Capture the failure hierarchy or inspect the retained `.xcresult`; verify scrolling and then the merge confirmation/undo flow. |
 | Session label ordering | The XCTest log confirms both compared chips had `minY == 424.0`. The source lays out the chips horizontally, so comparing their vertical positions cannot establish the intended selected-first order. | Compare horizontal order (`minX`) and selected-first behavior, then rerun the picker case. |
 
-The seven UI failures have not been repaired in this documentation-only
-milestone. The follow-up must preserve accessibility checks and distinguish
-test-query mistakes from native behavior defects. Do not change the disabled
-workflow until a full supported-host run passes with the documented signing
-configuration.
+The focused run at commit `588c1cc` then exercised all seven failure cases on
+the same hosted Mac and iPhone 17 Pro / iOS 26.5 destination. Six passed after
+test-harness changes: the three calendar cases, Notes line history, Paths
+merge/undo, and the session-label ordering case. The Labels accessibility case
+still failed: its diagnostic showed `labels.scope.note=Notes, =`, with the
+Calendar switch lacking both identifier and label despite the first attempted
+accessibility modifier. See [focused run 37899618008](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37899618008).
+
+A follow-up label construction change is in commit `22d222a`, and a second
+focused run is in progress at the time of this report update. Until that run
+completes, the Calendar switch defect is unresolved. Do not change the
+disabled workflow until the focused cases and a clean full-scheme run pass
+with the documented signing configuration.
 
 ## Keychain signing diagnostic
 
