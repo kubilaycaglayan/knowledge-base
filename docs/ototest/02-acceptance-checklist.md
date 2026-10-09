@@ -362,8 +362,10 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/archive` covers response/detail
   state, archived vs active list visibility, and preserved relationships
   (`KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
-- [ ] `POST /api/v1/boards/{id}/cards/{cardId}/restore` covers restoration
-  from an active status and fallback placement if its status is archived.
+- [x] `POST /api/v1/boards/{id}/cards/{cardId}/restore` covers active-status
+  restoration, fallback to an active status after the prior status is archived,
+  and persisted visibility/placement (`BoardCardRestoreIntegrationTest` and
+  `KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
 - [ ] `GET /api/v1/boards/{id}/gantt` covers date-range validation,
   inclusive-overlap behavior, and active-status filtering.
 - [ ] `GET /api/v1/boards/all/columns` covers merged column names and ordering.
