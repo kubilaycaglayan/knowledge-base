@@ -33,6 +33,9 @@ for attempt in {1..90}; do
   sleep 2
 done
 
+AUTH_RATE_LIMIT_JWT_SECRET="$JWT_SECRET" node scripts/check-auth-rate-limit-proxy.mjs "http://localhost:${port}"
+AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop npm run test:auth:rate-limit:e2e --prefix frontend
+AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone npm run test:auth:rate-limit:e2e --prefix frontend
 node scripts/check-timer-websocket.mjs "http://localhost:${port}" --round-trip
 mkdir -p "$artifact_dir"
 printf 'Commit: %s\nBrowser engine: %s\nBrowser profile: %s\n' "$(git rev-parse HEAD)" "${BROWSER_ENGINE:-chromium}" "${BROWSER_PROFILE:-default}" > "$artifact_dir/run-metadata.txt"

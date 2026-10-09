@@ -10,18 +10,17 @@ This directory is the working index for test coverage, planned gaps, and durable
 | Web | `web-and-extension` job runs `npm ci`, `npm test`, and build | `scripts/test-run-all.sh` also invokes tracker/board/nav fixture suites | Vue components, stores, API client, and views; fixture coverage is distinct from real-stack browser coverage. |
 | Browser acceptance | Timer WebSocket and line-history real-stack suites run in dedicated CI jobs | Board/nav/tracker and selectable desktop/mobile/WebKit profiles are available locally; HARD-01 search/deep-link acceptance passes in three local profiles and runs in `scripts/test-run-all.sh` | HARD-01 is complete at `1978af6`. The profiles are emulated and do not establish physical-device behavior. See separate [run records](runs/README.md). |
 | Extension | `web-and-extension` job runs extension tests/build and permission checks | Local extension `npm test` | Manifest V3 client and timer behavior. |
-| Contracts | Accessibility/security/cleanup checks run in `web-and-extension` | Local `scripts/test-run-all.sh`; image-prune check is also run there | Accessibility, security, and scoped cleanup invariants; static checks do not prove live edge policy. |
+| Contracts | Accessibility/security/Cloudflare route-contract/cleanup checks run in `web-and-extension` | Local `scripts/test-run-all.sh`; image-prune check is also run there | Accessibility, security, semantic Terraform route contracts, and scoped cleanup invariants; repository checks do not prove live edge policy. |
 | Deployment smoke | `smoke` job runs full-stack and backup/restore smoke | `scripts/run-smoke-tests.sh` supports narrower local flags | Deployed-shaped HTTP/HTTPS, database, timer, and backup/restore checks. |
 | iOS | None active; both historical workflow jobs are hard-disabled | macOS/Xcode/XcodeGen simulator validation is platform-limited; Linux note conversion check is Foundation-only | Do not claim SwiftUI/simulator coverage from Linux checks. |
 
-The open work is split into seven milestones: real-stack search/deep links,
-browser failure-state coverage and flake triage, PostgreSQL/time/volume behavior,
-HTTP and edge rate-limit verification, performance baselines, a supported iOS
-validation path, and run-evidence/plan hygiene. The milestone files define
-tasks and acceptance evidence; they do not indicate that implementation has
-already been completed. Existing global-search API and fixture coverage is
-tracked in `docs/global-search-acceptance-checklist.md`; HARD-01 adds the
-missing cross-profile real-stack evidence.
+The roadmap has seven milestones: real-stack search and deep links, browser
+failure-state coverage and flake triage, PostgreSQL/time/volume behavior, HTTP
+and edge rate-limit verification, performance baselines, a supported iOS
+validation path, and run-evidence/plan hygiene. The milestone index tracks
+their status and links each checklist. Existing global-search API and fixture
+coverage is tracked in `docs/global-search-acceptance-checklist.md`; HARD-01
+adds the missing cross-profile real-stack evidence.
 
 The real-stack runners select engine and viewport independently. Use
 `BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop` for desktop Chromium,

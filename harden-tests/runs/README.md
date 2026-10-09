@@ -9,6 +9,16 @@ Never commit secrets or personal data. See the [local browser validation
 runbook](../local-browser-validation.md) for exact engine/profile combinations
 and machine preflight commands.
 
+## HARD-04 authentication rate-limit profile runs
+
+- [HARD-04 verification summary](2026-10-09-hard04-rate-limits.md)
+- [Desktop Chromium](2026-10-09-ffe0d32-desktop-chromium-auth-rate-limit.md)
+- [Mobile-size Chromium](2026-10-09-ffe0d32-mobile-chromium-auth-rate-limit.md)
+
+Both reports use the same isolated PostgreSQL/Caddy/Tomcat stack. They are
+separate browser-profile outcomes; mobile Chromium is emulation, not physical
+Android-device evidence.
+
 ## Required report template
 
 ```markdown
