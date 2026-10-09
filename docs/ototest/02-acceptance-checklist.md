@@ -320,8 +320,10 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
   missing, and foreign status IDs, with saved order preserved after rejected
   requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`).
-- [ ] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
-  active cards and preventing removal of the final active status.
+- [x] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
+  active cards after existing destination cards, persisted archive state, and
+  preventing removal of the final active status
+  (`BoardStatusArchiveIntegrationTest`).
 - [ ] `POST /api/v1/boards/{id}/statuses/{statusId}/restore` covers restored
   status state.
 - [ ] `GET /api/v1/boards/{id}/cards` covers status, archive, and default
