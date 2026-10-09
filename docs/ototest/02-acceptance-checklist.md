@@ -183,7 +183,7 @@ browser interaction evidence remains a separate layer.
   ordering.
 - [x] `PUT /api/v1/notes/order` covers complete owned-note ordering and
   invalid or foreign note IDs.
-- [ ] Note line-history behavior covers unchanged lines, changed lines,
+- [x] Note line-history behavior covers unchanged lines, changed lines,
   first-edit migration behavior, and the documented large-document limit.
 
 ## Flow: Cover Logs and Activity operations

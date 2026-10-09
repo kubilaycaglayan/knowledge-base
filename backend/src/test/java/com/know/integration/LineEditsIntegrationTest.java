@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,5 +106,28 @@ class LineEditsIntegrationTest extends IntegrationTestSupport {
     api.created("POST", "/api/v1/notes", token, "{\"title\":\"Listed\",\"content\":\"" + doc("A") + "\"}");
     JsonNode page = api.get("/api/v1/notes?page=0&size=20", token).json();
     assertTrue(page.get("items").get(0).get("lineEdits").isNull());
+  }
+
+  @Test
+  void noteWithMoreThanTenThousandLinesDoesNotReturnLineTimes() throws Exception {
+    String token = api.register();
+    String text = String.join("\n", Collections.nCopies(10_001, "Line"));
+    String document =
+        "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":"
+            + ApiClient.MAPPER.writeValueAsString(text)
+            + "}]}]}";
+    JsonNode created =
+        api.created(
+            "POST",
+            "/api/v1/notes",
+            token,
+            "{\"title\":\"Long document\",\"content\":"
+                + ApiClient.MAPPER.writeValueAsString(document)
+                + "}");
+
+    assertTrue(created.get("lineEdits").isNull());
+    JsonNode persisted = api.get("/api/v1/notes/" + created.get("id").asText(), token).json();
+    assertEquals(document, persisted.get("content").asText());
+    assertTrue(persisted.get("lineEdits").isNull());
   }
 }
