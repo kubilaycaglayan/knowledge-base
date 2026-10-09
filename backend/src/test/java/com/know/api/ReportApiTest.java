@@ -61,6 +61,29 @@ class ReportApiTest {
   }
 
   @Test
+  void customDateRangeAcceptsEverySupportedAggregation() throws Exception {
+    UUID user = UUID.randomUUID();
+    var from = java.time.LocalDate.of(2026, 1, 1);
+    var to = java.time.LocalDate.of(2026, 12, 31);
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+
+    for (ReportService.Aggregation aggregation : ReportService.Aggregation.values()) {
+      when(service.report(user, from, to, aggregation))
+          .thenReturn(
+              new ReportService.Report(
+                  "CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
+      mvc.perform(
+              get("/api/v1/reports")
+                  .param("startDate", from.toString())
+                  .param("endDate", to.toString())
+                  .param("aggregation", aggregation.name().toLowerCase())
+                  .with(authentication(auth)))
+          .andExpect(status().isOk());
+      verify(service).report(user, from, to, aggregation);
+    }
+  }
+
+  @Test
   void pathAndLabelFiltersReachTheOwnedServiceTogether() throws Exception {
     UUID user = UUID.randomUUID();
     UUID pathId = UUID.randomUUID();

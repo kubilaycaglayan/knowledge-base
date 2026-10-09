@@ -12,6 +12,22 @@ import org.junit.jupiter.api.Test;
 
 class ReportServiceTest {
   @Test
+  void customReportPreservesEverySupportedSankeyAggregation() {
+    TimeEntryRepository entries = mock(TimeEntryRepository.class);
+    when(entries.findOverlappingByUserId(any(), any(), any())).thenReturn(List.of());
+    ReportService service =
+        new ReportService(entries, mock(PathRepository.class), mock(LabelRepository.class));
+    UUID user = UUID.randomUUID();
+    LocalDate from = LocalDate.of(2024, 1, 1);
+    LocalDate to = LocalDate.of(2024, 12, 31);
+
+    for (ReportService.Aggregation aggregation : ReportService.Aggregation.values()) {
+      ReportService.Report report = service.report(user, from, to, aggregation);
+      assertEquals(aggregation.name(), report.sankey().granularity(), aggregation.name());
+    }
+  }
+
+  @Test
   void reportUsesTheRequestedOwnerForPathsLabelsAndCalendarData() {
     TimeEntryRepository entries = mock(TimeEntryRepository.class);
     PathRepository paths = mock(PathRepository.class);

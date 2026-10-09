@@ -443,8 +443,12 @@ browser interaction evidence remains a separate layer.
   (`KnowIntegrationTest.customReportReturnsEachCalendarRangeDayForChartAndLogConsumers`,
   `KnowIntegrationTest.customReportAcceptsTheTwoYearMaximumWindowIncludingBothEndpoints`,
   and `ReportApiTest.customRangeAllowsTwoYearsButRejectsAnythingLonger`).
-- [ ] `GET /api/v1/reports` covers every supported aggregation interval and
-  path/label filter composition.
+- [x] `GET /api/v1/reports` covers all five supported aggregation intervals
+  and OR-within/AND-between path and label filter composition
+  (`ReportApiTest.customDateRangeAcceptsEverySupportedAggregation`,
+  `ReportServiceTest.customReportPreservesEverySupportedSankeyAggregation`,
+  `ReportApiTest.pathAndLabelFiltersReachTheOwnedServiceTogether`, and
+  `ReportServiceTest.labelFilterCombinesWithPathFilterAndKeepsOnlyMatchingEntries`).
 - [ ] Report assertions verify totals and category aggregation arithmetic,
   including timezone/calendar boundary behavior.
 - [ ] `GET /api/v1/search` covers each supported record type and type filter.
