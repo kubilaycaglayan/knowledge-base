@@ -5,7 +5,7 @@
 **Inventory reviewer:** Codex source review; maintainer review outstanding.
 **Evidence command:** `cd frontend && npm test` (Vitest); browser suites use their named npm scripts. Tests were not run during this inventory milestone.
 
-“Component” means a Vue/Vitest assertion; it does not prove browser history, real API persistence, or visual layout. Rows marked gap have no assertion located for the stated route behavior. `/development` is temporary tooling and excluded from supported route completeness.
+“Component” means a Vue/Vitest assertion; it does not prove browser history, real API persistence, or visual layout. Rows marked gap have no assertion located for the stated route behavior. All unresolved route gaps are owned by Knowledge Base maintainers. `/development` is temporary tooling and excluded from supported route completeness.
 
 | Route / state | Source | Existing evidence | Evidence class | Gap / next evidence |
 | --- | --- | --- | --- | --- |

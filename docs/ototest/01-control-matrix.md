@@ -5,7 +5,7 @@
 **Inventory reviewer:** Codex source review; maintainer review outstanding.
 **Test command:** `cd frontend && npm test` (Vitest); browser suites are individual `frontend/package.json` scripts. Not executed during this documentation-only milestone.
 
-The matrix records meaningful action families rather than counting rendered controls as covered. Each family points to its source page/component and best located test. Any assertion about an exact action is a candidate until the named test body is checked; test-file presence by itself is not evidence. Keyboard/touch rows remain gaps unless the behavior has a specific assertion.
+The matrix records meaningful action families rather than counting rendered controls as covered. Each family points to its source page/component and best located test. Any assertion about an exact action is a candidate until the named test body is checked; test-file presence by itself is not evidence. Keyboard/touch rows remain gaps unless the behavior has a specific assertion. Unresolved action gaps are owned by Knowledge Base maintainers.
 
 | Surface / source | User action and expected result | Feedback and recovery state | Evidence candidate | Current classification / missing evidence |
 | --- | --- | --- | --- | --- |
