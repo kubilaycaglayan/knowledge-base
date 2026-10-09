@@ -227,7 +227,9 @@ browser interaction evidence remains a separate layer.
   recording tracked time.
 - [x] `POST /api/v1/timers/{id}/cancel` covers the explicit-ID alias and its
   parity with canonical cancel behavior.
-- [ ] Stop behavior covers the under-two-second discard boundary.
+- [x] Stop behavior covers the under-two-second discard boundary
+  (`TimerServiceEdgeTest.stoppingATimerUnderTwoSecondsDiscardsItInsteadOfSavingASession`;
+  exactly two seconds is covered by `stoppingATimerAtTwoSecondsPersistsTheSession`).
 - [ ] `POST /api/v1/timers/pause` covers pause state and accumulated duration.
 - [ ] `POST /api/v1/timers/resume` covers resumed segments and carried
   duration.
