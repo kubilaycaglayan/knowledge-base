@@ -369,7 +369,10 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/{id}/gantt` covers window validation, active dated,
   undated, and out-of-window cards per API behavior, plus archived-status
   filtering (`KnowIntegrationTest` and `BoardControllerApiTest`).
-- [ ] `GET /api/v1/boards/all/columns` covers merged column names and ordering.
+- [x] `GET /api/v1/boards/all/columns` covers merged names/order, user tab
+  scope, hidden/archived/foreign exclusions, and empty/authenticated behavior
+  (`AllBoardsIntegrationTest.columnsMergeByNameInTabOrder` and
+  `columnsCoverOnlyTheUsersTabBoards`).
 - [ ] `GET /api/v1/boards/all/columns/cards/page` covers merged-column cursor
   paging and boundary validation.
 - [ ] `PUT /api/v1/boards/all/columns/sort` covers sort changes across the
