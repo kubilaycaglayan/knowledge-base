@@ -350,8 +350,10 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
   or creating the target column, persisted status/position, and foreign board
   protection (`AllBoardsIntegrationTest.moveToColumnCreatesAMissingColumn`).
-- [ ] `POST /api/v1/boards/{id}/cards/in-column` covers card creation in an
-  existing or newly created column.
+- [x] `POST /api/v1/boards/{id}/cards/in-column` covers card creation in an
+  existing or newly created column, response metadata, persisted placement,
+  and invalid/foreign requests
+  (`AllBoardsIntegrationTest.createInColumnCreatesAMissingColumn`).
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/transfer` covers source and
   destination board ownership and persisted transfer.
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/archive` covers archived state
