@@ -403,6 +403,12 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals("Algorithms Updated", updated.getBody().get("name").asText());
     assertEquals("#EF4444", updated.getBody().get("color").asText());
     assertEquals("#102030", updated.getBody().get("textColor").asText());
+    ResponseEntity<JsonNode> reloaded = get("/api/v1/paths/" + pathId, token);
+    assertEquals(HttpStatus.OK, reloaded.getStatusCode());
+    assertEquals("Algorithms Updated", reloaded.getBody().get("name").asText());
+    assertEquals("Updated desc", reloaded.getBody().get("description").asText());
+    assertEquals("#EF4444", reloaded.getBody().get("color").asText());
+    assertEquals("#102030", reloaded.getBody().get("textColor").asText());
 
     // List includes path
     ResponseEntity<JsonNode> list = get("/api/v1/paths", token);

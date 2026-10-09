@@ -124,8 +124,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/paths/{id}/summary` covers aggregation values across
   adjacent persisted intervals and elapsed running time. The endpoint has no
   date range inputs.
-- [ ] `PUT /api/v1/paths/{id}` covers successful update, invalid values, and
-  stale/conflicting state where applicable.
+- [x] `PUT /api/v1/paths/{id}` covers successful persisted update and invalid
+  color values; stale/conflicting state is not applicable because this request
+  has no optimistic version field.
 - [ ] `DELETE /api/v1/paths/{id}` covers the documented delete/archive effect
   and subsequent read behavior.
 - [ ] `POST /api/v1/paths/{id}/merge` covers source/target ownership, invalid
