@@ -16,7 +16,7 @@ the repository's bug-fix workflow.
 | [HARD-04](04-rate-limits-and-security.md) | HTTP rate limits and deployed security controls | High | Complete |
 | [HARD-05](05-performance-baselines.md) | Fixed-data performance baselines | Medium | Complete |
 | [HARD-06](06-ios-validation.md) | A usable iOS validation path | Medium | Closed by decision (iOS app not currently in use; acceptance incomplete) |
-| [HARD-07](07-run-evidence-and-plan-hygiene.md) | Durable run evidence and plan consistency | Medium | In progress |
+| [HARD-07](07-run-evidence-and-plan-hygiene.md) | Durable run evidence and plan consistency | Medium | Complete |
 
 Each milestone has a dedicated, auditable acceptance checklist:
 

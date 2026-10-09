@@ -23,7 +23,7 @@ each milestone document, and its acceptance checklist.
 | HARD-04 — Rate limits and security | Complete |
 | HARD-05 — Performance baselines | Complete |
 | HARD-06 — iOS validation | Closed by decision (iOS app not currently in use; acceptance incomplete) |
-| HARD-07 — Run evidence and plan hygiene | In progress |
+| HARD-07 — Run evidence and plan hygiene | Complete |
 
 ### Durable inventory and run records
 

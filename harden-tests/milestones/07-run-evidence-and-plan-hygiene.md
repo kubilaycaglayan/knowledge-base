@@ -1,7 +1,7 @@
 # HARD-07: Durable run evidence and plan consistency
 
 **Priority:** Medium  
-**Status:** In progress
+**Status:** Complete
 **Scope:** Documentation and test-run evidence only.
 
 Track completion in the [HARD-07 acceptance checklist](07-acceptance-checklist.md).
@@ -58,6 +58,17 @@ mistake their scope and completion status.
 - CI, opt-in, manual, and disabled checks are distinguishable in the inventory.
 - Run records and artifacts contain no credentials, tokens, personal data, or
   protected production configuration.
+
+## Completion evidence
+
+The reconciled run index, updated report template, profile classification, and
+time-bound HARD-07 preflight are recorded under `harden-tests/runs/`. The
+required CI workflow passed on commit `a8bc6a3`; see the
+[HARD-07 CI report](../runs/2026-10-09-hard07-ci.md). The conditional failure
+artifact-upload path is configured but was not exercised because both browser
+jobs passed. Historical report gaps and the remaining broad browser-journey
+coverage task remain explicitly documented and are not represented as
+completed.
 
 ## Relevant sources
 

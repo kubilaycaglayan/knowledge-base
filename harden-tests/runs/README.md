@@ -31,6 +31,7 @@ Android-device evidence.
 ## HARD-07 environment audit
 
 - [2026-10-09 environment preflight (not a test or performance run)](2026-10-09-hard07-environment-preflight.md)
+- [Required CI verification](2026-10-09-hard07-ci.md)
 
 ## Required report template
 

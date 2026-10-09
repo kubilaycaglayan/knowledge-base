@@ -1,6 +1,6 @@
 # HARD-07 acceptance checklist: run evidence and plan hygiene
 
-**Status:** In progress
+**Status:** Complete
 
 Use this checklist with [HARD-07](07-run-evidence-and-plan-hygiene.md). A
 checkbox is complete only when the report or repository artifact exists.
