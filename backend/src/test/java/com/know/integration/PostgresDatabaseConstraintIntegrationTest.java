@@ -432,6 +432,70 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void postgresCardTransferRollsBackTargetStatusWhenCardMoveFails() throws Exception {
+    Assumptions.assumeTrue(
+        System.getenv("KB_TEST_POSTGRES_URL") != null,
+        "Transaction rollback contract requires PostgreSQL");
+    String token = api.register();
+    String sourceBoardId =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Transfer source\"}")
+            .get("id")
+            .asText();
+    String targetBoardId =
+        api.created("POST", "/api/v1/boards", token, "{\"name\":\"Transfer target\"}")
+            .get("id")
+            .asText();
+    String sourceStatusId =
+        api.created(
+                "POST",
+                "/api/v1/boards/" + sourceBoardId + "/statuses",
+                token,
+                "{\"name\":\"Source only status\"}")
+            .get("id")
+            .asText();
+    String cardId =
+        api.created(
+                "POST",
+                "/api/v1/boards/" + sourceBoardId + "/cards",
+                token,
+                "{\"title\":\"Transfer rollback card\",\"statusId\":\""
+                    + sourceStatusId
+                    + "\"}")
+            .get("id")
+            .asText();
+    String trigger = failOnUpdateTrigger("board_cards");
+    try {
+      ApiClient.Reply failed =
+          api.post(
+              "/api/v1/boards/" + sourceBoardId + "/cards/" + cardId + "/transfer",
+              token,
+              "{\"boardId\":\"" + targetBoardId + "\"}");
+      assertEquals(500, failed.status(), failed.body());
+    } finally {
+      dropInsertTrigger("board_cards", trigger);
+    }
+    assertEquals(
+        0L,
+        jdbc.queryForObject(
+            "select count(*) from board_statuses where board_id = ? and name = ?",
+            Long.class,
+            UUID.fromString(targetBoardId),
+            "Source only status"));
+    assertEquals(
+        UUID.fromString(sourceBoardId),
+        jdbc.queryForObject(
+            "select board_id from board_cards where id = ?",
+            UUID.class,
+            UUID.fromString(cardId)));
+    assertEquals(
+        UUID.fromString(sourceStatusId),
+        jdbc.queryForObject(
+            "select status_id from board_cards where id = ?",
+            UUID.class,
+            UUID.fromString(cardId)));
+  }
+
+  @Test
   void postgresCreateOperationsRollBackParentsWhenAssociationWritesFail() throws Exception {
     Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
@@ -881,6 +945,24 @@ class PostgresDatabaseConstraintIntegrationTest extends IntegrationTestSupport {
         "create trigger "
             + functionName
             + " before delete on "
+            + tableName
+            + " for each row execute function "
+            + functionName
+            + "()");
+    return functionName;
+  }
+
+  private String failOnUpdateTrigger(String tableName) {
+    String suffix = UUID.randomUUID().toString().replace("-", "");
+    String functionName = "fail_update_" + suffix;
+    jdbc.execute(
+        "create function "
+            + functionName
+            + "() returns trigger language plpgsql as $$ begin raise exception 'forced update failure'; end $$");
+    jdbc.execute(
+        "create trigger "
+            + functionName
+            + " before update on "
             + tableName
             + " for each row execute function "
             + functionName
