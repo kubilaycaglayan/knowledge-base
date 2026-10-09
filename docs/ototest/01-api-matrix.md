@@ -202,7 +202,7 @@ before API-02 can be accepted.
 
 | Endpoint | Handler and first-message contract | Exact test evidence | Behavior asserted |
 |---|---|---|---|
-| WebSocket `/ws/timers` | `TimerWebSocketConfig` → `TimerWebSocketHandler`; first text message authenticates with `{"type":"AUTH","token":"…"}` | `KnowIntegrationTest.timerWebSocketReceivesCommittedStateForTheAuthenticatedUser`; `timerWebSocketPingsAuthenticatedClientsOftenEnoughForIdleProxies`; `timerWebSocketClosesAnInvalidAuthenticationWithPolicyViolation` | Valid auth receives `READY`; committed timer start/stop events publish `TIMER_STATE`; heartbeat interval is at most 60 seconds and a ping does not interrupt subsequent state delivery; invalid token closes with policy violation |
+| WebSocket `/ws/timers` | `TimerWebSocketConfig` → `TimerWebSocketHandler`; first text message authenticates with `{"type":"AUTH","token":"…"}` | `KnowIntegrationTest.timerWebSocketReceivesCommittedStateForTheAuthenticatedUser`; `timerWebSocketPingsAuthenticatedClientsOftenEnoughForIdleProxies`; `timerWebSocketClosesAnInvalidAuthenticationWithPolicyViolation`; `TimerWebSocketAuthIntegrationTest.malformedMissingAndWrongTypeFirstMessagesAreRejected` | Valid AUTH receives `READY`; committed timer start/stop events publish `TIMER_STATE`; heartbeat interval is at most 60 seconds and a ping does not interrupt subsequent state delivery; malformed, missing-token, wrong-type, and invalid-token first messages close with policy violation |
 
 ## Client operation map and evidence commands
 

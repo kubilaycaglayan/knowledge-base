@@ -38,6 +38,8 @@ public class TimerWebSocketHandler extends TextWebSocketHandler {
     if (authenticatedUsers.containsKey(session.getId())) return;
     try {
       AuthMessage auth = mapper.readValue(message.getPayload(), AuthMessage.class);
+      if (!"AUTH".equals(auth.type()) || auth.token() == null || auth.token().isBlank())
+        throw new IllegalArgumentException("First timer WebSocket message must be AUTH");
       UUID userId = tokens.userId(auth.token());
       authenticatedUsers.put(session.getId(), userId);
       sessions
