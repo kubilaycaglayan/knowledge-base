@@ -1546,6 +1546,42 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void labelCatalogIsOwnerScopedForUnfilteredAndScopeFilteredLists() {
+    String owner = freshToken();
+    String other = freshToken();
+    String noteLabelId =
+        post("/api/v1/labels", owner, "{\"name\":\"Owner note\",\"scopes\":[\"NOTE\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    String timerLabelId =
+        post(
+                "/api/v1/labels",
+                owner,
+                "{\"name\":\"Owner timer\",\"scopes\":[\"TIME_ENTRY\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+    String foreignLabelId =
+        post("/api/v1/labels", other, "{\"name\":\"Foreign note\",\"scopes\":[\"NOTE\"]}")
+            .getBody()
+            .get("id")
+            .asText();
+
+    JsonNode allOwnerLabels = get("/api/v1/labels", owner).getBody();
+    assertTrue(allOwnerLabels.findValuesAsText("id").contains(noteLabelId));
+    assertTrue(allOwnerLabels.findValuesAsText("id").contains(timerLabelId));
+    assertFalse(allOwnerLabels.findValuesAsText("id").contains(foreignLabelId));
+    assertEquals(
+        List.of(noteLabelId),
+        get("/api/v1/labels?scope=NOTE", owner).getBody().findValuesAsText("id"));
+    assertEquals(
+        List.of(timerLabelId),
+        get("/api/v1/labels?scope=TIME_ENTRY", owner).getBody().findValuesAsText("id"));
+    assertTrue(get("/api/v1/labels?scope=NOTE", other).getBody().findValuesAsText("id").contains(foreignLabelId));
+  }
+
+  @Test
   void manualTimeEntryIsCreated() {
     String token = freshToken();
     String start = Instant.now().minus(2, ChronoUnit.HOURS).toString();
