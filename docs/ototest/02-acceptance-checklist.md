@@ -359,8 +359,9 @@ browser interaction evidence remains a separate layer.
   foreign/archived board rejection
   (`AllBoardsIntegrationTest.transferMovesACardToAnotherBoard` and
   `transferRejectsForeignAndArchivedBoards`).
-- [ ] `POST /api/v1/boards/{id}/cards/{cardId}/archive` covers archived state
-  and list visibility.
+- [x] `POST /api/v1/boards/{id}/cards/{cardId}/archive` covers response/detail
+  state, archived vs active list visibility, and preserved relationships
+  (`KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
 - [ ] `POST /api/v1/boards/{id}/cards/{cardId}/restore` covers restoration
   from an active status and fallback placement if its status is archived.
 - [ ] `GET /api/v1/boards/{id}/gantt` covers date-range validation,

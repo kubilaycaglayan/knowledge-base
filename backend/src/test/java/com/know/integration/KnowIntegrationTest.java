@@ -235,13 +235,17 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(pathId, archived.getBody().get("pathIds").get(0).asText());
     assertEquals(labelId, archived.getBody().get("labelIds").get(0).asText());
 
-    assertEquals(1, get("/api/v1/boards/" + boardId + "/cards?archived=true", token).getBody().size());
+    assertTrue(get("/api/v1/boards/" + boardId + "/cards?archived=true", token).getBody().findValuesAsText("id").contains(cardId));
+    assertFalse(get("/api/v1/boards/" + boardId + "/cards", token).getBody().findValuesAsText("id").contains(cardId));
+    assertTrue(get("/api/v1/boards/" + boardId + "/cards/" + cardId, token).getBody().get("archived").asBoolean());
 
     ResponseEntity<JsonNode> restored =
         post("/api/v1/boards/" + boardId + "/cards/" + cardId + "/restore", token, null);
     assertEquals(HttpStatus.OK, restored.getStatusCode());
     assertFalse(restored.getBody().get("archived").asBoolean());
     assertEquals(pathId, restored.getBody().get("pathIds").get(0).asText());
+    assertTrue(get("/api/v1/boards/" + boardId + "/cards", token).getBody().findValuesAsText("id").contains(cardId));
+    assertFalse(get("/api/v1/boards/" + boardId + "/cards?archived=true", token).getBody().findValuesAsText("id").contains(cardId));
   }
 
   @Test
