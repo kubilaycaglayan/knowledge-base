@@ -2637,6 +2637,43 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void calendarLabelDeleteRemovesUnusedLabelsAndPreservesLabelsReferencedByDays() {
+    String owner = freshToken();
+    String other = freshToken();
+    String unusedId =
+        post("/api/v1/calendar/labels", owner, "{\"name\":\"Unused\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    String usedId =
+        post("/api/v1/calendar/labels", owner, "{\"name\":\"Historical\"}")
+            .getBody()
+            .get("id")
+            .asText();
+    put(
+        "/api/v1/calendar/days/2026-09-13",
+        owner,
+        "{\"labels\":[{\"labelId\":\"" + usedId + "\"}]}");
+
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        delete("/api/v1/calendar/labels/" + unusedId, other).getStatusCode());
+    assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/calendar/labels/" + unusedId, owner).getStatusCode());
+    assertEquals(
+        HttpStatus.CONFLICT, delete("/api/v1/calendar/labels/" + usedId, owner).getStatusCode());
+
+    List<String> remainingIds =
+        get("/api/v1/calendar/labels", owner).getBody().findValuesAsText("id");
+    assertFalse(remainingIds.contains(unusedId));
+    assertTrue(remainingIds.contains(usedId));
+    JsonNode savedDay =
+        get("/api/v1/calendar/days?startDate=2026-09-13&endDate=2026-09-13", owner)
+            .getBody()
+            .get(0);
+    assertEquals(usedId, savedDay.get("labels").get(0).get("labelId").asText());
+  }
+
+  @Test
   void logsAreOwnedTimestampedAndOptimisticallyEditable() {
     String owner = freshToken();
     String other = freshToken();

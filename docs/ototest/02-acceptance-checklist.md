@@ -407,8 +407,10 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/calendar/labels/{id}` covers owner-only updates, response
   and list readback, day-assignment propagation, and invalid palette colors
   (`KnowIntegrationTest.calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords`).
-- [ ] `DELETE /api/v1/calendar/labels/{id}` covers deletion restrictions for
-  labels referenced by historical calendar records.
+- [x] `DELETE /api/v1/calendar/labels/{id}` covers successful unused-label
+  deletion, owner scoping, rejection for a label referenced by a historical
+  day, and retained day assignment
+  (`KnowIntegrationTest.calendarLabelDeleteRemovesUnusedLabelsAndPreservesLabelsReferencedByDays`).
 - [ ] `GET /api/v1/calendar/days` covers date-range validation and inclusive
   endpoints.
 - [ ] `PUT /api/v1/calendar/days/{date}` covers replacement semantics for one
