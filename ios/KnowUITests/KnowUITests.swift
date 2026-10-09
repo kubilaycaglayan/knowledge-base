@@ -986,8 +986,15 @@ final class KnowUITests: XCTestCase {
     XCTAssertTrue(app.textFields["labels.name"].waitForExistence(timeout: 3))
     XCTAssertTrue(app.buttons["Add label"].exists)
     XCTAssertTrue(app.staticTexts["Don’t show in"].exists)
-    XCTAssertTrue(app.switches["Notes"].exists)
-    XCTAssertTrue(app.switches["Calendar"].value as? String == "1")
+    let notesScope = app.switches.matching(
+      NSPredicate(format: "label == %@", "Notes")
+    ).firstMatch
+    XCTAssertTrue(notesScope.exists)
+    let calendarScope = app.switches.matching(
+      NSPredicate(format: "label == %@", "Calendar")
+    ).firstMatch
+    XCTAssertTrue(calendarScope.exists)
+    XCTAssertEqual(calendarScope.value as? String, "1")
     app.buttons["Cancel"].firstMatch.tap()
   }
 
