@@ -25,17 +25,60 @@ class NoteVersionIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
-  void consecutiveSavesWithTheReturnedVersionSucceed() {
+  void consecutiveSavesPersistDocumentFieldsAndRejectAStaleVersion() throws Exception {
     String token = api.register();
-    JsonNode created = api.created("POST", "/api/v1/notes", token, "{\"title\":\"Draft\",\"content\":\"one\"}");
+    JsonNode created =
+        api.created(
+            "POST",
+            "/api/v1/notes",
+            token,
+            "{\"title\":\"Draft\",\"content\":\"one\",\"contentText\":\"one\"}");
     String id = created.get("id").asText();
 
-    ApiClient.Reply first = api.put("/api/v1/notes/" + id, token, "{\"title\":\"Draft\",\"content\":\"two\",\"version\":" + created.get("version") + "}");
+    String document =
+        "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Updated body\"}]}]}";
+    ApiClient.Reply first =
+        api.put(
+            "/api/v1/notes/" + id,
+            token,
+            "{\"title\":\"Updated title\",\"content\":"
+                + ApiClient.MAPPER.writeValueAsString(document)
+                + ",\"contentText\":\"stale projection\",\"tags\":[\"Updated tag\"],\"version\":"
+                + created.get("version")
+                + "}");
     assertEquals(200, first.status(), first.toString());
-    assertEquals(api.get("/api/v1/notes/" + id, token).json().get("version"), first.json().get("version"));
+    assertEquals("Updated title", first.json().get("title").asText());
+    assertEquals(document, first.json().get("content").asText());
+    assertEquals("Updated body", first.json().get("contentText").asText());
+    assertEquals("Updated tag", first.json().get("tags").get(0).asText());
+    assertEquals(created.get("version").asLong() + 1, first.json().get("version").asLong());
+    JsonNode persisted = api.get("/api/v1/notes/" + id, token).json();
+    assertEquals(first.json().get("title"), persisted.get("title"));
+    assertEquals(first.json().get("content"), persisted.get("content"));
+    assertEquals(first.json().get("contentText"), persisted.get("contentText"));
+    assertEquals(first.json().get("tags"), persisted.get("tags"));
+    assertEquals(first.json().get("version"), persisted.get("version"));
 
-    ApiClient.Reply second = api.put("/api/v1/notes/" + id, token, "{\"title\":\"Draft\",\"content\":\"three\",\"version\":" + first.json().get("version") + "}");
+    ApiClient.Reply second =
+        api.put(
+            "/api/v1/notes/" + id,
+            token,
+            "{\"title\":\"Final title\",\"content\":\"three\",\"version\":"
+                + first.json().get("version")
+                + "}");
     assertEquals(200, second.status(), second.toString());
+    ApiClient.Reply stale =
+        api.put(
+            "/api/v1/notes/" + id,
+            token,
+            "{\"title\":\"Stale title\",\"content\":\"stale body\",\"version\":"
+                + created.get("version")
+                + "}");
+    assertEquals(409, stale.status(), stale.toString());
+    JsonNode afterStale = api.get("/api/v1/notes/" + id, token).json();
+    assertEquals("Final title", afterStale.get("title").asText());
+    assertEquals("three", afterStale.get("content").asText());
+    assertEquals(second.json().get("version"), afterStale.get("version"));
   }
 
   @Test
