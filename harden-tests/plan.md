@@ -83,9 +83,13 @@ journeys, environment fields, and gate promotion criteria.
 - [x] Retain native iOS source and both workflow job definitions, but use unconditional `if: ${{ false }}` so repository variables cannot enable them.
 - [x] Remove variable-based enablement instructions. Keep historical iOS docs and source available.
 
-See [HARD-06](milestones/06-ios-validation.md) for a supported automated or
-manual simulator validation path. Until that work is completed, disabled
-workflow jobs must not be counted as active iOS CI coverage.
+HARD-06 is closed because the iOS application is not currently in use; do not
+resume its remaining work unless the user explicitly reopens it. The documented
+simulator run is evidence, not an active CI gate, and disabled workflow jobs
+must not be counted as active iOS CI coverage. Native
+server-persistence/relaunch and manual device/accessibility gaps remain known
+and intentionally unaddressed; see
+[HARD-06](milestones/06-ios-validation.md).
 
 The documented full-scheme command was executed from a clean checkout on a
 GitHub-hosted macOS runner on 2026-10-09. The corrected full scheme passed 128
@@ -93,7 +97,8 @@ unit tests and 66 UI tests with one opt-in live API test skipped; its `.xcresult
 is retained in the [HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md).
 This is run evidence, not an active CI gate, and the historical iOS jobs remain
 disabled. Server-persistence and manual device/accessibility acceptance gaps
-remain documented in HARD-06.
+remain documented in the closed HARD-06 milestone and are not planned for work
+unless the user explicitly reopens it.
 The Foundation-only Linux portability check passed all seven `NoteDocTests`;
 its result is recorded separately in the
 [Linux run report](runs/2026-10-09-hard06-linux-note-document.md) and does not

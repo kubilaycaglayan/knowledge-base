@@ -1,8 +1,15 @@
 # HARD-06: A usable iOS validation path
 
 **Priority:** Medium  
-**Status:** In progress
+**Status:** Closed by decision (work not planned; acceptance incomplete)
 **Scope:** Validation workflow planning and documentation only.
+
+> Future agents: the iOS application is not currently in use, so iOS test
+> hardening is out of scope. Do not continue implementation, validation, or
+> checklist work for HARD-06 unless the user explicitly reopens it. This
+> closure is a scope decision, not evidence that outstanding native iOS
+> validation gaps are resolved. Preserve the existing run reports as
+> historical evidence.
 
 Track completion in the [HARD-06 acceptance checklist](06-acceptance-checklist.md).
 
@@ -73,9 +80,10 @@ The complete `Know` scheme now passes on the documented clean-checkout hosted
 Mac (128 unit tests passed; 66 UI tests passed; one opt-in live API test
 skipped). The seven initial UI failures passed after focused test-harness
 corrections and in the full rerun; no product accessibility defect was
-reproduced. The milestone remains in progress while the acceptance checklist's
+reproduced. The milestone is closed by decision, while the acceptance checklist's
 server-persistence/relaunch and manual device/accessibility evidence remains
-open. See the [HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
+open. Do not pursue those gaps unless the user explicitly reopens HARD-06. See
+the [HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
 
 ## Relevant sources
 

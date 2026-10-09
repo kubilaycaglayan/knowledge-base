@@ -22,6 +22,11 @@ their status and links each checklist. Existing global-search API and fixture
 coverage is tracked in `docs/global-search-acceptance-checklist.md`; HARD-01
 adds the missing cross-profile real-stack evidence.
 
+HARD-06 is closed because the iOS application is not currently in use, with
+acceptance gaps intentionally unresolved. Agents must not work on its remaining
+checklist unless the user explicitly reopens the milestone. Its existing
+validation reports remain historical evidence, not an active iOS CI gate.
+
 HARD-05's deterministic fixture profiles and report-only API/browser
 collectors are documented in [`performance-fixtures.md`](performance-fixtures.md).
 Two repeated report-only profiles are recorded for desktop Chromium,
