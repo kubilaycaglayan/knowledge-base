@@ -23,12 +23,14 @@ reproducible, then establishes report-only measurements.
   `GET /api/v1/search`, `GET /api/v1/reports`,
   `GET /api/v1/boards/{id}/cards/page`,
   `GET /api/v1/boards/{id}/gantt`, and timer endpoints under `/api/v1/timers`.
-- [ ] Specify a versioned deterministic fixture generator and sparse/dense
+- [x] Specify and implement a versioned deterministic fixture generator and sparse/dense
   fixture profiles with explicit counts for paths, notes, sessions, boards,
   statuses, cards, labels, search terms, and text lengths. Include expected
   result counts, at least one board beyond the 20-card UI page boundary, date
   distribution, exact/near-match search content, setup/count validation, and
   scoped cleanup instructions. Keep all generated accounts/data disposable.
+  See [`performance-fixtures.md`](../performance-fixtures.md) and
+  [`seed-performance-fixture.mjs`](../../frontend/scripts/seed-performance-fixture.mjs).
 - [ ] Capture client and server environment: commit, image digests, browser and
   Playwright versions, viewport/profile, CPU/memory limits, Node/JDK/PostgreSQL
   versions, network conditions, and warm/cold cache state.
