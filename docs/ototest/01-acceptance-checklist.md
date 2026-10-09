@@ -503,7 +503,7 @@ OTOTEST-01 because it defines the server behavior behind the client journeys.
 - [x] **API-01** Include each composed controller and method mapping as a
   distinct HTTP verb + full path row. Preserve aliases as separate rows when
   verb, route shape, request/response, or behavior differs.
-- [ ] **API-02** For each row, record controller/method, path/query/body
+- [x] **API-02** For each row, record controller/method, path/query/body
   inputs, response shape/status, authentication requirement, ownership-scoped
   identifiers, and persisted or externally visible effect.
 - [x] **API-03** Map authentication and account operations, including password
