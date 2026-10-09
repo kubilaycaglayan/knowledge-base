@@ -1,7 +1,7 @@
 # OTOTEST-01 — Web route evidence matrix
 
-**Source revision:** branch baseline `origin/main` at 2026-10-09  
-**Source review:** `frontend/src/main.ts`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`  
+**Source revision:** branch baseline `origin/main` at 2026-10-09
+**Source review:** `frontend/src/main.ts`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`
 **Evidence command:** `cd frontend && npm test -- --run` (Vitest); browser suites use their named npm scripts. Tests were not run during this inventory milestone.
 
 “Component” means a Vue/Vitest assertion; it does not prove browser history, real API persistence, or visual layout. Rows marked gap have no assertion located for the stated route behavior. `/development` is temporary tooling and excluded from supported route completeness.
