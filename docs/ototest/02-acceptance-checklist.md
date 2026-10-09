@@ -279,7 +279,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards` covers active, archived, include-hidden, and
   owner-scoped list behavior
   (`BoardListIntegrationTest.boardListDefaultsToVisibleActiveAndSupportsArchivedAndHiddenLists`).
-- [ ] `POST /api/v1/boards` covers custom board creation.
+- [x] `POST /api/v1/boards` covers custom board creation, trimmed response and
+  readback, and the four ordered default statuses
+  (`BoardCreationIntegrationTest.creatingCustomBoardReturnsAndPersistsBoardWithDefaultStatuses`).
 - [ ] `PUT /api/v1/boards/order` covers complete board ordering and invalid
   board IDs.
 - [ ] `POST /api/v1/boards/{id}/visibility` covers visibility changes.
