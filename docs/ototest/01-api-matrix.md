@@ -21,6 +21,72 @@ per row where verified; otherwise that contract assertion remains a gap. This
 is the source for the per-operation response contract, not a claim that the
 tests assert every response field.
 
+The method-to-response-shape inventory below makes the declared body type
+explicit for each method. Aliases share their controller method and response
+contract; paths remain separate in the main table. `void` denotes an empty
+body. Unless marked otherwise, the success status is `200`.
+
+| Controller methods | Declared response body / success status |
+|---|---|
+| `AuthController.googleConfig` | `GoogleConfig` / 200 |
+| `AuthController.register`, `.login`, `.google` | `AuthResponse` / 200 |
+| `AuthController.account`, `.setPassword` | `AccountView` / 200 |
+| `PathController.list` | `List<PathResponse>` / 200 |
+| `PathController.create` | `PathResponse` / 201 (`ResponseEntity`) |
+| `PathController.get`, `.update`, `.pin` | `PathResponse` / 200 |
+| `PathController.summary` | `PathSummary` / 200 |
+| `PathController.delete`, `.merge`, `.restore`, `.order` | empty / 200 |
+| `LabelController.list`, `.update` | `List<LabelManagementService.View>` for list; `LabelManagementService.View` for update / 200 |
+| `LabelController.create` | `LabelManagementService.View` / 201 (`@ResponseStatus`) |
+| `LabelController.history`, `.records` | `LabelHistoryService.History`, `LabelHistoryService.Records` / 200 |
+| `LabelController.delete` | empty / 204 (`@ResponseStatus`) |
+| `LogController.list` | `List<LogService.LogView>` / 200 |
+| `LogController.get`, `.update`, `.setLabels` | `LogService.LogView` / 200 |
+| `LogController.create` | `LogService.LogView` / 201 (`@ResponseStatus`) |
+| `LogController.delete` | empty / 204 (`@ResponseStatus`) |
+| `NoteController.list` | `Object` (page response when page/size is supplied; legacy list otherwise) / 200 |
+| `NoteController.labels` | `List<KnowledgeService.TagView>` / 200 |
+| `NoteController.get`, `.pin`, `.create`, `.update` | `KnowledgeService.NoteView` / 200 |
+| `NoteController.order`, `.archive`, `.restore` | empty / 204 (`@ResponseStatus`) |
+| `ActivityController.list` | `List<Activity>` / 200 |
+| `ReportController.report` | `ReportService.Report` / 200 |
+| `SearchController.search` | `SearchService.Response` / 200 |
+| `PreferencesController.get`, `.update` | `UserPreferencesService.View` / 200 |
+| `TimerController.current` | `TimerService.TimeView` or `null` / 200 |
+| `TimerController.draft`, `.saveDraft`, `.pause`, `.finish` | `TimerService.DraftView` / 200 |
+| `TimerController.start`, `.resume` | `TimerService.TimeView` / 201 (`ResponseEntity`) |
+| `TimerController.configure`, `.stop`, `.manual`, `.get`, `.edit` | `TimerService.TimeView` / 200 |
+| `TimerController.cancel`, `.remove` | empty / 204 (`@ResponseStatus`) |
+| `TimerController.history` | page response when `page`/`size` supplied; otherwise legacy list / 200 |
+| `TimerController.statistics` | `TimerService.Statistics` / 200 |
+| `CalendarController.labels`, `.days`, `.replaceRange` | corresponding `List<CalendarService.LabelView>` or `List<CalendarService.DayView>` / 200 |
+| `CalendarController.createLabel` | `CalendarService.LabelView` / 201 (`@ResponseStatus`) |
+| `CalendarController.updateLabel` | `CalendarService.LabelView` / 200 |
+| `CalendarController.replaceDay` | `CalendarService.DayView` / 200 |
+| `CalendarController.deleteLabel`, `.deleteDay` | empty / 204 (`@ResponseStatus`) |
+| `ImportController.clockify` | `ClockifyImportService.ImportSummary` / 200 |
+| `ImportController.batches` | `List<ClockifyImportService.ImportBatchView>` / 200 |
+| `ImportController.undo` | `ClockifyImportService.UndoSummary` / 200 |
+| `KnowledgeBaseTransferController.export` | `byte[]`, `text/csv; charset=UTF-8`, attachment filename / 200 |
+| `KnowledgeBaseTransferController.importCsv` | `KnowledgeBaseTransferService.ImportSummary` / 200 |
+| `KnowledgeBaseTransferController.batches` | `List<KnowledgeBaseTransferService.BatchView>` / 200 |
+| `KnowledgeBaseTransferController.undo` | `KnowledgeBaseTransferService.UndoSummary` / 200 |
+| `BoardController.list`, `.statusList`, `.reorderStatuses`, `.cardList`, `.gantt` | `List<BoardView>`, `List<StatusView>`, `List<StatusView>`, `List<CardView>`, `List<CardView>` respectively / 200 |
+| `BoardController.create`, `.createStatus`, `.createCard`, `.createCardInColumn` | `BoardView`, `StatusView`, `CardView`, `PlacedCardView` respectively / 201 (`@ResponseStatus`) |
+| `BoardController.order`, `.archiveStatus` | empty / 204 for `.order` (`@ResponseStatus`), 200 for `.archiveStatus` |
+| `BoardController.visibility`, `.pin`, `.get`, `.update`, `.archive`, `.restore`, `.updateStatus`, `.sortStatus`, `.restoreStatus`, `.getCard`, `.updateCard`, `.moveCard`, `.archiveCard`, `.restoreCard` | `BoardView`, `BoardView`, `BoardView`, `BoardView`, `BoardView`, `BoardView`, `StatusView`, `StatusView`, `StatusView`, `CardView`, `CardView`, `CardView`, `CardView`, `CardView` respectively / 200 |
+| `BoardController.cardPage` | `CardPage` / 200 |
+| `BoardController.moveCardToColumn`, `.transferCard` | `PlacedCardView` / 200 |
+| `AllBoardsController.columns` | `List<ColumnView>` / 200 |
+| `AllBoardsController.columnPage` | `BoardController.CardPage` / 200 |
+| `AllBoardsController.sortColumn` | `ColumnSortView` / 200 |
+| `AllBoardsController.gantt` | `List<CardView>` / 200 |
+
+Input binding names and request types remain in each operation row where
+present; the named controller method is linked to its source class directory
+above. Rows with generic input notes still need a field-by-field binding audit
+before API-02 can be accepted.
+
 | Verb + composed path | Controller method / inputs | Candidate evidence / current classification | State and important edges to map |
 | --- | --- | --- | --- |
 | GET `/api/v1/auth/google/config` | `AuthController.googleConfig`; none; public | `AuthControllerApiTest.googleConfigReturnsThePublicClientId` | Client ID config |
