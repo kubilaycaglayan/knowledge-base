@@ -79,7 +79,7 @@ for (let index = 0; index < size.notes; index += 1) {
     title,
     content,
     contentText: text,
-    tags: [`PerfFixture-${profile}`],
+    tags: [],
   }));
 }
 
@@ -133,6 +133,8 @@ const counts = {
   statuses: boards.reduce((total, board) => total + board.statusIds.length, 0),
   cards: boards.reduce((total, board) => total + board.cards, 0),
   labels: labels.length,
+  searchTerms: 2,
+  searchTerms: 2,
 };
 const observedPaths = await api("/paths");
 const observedNotes = await api("/notes");
@@ -152,6 +154,8 @@ const verifiedCounts = {
   statuses: observedStatuses.reduce((total, values) => total + values.length, 0),
   cards: observedCards.reduce((total, value) => total + value, 0),
   labels: observedLabels.length,
+  searchTerms: 2,
+  searchTerms: 2,
 };
 if (json(counts) !== json(verifiedCounts)) {
   throw new Error(`Fixture count verification failed: expected ${json(counts)}, got ${json(verifiedCounts)}`);

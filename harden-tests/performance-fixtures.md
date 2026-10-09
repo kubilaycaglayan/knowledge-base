@@ -6,10 +6,10 @@ an isolated local PostgreSQL Compose project and emits a private fixture file
 under ignored `harden-tests/local-artifacts/`. The generator's content and
 dates are deterministic; account email and IDs are unique per run.
 
-| Profile | Paths | Notes | Sessions | Custom boards | Statuses / custom board | Cards / custom board | Labels |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| sparse | 3 | 12 | 20 | 1 | 4 | 48 | 4 |
-| dense | 12 | 120 | 200 | 2 | 5 | 120 | 12 |
+| Profile | Paths | Notes | Sessions | Custom boards | Statuses / custom board | Cards / custom board | Labels | Search terms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| sparse | 3 | 12 | 20 | 1 | 4 | 48 | 4 | 2 |
+| dense | 12 | 120 | 200 | 2 | 5 | 120 | 12 | 2 |
 
 Each path also creates its normal path board and default status set. Custom
 boards put more than one 20-card UI page in their first status. Card dates span
@@ -51,6 +51,31 @@ PERFORMANCE_OUTPUT=harden-tests/local-artifacts/performance/<run-id>/api-samples
 node frontend/scripts/performance-api-baseline.mjs harden-tests/local-artifacts/performance/<run-id>/api-manifest.json
 ```
 
+Use the browser runner separately for browser-observed journeys and API request
+timings collected during those journeys:
+
+```bash
+API_BASE_URL=http://localhost:<isolated-proxy-port> \
+BROWSER_ENGINE=chromium BROWSER_PROFILE=desktop \
+PERFORMANCE_WARMUPS=3 PERFORMANCE_SAMPLES=30 \
+PERFORMANCE_RUN_ID=<run-id>-desktop \
+PERFORMANCE_OUTPUT=harden-tests/local-artifacts/performance/<run-id>/desktop-browser.json \
+node frontend/scripts/performance-browser-baseline.mjs harden-tests/local-artifacts/performance/<run-id>/fixture.json
+```
+
+Run again serially with `BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone` for
+mobile-size Chromium, and separately with `BROWSER_ENGINE=webkit
+BROWSER_PROFILE=iphone` for the WebKit comparison group. The browser runner
+measures cold startup and same-context warm reload, exact/fuzzy search,
+first/next board pages, Gantt, reports, note autosave, timer start/stop, and
+second-page WebSocket receipt. It records
+the note editor's observed autosave behavior because it has no explicit Save
+button. Failures retain a trace and screenshot beside the JSON report; inspect
+these artifacts for credentials before sharing. The reports distinguish
+setup requests from timed requests, retain browser Resource Timing entries and
+request duration/status/bytes, and record the WebSocket path and received frame
+types for the second-page delivery sample.
+
 Use independent fixture/run IDs for desktop and mobile-size Chromium, and do
 not run timed samples concurrently. Both generated files must remain private;
 never commit them. Once all profile runs and artifacts are complete, remove
@@ -59,7 +84,7 @@ project with the exact project-scoped Compose `down --volumes --remove-orphans`
 command documented in the run template. Never use global cleanup or target a
 protected persistent volume.
 
-The generator currently verifies setup counts, search results, and pagination.
-It does not create a browser trace, time UI rendering, or measure timer
-start/stop and WebSocket delivery; those remain separate browser workload
-requirements in the HARD-05 checklist.
+The fixture generator verifies setup counts, search results, and pagination.
+The browser runner captures UI timing and functional outcomes for each listed
+journey. This instrumentation does not establish a baseline until it has been
+run on a suitable machine and the reports are reviewed.

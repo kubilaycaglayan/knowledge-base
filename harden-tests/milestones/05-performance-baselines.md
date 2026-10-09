@@ -38,16 +38,21 @@ reproducible, then establishes report-only measurements.
   profile; report median, p95, min/max, all failures/timeouts, and raw samples.
   Lower-count exploratory data cannot justify a CI gate. Preserve outliers and
   document any exclusion rule before collecting data.
-- [ ] Separate browser-observed journey time, API request duration, and server
+- [x] Separate browser-observed journey time and API request duration from server
   duration. Define monotonic clock and start/end events; retain traces/network
   data sufficient to identify request wait versus render wait without claiming
-  end-to-end time is server latency.
-- [x] Add a report-only API collection path and extend the per-run report template
+  end-to-end time is server latency. The Playwright runner records browser
+  Resource Timing entries in-page and Node request intervals/status/bytes.
+  Server-only duration remains explicitly unmeasured.
+- [x] Add a report-only browser/API collection path and extend the per-run report template
   in `harden-tests/runs/README.md` with environment metadata, fixture profile,
   workload boundaries, sampling method, summary table, artifact links, and
   comparison class. Keep initial measurements non-gating. The API collector is
-  [`performance-api-baseline.mjs`](../../frontend/scripts/performance-api-baseline.mjs);
-  it does not measure browser rendering or perform fixture setup.
+  [`performance-api-baseline.mjs`](../../frontend/scripts/performance-api-baseline.mjs)
+  and [`performance-browser-baseline.mjs`](../../frontend/scripts/performance-browser-baseline.mjs).
+  Browser timing and same-page Resource Timing entries use the browser's
+  monotonic clock; API samples record request duration, status, and bytes.
+  Neither collector claims server-only duration or performs fixture setup.
 - [ ] Run profiles serially on the current machine, capture host/Docker CPU and
   memory availability and competing load, and repeat at least two comparable
   batches per candidate metric. Estimate both within-run and between-run
