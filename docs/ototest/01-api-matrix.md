@@ -10,6 +10,17 @@ All operations require authentication unless the row says public. The authentica
 
 Source reconciliation at the recorded baseline found 106 composed controller mapping variants, including route aliases; every verb/path variant is represented below. API-01 through API-12 in the acceptance checklist map to the complete inventory and its evidence classifications. Tests not explicitly named in a row remain a gap. Client use and unsupported/internal operations are reviewed in [the extension and feature map](01-extension-and-feature-map.md). The [controller source directory](../../backend/src/main/java/com/know/api/) defines each method's declared inputs, response type, and default/explicit status.
 
+**Contract-reading convention:** the controller method signature is the source
+for response body type and bound inputs (`@PathVariable`, `@RequestParam`, and
+`@RequestBody`). Spring's default success status is `200`; explicit
+`@ResponseStatus`/`ResponseEntity` declarations override it. A `void` method
+with no status annotation returns an empty `200` response. Validation, missing
+resource, authentication and ownership errors follow the controller/service
+guards and shared exception handling. Exact status/body assertions are linked
+per row where verified; otherwise that contract assertion remains a gap. This
+is the source for the per-operation response contract, not a claim that the
+tests assert every response field.
+
 | Verb + composed path | Controller method / inputs | Candidate evidence / current classification | State and important edges to map |
 | --- | --- | --- | --- |
 | GET `/api/v1/auth/google/config` | `AuthController.googleConfig`; none; public | `AuthControllerApiTest.googleConfigReturnsThePublicClientId` | Client ID config |
@@ -119,6 +130,47 @@ Source reconciliation at the recorded baseline found 106 composed controller map
 | GET `/api/v1/boards/all/columns/cards/page` | `AllBoardsController.columnPage`; `name`, `cursor`, `limit` | `AllBoardsIntegrationTest`; mapping gap | Cursor/limit validation, cross-board owner scope |
 | PUT `/api/v1/boards/all/columns/sort` | `AllBoardsController.sortColumn`; name/sort | `AllBoardsIntegrationTest`; mapping gap | Persisted preference and ordering |
 | GET `/api/v1/boards/all/gantt` | `AllBoardsController.gantt`; `from`, `to` | `AllBoardsIntegrationTest`; mapping gap | Inclusive overlap, active statuses, reversed range |
+
+## Client operation map and evidence commands
+
+The Vue client funnels HTTP calls through [`frontend/src/lib/api.ts`](../../frontend/src/lib/api.ts).
+The listed store is the feature caller; view components can also call the
+client directly. Extension callers are identified in the final column. Rows
+with no listed caller should be reviewed as internal/unsupported or needs
+decision rather than assumed to be used.
+
+| API family | Web caller/source | Extension caller/source | Client classification |
+|---|---|---|---|
+| Auth/account | `stores/auth.ts`, `AuthView.vue`, `SettingsView.vue` | `popup.js`, `entrypoints/background.ts` | Shared login/Google flow; account settings are web-only |
+| Paths | `stores/paths.ts`, `PathsView.vue`, `timer.ts` | `popup.js` | Shared Path reads/create; management is web-only |
+| Labels/history | `stores/labels.ts`, label pickers and feature stores | `popup.js` | Shared label selection/create; history is web-only |
+| Timer/session entries | `stores/timer.ts`, `stores/notes.ts`, Sessions components | `popup.js` | Shared timer and session records |
+| Logs/activity | `stores/logs.ts`, `TimelineView.vue` | — | Web-only supported flow |
+| Reports/statistics | `stores/reports.ts`, report views | — | Web-only supported flow |
+| Calendar | `stores/calendar.ts`, `CalendarView.vue` | — | Web-only supported flow |
+| Notes | `stores/notes.ts`, `NotesView.vue` | `popup.js` | Shared Note create/read/update; archive and ordering are web-only |
+| Board/All boards | `stores/boards.ts`, Board views | — | Web-only supported flow |
+| Imports/transfer | `ImportsView.vue`, `SettingsView.vue` | `entrypoints/background.ts`, `popup.js` | Clockify import shared handoff; CSV import/export web-only |
+| Preferences | `stores/preferences.ts`, `SettingsView.vue` | — | Web-only supported flow |
+| Search | `App.vue`, `GlobalSearch.vue` | — | Web-only supported flow |
+
+Evidence command/workflow mapping:
+
+- Java controller/service/API tests: `verify` workflow backend test jobs and
+  `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle
+  test --no-daemon` (local repository instructions add a unique
+  `--project-cache-dir`). PostgreSQL integration uses the isolated disposable
+  database workflow; it is not implied by an ordinary unit/service run.
+- Vue component/store tests and build: `verify` workflow web job runs
+  `cd frontend && npm ci && npm test && npm run build`.
+- Extension module tests/build/manifest validation: `verify` workflow extension
+  job runs `cd chrome-extension && npm ci && npm test && npm run build` followed
+  by built-manifest permission checks.
+- Real browser and real-stack candidates are named in `frontend/package.json`
+  scripts and `verify`: navigation, timer/WebSocket, board, search, auth rate
+  limit, line history, and smoke journeys. They exercise distinct evidence
+  layers; mocked tests do not establish browser/API evidence.
+- No suites were run while authoring OTOTEST-01.
 
 ## Notes and checklist
 

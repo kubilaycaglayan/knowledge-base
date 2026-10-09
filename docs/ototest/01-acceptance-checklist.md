@@ -532,10 +532,10 @@ OTOTEST-01 because it defines the server behavior behind the client journeys.
   applicable validation, unauthenticated, foreign-owner/reference, conflict,
   and persistence assertions. Mark missing evidence as a gap; do not infer it
   from a broad authentication sweep.
-- [ ] **API-11** Record relevant workflow/command for each evidence layer and
+- [x] **API-11** Record relevant workflow/command for each evidence layer and
   distinguish mocked client calls, service/controller tests, PostgreSQL
   integration, deployed-shaped smoke, and real browser evidence.
-- [ ] **API-12** Identify API operations actually invoked by web and extension
+- [x] **API-12** Identify API operations actually invoked by web and extension
   source; classify server routes with no supported client journey as
   unsupported/internal or needs-decision with rationale.
 
@@ -587,7 +587,7 @@ Manifest source: `chrome-extension/wxt.config.ts`; popup/options markup under
   handoff where applicable.
 - [x] **XCLIENT-03** Record which flows are web-only, extension-only, shared
   API behavior, manual/browser-platform evidence, or intentionally unsupported.
-- [ ] **XCLIENT-04** Record evidence with the exact assertion name and source,
+- [x] **XCLIENT-04** Record evidence with the exact assertion name and source,
   workflow/command, whether it is mocked or uses a real API/browser, any
   required disposable account/data, and the current known gap.
 
