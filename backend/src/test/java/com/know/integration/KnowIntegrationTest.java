@@ -19,7 +19,9 @@ import java.time.Clock;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -179,10 +181,16 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     ResponseEntity<JsonNode> card = post("/api/v1/boards/" + boardId + "/cards", token,
         "{\"title\":\"Timeline card\",\"body\":\"{}\",\"priority\":\"MEDIUM\",\"startDate\":\"2026-09-22\",\"dueDate\":\"2026-09-24\"}");
     assertEquals(HttpStatus.CREATED, card.getStatusCode());
+    assertEquals(HttpStatus.CREATED, post("/api/v1/boards/" + boardId + "/cards", token,
+        "{\"title\":\"Undated card\",\"body\":\"{}\"}").getStatusCode());
+    assertEquals(HttpStatus.CREATED, post("/api/v1/boards/" + boardId + "/cards", token,
+        "{\"title\":\"Outside window card\",\"body\":\"{}\",\"startDate\":\"2026-10-01\",\"dueDate\":\"2026-10-02\"}").getStatusCode());
 
     ResponseEntity<JsonNode> gantt = get("/api/v1/boards/" + boardId + "/gantt?from=2026-09-22&to=2026-09-24", token);
     assertEquals(HttpStatus.OK, gantt.getStatusCode());
-    assertEquals("Timeline card", gantt.getBody().get(0).get("title").asText());
+    assertEquals(Set.of("Timeline card", "Undated card", "Outside window card"),
+        new HashSet<>(gantt.getBody().findValuesAsText("title")));
+    assertEquals(3, gantt.getBody().size());
   }
 
   @Test
