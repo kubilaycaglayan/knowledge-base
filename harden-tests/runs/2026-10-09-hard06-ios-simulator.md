@@ -85,8 +85,32 @@ failures, on the same hosted Mac and iPhone 17 Pro / iOS 26.5 destination. See
 [run 37904668069](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37904668069).
 The full `Know` scheme is being rerun with the documented ad hoc signing
 settings in [run 37905570002](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37905570002);
-until it completes, the original full-scheme failure remains the authoritative
-release-gate result.
+until the corrected full run below, the original full-scheme failure remained
+the authoritative release-gate result.
+
+## Corrected full-scheme rerun
+
+| Field | Value |
+| --- | --- |
+| Result | **Passed**; complete `Know` scheme succeeded |
+| Commit | `705a3498c83b8d6368bfea7f969a4150e67b591c` |
+| GitHub Actions run | [37907901100](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37907901100) |
+| Started / completed | 2026-10-09 08:54:55 UTC / 09:20:53 UTC |
+| Host / tools | GitHub-hosted macOS 26.6.2, Xcode 26.6, XcodeGen 2.46.0 |
+| Destination | iPhone 17 Pro simulator, iOS 26.5, arm64 |
+| Scheme / signing | `Know`, complete unit and UI scheme; simulator ad hoc signing |
+| Outcomes | `KnowTests`: 128 passed; `KnowUITests`: 66 passed, 1 skipped; 0 failures |
+| Result artifact | [hard06-full-37907901100](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37907901100/artifacts/11606356263), retained for 14 days |
+
+The skipped UI case was `testReportsLiveAPIFlowWhenExplicitlyConfigured`;
+the default suite used in-memory fixtures and no account credentials. The
+complete suite took 25m58s. An earlier attempt was canceled at the temporary
+workflow's 20-minute job limit while running Reports UI tests. Its partial
+result bundle was preserved as
+[hard06-full-37905570002](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/37905570002/artifacts/11604334162).
+The successful run uses a 60-minute job limit. The full pass validates the
+current unit and UI suite on the documented host; it does not establish live
+server persistence or the deferred manual device and VoiceOver matrix.
 
 ## Keychain signing diagnostic
 
@@ -110,10 +134,11 @@ configuration, and the seven UI failures remain unresolved.
 
 - Confirms a clean-checkout XcodeGen and full-scheme simulator command can run
   on an actual hosted macOS/Xcode environment.
-- Demonstrates that the initial full native test run is not a passing release
-  gate: seven UI tests failed, and one unit failure is consistent with its
-  signing-disabled test configuration. A targeted ad hoc-signed rerun of that
-  unit test passed, but the full unit suite has not been repeated with it.
+- The corrected complete native run passes all 128 unit tests and 66 UI tests
+  with one opt-in live API test skipped. The first full run's seven UI failures
+  were verified as test query, fixture date, or interaction issues in focused
+  and combined reruns; the Keychain unit test passes with the documented
+  ad hoc simulator signing configuration.
 - Confirms the result bundle was uploaded on failure. The workflow retained it
   for 30 days; retain or mirror it to the release record before that expires.
 - Does not establish live-backend, server-persistence, VoiceOver, or full

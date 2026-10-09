@@ -66,13 +66,13 @@ an active automated gate.
 - Any workflow change is tested on the actual supported runner before the
   disabled state is changed.
 
-The source inventory and proposed manual release path are documented, but this
-milestone remains in progress: the clean-checkout macOS run failed eight tests.
-Focused reruns have verified corrections for the seven UI failures, including
-the Labels case after scrolling and querying by accessible label; a combined
-rerun and a passing full-scheme run are still required. Persistence and device
-coverage gaps also need coverage or explicit manual/deferred evidence. See the
-[HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
+The complete `Know` scheme now passes on the documented clean-checkout hosted
+Mac (128 unit tests passed; 66 UI tests passed; one opt-in live API test
+skipped). The seven initial UI failures passed after focused test-harness
+corrections and in the full rerun; no product accessibility defect was
+reproduced. The milestone remains in progress while the acceptance checklist's
+server-persistence/relaunch and manual device/accessibility evidence remains
+open. See the [HARD-06 run report](../runs/2026-10-09-hard06-ios-simulator.md).
 
 ## Relevant sources
 

@@ -7,9 +7,10 @@ release procedure is a simulator run owned by the release engineer for each
 release candidate that changes `ios/`. A clean-checkout execution of the
 procedure on GitHub's hosted macOS runner is recorded in
 [`2026-10-09-hard06-ios-simulator.md`](../runs/2026-10-09-hard06-ios-simulator.md).
-Project generation and build succeeded, but test failures mean this procedure
-is not yet a passing release gate. Linux Swift/Foundation checks and mobile web
-browser profiles do not satisfy native validation.
+Project generation, build, and the complete unit/UI scheme passed on the
+documented hosted Mac; the run is linked in the run report. Linux
+Swift/Foundation checks and mobile web browser profiles do not satisfy native
+validation.
 
 This path has been exercised from a clean checkout on GitHub-hosted
 `macos-latest` with Xcode 26.6, XcodeGen 2.46.0, and an iPhone 17 Pro simulator
@@ -84,11 +85,11 @@ Notes UI tests.
   access-controlled release storage, link their location and retention date in
   the release record, and do not commit results to Git.
 
-## Completion evidence still required
+## Remaining coverage limits
 
-This path becomes a passing release gate only after the remaining UI failures
-recorded in the run report are triaged through the bug-fix workflow and a later
-clean full-scheme run succeeds with its exact host/tool/runtime/device versions
-and result bundle retained. Any move to CI requires a separately verified
-macOS runner, XcodeGen install, simulator selection, signing assumptions, and
-artifact retention before changing either disabled workflow job.
+The complete scheme passes on a clean hosted checkout with its exact
+host/tool/runtime/device versions and result bundle retained. Remaining
+acceptance gaps are live API persistence/relaunch flows and manual device,
+VoiceOver, and broader locale/time-zone checks. Any move to a maintained CI
+gate requires a separately owned macOS runner and review; this milestone does
+not enable either historical disabled workflow job.

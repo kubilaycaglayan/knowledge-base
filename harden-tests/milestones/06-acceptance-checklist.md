@@ -35,9 +35,9 @@ checks are not evidence of SwiftUI or simulator behavior.
 - [x] Verify the chosen path on the actual supported host with a clean
   checkout before proposing any workflow change. Both existing iOS jobs in
   `.github/workflows/verify.yml` are hard-disabled with `if: ${{ false }}`;
-  repository variables cannot enable them. The full command ran from a clean
-  checkout on the selected hosted Mac; the result is a failed validation, not
-  a passing gate. See the linked run report for all test failures.
+  repository variables cannot enable them. The full command passed from a clean
+  checkout on the selected hosted Mac; the exact run and artifact are linked in
+  the run report.
 - [x] Keep `check-ios-note-document.sh` identified as Foundation-only Linux
   validation; do not report it as a SwiftUI build or simulator pass.
 
@@ -93,9 +93,11 @@ model behavior but cannot satisfy a rendered UI row.
 - [ ] Exercise Dynamic Type at standard and largest accessibility sizes,
   VoiceOver labels/focus order, keyboard input where available, safe-area
   layout, rotation/supported device sizes, and light/dark appearances.
-- [ ] Freeze locale, timezone/calendar, animation, and fixture timing; use
+- [x] Freeze locale, timezone/calendar, animation, and fixture timing; use
   condition-based waits and deterministic in-memory or isolated API fixtures
-  instead of timing sleeps.
+  instead of timing sleeps. UI tests launch with `en_US_POSIX`, English, and
+  `TZ=UTC`; the calendar UI fixture pins its reference date; UI test mode
+  disables SwiftUI animations; async assertions use XCTest waits/predicates.
 - [x] Keep mobile Chrome web acceptance separately at desktop and phone
   profiles; do not count a native iOS simulator result as mobile Chrome
   coverage. The evidence categories are separate in the run plan and inventory.

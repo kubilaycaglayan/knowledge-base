@@ -85,9 +85,11 @@ auditable.
   conflict and restore persistence; path server CRUD/undo; logs persistence;
   calendar server date-key persistence; and timer server invariant and
   two-client WebSocket delivery.
-- No suite-wide fixed locale/time zone/animation configuration, largest
-  Dynamic Type sweep for every screen, VoiceOver traversal, keyboard behavior
-  beyond the session label picker, rotation/device matrix, or systematic
-  light/dark coverage for every screen is established by the current tests.
+- The UI suite pins English, `en_US_POSIX`, and UTC at launch; the calendar UI
+  fixture pins a reference date; and UI test mode disables SwiftUI animations.
+  Largest Dynamic Type is covered only by selected auth, reports, paths, logs,
+  and notes flows. Systematic VoiceOver traversal, keyboard behavior beyond
+  the session label picker, rotation/device matrix, and systematic light/dark
+  coverage for every screen remain deferred.
 - Manual device verification and deferred flows need explicit release-record
   entries before they can be counted as evidence.

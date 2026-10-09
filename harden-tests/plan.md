@@ -79,12 +79,12 @@ manual simulator validation path. Until that work is completed, disabled
 workflow jobs must not be counted as active iOS CI coverage.
 
 The documented full-scheme command was executed from a clean checkout on a
-GitHub-hosted macOS runner on 2026-10-09. Project generation and build passed,
-but the unsigned run recorded one failing unit test and seven failing UI tests.
-The Keychain unit test passed in a targeted rerun with ad hoc simulator
-signing; the seven UI failures remain. See the
-[HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md). This is failure
-evidence, not an active CI gate, and the historical iOS jobs remain disabled.
+GitHub-hosted macOS runner on 2026-10-09. The corrected full scheme passed 128
+unit tests and 66 UI tests with one opt-in live API test skipped; its `.xcresult`
+is retained in the [HARD-06 run report](runs/2026-10-09-hard06-ios-simulator.md).
+This is run evidence, not an active CI gate, and the historical iOS jobs remain
+disabled. Server-persistence and manual device/accessibility acceptance gaps
+remain documented in HARD-06.
 The Foundation-only Linux portability check passed all seven `NoteDocTests`;
 its result is recorded separately in the
 [Linux run report](runs/2026-10-09-hard06-linux-note-document.md) and does not
