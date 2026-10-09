@@ -411,8 +411,9 @@ browser interaction evidence remains a separate layer.
   deletion, owner scoping, rejection for a label referenced by a historical
   day, and retained day assignment
   (`KnowIntegrationTest.calendarLabelDeleteRemovesUnusedLabelsAndPreservesLabelsReferencedByDays`).
-- [ ] `GET /api/v1/calendar/days` covers date-range validation and inclusive
-  endpoints.
+- [x] `GET /api/v1/calendar/days` covers inclusive start/end records, invalid
+  date text, reversed and over-year ranges, and the accepted one-year boundary
+  (`KnowIntegrationTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges`).
 - [ ] `PUT /api/v1/calendar/days/{date}` covers replacement semantics for one
   day's note and label assignments.
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
