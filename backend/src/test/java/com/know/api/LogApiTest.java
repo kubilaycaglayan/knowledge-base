@@ -38,7 +38,12 @@ class LogApiTest {
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
     String endpoint = "/api/v1/logs/" + logId + "/labels";
 
-    for (String body : List.of("{}", "{\"labelIds\":null}")) {
+    for (String body :
+        List.of(
+            "{}",
+            "{\"labelIds\":null}",
+            "{\"labelIds\":\"not-an-array\"}",
+            "{\"labelIds\":[\"not-a-uuid\"]}")) {
       mvc.perform(
               put(endpoint)
                   .with(authentication(auth))
@@ -86,6 +91,7 @@ class LogApiTest {
             "{}",
             "{\"body\":\" \",\"occurredAt\":\"" + timestamp + "\"}",
             "{\"body\":\"valid\"}",
+            "{\"body\":\"valid\",\"occurredAt\":\"not-an-instant\"}",
             "{\"body\":\"" + "x".repeat(20001) + "\",\"occurredAt\":\"" + timestamp + "\"}")) {
       mvc.perform(
               post(endpoint)

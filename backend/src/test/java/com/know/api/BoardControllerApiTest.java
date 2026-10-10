@@ -221,7 +221,13 @@ class BoardControllerApiTest {
 
   @Test
   void boardOrderRequiresANonemptyIdList() throws Exception {
-    for (String body : List.of("{}", "{\"ids\":null}", "{\"ids\":[]}")) {
+    for (String body :
+        List.of(
+            "{}",
+            "{\"ids\":null}",
+            "{\"ids\":[]}",
+            "{\"ids\":\"not-an-array\"}",
+            "{\"ids\":[\"not-a-uuid\"]}")) {
       mvc.perform(
               put("/api/v1/boards/order")
                   .with(authentication(auth()))
@@ -235,7 +241,13 @@ class BoardControllerApiTest {
   @Test
   void statusOrderRequiresANonemptyIdList() throws Exception {
     String endpoint = "/api/v1/boards/" + UUID.randomUUID() + "/statuses/order";
-    for (String body : List.of("{}", "{\"ids\":null}", "{\"ids\":[]}")) {
+    for (String body :
+        List.of(
+            "{}",
+            "{\"ids\":null}",
+            "{\"ids\":[]}",
+            "{\"ids\":\"not-an-array\"}",
+            "{\"ids\":[\"not-a-uuid\"]}")) {
       mvc.perform(
               put(endpoint)
                   .with(authentication(auth()))

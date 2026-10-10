@@ -63,7 +63,13 @@ class ImportControllerApiTest {
   void clockifyImportRequiresAtLeastOneEntryBeforeCallingTheService() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
-    for (String body : List.of("{}", "{\"timeentries\":null}", "{\"timeentries\":[]}")) {
+    for (String body :
+        List.of(
+            "{}",
+            "{\"timeentries\":null}",
+            "{\"timeentries\":[]}",
+            "{\"timeentries\":\"not-an-array\"}",
+            "{\"timeentries\":[\"not-an-entry-object\"]}")) {
       mvc.perform(
               post("/api/v1/imports/clockify")
                   .with(authentication(auth))

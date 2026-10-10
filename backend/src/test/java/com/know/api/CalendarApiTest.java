@@ -1,5 +1,6 @@
 package com.know.api;
 
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,5 +48,95 @@ class CalendarApiTest {
                 .param("endDate", "2026-09-04")
                 .with(authentication(auth)))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess() throws Exception {
+    for (String body :
+        List.of(
+            "{}",
+            "{\"labels\":null}",
+            "{\"labels\":[{\"portion\":0.5}]}",
+            "{\"labels\":[{\"labelId\":null,\"portion\":0.5}]}")) {
+      mvc.perform(
+              put("/api/v1/calendar/days/2026-10-10")
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+
+    for (String body :
+        List.of(
+            "{\"startDate\":\"2026-10-01\",\"endDate\":\"2026-10-02\"}",
+            "{\"startDate\":\"2026-10-01\",\"endDate\":\"2026-10-02\",\"labels\":null}",
+            "{\"startDate\":\"2026-10-01\",\"endDate\":\"2026-10-02\",\"labels\":[{\"portion\":0.5}]}")) {
+      mvc.perform(
+              put("/api/v1/calendar/days/range")
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void calendarDaysRequireValidDateQueryValuesBeforeServiceAccess() throws Exception {
+    for (String query :
+        List.of(
+            "startDate=2026-10-01",
+            "startDate=not-a-date&endDate=2026-10-02",
+            "startDate=2026-02-30&endDate=2026-03-01",
+            "startDate=2026-10-01&endDate=not-a-date")) {
+      mvc.perform(get("/api/v1/calendar/days?" + query).with(authentication(auth)))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void calendarDayWritesRejectMalformedPathDatesBeforeServiceAccess() throws Exception {
+    for (String date : List.of("not-a-date", "2026-02-30")) {
+      mvc.perform(
+              put("/api/v1/calendar/days/" + date)
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content("{\"labels\":[]}"))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void calendarDayDeleteRejectsMalformedPathDatesBeforeServiceAccess() throws Exception {
+    for (String date : List.of("not-a-date", "2026-02-30")) {
+      mvc.perform(delete("/api/v1/calendar/days/" + date).with(authentication(auth)))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void calendarRangeRequiresValidDateBodyFieldsBeforeServiceAccess() throws Exception {
+    for (String body :
+        List.of(
+            "{\"endDate\":\"2026-10-02\",\"labels\":[]}",
+            "{\"startDate\":\"2026-10-01\",\"labels\":[]}",
+            "{\"startDate\":null,\"endDate\":\"2026-10-02\",\"labels\":[]}",
+            "{\"startDate\":\"not-a-date\",\"endDate\":\"2026-10-02\",\"labels\":[]}")) {
+      mvc.perform(
+              put("/api/v1/calendar/days/range")
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
   }
 }

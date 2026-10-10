@@ -1,7 +1,7 @@
 # OTOTEST-02 — Backend API behavior coverage
 
 **Priority:** High  
-**Status:** Proposed  
+**Status:** In progress  
 **Dependencies:** OTOTEST-01
 
 Track evidence and completion criteria in the [OTOTEST-02 acceptance
@@ -36,6 +36,21 @@ behavior tests.
   migration unless a regression or supported upgrade path requires it.
 - [ ] Link API documentation operations to tests and update it when contracts
   change.
+
+## Execution plan
+
+1. Reconcile the controller mapping inventory with the API docs and supported
+   web API call sites; retain explicit gaps for operations without positive
+   evidence.
+2. Audit request DTO and path/query boundary rules, adding controller tests for
+   request binding and service/integration tests for domain and persisted
+   behavior only where existing assertions do not prove the contract.
+3. Map each operation to the evidence layer that owns its risk, including
+   ownership, state mutation, ordering, pagination, conflicts, and PostgreSQL
+   safeguards.
+4. Run the backend and guarded PostgreSQL suites, record exact CI evidence,
+   reconcile the API matrix and docs, and mark the milestone complete only
+   after every acceptance item is resolved.
 
 ## Task workflow by API family
 

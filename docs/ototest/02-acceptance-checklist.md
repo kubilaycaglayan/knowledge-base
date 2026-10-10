@@ -36,14 +36,16 @@ browser interaction evidence remains a separate layer.
   controller mapping annotations at the recorded revision).
 - [x] Record route aliases as separate operation rows in the API matrix, even
   when they delegate to one service method.
-- [ ] For each operation row, record controller and method, auth requirement,
+- [x] For each operation row, record controller and method, auth requirement,
   path/query/body inputs, response status and shape, ownership-scoped IDs,
-  state effect, evidence link, evidence layer, and current gap.
+  state effect, evidence link, evidence layer, and current gap (API-01/02 in
+  OTOTEST-01; layer conventions and source-based contract reading are recorded
+  in the API matrix).
 - [ ] Use exact test names or named assertions as evidence; a test filename
   without a relevant assertion does not prove coverage.
-- [ ] Distinguish unit/domain, controller/API, service, persistence
+- [x] Distinguish unit/domain, controller/API, service, persistence
   integration, PostgreSQL-guarded, deployed-shaped, browser, and manual
-  evidence.
+  evidence using test package and guarded-run conventions in the API matrix.
 - [ ] Do not treat an anonymous-rejection sweep as proof of a specific
   authenticated operation's successful behavior.
 - [ ] Do not treat a UI or mocked-client assertion as proof of backend
@@ -59,14 +61,14 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Inventory every API operation
 
-- [ ] Reconcile every `@RequestMapping` base path with its method-level
+- [x] Reconcile every `@RequestMapping` base path with its method-level
   mapping.
-- [ ] Include every `GET` mapping as its own operation row.
-- [ ] Include every `POST` mapping as its own operation row.
-- [ ] Include every `PUT` mapping as its own operation row.
-- [ ] Include every `PATCH` mapping as its own operation row, if any are
-  introduced.
-- [ ] Include every `DELETE` mapping as its own operation row.
+- [x] Include every `GET` mapping as its own operation row.
+- [x] Include every `POST` mapping as its own operation row.
+- [x] Include every `PUT` mapping as its own operation row.
+- [x] Include every `PATCH` mapping as its own operation row; none are
+  currently declared.
+- [x] Include every `DELETE` mapping as its own operation row.
 - [ ] Include each alias route separately and state whether it has the same
   status, request, response, and side effect as its canonical route.
 - [ ] Include query parameters, defaults, accepted ranges, and repeated
@@ -81,8 +83,9 @@ browser interaction evidence remains a separate layer.
   owner-scoped resolution.
 - [ ] Include each operation's read, create, update, archive, delete, ordering,
   import, or other observable effect.
-- [ ] Compare the resulting operation rows with the current OpenAPI document
-  and `docs/api.md`; resolve or record any contract discrepancy.
+- [x] Compare the resulting operation rows with the generated `/v3/api-docs`
+  operation set (107 exact method/path matches, no set differences) and
+  `docs/api.md`; operation rows are linked to documented API families.
 - [ ] Compare the operation rows with supported web API call sites and mark
   server operations with no supported client use for a scope decision.
 
@@ -269,8 +272,9 @@ browser interaction evidence remains a separate layer.
   validation and missing/blank/over-limit inputs return 400
   (`LogApiTest.logBodyAndTimestampRespectRequiredAndMaximumLengthBoundaries`).
 - [x] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
-  owned labels with LOG scope; missing/null lists and 101 IDs return 400 before
-  service execution, while exactly 100 IDs pass request validation
+  owned labels with LOG scope; missing/null lists, non-array values, malformed
+  UUID items, and 101 IDs return 400 before service execution, while exactly
+  100 IDs pass request validation
   (`LogApiTest.logLabelAssignmentRequiresACollectionOfAtMostOneHundredIds`).
 - [x] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
@@ -379,9 +383,10 @@ browser interaction evidence remains a separate layer.
   blank and over-120-character names return 400 while the 120-character limit
   succeeds (`BoardControllerApiTest.boardCreateRequiresNonblankNameAndAcceptsTheMaximumLength`).
 - [x] `PUT /api/v1/boards/order` covers complete board ordering, duplicate and
-  foreign board IDs, missing/null/empty ID lists, and unchanged order after
-  rejected requests
-  (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`).
+  foreign board IDs, missing/null/empty/non-array lists and malformed UUID
+  items, and unchanged order after rejected requests
+  (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`
+  and `BoardControllerApiTest.boardOrderRequiresANonemptyIdList`).
 - [x] `POST /api/v1/boards/{id}/visibility` covers persisted hide/unhide,
   active-list visibility, card preservation, custom-board conflict, and foreign
   ownership (`PathBoardIntegrationTest.hidingAPathBoardKeepsItsCards`,
@@ -421,7 +426,8 @@ browser interaction evidence remains a separate layer.
   `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`,
   and `BoardControllerApiTest.statusSortRequiresAnExplicitSortMode`).
 - [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
-  missing, and foreign status IDs, missing/null/empty ID lists, with saved order preserved after rejected
+  missing, and foreign status IDs, missing/null/empty/non-array ID lists and
+  malformed UUID items, with saved order preserved after rejected
   requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`
   and `BoardControllerApiTest.statusOrderRequiresANonemptyIdList`).
 - [x] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
@@ -514,7 +520,8 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/boards/all/columns/sort` covers per-user sort persistence,
   priority order across boards, isolation from board-local modes, reset, invalid
   body/name/sort values, and the exact 80-character name maximum
-  (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
+  (`AllBoardsControllerApiTest.columnSortValidatesRequiredNameLengthAndSortAtTheApiBoundary`,
+  `AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
   and `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `GET /api/v1/boards/all/gantt` covers reversed range validation, returns
   dated and undated cards regardless of the requested window, and excludes
@@ -551,22 +558,34 @@ browser interaction evidence remains a separate layer.
   (`KnowIntegrationTest.calendarLabelDeleteRemovesUnusedLabelsAndPreservesLabelsReferencedByDays`).
 - [x] `GET /api/v1/calendar/days` covers inclusive start/end records, invalid
   date text, reversed and over-year ranges, and the accepted one-year boundary
-  (`KnowIntegrationTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges`).
+  (`KnowIntegrationTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges`);
+  missing, malformed, and impossible date query values return 400 before
+  service access (`CalendarApiTest.calendarDaysRequireValidDateQueryValuesBeforeServiceAccess`).
 - [x] `PUT /api/v1/calendar/days/{date}` covers replacing one day's note and
   label assignments, including persisted readback and omitted marker portions;
+  malformed and impossible path dates return 400 before service execution
+  (`CalendarApiTest.calendarDayWritesRejectMalformedPathDatesBeforeServiceAccess`);
   missing assignment IDs and duplicate labels are rejected before changing the
   saved day (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`
   and `KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`);
-  the 20000-character note limit is accepted and 20001 is rejected.
+  the 20000-character note limit is accepted and 20001 is rejected. Required
+  assignment lists and nested label IDs also return 400 before service access
+  (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`).
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
-  subsequent absence, foreign-user isolation, and repeated deletion.
+  subsequent absence, foreign-user isolation, repeated deletion, and malformed
+  or impossible path-date rejection before service execution
+  (`CalendarApiTest.calendarDayDeleteRejectsMalformedPathDatesBeforeServiceAccess`).
 - [x] `PUT /api/v1/calendar/days/range` covers inclusive start/end mutation,
   preserves an existing note and label assignment, and confirms all changes
   through a subsequent range read
-  (`KnowIntegrationTest.calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels`).
+  (`KnowIntegrationTest.calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels`);
+  required dates, assignment list, and nested label IDs return 400 before service
+  access (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`);
+  missing/null/malformed start dates and a missing end date are rejected before
+  service execution (`CalendarApiTest.calendarRangeRequiresValidDateBodyFieldsBeforeServiceAccess`).
 - [x] Calendar day writes cover owned-label validation without mutating label
   scopes, foreign-label rejection, and each supported marker/portion value
-  (`CalendarLabelPickerIntegrationTest.dayAcceptsAnOwnedLabelHiddenFromCalendar`,
+  (`CalendarLabelPickerIntegrationTest.dayAcceptsAnOwnedLabelHiddenFromCalendarWithoutChangingItsScopes`,
   `CalendarLabelPickerIntegrationTest.anotherUsersLabelIsStillRejected`,
   `KnowIntegrationTest.calendarDayWritesPersistEverySupportedPortionAndMarkerValue`,
   and `KnowIntegrationTest.noMarkerCalendarLabelsPersistButDoNotAppearInReports`).
@@ -630,15 +649,20 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/preferences` covers successful round trip and invalid
   preference values; board search accepts 200 characters, rejects 201, and
   Gantt sort state accepts two rules and rejects more than two without
-  overwriting the saved state
+  overwriting the saved state. Unknown theme, nested view, search over-limit,
+  and invalid sort values are rejected at the HTTP boundary before service
+  access (`PreferencesApiTest.preferenceRequestAndNestedBoardStateConstraintsRejectBeforeServiceAccess`)
   (`UserPreferencesIntegrationTest.boardStateEnforcesMaximumSearchAndGanttSortCount`).
 - [x] Preferences remain isolated between two disposable users.
 
 ## Flow: Cover imports and exports
 
 - [x] `POST /api/v1/imports/clockify` covers supported payload creation,
-  project-to-path mapping, and persisted import-batch ownership
-  (`KnowIntegrationTest.clockifyImportCreatesEntriesAndPaths`).
+  project-to-path mapping, and persisted import-batch ownership; missing/null/
+  empty lists, non-array values, and non-object list elements are rejected at
+  the controller boundary
+  (`ImportControllerApiTest.clockifyImportRequiresAtLeastOneEntryBeforeCallingTheService`
+  and `KnowIntegrationTest.clockifyImportCreatesEntriesAndPaths`).
 - [x] `POST /api/v1/imports/clockify` covers duplicate source IDs within one
   payload and across repeated imports, without duplicate persisted entries, and
   retains an audit batch per request
@@ -660,7 +684,9 @@ browser interaction evidence remains a separate layer.
   stable-ID duplicate handling, and supported legacy rows without color fields
   or log entities (`KnowIntegrationTest.knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo`,
   `KnowIntegrationTest.knowledgeBaseCsvImportAcceptsLegacyRowsWithoutColorOrLogEntities`,
-  and `KnowledgeBaseTransferServiceTest.importingTheSameStableIdsSkipsExistingRecords`).
+  and `KnowledgeBaseTransferServiceTest.importingTheSameStableIdsSkipsExistingRecords`);
+  missing body and non-CSV content type return 400/415 before service execution
+  (`KnowledgeBaseTransferControllerApiTest.importRequiresCsvContentAndRejectsOtherMediaTypesBeforeServiceAccess`).
 - [x] `POST /api/v1/imports/knowledge-base` covers malformed CSV, unsupported
   values, and rollback after an earlier valid row was processed
   (`KnowIntegrationTest.knowledgeBaseCsvImportRejectsMalformedAndUnsupportedRowsWithoutPartialState`
