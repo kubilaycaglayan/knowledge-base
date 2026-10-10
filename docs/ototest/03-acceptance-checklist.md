@@ -323,7 +323,10 @@ the extension has its own scope in OTOTEST-04.
   an error when the initial session load fails`; the browser test
   `opens the Sessions workspace directly with its empty state and inline
   tracker` covers the no-session state.
-- [ ] The no-session state offers a clear next action.
+- [x] The no-session state offers a clear next action. Evidence: `opens the
+  Sessions workspace directly with its empty state and inline tracker` in
+  `frontend/scripts/nav-shell.acceptance.test.mjs` verifies the Start timer
+  button is available alongside the empty-state message.
 - [ ] Session rows show their date/time, path, description, and available
   labels.
 - [ ] Session history pagination exposes the current page and available

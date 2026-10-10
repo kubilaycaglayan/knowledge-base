@@ -255,6 +255,7 @@ it("opens the Sessions workspace directly with its empty state and inline tracke
   assert.equal(await page.title(), "Knowledge Base · Sessions");
   await page.getByRole("region", { name: "Sessions" }).waitFor();
   await page.getByText("No sessions recorded yet.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Start timer" }).waitFor();
   const pageHeadings = page.locator("main h1:visible");
   assert.equal(await pageHeadings.count(), 1);
   assert.equal((await pageHeadings.first().textContent())?.trim(), "Sessions");
