@@ -522,6 +522,30 @@ describe("ReportsView", () => {
     expect(wrapper.find('[role="status"]').exists()).toBe(false);
   });
 
+  it("falls back to the default range when the URL contains malformed report filters", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/reports?startDate=not-a-date&endDate=2026-09-07&aggregation=unknown",
+    );
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    const requested = new URL(
+      vi.mocked(api).mock.calls[0][0] as string,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(requested.get("startDate")).toBe(
+      format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(requested.get("endDate")).toBe(
+      format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(
+      (wrapper.get('[aria-label="Report aggregation"]').element as HTMLSelectElement).value,
+    ).toBe("DAY");
+  });
+
   it("filters daily paths to the report categories and supports an empty report", async () => {
     vi.mocked(api).mockResolvedValueOnce({
       period: "WEEK",
