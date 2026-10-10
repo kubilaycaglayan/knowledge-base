@@ -443,9 +443,15 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Delete one completed session
 
-- [ ] Deleting a completed session requires confirmation.
-- [ ] Cancelling deletion leaves the session unchanged.
-- [ ] Confirming deletion removes only the selected session from history.
+- [x] Deleting a completed session requires confirmation. Evidence:
+  `SessionsView.test.ts` / `confirms and soft-deletes a completed session`
+  checks the confirmation prompt before the DELETE request.
+- [x] Cancelling deletion leaves the session unchanged. Evidence:
+  `SessionsView.test.ts` / `does not remove a session when confirmation is
+  cancelled` checks no DELETE request and retained history rows.
+- [x] Confirming deletion removes only the selected session from history.
+  Evidence: `SessionsView.test.ts` / `confirms and soft-deletes a completed
+  session` removes the selected row and verifies the other row remains.
 
 ### Flow: Reconcile live timer updates
 

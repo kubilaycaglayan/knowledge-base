@@ -581,18 +581,58 @@ describe("SessionsView", () => {
   });
 
   it("confirms and soft-deletes a completed session", async () => {
+    let sessions = [
+      {
+        id: "new",
+        startedAt: "2026-08-28T11:00:00Z",
+        endedAt: "2026-08-28T12:00:00Z",
+        durationSeconds: 3600,
+        description: "Selected for removal",
+        source: "WEB",
+        pathId: "path-1",
+        labelIds: ["label-1"],
+      },
+      {
+        id: "old",
+        startedAt: "2026-08-27T11:00:00Z",
+        endedAt: "2026-08-27T12:00:00Z",
+        durationSeconds: 3600,
+        description: "Keep this session",
+        source: "MANUAL",
+        pathId: "path-1",
+        labelIds: ["label-1"],
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.startsWith("/time-entries?"))
+        return { page: 0, totalPages: 1, totalSessions: sessions.length, sessions };
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Learning", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-1", name: "Vue", color: null, scopes: ["TIME_ENTRY"] }];
+      if (path === "/time-entries/new" && init?.method === "DELETE") {
+        sessions = sessions.filter(({ id }) => id !== "new");
+        return undefined;
+      }
+      return undefined;
+    });
     const wrapper = mount(SessionsView);
     await flushPromises();
 
-    await wrapper.get("button.danger").trigger("click");
+    const selected = wrapper.findAll("article.session-card").find((card) => card.text().includes("Selected for removal"))!;
+    await selected.get("button.danger").trigger("click");
     expect(wrapper.find(".prompt-dialog").text()).toContain(
       "Remove this session? This cannot be undone.",
     );
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/new", {
       method: "DELETE",
     });
+    expect(wrapper.findAll("article.session-card")).toHaveLength(1);
+    expect(wrapper.get("article.session-card").text()).toContain("Keep this session");
+    expect(wrapper.text()).not.toContain("Selected for removal");
   });
 
   it("loads the selected pagination page", async () => {
@@ -745,5 +785,7 @@ describe("SessionsView", () => {
             path === "/time-entries/new" && options?.method === "DELETE",
         ),
     ).toBe(false);
+    expect(wrapper.findAll("article.session-card")).toHaveLength(2);
+    expect(wrapper.text()).toContain("Most recent");
   });
 });
