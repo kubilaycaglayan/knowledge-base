@@ -30,6 +30,8 @@ async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeed
     requests.push(path);
     let body = [];
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
+    else if (path === "/logs/log-deep-link") body = { id: "log-deep-link", body: "Directly loaded log entry", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] };
+    else if (path === "/logs") body = [];
     else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
     else if (path === "/paths" && method === "POST") {
       body = { ...route.request().postDataJSON(), id: "path-1", status: "ACTIVE", pinned: false };
@@ -735,6 +737,15 @@ it("shows an unavailable state for a missing log opened by browser deep link", a
   await page.goto(`${server.resolvedUrls.local[0]}logs/gone`);
   await page.getByRole("dialog").filter({ hasText: "This log doesn’t exist any more" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/logs/gone");
+});
+
+it("opens a log detail when the browser loads its deep link directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/logs/log-deep-link");
+  assert.ok(requests.includes("/logs/log-deep-link"));
 });
 
 it("shows an unavailable state for a missing path opened by browser deep link", async (t) => {

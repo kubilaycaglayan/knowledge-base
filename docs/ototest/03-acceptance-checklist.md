@@ -81,7 +81,11 @@ the extension has its own scope in OTOTEST-04.
   history when the browser loads its deep link directly'
   scripts/nav-shell.acceptance.test.mjs` directly loads a seeded Path URL and
   verifies its history dialog and empty state (mocked API browser test).
-- [ ] Direct loading `/logs/:id` opens the selected log detail.
+- [x] Direct loading `/logs/:id` opens the selected log detail. Evidence: `cd
+  frontend && node --test --test-name-pattern='opens a log detail when the
+  browser loads its deep link directly' scripts/nav-shell.acceptance.test.mjs`
+  verifies the record body, route, and detail request (mocked API browser
+  test).
 - [ ] Direct loading `/labels/:id` opens the selected label history.
 - [ ] Direct loading `/notes/:id` opens the selected note editor.
 - [ ] Direct loading `/board/archive` opens the board archive.
