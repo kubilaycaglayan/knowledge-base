@@ -931,8 +931,14 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Match each operation to the right evidence layer
 
-- [ ] HTTP status, serialization, request binding, and exception translation
-  link to controller/API evidence.
+- [x] HTTP status, serialization, request binding, and exception translation
+  link to controller/API evidence. Every operation row names exact assertions;
+  the status/body-type inventory and serialized-field catalog are cross-linked
+  from [`01-api-matrix.md`](01-api-matrix.md). Representative boundary evidence
+  includes `TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`,
+  `NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits`,
+  `KnowledgeBaseTransferControllerApiTest.importRequiresCsvContentAndRejectsOtherMediaTypesBeforeServiceAccess`,
+  and `ApiExceptionHandlerTest.domainStatusErrorsPreserveStatusAndReason`.
 - [ ] Domain decisions and deterministic branching rules link to focused
   service/domain evidence.
 - [ ] Persistence, ownership, transaction, and multi-record behavior link to
