@@ -259,6 +259,37 @@ describe("TimelineView", () => {
     );
   });
 
+  it("shows the empty state when an applied filter has no matches", async () => {
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [];
+      if (requestPath.startsWith("/activities?")) {
+        return requestPath.includes("type=NOTE_CREATED")
+          ? []
+          : [
+              {
+                id: "timer-activity",
+                type: "TIMER_STOPPED",
+                title: "Completed focus session",
+                occurredAt: "2026-08-25T13:00:00Z",
+              },
+            ];
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Completed focus session");
+
+    await wrapper
+      .get('select[aria-label="Activity type"]')
+      .setValue("NOTE_CREATED");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("No activity matches these filters.");
+    expect(wrapper.text()).not.toContain("Completed focus session");
+  });
+
   it("rejects a reversed date range without replacing current results", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
