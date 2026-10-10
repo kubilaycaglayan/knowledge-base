@@ -160,6 +160,23 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary() throws Exception {
+    mvc.perform(
+            post("/api/v1/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\" \"}"))
+        .andExpect(status().isBadRequest());
+
+    String oversizedToken = "x".repeat(10001);
+    mvc.perform(
+            post("/api/v1/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\"" + oversizedToken + "\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(google, users);
+  }
+
+  @Test
   void verifiedGoogleIdentityLinksAnExistingEmail() throws Exception {
     User existing = new User("person@example.com", "hash", "person");
     when(google.verify("good-token"))

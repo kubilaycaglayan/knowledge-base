@@ -108,6 +108,10 @@ browser interaction evidence remains a separate layer.
   assertion where provider verification can be isolated.
 - [ ] `POST /api/v1/auth/google` has invalid, unverified, wrong-audience, and
   malformed provider-token behavior evidence as applicable.
+  HTTP blank/oversized token binding is covered by
+  `AuthControllerApiTest.googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary`;
+  verifier-level malformed tokens are covered by
+  `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
 - [ ] `GET /api/v1/auth/me` has a successful current-account response
   assertion.
 - [ ] `GET /api/v1/auth/me` has missing, malformed, expired, and invalid bearer
