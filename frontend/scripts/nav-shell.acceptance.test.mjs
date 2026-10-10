@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -35,6 +35,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let importFailurePending = failImportOnce;
   let logDeleteFailurePending = failLogDeleteOnce;
   let noteUpdateFailurePending = failNoteUpdateOnce;
+  let timelineNoteFailurePending = failTimelineNoteOnce;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
       localStorage.setItem("know_token", "nav-test-token");
@@ -68,6 +69,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     if (noteUpdateFailurePending && path.startsWith("/notes/") && method === "PUT") {
       noteUpdateFailurePending = false;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary note update failure" }) });
+      return;
+    }
+    if (timelineNoteFailurePending && path === "/notes" && method === "POST") {
+      timelineNoteFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary activity note failure" }) });
       return;
     }
     let body = [];
@@ -175,6 +181,13 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/labels/label-deep-link/history") body = { labelId: "label-deep-link", name: "Deep link label", color: "#3B82F6", firstUsedAt: null, lastUsedAt: null, totalUses: 0, trackedSeconds: 0, uses: { sessions: 0, logs: 0, notes: 0, calendarDays: 0, cards: 0 }, timeline: [], hours: [], related: [] };
     else if (path === "/labels/label-deep-link/history/records") body = { items: [], hasMore: false };
     else if (path === "/labels") body = calendarLabels;
+    else if (path === "/activities") body = timelineSeeds;
+    else if (path === "/notes" && method === "POST") {
+      const payload = route.request().postDataJSON();
+      const created = { id: `activity-note-${notes.length + 1}`, ...payload, contentText: payload.content, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1, tags: [], pinned: false };
+      notes.push(created);
+      body = created;
+    }
     else if (path === "/notes/order" && method === "PUT") {
       const { noteIds } = route.request().postDataJSON();
       notes = noteIds.map((id) => notes.find((item) => item.id === id)).filter(Boolean);
@@ -1068,6 +1081,29 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
   assert.deepEqual(paths.map(({ id }) => id), ["undo-path"]);
   assert.ok(requests.includes("/paths/undo-path/restore"));
+});
+
+it("preserves a Timeline activity note after failure and saves it on retry", async (t) => {
+  const { page, requests } = await fixture(t, 1280, {
+    failTimelineNoteOnce: true,
+    timelineSeeds: [{ id: "activity-note-source", type: "TIME_TRACKED", title: "Browser activity for notes", detail: "Completed a focused work session", occurredAt: "2026-10-01T10:00:00Z", timeEntryId: "session-activity-note" }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}timeline`);
+  const activity = page.locator(".timeline-entry", { hasText: "Browser activity for notes" });
+  await activity.getByRole("button", { name: "Add note" }).click();
+  const editor = activity.locator(".note-editor");
+  await editor.getByRole("textbox", { name: "Activity note title" }).fill("A retryable reflection");
+  await editor.getByRole("textbox", { name: "Activity note content" }).fill("Keep this draft after the first request fails.");
+  await editor.getByRole("button", { name: "Save note" }).click();
+
+  await page.getByRole("alert").filter({ hasText: "Could not save activity note." }).waitFor();
+  assert.equal(await editor.getByRole("textbox", { name: "Activity note title" }).inputValue(), "A retryable reflection");
+  assert.equal(await editor.getByRole("textbox", { name: "Activity note content" }).inputValue(), "Keep this draft after the first request fails.");
+
+  await editor.getByRole("button", { name: "Save note" }).click();
+  await editor.waitFor({ state: "detached" });
+  assert.equal(requests.filter((path) => path === "/notes").length, 2, "Retry issues the second note request after the 503");
+  await activity.waitFor();
 });
 
 it("restores a hidden Path board tab after showing it from Paths", async (t) => {
