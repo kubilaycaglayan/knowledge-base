@@ -22,6 +22,7 @@ class LogServiceTest {
 
   LogServiceTest() {
     when(logs.save(any(Log.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(logs.saveAndFlush(any(Log.class))).thenAnswer(invocation -> invocation.getArgument(0));
   }
 
   private static HttpStatus status(Runnable action) {
