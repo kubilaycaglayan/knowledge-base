@@ -245,6 +245,39 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void rangeRejectsAnInvalidAssignmentBeforeChangingAnyDay() {
+    String token = token();
+    String label = hiddenLabel(token, "Existing assignment");
+    ok(
+        HttpMethod.PUT,
+        "/api/v1/calendar/days/2026-10-05",
+        token,
+        "{\"note\":\"Keep this note\",\"labels\":[{\"labelId\":\"" + label + "\"}]}");
+
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        exchange(
+                HttpMethod.PUT,
+                "/api/v1/calendar/days/range",
+                token,
+                "{\"startDate\":\"2026-10-05\",\"endDate\":\"2026-10-06\","
+                    + "\"labels\":[{\"labelId\":\""
+                    + label
+                    + "\",\"portion\":0.30}]}")
+            .getStatusCode());
+
+    JsonNode days =
+        ok(
+            HttpMethod.GET,
+            "/api/v1/calendar/days?startDate=2026-10-05&endDate=2026-10-06",
+            token,
+            null);
+    assertEquals(List.of("2026-10-05"), days.findValuesAsText("date"));
+    assertEquals("Keep this note", days.get(0).get("note").asText());
+    assertEquals(label, days.get(0).get("labels").get(0).get("labelId").asText());
+  }
+
+  @Test
   void anotherUsersLabelIsStillRejected() {
     String owner = token();
     String intruder = token();
