@@ -35,7 +35,7 @@ public class NoteController {
 
   record PinRequest(boolean pinned) {}
 
-  record OrderRequest(List<UUID> noteIds) {}
+  record OrderRequest(@NotNull List<UUID> noteIds) {}
 
   private UUID user(Authentication a) {
     return UUID.fromString(a.getName());
@@ -71,7 +71,7 @@ public class NoteController {
 
   @PutMapping("/order")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void order(Authentication a, @RequestBody OrderRequest request) {
+  public void order(Authentication a, @Valid @RequestBody OrderRequest request) {
     service.orderNotes(user(a), request.noteIds());
   }
 
