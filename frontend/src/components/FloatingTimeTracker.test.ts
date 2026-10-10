@@ -546,6 +546,46 @@ describe("FloatingTimeTracker", () => {
   });
 
   // SP-10
+  it("keeps a paused session after resume fails and resumes it after retry", async () => {
+    let resumeAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft" && !options.method)
+        return { pathId: "path-1", labelIds: ["label-1"], description: "Paused work", pausedSeconds: 120 };
+      if (path === "/timers/resume" && options.method === "POST") {
+        resumeAttempts += 1;
+        if (resumeAttempts === 1) throw new Error("offline");
+        return { id: "timer-2", pathId: "path-1", labelIds: ["label-1"], description: "Paused work", startedAt: new Date().toISOString(), carriedSeconds: 120, running: true };
+      }
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    try {
+      await flushPromises();
+      await wrapper.get('button[aria-label="Resume session"]').trigger("click");
+      await flushPromises();
+
+      expect(useTimerStore().error).toContain("Could not resume the session.");
+      expect(wrapper.get(".tracker-error").text()).toContain("Could not resume the session.");
+      expect(wrapper.get('button[aria-label="Resume session"]').exists()).toBe(true);
+      expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
+      expect(useTimerStore().description).toBe("Paused work");
+
+      await wrapper.get('button[aria-label="Resume session"]').trigger("click");
+      await flushPromises();
+
+      expect(resumeAttempts).toBe(2);
+      expect(wrapper.get('button[aria-label="Pause session"]').exists()).toBe(true);
+      expect(useTimerStore().current?.carriedSeconds).toBe(120);
+      expect(useTimerStore().selectedLabelIds).toEqual(["label-1"]);
+      expect(useTimerStore().description).toBe("Paused work");
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("resumes a paused session with Cmd+Enter", async () => {
     const calls: string[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {

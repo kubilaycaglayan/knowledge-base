@@ -393,6 +393,10 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `nav-shell.acceptance.test.mjs` / `keeps a paused session
   understandable after route navigation and reload` verifies the Paused status
   and Resume session action on another route after reload.
+- [x] A failed resume keeps the session paused and allows a successful retry.
+  Evidence: `FloatingTimeTracker.test.ts` / `keeps a paused session after
+  resume fails and resumes it after retry` checks the visible error, retained
+  context, Resume session action, and successful retry with the same context.
 
 ### Flow: Finish a running session
 
