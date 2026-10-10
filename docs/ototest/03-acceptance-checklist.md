@@ -1325,8 +1325,12 @@ so the warning and discard criteria remain open.
 ### Flow: Operate the application with mobile Chrome touch
 
 - [ ] Primary touch targets are comfortably tappable at phone width.
-- [ ] Mobile text controls use an input size that avoids unintended browser
-  zoom where applicable.
+- [x] Mobile text controls use an input size that avoids unintended browser
+  zoom where applicable. Supplemental Chromium evidence:
+  `nav-shell.acceptance.test.mjs` / `uses at least 16px text controls on
+  phone-width routes` checks visible inputs, selects, textareas, and editable
+  content on Sessions, Logs, Notes, Calendar, and Settings at 390px. A real
+  mobile browser zoom interaction still needs verification.
 - [ ] The page remains zoomable using browser controls.
 - [ ] The on-screen keyboard does not permanently obscure the active control
   or its save/recovery action.

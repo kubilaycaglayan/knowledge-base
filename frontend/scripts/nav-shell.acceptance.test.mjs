@@ -243,6 +243,21 @@ it("keeps shell actions reachable without horizontal overflow at narrow, wide, a
   }
 });
 
+it("uses at least 16px text controls on phone-width routes", async (t) => {
+  const { page } = await fixture(t, 390);
+  for (const path of ["/", "/logs", "/notes/n1", "/calendar", "/settings"]) {
+    await visit(page, path);
+    const controls = await page.evaluate(() => [...document.querySelectorAll(
+      'input:not([type="checkbox"]):not([type="radio"]), select, textarea, [contenteditable="true"]',
+    )].filter((element) => element.getClientRects().length > 0).map((element) => ({
+      name: element.getAttribute("aria-label") || element.getAttribute("name") || element.tagName,
+      fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+    })));
+    assert.ok(controls.length > 0, `${path} should expose a visible editable control`);
+    assert.ok(controls.every(({ fontSize }) => fontSize >= 16), `${path}: ${JSON.stringify(controls)}`);
+  }
+});
+
 it("keeps the Gantt timeline full width while the nav bar stays standard", async (t) => {
   const { page, requests } = await fixture(t, 1600);
   await visit(page, "/board");
