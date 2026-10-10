@@ -467,6 +467,29 @@ describe("CalendarView", () => {
     ).toBe(true);
   });
 
+  it("selects and applies a date range through a keyboard-operable control", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('[aria-label="Start date range selection"]').trigger("click");
+    expect(wrapper.text()).toContain("Choose a start date, then choose an end date.");
+    const days = wrapper.findAll("button.calendar-day");
+    await days[8].trigger("click");
+    expect(wrapper.text()).toContain("Choose an end date to complete the range.");
+    await days[10].trigger("click");
+    expect(wrapper.get(".day-editor-heading h2").text()).toContain("–");
+    expect(wrapper.get("button.primary").text()).toContain("Apply to range");
+
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([path, options]) =>
+          path === "/calendar/days/range" && options?.method === "PUT",
+      ),
+    ).toBe(true);
+  });
+
   it("keeps a failed range available for review and a successful retry", async () => {
     let rangeAttempts = 0;
     vi.mocked(api).mockImplementation(
