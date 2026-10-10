@@ -156,6 +156,25 @@ for (const width of [390, 1440]) it(`uses one nav bar size and a 10px bottom mar
   assert.deepEqual(await header(page), expected, "Nav bar in the Gantt view must match the other pages");
 });
 
+it("keeps shell actions reachable without horizontal overflow at narrow, wide, and 50%-zoom-equivalent widths", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  for (const width of [320, 390, 1280, 1920, 2880]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(layout.content <= layout.viewport, `${width}px layout overflows horizontally: ${layout.content}px > ${layout.viewport}px`);
+    for (const link of await nav.getByRole("link").all()) {
+      assert.equal(await link.isVisible(), true, `primary destination is hidden at ${width}px`);
+      const rect = await link.boundingBox();
+      assert.ok(rect && rect.x >= 0 && rect.x + rect.width <= layout.viewport, `primary destination is outside the ${width}px viewport`);
+    }
+    assert.equal(await page.getByRole("link", { name: "Settings" }).isVisible(), true, `Settings is hidden at ${width}px`);
+  }
+});
+
 it("keeps the Gantt timeline full width while the nav bar stays standard", async (t) => {
   const { page, requests } = await fixture(t, 1600);
   await visit(page, "/board");
