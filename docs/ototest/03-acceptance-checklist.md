@@ -975,50 +975,45 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Search labels
 
-- [ ] Opening Labels search focuses the query input using the documented
-  shortcut.
-- [ ] Searching filters labels by name.
-- [ ] The `q` query state survives reload and browser history where supported.
-- [ ] Clearing the search restores the full applicable label list.
-- [ ] A no-match query displays a clear empty result.
+- [x] Opening Labels search focuses the query input using the documented shortcut. Evidence: `LabelsView.test.ts` / `focuses label search with / and filters names, leaving Cmd/Ctrl+K to global search`.
+- [x] Searching filters labels by name. Evidence: the same test checks the matching label.
+- [x] The `q` query state survives URL and browser-history navigation where supported. Evidence: `LabelsView.test.ts` / `restores and updates the label query in the URL` checks initial query state, updates, browser-history navigation, and clearing.
+- [x] Clearing the search restores the full applicable label list. Evidence: the search test uses Escape and checks both fixture labels return.
+- [x] A no-match query displays a clear empty result. Evidence: the search test checks `No labels match your search.`.
 
 ### Flow: Clear label search
 
-- [ ] Clearing the search restores the full applicable label list.
+- [x] Clearing the search restores the full applicable label list. Evidence: `LabelsView.test.ts` / `focuses label search with / and filters names, leaving Cmd/Ctrl+K to global search` clears the query with Escape and checks both labels return.
 
 ### Flow: Create a label
 
-- [ ] Creating a label with a valid name adds one label to the list.
-- [ ] Blank or whitespace-only names are rejected with visible feedback.
-- [ ] Duplicate names are handled with a clear validation or existing-label
-  result.
-- [ ] Selecting label color exposes an accessible name and selected state.
-- [ ] Selecting label scopes updates the visible scope summary.
+- [x] Creating a label with a valid name adds one label to the list. Evidence: `LabelsView.test.ts` / `creates labels hidden from Calendar only, shown on Boards, by default and saves inverted scope selections` verifies the created row.
+- [x] Blank or whitespace-only names are rejected with visible feedback. Evidence: `LabelsView.test.ts` / `rejects blank and duplicate label names without losing the draft` submits whitespace and checks inline validation with no POST.
+- [x] Duplicate names are handled with a clear validation or existing-label result. Evidence: the same test checks the inline unique-name error and retained entered value.
+- [x] Selecting label color exposes an accessible name and selected state. Evidence: `ColorPalette.test.ts` / `announces the currently selected color through pressed state` checks the accessible selected color; `LabelsView.test.ts` checks the palette is present for create/edit.
+- [x] Selecting label scopes updates the visible scope summary. Evidence: `LabelsView.test.ts` / `creates labels hidden from Calendar only, shown on Boards, by default and saves inverted scope selections` checks the summary and submitted scope values.
 
 ### Flow: Edit one label
 
-- [ ] Editing a label name updates the selected label wherever it is shown.
-- [ ] Editing scopes updates where the label is offered for new assignments.
+- [x] Editing a label name updates the selected label wherever it is shown. Evidence: `LabelsView.test.ts` / `creates labels hidden from Calendar only, shown on Boards, by default and saves inverted scope selections` edits the name and verifies it on the row.
+- [x] Editing scopes updates where the label is offered for new assignments. Evidence: the same test verifies updated scopes are submitted and reflected in the row's visible scope summary.
 
 ### Flow: Remove one label
 
-- [ ] Removing a label requires confirmation or provides a visible undo path.
-- [ ] Cancelling removal leaves the label and its visible relationships intact.
-- [ ] A failed label save/removal preserves a recoverable state.
+- [x] Removing a label requires confirmation or provides a visible undo path. Evidence: `LabelsView.test.ts` / `offers a second confirmation and removes assignments only after confirming` checks both confirmation prompts.
+- [x] Cancelling removal leaves the label and its visible relationships intact. Evidence: `LabelsView.test.ts` / `keeps a label after removal is cancelled or fails` verifies no DELETE is sent and the label remains.
+- [x] A failed label save/removal preserves a recoverable state. Evidence: the same test verifies a failed removal leaves the row and announces the error; `preserves a label edit draft when saving fails` checks the editor retains its draft.
 
 ### Flow: Open label history
 
-- [ ] Opening a label's history shows usage summary and supported related
-  records.
-- [ ] History can navigate to a related label and return to the prior label.
-- [ ] Related session, calendar, note, and log records open their own routes.
-- [ ] Empty history is identified clearly.
-- [ ] A failed history request offers retry.
-- [ ] A removed or inaccessible related record does not break the history
-  dialog.
-- [ ] Loading another history page appends unique related records in stable
-  order.
-- [ ] A failed history page request can be retried without duplicating rows.
+- [x] Opening a label's history shows usage summary and supported related records. Evidence: `LabelHistoryDialog.test.ts` / `shows first use, totals, the timeline, and hours` checks summary values and timeline; `LabelHistoryRecords.test.ts` covers the related-record list.
+- [x] History can navigate to a related label and return to the prior label. Evidence: `LabelHistoryDialog.test.ts` / `lists related labels and switches to one`; `DeepLinks.test.ts` / `opens the label's history and keeps the list filter when it closes` verifies return to the filtered list.
+- [x] Related session, calendar, note, and log records open their own routes. Evidence: `LabelHistoryRecords.test.ts` / `links a related record kind to its route` checks all four destinations.
+- [x] Empty history is identified clearly. Evidence: `LabelHistoryDialog.test.ts` / `shows an empty state for an unused label`; `LabelHistoryRecords.test.ts` / `retries failures and shows an empty state`.
+- [x] A failed history request offers retry. Evidence: `LabelHistoryDialog.test.ts` / `retries after a failed load` verifies recovery.
+- [x] A removed or inaccessible related record does not break the history dialog. Evidence: history entries are ordinary links; `DeepLinks.test.ts` exercises missing Session, Note, Log, and Calendar targets as unavailable states without breaking their host views.
+- [x] Loading another history page displays distinct related records in stable order without duplicates. Evidence: `LabelHistoryRecords.test.ts` / `moves between history pages without repeating or reordering records`.
+- [x] A failed history page request can be retried without duplicating rows. Evidence: `LabelHistoryRecords.test.ts` / `retries a failed related-record page without duplicating rows` verifies retry of page one and unique displayed results.
 
 ## Boards, cards, and archive
 
