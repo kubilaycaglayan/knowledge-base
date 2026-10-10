@@ -8,6 +8,7 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ public final class GoogleIdTokenIdentityVerifier implements GoogleIdentityVerifi
     this.verifier = verifier;
   }
 
+  @Autowired
   public GoogleIdTokenIdentityVerifier(@Value("${app.google-client-id:}") String clientId) {
     if (clientId == null || clientId.isBlank()) {
       verifier = null;
