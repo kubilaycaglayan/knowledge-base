@@ -1045,7 +1045,7 @@ the extension has its own scope in OTOTEST-04.
 
 - [x] Archiving a board requires confirmation and removes it from active tabs. Evidence: `BoardView.test.ts` / `confirms before archiving a status or the board` checks the confirmation dialog; `boards.test.ts` covers the archive action and active board selection.
 - [x] A missing selected board falls back to All boards. Evidence: `board.acceptance.test.mjs` / `resolves an invalid board query to the All boards view` checks URL normalization and selected state.
-- [ ] The board explains that a requested board is unavailable after fallback.
+- [x] The board explains when a requested board is unavailable after falling back to All boards. Evidence: `board.acceptance.test.mjs` / `resolves an invalid board query to the All boards view` verifies the All boards URL and selected tab, then checks the accessible fallback alert.
 
 ### Flow: Manage one board's statuses
 

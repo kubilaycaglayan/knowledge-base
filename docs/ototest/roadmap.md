@@ -32,6 +32,9 @@ to shared tests or be marked as non-interactive with a reason.
 - `/development` is temporary label-picker tooling. It remains directly
   addressable but is excluded from the authenticated product navbar and
   supported route coverage; the navbar test asserts its absence.
+- Board deep links now explain when an unavailable board ID falls back to All
+  boards; the browser acceptance test checks the announced message and
+  normalized route.
 - iOS is out of scope for `#ototest` while the app is not in use. No iOS test
   flows or milestones are included.
 - See [the audit](../test-coverage-audit.md) and
