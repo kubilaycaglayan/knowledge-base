@@ -103,19 +103,34 @@ browser interaction evidence remains a separate layer.
   constraints for JSON operations, raw CSV import shape, service-level
   reference/set rules, and states that methods without a declared body have
   no request body; unproven field behavior remains a gap.
-- [ ] Include response code, response fields, and relevant headers/content
-  types in each applicable row.
-- [ ] Include authentication requirements and any intentionally public
-  operation in each applicable row.
-- [ ] Include direct resource IDs and referenced resource IDs that require
-  owner-scoped resolution.
-- [ ] Include each operation's read, create, update, archive, delete, ordering,
-  import, or other observable effect.
+- [x] Include response code, response fields, and relevant headers/content
+  types in each applicable row. The API matrix maps every operation's
+  controller method to its success status/body type, catalogs each serialized
+  response shape, and names observed response assertions. Empty responses and
+  the CSV export headers/media type are called out explicitly.
+- [x] Include authentication requirements and any intentionally public
+  operation in each applicable row. The API matrix states authenticated user
+  scope as the default and marks the Google config, registration, password
+  login, and Google login operations public. Protected operation rows map to
+  the anonymous-rejection sweep plus operation-specific successful evidence.
+- [x] Include direct resource IDs and referenced resource IDs that require
+  owner-scoped resolution. Direct route identifiers and request reference
+  fields are listed in the API matrix; the owner-scope rule is explicit and
+  operation evidence names foreign-owner or wrong-parent assertions where
+  verified.
+- [x] Include each operation's read, create, update, archive, delete, ordering,
+  import, or other observable effect. The API matrix's evidence column records
+  returned/read-back state for reads and the observed persisted state, removal,
+  reassignment, ordering, or import result for mutations; operations without
+  state changes are described as reads or empty responses.
 - [x] Compare the resulting operation rows with the generated `/v3/api-docs`
   operation set (107 exact method/path matches, no set differences) and
   `docs/api.md`; operation rows are linked to documented API families.
-- [ ] Compare the operation rows with supported web API call sites and mark
-  server operations with no supported client use for a scope decision.
+- [x] Compare the operation rows with supported web API call sites and mark
+  server operations with no supported client use for a scope decision. The
+  dated source audit in the API matrix identifies the only seven operations
+  with no supported web/desktop-extension caller and assigns the support or
+  deprecation decision to Knowledge Base maintainers.
 
 ## Flow: Cover authentication and account operations
 
@@ -802,8 +817,34 @@ browser interaction evidence remains a separate layer.
   boundary by `PathAuthorizationApiTest.pathMergeRequiresAValidTargetId`.
   Board status create/update's blank and maximum-length rules are covered by
   `BoardControllerApiTest.statusCreateAndUpdateValidateRequiredNameAndMaximumLength`.
-- [ ] Every path/query parameter with a documented allowed range has lower,
-  upper, and out-of-range boundary evidence.
+  The DTO annotation and service-range audit found named evidence for the
+  declared constraints across auth, note/log, calendar, timer, import, and
+  board request types. The criterion remains open because `CardRequest.priority`
+  has an unresolved enum-binding contract: unknown values currently become
+  null and use the MEDIUM default. The matrix marks this as a maintainer-owned
+  gap; do not assert rejection until the Knowledge Base maintainers settle the
+  intended contract. Unknown `TimeSource` values for manual entry create/edit
+  now return 400 before service access in
+  `TimerApiTest.timerAndManualEntryRequestsRejectUnknownSourcesBeforeServiceAccess`.
+- [x] Every path/query parameter with a documented allowed range has lower,
+  upper, and out-of-range boundary evidence. Search page bounds are asserted
+  by `SearchApiTest.searchAcceptsInclusiveQueryAndPageBoundaries` and
+  `searchRejectsOutOfRangePagesAndUnknownTypes`; calendar one-year limits by
+  `CalendarApiTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges` and
+  `CalendarLabelPickerIntegrationTest.rangeRejectsReversedAndOverYearRequestsWithoutWritingDays`;
+  report two-year endpoints by
+  `KnowIntegrationTest.customReportAcceptsTheTwoYearMaximumWindowIncludingBothEndpoints`
+  and `ReportApiTest.customRangeAllowsTwoYearsButRejectsAnythingLonger`; board
+  page limits by `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
+  `cardPageValidatesCursorAndLimitBoundariesBeforeCardLookup`, and
+  `AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`; timer and
+  note pagination clamp behavior by
+  `TimerServiceEdgeTest.historyPageClampsNegativePagesAndOversizedPageSizes`
+  and `NoteListIntegrationTest.notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage`;
+  label-history page range 0–100000 by
+  `LabelHistoryServiceTest.recordPageAcceptsMaximumAndRejectsTheFirstValueAboveIt`
+  and existing negative-page evidence. Parameters without a declared upper
+  bound, such as board-page cursors, are not assigned an invented maximum.
 - [x] Date and timestamp operations have timezone, leap-day, inclusive-range,
   and reversed-range evidence where applicable. The API matrix links calendar
   and report leap-day/inclusive/reversed cases, requested-zone label history,

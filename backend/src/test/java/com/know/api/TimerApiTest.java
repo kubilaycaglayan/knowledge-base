@@ -104,9 +104,13 @@ class TimerApiTest {
   }
 
   @Test
-  void timerStartAndResumeRejectUnknownSourcesBeforeServiceAccess() throws Exception {
+  void timerAndManualEntryRequestsRejectUnknownSourcesBeforeServiceAccess() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    UUID entryId = UUID.randomUUID();
+    String validInterval =
+        "\"labelIds\":[],\"startedAt\":\"2026-08-25T10:00:00Z\","
+            + "\"endedAt\":\"2026-08-25T10:30:00Z\"";
 
     mvc.perform(
             post("/api/v1/timers")
@@ -119,6 +123,18 @@ class TimerApiTest {
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"source\":\"UNKNOWN\"}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            post("/api/v1/time-entries")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{" + validInterval + ",\"source\":\"UNKNOWN\"}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            put("/api/v1/time-entries/{id}", entryId)
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{" + validInterval + ",\"source\":\"UNKNOWN\"}"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
