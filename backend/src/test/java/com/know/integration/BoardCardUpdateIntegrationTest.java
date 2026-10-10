@@ -71,4 +71,27 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
     assertEquals(pathId, persisted.get("pathIds").get(0).asText());
     assertEquals(labelId, persisted.get("labelIds").get(0).asText());
   }
+
+  @Test
+  void cardCreateAcceptsEveryDeclaredPriority() {
+    String owner = api.register();
+    String boardId =
+        api.created("POST", "/api/v1/boards", owner, "{\"name\":\"Priorities\"}")
+            .get("id")
+            .asText();
+
+    for (String priority : java.util.List.of("LOW", "MEDIUM", "HIGH", "URGENT")) {
+      JsonNode created =
+          api.created(
+              "POST",
+              "/api/v1/boards/" + boardId + "/cards",
+              owner,
+              "{\"title\":\"" + priority + "\",\"priority\":\"" + priority + "\"}");
+      assertEquals(priority, created.get("priority").asText());
+      JsonNode persisted =
+          api.get("/api/v1/boards/" + boardId + "/cards/" + created.get("id").asText(), owner)
+              .json();
+      assertEquals(priority, persisted.get("priority").asText());
+    }
+  }
 }
