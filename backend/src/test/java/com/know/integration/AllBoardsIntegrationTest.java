@@ -546,6 +546,15 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(created.getBody().get("status").get("id"), createdReadback.get("statusId"));
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/in-column", token(), "{\"columnName\":\"Review\",\"title\":\"x\",\"priority\":\"LOW\"}").getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/in-column", token, "{\"columnName\":\" \",\"title\":\"x\",\"priority\":\"LOW\"}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/in-column", token, "{\"columnName\":\"Done\",\"title\":\"" + "x".repeat(241) + "\"}").getStatusCode());
+    String maximumTitle = "x".repeat(240);
+    ResponseEntity<JsonNode> maximumLengthCard =
+        post(
+            "/api/v1/boards/" + work + "/cards/in-column",
+            token,
+            "{\"columnName\":\"Done\",\"title\":\"" + maximumTitle + "\"}");
+    assertEquals(HttpStatus.CREATED, maximumLengthCard.getStatusCode());
+    assertEquals(maximumTitle, maximumLengthCard.getBody().get("card").get("title").asText());
   }
 
   // AB-07
