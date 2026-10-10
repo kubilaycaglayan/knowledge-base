@@ -547,7 +547,11 @@ onBeforeUnmount(() => {
       </div>
       <p v-if="!loading && !notes.length" class="notes-empty">
         {{
-          query ? "No notes match your search." : "Your notes will appear here."
+          query
+            ? "No notes match your search."
+            : showArchived
+              ? "No archived notes."
+              : "Your notes will appear here."
         }}
       </p>
       <div v-else class="note-list" aria-label="Notes">
