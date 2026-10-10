@@ -219,6 +219,32 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void rangeRejectsReversedAndOverYearRequestsWithoutWritingDays() {
+    String token = token();
+    for (String dates :
+        List.of(
+            "\"startDate\":\"2026-10-02\",\"endDate\":\"2026-10-01\"",
+            "\"startDate\":\"2025-10-01\",\"endDate\":\"2026-10-02\"")) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST,
+          exchange(
+                  HttpMethod.PUT,
+                  "/api/v1/calendar/days/range",
+                  token,
+                  "{" + dates + ",\"labels\":[]}")
+              .getStatusCode());
+    }
+
+    assertTrue(
+        ok(
+                HttpMethod.GET,
+                "/api/v1/calendar/days?startDate=2025-10-01&endDate=2026-10-02",
+                token,
+                null)
+            .isEmpty());
+  }
+
+  @Test
   void anotherUsersLabelIsStillRejected() {
     String owner = token();
     String intruder = token();
