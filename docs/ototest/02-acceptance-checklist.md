@@ -456,9 +456,11 @@ browser interaction evidence remains a separate layer.
   (`AllBoardsIntegrationTest.moveToColumnCreatesAMissingColumn`).
 - [x] `POST /api/v1/boards/{id}/cards/in-column` covers card creation in an
   existing or newly created column, response metadata, persisted placement,
-  blank column and over-limit title rejection plus the exact title maximum,
-  and foreign requests
-  (`AllBoardsIntegrationTest.createInColumnCreatesAMissingColumn`).
+  blank and over-80-character column rejection without creating a status,
+  exact 80-character column acceptance, over-limit title rejection plus exact
+  title maximum, and foreign requests
+  (`AllBoardsIntegrationTest.createInColumnCreatesAMissingColumn` and
+  `AllBoardsIntegrationTest.createInColumnEnforcesColumnNameMaximumWithoutCreatingInvalidStatus`).
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/transfer` covers existing/new
   target columns, persisted transfer readback, path-board references, and
   foreign/archived board rejection

@@ -582,6 +582,31 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(maximumTitle, maximumLengthCard.getBody().get("card").get("title").asText());
   }
 
+  @Test
+  void createInColumnEnforcesColumnNameMaximumWithoutCreatingInvalidStatus() {
+    String token = token();
+    String work = board(token, "Work");
+    List<String> originalStatuses = statusNames(token, work);
+
+    ResponseEntity<JsonNode> tooLong =
+        post(
+            "/api/v1/boards/" + work + "/cards/in-column",
+            token,
+            "{\"columnName\":\"" + "c".repeat(81) + "\",\"title\":\"Card\"}");
+    assertEquals(HttpStatus.BAD_REQUEST, tooLong.getStatusCode());
+    assertEquals(originalStatuses, statusNames(token, work));
+
+    String maximumName = "c".repeat(80);
+    ResponseEntity<JsonNode> atLimit =
+        post(
+            "/api/v1/boards/" + work + "/cards/in-column",
+            token,
+            "{\"columnName\":\"" + maximumName + "\",\"title\":\"Card\"}");
+    assertEquals(HttpStatus.CREATED, atLimit.getStatusCode());
+    assertEquals(maximumName, atLimit.getBody().get("status").get("name").asText());
+    assertTrue(statusNames(token, work).contains(maximumName));
+  }
+
   // AB-07
   @Test
   void moveToColumnCreatesAMissingColumn() {
