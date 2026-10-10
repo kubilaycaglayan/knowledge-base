@@ -169,6 +169,32 @@ describe("SettingsView", () => {
       }),
     );
     expect(store.mock.calls[0][0]).toBeInstanceOf(PasswordCredentialMock);
+    expect(wrapper.get('[role="status"]').text()).toContain("Password saved.");
+    wrapper.unmount();
+  });
+
+  it("preserves credential inputs and offers recovery when saving fails", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/auth/me")
+        return { email: "person@example.com", hasPassword: true, hasGoogle: false };
+      throw new Error("incorrect current password");
+    });
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get('input[name="currentPassword"]').setValue("wrong-current");
+    await wrapper.get('input[name="newPassword"]').setValue("new-password");
+    await wrapper.get('input[name="confirmPassword"]').setValue("new-password");
+    await wrapper.get("form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain("Check your current password and try again.");
+    expect((wrapper.get('input[name="currentPassword"]').element as HTMLInputElement).value).toBe("wrong-current");
+    expect((wrapper.get('input[name="newPassword"]').element as HTMLInputElement).value).toBe("new-password");
+    expect((wrapper.get('input[name="confirmPassword"]').element as HTMLInputElement).value).toBe("new-password");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/auth/password",
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 
   it("rejects mismatched new passwords before calling the API", async () => {
