@@ -141,6 +141,11 @@ disposable Compose project. It creates a Path through the UI, edits it, removes
 it with the supported undo window, and confirms each saved state through fresh
 API reads and reloads.
 
+`./scripts/run-logs-e2e.sh` runs a desktop Chromium Logs journey in its own
+disposable stack. It creates and edits a log through the UI, confirms each
+version from the API and after reload, then exercises the removal confirmation
+and verifies the deleted entry stays absent.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and

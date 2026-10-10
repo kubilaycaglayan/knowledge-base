@@ -96,8 +96,12 @@ permissions, or unavailable API recovery.
   `frontend/scripts/paths.real-stack.acceptance.test.mjs`, run with
   `./scripts/run-paths-e2e.sh`. It verifies the removal confirmation and undo,
   then checks the restored description after reload.
+- **Logs, desktop Chromium:** `creates, edits, deletes, and reloads a Log with
+  persisted API state` in `frontend/scripts/logs.real-stack.acceptance.test.mjs`,
+  run with `./scripts/run-logs-e2e.sh`. The flow confirms deletion before
+  removing the entry and checks the API and UI after reload.
 
-Logs, Labels, Calendar, Reports, Settings, both transfer formats, and
+Labels, Calendar, Reports, Settings, both transfer formats, and
 the remaining signed-in timer/notes and service-worker recovery journeys remain
 open for this milestone.
 
