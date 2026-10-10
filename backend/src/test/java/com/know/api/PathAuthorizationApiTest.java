@@ -234,16 +234,18 @@ class PathAuthorizationApiTest {
   }
 
   @Test
-  void pathOrderingRejectsNullIdListBeforeRepositoryAccess() throws Exception {
+  void pathOrderingRejectsNullOrMissingIdListBeforeRepositoryAccess() throws Exception {
     UUID owner = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
 
-    mvc.perform(
-            put("/api/v1/paths/order")
-                .with(authentication(auth))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pathIds\":null}"))
-        .andExpect(status().isBadRequest());
+    for (String body : List.of("{\"pathIds\":null}", "{}")) {
+      mvc.perform(
+              put("/api/v1/paths/order")
+                  .with(authentication(auth))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
 
     verifyNoInteractions(paths);
   }
