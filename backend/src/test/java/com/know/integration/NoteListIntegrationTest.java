@@ -79,4 +79,25 @@ class NoteListIntegrationTest extends IntegrationTestSupport {
     assertEquals(1, archivedSearch.get("totalItems").asLong());
     assertEquals(second.get("id").asText(), archivedSearch.get("items").get(0).get("id").asText());
   }
+
+  @Test
+  void notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage() {
+    String owner = api.register();
+    api.created("POST", "/api/v1/notes", owner, "{\"title\":\"First\",\"content\":\"one\"}");
+    api.created("POST", "/api/v1/notes", owner, "{\"title\":\"Second\",\"content\":\"two\"}");
+
+    JsonNode lowerBound = api.get("/api/v1/notes?page=-3&size=0", owner).json();
+    assertEquals(0, lowerBound.get("page").asInt());
+    assertEquals(1, lowerBound.get("size").asInt());
+    assertEquals(1, lowerBound.get("items").size());
+
+    JsonNode upperBound = api.get("/api/v1/notes?page=0&size=101", owner).json();
+    assertEquals(100, upperBound.get("size").asInt());
+    assertEquals(2, upperBound.get("items").size());
+
+    JsonNode emptyPage = api.get("/api/v1/notes?page=2&size=1", owner).json();
+    assertEquals(2, emptyPage.get("page").asInt());
+    assertEquals(0, emptyPage.get("items").size());
+    assertEquals(2, emptyPage.get("totalItems").asLong());
+  }
 }

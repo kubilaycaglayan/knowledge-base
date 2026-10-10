@@ -234,6 +234,29 @@ class PathAuthorizationApiTest {
   }
 
   @Test
+  void pathOrderingRejectsInvalidRequestBodiesBeforeRepositoryAccess() throws Exception {
+    UUID owner = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+
+    for (String body :
+        List.of(
+            "{\"pathIds\":null}",
+            "{}",
+            "null",
+            "{\"pathIds\":\"not-an-array\"}",
+            "{\"pathIds\":[\"not-a-uuid\"]}")) {
+      mvc.perform(
+              put("/api/v1/paths/order")
+                  .with(authentication(auth))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(paths);
+  }
+
+  @Test
   void restoringAnotherUsersOrMissingPathIsRejected() throws Exception {
     UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID();
     when(paths.restoreByIdAndUserId(pathId, owner)).thenReturn(0);

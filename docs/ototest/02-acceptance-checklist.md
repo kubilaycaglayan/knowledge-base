@@ -99,7 +99,9 @@ browser interaction evidence remains a separate layer.
   (`AuthControllerApiTest.registrationRejectsShortPasswords` and
   `registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength`);
   blank email/password inputs are rejected for both register and login by
-  `credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin`.
+  `credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin`; exactly
+  200 characters succeeds in registration
+  (`AuthControllerApiTest.registrationAndPasswordSetupAcceptMaximumLengthPasswords`).
 - [x] `POST /api/v1/auth/register` returns conflict for duplicate normalized
   email (`AuthControllerApiTest.duplicateRegistrationIsRejected` and
   `KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
@@ -119,6 +121,8 @@ browser interaction evidence remains a separate layer.
   malformed provider-token behavior evidence as applicable.
   HTTP missing/null/blank/oversized token binding is covered by
   `AuthControllerApiTest.googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary`;
+  an exact 10,000-character token reaches the verifier
+  (`AuthControllerApiTest.googleIdTokenAtMaximumLengthReachesTheVerifier`);
   verifier-level malformed tokens are covered by
   `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
   Claim-level unverified email, missing email/subject, and normalized identity
@@ -145,7 +149,9 @@ browser interaction evidence remains a separate layer.
   `passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured`,
   `passwordChangeRequiresCurrentPasswordEvenWhenGoogleIsAlsoLinked`, and
   `passwordSetupRejectsNewPasswordsOutsideTheSupportedLength` covers blank,
-  eight-character, and over-200-character new passwords.
+  eight-character, and over-200-character new passwords; exact 200-character
+  password setup succeeds
+  (`AuthControllerApiTest.registrationAndPasswordSetupAcceptMaximumLengthPasswords`).
 - [x] Registration, password login, and Google login responses do not expose
   password hashes or the linked Google subject
   (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt` and
@@ -182,7 +188,8 @@ browser interaction evidence remains a separate layer.
   read of the active state.
 - [x] `POST /api/v1/paths/{id}/pin` covers pin and unpin outcomes.
 - [x] `PUT /api/v1/paths/order` covers complete ordering, invalid/missing IDs,
-  and persisted order.
+  malformed body, list shape, and UUID item rejection before repository access, and
+  persisted order (`PathAuthorizationApiTest.pathOrderingRejectsInvalidRequestBodiesBeforeRepositoryAccess`).
 
 ## Flow: Cover Labels operations
 
@@ -212,7 +219,9 @@ browser interaction evidence remains a separate layer.
 ## Flow: Cover Notes operations
 
 - [x] `GET /api/v1/notes` covers active, archived, paginated, and query-filtered
-  list behavior.
+  list behavior; negative page clamps to zero, page size clamps to 1–100, and
+  a page beyond the end is empty
+  (`NoteListIntegrationTest.notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage`).
 - [x] `GET /api/v1/notes/labels` covers available NOTE labels and owner scope.
 - [x] `GET /api/v1/notes/{id}` covers owned, missing, foreign, and archived
   note IDs.
@@ -241,7 +250,8 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/notes/{id}/pin` covers pin/unpin state, version, and pinned
   ordering.
 - [x] `PUT /api/v1/notes/order` covers complete owned-note ordering and
-  invalid or foreign note IDs.
+  malformed body, list shape, and UUID item rejection before service access, and invalid or
+  foreign note IDs (`NoteApiTest.noteOrderingRejectsInvalidRequestBodiesBeforeServiceAccess`).
 - [x] Note line-history behavior covers unchanged lines, changed lines,
   first-edit migration behavior, and the documented large-document limit.
 
@@ -320,7 +330,12 @@ browser interaction evidence remains a separate layer.
   description length succeeds (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`
   and `TimerApiTest.timerAndEntryDescriptionsAcceptTheirMaximumLength`).
 - [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
-  optional page/size pagination metadata.
+  optional page/size pagination metadata, including routing unpaged requests
+  to the unpaged service operation, defaulting size to 50 when only page is
+  set, and forwarding explicit page/size values
+  (`TimerApiTest.timeEntryHistoryRoutesUnpagedAndExplicitlyPagedRequestsToService`);
+  non-integer page/size values return 400 before service execution
+  (`TimerApiTest.timeEntryHistoryRejectsNonIntegerPaginationBeforeServiceAccess`).
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
   persisted targets/duration, foreign ownership, and invalid interval boundaries;

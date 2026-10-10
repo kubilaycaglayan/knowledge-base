@@ -38,6 +38,41 @@ class TimerApiTest {
   }
 
   @Test
+  void timeEntryHistoryRoutesUnpagedAndExplicitlyPagedRequestsToService() throws Exception {
+    UUID user = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+    when(service.history(user)).thenReturn(List.of());
+    when(service.historyPage(user, 0, 50))
+        .thenReturn(new TimerService.HistoryPage(List.of(), 0, 50, 0, 1));
+    when(service.historyPage(user, 2, 7))
+        .thenReturn(new TimerService.HistoryPage(List.of(), 2, 7, 0, 1));
+
+    mvc.perform(get("/api/v1/time-entries").with(authentication(auth)))
+        .andExpect(status().isOk());
+    mvc.perform(get("/api/v1/time-entries?page=0").with(authentication(auth)))
+        .andExpect(status().isOk());
+    mvc.perform(get("/api/v1/time-entries?page=2&size=7").with(authentication(auth)))
+        .andExpect(status().isOk());
+
+    verify(service).history(user);
+    verify(service).historyPage(user, 0, 50);
+    verify(service).historyPage(user, 2, 7);
+  }
+
+  @Test
+  void timeEntryHistoryRejectsNonIntegerPaginationBeforeServiceAccess() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/time-entries?page=first").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+    mvc.perform(get("/api/v1/time-entries?page=0&size=large").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
   void timerStartPassesExplicitSourceAndTargetsToService() throws Exception {
     UUID user = UUID.randomUUID(), path = UUID.randomUUID(), label = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
