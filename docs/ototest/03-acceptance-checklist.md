@@ -1227,8 +1227,8 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Search notes
 
-- [x] Searching notes by text shows matching notes. Evidence: `NotesView.test.ts` / `filters note text, restores the query in the URL, and distinguishes empty from error` verifies a text match remains visible.
-- [x] The `q` query state is restored after reload and browser Back/Forward. Evidence: the same test remounts from `/notes?q=graph` and verifies the search field and result.
+- [x] Searching notes by text shows matching notes. Evidence: `NotesView.test.ts` / `filters note text, restores the query in the URL, and distinguishes empty from error` verifies a text match remains visible; `nav-shell.acceptance.test.mjs` / `restores the Notes search query and filtered result from its direct URL after reload` verifies the query filters fixture records in the browser.
+- [x] The `q` query state is restored after reload and browser Back/Forward. Evidence: `NotesView.test.ts` / `filters note text, restores the query in the URL, and distinguishes empty from error` remounts from `/notes?q=graph`; `nav-shell.acceptance.test.mjs` / `restores the Notes search query and filtered result from its direct URL after reload` verifies field, result, and URL after a full browser reload.
 - [x] A no-match result is distinct from a failed notes request. Evidence: the same test checks `No notes match your search.` separately from `Unable to load notes.`.
 
 ### Flow: Filter archived notes

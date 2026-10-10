@@ -188,7 +188,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     }
     else if (path === "/notes") {
       const archived = url.searchParams.get("archived") === "true";
-      const selectedNotes = notes.filter((note) => Boolean(note.archived) === archived);
+      const query = (url.searchParams.get("q") || "").trim().toLocaleLowerCase();
+      const selectedNotes = notes.filter((note) => {
+        const matchesArchive = Boolean(note.archived) === archived;
+        const searchable = `${note.title || ""} ${note.contentText || ""} ${(note.tags || []).join(" ")}`.toLocaleLowerCase();
+        return matchesArchive && (!query || searchable.includes(query));
+      });
       body = { items: selectedNotes, page: 0, size: 20, totalItems: selectedNotes.length, totalPages: selectedNotes.length ? 1 : 0 };
     }
     else if (path === "/notes/n1") body = notes.find((note) => note.id === "n1") || { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
@@ -1857,6 +1862,30 @@ it("restores the archived Notes filter from its direct URL after reload", async 
   await page.reload();
   await page.locator(".note-row", { hasText: "Archived browser note" }).waitFor();
   assert.equal(await page.locator(".note-row").count(), 1, "Reload preserves the archived filter and selected record set");
+});
+
+it("restores the Notes search query and filtered result from its direct URL after reload", async (t) => {
+  const note = (id, title, contentText) => ({
+    id, title, content: "{}", contentText,
+    createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z",
+    version: 1, tags: [], pinned: false,
+  });
+  const { page } = await fixture(t, 1280, {
+    noteSeeds: [
+      note("matching-note", "Browser research", "A distinctive search passage"),
+      note("other-note", "Meeting notes", "An unrelated detail"),
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}notes?q=distinctive`);
+  await page.locator(".note-row", { hasText: "Browser research" }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("q"), "distinctive");
+  assert.equal(await page.locator(".note-row").count(), 1);
+  assert.equal(await page.getByRole("textbox", { name: "Search notes" }).inputValue(), "distinctive");
+
+  await page.reload();
+  await page.locator(".note-row", { hasText: "Browser research" }).waitFor();
+  assert.equal(await page.locator(".note-row").count(), 1, "Reload preserves the URL query and filtered Notes result");
+  assert.equal(await page.getByRole("textbox", { name: "Search notes" }).inputValue(), "distinctive");
 });
 
 it("opens and uses the Notes editor with touch-sized controls on mobile", async (t) => {
