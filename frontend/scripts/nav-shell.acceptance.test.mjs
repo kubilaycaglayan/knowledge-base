@@ -199,7 +199,7 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
 
 it("restores report filters after navigation and browser Back/Forward", async (t) => {
   const { page } = await fixture(t, 1440);
-  const search = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
+  const search = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
   await page.evaluate((query) => {
     history.pushState({}, "", `/reports${query}`);
     dispatchEvent(new PopStateEvent("popstate"));
@@ -211,6 +211,8 @@ it("restores report filters after navigation and browser Back/Forward", async (t
     const params = new URLSearchParams(new URL(page.url()).search);
     assert.equal(params.get("endDate"), "2026-09-07");
     assert.equal(params.get("aggregation"), "month");
+    assert.deepEqual(params.getAll("pathId"), ["path-1"]);
+    assert.deepEqual(params.getAll("labelId"), ["label-1"]);
   };
   await assertReportQuery();
 

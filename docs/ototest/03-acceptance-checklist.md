@@ -410,7 +410,8 @@ the extension has its own scope in OTOTEST-04.
 - [x] Browser Back and Forward restore the report interval and aggregation
   after navigating to another route. Evidence: `cd frontend && node --test
   --test-name-pattern='restores report filters after navigation'
-  scripts/nav-shell.acceptance.test.mjs` (desktop Chromium; mocked API).
+  scripts/nav-shell.acceptance.test.mjs` (desktop Chromium; mocked API); this
+  browser check also verifies Path and Label filter query values.
 - [x] Reloading a report URL restores its date range and aggregation.
   Evidence: `cd frontend && node --test --test-name-pattern='loads report
   filters from a direct query URL' scripts/nav-shell.acceptance.test.mjs`
