@@ -340,6 +340,8 @@ browser interaction evidence remains a separate layer.
   (`TimerApiTest.timeEntryHistoryRoutesUnpagedAndExplicitlyPagedRequestsToService`);
   non-integer page/size values return 400 before service execution
   (`TimerApiTest.timeEntryHistoryRejectsNonIntegerPaginationBeforeServiceAccess`).
+  Persisted first, middle, final, and empty-owner pages are covered by
+  `TimeEntryHistoryIntegrationTest.historyIsOwnerScopedNewestFirstAndPaginatesWithMetadata`.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
   persisted targets/duration, foreign ownership, and invalid interval boundaries;
