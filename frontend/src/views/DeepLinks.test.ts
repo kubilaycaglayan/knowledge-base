@@ -85,7 +85,18 @@ describe("/sessions/:id", () => {
     respond("/paths", [{ id: "p1", name: "Photography", status: "ACTIVE", color: "#2878D5" }]);
     respond("/labels?scope=TIME_ENTRY", [{ id: "l1", name: "Deepwork", color: "#7A4CC2", scopes: ["TIME_ENTRY"] }]);
     respond("/time-entries/s1", (_path: string, init?: RequestInit) =>
-      init?.method === "PUT" ? { ...session, description: JSON.parse(String(init.body)).description } : init?.method === "DELETE" ? undefined : session,
+      init?.method === "PUT"
+        ? (() => {
+            const update = JSON.parse(String(init.body));
+            return {
+              ...session,
+              ...update,
+              durationSeconds: Math.floor(
+                (Date.parse(update.endedAt) - Date.parse(update.startedAt)) / 1000,
+              ),
+            };
+          })()
+        : init?.method === "DELETE" ? undefined : session,
     );
   });
 
@@ -142,6 +153,7 @@ describe("/sessions/:id", () => {
       description: "Edited and exported",
     });
     expect(dialog()!.textContent).toContain("Edited and exported");
+    expect(dialog()!.textContent).toContain("2h");
     expect(document.querySelector('[role="dialog"] form')).toBeNull();
   });
 

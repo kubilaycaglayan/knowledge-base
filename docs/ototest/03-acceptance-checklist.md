@@ -415,8 +415,10 @@ the extension has its own scope in OTOTEST-04.
 - [x] Editing the path changes only the selected session's path. Evidence:
   `SessionsView.test.ts` / `updates every editable session property` verifies
   the single update request targets the selected record with the chosen Path.
-- [ ] Editing the start time and end time updates the selected session's
-  displayed interval and duration.
+- [x] Editing the start time and end time updates the selected session's
+  displayed interval and duration. Evidence: `DeepLinks.test.ts` / `edits the
+  session, refusing an end before the start` saves the revised interval and
+  verifies the dialog updates from 1h 30 minutes to 2h.
 - [ ] Submitting an incomplete or reversed interval identifies the invalid
   field and preserves the prior saved values.
 - [ ] Assigning or removing a TIME_ENTRY label updates the selected session's
