@@ -1,10 +1,17 @@
 # OTOTEST-01 — Backend API operation inventory
 
-**Source revision:** `77470a41c9f77581a67b5ea22c191adb2f087eea` (`origin/main` at review)
+**Source revision:** `80fecc6c4019463cd38110bffa672438012df2d8` (`origin/main` at review)
 **Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-10; 107 composed method/path rows reconciled against 105 mapping annotations, including multi-path mappings
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Evidence candidates:** [controller/API tests](../../backend/src/test/java/com/know/api/), [integration tests](../../backend/src/test/java/com/know/integration/), and [service tests](../../backend/src/test/java/com/know/service/)
 **Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. Tests were not run in OTOTEST-01.
+
+**OpenAPI reconciliation:** On 2026-10-10, the generated development
+`/v3/api-docs` document contained 107 method/path pairs, matching the 107
+matrix rows exactly (no missing or extra operations). A source check also
+resolved all 270 qualified test references in the evidence column to an
+existing test class and method; this validates names, not the relevance of
+every assertion.
 
 All operations require authentication unless the row says public. The authenticated principal is the owner scope for user data. “Candidate” identifies a suite to inspect; it is not a coverage claim until an assertion is mapped to the operation. `Gap` means the inventory has not established a named assertion for that operation. Unresolved gaps are owned by Knowledge Base maintainers.
 
@@ -20,6 +27,14 @@ guards and shared exception handling. Exact status/body assertions are linked
 per row where verified; otherwise that contract assertion remains a gap. This
 is the source for the per-operation response contract, not a claim that the
 tests assert every response field.
+
+**Evidence-layer convention:** qualified `Class.method` references name the
+assertion to inspect; the Java test package identifies its evidence layer:
+`com.know.api` is controller/HTTP, `com.know.service` is service/domain,
+`com.know.integration` is persistence and cross-record behavior, and
+`db.migration` is migration behavior. Guarded PostgreSQL tests are called out
+explicitly. Browser E2E and deployed-shaped tests remain separate evidence and
+are not used to establish controller request/response or persistence behavior.
 
 The method-to-response-shape inventory below makes the declared body type
 explicit for each method. Aliases share their controller method and response

@@ -36,14 +36,16 @@ browser interaction evidence remains a separate layer.
   controller mapping annotations at the recorded revision).
 - [x] Record route aliases as separate operation rows in the API matrix, even
   when they delegate to one service method.
-- [ ] For each operation row, record controller and method, auth requirement,
+- [x] For each operation row, record controller and method, auth requirement,
   path/query/body inputs, response status and shape, ownership-scoped IDs,
-  state effect, evidence link, evidence layer, and current gap.
+  state effect, evidence link, evidence layer, and current gap (API-01/02 in
+  OTOTEST-01; layer conventions and source-based contract reading are recorded
+  in the API matrix).
 - [ ] Use exact test names or named assertions as evidence; a test filename
   without a relevant assertion does not prove coverage.
-- [ ] Distinguish unit/domain, controller/API, service, persistence
+- [x] Distinguish unit/domain, controller/API, service, persistence
   integration, PostgreSQL-guarded, deployed-shaped, browser, and manual
-  evidence.
+  evidence using test package and guarded-run conventions in the API matrix.
 - [ ] Do not treat an anonymous-rejection sweep as proof of a specific
   authenticated operation's successful behavior.
 - [ ] Do not treat a UI or mocked-client assertion as proof of backend
@@ -59,14 +61,14 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Inventory every API operation
 
-- [ ] Reconcile every `@RequestMapping` base path with its method-level
+- [x] Reconcile every `@RequestMapping` base path with its method-level
   mapping.
-- [ ] Include every `GET` mapping as its own operation row.
-- [ ] Include every `POST` mapping as its own operation row.
-- [ ] Include every `PUT` mapping as its own operation row.
-- [ ] Include every `PATCH` mapping as its own operation row, if any are
-  introduced.
-- [ ] Include every `DELETE` mapping as its own operation row.
+- [x] Include every `GET` mapping as its own operation row.
+- [x] Include every `POST` mapping as its own operation row.
+- [x] Include every `PUT` mapping as its own operation row.
+- [x] Include every `PATCH` mapping as its own operation row; none are
+  currently declared.
+- [x] Include every `DELETE` mapping as its own operation row.
 - [ ] Include each alias route separately and state whether it has the same
   status, request, response, and side effect as its canonical route.
 - [ ] Include query parameters, defaults, accepted ranges, and repeated
@@ -81,8 +83,9 @@ browser interaction evidence remains a separate layer.
   owner-scoped resolution.
 - [ ] Include each operation's read, create, update, archive, delete, ordering,
   import, or other observable effect.
-- [ ] Compare the resulting operation rows with the current OpenAPI document
-  and `docs/api.md`; resolve or record any contract discrepancy.
+- [x] Compare the resulting operation rows with the generated `/v3/api-docs`
+  operation set (107 exact method/path matches, no set differences) and
+  `docs/api.md`; operation rows are linked to documented API families.
 - [ ] Compare the operation rows with supported web API call sites and mark
   server operations with no supported client use for a scope decision.
 
