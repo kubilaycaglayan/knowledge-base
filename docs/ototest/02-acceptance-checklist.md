@@ -822,8 +822,11 @@ browser interaction evidence remains a separate layer.
   `BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`).
 - [ ] Ordered lists have stable tie-break and reorder persistence evidence
   where ordering is part of the contract.
-- [ ] Optimistic version or expected-update-time contracts have both current
-  version success and stale version conflict evidence.
+- [x] Optimistic version or expected-update-time contracts have both current
+  version success and stale version conflict evidence. Note saves, log updates,
+  and board-card updates have successful persisted-update and stale-conflict
+  assertions in their corresponding rows of [`01-api-matrix.md`](01-api-matrix.md);
+  operations without an expected-version field do not claim this behavior.
 - [x] Idempotent operations document and assert repeated-request outcomes
   where idempotency is part of the API contract. Evidence includes repeated
   calendar-day deletion, board archive and restore, Clockify duplicate source
