@@ -397,8 +397,12 @@ the extension has its own scope in OTOTEST-04.
   and preserves aggregation. Evidence: `frontend/src/views/ReportsView.test.ts`,
   `shifts the selected interval in both directions without changing
   aggregation` asserts both endpoints in both directions.
-- [ ] Changing aggregation preserves the selected date interval.
-- [ ] Report range and supported filters are represented by the URL.
+- [x] Changing aggregation preserves the selected date interval. Evidence:
+  `frontend/src/views/ReportsView.test.ts`, `keeps the selected aggregation
+  when the date interval changes` checks both dates with `MONTH` selected.
+- [x] Report range and supported filters are represented by the URL. Evidence:
+  `frontend/src/views/ReportsView.test.ts` covers path/label filters, trendline,
+  Sankey visibility, range changes, and aggregation in query parameters.
 - [x] Browser Back and Forward restore the report interval and aggregation
   after navigating to another route. Evidence: `cd frontend && node --test
   --test-name-pattern='restores report filters after navigation'
