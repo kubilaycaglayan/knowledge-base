@@ -21,6 +21,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   const reportQueries = [];
   const pathOrderWrites = [];
   const pathMergeWrites = [];
+  const removedPaths = new Map();
   const paths = [...pathSeeds];
   let notes = [...noteSeeds];
   const logs = [...logSeeds];
@@ -100,6 +101,19 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       const sourceId = path.split("/")[2];
       const sourceIndex = paths.findIndex((item) => item.id === sourceId);
       if (sourceIndex >= 0) paths.splice(sourceIndex, 1);
+      body = {};
+    }
+    else if (path.startsWith("/paths/") && path.endsWith("/restore") && method === "POST") {
+      const id = path.split("/")[2];
+      const restored = removedPaths.get(id);
+      if (restored && !paths.some((item) => item.id === id)) paths.push(restored);
+      removedPaths.delete(id);
+      body = restored || {};
+    }
+    else if (path.startsWith("/paths/") && method === "DELETE") {
+      const id = path.split("/")[2];
+      const index = paths.findIndex((item) => item.id === id);
+      if (index >= 0) removedPaths.set(id, paths.splice(index, 1)[0]);
       body = {};
     }
     else if (path === "/paths/order" && method === "PUT") {
@@ -1018,6 +1032,31 @@ it("merges Paths into the selected target after destructive confirmation", async
   assert.equal(await page.locator(".path-title", { hasText: "Algorithms" }).count(), 0);
   assert.deepEqual(pathMergeWrites, [{ sourceId: "merge-source", targetPathId: "merge-target" }]);
   assert.deepEqual(paths.map(({ id }) => id), ["merge-target"]);
+});
+
+it("confirms Path removal and restores it through the Undo action", async (t) => {
+  const { page, paths, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "undo-path", name: "Undo path", description: "Keep this path recoverable", status: "ACTIVE", pinned: false }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  const row = page.locator(".path", { hasText: "Undo path" });
+  await row.getByRole("button", { name: "Remove", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Remove Undo path? You can undo this for a few seconds." });
+  await dialog.waitFor();
+  await page.keyboard.press("Escape");
+  await row.waitFor();
+  assert.equal(requests.includes("/paths/undo-path"), false, "Escape cancels without deleting the Path");
+
+  await row.getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("dialog", { name: "Remove Undo path? You can undo this for a few seconds." }).getByRole("button", { name: "Confirm" }).click();
+  await row.waitFor({ state: "detached" });
+  const snackbar = page.getByRole("status").filter({ hasText: "Removed “Undo path”." });
+  await snackbar.waitFor();
+  assert.equal(paths.length, 0);
+  await snackbar.getByRole("button", { name: "Undo" }).click();
+  await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
+  assert.deepEqual(paths.map(({ id }) => id), ["undo-path"]);
+  assert.ok(requests.includes("/paths/undo-path/restore"));
 });
 
 it("restores a hidden Path board tab after showing it from Paths", async (t) => {
