@@ -2232,7 +2232,7 @@ describe("path boards", { concurrency: 4 }, () => {
   });
 
   // PB-23, PB-24, PB-31: one gear opens the Boards dialog for pinning, ordering, and settings.
-  it("pins, reorders, and opens settings from the Boards dialog", async (t) => {
+  it("pins and reorders boards from the Boards dialog and keeps them after reload", async (t) => {
     const { page, origin, orderRequests } = await pathBoardFixture(t);
     await page.goto(`${origin}/board`);
     await page.locator(".board-tab", { hasText: "Second" }).waitFor();
@@ -2267,6 +2267,18 @@ describe("path boards", { concurrency: 4 }, () => {
     await settings.getByRole("button", { name: "Back to boards" }).click();
     await manager.waitFor();
     assert.equal(await settings.count(), 0);
+
+    await page.reload();
+    await page.locator(".board-page").waitFor();
+    await boardAction(page, "Manage boards");
+    const reloaded = page.getByRole("dialog", { name: "Boards" });
+    const unpinSecond = reloaded.getByRole("button", { name: "Unpin Second" });
+    await unpinSecond.waitFor();
+    assert.equal(await unpinSecond.getAttribute("aria-pressed"), "true");
+    assert.deepEqual(
+      await reloaded.locator(".boards-manager-name").allInnerTexts().then((names) => names.map((name) => name.trim())),
+      ["Second", "Custom"],
+    );
   });
 
   // Long board lists fit on screen: rows are dense on fine pointers, and dialogs cover the floating tracker.

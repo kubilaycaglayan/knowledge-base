@@ -1092,11 +1092,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Pin one board
 
-- [x] Pinning a board updates its visible pinned state after reload. Evidence: `boards.test.ts` / `pins a custom board and reloads the server tab order` verifies persisted pin and order response; `BoardView.test.ts` / `pins and unpins any board from the boards dialog` verifies the control state.
+- [x] Pinning a board updates its visible pinned state after reload. Evidence: `boards.test.ts` / `pins a custom board and reloads the server tab order` verifies store persistence; `BoardView.test.ts` / `pins and unpins any board from the boards dialog` verifies the control state; `board.acceptance.test.mjs` / `pins and reorders boards from the Boards dialog and keeps them after reload` verifies the accessible pinned state and order from the fixture after refresh.
 
 ### Flow: Reorder boards
 
-- [x] Reordering boards updates their visible tab order after reload. Evidence: `boards.test.ts` / `reorderBoards interleaves path and custom boards within a group and persists it` and `pins a custom board and reloads the server tab order`.
+- [x] Reordering boards updates their visible tab order after reload. Evidence: `boards.test.ts` / `reorderBoards interleaves path and custom boards within a group and persists it`; `board.acceptance.test.mjs` / `pins and reorders boards from the Boards dialog and keeps them after reload` verifies keyboard and pointer reorder requests and the pinned order after refresh.
 
 ### Flow: Create one board
 
