@@ -809,8 +809,13 @@ browser interaction evidence remains a separate layer.
   uniqueness safeguard (tests linked in the timer operation row above).
 - [ ] Multi-record mutation failures verify transaction rollback where
   persistence must remain atomic.
-- [ ] PostgreSQL-specific constraints and migration behavior run only under
-  the guarded disposable PostgreSQL path.
+- [x] PostgreSQL-specific constraint assertions run only under the guarded
+  disposable PostgreSQL path. `PostgresDatabaseConstraintIntegrationTest`
+  assumes `KB_TEST_POSTGRES_URL`, and `IntegrationTestSupport` verifies that
+  configured database with `PostgresTestDatabaseGuard` before wiring it into
+  the suite. CI provisions a per-run database in the `backend-postgres` job
+  (`.github/workflows/verify.yml`); migration transformation tests remain
+  separately named under `db.migration`.
 - [ ] Each new migration that transforms existing rows has a focused assertion
   for the transformed data and supported upgrade behavior.
 
