@@ -130,6 +130,12 @@ test profile and fixture server are removed when the run exits. To run just
 the browser assertions after building the extension, use
 `(cd frontend && npm run test:extension:e2e)`.
 
+`./scripts/run-notes-e2e.sh` runs a desktop Chromium Notes journey against a
+unique disposable Compose stack. It creates a note in the UI, edits its title
+and body, verifies a fresh API read, archives and restores it, then checks the
+active note after reload. The runner generates local credentials and removes
+only its own Compose project and volumes.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and

@@ -56,6 +56,7 @@ const totalItems = ref(0);
 const loading = ref(false);
 const error = ref("");
 const title = ref("");
+const editorLoading = ref(false);
 const tags = ref<string[]>([]);
 const status = ref<"saved" | "saving" | "error">("saved");
 const editorHost = ref<HTMLElement | null>(null);
@@ -390,6 +391,7 @@ function keepActiveEditorSelectionVisible() {
 async function loadEditor() {
   const id = route.params.id;
   if (!id || typeof id !== "string") return;
+  editorLoading.value = true;
   try {
     const fromList = await api<Note>(`/notes/${id}`);
     // Ignore a late response for a note the user has already left.
@@ -421,6 +423,8 @@ async function loadEditor() {
     });
   } catch {
     if (route.params.id === id) error.value = "Unable to open this note.";
+  } finally {
+    if (route.params.id === id) editorLoading.value = false;
   }
 }
 async function closeEditor() {
@@ -680,12 +684,14 @@ onBeforeUnmount(() => {
         >
           ← Notes
         </button>
-        <span role="status" class="save-state" :class="status">{{
-          status === "saving"
-            ? "Saving…"
-            : status === "error"
-              ? "Not saved"
-              : "Saved"
+        <span role="status" class="save-state" :class="editorLoading ? 'saving' : status">{{
+          editorLoading
+            ? "Loading…"
+            : status === "saving"
+              ? "Saving…"
+              : status === "error"
+                ? "Not saved"
+                : "Saved"
         }}</span>
         <button
           v-if="status === 'error'"
@@ -720,6 +726,7 @@ onBeforeUnmount(() => {
           name="note-title"
           autocomplete="off"
           aria-label="Note title"
+          :disabled="editorLoading"
           placeholder="Title"
           maxlength="240"
           @input="scheduleSave"

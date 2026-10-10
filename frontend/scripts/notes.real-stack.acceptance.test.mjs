@@ -48,20 +48,41 @@ after(async () => browser?.close());
 
 it("creates, edits, archives, restores, and reloads a note with persisted API state", async () => {
   await page.goto(`${baseUrl}/notes`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  let releaseNoteRead;
+  let signalNoteRead;
+  let noteReadBlocked = false;
+  const noteReadStarted = new Promise((resolve) => { signalNoteRead = resolve; });
+  const noteReadGate = new Promise((resolve) => { releaseNoteRead = resolve; });
+  await page.route("**/api/v1/notes/*", async (route) => {
+    if (route.request().method() === "GET" && !noteReadBlocked) {
+      noteReadBlocked = true;
+      signalNoteRead();
+      await noteReadGate;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Create new note" }).click();
   await page.waitForURL(/\/notes\/[^/]+$/);
   noteId = new URL(page.url()).pathname.split("/").at(-1);
+  await noteReadStarted;
+  const titleField = page.getByRole("textbox", { name: "Note title" });
+  assert.equal(await titleField.isDisabled(), true, "the note title stays unavailable until its saved value has loaded");
+  await page.getByRole("status").filter({ hasText: "Loading…" }).waitFor();
+  releaseNoteRead();
+  await page.waitForFunction(() => !document.querySelector('[aria-label="Note title"]')?.disabled);
 
   const title = `${marker} title`;
   const body = `${marker} body survives a fresh read`;
-  await page.getByRole("textbox", { name: "Note title" }).fill(title);
+  await titleField.fill(title);
   await page.waitForFunction(async ({ id, expectedTitle }) => {
     const response = await fetch(`/api/v1/notes/${id}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` },
     });
     return response.ok && (await response.json()).title === expectedTitle;
   }, { id: noteId, expectedTitle: title });
+  assert.equal(await titleField.inputValue(), title, "the editor retains the persisted title before the body edit");
   await page.getByRole("textbox", { name: "Note content" }).fill(body);
+  assert.equal(await titleField.inputValue(), title, "editing the body must retain the title in the editor");
   await page.waitForFunction(async ({ id, expectedTitle, expectedBody }) => {
     const response = await fetch(`/api/v1/notes/${id}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` },
@@ -86,7 +107,7 @@ it("creates, edits, archives, restores, and reloads a note with persisted API st
   await page.locator(".note-row").filter({ hasText: title }).getByRole("button", { name: "Archive" }).click();
   await page.getByRole("link", { name: `Open ${title}` }).waitFor({ state: "detached" });
   await page.reload();
-  await page.getByRole("button", { name: "Archive", exact: true }).click();
+  await page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }).click();
   await page.getByText(title, { exact: true }).waitFor();
 
   await page.locator(".note-row").filter({ hasText: title }).getByRole("button", { name: "Restore" }).click();

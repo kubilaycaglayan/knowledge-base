@@ -12,9 +12,11 @@ persistence boundaries.
 
 ## Web journey tasks
 
-- [ ] Select real-stack journeys from documented uncovered risks rather than
+- [x] Select real-stack journeys from documented uncovered risks rather than
   duplicating existing board, timer, search, line-history, and auth-rate-limit
-  suites.
+  suites. The first uncovered slice is Notes create/edit/archive/restore,
+  asserted through UI, fresh API reads, and reloads in
+  `notes.real-stack.acceptance.test.mjs`.
 - [ ] Add representative create/edit/archive/restore journeys for Notes,
   Paths, Logs, Labels, and Calendar against isolated disposable data.
 - [ ] Add report filter/range and settings/preferences persistence journeys
@@ -75,6 +77,24 @@ and options rendering, saved API configuration, and a Clockify content-script
 message reaching the background service worker and loopback API fixture. It
 does not yet cover signed-in timer or notes flows, worker restart, denied
 permissions, or unavailable API recovery.
+
+## Completed browser slices
+
+- **Notes, desktop Chromium:** `creates, edits, archives, restores, and reloads
+  a note with persisted API state` in
+  `frontend/scripts/notes.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-notes-e2e.sh`. It delays the initial note read to verify the
+  title stays unavailable until the saved value has loaded, then checks the
+  saved title/body through a fresh API read and verifies archive/restore across
+  reloads.
+- **Chrome extension, desktop Chromium:** the packaged popup/options and
+  Clockify content-script to service-worker journey in
+  `frontend/scripts/extension.real-browser.acceptance.test.mjs`, run with
+  `./scripts/run-extension-browser-e2e.sh`.
+
+Paths, Logs, Labels, Calendar, Reports, Settings, both transfer formats, and
+the remaining signed-in timer/notes and service-worker recovery journeys remain
+open for this milestone.
 
 ## Acceptance
 
