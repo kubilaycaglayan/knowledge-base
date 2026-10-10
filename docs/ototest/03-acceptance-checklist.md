@@ -1339,6 +1339,11 @@ so the warning and discard criteria remain open.
 
 - [ ] Very long titles, descriptions, note bodies, and log text do not overlap
   adjacent controls or create page-wide overflow.
+  Partial evidence: `nav-shell.acceptance.test.mjs` / `keeps long note titles
+  and paragraphs within a phone-width editor` and `wraps very long Log text
+  within the phone-width detail layout`; `PathsView.test.ts` / `keeps long path
+  titles on one truncated line`. Very long descriptions and other route-specific
+  combinations still need explicit coverage.
 - [ ] Empty strings and empty collections render intentional empty states.
 
 ### Flow: Honor reduced-motion preferences
