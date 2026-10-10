@@ -136,8 +136,10 @@ browser interaction evidence remains a separate layer.
   `passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured`,
   `passwordChangeRequiresCurrentPasswordEvenWhenGoogleIsAlsoLinked`, and
   `passwordSetupRejectsNewPasswordsOutsideTheSupportedLength`).
-- [x] Registration and login responses do not expose password hashes or the
-  linked Google subject (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`);
+- [x] Registration, password login, and Google login responses do not expose
+  password hashes or the linked Google subject
+  (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt` and
+  `AuthControllerApiTest.verifiedGoogleIdentityLinksAnExistingEmail`);
   the account endpoint likewise omits the stored hash
   (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
 - [x] Authentication throttling has focused HTTP-boundary evidence for login,

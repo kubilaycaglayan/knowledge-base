@@ -194,7 +194,9 @@ class AuthControllerApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"idToken\":\"good-token\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.email").value("person@example.com"));
+        .andExpect(jsonPath("$.email").value("person@example.com"))
+        .andExpect(jsonPath("$.passwordHash").doesNotExist())
+        .andExpect(jsonPath("$.googleSubject").doesNotExist());
     org.junit.jupiter.api.Assertions.assertEquals("google-sub", existing.getGoogleSubject());
     verify(users).save(existing);
     verifyNoInteractions(encoder);
@@ -217,7 +219,9 @@ class AuthControllerApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"idToken\":\"new-token\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.email").value("new@example.com"));
+        .andExpect(jsonPath("$.email").value("new@example.com"))
+        .andExpect(jsonPath("$.passwordHash").doesNotExist())
+        .andExpect(jsonPath("$.googleSubject").doesNotExist());
     var account = org.mockito.ArgumentCaptor.forClass(User.class);
     verify(users).save(account.capture());
     org.junit.jupiter.api.Assertions.assertEquals("new-sub", account.getValue().getGoogleSubject());
