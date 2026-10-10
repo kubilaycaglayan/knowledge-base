@@ -389,7 +389,9 @@ browser interaction evidence remains a separate layer.
   (`BoardCardUpdateIntegrationTest` and `BoardControllerApiTest`).
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/move` covers persisted target
   status/position order and rejection of foreign and archived statuses
-  (`BoardCardMoveIntegrationTest.cardMovePersistsDestinationPositionAndRejectsForeignOrArchivedStatuses`).
+  (`BoardCardMoveIntegrationTest.cardMovePersistsDestinationPositionAndRejectsForeignOrArchivedStatuses`);
+  missing status and negative position are rejected at request binding by
+  `BoardControllerApiTest.cardMoveRequiresStatusAndNonnegativePosition`.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
   or creating the target column, persisted status/position, and foreign board
   protection (`AllBoardsIntegrationTest.moveToColumnCreatesAMissingColumn`).

@@ -135,6 +135,24 @@ class BoardControllerApiTest {
     verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
   }
 
+  @Test
+  void cardMoveRequiresStatusAndNonnegativePosition() throws Exception {
+    String endpoint =
+        "/api/v1/boards/" + UUID.randomUUID() + "/cards/" + UUID.randomUUID() + "/move";
+    for (String body :
+        List.of(
+            "{\"statusId\":null,\"position\":0}",
+            "{\"statusId\":\"" + UUID.randomUUID() + "\",\"position\":-1}")) {
+      mvc.perform(
+              post(endpoint)
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
   @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
     Board board = new Board(owner, "Archived");
     board.archive();
