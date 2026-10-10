@@ -574,7 +574,7 @@ browser interaction evidence remains a separate layer.
   access (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`).
 - [x] Calendar day writes cover owned-label validation without mutating label
   scopes, foreign-label rejection, and each supported marker/portion value
-  (`CalendarLabelPickerIntegrationTest.dayAcceptsAnOwnedLabelHiddenFromCalendar`,
+  (`CalendarLabelPickerIntegrationTest.dayAcceptsAnOwnedLabelHiddenFromCalendarWithoutChangingItsScopes`,
   `CalendarLabelPickerIntegrationTest.anotherUsersLabelIsStillRejected`,
   `KnowIntegrationTest.calendarDayWritesPersistEverySupportedPortionAndMarkerValue`,
   and `KnowIntegrationTest.noMarkerCalendarLabelsPersistButDoNotAppearInReports`).
