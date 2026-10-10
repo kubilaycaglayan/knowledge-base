@@ -964,11 +964,9 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Update account credentials
 
-- [ ] Invalid current/new password combinations show an actionable field or
-  form error.
-- [ ] A successful credentials update provides visible confirmation.
-- [ ] A failed credentials update preserves the entered values and allows
-  recovery.
+- [x] Invalid current/new password combinations show an actionable field or form error. Evidence: `SettingsView.test.ts` / `rejects mismatched new passwords before calling the API` checks the validation message and confirms no password request is sent.
+- [x] A successful credentials update provides visible confirmation. Evidence: `SettingsView.test.ts` / `offers the changed password to browser credential storage after success` verifies the polite success status.
+- [x] A failed credentials update preserves the entered values and allows recovery. Evidence: `SettingsView.test.ts` / `preserves credential inputs and offers recovery when saving fails` checks an actionable error and all three retained values.
 
 ## Labels and label history
 
