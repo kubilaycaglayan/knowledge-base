@@ -17,15 +17,15 @@ persistence boundaries.
   suites. The first uncovered slice is Notes create/edit/archive/restore,
   asserted through UI, fresh API reads, and reloads in
   `notes.real-stack.acceptance.test.mjs`.
-- [ ] Add representative create/edit/archive/restore journeys for Notes,
+- [x] Add representative create/edit/archive/restore journeys for Notes,
   Paths, Logs, Labels, and Calendar against isolated disposable data.
 - [x] Add report filter/range and settings/preferences persistence journeys
   where persistence affects user-visible behavior.
 - [x] Add import/export journeys for supported Clockify and Knowledge Base
   transfer flows, including validation and failure recovery.
-- [ ] Assert server persistence after navigation or reload for selected
+- [x] Assert server persistence after navigation or reload for selected
   mutation workflows.
-- [ ] Exercise authentication/session recovery and at least one ownership
+- [x] Exercise authentication/session recovery and at least one ownership
   boundary through the browser where it adds evidence beyond API integration
   tests.
 - [ ] Reuse the disposable Compose conventions and isolated port/credential
@@ -88,6 +88,9 @@ permissions remain uncovered.
   title stays unavailable until the saved value has loaded, then checks the
   saved title/body through a fresh API read and verifies archive/restore across
   reloads.
+- **Notes ownership, mobile-sized Chromium:** `rejects a second browser account
+  reading the first user's note` in the same real-stack Notes suite. A second
+  disposable account requests the first account's note ID and receives 404.
 - **Chrome extension, desktop Chromium:** the packaged popup/options and
   Clockify content-script to service-worker journey in
   `frontend/scripts/extension.real-browser.acceptance.test.mjs`, run with

@@ -120,3 +120,26 @@ it("creates, edits, archives, restores, and reloads a note with persisted API st
   assert.equal(restored.data.title, title);
   assert.ok(restored.data.contentText.includes(body));
 });
+
+it("rejects a second browser account reading the first user's note", async () => {
+  assert.ok(noteId, "the primary browser journey created a note to protect");
+  const otherContext = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "light", reducedMotion: "reduce" });
+  const otherPage = await otherContext.newPage();
+  otherPage.setDefaultTimeout(10000);
+  await otherPage.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await otherPage.getByRole("button", { name: /New here\? Create an account/ }).click();
+  await otherPage.getByRole("textbox", { name: "Email" }).fill(`notes-owner-check-${Date.now()}@example.com`);
+  await otherPage.getByRole("textbox", { name: "Password", exact: true }).fill(password);
+  await otherPage.getByRole("textbox", { name: "Confirm password" }).fill(password);
+  await otherPage.getByRole("button", { name: "Create account", exact: true }).click();
+  await otherPage.waitForFunction(() => Boolean(localStorage.getItem("know_token")));
+  const result = await otherPage.evaluate(async (id) => {
+    const response = await fetch(`/api/v1/notes/${id}`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${localStorage.getItem("know_token")}` },
+    });
+    return { status: response.status, body: await response.text() };
+  }, noteId);
+  assert.equal(result.status, 404, "foreign note IDs are not readable from a second user's browser session");
+  await otherContext.close();
+});

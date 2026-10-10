@@ -135,8 +135,10 @@ the browser assertions after building the extension, use
 `./scripts/run-notes-e2e.sh` runs a desktop Chromium Notes journey against a
 unique disposable Compose stack. It creates a note in the UI, edits its title
 and body, verifies a fresh API read, archives and restores it, then checks the
-active note after reload. The runner generates local credentials and removes
-only its own Compose project and volumes.
+active note after reload. It also uses a second account in a mobile-sized
+Chromium context to verify that the first account's note returns 404. The
+runner generates local credentials and removes only its own Compose project
+and volumes.
 
 `./scripts/run-paths-e2e.sh` runs a desktop Chromium Paths journey in a separate
 disposable Compose project. It creates a Path through the UI, edits it, removes
