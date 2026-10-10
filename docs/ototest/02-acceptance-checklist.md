@@ -466,11 +466,12 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/all/columns/cards/page` covers cross-board cursors,
   many-page stability, empty/unknown columns, invalid limits, foreign-user
   isolation, and sort modes (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
-  `columnCursorWalkRemainsStableAcrossManyPages`, and `columnPagesFollowTheColumnSort`).
+  `AllBoardsIntegrationTest.columnCursorWalkRemainsStableAcrossManyPages`, and
+  `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `PUT /api/v1/boards/all/columns/sort` covers per-user sort persistence,
   priority order across boards, isolation from board-local modes, reset, and
   invalid values (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
-  and `columnPagesFollowTheColumnSort`).
+  and `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `GET /api/v1/boards/all/gantt` covers reversed range validation, returns
   dated and undated cards regardless of the requested window, and excludes
   archived boards and hidden path boards
