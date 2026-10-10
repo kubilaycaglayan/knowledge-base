@@ -108,6 +108,32 @@ describe("ImportsView", () => {
     expect(wrapper.text()).toContain("2 imported");
   });
 
+  it("disables repeated Knowledge Base import submissions while a batch is pending", async () => {
+    let finishImport!: (summary: { batchId: string; imported: number; skipped: number; createdPaths: number }) => void;
+    const pendingImport = new Promise<{ batchId: string; imported: number; skipped: number; createdPaths: number }>((resolve) => {
+      finishImport = resolve;
+    });
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/imports/knowledge-base") return pendingImport;
+      if (path === "/imports/knowledge-base/batches") return [];
+      return undefined;
+    });
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    await flushPromises();
+    await wrapper.get('textarea[aria-label="Knowledge Base CSV"]').setValue("CSV data");
+    const submit = wrapper.get(".import-panel button.primary");
+    await submit.trigger("click");
+    await submit.trigger("click");
+
+    expect(submit.attributes("disabled")).toBeDefined();
+    expect(submit.text()).toBe("Importing…");
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/imports/knowledge-base")).toHaveLength(1);
+
+    finishImport({ batchId: "batch-pending", imported: 1, skipped: 0, createdPaths: 0 });
+    await flushPromises();
+    await wrapper.unmount();
+  });
+
   it("invalidates cached sessions and reports after importing activity", async () => {
     const reports = useReportsStore();
     const sessions = useSessionsStore();
