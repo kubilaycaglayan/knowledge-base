@@ -177,6 +177,14 @@ class AuthControllerApiTest {
 
   @Test
   void googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary() throws Exception {
+    for (String request : List.of("{}", "{\"idToken\":null}")) {
+      mvc.perform(
+              post("/api/v1/auth/google")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(request))
+          .andExpect(status().isBadRequest());
+    }
+
     mvc.perform(
             post("/api/v1/auth/google")
                 .contentType(MediaType.APPLICATION_JSON)
