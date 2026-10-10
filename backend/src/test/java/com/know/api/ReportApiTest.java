@@ -111,6 +111,44 @@ class ReportApiTest {
   }
 
   @Test
+  void repeatedPathAndLabelFiltersReachTheServiceWithoutDroppingValues() throws Exception {
+    UUID user = UUID.randomUUID();
+    UUID firstPath = UUID.randomUUID(), secondPath = UUID.randomUUID();
+    UUID firstLabel = UUID.randomUUID(), secondLabel = UUID.randomUUID();
+    var from = java.time.LocalDate.of(2026, 8, 1);
+    var to = java.time.LocalDate.of(2026, 8, 31);
+    when(service.report(
+            user,
+            from,
+            to,
+            ReportService.Aggregation.DAY,
+            List.of(firstPath, secondPath),
+            List.of(firstLabel, secondLabel)))
+        .thenReturn(
+            new ReportService.Report(
+                "CUSTOM", from, to, 0, List.of(), List.of(), List.of(), List.of(), null));
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+
+    mvc.perform(
+            get("/api/v1/reports")
+                .param("startDate", from.toString())
+                .param("endDate", to.toString())
+                .param("pathId", firstPath.toString(), secondPath.toString())
+                .param("labelId", firstLabel.toString(), secondLabel.toString())
+                .with(authentication(auth)))
+        .andExpect(status().isOk());
+
+    verify(service)
+        .report(
+            user,
+            from,
+            to,
+            ReportService.Aggregation.DAY,
+            List.of(firstPath, secondPath),
+            List.of(firstLabel, secondLabel));
+  }
+
+  @Test
   void invalidCustomAggregationIsRejected() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
