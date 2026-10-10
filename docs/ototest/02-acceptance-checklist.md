@@ -796,14 +796,15 @@ browser interaction evidence remains a separate layer.
   `BoardControllerApiTest.statusCreateAndUpdateValidateRequiredNameAndMaximumLength`.
 - [ ] Every path/query parameter with a documented allowed range has lower,
   upper, and out-of-range boundary evidence.
-- [ ] Date and timestamp operations have timezone, leap-day, inclusive-range,
-  and reversed-range evidence where applicable.
-  Activity filtering now asserts inclusive lower/upper bounds, equivalent
-  non-UTC offsets, and empty reversed ranges in
-  `ActivityIntegrationTest.activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner`;
-  remaining date-bearing operations still need a complete applicability audit.
-  This activity coverage passed the backend and guarded PostgreSQL jobs at
-  source `e9c2109e9b7b82dcdfb8b87d6fdf6016e36c1335` in [PR #145 CI](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38016095062).
+- [x] Date and timestamp operations have timezone, leap-day, inclusive-range,
+  and reversed-range evidence where applicable. The API matrix links calendar
+  and report leap-day/inclusive/reversed cases, requested-zone label history,
+  activity's positive/negative offset and range-boundary assertions, manual
+  time-entry and timer-configuration offset normalization, Clockify import
+  offset normalization, and reversed board Gantt ranges. Activity evidence
+  passed backend and guarded PostgreSQL jobs at source
+  `e9c2109e9b7b82dcdfb8b87d6fdf6016e36c1335` in [PR #145 CI](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38016095062);
+  current-batch additions remain subject to the next backend run.
 - [x] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
   The all-board column card page has a multi-page persisted walk and rejects
