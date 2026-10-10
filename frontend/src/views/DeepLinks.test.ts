@@ -85,7 +85,18 @@ describe("/sessions/:id", () => {
     respond("/paths", [{ id: "p1", name: "Photography", status: "ACTIVE", color: "#2878D5" }]);
     respond("/labels?scope=TIME_ENTRY", [{ id: "l1", name: "Deepwork", color: "#7A4CC2", scopes: ["TIME_ENTRY"] }]);
     respond("/time-entries/s1", (_path: string, init?: RequestInit) =>
-      init?.method === "PUT" ? { ...session, description: JSON.parse(String(init.body)).description } : init?.method === "DELETE" ? undefined : session,
+      init?.method === "PUT"
+        ? (() => {
+            const update = JSON.parse(String(init.body));
+            return {
+              ...session,
+              ...update,
+              durationSeconds: Math.floor(
+                (Date.parse(update.endedAt) - Date.parse(update.startedAt)) / 1000,
+              ),
+            };
+          })()
+        : init?.method === "DELETE" ? undefined : session,
     );
   });
 
@@ -97,6 +108,14 @@ describe("/sessions/:id", () => {
     expect(shown.textContent).toContain("Photography");
     expect(shown.textContent).toContain("Deepwork");
     expect(shown.textContent).toContain("1h 30 minutes");
+    button("Edit")!.click();
+    await flushPromises();
+    expect(document.querySelector('[role="dialog"] form')).not.toBeNull();
+    expect(
+      document.querySelector<HTMLTextAreaElement>(
+        '[aria-label="Edit session description"]',
+      )?.value,
+    ).toBe("Edited the sunset series");
     button("Close session")!.click();
     await flushPromises();
     expect(router.currentRoute.value.fullPath).toBe("/");
@@ -115,16 +134,34 @@ describe("/sessions/:id", () => {
     await flushPromises();
     expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain("has to end after it starts");
     expect(putCalls("/time-entries/s1")).toHaveLength(0);
+    button("Cancel")!.click();
+    await flushPromises();
+    expect(dialog()!.textContent).toContain("Edited the sunset series");
+    expect(dialog()!.textContent).toContain("1h 30 minutes");
 
-    end.value = start.value.replace(/T\d\d/, (hour) => `T${String(Number(hour.slice(1)) + 2).padStart(2, "0")}`);
-    end.dispatchEvent(new Event("input"));
+    button("Edit")!.click();
+    await flushPromises();
+    const correctedStart = document.querySelector<HTMLInputElement>('[aria-label="Edit session start"]')!;
+    const correctedEnd = document.querySelector<HTMLInputElement>('[aria-label="Edit session end"]')!;
+    correctedEnd.value = correctedStart.value.replace(/T\d\d/, (hour) => `T${String(Number(hour.slice(1)) + 2).padStart(2, "0")}`);
+    correctedEnd.dispatchEvent(new Event("input"));
     const description = document.querySelector<HTMLTextAreaElement>('[aria-label="Edit session description"]')!;
     description.value = "Edited and exported";
     description.dispatchEvent(new Event("input"));
     document.querySelector<HTMLFormElement>('[role="dialog"] form')!.requestSubmit();
     await flushPromises();
-    expect(putCalls("/time-entries/s1")).toHaveLength(1);
+    const updates = putCalls("/time-entries/s1");
+    expect(updates).toHaveLength(1);
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, init]) => String(path).startsWith("/time-entries/") && init?.method === "PUT",
+      ),
+    ).toHaveLength(1);
+    expect(JSON.parse(String(updates[0][1]?.body))).toMatchObject({
+      description: "Edited and exported",
+    });
     expect(dialog()!.textContent).toContain("Edited and exported");
+    expect(dialog()!.textContent).toContain("2h");
     expect(document.querySelector('[role="dialog"] form')).toBeNull();
   });
 
@@ -353,11 +390,35 @@ describe("/labels/:id", () => {
 describe("/calendar?date=", () => {
   beforeEach(() => respond("/labels", []));
 
-  it("opens the month of the linked day with that day selected", async () => {
-    respond(/^\/calendar\/days\?/, [{ date: "2025-03-14", note: "Pi day walk", labels: [] }]);
+  it("opens the month of the linked day with its saved note and label selected", async () => {
+    respond("/labels", [
+      { id: "leave", name: "Sick leave", color: "#2878D5", scopes: ["CALENDAR"] },
+    ]);
+    respond(/^\/calendar\/days\?/, [
+      {
+        date: "2025-03-14",
+        note: "Pi day walk",
+        labels: [
+          {
+            labelId: "leave",
+            name: "Sick leave",
+            color: "#2878D5",
+            portion: 0.5,
+          },
+        ],
+      },
+    ]);
     await open(CalendarView, "/calendar?date=2025-03-14", ["/calendar"]);
     expect(vi.mocked(api).mock.calls.some(([path]) => String(path).includes("startDate=2025-02-24"))).toBe(true);
     expect(document.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Pi day walk");
+    expect(
+      document.querySelector<HTMLInputElement>('#calendar-label-leave')?.checked,
+    ).toBe(true);
+    expect(
+      document.querySelector<HTMLSelectElement>(
+        '[aria-label="Sick leave day portion"]',
+      )?.value,
+    ).toBe("0.5");
     expect(document.body.textContent).toContain("March 14, 2025");
   });
 
@@ -380,9 +441,65 @@ describe("/calendar?date=", () => {
     await flushPromises();
     expect(router.currentRoute.value.query.date).toBe("2025-04-01");
   });
+
+  it("moves from December into January across the year boundary", async () => {
+    respond(/^\/calendar\/days\?/, []);
+    await open(CalendarView, "/calendar?date=2025-12-31", ["/calendar"]);
+    document.querySelector<HTMLButtonElement>('[aria-label="Next month"]')!.click();
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.date).toBe("2026-01-01");
+    expect(document.body.textContent).toContain("January 1, 2026");
+    expect(
+      document.querySelector<HTMLSelectElement>(
+        'select[aria-label="Calendar month"]',
+      )?.value,
+    ).toBe("0");
+    expect(
+      document.querySelector<HTMLSelectElement>(
+        'select[aria-label="Calendar year"]',
+      )?.value,
+    ).toBe("2026");
+  });
+
+  it("aligns dates with Monday-first weekdays when the month starts and ends midweek", async () => {
+    respond(/^\/calendar\/days\?/, []);
+    await open(CalendarView, "/calendar?date=2025-03-14", ["/calendar"]);
+
+    const weekdays = [...document.querySelectorAll(".calendar-weekday")].map(
+      (element) => element.textContent?.trim(),
+    );
+    const days = [...document.querySelectorAll("button.calendar-day")].map(
+      (button) => button.querySelector("time")?.textContent?.trim(),
+    );
+    expect(weekdays).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+    expect(days.slice(0, 7)).toEqual(["24", "25", "26", "27", "28", "1", "2"]);
+    expect(days.slice(-7)).toEqual(["31", "1", "2", "3", "4", "5", "6"]);
+  });
 });
 
 describe("/notes?archived=1&q=", () => {
+  it("loads the selected note when its editor URL is opened directly", async () => {
+    respond(/^\/notes\?/, { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 });
+    respond("/notes/labels", []);
+    respond("/notes/n1", {
+      id: "n1",
+      title: "Direct note",
+      content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded from its URL" }] }] }),
+      contentText: "Loaded from its URL",
+      createdAt: "2026-10-01T10:00:00Z",
+      updatedAt: "2026-10-02T10:00:00Z",
+      version: 1,
+      tags: [],
+      pinned: false,
+    });
+    await open(NotesView, "/notes/n1", [["/notes", "notes"], ["/notes/:id", "note-editor"]]);
+
+    expect(router.currentRoute.value.fullPath).toBe("/notes/n1");
+    expect(document.querySelector<HTMLInputElement>('[aria-label="Note title"]')?.value).toBe("Direct note");
+    expect(document.querySelector('[aria-label="Note content"]')?.textContent).toContain("Loaded from its URL");
+  });
+
   it("opens the archive filtered by the linked note", async () => {
     respond(/^\/notes\?/, { items: [{ id: "n1", title: "Old gear", content: "{}", contentText: "Camera", tags: [], updatedAt: "2026-01-01T00:00:00Z", deletedAt: "2026-02-01T00:00:00Z", pinned: false }], page: 0, size: 20, totalItems: 1, totalPages: 1 });
     respond("/notes/labels", []);
@@ -397,5 +514,15 @@ describe("/notes?archived=1&q=", () => {
     Array.from(document.querySelectorAll("button")).find((value) => value.textContent?.trim() === "Active notes")!.click();
     await vi.waitFor(() => expect(router.currentRoute.value.query.archived).toBeUndefined());
     expect(router.currentRoute.value.query.q).toBe("Old gear");
+  });
+
+  it("shows a recoverable error when a directly linked note is unavailable", async () => {
+    respond(/^\/notes\?/, { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 });
+    respond("/notes/labels", []);
+    respond("/notes/gone", notFound);
+    await open(NotesView, "/notes/gone", [["/notes", "notes"], ["/notes/:id", "note-editor"]]);
+
+    expect(router.currentRoute.value.fullPath).toBe("/notes/gone");
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("Unable to open this note.");
   });
 });

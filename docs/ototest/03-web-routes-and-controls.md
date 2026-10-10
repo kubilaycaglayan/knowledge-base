@@ -1,7 +1,7 @@
 # OTOTEST-03 — Web routes and interactive controls
 
 **Priority:** High  
-**Status:** Proposed  
+**Status:** In progress
 **Dependencies:** OTOTEST-01
 
 Product flow criteria: see the [OTOTEST-03 acceptance checklist](03-acceptance-checklist.md).
@@ -14,11 +14,11 @@ and recovery states.
 
 ## Tasks
 
-- [ ] Create one route matrix from `frontend/src/main.ts`; include redirects,
+- [x] Create one route matrix from `frontend/src/main.ts`; include redirects,
   deep links, query state, and dialogs opened from record-specific URLs.
-- [ ] Mark route behavior as covered by view test, navigation test, fixture
+- [x] Mark route behavior as covered by view test, navigation test, fixture
   browser test, real-stack browser test, or gap.
-- [ ] Create action inventories for Sessions/timer, Paths, Timeline, Logs,
+- [x] Create action inventories for Sessions/timer, Paths, Timeline, Logs,
   Reports, Calendar, Imports, Settings, Labels, Boards/archive, and Notes.
 - [ ] For each action, identify its visible label/accessibility name, action
   target, resulting state/navigation/request, and linked test name.
@@ -32,8 +32,11 @@ and recovery states.
 - [x] Classify `DevelopmentView.vue` as temporary direct-only tooling and
   exclude its demo behavior from product coverage. Remove the authenticated
   navbar link and keep the shell navigation assertion free of `/development`.
-- [ ] Keep responsive/accessibility checks distinct from behavior coverage;
-  link existing checks where they prove the criterion.
+- [x] Keep responsive/accessibility checks distinct from behavior coverage;
+  link existing checks where they prove the criterion. Evidence layers and
+  gaps are separated in [`01-control-matrix.md`](01-control-matrix.md), with
+  desktop Chromium viewport emulation explicitly distinguished from real
+  mobile Chrome in [`03-acceptance-checklist.md`](03-acceptance-checklist.md).
 
 ## Task workflow by route subtree
 

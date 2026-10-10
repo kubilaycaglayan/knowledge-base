@@ -30,6 +30,17 @@ function date(value: string) {
     ? dateFormat.format(new Date(`${value}T12:00:00`))
     : timeFormat.format(new Date(value));
 }
+function recordHref(item: RecordView) {
+  if (kind.value === "dates")
+    return `/calendar?date=${encodeURIComponent(item.date.slice(0, 10))}`;
+  const base =
+    kind.value === "sessions"
+      ? "/sessions"
+      : kind.value === "notes"
+        ? "/notes"
+        : "/logs";
+  return `${base}/${encodeURIComponent(item.id)}`;
+}
 let request = 0;
 async function load() {
   const token = ++request;
@@ -87,7 +98,9 @@ watch(() => [props.labelId, kind.value, page.value], load, { immediate: true });
           <span class="record-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path :d="selected.icon" fill="currentColor" /></svg></span>
           <div class="record-copy">
             <time :datetime="item.date">{{ date(item.date) }}</time>
-            <p class="record-title">{{ item.title.trim() || selected.fallback }}</p>
+            <p class="record-title">
+              <a class="record-link" :href="recordHref(item)">{{ item.title.trim() || selected.fallback }}</a>
+            </p>
             <p v-if="kind === 'notes' && item.preview.trim()" class="record-preview">{{ item.preview }}</p>
           </div>
         </li>
@@ -118,6 +131,8 @@ watch(() => [props.labelId, kind.value, page.value], load, { immediate: true });
 .record-copy { min-width: 0; }
 .record-copy time { color: var(--workspace-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .record-title { margin: 4px 0 0; font-size: 13px; font-weight: 500; white-space: pre-wrap; overflow-wrap: anywhere; }
+.record-link { color: inherit; text-decoration: underline; text-decoration-color: var(--workspace-border); text-underline-offset: 3px; }
+.record-link:hover, .record-link:focus-visible { color: var(--workspace-text); text-decoration-color: currentColor; }
 .record-preview { margin: 5px 0 0; color: var(--workspace-muted); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .records-message { padding: 20px; margin: 0; color: var(--workspace-muted); font-size: 13px; }
 .record-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }

@@ -118,9 +118,19 @@ function measureKanbanHeight() {
   const trackerBounds = tracker?.getBoundingClientRect();
   const trackerVisible = trackerBounds && trackerBounds.height > 0;
   const viewport = window.visualViewport?.height || window.innerHeight;
+  const footer = document.querySelector<HTMLElement>(".board-footer");
+  const footerStyle = footer ? getComputedStyle(footer) : null;
+  const footerReserve = footer
+    ? footer.getBoundingClientRect().height +
+      parseFloat(footerStyle?.marginTop || "0") +
+      parseFloat(footerStyle?.marginBottom || "0")
+    : 0;
+  const trackerGap = window.matchMedia?.("(orientation: landscape) and (max-height: 500px)")?.matches
+    ? 4
+    : KANBAN_TRACKER_GAP;
   const available = trackerVisible
-    ? trackerBounds.top - bounds.top - KANBAN_TRACKER_GAP
-    : viewport - bounds.top - (phone.value ? 40 : KANBAN_BOTTOM_RESERVE);
+    ? trackerBounds.top - bounds.top - footerReserve - trackerGap
+    : viewport - bounds.top - footerReserve - (phone.value ? 40 : KANBAN_BOTTOM_RESERVE);
   kanbanMaxHeight.value = Math.max(0, Math.floor(available));
 }
 const kanbanResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureKanbanHeight());
@@ -493,8 +503,8 @@ function requestArchiveBoard() { if (settingsBoardId.value) archiveConfirmOpen.v
 function requestArchiveCard(card: BoardCard) { archiveCardConfirm.value = card; }
 async function confirmArchiveCard() { const card = archiveCardConfirm.value; archiveCardConfirm.value = null; if (!card) return; try { if (editing.value?.id === card.id) { await queueSave(); clearTimeout(saveTimer); destroyCardEditor(); editing.value = null; if (route.query.card === card.id) { const { card: _card, cardBoard: _cardBoard, ...query } = route.query; void router.replace({ query }); } } await store.archiveCard(card); } catch { notices.notify("Could not archive card."); } }
 async function archiveBoard() { const id = settingsBoardId.value; if (!id) return; const wasOpen = id === store.selectedId; archiveConfirmOpen.value = false; settingsOpen.value = false; dismissError(); try { await store.archiveBoard(id); if (wasOpen) await router.replace({ query: {} }); } catch { notices.notify("Could not archive board."); } }
-onMounted(async () => { phoneQuery = typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : undefined; phone.value = Boolean(phoneQuery?.matches); phoneQuery?.addEventListener("change", onPhoneChange); document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureViewport); window.visualViewport?.addEventListener("scroll", measureViewport); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); document.addEventListener("keydown", boardSearchKeydown); window.addEventListener("beforeunload", warnBeforeUnload); // The board is selected before the list loads, so loading never falls back to All boards first.
-  await restoreBoardState(); jumpTimeline(ganttFrom.value); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); await openRequestedCard(); });
+onMounted(async () => { const requestedBoardId = typeof route.query.board === "string" ? route.query.board : ""; phoneQuery = typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : undefined; phone.value = Boolean(phoneQuery?.matches); phoneQuery?.addEventListener("change", onPhoneChange); document.addEventListener("pointerdown", closeMoreOnOutside); window.visualViewport?.addEventListener("resize", measureViewport); window.visualViewport?.addEventListener("scroll", measureViewport); measureViewport(); window.addEventListener("resize", measureViewport); document.addEventListener("pointerdown", rememberCardFocus); document.addEventListener("keydown", moveFocusedCard); document.addEventListener("keydown", boardSearchKeydown); window.addEventListener("beforeunload", warnBeforeUnload); // The board is selected before the list loads, so loading never falls back to All boards first.
+  await restoreBoardState(); jumpTimeline(ganttFrom.value); await Promise.all([store.loadBoards(), pathsStore.load(), labelsStore.loadScope("BOARD")]); if (requestedBoardId && requestedBoardId !== ALL_BOARDS && store.selectedId === ALL_BOARDS && !store.boards.some((board) => board.id === requestedBoardId)) error.value = "The requested board is unavailable. Showing All boards."; await store.loadBoard(); if (view.value === "gantt") await store.loadGantt(ganttFrom.value, ganttTo.value); await openRequestedCard(); });
 // The Boards page state (BS-01 to BS-04): a URL without board parameters (the nav link, a new session)
 // opens the remembered state and writes it into the URL; explicit parameters win. Every change is remembered.
 const BOARD_QUERY_KEYS = ["board", "view", "from", "to", "q", "card"];
@@ -585,9 +595,10 @@ onBeforeUnmount(() => { clearTimeout(justClosedTimer); clearTimeout(timelineQuer
       </template>
       <h3 class="settings-label">Statuses</h3>
       <form class="settings-add-status" @submit.prevent="addStatus"><input v-model="newStatus" class="settings-input" aria-label="New status name" name="statusName" placeholder="New status…" maxlength="120" autocomplete="off" /><button class="icon-button quiet" type="submit" aria-label="Add status" title="Add status"><v-icon :icon="mdiPlus" size="20" aria-hidden="true" /></button></form>
+      <p v-if="settingsActiveStatuses.length === 1" id="last-active-status-help" class="settings-status-help">Boards must keep one active status.</p>
       <p id="status-reorder-help" class="sr-only">Drag the handle to reorder, or focus it and press the up or down arrow key.</p>
       <ul ref="settingsStatusList" class="settings-statuses" :class="{ dragging: statusDragId }" aria-label="Statuses">
-        <li v-for="status in settingsStatuses" :key="status.id" :data-status-id="status.id" :class="{ 'is-dragged': statusDragId === status.id }"><button class="icon-button quiet drag-handle" type="button" :aria-label="`Reorder ${status.name}`" aria-describedby="status-reorder-help" title="Drag to reorder" @pointerdown="startStatusDrag($event, status)" @pointermove="dragStatus" @pointerup="endStatusDrag" @pointercancel="endStatusDrag" @keydown.up.prevent="moveStatus(status, -1)" @keydown.down.prevent="moveStatus(status, 1)"><v-icon :icon="mdiDragVertical" size="20" aria-hidden="true" /></button><input class="settings-input" :value="status.name" :aria-label="`Status name ${status.name}`" maxlength="120" autocomplete="off" @keydown.enter.prevent="renameStatus(status, $event)" @blur="renameStatus(status, $event)" /><button class="icon-button quiet danger" type="button" :aria-label="`Archive ${status.name} status`" title="Archive status" :disabled="settingsActiveStatuses.length === 1 || archivingStatusId === status.id" @click="requestArchiveStatus(status)"><v-icon :icon="mdiTrashCanOutline" size="20" aria-hidden="true" /></button></li>
+        <li v-for="status in settingsStatuses" :key="status.id" :data-status-id="status.id" :class="{ 'is-dragged': statusDragId === status.id }"><button class="icon-button quiet drag-handle" type="button" :aria-label="`Reorder ${status.name}`" aria-describedby="status-reorder-help" title="Drag to reorder" @pointerdown="startStatusDrag($event, status)" @pointermove="dragStatus" @pointerup="endStatusDrag" @pointercancel="endStatusDrag" @keydown.up.prevent="moveStatus(status, -1)" @keydown.down.prevent="moveStatus(status, 1)"><v-icon :icon="mdiDragVertical" size="20" aria-hidden="true" /></button><input class="settings-input" :value="status.name" :aria-label="`Status name ${status.name}`" maxlength="120" autocomplete="off" @keydown.enter.prevent="renameStatus(status, $event)" @blur="renameStatus(status, $event)" /><button class="icon-button quiet danger" type="button" :aria-label="`Archive ${status.name} status`" title="Archive status" :aria-describedby="settingsActiveStatuses.length === 1 ? 'last-active-status-help' : undefined" :disabled="settingsActiveStatuses.length === 1 || archivingStatusId === status.id" @click="requestArchiveStatus(status)"><v-icon :icon="mdiTrashCanOutline" size="20" aria-hidden="true" /></button></li>
       </ul>
       <footer class="board-settings-footer" :class="{ 'end-only': settingsBoard.pathId }"><button v-if="!settingsBoard.pathId" class="quiet danger with-icon" type="button" @click="requestArchiveBoard"><v-icon :icon="mdiTrashCanOutline" size="18" aria-hidden="true" />Archive board</button><button type="button" @click="closeSettings">Done</button></footer>
     </section></div>

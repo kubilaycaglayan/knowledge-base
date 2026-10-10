@@ -128,6 +128,62 @@ describe("ReportsView", () => {
     expect(wrapper.find("button").exists()).toBe(true);
   });
 
+  it("opens a report calendar record on its matching calendar date", async () => {
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    expect(wrapper.get('a[href="/calendar?date=2026-08-25"]').text()).toContain(
+      "Aug 25",
+    );
+    await wrapper.unmount();
+  });
+
+  it("keeps summary totals equal to the active breakdown when switching categories", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/reports?startDate=2026-08-24&endDate=2026-08-30",
+    );
+    vi.mocked(api).mockResolvedValueOnce({
+      period: "WEEK",
+      from: "2026-08-24",
+      to: "2026-08-30",
+      totalSeconds: 3600,
+      days: [
+        {
+          date: "2026-08-25",
+          totalSeconds: 3600,
+          paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+          sessionLabels: [{ id: "label-1", label: "Focus", seconds: 3600 }],
+        },
+      ],
+      paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+      sessionLabels: [{ id: "label-1", label: "Focus", seconds: 3600 }],
+      calendarLabels: [],
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    const breakdown = wrapper.getComponent({ name: "ProjectDurationTable" });
+    const categoryTotal = () =>
+      (breakdown.props("categories") as Array<{ seconds: number }>).reduce(
+        (sum, category) => sum + category.seconds,
+        0,
+      );
+    const initialSearch = window.location.search;
+
+    expect(breakdown.props("categoryLabel")).toBe("Path");
+    expect(categoryTotal()).toBe(3600);
+    expect(wrapper.get(".total-display").text()).toBe("01:00:00");
+
+    await wrapper.get('[aria-label="Group by"]').setValue("Labels");
+    await flushPromises();
+    expect(breakdown.props("categoryLabel")).toBe("Label");
+    expect(categoryTotal()).toBe(3600);
+    expect(breakdown.text()).toContain("Focus");
+    expect(wrapper.get(".total-display").text()).toBe("01:00:00");
+    expect(window.location.search).toBe(initialSearch);
+  });
+
   it("keeps the current report visible behind a refresh state while parameters load", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
@@ -228,6 +284,162 @@ describe("ReportsView", () => {
       "https://knowledge-base.test",
     ).searchParams;
     expect(query.getAll("pathId")).toEqual(["path-1", "path-2"]);
+  });
+
+  it("filters the report by path and restores all path totals when cleared", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      const pathIds = params.getAll("pathId");
+      const filtered = pathIds.includes("path-1");
+      const paths = filtered
+        ? [{ id: "path-1", label: "Wander", seconds: 3600 }]
+        : [
+            { id: "path-1", label: "Wander", seconds: 3600 },
+            { id: "path-2", label: "Other", seconds: 3600 },
+          ];
+      return {
+        period: "WEEK",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: filtered ? 3600 : 7200,
+        days: [
+          {
+            date: "2026-08-25",
+            totalSeconds: filtered ? 3600 : 7200,
+            paths,
+            sessionLabels: [],
+          },
+        ],
+        paths,
+        sessionLabels: [],
+        calendarLabels: [],
+      } as never;
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    const initialRequest = [...vi.mocked(api).mock.calls]
+      .reverse()
+      .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    const unfilteredRange = new URL(
+      initialRequest,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(wrapper.text()).toContain("02:00:00");
+    expect(wrapper.text()).toContain("Other");
+
+    await (
+      wrapper.vm as unknown as { selectPaths: (ids: string[]) => Promise<void> }
+    ).selectPaths(["path-1"]);
+    await flushPromises();
+    const filteredRequest = [...vi.mocked(api).mock.calls]
+      .reverse()
+      .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    expect(
+      new URL(filteredRequest, "https://knowledge-base.test").searchParams.getAll(
+        "pathId",
+      ),
+    ).toEqual(["path-1"]);
+    const filteredParams = new URL(
+      filteredRequest,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(filteredParams.get("startDate")).toBe(
+      unfilteredRange.get("startDate"),
+    );
+    expect(filteredParams.get("endDate")).toBe(
+      unfilteredRange.get("endDate"),
+    );
+    expect(wrapper.text()).toContain("01:00:00");
+    expect(wrapper.text()).not.toContain("Other");
+
+    await (
+      wrapper.vm as unknown as { selectPaths: (ids: string[]) => Promise<void> }
+    ).selectPaths([]);
+    await flushPromises();
+    expect(new URL(window.location.href).searchParams.getAll("pathId")).toEqual(
+      [],
+    );
+    expect(new URL(window.location.href).searchParams.get("startDate")).toBe(
+      unfilteredRange.get("startDate"),
+    );
+    expect(new URL(window.location.href).searchParams.get("endDate")).toBe(
+      unfilteredRange.get("endDate"),
+    );
+    expect(wrapper.text()).toContain("02:00:00");
+    expect(wrapper.text()).toContain("Other");
+  });
+
+  it("filters report totals by time-entry label and restores them when cleared", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      const filtered = params.getAll("labelId").includes("label-1");
+      const paths = filtered
+        ? [{ id: "path-1", label: "Wander", seconds: 3600 }]
+        : [
+            { id: "path-1", label: "Wander", seconds: 3600 },
+            { id: "path-2", label: "Other", seconds: 3600 },
+          ];
+      const sessionLabels = filtered
+        ? [{ id: "label-1", label: "Deep work", seconds: 3600 }]
+        : [
+            { id: "label-1", label: "Deep work", seconds: 3600 },
+            { id: "label-2", label: "Errands", seconds: 3600 },
+          ];
+      return {
+        period: "WEEK",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: filtered ? 3600 : 7200,
+        days: [
+          {
+            date: "2026-08-25",
+            totalSeconds: filtered ? 3600 : 7200,
+            paths,
+            sessionLabels,
+            calendarLabels: [],
+          },
+        ],
+        paths,
+        sessionLabels,
+        calendarLabels: [],
+      } as never;
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    await wrapper.get('[aria-label="Group by"]').setValue("Labels");
+    await flushPromises();
+    expect(wrapper.text()).toContain("Errands");
+    expect(wrapper.text()).toContain("02:00:00");
+
+    const view = wrapper.vm as unknown as {
+      selectLabels: (ids: string[]) => Promise<void>;
+    };
+    await view.selectLabels(["label-1"]);
+    await flushPromises();
+    const filteredRequest = [...vi.mocked(api).mock.calls]
+      .reverse()
+      .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    const filteredParams = new URL(
+      filteredRequest,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(filteredParams.getAll("labelId")).toEqual(["label-1"]);
+    expect(filteredParams.get("startDate")).toBe(
+      new URL(window.location.href).searchParams.get("startDate"),
+    );
+    expect(wrapper.text()).toContain("Deep work");
+    expect(wrapper.text()).not.toContain("Errands");
+    expect(wrapper.text()).toContain("01:00:00");
+
+    await view.selectLabels([]);
+    await flushPromises();
+    expect(new URL(window.location.href).searchParams.getAll("labelId")).toEqual(
+      [],
+    );
+    expect(wrapper.text()).toContain("Errands");
+    expect(wrapper.text()).toContain("02:00:00");
   });
 
   it("shows each selected path and label name on its filter chip", async () => {
@@ -448,18 +660,54 @@ describe("ReportsView", () => {
   });
 
   it("shifts the selected interval in both directions without changing aggregation", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      return {
+        period: "WEEK",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: 0,
+        days: [],
+        paths: [],
+        sessionLabels: [],
+        calendarLabels: [],
+      } as never;
+    });
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
+    const latestReportRequest = () =>
+      [...vi.mocked(api).mock.calls]
+        .reverse()
+        .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    const initial = new URL(
+      latestReportRequest(),
+      "https://knowledge-base.test",
+    ).searchParams;
+    const initialStart = initial.get("startDate")!;
+    const initialEnd = initial.get("endDate")!;
+
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
       expect.stringContaining("aggregation=DAY"),
     );
+    const previous = new URL(window.location.href).searchParams;
+    expect(previous.get("startDate")).toBe(
+      format(subDays(new Date(`${initialStart}T00:00:00`), 7), "yyyy-MM-dd"),
+    );
+    expect(previous.get("endDate")).toBe(
+      format(subDays(new Date(`${initialEnd}T00:00:00`), 7), "yyyy-MM-dd"),
+    );
+
     await wrapper.get('[aria-label="Next date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
       expect.stringContaining("aggregation=DAY"),
     );
+    const next = new URL(window.location.href).searchParams;
+    expect(next.get("startDate")).toBe(initialStart);
+    expect(next.get("endDate")).toBe(initialEnd);
   });
 
   it("loads yearly aggregations and shifts the interval forward", async () => {
@@ -520,6 +768,58 @@ describe("ReportsView", () => {
     });
     await flushPromises();
     expect(wrapper.find('[role="status"]').exists()).toBe(false);
+  });
+
+  it("shows zero totals and an explicit empty state for a valid empty report", async () => {
+    vi.mocked(api).mockResolvedValueOnce({
+      period: "WEEK",
+      from: "2026-08-24",
+      to: "2026-08-30",
+      totalSeconds: 0,
+      days: [],
+      paths: [],
+      sessionLabels: [],
+      calendarLabels: [],
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    expect(wrapper.get(".total-display").text()).toBe("00:00:00");
+    expect(wrapper.text()).toContain("No tracked time in this period.");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it("falls back to the default range when the URL contains malformed report filters", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/reports?startDate=not-a-date&endDate=2026-09-07&aggregation=unknown",
+    );
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    const requested = new URL(
+      vi.mocked(api).mock.calls[0][0] as string,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(requested.get("startDate")).toBe(
+      format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(requested.get("endDate")).toBe(
+      format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(
+      (wrapper.get('[aria-label="Report aggregation"]').element as HTMLSelectElement).value,
+    ).toBe("DAY");
+    expect(new URL(window.location.href).searchParams.get("startDate")).toBe(
+      format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(new URL(window.location.href).searchParams.get("endDate")).toBe(
+      format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(new URL(window.location.href).searchParams.get("aggregation")).toBe(
+      "day",
+    );
   });
 
   it("filters daily paths to the report categories and supports an empty report", async () => {

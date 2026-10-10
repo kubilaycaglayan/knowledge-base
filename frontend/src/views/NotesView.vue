@@ -8,7 +8,12 @@ import {
   shallowRef,
   watch,
 } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  useRoute,
+  useRouter,
+} from "vue-router";
 import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
 import LabelPicker from "../components/LabelPicker.vue";
@@ -62,6 +67,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let creating = false;
 let saveInFlight = false;
 let saveQueued = false;
+let saveInFlightPromise: Promise<void> | null = null;
 
 const isEditor = computed(() => route.name === "note-editor");
 // ?lines=1 shows when each body line was last edited.
@@ -222,6 +228,11 @@ async function moveNote(note: Note, target: Note) {
     error.value = "Could not reorder notes.";
   }
 }
+function moveNoteByOffset(note: Note, offset: -1 | 1) {
+  const index = notes.value.findIndex((item) => item.id === note.id);
+  const target = notes.value[index + offset];
+  if (target) void moveNote(note, target);
+}
 function toggleArchive() {
   showArchived.value = !showArchived.value;
   page.value = 0;
@@ -267,14 +278,17 @@ function updateNoteLabels(ids: string[]) {
 function scheduleSave() {
   status.value = "saving";
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(save, 650);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    void save();
+  }, 650);
 }
-async function save() {
-  if (!selected.value || !editor.value) return;
+function save(): Promise<void> {
+  if (!selected.value || !editor.value) return Promise.resolve();
   const noteId = selected.value.id;
   if (saveInFlight) {
     saveQueued = true;
-    return;
+    return saveInFlightPromise ?? Promise.resolve();
   }
   saveInFlight = true;
   status.value = "saving";
@@ -284,47 +298,80 @@ async function save() {
     contentText: plainText(editor.value.state.doc),
     tags: [...tags.value],
   };
-  try {
-    let saved: Note;
+  saveInFlightPromise = (async () => {
     try {
-      saved = await api<Note>(`/notes/${noteId}`, {
-        method: "PUT",
-        body: JSON.stringify({ ...snapshot, version: selected.value.version }),
-      });
-    } catch (cause) {
-      if (!String(cause).includes("Note changed in another window"))
-        throw cause;
-      const latest = await api<Note>(`/notes/${noteId}`);
-      if (selected.value?.id === noteId) notesStore.setSelected(latest);
-      saved = await api<Note>(`/notes/${noteId}`, {
-        method: "PUT",
-        body: JSON.stringify({ ...snapshot, version: latest.version }),
-      });
+      let saved: Note;
+      try {
+        saved = await api<Note>(`/notes/${noteId}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...snapshot, version: selected.value.version }),
+        });
+      } catch (cause) {
+        if (!String(cause).includes("Note changed in another window"))
+          throw cause;
+        const latest = await api<Note>(`/notes/${noteId}`);
+        if (selected.value?.id === noteId) notesStore.setSelected(latest);
+        saved = await api<Note>(`/notes/${noteId}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...snapshot, version: latest.version }),
+        });
+      }
+      notesStore.upsert(saved);
+      notesStore.clearPages();
+      // The user may have opened another note while this save was in flight.
+      if (selected.value?.id !== noteId || !editor.value) return;
+      notesStore.setSelected(saved);
+      const stillOnSnapshot =
+        title.value.trim() === snapshot.title &&
+        JSON.stringify(editor.value.getJSON()) === snapshot.content &&
+        JSON.stringify(tags.value) === JSON.stringify(snapshot.tags);
+      if (stillOnSnapshot) {
+        title.value = saved.title;
+        tags.value = saved.tags || [];
+      }
+      status.value = "saved";
+    } catch {
+      status.value = "error";
+    } finally {
+      saveInFlight = false;
+      saveInFlightPromise = null;
+      if (saveQueued) {
+        saveQueued = false;
+        scheduleSave();
+      }
     }
-    notesStore.upsert(saved);
-    notesStore.clearPages();
-    // The user may have opened another note while this save was in flight.
-    if (selected.value?.id !== noteId || !editor.value) return;
-    notesStore.setSelected(saved);
-    const stillOnSnapshot =
-      title.value.trim() === snapshot.title &&
-      JSON.stringify(editor.value.getJSON()) === snapshot.content &&
-      JSON.stringify(tags.value) === JSON.stringify(snapshot.tags);
-    if (stillOnSnapshot) {
-      title.value = saved.title;
-      tags.value = saved.tags || [];
+  })();
+  return saveInFlightPromise;
+}
+async function flushPendingSave() {
+  while (true) {
+    if (status.value === "error") return false;
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      await save();
+      continue;
     }
-    status.value = "saved";
-  } catch {
-    status.value = "error";
-  } finally {
-    saveInFlight = false;
     if (saveQueued) {
-      saveQueued = false;
-      scheduleSave();
+      if (saveInFlightPromise) await saveInFlightPromise;
+      else {
+        saveQueued = false;
+        await save();
+      }
+      continue;
     }
+    return status.value !== "error";
   }
 }
+function retrySave() {
+  if (status.value === "error") scheduleSave();
+}
+onBeforeRouteLeave(flushPendingSave);
+onBeforeRouteUpdate(async (to, from) => {
+  if (from.params.id && from.params.id !== to.params.id)
+    return flushPendingSave();
+  return true;
+});
 function keepEditorVisible() {
   void nextTick(() => {
     const active = document.activeElement;
@@ -377,7 +424,7 @@ async function loadEditor() {
   }
 }
 async function closeEditor() {
-  await router.push({ name: "notes" });
+  await router.push({ name: "notes", query: route.query });
 }
 function previousPage() {
   if (page.value > 0) {
@@ -500,7 +547,11 @@ onBeforeUnmount(() => {
       </div>
       <p v-if="!loading && !notes.length" class="notes-empty">
         {{
-          query ? "No notes match your search." : "Your notes will appear here."
+          query
+            ? "No notes match your search."
+            : showArchived
+              ? "No archived notes."
+              : "Your notes will appear here."
         }}
       </p>
       <div v-else class="note-list" aria-label="Notes">
@@ -517,7 +568,7 @@ onBeforeUnmount(() => {
           <RouterLink
             v-if="!showArchived"
             class="note-card-link"
-            :to="{ name: 'note-editor', params: { id: note.id } }"
+            :to="{ name: 'note-editor', params: { id: note.id }, query: route.query }"
             :aria-label="`Open ${note.title || 'untitled note'}`"
           ></RouterLink>
           <span class="note-row-main"
@@ -540,6 +591,26 @@ onBeforeUnmount(() => {
                   : formatDate(note.updatedAt)
               }}</time
             ><span
+              ><template v-if="!showArchived && !query">
+                <button
+                  class="flat-button note-order-button"
+                  type="button"
+                  :disabled="notes[0]?.id === note.id"
+                  :aria-label="`Move ${note.title || 'untitled note'} up`"
+                  title="Move note up"
+                  @click.stop="moveNoteByOffset(note, -1)"
+                >
+                  ↑</button
+                ><button
+                  class="flat-button note-order-button"
+                  type="button"
+                  :disabled="notes[notes.length - 1]?.id === note.id"
+                  :aria-label="`Move ${note.title || 'untitled note'} down`"
+                  title="Move note down"
+                  @click.stop="moveNoteByOffset(note, 1)"
+                >
+                  ↓</button
+              ></template
               ><button
                 v-if="showArchived"
                 class="flat-button"
@@ -568,7 +639,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-      <footer v-if="totalPages > 1 || totalItems" class="notes-pagination">
+      <footer v-if="totalPages > 1 || totalItems || showArchived" class="notes-pagination">
         <div class="notes-pagination-summary">
           <span>{{ totalItems }} note{{ totalItems === 1 ? "" : "s" }}</span>
           <button class="flat-button" @click="toggleArchive">
@@ -616,6 +687,15 @@ onBeforeUnmount(() => {
               ? "Not saved"
               : "Saved"
         }}</span>
+        <button
+          v-if="status === 'error'"
+          class="flat-button"
+          type="button"
+          aria-label="Retry save"
+          @click="retrySave"
+        >
+          Retry save
+        </button>
         <span class="toolbar-spacer"></span>
         <button
           class="flat-button"
@@ -843,6 +923,14 @@ onBeforeUnmount(() => {
 .note-row-meta > span:last-child {
   grid-column: 2;
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.note-order-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
 }
 .note-tags i,
 .note-tag {

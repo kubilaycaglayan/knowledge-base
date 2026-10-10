@@ -77,6 +77,77 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("resolves a start conflict to the account's already-running timer", async () => {
+    let timerStartedElsewhere = false;
+    const existingTimer = {
+      id: "timer-existing",
+      pathId: "path-existing",
+      description: "Session started in another tab",
+      labelIds: [],
+      startedAt: new Date().toISOString(),
+      running: true,
+    };
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (
+          path === "/paths" ||
+          path === "/labels?scope=TIME_ENTRY" ||
+          path === "/calendar/labels"
+        )
+          return [];
+        if (path === "/timers/current")
+          return timerStartedElsewhere ? existingTimer : null;
+        if (path === "/timers" && options.method === "POST") {
+          timerStartedElsewhere = true;
+          throw new Error("A timer is already running");
+        }
+        return undefined;
+      },
+    );
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Start timer"]').trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/timers" && options?.method === "POST")).toBe(true);
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/current");
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+    const timerStore = useTimerStore();
+    expect(timerStore.current?.id).toBe("timer-existing");
+    expect(timerStore.pathId).toBe("path-existing");
+    expect(timerStore.description).toBe("Session started in another tab");
+    expect(wrapper.find(".tracker-error").exists()).toBe(false);
+  });
+
+  it("visibly advances the running timer once per second", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T10:00:00Z"));
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return { id: "timer-1", labelIds: [], startedAt: "2026-09-12T10:00:00Z", running: true };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    try {
+      await flushPromises();
+      expect(wrapper.get('[role="timer"]').text()).toBe("00:00:00");
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(wrapper.get('[role="timer"]').text()).toBe("00:00:02");
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it("starts immediately when the description is edited before clicking start", async () => {
     let resolveDraft: (() => void) | undefined;
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
@@ -163,6 +234,198 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("keeps a running session after a failed stop and clears it after retry succeeds", async () => {
+    let stopAttempts = 0;
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+        if (path === "/timers/current")
+          return {
+            id: "timer-1",
+            startedAt: new Date().toISOString(),
+            running: true,
+          };
+        if (path === "/timers/timer-1/stop" && options.method === "POST") {
+          stopAttempts += 1;
+          if (stopAttempts === 1) throw new Error("Temporary server failure");
+          return undefined;
+        }
+        return undefined;
+      },
+    );
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Stop timer"]').trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".tracker-error").text()).toContain("Could not update the timer.");
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Stop timer"]').trigger("click");
+    await flushPromises();
+    expect(stopAttempts).toBe(2);
+    expect(wrapper.find(".tracker-error").exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("prevents duplicate stop requests while the first stop is pending", async () => {
+    let finishStop!: () => void;
+    const pendingStop = new Promise<void>((resolve) => { finishStop = resolve; });
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return { id: "timer-1", startedAt: new Date().toISOString(), running: true };
+      if (path === "/timers/timer-1/stop" && options.method === "POST") return pendingStop;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    const stop = wrapper.get('button[aria-label="Stop timer"]');
+
+    await stop.trigger("click");
+    await flushPromises();
+    expect(stop.attributes("disabled")).toBeDefined();
+    expect(stop.attributes("aria-busy")).toBe("true");
+    await stop.trigger("click");
+    expect(vi.mocked(api).mock.calls.filter(([path, options]) => path === "/timers/timer-1/stop" && options?.method === "POST")).toHaveLength(1);
+
+    finishStop();
+    await flushPromises();
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("confirms before discarding a running session and preserves it when cancelled", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return {
+          id: "timer-1",
+          labelIds: [],
+          description: "Discardable work",
+          startedAt: new Date().toISOString(),
+          running: true,
+        };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    const confirmation = wrapper.get('[role="dialog"]');
+    expect(confirmation.text()).toContain("Discard this running session?");
+    await confirmation.get("button.text-button").trigger("click");
+    await flushPromises();
+    expect(
+      vi.mocked(api).mock.calls.some(([path]) => path === "/timers/timer-1/cancel"),
+    ).toBe(false);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/timers/timer-1/cancel",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("keeps a running session after failed discard and preserves its draft context after retry", async () => {
+    let attempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current")
+        return {
+          id: "timer-1",
+          pathId: "path-1",
+          labelIds: ["label-1"],
+          description: "Discard retry",
+          startedAt: new Date().toISOString(),
+          running: true,
+        };
+      if (path === "/timers/timer-1/cancel" && options.method === "POST") {
+        attempts += 1;
+        if (attempts === 1) throw new Error("Temporary server failure");
+        return undefined;
+      }
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".tracker-error").text()).toContain("Could not discard the session.");
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+    expect(useTimerStore().pathId).toBe("path-1");
+    expect(useTimerStore().selectedLabelIds).toEqual(["label-1"]);
+    expect(useTimerStore().description).toBe("Discard retry");
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(attempts).toBe(2);
+    expect(wrapper.find(".tracker-error").exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    expect(useTimerStore().pathId).toBe("path-1");
+    expect(useTimerStore().selectedLabelIds).toEqual(["label-1"]);
+    expect(useTimerStore().description).toBe("Discard retry");
+    wrapper.unmount();
+  });
+
+  it("reconciles a failed discard when the server later reports no current timer", async () => {
+    let currentTimer: Record<string, unknown> | null = {
+      id: "timer-1",
+      labelIds: [],
+      description: "Remote discard",
+      startedAt: new Date().toISOString(),
+      running: true,
+    };
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return currentTimer;
+      if (path === "/timers/timer-1/cancel") throw new Error("Response lost");
+      if (path === "/timers/draft") return {};
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(wrapper.get('button[aria-label="Stop timer"]').attributes("aria-label")).toBe("Stop timer");
+    expect(wrapper.get(".tracker-error").text()).toContain("Could not discard the session.");
+
+    currentTimer = null;
+    await useTimerStore().sync();
+    await flushPromises();
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it("starts the session with the typed description on Cmd+Enter in the description", async () => {
     const wrapper = mount(FloatingTimeTracker, {
       props: { inline: true },
@@ -221,41 +484,93 @@ describe("FloatingTimeTracker", () => {
 
   // SP-07
   it("shows pause while running and resume while paused", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T10:01:05Z"));
+    let paused = false;
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
       if (path === "/labels?scope=TIME_ENTRY") return [];
       if (path === "/timers/current")
-        return { id: "timer-1", pathId: "path-1", labelIds: [], startedAt: new Date(Date.now() - 65_000).toISOString(), carriedSeconds: 3600, running: true };
-      if (path === "/timers/pause" && options.method === "POST")
+        return paused ? null : { id: "timer-1", pathId: "path-1", labelIds: [], startedAt: new Date(Date.now() - 65_000).toISOString(), carriedSeconds: 3600, running: true };
+      if (path === "/timers/pause" && options.method === "POST") {
+        paused = true;
         return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: 3665 };
+      }
       if (path === "/timers/resume" && options.method === "POST")
         return { id: "timer-2", pathId: "path-1", labelIds: [], startedAt: new Date().toISOString(), carriedSeconds: 3665, running: true };
+      if (path === "/timers/draft") return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: paused ? 3665 : null };
       return undefined;
     });
     const wrapper = mount(FloatingTimeTracker, { global: { plugins: [vuetify] } });
-    await flushPromises();
+    try {
+      await flushPromises();
 
-    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
-    const pause = wrapper.get("button.floating-tracker-pause");
-    expect(pause.attributes("aria-label")).toBe("Pause session");
-    expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
-    await pause.trigger("click");
-    await flushPromises();
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+      const pause = wrapper.get("button.floating-tracker-pause");
+      expect(pause.attributes("aria-label")).toBe("Pause session");
+      expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
+      await pause.trigger("click");
+      await flushPromises();
 
-    expect(api).toHaveBeenCalledWith("/timers/pause", expect.objectContaining({ method: "POST" }));
-    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
-    expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
-    expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
-    expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
-    expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Resume session");
-    expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
+      expect(api).toHaveBeenCalledWith("/timers/pause", expect.objectContaining({ method: "POST" }));
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+      expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
+      expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
+      expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
+      expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Resume session");
+      expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
 
-    await wrapper.get("button.floating-tracker-pause").trigger("click");
-    await flushPromises();
-    expect(api).toHaveBeenCalledWith("/timers/resume", expect.objectContaining({ method: "POST" }));
-    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
-    expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Pause session");
-    wrapper.unmount();
+      await vi.advanceTimersByTimeAsync(5_000);
+      await flushPromises();
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+
+      await wrapper.get("button.floating-tracker-pause").trigger("click");
+      await flushPromises();
+      expect(api).toHaveBeenCalledWith("/timers/resume", expect.objectContaining({ method: "POST" }));
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+      expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Pause session");
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a running session after pause fails and pauses it after retry", async () => {
+    let pauseAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return { id: "timer-1", pathId: "path-1", labelIds: [], startedAt: new Date(Date.now() - 65_000).toISOString(), carriedSeconds: 0, running: true };
+      if (path === "/timers/pause" && options.method === "POST") {
+        pauseAttempts += 1;
+        if (pauseAttempts === 1) throw new Error("offline");
+        return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: 65 };
+      }
+      if (path === "/timers/draft") return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: null };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    try {
+      await flushPromises();
+      await wrapper.get('button[aria-label="Pause session"]').trigger("click");
+      await flushPromises();
+
+      expect(pauseAttempts).toBe(1);
+      expect(useTimerStore().error).toBe("Could not pause the session.");
+      expect(wrapper.get(".tracker-error").text()).toContain("Could not pause the session.");
+      expect(wrapper.find('button[aria-label="Pause session"]').exists()).toBe(true);
+      expect(wrapper.get(".floating-tracker-clock").classes()).not.toContain("is-paused");
+
+      await wrapper.get('button[aria-label="Pause session"]').trigger("click");
+      await flushPromises();
+
+      expect(pauseAttempts).toBe(2);
+      expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
+      expect(wrapper.find('button[aria-label="Resume session"]').exists()).toBe(true);
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   // SP-07
@@ -266,17 +581,85 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("finishes a paused session and clears its draft context", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft" && !options.method)
+        return { pathId: "path-1", labelIds: ["label-1"], description: "Paused work", pausedSeconds: 120 };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Stop timer"]').trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/finish", { method: "POST", body: "{}" });
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/draft", {
+      method: "PUT",
+      body: JSON.stringify({ pathId: null, labelIds: [], description: null }),
+    });
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Resume session"]').exists()).toBe(false);
+    expect(useTimerStore().description).toBe("");
+    expect(useTimerStore().selectedLabelIds).toEqual([]);
+    wrapper.unmount();
+  });
+
   // SP-10
+  it("keeps a paused session after resume fails and resumes it after retry", async () => {
+    let resumeAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft" && !options.method)
+        return { pathId: "path-1", labelIds: ["label-1"], description: "Paused work", pausedSeconds: 120 };
+      if (path === "/timers/resume" && options.method === "POST") {
+        resumeAttempts += 1;
+        if (resumeAttempts === 1) throw new Error("offline");
+        return { id: "timer-2", pathId: "path-1", labelIds: ["label-1"], description: "Paused work", startedAt: new Date().toISOString(), carriedSeconds: 120, running: true };
+      }
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    try {
+      await flushPromises();
+      await wrapper.get('button[aria-label="Resume session"]').trigger("click");
+      await flushPromises();
+
+      expect(useTimerStore().error).toContain("Could not resume the session.");
+      expect(wrapper.get(".tracker-error").text()).toContain("Could not resume the session.");
+      expect(wrapper.find('button[aria-label="Resume session"]').exists()).toBe(true);
+      expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
+      expect(useTimerStore().description).toBe("Paused work");
+
+      await wrapper.get('button[aria-label="Resume session"]').trigger("click");
+      await flushPromises();
+
+      expect(resumeAttempts).toBe(2);
+      expect(wrapper.find('button[aria-label="Pause session"]').exists()).toBe(true);
+      expect(useTimerStore().current?.carriedSeconds).toBe(120);
+      expect(useTimerStore().selectedLabelIds).toEqual(["label-1"]);
+      expect(useTimerStore().description).toBe("Paused work");
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("resumes a paused session with Cmd+Enter", async () => {
     const calls: string[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (options.method) calls.push(`${options.method} ${path}`);
-      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
       if (path === "/timers/current") return null;
-      if (path === "/timers/draft" && !options.method) return { labelIds: [], description: "Paused work", pausedSeconds: 120 };
+      if (path === "/timers/draft" && !options.method) return { pathId: "path-1", labelIds: ["label-1"], description: "Paused work", pausedSeconds: 120 };
       if (path === "/timers/draft") return { ...JSON.parse(options.body as string), pausedSeconds: 120 };
       if (path === "/timers/resume")
-        return { id: "timer-2", labelIds: [], description: "Paused work", startedAt: new Date().toISOString(), carriedSeconds: 120, running: true };
+        return { id: "timer-2", pathId: "path-1", labelIds: ["label-1"], description: "Paused work", startedAt: new Date().toISOString(), carriedSeconds: 120, running: true };
       return undefined;
     });
     const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
@@ -288,6 +671,11 @@ describe("FloatingTimeTracker", () => {
     expect(calls).toContain("POST /timers/resume");
     expect(calls).not.toContain("POST /timers");
     expect(calls).not.toContain("POST /timers/finish");
+    const timerStore = useTimerStore();
+    expect(timerStore.current?.carriedSeconds).toBe(120);
+    expect(timerStore.pathId).toBe("path-1");
+    expect(timerStore.selectedLabelIds).toEqual(["label-1"]);
+    expect(timerStore.description).toBe("Paused work");
     wrapper.unmount();
   });
 
@@ -392,7 +780,7 @@ describe("FloatingTimeTracker", () => {
     }
   });
 
-  it("applies an extension description update when the web field is focused but untouched", async () => {
+  it("applies remote timer updates to untouched fields and preserves a local draft", async () => {
     const originalWebSocket = globalThis.WebSocket;
     const sockets: MockSocket[] = [];
     class MockSocket {
@@ -456,6 +844,18 @@ describe("FloatingTimeTracker", () => {
         "value",
         "Changed from extension",
       );
+
+      (description.element as HTMLTextAreaElement).value = "Local draft";
+      await description.trigger("input");
+      expect(useTimerStore().description).toBe("Local draft");
+      sockets[0].onmessage?.({
+        data: JSON.stringify({
+          type: "TIMER_STATE",
+          timer: { ...current, description: "Changed again from extension" },
+        }),
+      });
+      await flushPromises();
+      expect(description.element).toHaveProperty("value", "Local draft");
     } finally {
       wrapper.unmount();
       HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
@@ -518,7 +918,7 @@ describe("FloatingTimeTracker", () => {
     // jsdom has no visualViewport, which Vuetify menus position against.
     vi.stubGlobal("visualViewport", Object.assign(new EventTarget(), { width: 1024, height: 768, offsetLeft: 0, offsetTop: 0, scale: 1 }));
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
-    vi.mocked(api).mockImplementation(async (path: string) => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths")
         return Array.from({ length: 15 }, (_, index) => ({
           id: `path-${index + 1}`,
@@ -527,6 +927,8 @@ describe("FloatingTimeTracker", () => {
         }));
       if (path === "/labels?scope=TIME_ENTRY") return [];
       if (path === "/timers/current") return null;
+      if (path === "/timers" && options.method === "POST")
+        return { id: "timer-1", pathId: "path-2", labelIds: [], description: "Write tests", startedAt: new Date().toISOString(), running: true };
       return undefined;
     });
     const wrapper = mount(FloatingTimeTracker, {
@@ -569,6 +971,28 @@ describe("FloatingTimeTracker", () => {
 
     expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
     expect(wrapper.get(".floating-tracker-path").text()).toBe("Path 2");
+    wrapper.unmount();
+  });
+
+  it("starts a running session with the selected Path and description", async () => {
+    const { wrapper, menu } = await openFloatingPathMenu();
+    const pathOption = [...menu.querySelectorAll<HTMLElement>(".v-list-item")].find(
+      (element) => element.textContent?.includes("Path 2"),
+    )!;
+    pathOption.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await nextTick();
+    pathOption.click();
+    await flushPromises();
+    await wrapper.get('textarea[aria-label="Timer description"]').setValue("Write tests");
+    await wrapper.get('button[aria-label="Start timer"]').trigger("click");
+    await flushPromises();
+
+    const start = vi.mocked(api).mock.calls.find(([path, init]) => path === "/timers" && init?.method === "POST");
+    expect(JSON.parse(start?.[1]?.body as string)).toMatchObject({
+      pathId: "path-2",
+      description: "Write tests",
+    });
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -1069,6 +1493,75 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
     localStorage.removeItem("know_token");
     globalThis.WebSocket = originalWebSocket;
+  });
+
+  it("recovers by polling during socket loss and refreshes again after reconnect", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-10T10:00:00Z"));
+    const originalWebSocket = globalThis.WebSocket;
+    const sockets: MockSocket[] = [];
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        sockets.push(this);
+      }
+      send() {}
+      close() {}
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    const timer = (description: string) => ({
+      id: "timer-live",
+      labelIds: [],
+      description,
+      startedAt: "2026-10-10T09:59:00Z",
+      running: true,
+    });
+    let currentReads = 0;
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") {
+        currentReads += 1;
+        if (currentReads === 1) return null;
+        return currentReads === 2 ? timer("Recovered by polling") : timer("Refreshed after reconnect");
+      }
+      if (path === "/timers/draft") return {};
+      return undefined;
+    });
+
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    try {
+      await flushPromises();
+      expect(sockets).toHaveLength(1);
+      sockets[0].onclose?.();
+      await flushPromises();
+      expect(wrapper.get('button[aria-label="Stop timer"]').attributes("aria-label")).toBe("Stop timer");
+      expect(useTimerStore().description).toBe("Recovered by polling");
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(sockets).toHaveLength(2);
+      sockets[1].onopen?.();
+      sockets[1].onmessage?.({ data: '{"type":"READY"}' });
+      await flushPromises();
+      expect(useTimerStore().description).toBe("Refreshed after reconnect");
+      expect(currentReads).toBeGreaterThanOrEqual(3);
+      expect(
+        vi.mocked(api).mock.calls.some(
+          ([path, options]) => path === "/timers" && options?.method === "POST",
+        ),
+      ).toBe(false);
+    } finally {
+      wrapper.unmount();
+      localStorage.removeItem("know_token");
+      globalThis.WebSocket = originalWebSocket;
+      vi.useRealTimers();
+    }
   });
 
   it("keeps local timer fields when a live snapshot omits unchanged values", async () => {

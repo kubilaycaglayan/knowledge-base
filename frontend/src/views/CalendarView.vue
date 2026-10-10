@@ -70,8 +70,10 @@ const newLabelColor = ref(labelColors[0]);
 const newLabelColorOpen = ref(false);
 const editingColor = ref<string | null>(null);
 const error = ref("");
+const todayAnnouncement = ref("");
 const saving = ref(false);
 const selectingRange = ref(false);
+const tapRangeMode = ref(false);
 const rangeStart = ref<string | null>(null);
 const rangeEnd = ref<string | null>(null);
 const pointerRangeStart = ref<string | null>(null);
@@ -139,12 +141,14 @@ function selectDay(date: Date) {
     if (!rangeStart.value || rangeEnd.value) {
       rangeStart.value = value;
       rangeEnd.value = null;
+      selected.value = value;
       note.value = "";
       chosen.value = {};
       return;
     }
     rangeEnd.value = value;
     selectingRange.value = false;
+    tapRangeMode.value = false;
     selected.value = value;
     return;
   }
@@ -262,27 +266,46 @@ async function changeColor(label: Label, color: string) {
   }
 }
 function previousMonth() {
+  todayAnnouncement.value = "";
   month.value = subMonths(month.value, 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
 function nextMonth() {
+  todayAnnouncement.value = "";
   month.value = addMonths(month.value, 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
+function goToToday() {
+  const today = new Date();
+  pointerRangeStart.value = null;
+  suppressDayClick.value = false;
+  selectingRange.value = false;
+  tapRangeMode.value = false;
+  rangeStart.value = null;
+  rangeEnd.value = null;
+  month.value = startOfMonth(today);
+  selected.value = format(today, "yyyy-MM-dd");
+  todayAnnouncement.value = "Today is selected.";
+  void load();
+}
 function changeMonth(monthIndex: number) {
+  todayAnnouncement.value = "";
   month.value = new Date(month.value.getFullYear(), monthIndex, 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
 function changeYear(year: number) {
+  todayAnnouncement.value = "";
   month.value = new Date(year, month.value.getMonth(), 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
 function startPointerRange(day: Date) {
+  todayAnnouncement.value = "";
   const value = format(day, "yyyy-MM-dd");
+  tapRangeMode.value = false;
   pointerRangeStart.value = value;
   selectingRange.value = true;
   rangeStart.value = value;
@@ -311,6 +334,7 @@ function finishPointerRange(day: Date) {
   selected.value = end;
 }
 function handleDayClick(day: Date) {
+  todayAnnouncement.value = "";
   if (suppressDayClick.value) {
     suppressDayClick.value = false;
     return;
@@ -318,11 +342,21 @@ function handleDayClick(day: Date) {
   selectDay(day);
 }
 function cancelRange() {
+  todayAnnouncement.value = "";
   pointerRangeStart.value = null;
   selectingRange.value = false;
+  tapRangeMode.value = false;
   rangeStart.value = null;
   rangeEnd.value = null;
   selectDay(parseISO(selected.value));
+}
+function beginRangeSelection() {
+  todayAnnouncement.value = "";
+  pointerRangeStart.value = null;
+  selectingRange.value = true;
+  tapRangeMode.value = true;
+  rangeStart.value = null;
+  rangeEnd.value = null;
 }
 onMounted(load);
 // The selected day lives in the URL, so a day can be linked to and Back returns to it.
@@ -400,11 +434,22 @@ watch(
             </option>
           </select>
         </div>
+        <button
+          class="ghost calendar-today"
+          type="button"
+          aria-label="Today"
+          @click="goToToday"
+        >
+          Today
+        </button>
         <button class="ghost" aria-label="Next month" @click="nextMonth">
           →
         </button>
       </div>
     </header>
+    <p class="visually-hidden" role="status" aria-live="polite">
+      {{ todayAnnouncement }}
+    </p>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
     <div class="calendar-layout">
       <section class="calendar-grid" aria-label="Calendar">
@@ -426,9 +471,9 @@ watch(
               format(day, 'yyyy-MM-dd') <= selectedRange.end,
           }"
           :aria-pressed="format(day, 'yyyy-MM-dd') === selected"
-          @mousedown.left.prevent="startPointerRange(day)"
+          @mousedown.left.prevent="tapRangeMode ? undefined : startPointerRange(day)"
           @mouseenter="previewPointerRange(day)"
-          @mouseup.left="finishPointerRange(day)"
+          @mouseup.left="tapRangeMode ? undefined : finishPointerRange(day)"
           @click="handleDayClick(day)"
         >
           <time>{{ format(day, "d") }}</time
@@ -462,15 +507,29 @@ watch(
         <div class="day-editor-heading">
           <h2>{{ selectedRange ? rangeTitle : selectedTitle }}</h2>
           <button
+            v-if="!selectingRange && !selectedRange"
+            class="ghost calendar-range-start"
+            type="button"
+            aria-label="Start date range selection"
+            @click="beginRangeSelection"
+          >
+            Select range
+          </button>
+          <button
             v-if="selectingRange || selectedRange"
+            type="button"
             class="ghost"
             @click="cancelRange"
           >
             Cancel range
           </button>
         </div>
-        <p v-if="selectingRange" class="muted">
-          Release on another day to select a range.
+        <p v-if="selectingRange" class="muted" role="status" aria-live="polite">
+          {{
+            rangeStart
+              ? "Choose an end date to complete the range."
+              : "Choose a start date, then choose an end date."
+          }}
         </p>
         <label
           >Note<textarea

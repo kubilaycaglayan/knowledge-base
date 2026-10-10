@@ -356,8 +356,17 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
     List<String> failures = new ArrayList<>();
     for (String[] attempt : attempts) {
       ApiClient.Reply reply = api.send(attempt[0], attempt[1], intruder, attempt[2]);
-      if (!refused(reply.status()))
-        failures.add(attempt[0] + " " + attempt[1] + " " + attempt[2] + " -> " + reply.status() + " " + reply.body());
+      if (!refused(reply.status()) || reply.body().contains(marker))
+        failures.add(
+            attempt[0]
+                + " "
+                + attempt[1]
+                + " "
+                + attempt[2]
+                + " -> "
+                + reply.status()
+                + " "
+                + reply.body());
     }
     assertTrue(failures.isEmpty(), "Foreign reference accepted:\n" + String.join("\n", failures));
     assertEquals(before, ownerViews(), "Owner data changed after refused attempts");

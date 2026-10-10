@@ -90,6 +90,24 @@ describe("BoardView", () => {
     });
   }
 
+  it("shows the first-board prompt after an empty board list has loaded", async () => {
+    const boardsStore = useBoardsStore();
+    boardsStore.boardsLoaded = true;
+    boardsStore.boards = [];
+    boardsStore.selectedId = "";
+    const wrapper = mountBoard();
+    try {
+      await flushPromises();
+      expect(wrapper.text()).toContain("Create your first board");
+      expect(wrapper.findAll(".kanban-column")).toHaveLength(0);
+      await wrapper.get(".board-empty button").trigger("click");
+      expect(wrapper.find('[role="dialog"][aria-labelledby="new-board-title"]').exists()).toBe(true);
+      expect(wrapper.find('input[name="boardName"]').exists()).toBe(true);
+    } finally {
+      await wrapper.unmount();
+    }
+  });
+
   // Board settings open from the single "Manage boards" gear, via the board's name in the Boards dialog.
   async function openSettingsFor(wrapper: ReturnType<typeof mountBoard>, name: string) {
     await wrapper.find('button[aria-label="Manage boards"]').trigger("click");
@@ -1333,6 +1351,24 @@ describe("BoardView", () => {
     }
     afterEach(() => vi.useRealTimers());
 
+    it("sets the selected card in the URL and clears it when the editor closes", async () => {
+      const store = seedBoard(["Backlog"]);
+      store.cards = [{ ...baseCard }];
+      mockRouter.push = vi.fn(async ({ query }) => { mockRoute.query = query; });
+      mockRouter.replace = vi.fn(async ({ query }) => { mockRoute.query = query; });
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      expect(mockRoute.query).toMatchObject({ board: "test-id", card: "card-1" });
+      expect(wrapper.find(".card-editor").exists()).toBe(true);
+
+      await wrapper.find('button[aria-label="Close card"]').trigger("click");
+      await flushPromises();
+      expect(wrapper.find(".card-editor").exists()).toBe(false);
+      expect(mockRoute.query).toEqual({ board: "test-id" });
+      await wrapper.unmount();
+    });
+
     it("has no save or cancel buttons and debounces edits into one save", async () => {
       vi.useFakeTimers();
       const { store, wrapper } = await openCard();
@@ -1622,6 +1658,21 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
 
+    it("explains why the last active status cannot be archived", async () => {
+      const store = seedBoard(["Backlog"]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await openSettingsFor(wrapper, "Test Board");
+      const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
+      const archive = dialog.find('button[aria-label="Archive Backlog status"]');
+
+      expect((archive.element as HTMLButtonElement).disabled).toBe(true);
+      expect(archive.attributes("aria-describedby")).toBe("last-active-status-help");
+      expect(dialog.find("#last-active-status-help").text()).toContain("Boards must keep one active status.");
+      expect(store.archiveStatus).not.toHaveBeenCalled();
+      await wrapper.unmount();
+    });
+
     it("renames, reorders, and adds statuses", async () => {
       const { store, wrapper, dialog } = await openSettings();
       const doing = dialog().find('input[aria-label="Status name Doing"]');
@@ -1664,6 +1715,37 @@ describe("BoardView", () => {
       await archiveBoard!.trigger("click");
       expect(wrapper.find('[role="alertdialog"][aria-labelledby="archive-board-title"]').exists()).toBe(true);
       await wrapper.unmount();
+    });
+
+    it("reports a status archive failure and retries after confirmation", async () => {
+      const store = seedBoard(["Backlog", "Done"]);
+      const archiveStatus = vi.fn()
+        .mockRejectedValueOnce(new Error("offline"))
+        .mockResolvedValue(undefined);
+      (store.archiveStatus as any) = archiveStatus;
+      const wrapper = mountBoard();
+      try {
+        await flushPromises();
+        await openSettingsFor(wrapper, "Test Board");
+
+        const openArchiveConfirmation = async () => {
+          await wrapper.get('button[aria-label="Archive Backlog status"]').trigger("click");
+          await wrapper.get('[aria-labelledby="archive-status-title"] button:last-child').trigger("click");
+          await flushPromises();
+        };
+        await openArchiveConfirmation();
+
+        expect(wrapper.get('[role="alert"]').text()).toContain("Could not archive status.");
+        expect(wrapper.find('button[aria-label="Archive Backlog status"]').exists()).toBe(true);
+        expect(archiveStatus).toHaveBeenCalledTimes(1);
+
+        await wrapper.get('[aria-label="Dismiss board error"]').trigger("click");
+        await openArchiveConfirmation();
+        expect(archiveStatus).toHaveBeenCalledTimes(2);
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      } finally {
+        await wrapper.unmount();
+      }
     });
   });
   it("keeps the column heading as the accessible name for its section", async () => {

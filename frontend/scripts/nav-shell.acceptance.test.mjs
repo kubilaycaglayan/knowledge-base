@@ -9,38 +9,301 @@ const pages = ["/", "/board", "/logs", "/notes", "/calendar", "/reports", "/path
 const today = new Date().toISOString().slice(0, 10);
 const statuses = ["Backlog", "In Progress", "Done"].map((name, position) => ({ id: `status-${position}`, name, position, archived: false, cardSort: "MANUAL" }));
 const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: today, dueDate: today, position: 0, archived: false, pathIds: [], labelIds: [] };
+const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, at: "2026-10-01T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null });
 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
-  await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
+  const reportQueries = [];
+  const pathOrderWrites = [];
+  const pathMergeWrites = [];
+  const removedPaths = new Map();
+  const paths = [...pathSeeds];
+  let notes = [...noteSeeds];
+  const logs = [...logSeeds];
+  const calendarDays = [];
+  const importBatches = [];
+  const preferences = { theme: "light", kanbanWide: false, ganttWide: false, recentPathIds: [] };
+  let currentTimer = null;
+  let pausedTimer = {};
+  let rejectNextReportsRequest = rejectReportsAuth;
+  let searchFailurePending = failSearchOnce;
+  let importFailurePending = failImportOnce;
+  let logDeleteFailurePending = failLogDeleteOnce;
+  let noteUpdateFailurePending = failNoteUpdateOnce;
+  let timelineNoteFailurePending = failTimelineNoteOnce;
+  if (authenticated) await context.addInitScript(() => {
+    if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
+      localStorage.setItem("know_token", "nav-test-token");
+      sessionStorage.setItem("nav_auth_seeded", "true");
+    }
+  });
   // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
   if (warmup) await context.addInitScript(() => localStorage.setItem("know_warmup", "force"));
   await context.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");
+    const method = route.request().method();
     requests.push(path);
+    const rejectedSession = rejectNextReportsRequest && path === "/reports";
+    if (rejectedSession) rejectNextReportsRequest = false;
+    if (searchFailurePending && path === "/search") {
+      searchFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary search failure" }) });
+      return;
+    }
+    if (importFailurePending && path === "/imports/knowledge-base" && method === "POST") {
+      importFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary import failure" }) });
+      return;
+    }
+    if (logDeleteFailurePending && path.startsWith("/logs/") && method === "DELETE") {
+      logDeleteFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary log delete failure" }) });
+      return;
+    }
+    if (noteUpdateFailurePending && path.startsWith("/notes/") && method === "PUT") {
+      noteUpdateFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary note update failure" }) });
+      return;
+    }
+    if (timelineNoteFailurePending && path === "/notes" && method === "POST") {
+      timelineNoteFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary activity note failure" }) });
+      return;
+    }
     let body = [];
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
-    else if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : [{ id: "board-1", name: "Product", archived: false }];
+    else if (path === "/auth/login" && method === "POST") body = { token: "signed-in-nav-test-token" };
+    else if (path.startsWith("/logs/") && method === "DELETE") {
+      const index = logs.findIndex((log) => `/logs/${log.id}` === path);
+      if (index >= 0) logs.splice(index, 1);
+      body = {};
+    }
+    else if (path.startsWith("/logs/") && method === "PUT") {
+      const index = logs.findIndex((log) => `/logs/${log.id}` === path);
+      if (index >= 0) logs[index] = { ...logs[index], ...route.request().postDataJSON(), updatedAt: new Date().toISOString(), version: (logs[index].version || 0) + 1 };
+      body = logs[index] || null;
+    }
+    else if (path === "/logs/log-deep-link") body = { id: "log-deep-link", body: logBody, occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] };
+    else if (path === "/logs" && method === "POST") {
+      const payload = route.request().postDataJSON();
+      const created = { id: `phone-log-${logs.length + 1}`, ...payload, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1, labelIds: [] };
+      logs.push(created);
+      body = created;
+    }
+    else if (path === "/logs") body = logs;
+    else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
+    else if (path === "/paths" && method === "POST") {
+      body = { ...route.request().postDataJSON(), id: "path-1", status: "ACTIVE", pinned: false };
+      paths.push(body);
+    }
+    else if (path.startsWith("/paths/") && path.endsWith("/pin") && method === "POST") {
+      const id = path.split("/")[2];
+      const index = paths.findIndex((item) => item.id === id);
+      if (index >= 0) paths[index].pinned = route.request().postDataJSON().pinned;
+      body = paths[index];
+    }
+    else if (path.startsWith("/paths/") && path.endsWith("/merge") && method === "POST") {
+      pathMergeWrites.push({ sourceId: path.split("/")[2], ...route.request().postDataJSON() });
+      const sourceId = path.split("/")[2];
+      const sourceIndex = paths.findIndex((item) => item.id === sourceId);
+      if (sourceIndex >= 0) paths.splice(sourceIndex, 1);
+      body = {};
+    }
+    else if (path.startsWith("/paths/") && path.endsWith("/restore") && method === "POST") {
+      const id = path.split("/")[2];
+      const restored = removedPaths.get(id);
+      if (restored && !paths.some((item) => item.id === id)) paths.push(restored);
+      removedPaths.delete(id);
+      body = restored || {};
+    }
+    else if (path.startsWith("/paths/") && method === "DELETE") {
+      const id = path.split("/")[2];
+      const index = paths.findIndex((item) => item.id === id);
+      if (index >= 0) removedPaths.set(id, paths.splice(index, 1)[0]);
+      body = {};
+    }
+    else if (path === "/paths/order" && method === "PUT") {
+      const { pathIds } = route.request().postDataJSON();
+      pathOrderWrites.push(pathIds);
+      const byId = new Map(paths.map((item) => [item.id, item]));
+      paths.splice(0, paths.length, ...pathIds.map((id) => byId.get(id)).filter(Boolean));
+      body = paths;
+    }
+    else if (path.startsWith("/paths/") && method === "PUT") {
+      const id = path.split("/").at(-1);
+      const index = paths.findIndex((item) => item.id === id);
+      body = { ...paths[index], ...route.request().postDataJSON() };
+      if (index >= 0) paths[index] = body;
+    }
+    else if (path === "/paths") body = paths;
+    else if (path.startsWith("/paths/") && path.endsWith("/summary")) {
+      const pathId = path.split("/")[2];
+      body = { path: paths.find((item) => item.id === pathId), trackedSeconds: 0, recentActivity: [] };
+    }
+    else if (path.startsWith("/boards/") && path.endsWith("/visibility") && method === "POST") {
+      const boardId = path.split("/")[2];
+      const owner = paths.find((item) => item.boardId === boardId);
+      if (owner) owner.boardHidden = route.request().postDataJSON().hidden;
+      body = { id: boardId, name: owner?.name || "Product", pathId: owner?.id || null, archived: false, hidden: owner?.boardHidden || false };
+    }
+    else if (path === "/boards") {
+      if (url.searchParams.get("archived") === "true") body = [];
+      else if (boardList) body = boardList;
+      else {
+        const pathBoards = paths
+          .filter((item) => item.boardId && !item.boardHidden)
+          .map((item) => ({ id: item.boardId, name: item.name, pathId: item.id, archived: false, hidden: false }));
+        body = pathBoards.length ? pathBoards : [{ id: "board-1", name: "Product", archived: false }];
+      }
+    }
     else if (path === "/boards/board-1/statuses") body = statuses;
-    else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [card] : [], nextCursor: null };
-    else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [card];
-    else if (path === "/boards/board-1/gantt") body = [card];
-    else if (path === "/timers/current") body = null;
-    else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
-    else if (path.startsWith("/reports")) body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
-    else if (path === "/timers/draft" || path === "/preferences") body = {};
-    await route.fulfill({ json: body });
+    else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? boardCards.map((item) => ({ ...item, title: boardCardTitle })) : [], nextCursor: null };
+    else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : boardCards.map((item) => ({ ...item, title: boardCardTitle }));
+    else if (path === "/boards/board-1/gantt") body = boardCards.map((item) => ({ ...item, title: boardCardTitle }));
+    else if (path === "/timers" && method === "POST") {
+      currentTimer = { id: "browser-timer", ...route.request().postDataJSON(), startedAt: new Date().toISOString(), running: true };
+      body = currentTimer;
+    }
+    else if (path === "/timers/pause" && method === "POST") {
+      pausedTimer = { ...currentTimer, pausedSeconds: 3 };
+      currentTimer = null;
+      body = pausedTimer;
+    }
+    else if (/^\/timers\/[^/]+\/stop$/.test(path) && method === "POST") {
+      body = { id: currentTimer?.id, endedAt: new Date().toISOString(), running: false };
+      currentTimer = null;
+    }
+    else if (path === "/timers/current") body = currentTimer;
+    else if (path === "/labels" && method === "POST") {
+      body = { id: `calendar-label-${calendarLabels.length + 1}`, ...route.request().postDataJSON() };
+      calendarLabels.push(body);
+    }
+    else if (path === "/labels/label-deep-link/history") body = { labelId: "label-deep-link", name: "Deep link label", color: "#3B82F6", firstUsedAt: null, lastUsedAt: null, totalUses: 0, trackedSeconds: 0, uses: { sessions: 0, logs: 0, notes: 0, calendarDays: 0, cards: 0 }, timeline: [], hours: [], related: [] };
+    else if (path === "/labels/label-deep-link/history/records") body = { items: [], hasMore: false };
+    else if (path === "/labels") body = calendarLabels;
+    else if (path === "/activities") body = timelineSeeds;
+    else if (path === "/notes" && method === "POST") {
+      const payload = route.request().postDataJSON();
+      const created = { id: `activity-note-${notes.length + 1}`, ...payload, contentText: payload.content, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1, tags: [], pinned: false };
+      notes.push(created);
+      body = created;
+    }
+    else if (path === "/notes/order" && method === "PUT") {
+      const { noteIds } = route.request().postDataJSON();
+      notes = noteIds.map((id) => notes.find((item) => item.id === id)).filter(Boolean);
+      body = notes;
+    }
+    else if (path.startsWith("/notes/") && method === "PUT") {
+      const id = path.split("/").at(-1);
+      const index = notes.findIndex((note) => note.id === id);
+      if (index >= 0) notes[index] = { ...notes[index], ...route.request().postDataJSON(), updatedAt: new Date().toISOString(), version: notes[index].version + 1 };
+      body = notes[index] || null;
+    }
+    else if (path.startsWith("/notes/") && method === "DELETE") {
+      const id = path.split("/").at(-1);
+      const note = notes.find((item) => item.id === id);
+      if (note) {
+        note.archived = true;
+        note.deletedAt = new Date().toISOString();
+      }
+      body = {};
+    }
+    else if (path === "/notes") {
+      const archived = url.searchParams.get("archived") === "true";
+      const query = (url.searchParams.get("q") || "").trim().toLocaleLowerCase();
+      const selectedNotes = notes.filter((note) => {
+        const matchesArchive = Boolean(note.archived) === archived;
+        const searchable = `${note.title || ""} ${note.contentText || ""} ${(note.tags || []).join(" ")}`.toLocaleLowerCase();
+        return matchesArchive && (!query || searchable.includes(query));
+      });
+      body = { items: selectedNotes, page: 0, size: 20, totalItems: selectedNotes.length, totalPages: selectedNotes.length ? 1 : 0 };
+    }
+    else if (path === "/notes/n1") body = notes.find((note) => note.id === "n1") || { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
+    else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
+    else if (path.startsWith("/notes/")) body = notes.find((note) => `/notes/${note.id}` === path) || null;
+    else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
+    else if (path === "/imports/knowledge-base/batches") body = importBatches;
+    else if (path === "/imports/clockify/batches") body = [];
+    else if (path === "/imports/knowledge-base" && method === "POST") {
+      const batch = { id: "browser-import-batch", source: "KNOWLEDGE_BASE", imported: 2, skipped: 1, createdPaths: 1, createdAt: "2026-10-10T10:00:00Z", undoneAt: null };
+      importBatches.unshift(batch);
+      body = { batchId: batch.id, imported: batch.imported, skipped: batch.skipped, createdPaths: batch.createdPaths };
+    }
+    else if (path === "/search") {
+      const query = url.searchParams.get("q");
+      const moreType = url.searchParams.get("types");
+      const moreResults = query?.toLocaleLowerCase() === "more";
+      const noteResults = moreType === "NOTE"
+        ? [searchResult("more-note-2", "NOTE", "More note two", "Second note"), searchResult("more-note-3", "NOTE", "More note three", "Third note")]
+        : moreType === "LOG"
+          ? [searchResult("more-log-2", "LOG", "More log two", "Second log")]
+          : [searchResult("more-note-1", "NOTE", "More note one", "First note")];
+      const logResults = moreType === "LOG"
+        ? [searchResult("more-log-2", "LOG", "More log two", "Second log")]
+        : moreType === "NOTE"
+          ? []
+          : [searchResult("more-log-1", "LOG", "More log one", "First log")];
+      const reportsResults = [
+        [{ type: "NOTE", total: 1, capped: false, results: [{ ...searchResult("search-note", "NOTE", "Reports research note", "Found report draft"), via: "LABEL", viaName: "Reports label" }] }],
+        [{ type: "LOG", total: 1, capped: false, results: [searchResult("search-log", "LOG", "Report export log", "Export completed")] }],
+      ].flat();
+      const groups = !query ? [] : moreResults
+        ? moreType === "NOTE"
+          ? [{ type: "NOTE", total: 3, capped: false, results: noteResults }]
+          : moreType === "LOG"
+            ? [{ type: "LOG", total: 2, capped: false, results: logResults }]
+            : [{ type: "NOTE", total: 3, capped: false, results: noteResults }, { type: "LOG", total: 2, capped: false, results: logResults }]
+        : reportsResults;
+      body = { groups, fuzzy: false, incomplete: false };
+    }
+    else if (path.startsWith("/reports")) {
+      reportQueries.push(url.searchParams.toString());
+      const chartPath = { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
+      const chartDay = { date: today, totalSeconds: 3600, paths: [chartPath] };
+      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: themeSurfaces ? 3600 : 0, days: themeSurfaces ? [chartDay] : [], paths: themeSurfaces ? [chartPath] : [], sessionLabels: [], calendarLabels: [] };
+    }
+    else if (path === "/preferences" && method === "PUT") {
+      Object.assign(preferences, route.request().postDataJSON());
+      body = preferences;
+    }
+    else if (path === "/preferences") body = preferences;
+    else if (path === "/timers/draft") body = pausedTimer;
+    else if (path === "/calendar/days" && method === "GET") body = calendarDays;
+    else if (path === "/calendar/days/range" && method === "PUT") body = [];
+    else if (path.startsWith("/calendar/days/") && method === "PUT") {
+      const payload = route.request().postDataJSON();
+      const record = {
+        date: path.split("/").at(-1),
+        note: payload.note,
+        labels: (payload.labels || []).map((assignment) => {
+          const label = calendarLabels.find((item) => item.id === assignment.labelId);
+          return {
+            labelId: assignment.labelId,
+            name: label?.name || assignment.labelId,
+            color: label?.color || null,
+            portion: assignment.portion,
+          };
+        }),
+      };
+      const index = calendarDays.findIndex((day) => day.date === record.date);
+      if (index === -1) calendarDays.push(record);
+      else calendarDays[index] = record;
+      body = record;
+    }
+    const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone" || path.startsWith("/labels/gone/history");
+    await route.fulfill({ status: rejectedSession ? 401 : missingRecord ? 404 : 200, json: rejectedSession ? { message: "Session expired" } : missingRecord ? { message: "Not found" } : body });
   });
   const page = await context.newPage();
   await page.goto(server.resolvedUrls.local[0]);
-  await page.locator(".dashboard-shell > header nav").waitFor();
-  return { page, requests };
+  if (authenticated) await page.locator(".dashboard-shell > header nav").waitFor();
+  else await page.locator(".auth").waitFor();
+  return { page, requests, reportQueries, calendarLabels, paths, pathOrderWrites, pathMergeWrites };
 }
 
 async function until(condition) {
@@ -85,6 +348,49 @@ for (const width of [390, 1440]) it(`uses one nav bar size and a 10px bottom mar
   assert.deepEqual(await header(page), expected, "Nav bar in the Gantt view must match the other pages");
 });
 
+it("keeps shell actions reachable without horizontal overflow at narrow, wide, and 50%-zoom-equivalent widths", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  for (const width of [320, 390, 1280, 1920, 2880]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(layout.content <= layout.viewport, `${width}px layout overflows horizontally: ${layout.content}px > ${layout.viewport}px`);
+    for (const link of await nav.getByRole("link").all()) {
+      assert.equal(await link.isVisible(), true, `primary destination is hidden at ${width}px`);
+      const rect = await link.boundingBox();
+      assert.ok(rect && rect.x >= 0 && rect.x + rect.width <= layout.viewport, `primary destination is outside the ${width}px viewport`);
+    }
+    assert.equal(await page.getByRole("link", { name: "Settings" }).isVisible(), true, `Settings is hidden at ${width}px`);
+  }
+});
+
+it("uses at least 16px text controls on phone-width routes", async (t) => {
+  const { page } = await fixture(t, 390);
+  for (const path of ["/", "/logs", "/notes/n1", "/calendar", "/settings"]) {
+    await visit(page, path);
+    const controls = await page.evaluate(() => [...document.querySelectorAll(
+      'input:not([type="checkbox"]):not([type="radio"]), select, textarea, [contenteditable="true"]',
+    )].filter((element) => element.getClientRects().length > 0).map((element) => ({
+      name: element.getAttribute("aria-label") || element.getAttribute("name") || element.tagName,
+      fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+    })));
+    assert.ok(controls.length > 0, `${path} should expose a visible editable control`);
+    assert.ok(controls.every(({ fontSize }) => fontSize >= 16), `${path}: ${JSON.stringify(controls)}`);
+  }
+});
+
+it("does not disable browser zoom in the viewport configuration", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(server.resolvedUrls.local[0]);
+  const content = await page.locator('meta[name="viewport"]').getAttribute("content");
+  assert.ok(content);
+  assert.doesNotMatch(content, /user-scalable\s*=\s*no/i);
+  assert.doesNotMatch(content, /maximum-scale\s*=\s*1(?:\.0+)?(?:\s|,|$)/i);
+});
+
 it("keeps the Gantt timeline full width while the nav bar stays standard", async (t) => {
   const { page, requests } = await fixture(t, 1600);
   await visit(page, "/board");
@@ -110,6 +416,2160 @@ it("navigates home from the logo without a page reload and reuses cached session
   await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__noReload), true, "Logo click must use client-side routing");
   assert.equal(requests.filter((path) => homeData.includes(path)).length, before, "Returning home must reuse cached sessions, paths, and labels");
+});
+
+it("opens the Sessions workspace directly with its empty state and inline tracker", async (t) => {
+  const { page } = await fixture(t, 1440);
+  assert.equal(new URL(page.url()).pathname, "/");
+  assert.equal(await page.title(), "Knowledge Base · Sessions");
+  await page.getByRole("region", { name: "Sessions" }).waitFor();
+  await page.getByText("No sessions recorded yet.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Start timer" }).waitFor();
+  const pageHeadings = page.locator("main h1:visible");
+  assert.equal(await pageHeadings.count(), 1);
+  assert.equal((await pageHeadings.first().textContent())?.trim(), "Sessions");
+  await page.locator(".floating-tracker-host.inline").waitFor();
+});
+
+it("keeps a running timer active after route navigation and browser reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.getByRole("textbox", { name: "Timer description" }).fill("Persist across views");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+
+  await visit(page, "/board");
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  await page.reload();
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/board");
+});
+
+it("keeps a paused session understandable after route navigation and reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.getByRole("textbox", { name: "Timer description" }).fill("Paused browser session");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByRole("button", { name: "Pause session" }).click();
+  await page.getByText("Paused", { exact: true }).waitFor();
+
+  await visit(page, "/board");
+  await page.locator(".board-page").waitFor();
+  await page.getByText("Paused", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Resume session" }).waitFor();
+  await page.reload();
+  await page.locator(".board-page").waitFor();
+  await page.getByText("Paused", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Resume session" }).waitFor();
+});
+
+it("moves focus from the skip link to the main content", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const skipLink = page.getByRole("link", { name: "Skip to content" });
+  await skipLink.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.activeElement?.id === "main-content");
+  assert.equal(new URL(page.url()).hash, "#main-content");
+});
+
+it("shows a visible keyboard focus ring that is not covered by the shell", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.keyboard.press("Tab");
+  const focus = await page.evaluate(() => {
+    const element = document.activeElement;
+    if (!(element instanceof HTMLElement)) return null;
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const center = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      name: element.getAttribute("aria-label") || element.textContent?.trim(),
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      visible: rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight,
+      covered: center !== element && !element.contains(center),
+    };
+  });
+  assert.ok(focus, "Tab should move focus to a visible control");
+  assert.equal(focus.outlineStyle, "solid");
+  assert.equal(focus.outlineWidth, "2px");
+  assert.equal(focus.visible, true, JSON.stringify(focus));
+  assert.equal(focus.covered, false, JSON.stringify(focus));
+});
+
+it("keeps every supported primary destination reachable at phone width", async (t) => {
+  const { page } = await fixture(t, 390);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const links = nav.getByRole("link");
+  const destinations = await links.evaluateAll((elements) => elements.map((element) => ({
+    text: element.textContent?.trim().replace(/\s+/g, " "),
+    href: element.getAttribute("href"),
+    rect: element.getBoundingClientRect().toJSON(),
+  })));
+  assert.deepEqual(destinations.map(({ href }) => href), [
+    "/board", "/logs", "/notes", "/calendar", "/reports", "/paths", "/labels",
+  ]);
+  for (const destination of destinations) {
+    assert.ok(destination.rect.width > 0 && destination.rect.height >= 44, `${destination.text} has a phone-sized target`);
+    assert.ok(destination.rect.left >= 0 && destination.rect.right <= 390, `${destination.text} stays within the phone viewport`);
+  }
+});
+
+const reorderNotes = () => [
+  { id: "note-a", title: "Browser note A", content: "{}", contentText: "First note", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, tags: [], pinned: false },
+  { id: "note-b", title: "Browser note B", content: "{}", contentText: "Second note", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false },
+];
+
+it("reorders notes with a touch-sized control at phone width", async (t) => {
+  const { page, requests } = await fixture(t, 390, { noteSeeds: reorderNotes() });
+  await visit(page, "/notes");
+  const moveDown = page.getByRole("button", { name: "Move Browser note A down" });
+  const bounds = await moveDown.boundingBox();
+  assert.ok(bounds && bounds.width >= 44 && bounds.height >= 44);
+  await moveDown.tap();
+  await page.waitForFunction(() => [...document.querySelectorAll(".note-row strong")].map((item) => item.textContent).join() === "Browser note B,Browser note A");
+  assert.ok(requests.includes("/notes/order"));
+});
+
+it("reorders notes with the keyboard on desktop", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { noteSeeds: reorderNotes() });
+  await visit(page, "/notes");
+  const moveDown = page.getByRole("button", { name: "Move Browser note A down" });
+  await moveDown.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => [...document.querySelectorAll(".note-row strong")].map((item) => item.textContent).join() === "Browser note B,Browser note A");
+  assert.ok(requests.includes("/notes/order"));
+});
+
+it("renders every supported top-level route after a direct browser load", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const routes = [
+    ["/", ".session-list"],
+    ["/sessions", ".session-list", "/"],
+    ["/paths", ".paths-page"],
+    ["/timeline", 'h1:text-is("Timeline")'],
+    ["/logs", ".logs-page"],
+    ["/reports", ".reports-page"],
+    ["/calendar", ".calendar-page"],
+    ["/imports", 'h1:text-is("Imports")'],
+    ["/settings", ".settings-view"],
+    ["/labels", ".labels-view"],
+    ["/board", ".board-page"],
+    ["/notes", ".notes-page"],
+  ];
+
+  for (const [path, selector, canonicalPath = path] of routes) {
+    await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
+    await page.locator(selector).waitFor();
+    assert.equal(new URL(page.url()).pathname, canonicalPath);
+  }
+});
+
+it("keeps protected deep-link content hidden while signed out and restores it after sign-in", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { authenticated: false });
+  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
+  await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.locator(".reports-page").count(), 0);
+  assert.equal(await page.getByRole("navigation", { name: "Main navigation" }).count(), 0);
+  assert.match(await page.title(), /Knowledge Base.*Sign in/);
+
+  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator(".reports-page").waitFor();
+
+  assert.equal(new URL(page.url()).pathname, "/reports");
+  assert.equal(new URL(page.url()).search, query);
+  assert.ok(requests.includes("/auth/login"));
+});
+
+it("rejects external and protocol-relative post-login redirects", async (t) => {
+  for (const redirect of ["https://outside.example/path", "//outside.example/path"]) {
+    const { page } = await fixture(t, 1440, { authenticated: false });
+    await page.goto(`${server.resolvedUrls.local[0]}reports?redirect=${encodeURIComponent(redirect)}`);
+    await page.getByRole("heading", { name: "Sign in" }).waitFor();
+    await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+    await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForFunction(() => location.pathname === "/");
+    assert.equal(new URL(page.url()).origin, new URL(server.resolvedUrls.local[0]).origin);
+    assert.equal(new URL(page.url()).pathname, "/");
+  }
+});
+
+it("clears authentication on sign-out and keeps protected routes gated on Back and reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await visit(page, "/reports");
+  await page.locator(".reports-page").waitFor();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
+
+  await page.goBack();
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/");
+  assert.equal(await page.locator(".reports-page").count(), 0);
+
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.locator(".reports-page").count(), 0);
+});
+
+it("returns to sign-in after a saved session is rejected and permits authentication again", async (t) => {
+  const { page } = await fixture(t, 1440, { rejectReportsAuth: true });
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
+  assert.equal(await page.locator(".reports-page").count(), 0);
+
+  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), "signed-in-nav-test-token");
+});
+
+it("opens each primary navigation route and updates the active link and title", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const destinations = [
+    ["Board", "/board", ".board-page", "Board"],
+    ["Logs", "/logs", ".logs-page", "Logs"],
+    ["Notes", "/notes", ".notes-page", "Notes"],
+    ["Calendar", "/calendar", ".calendar-page", "Calendar"],
+    ["Reports", "/reports", ".reports-page", "Reports"],
+    ["Paths", "/paths", ".paths-page", "Paths"],
+    ["Labels", "/labels", ".labels-view", "Labels"],
+  ];
+
+  for (const [label, path, selector, title] of destinations) {
+    await nav.getByRole("link", { name: label, exact: true }).click();
+    await page.waitForFunction((expected) => location.pathname === expected, path);
+    await page.locator(selector).waitFor();
+    const activeLink = nav.getByRole("link", { name: label, exact: true });
+    assert.equal(await activeLink.getAttribute("aria-current"), "page");
+    await page.waitForFunction((expected) => document.title === expected, `Knowledge Base · ${title}`);
+  }
+
+  await nav.getByRole("link", { name: "Board", exact: true }).click();
+  await page.waitForFunction(() => location.pathname === "/board");
+  await nav.getByRole("link", { name: "Logs", exact: true }).click();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === "/board");
+  await page.waitForFunction(() => document.title === "Knowledge Base · Board");
+  await page.goForward();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.waitForFunction(() => document.title === "Knowledge Base · Logs");
+});
+
+it("restores the Log search query from a direct URL after reload", async (t) => {
+  const { page } = await fixture(t, 1280, {
+    logSeeds: [
+      { id: "log-match", body: "A distinctive browser query", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] },
+      { id: "log-other", body: "A different entry", occurredAt: "2026-10-02T10:00:00Z", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, labelIds: [] },
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}logs?q=distinctive`);
+  await page.locator(".log-entry", { hasText: "A distinctive browser query" }).waitFor();
+  assert.equal(await page.locator(".log-entry").count(), 1, "The direct-link query filters the loaded list");
+  await page.keyboard.press("/");
+  assert.equal(await page.getByRole("searchbox", { name: "Search all logs" }).inputValue(), "distinctive");
+  await page.reload();
+  await page.locator(".log-entry", { hasText: "A distinctive browser query" }).waitFor();
+  assert.equal(await page.locator(".log-entry").count(), 1, "Reload preserves the filtered result from the URL");
+});
+
+it("creates a Log with phone-width controls and keeps Save reachable after viewport resize", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}logs`);
+
+  const body = page.getByRole("textbox", { name: "Log text" });
+  const timestamp = page.getByRole("textbox", { name: "Log timestamp" });
+  await body.fill("A log created from the phone layout");
+  await page.setViewportSize({ width: 390, height: 420 });
+  await timestamp.focus();
+  await timestamp.fill("2026-10-01T09:30");
+
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  await save.scrollIntoViewIfNeeded();
+  const saveVisible = await save.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  });
+  assert.equal(saveVisible, true, "Save remains reachable after the phone viewport shrinks around the active timestamp field");
+  assert.equal(await body.inputValue(), "A log created from the phone layout", "Viewport resizing preserves the draft text");
+  const createRequest = page.waitForRequest((request) => {
+    if (request.method() !== "POST" || !new URL(request.url()).pathname.endsWith("/logs")) return false;
+    const payload = request.postDataJSON();
+    return payload.body === "A log created from the phone layout" && payload.occurredAt === "2026-10-01T09:30:00.000Z";
+  });
+  await save.click();
+  await createRequest;
+  await page.locator(".log-entry", { hasText: "A log created from the phone layout" }).waitFor();
+
+  const targetSizes = await Promise.all([body, timestamp, save].map((locator) =>
+    locator.evaluate((element) => {
+      const { width, height } = element.getBoundingClientRect();
+      return { width, height };
+    }),
+  ));
+  for (const size of targetSizes) {
+    assert.ok(size.width >= 44 && size.height >= 44, `Expected a 44px phone touch target, got ${size.width}×${size.height}px`);
+  }
+});
+
+it("edits a Log in the browser and reloads the saved text", async (t) => {
+  const { page } = await fixture(t, 1280, {
+    logSeeds: [{ id: "edit-log", body: "Original browser log text", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}logs`);
+  const entry = page.locator("#log-edit-log");
+  await entry.getByText("Original browser log text", { exact: true }).waitFor();
+  await entry.getByRole("button", { name: /^Edit log from / }).click();
+  const editor = entry.getByRole("textbox", { name: /^Edit log text from / });
+  await editor.fill("Saved browser log edit");
+  await entry.getByRole("button", { name: "Save", exact: true }).click();
+  await page.locator(".log-entry", { hasText: "Saved browser log edit" }).waitFor();
+
+  await page.reload();
+  await page.locator(".log-entry", { hasText: "Saved browser log edit" }).waitFor();
+  assert.equal(await page.locator(".log-entry", { hasText: "Original browser log text" }).count(), 0);
+});
+
+it("confirms Log removal, preserves it on cancel or failure, then retries successfully", async (t) => {
+  const { page, requests } = await fixture(t, 1280, {
+    failLogDeleteOnce: true,
+    logSeeds: [
+      { id: "remove-log", body: "Keep or remove this browser log", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] },
+      { id: "other-log", body: "Untouched browser log", occurredAt: "2026-10-02T10:00:00Z", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, labelIds: [] },
+    ],
+  });
+  await visit(page, "/logs");
+  const entry = page.locator(".log-entry", { hasText: "Keep or remove this browser log" });
+  const remove = entry.getByRole("button", { name: /^Remove log from / });
+  await remove.click();
+  const dialog = page.getByRole("dialog", { name: "Remove this log? This cannot be undone." });
+  await dialog.waitFor();
+  assert.equal(await dialog.getAttribute("aria-modal"), "true");
+  await page.keyboard.press("Escape");
+  await entry.waitFor();
+  assert.equal(requests.includes("/logs/remove-log"), false, "Escape cancels without sending a delete request");
+
+  await remove.click();
+  await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await entry.waitFor();
+  assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Cancel returns focus to the Remove log control");
+  assert.equal(requests.includes("/logs/remove-log"), false, "Cancel sends no delete request");
+
+  await remove.click();
+  await page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }).click();
+  await page.getByRole("alert").filter({ hasText: "Unable to remove this log. Please try again." }).waitFor();
+  await entry.waitFor();
+  assert.equal(requests.filter((path) => path === "/logs/remove-log").length, 1, "The failed attempt leaves the record in the list");
+
+  await remove.click();
+  await page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }).click();
+  await entry.waitFor({ state: "detached" });
+  await page.locator(".log-entry", { hasText: "Untouched browser log" }).waitFor();
+  assert.equal(requests.filter((path) => path === "/logs/remove-log").length, 2);
+});
+
+it("downloads the Knowledge Base export from Settings in the browser", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await visit(page, "/settings");
+  await page.getByRole("tab", { name: "Export" }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download Knowledge Base CSV" }).click();
+  const file = await download;
+  assert.equal(file.suggestedFilename(), "knowledge-base-export.csv");
+  await page.getByRole("status").filter({ hasText: "Your Knowledge Base export is ready." }).waitFor();
+  assert.ok(requests.includes("/imports/knowledge-base/export"));
+});
+
+it("opens the Imports route directly and switches import sources", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}imports`);
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  assert.match(await page.title(), /Knowledge Base.*Import/);
+  assert.equal(await page.getByRole("tab", { name: "Knowledge Base" }).getAttribute("aria-selected"), "true");
+
+  await page.getByRole("tab", { name: "Clockify" }).click();
+  await page.locator("#imports-panel-clockify").waitFor();
+  assert.equal(await page.getByRole("tab", { name: "Clockify" }).getAttribute("aria-selected"), "true");
+  assert.ok(requests.includes("/imports/knowledge-base/batches"));
+  assert.ok(requests.includes("/imports/clockify/batches"));
+});
+
+it("submits a Knowledge Base import and reloads its batch result", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}imports`);
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  await page.getByRole("textbox", { name: "Knowledge Base CSV" }).fill("type,id\\nPATH,p1");
+  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await page.getByRole("status").filter({ hasText: "Imported 2 records, skipped 1 duplicates, and created 1 paths." }).waitFor();
+  await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
+  assert.ok(requests.includes("/imports/knowledge-base"));
+
+  await page.reload();
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
+});
+
+it("keeps Knowledge Base import data available after a failed request and retries it", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { failImportOnce: true });
+  await page.goto(`${server.resolvedUrls.local[0]}imports`);
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  const csv = page.getByRole("textbox", { name: "Knowledge Base CSV" });
+  await csv.fill("type,id\\nPATH,retry-path");
+  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await page.getByRole("alert").filter({ hasText: "Could not import Knowledge Base data." }).waitFor();
+  assert.equal(await csv.inputValue(), "type,id\\nPATH,retry-path", "A rejected request keeps the entered CSV");
+  assert.equal(await page.getByText(/2 imported · 1 skipped · 1 paths/).count(), 0, "A failed request creates no visible batch");
+
+  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await page.getByRole("status").filter({ hasText: "Imported 2 records, skipped 1 duplicates, and created 1 paths." }).waitFor();
+  await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
+  assert.equal(requests.filter((path) => path === "/imports/knowledge-base").length, 2);
+});
+
+it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const reportsLink = nav.getByRole("link", { name: "Reports", exact: true });
+  await reportsLink.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.locator(".reports-page").waitFor();
+
+  const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
+  const newTab = page.context().waitForEvent("page");
+  await calendarLink.click({ modifiers: ["Control"] });
+  const opened = await newTab;
+  await opened.locator(".calendar-page").waitFor();
+  assert.equal(new URL(opened.url()).pathname, "/calendar");
+});
+
+it("shows the floating tracker on eligible routes but not Sessions or focused phone inputs", async (t) => {
+  const { page } = await fixture(t, 390);
+  const floatingTracker = page.locator(".floating-tracker-host:not(.inline)");
+  const eligibleRoutes = [
+    "/board",
+    "/logs",
+    "/notes",
+    "/calendar",
+    "/reports",
+    "/paths",
+    "/labels",
+  ];
+  for (const path of eligibleRoutes) {
+    await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
+    await floatingTracker.waitFor();
+    assert.equal(await floatingTracker.isVisible(), true, `${path} should show the floating tracker`);
+  }
+
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.locator(".session-list").waitFor();
+  assert.equal(await floatingTracker.count(), 0, "Sessions home uses its inline tracker only");
+  await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);
+  await page.getByRole("dialog").filter({ hasText: "Browser direct session" }).waitFor();
+  assert.equal(await floatingTracker.count(), 0, "Session detail must not show the floating tracker");
+
+  await page.goto(`${server.resolvedUrls.local[0]}logs`);
+  await floatingTracker.waitFor();
+  const logInput = page.getByRole("textbox", { name: "Log text" });
+  await logInput.focus();
+  await floatingTracker.waitFor({ state: "detached" });
+  assert.equal(await logInput.evaluate((element) => document.activeElement === element), true);
+  assert.equal(await logInput.evaluate((element) => element.getBoundingClientRect().bottom <= innerHeight), true);
+});
+
+it("redirects /sessions to the Sessions home and restores history with Back and Forward", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await visit(page, "/logs");
+  await page.locator(".logs-page").waitFor();
+
+  await page.evaluate(() => { history.pushState({}, "", "/sessions"); dispatchEvent(new PopStateEvent("popstate")); });
+  await page.waitForFunction(() => location.pathname === "/");
+  await page.getByRole("region", { name: "Sessions" }).waitFor();
+
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.locator(".logs-page").waitFor();
+
+  await page.goForward();
+  await page.waitForFunction(() => location.pathname === "/");
+  await page.getByRole("region", { name: "Sessions" }).waitFor();
+});
+
+it("creates a Path in the browser and reloads it from the API fixture", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await visit(page, "/paths");
+  await page.locator(".paths-page").waitFor();
+  await page.getByRole("button", { name: "Add path" }).click();
+  await page.getByRole("textbox", { name: "New path name" }).fill("Reading");
+  await page.locator("form.path-create-form button[type=submit]").click();
+  await page.locator(".path-title", { hasText: "Reading" }).waitFor();
+  assert.ok(requests.includes("/paths"));
+
+  await page.reload();
+  await page.locator(".path-title", { hasText: "Reading" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths");
+});
+
+it("pins a Path and keeps the saved state after browser reload", async (t) => {
+  const { page, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-reading", name: "Reading", status: "ACTIVE", pinned: false }],
+  });
+  await visit(page, "/paths");
+  const pin = page.getByRole("button", { name: "Pin Reading" });
+  await pin.waitFor();
+  await pin.click();
+  const unpin = page.getByRole("button", { name: "Unpin Reading" });
+  await unpin.waitFor();
+  assert.equal(await unpin.getAttribute("aria-pressed"), "true");
+  assert.ok(requests.includes("/paths/path-reading/pin"));
+
+  await page.reload();
+  const reloaded = page.getByRole("button", { name: "Unpin Reading" });
+  await reloaded.waitFor();
+  assert.equal(await reloaded.getAttribute("aria-pressed"), "true");
+});
+
+it("updates the board tab name when its Path is renamed", async (t) => {
+  const { page } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-reading", name: "Reading", status: "ACTIVE", boardId: "board-reading", boardHidden: false }],
+  });
+  const appUrl = server.resolvedUrls.local[0];
+  await page.goto(`${appUrl}paths`);
+  await page.locator(".paths-page").waitFor();
+  const pathCard = page.locator("article.path").filter({ hasText: "Reading" });
+  await pathCard.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("textbox", { name: "Edit path name" }).fill("Writing");
+  await page.getByRole("button", { name: "Save path" }).click();
+  await page.getByRole("heading", { name: "Writing", level: 2 }).waitFor();
+
+  await page.goto(`${appUrl}board`);
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Writing", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Reading", exact: true }).count(), 0);
+});
+
+it("reorders Paths by keyboard with the accessible Move up action", async (t) => {
+  const pathSeeds = [
+    { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+    { id: "path-b", name: "Writing", status: "ACTIVE" },
+  ];
+  const { page, pathOrderWrites } = await fixture(t, 1440, { pathSeeds });
+  await visit(page, "/paths");
+  const up = page.getByRole("button", { name: "Move Writing up" });
+  await up.waitFor();
+  assert.equal(await page.getByRole("button", { name: "Move Algorithms up" }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: "Move Writing down" }).isDisabled(), true);
+  await up.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+  const down = page.getByRole("button", { name: "Move Writing down" });
+  assert.equal(await down.isDisabled(), false);
+  await down.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Algorithms,Writing");
+  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"], ["path-a", "path-b"]]);
+});
+
+it("reorders Paths by touch with a 44px Move up target", async (t) => {
+  const pathSeeds = [
+    { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+    { id: "path-b", name: "Writing", status: "ACTIVE" },
+  ];
+  const { page, pathOrderWrites } = await fixture(t, 390, { pathSeeds });
+  await visit(page, "/paths");
+  const up = page.getByRole("button", { name: "Move Writing up" });
+  await up.waitFor();
+  const target = await up.boundingBox();
+  assert.ok(target && target.width >= 44 && target.height >= 44, JSON.stringify(target));
+  await up.tap();
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"]]);
+});
+
+it("reorders Paths with browser drag and persists the ordered IDs", async (t) => {
+  const pathSeeds = [
+    { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+    { id: "path-b", name: "Writing", status: "ACTIVE" },
+  ];
+  const { page, pathOrderWrites } = await fixture(t, 1440, { pathSeeds });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  const source = page.locator("article.path").filter({ hasText: "Algorithms" });
+  const target = page.locator("article.path").filter({ hasText: "Writing" });
+  await source.waitFor();
+  await source.dragTo(target);
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"]]);
+  await page.reload();
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+});
+
+it("moves focus into and returns focus from the Path create dialog", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await visit(page, "/paths");
+  const trigger = page.getByRole("button", { name: "Add path" });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.locator(".path-create-dialog");
+  await dialog.waitFor();
+  const name = dialog.getByRole("textbox", { name: "New path name" });
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "New path name");
+  assert.equal(await name.evaluate((element) => element === document.activeElement), true);
+
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
+});
+
+it("opens path history when the browser loads its deep link directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-deep-link", name: "Writing", status: "ACTIVE" }],
+  });
+  const appUrl = server.resolvedUrls.local[0];
+  await page.goto(`${appUrl}paths/path-deep-link`);
+
+  const history = page.locator(".path-history-dialog");
+  await history.waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths/path-deep-link");
+  await history.getByRole("heading", { name: "Writing" }).waitFor();
+  await history.getByText("No recent activity yet.", { exact: true }).waitFor();
+  assert.ok(requests.includes("/paths/path-deep-link/summary"));
+});
+
+it("changes and persists an existing Path color using only the keyboard", async (t) => {
+  const initialPath = {
+    id: "path-edit",
+    name: "Keyboard path",
+    color: "#F8FAFC",
+    description: "",
+    status: "ACTIVE",
+    pinned: false,
+  };
+  const { page, paths } = await fixture(t, 1440, { pathSeeds: [initialPath] });
+  page.setDefaultTimeout(4000);
+  await visit(page, "/paths");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const editColorButton = page.getByRole("button", { name: "Choose edit path color" });
+  await editColorButton.click();
+  const blue = page.getByRole("button", { name: "Set edit path color: Blue (#3B82F6)" });
+  await blue.focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await editColorButton.evaluate((element) => getComputedStyle(element).backgroundColor), "rgb(59, 130, 246)");
+  await page.locator("form.path-edit button.primary").click();
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.equal(paths[0]?.color, "#3B82F6");
+
+  await page.reload();
+
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.equal(
+    await page.locator(".path .dot").evaluate((element) => getComputedStyle(element).backgroundColor),
+    "rgb(59, 130, 246)",
+  );
+});
+
+it("merges Paths into the selected target after destructive confirmation", async (t) => {
+  const { page, paths, pathMergeWrites } = await fixture(t, 1440, {
+    pathSeeds: [
+      { id: "merge-source", name: "Algorithms", description: "Problem solving", status: "ACTIVE", pinned: false },
+      { id: "merge-target", name: "Writing", description: "Drafting", status: "ACTIVE", pinned: false },
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  await page.locator(".paths-page").waitFor();
+  await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+  const mergeTrigger = page.locator("form.path-edit").getByRole("button", { name: "Merge", exact: true });
+  await mergeTrigger.click();
+
+  const chooser = page.getByRole("dialog", { name: "Merge “Algorithms” into…" });
+  await chooser.waitFor();
+  await page.keyboard.press("Escape");
+  await chooser.waitFor({ state: "detached" });
+  assert.equal(await mergeTrigger.evaluate((button) => button === document.activeElement), true, "Escape returns focus to the Merge control");
+  await mergeTrigger.click();
+  await chooser.waitFor();
+  const search = chooser.getByRole("searchbox", { name: "Find a target path" });
+  await search.fill("Drafting");
+  const target = chooser.getByRole("radio", { name: /Writing/ });
+  await target.check();
+  await chooser.getByRole("button", { name: "OK" }).click();
+
+  const confirmation = page.getByRole("dialog", { name: "Merge Algorithms into Writing? All sessions will move and Algorithms will be removed." });
+  await confirmation.waitFor();
+  assert.equal(await confirmation.getAttribute("aria-modal"), "true");
+  await confirmation.getByRole("button", { name: "Confirm" }).click();
+
+  await page.locator(".path-title", { hasText: "Writing" }).waitFor();
+  assert.equal(await page.locator(".path-title", { hasText: "Algorithms" }).count(), 0);
+  assert.deepEqual(pathMergeWrites, [{ sourceId: "merge-source", targetPathId: "merge-target" }]);
+  assert.deepEqual(paths.map(({ id }) => id), ["merge-target"]);
+});
+
+it("confirms Path removal and restores it through the Undo action", async (t) => {
+  const { page, paths, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "undo-path", name: "Undo path", description: "Keep this path recoverable", status: "ACTIVE", pinned: false }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  const row = page.locator(".path", { hasText: "Undo path" });
+  await row.getByRole("button", { name: "Remove", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Remove Undo path? You can undo this for a few seconds." });
+  await dialog.waitFor();
+  await page.keyboard.press("Escape");
+  await row.waitFor();
+  assert.equal(requests.includes("/paths/undo-path"), false, "Escape cancels without deleting the Path");
+
+  await row.getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("dialog", { name: "Remove Undo path? You can undo this for a few seconds." }).getByRole("button", { name: "Confirm" }).click();
+  await row.waitFor({ state: "detached" });
+  const snackbar = page.getByRole("status").filter({ hasText: "Removed “Undo path”." });
+  await snackbar.waitFor();
+  assert.equal(paths.length, 0);
+  await snackbar.getByRole("button", { name: "Undo" }).click();
+  await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
+  assert.deepEqual(paths.map(({ id }) => id), ["undo-path"]);
+  assert.ok(requests.includes("/paths/undo-path/restore"));
+});
+
+it("preserves a Timeline activity note after failure and saves it on retry", async (t) => {
+  const { page, requests } = await fixture(t, 1280, {
+    failTimelineNoteOnce: true,
+    timelineSeeds: [{ id: "activity-note-source", type: "TIME_TRACKED", title: "Browser activity for notes", detail: "Completed a focused work session", occurredAt: "2026-10-01T10:00:00Z", timeEntryId: "session-activity-note" }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}timeline`);
+  const activity = page.locator(".timeline-entry", { hasText: "Browser activity for notes" });
+  await activity.getByRole("button", { name: "Add note" }).click();
+  const editor = activity.locator(".note-editor");
+  await editor.getByRole("textbox", { name: "Activity note title" }).fill("A retryable reflection");
+  await editor.getByRole("textbox", { name: "Activity note content" }).fill("Keep this draft after the first request fails.");
+  await editor.getByRole("button", { name: "Save note" }).click();
+
+  await page.getByRole("alert").filter({ hasText: "Could not save activity note." }).waitFor();
+  assert.equal(await editor.getByRole("textbox", { name: "Activity note title" }).inputValue(), "A retryable reflection");
+  assert.equal(await editor.getByRole("textbox", { name: "Activity note content" }).inputValue(), "Keep this draft after the first request fails.");
+
+  await editor.getByRole("button", { name: "Save note" }).click();
+  await editor.waitFor({ state: "detached" });
+  assert.equal(requests.filter((path) => path === "/notes").length, 2, "Retry issues the second note request after the 503");
+  await activity.waitFor();
+});
+
+it("filters Timeline activity with phone-width controls and sends the selected values", async (t) => {
+  const { page } = await fixture(t, 390, {
+    pathSeeds: [{ id: "timeline-path", name: "Timeline Path", status: "ACTIVE" }],
+    timelineSeeds: [{ id: "phone-timeline-activity", type: "TIME_TRACKED", title: "Phone filter activity", detail: "A filtered activity", occurredAt: "2026-10-01T10:00:00Z", pathId: "timeline-path", timeEntryId: "phone-timeline-session" }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}timeline`);
+
+  const activityType = page.getByRole("combobox", { name: "Activity type" });
+  const path = page.getByRole("combobox", { name: "Path" });
+  const from = page.getByRole("textbox", { name: "From date" });
+  const to = page.getByRole("textbox", { name: "To date" });
+  await activityType.selectOption("TIME_TRACKED");
+  await path.selectOption("timeline-path");
+  await from.fill("2026-09-30");
+  await to.fill("2026-10-01");
+
+  const filterRequest = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith("/activities") &&
+      url.searchParams.get("type") === "TIME_TRACKED" &&
+      url.searchParams.get("pathId") === "timeline-path" &&
+      url.searchParams.get("from") === "2026-09-30T00:00:00Z" &&
+      url.searchParams.get("to") === "2026-10-01T23:59:59Z";
+  });
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await filterRequest;
+  await page.getByRole("heading", { name: "Phone filter activity" }).waitFor();
+
+  const touchTargetSizes = await Promise.all([
+    activityType,
+    path,
+    page.getByRole("button", { name: "Filter", exact: true }),
+    page.getByRole("button", { name: "Last 7 days" }),
+  ].map(async (locator) => locator.evaluate((element) => {
+    const { width, height } = element.getBoundingClientRect();
+    return { width, height };
+  })));
+  for (const size of touchTargetSizes) {
+    assert.ok(size.width >= 44 && size.height >= 44, `Expected a 44px phone touch target, got ${size.width}×${size.height}px`);
+  }
+});
+
+it("restores a hidden Path board tab after showing it from Paths", async (t) => {
+  const { page, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE", boardId: "board-1", boardHidden: true }],
+  });
+  const appUrl = server.resolvedUrls.local[0];
+  await page.goto(`${appUrl}paths`);
+  await page.getByRole("heading", { name: "Paths" }).waitFor();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+
+  const boardSwitch = page.getByRole("switch", { name: "Show on board" });
+  assert.equal(await boardSwitch.isChecked(), false);
+  await boardSwitch.check();
+  await page.getByText("Writing board is shown.", { exact: true }).waitFor();
+  await until(() => requests.includes("/boards/board-1/visibility"));
+
+  await page.goto(`${appUrl}board`);
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Writing", exact: true }).waitFor();
+});
+
+it("restores report filters after navigation and browser Back/Forward", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const search = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
+  await page.evaluate((query) => {
+    history.pushState({}, "", `/reports${query}`);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }, search);
+  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.locator(".reports-page").waitFor();
+  const assertReportQuery = async () => {
+    await page.waitForFunction(() => location.pathname === "/reports" && new URLSearchParams(location.search).get("startDate") === "2026-09-01");
+    const params = new URLSearchParams(new URL(page.url()).search);
+    assert.equal(params.get("endDate"), "2026-09-07");
+    assert.equal(params.get("aggregation"), "month");
+    assert.deepEqual(params.getAll("pathId"), ["path-1"]);
+    assert.deepEqual(params.getAll("labelId"), ["label-1"]);
+  };
+  await assertReportQuery();
+
+  await page.locator('a[href="/logs"]').first().click();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.locator(".logs-page").waitFor();
+  await page.locator('a[href="/reports"]').first().click();
+  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.locator(".reports-page").waitFor();
+  await assertReportQuery();
+
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.goForward();
+  await assertReportQuery();
+});
+
+it("loads report filters from a direct query URL and keeps them on reload", async (t) => {
+  const { page, reportQueries } = await fixture(t, 1440);
+  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
+  await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
+  await page.locator(".reports-page").waitFor();
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
+  assert.equal(new URL(page.url()).search, query);
+
+  await page.reload();
+  await page.locator(".reports-page").waitFor();
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
+  assert.equal(new URL(page.url()).search, query);
+  assert.ok(reportQueries.filter((value) => value.includes("startDate=2026-09-01") && value.includes("endDate=2026-09-07")).length >= 2);
+});
+
+it("keeps the Labels search query after a direct load and browser reload", async (t) => {
+  const { page } = await fixture(t, 1440, {
+    calendarLabels: [{ id: "label-focus", name: "Deep focus", color: "#3B82F6", scopes: ["NOTE", "LOG"] }],
+  });
+  const url = `${server.resolvedUrls.local[0]}labels?q=Deep%20focus`;
+  await page.goto(url);
+  await page.locator(".labels-view").waitFor();
+  const assertQueryState = async () => {
+    assert.equal(new URL(page.url()).searchParams.get("q"), "Deep focus");
+    assert.equal(await page.getByRole("searchbox", { name: "Search labels" }).inputValue(), "Deep focus");
+    await page.getByText("Deep focus", { exact: true }).waitFor();
+  };
+  await assertQueryState();
+
+  await page.reload();
+  await page.locator(".labels-view").waitFor();
+  await assertQueryState();
+});
+
+it("switches report aggregation by keyboard and preserves Path and Label filters", async (t) => {
+  const { page } = await fixture(t, 1440);
+  page.setDefaultTimeout(5000);
+  await page.goto(
+    `${server.resolvedUrls.local[0]}reports?startDate=2026-10-04&endDate=2026-10-10&aggregation=DAY&pathId=path-1&labelId=label-1`,
+  );
+  await page.locator(".reports-page").waitFor();
+  const expectedWeek = await page.evaluate(() => {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - 29);
+    const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return { start: iso(start), end: iso(end) };
+  });
+  const aggregation = page.getByRole("combobox", { name: "Report aggregation" });
+  await aggregation.click();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+
+  await page.waitForFunction(() => {
+    const params = new URL(location.href).searchParams;
+    return params.get("aggregation") === "week";
+  }, undefined, { timeout: 5000 });
+  const query = new URL(page.url()).searchParams;
+  assert.equal(await aggregation.inputValue(), "WEEK");
+  assert.equal(query.get("startDate"), expectedWeek.start);
+  assert.equal(query.get("endDate"), expectedWeek.end);
+  assert.equal(query.get("pathId"), "path-1");
+  assert.equal(query.get("labelId"), "label-1");
+  assert.equal(query.get("aggregation"), "week");
+});
+
+it("normalizes malformed report query values on direct browser load", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(
+    `${server.resolvedUrls.local[0]}reports?startDate=not-a-date&endDate=2026-09-07&aggregation=unknown`,
+  );
+  await page.locator(".reports-page").waitFor();
+  const expectedWeek = await page.evaluate(() => {
+    const start = new Date();
+    const weekday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - weekday);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return { start: iso(start), end: iso(end) };
+  });
+
+  await page.waitForFunction((expected) => {
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === expected.start &&
+      params.get("endDate") === expected.end &&
+      params.get("aggregation") === "day";
+  }, expectedWeek);
+  assert.equal(await page.getByRole("combobox", { name: "Report aggregation" }).inputValue(), "DAY");
+});
+
+it("keeps report date and total controls reachable on a phone viewport", async (t) => {
+  const { page, reportQueries } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.locator(".reports-page").waitFor();
+  const dateRange = page.getByLabel("Report date range");
+  await dateRange.waitFor();
+  await dateRange.tap();
+  const todayPreset = page.getByText("Today", { exact: true });
+  await todayPreset.waitFor();
+  await todayPreset.tap();
+  await page.waitForFunction(() => {
+    const params = new URL(location.href).searchParams;
+    const today = new Date().toISOString().slice(0, 10);
+    return params.get("startDate") === today && params.get("endDate") === today;
+  });
+  await dateRange.tap();
+  await page.getByText("Yesterday", { exact: true }).tap();
+  await page.waitForFunction(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const expected = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === expected && params.get("endDate") === expected;
+  });
+  const expectedPrevious = await page.evaluate(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 2);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  });
+  await page.getByRole("button", { name: "Previous date range" }).click();
+  await page.waitForFunction((expected) => {
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === expected && params.get("endDate") === expected;
+  }, expectedPrevious);
+
+  await dateRange.tap();
+  const monthLabel = await page.locator(".dp__month_year_wrap").first().textContent();
+  const displayedMonth = new Date(monthLabel.replace(/([A-Za-z]+)(\d{4})/, "$1 $2"));
+  const customStart = `${displayedMonth.getFullYear()}-${String(displayedMonth.getMonth() + 1).padStart(2, "0")}-01`;
+  const customEnd = `${displayedMonth.getFullYear()}-${String(displayedMonth.getMonth() + 1).padStart(2, "0")}-03`;
+  await page.locator(".dp__cell_inner:not(.dp__cell_offset)").filter({ hasText: /^1$/ }).first().tap();
+  assert.equal(await page.locator(".dp__menu").isVisible(), true, "the custom range stays open after choosing its start");
+  await page.locator(".dp__cell_inner:not(.dp__cell_offset)").filter({ hasText: /^3$/ }).first().tap();
+  await page.waitForFunction(({ start, end }) => {
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === start && params.get("endDate") === end;
+  }, { start: customStart, end: customEnd });
+
+  const dimensions = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth,
+  }));
+  assert.ok(
+    dimensions.document <= dimensions.viewport,
+    `Reports must not create horizontal page overflow: ${JSON.stringify(dimensions)}`,
+  );
+  const bounds = await Promise.all(
+    [dateRange, page.locator(".total-display"), page.locator(".chart-frame")].map((locator) =>
+      locator.boundingBox(),
+    ),
+  );
+  const dateInputBounds = await page.getByRole("textbox", { name: "Datepicker input" }).boundingBox();
+  assert.ok(dateInputBounds && dateInputBounds.width >= 240, "the selected date interval has enough input width to remain readable");
+  assert.ok(
+    bounds.every((box) => box && box.x >= 0 && box.x + box.width <= 390),
+  );
+  for (const name of ["Filter by paths", "Group by"]) {
+    assert.equal(await page.getByRole("combobox", { name }).isVisible(), true);
+  }
+  const textBounds = await Promise.all(
+    [dateRange, page.locator(".total-display")].map((locator) =>
+      locator.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      })),
+    ),
+  );
+  assert.ok(textBounds.every(({ clientWidth, scrollWidth }) => scrollWidth <= clientWidth), JSON.stringify(textBounds));
+  assert.ok(
+    reportQueries.length >= 2,
+    "the previous-range control must reload the report",
+  );
+});
+
+it("selects a calendar range with touch taps and keyboard input", async (t) => {
+  const phone = await fixture(t, 390);
+  await phone.page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await phone.page.locator(".calendar-page").waitFor();
+  const touchRangeButton = phone.page.getByRole("button", {
+    name: "Start date range selection",
+  });
+  const touchRangeBounds = await touchRangeButton.boundingBox();
+  assert.ok(touchRangeBounds && touchRangeBounds.height >= 44);
+  await touchRangeButton.tap();
+  await phone.page
+    .getByRole("status")
+    .filter({ hasText: "Choose a start date" })
+    .waitFor();
+  const phoneDays = phone.page.locator("button.calendar-day");
+  await phoneDays.nth(8).tap();
+  assert.equal(await phone.page.locator('button.calendar-day[aria-pressed="true"]').count(), 1);
+  await phone.page
+    .getByRole("status")
+    .filter({ hasText: "Choose an end date" })
+    .waitFor();
+  await phoneDays.nth(10).tap();
+  assert.equal(await phone.page.locator('button.calendar-day[aria-pressed="true"]').count(), 1);
+  await phone.page.locator(".day-editor-heading h2").filter({ hasText: "–" }).waitFor();
+  assert.equal(
+    await phone.page.getByRole("button", { name: "Apply to range" }).isEnabled(),
+    true,
+  );
+
+  const desktop = await fixture(t, 1440);
+  await desktop.page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await desktop.page.locator(".calendar-page").waitFor();
+  const startRange = desktop.page.getByRole("button", {
+    name: "Start date range selection",
+  });
+  await startRange.focus();
+  await desktop.page.keyboard.press("Enter");
+  const desktopDays = desktop.page.locator("button.calendar-day");
+  await desktopDays.nth(8).focus();
+  await desktop.page.keyboard.press("Enter");
+  await desktopDays.nth(10).focus();
+  await desktop.page.keyboard.press("Space");
+  await desktop.page.locator(".day-editor-heading h2").filter({ hasText: "–" }).waitFor();
+  assert.equal(
+    await desktop.page.getByRole("button", { name: "Apply to range" }).isEnabled(),
+    true,
+  );
+});
+
+it("returns the Calendar to today with a touch-sized navigation control", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const current = await page.evaluate(() => ({
+    year: String(new Date().getFullYear()),
+    month: String(new Date().getMonth()),
+    day: String(new Date().getDate()),
+    date: [
+      new Date().getFullYear(),
+      String(new Date().getMonth() + 1).padStart(2, "0"),
+      String(new Date().getDate()).padStart(2, "0"),
+    ].join("-"),
+  }));
+
+  await page.getByRole("button", { name: "Previous month" }).tap();
+  const todayButton = page.getByRole("button", { name: "Today" });
+  const bounds = await todayButton.boundingBox();
+  assert.ok(bounds && bounds.height >= 44);
+  const navigationCenters = await page.locator(".calendar-navigation > *").evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    }),
+  );
+  assert.ok(Math.max(...navigationCenters) - Math.min(...navigationCenters) < 1);
+  await todayButton.tap();
+
+  assert.equal(await page.getByRole("combobox", { name: "Calendar year" }).inputValue(), current.year);
+  assert.equal(await page.getByRole("combobox", { name: "Calendar month" }).inputValue(), current.month);
+  assert.equal(await page.locator('button.calendar-day[aria-pressed="true"] time').textContent(), current.day);
+  assert.ok(await page.locator("button.calendar-day").count() >= 35);
+  await page.waitForFunction(
+    (expected) => new URL(location.href).searchParams.get("date") === expected,
+    current.date,
+  );
+});
+
+it("loads a Calendar date deep link and retains it after browser reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const url = `${server.resolvedUrls.local[0]}calendar?date=2026-09-01`;
+  await page.goto(url);
+  await page.locator(".calendar-page").waitFor();
+  const assertLinkedDate = async () => {
+    assert.equal(new URL(page.url()).searchParams.get("date"), "2026-09-01");
+    assert.equal(await page.getByRole("combobox", { name: "Calendar month" }).inputValue(), "8");
+    assert.equal(await page.getByRole("combobox", { name: "Calendar year" }).inputValue(), "2026");
+    assert.equal(await page.locator('button.calendar-day[aria-pressed="true"] time').textContent(), "1");
+  };
+  await assertLinkedDate();
+  assert.match(await page.title(), /Knowledge Base.*Calendar/);
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await assertLinkedDate();
+  assert.match(await page.title(), /Knowledge Base.*Calendar/);
+});
+
+it("clears an impossible Calendar date query and falls back to today", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar?date=2026-02-30`);
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => !new URL(location.href).searchParams.has("date"));
+
+  const current = await page.evaluate(() => ({
+    year: String(new Date().getFullYear()),
+    month: String(new Date().getMonth()),
+    day: String(new Date().getDate()),
+  }));
+  assert.equal(await page.getByRole("combobox", { name: "Calendar year" }).inputValue(), current.year);
+  assert.equal(await page.getByRole("combobox", { name: "Calendar month" }).inputValue(), current.month);
+  assert.equal(await page.locator('button.calendar-day[aria-pressed="true"] time').textContent(), current.day);
+});
+
+it("selects a calendar day with touch and updates its details panel", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const target = page.locator("button.calendar-day:not(.muted)").nth(2);
+  const targetDay = await target.locator("time").textContent();
+  const targetBounds = await target.boundingBox();
+  assert.ok(targetBounds && targetBounds.height >= 44);
+
+  await target.tap();
+
+  assert.equal(await target.getAttribute("aria-pressed"), "true");
+  assert.equal(
+    await page.locator('button.calendar-day[aria-pressed="true"]').count(),
+    1,
+  );
+  assert.match(
+    await page.locator(".day-editor-heading h2").textContent(),
+    new RegExp(`\\b${targetDay}\\b`),
+  );
+});
+
+it("edits and saves a Calendar day at phone width without horizontal overflow", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const target = page.locator("button.calendar-day:not(.muted)").nth(2);
+  await target.tap();
+
+  const editor = page.locator(".day-editor");
+  await editor.locator("textarea").fill("Phone width calendar note");
+  const save = page.getByRole("button", { name: "Save day" });
+  await save.scrollIntoViewIfNeeded();
+  const saveBounds = await save.boundingBox();
+  const viewport = page.viewportSize();
+  assert.ok(saveBounds && viewport);
+  assert.ok(saveBounds.x >= 0 && saveBounds.x + saveBounds.width <= viewport.width);
+  assert.ok(saveBounds.y + saveBounds.height <= viewport.height);
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    true,
+  );
+
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await save.tap();
+  await saved;
+  await page.reload();
+  await page.locator(".calendar-page").waitFor();
+  assert.equal(await page.locator(".day-editor textarea").inputValue(), "Phone width calendar note");
+});
+
+it("keeps Calendar editing controls reachable after a keyboard-like viewport resize", async (t) => {
+  const { page } = await fixture(t, 390, {
+    calendarLabels: [{ id: "mobile-label", name: "Vacation", color: "#3B82F6", scopes: ["CALENDAR"] }],
+  });
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  await page.locator("button.calendar-day:not(.muted)").nth(2).tap();
+  const note = page.locator(".day-editor textarea");
+  await note.tap();
+  await note.fill("Keep this mobile draft");
+
+  // A reduced viewport models the visible area above a software keyboard.
+  await page.setViewportSize({ width: 390, height: 320 });
+  await note.scrollIntoViewIfNeeded();
+  const labelTrigger = page.locator(".new-calendar-label .picker-chevron");
+  await labelTrigger.scrollIntoViewIfNeeded();
+  const labelBounds = await labelTrigger.boundingBox();
+  assert.ok(labelBounds && labelBounds.y < 320 && labelBounds.y + labelBounds.height > 0);
+  await labelTrigger.tap();
+  await page.getByRole("combobox", { name: "Add or create calendar label" }).waitFor();
+  const save = page.getByRole("button", { name: "Save day" });
+  await save.scrollIntoViewIfNeeded();
+  const saveBounds = await save.boundingBox();
+  assert.ok(saveBounds && saveBounds.y < 320 && saveBounds.y + saveBounds.height > 0);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  assert.equal(await note.inputValue(), "Keep this mobile draft");
+});
+
+it("selects a calendar day with the keyboard and retains focus", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const target = page.locator("button.calendar-day:not(.muted)").nth(2);
+  const targetDay = await target.locator("time").textContent();
+  await target.focus();
+  await page.keyboard.press("Enter");
+
+  assert.equal(await target.getAttribute("aria-pressed"), "true");
+  assert.equal(
+    await page.locator('button.calendar-day[aria-pressed="true"]').count(),
+    1,
+  );
+  assert.equal(await target.evaluate((element) => element === document.activeElement), true);
+  assert.match(
+    await page.locator(".day-editor-heading h2").textContent(),
+    new RegExp(`\\b${targetDay}\\b`),
+  );
+});
+
+it("reloads a saved Calendar note from its selected day record", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const note = "Browser fixture calendar note";
+  await page.locator(".day-editor textarea").fill(note);
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save day" }).click();
+  await saved;
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(
+    (expected) => document.querySelector(".day-editor textarea")?.value === expected,
+    note,
+  );
+  assert.equal(await page.locator(".day-editor textarea").inputValue(), note);
+});
+
+it("reloads a saved Calendar label assignment on its selected day", async (t) => {
+  const label = {
+    id: "leave",
+    name: "Sick leave",
+    color: "#2878D5",
+    scopes: ["CALENDAR"],
+  };
+  const { page } = await fixture(t, 1440, { calendarLabels: [label] });
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const checkbox = page.getByRole("checkbox", { name: "Sick leave" });
+  await checkbox.check();
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save day" }).click();
+  await saved;
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => {
+    const checkbox = document.querySelector('.day-label input[type="checkbox"]');
+    return checkbox instanceof HTMLInputElement && checkbox.checked;
+  });
+  assert.equal(await page.getByRole("checkbox", { name: "Sick leave" }).isChecked(), true);
+});
+
+it("creates a Calendar label with default scopes and reloads its assignment", async (t) => {
+  const { page, calendarLabels } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  await page.getByRole("button", { name: "Open label picker" }).click();
+  const input = page.locator('.label-picker-menu input[aria-label="Add or create calendar label"]');
+  await input.fill("Vacation");
+  await page.getByRole("option", { name: "Create Vacation" }).click();
+
+  assert.deepEqual(
+    { color: calendarLabels[0]?.color, scopes: calendarLabels[0]?.scopes },
+    { color: "#F8FAFC", scopes: ["NOTE", "CALENDAR", "TIME_ENTRY", "LOG", "BOARD"] },
+  );
+  const checkbox = page.getByRole("checkbox", { name: "Vacation" });
+  assert.equal(await checkbox.isChecked(), true);
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save day" }).click();
+  await saved;
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => {
+    const row = [...document.querySelectorAll(".day-label")]
+      .find((item) => item.querySelector("label")?.textContent?.trim() === "Vacation");
+    const checkbox = row?.querySelector('input[type="checkbox"]');
+    return checkbox instanceof HTMLInputElement && checkbox.checked;
+  });
+  assert.equal(await page.getByRole("checkbox", { name: "Vacation" }).isChecked(), true);
+});
+
+it("opens a session detail when the browser loads its deep link directly", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);
+  const dialog = page.getByRole("dialog");
+  await dialog.filter({ hasText: "Browser direct session" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/sessions/s1");
+});
+
+it("shows an unavailable state for a missing session opened by browser deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}sessions/gone`);
+  const dialog = page.getByRole("dialog");
+  await dialog.filter({ hasText: "This session doesn’t exist any more" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/sessions/gone");
+});
+
+it("shows an unavailable state for a missing log opened by browser deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/gone`);
+  await page.getByRole("dialog").filter({ hasText: "This log doesn’t exist any more" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/logs/gone");
+});
+
+it("opens a log detail when the browser loads its deep link directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
+  assert.equal(await dialog.getAttribute("aria-modal"), "true");
+  assert.equal(new URL(page.url()).pathname, "/logs/log-deep-link");
+  assert.ok(requests.includes("/logs/log-deep-link"));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.getByRole("heading", { name: "Logs", exact: true }).waitFor();
+});
+
+it("moves focus into and back from Log removal confirmation in the detail dialog", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
+  const remove = dialog.getByRole("button", { name: "Remove…", exact: true });
+
+  await remove.click();
+  const confirmation = page.getByRole("alertdialog");
+  const keep = confirmation.getByRole("button", { name: "Keep log" });
+  await confirmation.waitFor();
+  assert.equal(await keep.evaluate((button) => button === document.activeElement), true, "Focus enters on the safe cancel action");
+
+  await page.keyboard.press("Escape");
+  assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Escape returns focus to the Remove trigger");
+  assert.equal(requests.filter((path) => path === "/logs/log-deep-link").length, 1, "Cancellation sends no delete request");
+
+  await remove.click();
+  await confirmation.waitFor();
+  await keep.click();
+  assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Keep log returns focus to the Remove trigger");
+  assert.equal(requests.filter((path) => path === "/logs/log-deep-link").length, 1, "Button cancellation sends no delete request");
+});
+
+it("returns focus to Edit after cancelling a Log detail edit", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
+  const edit = dialog.getByRole("button", { name: "Edit", exact: true });
+  await edit.click();
+  const editor = dialog.getByRole("textbox", { name: "Text" });
+  await editor.waitFor();
+  assert.equal(await editor.evaluate((field) => field === document.activeElement), true, "Edit opens with focus in the text field");
+
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await edit.waitFor();
+  assert.equal(await edit.evaluate((button) => button === document.activeElement), true, "Cancel returns focus to the Edit action");
+});
+
+it("wraps very long Log text within the phone-width detail layout", async (t) => {
+  const longText = `${"UnbrokenText".repeat(80)} ${"A long log entry should wrap around controls and stay readable. ".repeat(30)}`;
+  const { page } = await fixture(t, 390, { logBody: longText });
+  await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.locator(".log-dialog-body").waitFor();
+  const body = dialog.locator(".log-dialog-body");
+  assert.equal(await body.innerText(), longText);
+  const widths = await body.evaluate((element) => ({
+    client: element.clientWidth,
+    scroll: element.scrollWidth,
+  }));
+  assert.ok(widths.scroll <= widths.client, JSON.stringify(widths));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+it("keeps a long Path description inside its phone-width card", async (t) => {
+  const description = `${"UnbrokenDescription".repeat(40)} ${"A long path description should stay inside its card. ".repeat(20)}`;
+  const { page } = await fixture(t, 390, {
+    pathSeeds: [{ id: "long-description", name: "Reading", description, status: "ACTIVE" }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  const paragraph = page.locator(".path-body > p");
+  await paragraph.waitFor();
+  assert.ok((await paragraph.textContent()).includes(description.slice(0, 80)));
+  const layout = await page.locator("article.path").evaluate((article) => {
+    const paragraph = article.querySelector(".path-body > p");
+    const rect = article.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+      clientWidth: article.clientWidth,
+      scrollWidth: article.scrollWidth,
+      lineClamp: paragraph && getComputedStyle(paragraph).webkitLineClamp,
+    };
+  });
+  assert.equal(layout.lineClamp, "2");
+  assert.ok(layout.left >= 0 && layout.right <= 390, JSON.stringify(layout));
+  assert.ok(layout.scrollWidth <= layout.clientWidth, JSON.stringify(layout));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+it("wraps a long Board card title inside its phone-width card", async (t) => {
+  const title = `${"UnbrokenBoardTitle".repeat(20)} ${"A long card title must wrap without pushing adjacent controls. ".repeat(5)}`;
+  const { page, requests } = await fixture(t, 390, { boardCardTitle: title });
+  await page.goto(`${server.resolvedUrls.local[0]}board?board=board-1`);
+  const heading = page.locator(".board-card h3");
+  await heading.waitFor();
+  assert.equal((await heading.innerText()).trim(), title.trim());
+  const layout = await heading.evaluate((element) => {
+    const card = element.closest(".board-card");
+    const rect = card.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, clientWidth: card.clientWidth, scrollWidth: card.scrollWidth };
+  });
+  assert.ok(layout.left >= 0 && layout.right <= 390, JSON.stringify(layout));
+  assert.ok(layout.scrollWidth <= layout.clientWidth, JSON.stringify(layout));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+it("shows an add-card action for a loaded empty Board column", async (t) => {
+  const { page } = await fixture(t, 390, { boardCards: [] });
+  await page.goto(`${server.resolvedUrls.local[0]}board?board=board-1`);
+  const empty = page.locator(".kanban-column .column-empty").first();
+  await empty.waitFor();
+  assert.equal(await empty.innerText(), "No cards yet");
+  assert.equal(await page.locator(".board-card").count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Add card to Backlog" }).isVisible(), true);
+});
+
+it("opens the first-board dialog with keyboard focus and returns focus on Escape", async (t) => {
+  const { page } = await fixture(t, 1440, { boardList: [] });
+  await page.goto(`${server.resolvedUrls.local[0]}board`);
+  const trigger = page.locator(".board-empty button");
+  await trigger.waitFor();
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "New board" });
+  await dialog.waitFor();
+  const name = dialog.getByRole("textbox", { name: "New board name" });
+  await page.waitForFunction(() => document.activeElement?.id === "new-board-name");
+  assert.equal(await name.evaluate((element) => element === document.activeElement), true);
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
+});
+
+it("shows an unavailable state for a missing path opened by browser deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}paths/gone`);
+  await page.getByText("That path doesn’t exist any more").waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths/gone");
+});
+
+it("shows an unavailable history state for a missing label deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}labels/gone`);
+  await page.getByRole("alert").filter({ hasText: "Could not load this label’s history." }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/labels/gone");
+});
+
+it("opens label history when the browser loads its deep link directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}labels/label-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("heading", { name: "Deep link label" }).waitFor();
+  await dialog.getByText("Not used yet.", { exact: false }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/labels/label-deep-link");
+  assert.ok(requests.some((path) => path.startsWith("/labels/label-deep-link/history")));
+});
+
+it("opens the board archive when the browser loads its route directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}board/archive`);
+  await page.locator(".archive-page").waitFor();
+  await page.getByRole("heading", { name: "Archive", exact: true }).waitFor();
+  await page.getByText("No archived boards.", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/board/archive");
+  assert.ok(requests.includes("/boards"));
+});
+
+it("loads a note editor when the browser opens its deep link directly", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/n1");
+  assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Browser deep link");
+  await page.getByRole("textbox", { name: "Note content" }).waitFor();
+  assert.match(await page.getByRole("textbox", { name: "Note content" }).innerText(), /Loaded directly/);
+});
+
+it("restores the Notes list and editor through browser Back and Forward", async (t) => {
+  const note = {
+    id: "history-note",
+    title: "History browser note",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "History body" }] }] }),
+    contentText: "History body",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-01T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 1440, { noteSeeds: [note] });
+  await visit(page, "/notes");
+  await page.getByRole("link", { name: "Open History browser note" }).click();
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/history-note");
+
+  await page.goBack();
+  await page.getByRole("link", { name: "Open History browser note" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes");
+
+  await page.goForward();
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/history-note");
+  assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "History browser note");
+});
+
+it("keeps a Note draft open when autosave fails during navigation and recovers on retry", async (t) => {
+  const note = {
+    id: "note-recovery",
+    title: "Autosave recovery note",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Saved version" }] }] }),
+    contentText: "Saved version",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-01T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page, requests } = await fixture(t, 1440, { noteSeeds: [note], failNoteUpdateOnce: true });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/note-recovery`);
+  const title = page.getByRole("textbox", { name: "Note title" });
+  const content = page.getByRole("textbox", { name: "Note content" });
+  await content.waitFor();
+  await content.fill("Draft preserved after failed autosave");
+  await page.getByRole("status").filter({ hasText: "Not saved" }).waitFor();
+
+  await page.getByRole("link", { name: "Logs", exact: true }).click();
+  await page.waitForTimeout(100);
+  assert.equal(new URL(page.url()).pathname, "/notes/note-recovery", "Failed save blocks navigation away from the editor");
+  assert.match(await content.innerText(), /Draft preserved after failed autosave/);
+
+  await page.getByRole("button", { name: "Retry save" }).click();
+  await page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+  assert.equal(requests.filter((path) => path === "/notes/note-recovery").length, 3, "One detail read and two update attempts prove the retry");
+  await page.getByRole("link", { name: "Logs", exact: true }).click();
+  await page.locator(".logs-page").waitFor();
+  assert.equal(new URL(page.url()).pathname, "/logs");
+
+  await page.goto(`${server.resolvedUrls.local[0]}notes`);
+  await page.getByText("Draft preserved after failed autosave", { exact: true }).waitFor();
+  assert.equal(await title.count(), 0, "The editor is closed after the saved draft is recovered");
+});
+
+it("restores the archived Notes filter from its direct URL after reload", async (t) => {
+  const { page } = await fixture(t, 1280, {
+    noteSeeds: [
+      { id: "active-note", title: "Active browser note", content: "{}", contentText: "Active", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, tags: [], pinned: false, archived: false },
+      { id: "archived-note", title: "Archived browser note", content: "{}", contentText: "Archived", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", deletedAt: "2026-10-03T10:00:00Z", version: 1, tags: [], pinned: false, archived: true },
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}notes?archived=1`);
+  await page.locator(".note-row", { hasText: "Archived browser note" }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("archived"), "1");
+  assert.equal(await page.locator(".note-row").count(), 1);
+  assert.equal(await page.getByRole("button", { name: "Active notes" }).count(), 1);
+
+  await page.reload();
+  await page.locator(".note-row", { hasText: "Archived browser note" }).waitFor();
+  assert.equal(await page.locator(".note-row").count(), 1, "Reload preserves the archived filter and selected record set");
+});
+
+it("archives the selected Note after confirmation and keeps it in the archive after reload", async (t) => {
+  const note = (id, title, contentText) => ({
+    id,
+    title,
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: contentText }] }] }),
+    contentText,
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-01T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+    archived: false,
+  });
+  const { page, requests } = await fixture(t, 1280, {
+    noteSeeds: [
+      note("archive-target", "Browser archive target", "Keep this content in Archive"),
+      note("archive-other", "Browser archive neighbor", "Leave this note active"),
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}notes`);
+  const target = page.locator(".note-row", { hasText: "Browser archive target" });
+  await target.waitFor();
+  let confirmationMessage = "";
+  page.once("dialog", async (dialog) => {
+    confirmationMessage = dialog.message();
+    await dialog.accept();
+  });
+  const archiveRequest = page.waitForRequest((request) =>
+    request.method() === "DELETE" && new URL(request.url()).pathname.endsWith("/notes/archive-target"),
+  );
+  await target.getByRole("button", { name: "Archive", exact: true }).click();
+  await archiveRequest;
+  await target.waitFor({ state: "detached" });
+  await page.locator(".note-row", { hasText: "Browser archive neighbor" }).waitFor();
+  assert.equal(confirmationMessage, "Move “Browser archive target” to Archive? You can restore it from the archive at any time.");
+  assert.equal(requests.filter((path) => path === "/notes/archive-target").length, 1);
+
+  await page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }).click();
+  const archivedTarget = page.locator(".note-row.archived", { hasText: "Browser archive target" });
+  await archivedTarget.waitFor();
+  assert.match(await archivedTarget.innerText(), /Keep this content in Archive/);
+  assert.equal(await page.locator(".note-row.archived").count(), 1, "Only the confirmed note is archived");
+
+  await page.reload();
+  await page.locator(".note-row.archived", { hasText: "Browser archive target" }).waitFor();
+  assert.match(await page.locator(".note-row.archived", { hasText: "Browser archive target" }).innerText(), /Keep this content in Archive/);
+});
+
+it("restores the Notes search query and filtered result from its direct URL after reload", async (t) => {
+  const note = (id, title, contentText) => ({
+    id, title, content: "{}", contentText,
+    createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z",
+    version: 1, tags: [], pinned: false,
+  });
+  const { page } = await fixture(t, 1280, {
+    noteSeeds: [
+      note("matching-note", "Browser research", "A distinctive search passage"),
+      note("other-note", "Meeting notes", "An unrelated detail"),
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}notes?q=distinctive`);
+  await page.locator(".note-row", { hasText: "Browser research" }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("q"), "distinctive");
+  assert.equal(await page.locator(".note-row").count(), 1);
+  assert.equal(await page.getByRole("textbox", { name: "Search notes" }).inputValue(), "distinctive");
+
+  await page.reload();
+  await page.locator(".note-row", { hasText: "Browser research" }).waitFor();
+  assert.equal(await page.locator(".note-row").count(), 1, "Reload preserves the URL query and filtered Notes result");
+  assert.equal(await page.getByRole("textbox", { name: "Search notes" }).inputValue(), "distinctive");
+});
+
+it("opens and uses the Notes editor with touch-sized controls on mobile", async (t) => {
+  const note = {
+    id: "n1",
+    title: "Browser deep link",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }),
+    contentText: "Loaded directly",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await visit(page, "/notes");
+  const noteLink = page.getByRole("link", { name: "Open Browser deep link" });
+  await noteLink.tap();
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/n1");
+  await page.getByRole("textbox", { name: "Note content" }).tap();
+  const controls = await page.locator(".note-toolbar button").evaluateAll((elements) => elements.map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }));
+  assert.ok(controls.length > 0 && controls.every(({ width, height }) => width >= 44 && height >= 44));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.getByRole("button", { name: "Back to notes" }).tap();
+  await page.waitForFunction(() => location.pathname === "/notes");
+});
+
+it("keeps the Notes draft and editor controls reachable across a keyboard-like viewport resize", async (t) => {
+  const note = {
+    id: "n1",
+    title: "Browser deep link",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }),
+    contentText: "Loaded directly",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
+  const body = page.getByRole("textbox", { name: "Note content" });
+  await body.waitFor();
+  await body.tap();
+  await page.keyboard.type("Draft stays here");
+  const draft = await body.innerText();
+  assert.match(draft, /Draft stays here/);
+
+  // Model the visible area left above a software keyboard; Chromium does not open a real mobile keyboard.
+  await page.setViewportSize({ width: 390, height: 320 });
+  await page.waitForTimeout(100);
+  const editorVisible = await body.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < innerHeight;
+  });
+  assert.ok(editorVisible, "the focused editor should remain in the visible viewport");
+  assert.equal(await body.evaluate((element) => element === document.activeElement), true);
+  assert.ok(await page.getByRole("button", { name: "Back to notes" }).isVisible());
+  const toolbarButton = page.locator(".note-toolbar button").first();
+  const toolbarInViewport = await toolbarButton.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < innerHeight;
+  });
+  assert.ok(toolbarInViewport, "a formatting control should remain reachable above the keyboard-like viewport");
+  const caret = () => body.evaluate(() => {
+    const selection = window.getSelection();
+    return { text: selection?.anchorNode?.textContent, offset: selection?.anchorOffset };
+  });
+  const caretBeforeResize = await caret();
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  assert.equal(await body.innerText(), draft);
+  assert.equal(await body.evaluate((element) => element === document.activeElement), true);
+  assert.deepEqual(await caret(), caretBeforeResize);
+});
+
+it("keeps long note titles and paragraphs within a phone-width editor", async (t) => {
+  const longTitle = `Planning ${"weekly priorities ".repeat(10)}`.trim();
+  const longBody = `${"A".repeat(400)} ${"Long body paragraph with readable words. ".repeat(40)}`;
+  const note = {
+    id: "n1",
+    title: longTitle,
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longBody }] }] }),
+    contentText: longBody,
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
+  const title = page.getByRole("textbox", { name: "Note title" });
+  const body = page.getByRole("textbox", { name: "Note content" });
+  await title.waitFor();
+  assert.equal(await title.inputValue(), longTitle);
+  assert.equal(await body.innerText(), longBody);
+  const widths = await page.evaluate(() => [
+    document.documentElement,
+    document.querySelector(".rich-editor"),
+    document.querySelector(".ProseMirror"),
+  ].map((element) => ({ client: element.clientWidth, scroll: element.scrollWidth })));
+  assert.ok(widths.every(({ client, scroll }) => scroll <= client), JSON.stringify(widths));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+it("scrolls long Notes content without trapping the page or hiding formatting controls", async (t) => {
+  const longBody = `Long note content. ${"A paragraph that continues through the editor and needs page scrolling. ".repeat(60)}`;
+  const note = {
+    id: "n1",
+    title: "Long mobile note",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longBody }] }] }),
+    contentText: longBody,
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await page.setViewportSize({ width: 390, height: 560 });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
+  await page.getByRole("textbox", { name: "Note content" }).waitFor();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForFunction(() => window.scrollY > 0);
+  const toolbarButton = page.locator(".note-toolbar button").first();
+  await toolbarButton.scrollIntoViewIfNeeded();
+  const bounds = await toolbarButton.boundingBox();
+  assert.ok(bounds && bounds.y < 560 && bounds.y + bounds.height > 0, "formatting controls remain reachable while reading long content");
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+it("keeps the active-notes recovery action in an empty archive", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}notes?archived=1`);
+  await page.locator(".notes-page").waitFor();
+  await page.getByText("No archived notes.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Active notes", exact: true }).click();
+
+  await page.getByText("Your notes will appear here.", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.has("archived"), false);
+});
+
+it("shows an unavailable state for a missing note opened by browser deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}notes/gone`);
+  await page.getByRole("alert").filter({ hasText: "Unable to open this note." }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/gone");
+});
+
+it("applies light and dark appearance changes across routes and reloads", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}settings`);
+  await page.locator(".settings-view").waitFor();
+
+  const root = page.locator("html");
+  const preference = page.getByRole("combobox", { name: "Theme preference" });
+  await preference.selectOption("dark");
+  assert.equal(await root.getAttribute("data-theme"), "dark");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "dark");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--workspace-background").trim()), "#151a22");
+
+  await visit(page, "/reports");
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await root.getAttribute("data-theme"), "dark");
+  await page.reload();
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await root.getAttribute("data-theme"), "dark");
+
+  await visit(page, "/settings");
+  await page.locator(".settings-view").waitFor();
+  await page.getByRole("combobox", { name: "Theme preference" }).selectOption("light");
+  assert.equal(await root.getAttribute("data-theme"), "light");
+  assert.equal(await page.evaluate(() => localStorage.getItem("knowledge-base-theme")), "light");
+  await visit(page, "/reports");
+  await page.locator(".reports-page").waitFor();
+  await page.reload();
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await root.getAttribute("data-theme"), "light");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--workspace-background").trim()), "#f7f8fa");
+});
+
+it("suppresses global search motion when reduced motion is preferred", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.locator(".global-search-trigger").click();
+  const dialog = page.locator(".global-search");
+  await dialog.waitFor();
+  const motion = await dialog.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { animation: style.animationName, transition: style.transitionDuration };
+  });
+  assert.equal(motion.animation, "none");
+  assert.equal(motion.transition, "0s");
+});
+
+it("keeps dialogs, menus, native selects, date picker, and report chart readable in both themes", async (t) => {
+  const { page } = await fixture(t, 1440, { themeSurfaces: true });
+  const contrast = (foreground, background) => {
+    const luminance = (color) => {
+      const hex = color.match(/^#([\da-f]{3}|[\da-f]{6})$/i)?.[1];
+      const normalizedHex = hex?.length === 3 ? [...hex].map((digit) => digit + digit).join("") : hex;
+      const channels = normalizedHex
+        ? normalizedHex.match(/../g).map((channel) => parseInt(channel, 16))
+        : color.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const linear = channels.map((channel) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+    };
+    const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+    return (values[0] + 0.05) / (values[1] + 0.05);
+  };
+  const assertReadable = (foreground, background, label) => {
+    assert.ok(contrast(foreground, background) >= 4.5, `${label} contrast must be at least 4.5:1 (${foreground} on ${background})`);
+  };
+  const surfaceColors = async (selector) => page.locator(selector).first().evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { foreground: style.color, background: style.backgroundColor };
+  });
+
+  for (const themeName of ["light", "dark"]) {
+    await page.goto(`${server.resolvedUrls.local[0]}settings`);
+    await page.locator(".settings-view").waitFor();
+    await page.getByRole("combobox", { name: "Theme preference" }).selectOption(themeName);
+    const nativeSelect = await surfaceColors(".theme-select");
+    assertReadable(nativeSelect.foreground, nativeSelect.background, `${themeName} native select`);
+
+    await page.goto(`${server.resolvedUrls.local[0]}board`);
+    await page.locator(".board-page").waitFor();
+    await page.getByRole("button", { name: "Manage boards" }).click();
+    const dialog = page.locator(".confirm-dialog[role=dialog]");
+    await dialog.waitFor();
+    const dialogColors = await surfaceColors(".confirm-dialog[role=dialog]");
+    assertReadable(dialogColors.foreground, dialogColors.background, `${themeName} dialog`);
+    await dialog.getByRole("button", { name: "Done" }).click();
+
+    await openGantt(page);
+    await page.getByRole("button", { name: /^Choose board:/ }).click();
+    await page.getByRole("menu", { name: "Choose board" }).waitFor();
+    const menu = await surfaceColors(".board-more-menu");
+    const menuItem = await surfaceColors(".board-more-menu .board-more-item");
+    assertReadable(menuItem.foreground, menu.background, `${themeName} menu`);
+
+    await page.goto(`${server.resolvedUrls.local[0]}reports`);
+    await page.locator(".reports-page").waitFor();
+    const chart = page.locator(".chart-frame");
+    await chart.locator("svg").waitFor();
+    const chartColors = await page.evaluate(() => {
+      const text = document.querySelector(".chart-frame svg text[fill]");
+      return {
+        foreground: text?.getAttribute("fill") || "",
+        background: getComputedStyle(document.documentElement).getPropertyValue("--workspace-surface").trim(),
+      };
+    });
+    assert.ok(chartColors.foreground, `${themeName} report chart has visible SVG labels`);
+    assertReadable(chartColors.foreground, chartColors.background, `${themeName} report chart labels`);
+
+    const dateRange = page.getByLabel("Report date range");
+    await dateRange.click();
+    const dateMenu = page.locator(".report-date-range .dp__menu");
+    await dateMenu.waitFor();
+    const dateColors = await page.evaluate(() => {
+      const menu = document.querySelector(".report-date-range .dp__menu");
+      const cell = menu?.querySelector(".dp__cell_inner");
+      if (!menu || !cell) return null;
+      return {
+        foreground: getComputedStyle(cell).color,
+        background: getComputedStyle(menu).backgroundColor,
+        themeClass: menu.className,
+      };
+    });
+    assert.ok(dateColors, `${themeName} date picker renders calendar cells`);
+    assert.match(dateColors.themeClass, new RegExp(`dp__theme_${themeName}`));
+    assertReadable(dateColors.foreground, dateColors.background, `${themeName} date picker`);
+  }
+});
+
+it("opens global search from the header or shortcut and lists matching pages before records", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  const trigger = page.locator(".global-search-trigger");
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  assert.equal(await input.evaluate((element) => element === document.activeElement), true);
+  await dialog.locator(".global-search-close").click();
+  await page.keyboard.press("Control+k");
+  await dialog.waitFor();
+  await input.fill("Reports");
+
+  const pageResult = page.getByRole("option", { name: "Reports, page" });
+  const recordResult = page.getByRole("option", { name: /Reports research note/ });
+  await pageResult.waitFor();
+  await recordResult.waitFor();
+  assert.equal(await page.getByRole("heading", { name: "Pages" }).count(), 1);
+  assert.equal(await page.getByRole("heading", { name: /Notes/ }).count(), 1);
+  assert.equal(await pageResult.evaluate((element, record) => Boolean(element.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING), await recordResult.elementHandle()), true);
+});
+
+it("keeps global search usable with touch at phone width", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(server.resolvedUrls.local[0]);
+  const trigger = page.locator(".global-search-trigger");
+  const target = await trigger.boundingBox();
+  assert.ok(target);
+  await page.touchscreen.tap(target.x + target.width / 2, target.y + target.height / 2);
+
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  assert.equal(await input.getAttribute("type"), "search");
+  assert.equal(await input.getAttribute("enterkeyhint"), "go");
+  await input.fill("Reports");
+  const result = page.getByRole("option", { name: /Reports research note/ });
+  await result.waitFor();
+  const dimensions = await dialog.evaluate((element) => ({
+    right: element.getBoundingClientRect().right,
+    left: element.getBoundingClientRect().left,
+    viewport: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+  }));
+  assert.ok(dimensions.left >= 0 && dimensions.right <= dimensions.viewport);
+  assert.ok(dimensions.documentWidth <= dimensions.viewport);
+});
+
+it("keeps global search results reachable across a keyboard-like phone viewport resize", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.locator(".global-search-trigger").tap();
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await dialog.waitFor();
+  await input.fill("Reports");
+  const result = page.getByRole("option", { name: /Reports research note/ });
+  await result.waitFor();
+
+  await page.setViewportSize({ width: 390, height: 320 });
+  await input.tap();
+  await result.scrollIntoViewIfNeeded();
+  const visibleResult = await result.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < innerHeight;
+  });
+  assert.ok(visibleResult, "a search result should be reachable above the keyboard-like viewport");
+  assert.equal(await input.evaluate((element) => element === document.activeElement), true);
+  assert.equal(await input.inputValue(), "Reports");
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  assert.equal(await input.inputValue(), "Reports");
+  await result.waitFor();
+});
+
+it("recovers from a failed global search request with the in-dialog retry", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { failSearchOnce: true });
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Reports");
+  const alert = dialog.getByRole("alert");
+  await alert.waitFor();
+  await alert.getByRole("button", { name: "Try again" }).click();
+  await page.getByRole("option", { name: /Reports research note/ }).waitFor();
+  assert.equal(await dialog.getByRole("alert").count(), 0);
+  assert.equal(requests.filter((path) => path === "/search").length, 2, "Retry issues one fresh search request");
+});
+
+it("groups matching record types, shows note context, and opens the active result with Enter", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Reports");
+
+  const note = page.getByRole("option", { name: /Reports research note/ });
+  const log = page.getByRole("option", { name: /Report export log/ });
+  await note.waitFor();
+  await log.waitFor();
+  assert.equal(await page.getByRole("heading", { name: /Notes/ }).count(), 1);
+  assert.equal(await page.getByRole("heading", { name: /Logs/ }).count(), 1);
+  assert.match(await note.innerText(), /Found report draft/);
+  assert.match(await note.innerText(), /Label: Reports label/);
+
+  await input.press("ArrowDown");
+  assert.equal(await note.getAttribute("aria-selected"), "true");
+  await input.press("Enter");
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/search-note");
+  assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Reports research note");
+});
+
+it("opens the active global search result in a new tab with Control+Enter and native link behavior", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Reports");
+  const note = page.getByRole("option", { name: /Reports research note/ });
+  await note.waitFor();
+  await input.press("ArrowDown");
+  assert.equal(await note.getAttribute("aria-selected"), "true");
+
+  const opened = page.context().waitForEvent("page");
+  await input.press("Control+Enter");
+  const newTab = await opened;
+  await newTab.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(newTab.url()).pathname, "/notes/search-note");
+  assert.equal(await dialog.isVisible(), true);
+  assert.equal(new URL(page.url()).pathname, "/");
+
+  assert.equal(await note.evaluate((element) => element.tagName), "A");
+  assert.equal(await note.getAttribute("href"), "/notes/search-note");
+  const modifiedClickTab = page.context().waitForEvent("page");
+  await note.click({ modifiers: ["Control"] });
+  const linkTab = await modifiedClickTab;
+  await linkTab.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(linkTab.url()).pathname, "/notes/search-note");
+  assert.equal(await dialog.isVisible(), true);
+
+  await note.evaluate((element) => {
+    element.addEventListener("contextmenu", (event) => {
+      window.__navContextMenuAllowed = !event.defaultPrevented;
+    }, { once: true });
+  });
+  await note.click({ button: "right" });
+  assert.equal(await page.evaluate(() => window.__navContextMenuAllowed), true);
+  assert.equal(new URL(page.url()).pathname, "/");
+});
+
+it("loads more global search results only for the selected record type", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  await page.getByRole("dialog", { name: "Search everything" }).waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("More");
+  await page.getByRole("option", { name: /Show 2 more notes/ }).waitFor();
+  await page.getByRole("option", { name: /Show 1 more logs/ }).waitFor();
+
+  await page.getByRole("option", { name: /Show 2 more notes/ }).click();
+  await page.locator("#global-search-note-more-note-2").waitFor();
+  await page.locator("#global-search-note-more-note-3").waitFor();
+  assert.equal(await page.locator("#global-search-log-more-log-2").count(), 0);
+  assert.equal(await page.getByRole("option", { name: /Show 1 more logs/ }).count(), 1);
+
+  await page.getByRole("option", { name: /Show 1 more logs/ }).click();
+  await page.locator("#global-search-log-more-log-2").waitFor();
+  assert.equal(await page.locator("#global-search-note-more-note-2").count(), 1);
+  assert.equal(await page.locator("#global-search-note-more-note-3").count(), 1);
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {

@@ -262,6 +262,13 @@ try {
             body: "{}",
           });
         let data = [];
+        if (path === "/preferences")
+          data = {
+            theme: mode,
+            kanbanWide: false,
+            ganttWide: false,
+            recentPathIds: [],
+          };
         if (path === "/paths") data = f.paths;
         if (path === "/notes")
           data = url.search
@@ -455,7 +462,7 @@ try {
         if (state === "populated") {
           await page.setViewportSize({ width: 390, height: 844 });
           if (path === "/labels") {
-            await page.keyboard.press("Meta+k");
+            await page.locator("body").press("/");
             const search = page.getByRole("searchbox", { name: "Search labels" });
             assert.equal(await search.evaluate(el => el === document.activeElement), true);
             await search.fill("no-matching-label-smoke");
@@ -502,8 +509,9 @@ try {
             await page.keyboard.press("Escape");
           }
           if (path === "/") {
-            await page.locator(".label-picker").click();
-            await page.locator("#tt-label-options button").first().waitFor();
+            await page.getByRole("button", { name: "Open label picker" }).click();
+            await page.getByRole("combobox", { name: "Search session labels" }).waitFor();
+            await page.getByRole("listbox", { name: "Available labels" }).waitFor();
             await check(page, `${mode}-label-menu`);
             await page.keyboard.press("Escape");
           }

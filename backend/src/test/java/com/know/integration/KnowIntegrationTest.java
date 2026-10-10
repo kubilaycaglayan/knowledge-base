@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.StreamSupport;
 import org.springframework.scheduling.config.FixedRateTask;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
 import org.junit.jupiter.api.BeforeEach;
@@ -871,6 +872,41 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void knowledgeBaseUndoDeletesOnlyRecordsFromTheSelectedBatch() {
+    String token = freshToken();
+    UUID firstPathId = UUID.randomUUID();
+    UUID secondPathId = UUID.randomUUID();
+    String firstCsv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                firstPathId,
+                "{\"name\":\"First batch path\",\"description\":null,\"color\":\"#123456\",\"status\":\"ACTIVE\"}");
+    String secondCsv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                secondPathId,
+                "{\"name\":\"Second batch path\",\"description\":null,\"color\":\"#654321\",\"status\":\"ACTIVE\"}");
+
+    ResponseEntity<JsonNode> firstImport = importCsv(token, firstCsv);
+    ResponseEntity<JsonNode> secondImport = importCsv(token, secondCsv);
+    assertEquals(HttpStatus.OK, firstImport.getStatusCode());
+    assertEquals(HttpStatus.OK, secondImport.getStatusCode());
+    assertEquals(2, get("/api/v1/paths", token).getBody().size());
+
+    ResponseEntity<JsonNode> undo =
+        delete(
+            "/api/v1/imports/knowledge-base/batches/"
+                + firstImport.getBody().get("batchId").asText(),
+            token);
+    assertEquals(HttpStatus.OK, undo.getStatusCode());
+    assertEquals(1, undo.getBody().get("deletedPaths").asInt());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + firstPathId, token).getStatusCode());
+    assertEquals("Second batch path", get("/api/v1/paths/" + secondPathId, token).getBody().get("name").asText());
+  }
+
+  @Test
   void knowledgeBaseImportSkipsDuplicatesWithinFileAndPreservesOtherUsersData() {
     String ownerToken = freshToken();
     String importingToken = freshToken();
@@ -1296,6 +1332,56 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.OK, stopped.getStatusCode());
     assertFalse(stopped.getBody().get("running").asBoolean());
     assertNotNull(stopped.getBody().get("durationSeconds"));
+  }
+
+  @Test
+  void stoppingAnAccidentalTimerDoesNotSaveACompletedSession() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> started =
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Accidental start\",\"source\":\"WEB\"}");
+    assertEquals(HttpStatus.CREATED, started.getStatusCode());
+    String timerId = started.getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> stopped =
+        post("/api/v1/timers/" + timerId + "/stop", token, "{}");
+    assertEquals(HttpStatus.OK, stopped.getStatusCode());
+    assertFalse(stopped.getBody().get("running").asBoolean());
+    assertTrue(stopped.getBody().get("durationSeconds").asLong() < 2);
+    assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
+    ResponseEntity<JsonNode> noCurrent = get("/api/v1/timers/current", token);
+    assertTrue(noCurrent.getBody() == null || noCurrent.getBody().isNull());
+  }
+
+  @Test
+  void stoppingARunningTimerSavesItsCompletedIntervalAndClearsCurrentState() {
+    String token = freshToken();
+    Instant start = Instant.parse("2026-10-10T10:00:00Z");
+    doReturn(start).when(clock).instant();
+    ResponseEntity<JsonNode> started =
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Completed session\",\"source\":\"WEB\"}");
+    assertEquals(HttpStatus.CREATED, started.getStatusCode());
+    String timerId = started.getBody().get("id").asText();
+
+    doReturn(start.plusSeconds(75)).when(clock).instant();
+    ResponseEntity<JsonNode> stopped =
+        post("/api/v1/timers/" + timerId + "/stop", token, "{}");
+    assertEquals(HttpStatus.OK, stopped.getStatusCode());
+    assertFalse(stopped.getBody().get("running").asBoolean());
+    assertEquals(75, stopped.getBody().get("durationSeconds").asLong());
+    assertEquals(timerId, stopped.getBody().get("id").asText());
+
+    ResponseEntity<JsonNode> history = get("/api/v1/time-entries", token);
+    assertTrue(
+        StreamSupport.stream(history.getBody().spliterator(), false)
+            .anyMatch(entry -> timerId.equals(entry.get("id").asText())));
+    ResponseEntity<JsonNode> noCurrent = get("/api/v1/timers/current", token);
+    assertTrue(noCurrent.getBody() == null || noCurrent.getBody().isNull());
   }
 
   @Test

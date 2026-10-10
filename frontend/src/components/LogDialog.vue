@@ -28,6 +28,9 @@ const savingLabels = ref(false);
 const confirming = ref<"" | "remove" | "discard">("");
 const removing = ref(false);
 const bodyInput = ref<HTMLTextAreaElement | null>(null);
+const removeTrigger = ref<HTMLButtonElement | null>(null);
+const keepLogButton = ref<HTMLButtonElement | null>(null);
+const editTrigger = ref<HTMLButtonElement | null>(null);
 
 // The list keeps the freshest copy once it has loaded.
 const log = computed(() => logsStore.logs.find((value) => value.id === props.logId) || fetched.value);
@@ -77,6 +80,7 @@ function startEdit() {
 function cancelEdit() {
   editing.value = false;
   confirming.value = "";
+  void nextTick(() => editTrigger.value?.focus());
 }
 async function save() {
   const current = log.value;
@@ -146,8 +150,18 @@ function requestClose() {
   }
   emit("close");
 }
+function openRemoveConfirmation() {
+  confirming.value = "remove";
+  void nextTick(() => keepLogButton.value?.focus());
+}
+async function cancelRemove() {
+  confirming.value = "";
+  await nextTick();
+  removeTrigger.value?.focus();
+}
 function onEscape() {
-  if (confirming.value) confirming.value = "";
+  if (confirming.value === "remove") void cancelRemove();
+  else if (confirming.value) confirming.value = "";
   else if (editing.value && !dirty.value) cancelEdit();
   else requestClose();
 }
@@ -229,9 +243,16 @@ function onEscape() {
           {{ confirming === "remove" ? "Remove this log? This can’t be undone." : "Discard your unsaved changes?" }}
         </p>
         <div class="prompt-dialog-actions">
-          <button type="button" class="text-button" @click="confirming = ''">
+          <button
+            v-if="confirming === 'remove'"
+            ref="keepLogButton"
+            type="button"
+            class="text-button"
+            @click="cancelRemove"
+          >
             {{ confirming === "remove" ? "Keep log" : "Keep editing" }}
           </button>
+          <button v-else type="button" class="text-button" @click="confirming = ''">Keep editing</button>
           <button
             v-if="confirming === 'remove'"
             type="button"
@@ -245,10 +266,10 @@ function onEscape() {
         </div>
       </div>
       <footer v-else-if="log && !editing && !loading" class="prompt-dialog-actions log-dialog-actions">
-        <button type="button" class="text-button danger" @click="confirming = 'remove'">Remove…</button>
+        <button ref="removeTrigger" type="button" class="text-button danger" @click="openRemoveConfirmation">Remove…</button>
         <span class="log-dialog-spacer"></span>
         <button type="button" class="text-button" @click="emit('show-in-list', log)">Show in list</button>
-        <button type="button" class="primary" @click="startEdit">Edit</button>
+        <button ref="editTrigger" type="button" class="primary" @click="startEdit">Edit</button>
       </footer>
     </section>
   </div>

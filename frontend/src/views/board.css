@@ -184,6 +184,20 @@
   .card-labels-picker :deep(.v-chip__close) { flex:0 0 44px; width:44px; min-width:44px; height:44px; min-height:44px; max-width:44px; max-height:44px; }
   .card-labels-picker-wrap .card-labels-measure-chip { padding-right:60px; }
 }
+@media (orientation:landscape) and (max-height:500px) and (max-width:700px) {
+  .board-header { align-items:center; flex-direction:row; margin-bottom:.4rem; }
+  .board-toolbar { align-items:center; flex-direction:row; margin-bottom:.35rem; }
+  .board-tabs { flex:1 1 auto; flex-basis:auto; }
+  .board-view-actions { margin-left:auto; }
+}
+@media (orientation:landscape) and (max-height:500px) {
+  .board-header { margin-bottom:.35rem; }
+  .board-toolbar { margin-bottom:.35rem; }
+  .kanban-column > header { position:static; margin:0 0 .35rem; padding:.2rem .35rem; }
+  .board-card { margin-bottom:.4rem; padding:.55rem; }
+  .board-footer { margin-top:0; padding-top:0; }
+  .card-editor-footer { grid-template-columns:minmax(0, 1.2fr) minmax(5rem, .8fr) minmax(6rem, 1fr) minmax(0, 1.2fr) 44px; grid-template-areas:"dates priority status labels archive"; gap:.2rem; }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior:auto !important; transition-duration:.01ms !important; animation-duration:.01ms !important; } }
 .new-board-dialog { display:grid; gap:.6rem; } .new-board-dialog h2 { margin:0 0 .2rem; font-size:1.1rem; } .new-board-dialog label { font-weight:600; font-size:.85rem; } .new-board-dialog input { min-width:0; border:1px solid var(--border-color); border-radius:8px; padding:.6rem .75rem; background:var(--surface-color); color:inherit; font-size:max(16px, 1rem); } .new-board-dialog .editor-actions { justify-content:flex-end; margin-top:.3rem; } .field-error { margin:0; color:#b42318; font-size:.85rem; }
 /* Board tabs carry a quiet settings gear beside each name. */
@@ -194,6 +208,7 @@
 .board-settings { display:grid; grid-template-columns:minmax(0, 1fr); gap:.5rem; box-sizing:border-box; width:min(460px, calc(100% - 2rem)); max-height:calc(100dvh - 2rem); overflow:auto; overscroll-behavior:contain; }
 .board-settings-header { display:flex; align-items:center; justify-content:space-between; } .board-settings-heading { display:flex; align-items:center; gap:.25rem; min-width:0; } .board-settings h2 { margin:0; font-size:1.1rem; }
 .settings-label { margin:.4rem 0 0; font-size:.78rem; font-weight:600; color:var(--muted-text); text-transform:uppercase; letter-spacing:.06em; }
+.settings-status-help { margin:0 0 .5rem; color:var(--muted-text); font-size:.85rem; }
 .settings-input { flex:1; min-width:0; border:1px solid transparent; border-radius:6px; padding:.45rem .6rem; background:var(--workspace-hover); color:inherit; font-size:max(16px, 1rem); } .settings-input:hover { border-color:var(--border-color); }
 .settings-statuses { display:grid; grid-template-columns:minmax(0, 1fr); gap:.25rem; margin:0; padding:0; list-style:none; } .settings-statuses li { display:flex; align-items:center; gap:.15rem; }
 .settings-add-status { display:flex; align-items:center; gap:.15rem; padding-bottom:.5rem; border-bottom:1px solid var(--border-color); }
@@ -247,6 +262,7 @@
 
 /* Card labels: a compact chip picker in the editor footer, one clipped row on cards. */
 .card-labels-picker-wrap { position:relative; flex:1 1 12rem; min-width:10rem; } .card-labels-picker { min-width:0; }
+.card-labels-picker-wrap :deep(.measure-row) { max-width:100%; overflow:hidden; }
 .card-labels-picker :deep(.v-field) { min-height:36px; border-radius:6px; background:var(--workspace-hover); box-shadow:none; font-size:.85rem; }
 .card-labels-picker :deep(.v-field__input) { min-height:36px; max-height:36px; padding-block:2px; gap:3px; flex-wrap:nowrap; overflow:hidden; } .card-labels-picker :deep(.v-autocomplete__selection:empty) { display:none; } .card-labels-picker :deep(.v-autocomplete__selection) { flex:0 0 auto; margin:0; }
 .card-labels-more, .card-labels-measure-chip { display:inline-flex; align-items:center; flex:0 0 auto; height:24px; padding:0 8px; border-radius:4px; font-size:.75rem; white-space:nowrap; } .card-labels-more { background:var(--workspace-selected); color:var(--muted-text); font-variant-numeric:tabular-nums; } .card-labels-measure-chip { padding-right:28px; }

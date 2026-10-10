@@ -124,12 +124,20 @@ describe("BoardArchiveView", () => {
   });
 
   it("links back to the board it was opened from", async () => {
+    mockRoute.query = { board: "board-2" };
+    const store = useBoardsStore();
+    store.boards = [
+      { ...board("board-1", "Active board"), archived: false },
+      { ...board("board-2", "Second board"), archived: false },
+    ];
+    store.selectedId = "board-1";
     const wrapper = mountArchive();
     await flushPromises();
 
     const back = wrapper.find('a[aria-label="Back to board"]');
     expect(back.exists()).toBe(true);
     expect(back.attributes("href")).toBe("/board");
+    expect(store.selectedId).toBe("board-2");
     await wrapper.unmount();
   });
 

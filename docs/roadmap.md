@@ -1,5 +1,8 @@
 # Knowledge Base UI roadmap
 
+- [x] Show an accessible loading status on the Sessions page until the first
+  session-history request resolves; do not flash the empty state while data is
+  still loading.
 - [x] Page jumps in global search: typing a main page's name (Board, Logs,
   Notes, Calendar, Reports, Settings, …) lists it under Pages above the
   record results, matched instantly in the browser; Enter on the top match
@@ -266,6 +269,9 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Keep archived notes indefinitely: the nightly 30-day archive purge is
   removed, so no background job deletes notes and any archived note can be
   restored.
+- [x] Keep an empty Notes archive understandable and navigable: show
+  “No archived notes.” and leave the Active notes action available after the
+  last archived note is restored.
 - [x] Remember the Boards page state on the server: the open board, the
   Kanban/Gantt view and range, and the card search are stored in
   `user_preferences` (V53) and restored on `/board` after other pages,

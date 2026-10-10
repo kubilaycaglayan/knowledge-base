@@ -2,6 +2,8 @@ import { flushPromises, mount } from "@vue/test-utils";
 import PathsView from "./PathsView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
+import { useLabelsStore } from "../stores/labels";
+import { usePathsStore } from "../stores/paths";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -9,6 +11,8 @@ describe("PathsView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setActivePinia(createPinia());
+    usePathsStore().reset();
+    useLabelsStore().reset();
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [
@@ -41,7 +45,7 @@ describe("PathsView", () => {
   it("shows tracked time and recent activity for a path", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
-    await wrapper.get("button.text-button").trigger("click");
+    await wrapper.get('button.text-button[aria-haspopup="dialog"]').trigger("click");
     await flushPromises();
 
     expect(wrapper.find(".path-history-dialog").exists()).toBe(true);
@@ -59,6 +63,83 @@ describe("PathsView", () => {
       wrapper.find(".path-history-entry .activity-duration").exists(),
     ).toBe(false);
     expect(wrapper.text()).toContain("2 minutes tracked");
+  });
+
+  it("shows an empty paths state with a path creation action", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.findAll(".path-title")).toHaveLength(0);
+    expect(wrapper.find(".empty").text()).toBe(
+      "Your first path is waiting to be named.",
+    );
+    expect(wrapper.find('button[aria-label="Add path"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    expect(wrapper.get('[role="dialog"] h2').text()).toBe("Add a path");
+  });
+
+  it("announces path loading and then shows the valid empty state", async () => {
+    let resolvePaths!: (paths: never[]) => void;
+    const pendingPaths = new Promise<never[]>((resolve) => {
+      resolvePaths = resolve;
+    });
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return pendingPaths;
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.get(".path-list").attributes("aria-busy")).toBe("true");
+    expect(wrapper.get('.path-loading[role="status"]').text()).toBe(
+      "Loading paths…",
+    );
+    expect(wrapper.find(".empty").exists()).toBe(false);
+
+    resolvePaths([]);
+    await flushPromises();
+
+    expect(wrapper.get(".path-list").attributes("aria-busy")).toBe("false");
+    expect(wrapper.find('.path-loading[role="status"]').exists()).toBe(false);
+    expect(wrapper.get(".empty").text()).toBe(
+      "Your first path is waiting to be named.",
+    );
+  });
+
+  it("shows an explicit empty state for a path history without activity", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths/path-1/summary")
+        return {
+          path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          trackedSeconds: 0,
+          recentActivity: [],
+        };
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper
+      .get('button.text-button[aria-haspopup="dialog"]')
+      .trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get(".path-history-dialog").text()).toContain(
+      "No recent activity yet.",
+    );
+    expect(wrapper.findAll(".path-history-entry")).toHaveLength(0);
   });
 
   it("opens and saves the session editor from path history", async () => {
@@ -175,7 +256,7 @@ describe("PathsView", () => {
   it("closes path history from its dialog", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
-    const historyButton = wrapper.get("button.text-button");
+    const historyButton = wrapper.get('button.text-button[aria-haspopup="dialog"]');
 
     await historyButton.trigger("click");
     await flushPromises();
@@ -241,6 +322,93 @@ describe("PathsView", () => {
     expect(wrapper.get(".path-history-dialog").text()).toContain("Writing");
   });
 
+  it("shows only the selected path sessions grouped with timestamps and labels", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          { id: "path-2", name: "Writing", status: "ACTIVE" },
+        ];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-draft", name: "Draft", scopes: ["TIME_ENTRY"] }];
+      if (path === "/paths/path-1/summary")
+        return {
+          path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          trackedSeconds: 60,
+          recentActivity: [
+            {
+              id: "private-session",
+              timeEntryId: "entry-private",
+              title: "Private algorithm session",
+              occurredAt: "2020-08-29T10:00:00Z",
+            },
+          ],
+        };
+      if (path === "/paths/path-2/summary")
+        return {
+          path: { id: "path-2", name: "Writing", status: "ACTIVE" },
+          trackedSeconds: 180,
+          recentActivity: [
+            {
+              id: "writing-session-newer",
+              timeEntryId: "entry-newer",
+              title: "Draft introduction",
+              occurredAt: "2020-08-28T10:00:00Z",
+              labelIds: ["label-draft"],
+            },
+            {
+              id: "writing-session-older",
+              timeEntryId: "entry-older",
+              title: "Review outline",
+              occurredAt: "2020-07-28T10:00:00Z",
+            },
+          ],
+        };
+      if (path === "/time-entries/entry-newer")
+        return {
+          id: "entry-newer",
+          pathId: "path-2",
+          labelIds: ["label-draft"],
+          startedAt: "2020-08-28T09:00:00Z",
+          endedAt: "2020-08-28T10:00:00Z",
+          durationSeconds: 3600,
+          description: "Draft introduction",
+          source: "WEB",
+        };
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const writingHistory = wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "History" && button.element.parentElement?.parentElement?.textContent?.includes("Writing"));
+    expect(writingHistory).toBeDefined();
+    await writingHistory!.trigger("click");
+    await flushPromises();
+
+    const dialog = wrapper.get(".path-history-dialog");
+    expect(dialog.text()).toContain("Writing");
+    expect(dialog.text()).toContain("Draft introduction");
+    expect(dialog.text()).toContain("Review outline");
+    expect(dialog.text()).toContain("Draft");
+    expect(dialog.text()).not.toContain("Private algorithm session");
+    expect(dialog.findAll(".path-history-group-heading").map((heading) => heading.text())).toEqual([
+      "August 2020",
+      "July 2020",
+    ]);
+    expect(dialog.find('time[datetime="2020-08-28T10:00:00Z"]').exists()).toBe(true);
+    expect(dialog.find('time[datetime="2020-07-28T10:00:00Z"]').exists()).toBe(true);
+
+    await dialog.find("button.path-history-edit").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/entry-newer");
+    expect(wrapper.get(".session-edit-dialog").text()).toContain("Edit session");
+    expect(
+      wrapper.get<HTMLTextAreaElement>('[aria-label="Edit session description"]').element.value,
+    ).toBe("Draft introduction");
+  });
+
   it("merges a completed timer into one activity with its details", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
@@ -279,7 +447,7 @@ describe("PathsView", () => {
 
     const wrapper = mount(PathsView);
     await flushPromises();
-    await wrapper.get("button.text-button").trigger("click");
+    await wrapper.get('button.text-button[aria-haspopup="dialog"]').trigger("click");
     await flushPromises();
 
     const activityLine = wrapper.get(".path-history-entry");
@@ -321,7 +489,7 @@ describe("PathsView", () => {
     const descriptionLink = wrapper.get('a[href="https://example.com/guide"]');
     expect(descriptionLink.attributes("target")).toBe("_blank");
     expect(descriptionLink.classes()).toContain("plain-link");
-    await wrapper.get("button.text-button").trigger("click");
+    await wrapper.get('button.text-button[aria-haspopup="dialog"]').trigger("click");
     await flushPromises();
     expect(
       wrapper.get('a[href="https://example.com/session"]').attributes("rel"),
@@ -346,6 +514,138 @@ describe("PathsView", () => {
     );
     const createCall = vi.mocked(api).mock.calls.find(([path, options]) => path === "/paths" && options?.method === "POST");
     expect(JSON.parse(String(createCall?.[1]?.body)).textColor).toBeNull();
+  });
+
+  it("rejects a whitespace-only path name without creating a path", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    await wrapper.get('input[aria-label="New path name"]').setValue("   ");
+    await wrapper.get("form.path-create-form").trigger("submit");
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Enter a path name.");
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([path, options]) => path === "/paths" && options?.method === "POST",
+      ),
+    ).toBe(false);
+  });
+
+  it("preserves an overlong Path name after the server rejects it", async () => {
+    const longName = "P".repeat(161);
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    const name = wrapper.get('input[aria-label="New path name"]');
+    await name.setValue(longName);
+    vi.mocked(api).mockRejectedValueOnce(new Error("Path name is too long"));
+    await wrapper.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create path.");
+    expect((name.element as HTMLInputElement).value).toBe(longName);
+    const request = vi.mocked(api).mock.calls.find(([path, options]) => path === "/paths" && options?.method === "POST");
+    expect(JSON.parse(String(request?.[1]?.body)).name).toBe(longName);
+    await wrapper.unmount();
+  });
+
+  it("preserves a failed path create and lets the user retry", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    const name = wrapper.get('input[aria-label="New path name"]');
+    await name.setValue("Reading");
+    vi.mocked(api).mockRejectedValueOnce(new Error("network"));
+    await wrapper.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create path.");
+    expect((name.element as HTMLInputElement).value).toBe("Reading");
+
+    vi.mocked(api).mockResolvedValueOnce({
+      id: "path-retry",
+      name: "Reading",
+      description: null,
+      color: "#F8FAFC",
+      status: "ACTIVE",
+      pinned: false,
+    });
+    await wrapper.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Reading");
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, options]) => path === "/paths" && options?.method === "POST",
+      ),
+    ).toHaveLength(2);
+  });
+
+  it("prevents duplicate path creation while the first request is pending", async () => {
+    let finishCreate!: (path: { id: string; name: string; color: string; status: string }) => void;
+    const pendingCreate = new Promise<{ id: string; name: string; color: string; status: string }>((resolve) => {
+      finishCreate = resolve;
+    });
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths" && options?.method === "POST") return pendingCreate;
+      if (path === "/paths") return [];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    await wrapper.get('input[aria-label="New path name"]').setValue("Reading");
+    const form = wrapper.get("form.path-create-form");
+    await form.trigger("submit");
+    await form.trigger("submit");
+
+    expect(wrapper.get('form.path-create-form button[type="submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.get('form.path-create-form button[type="submit"]').text()).toBe("Add path");
+    expect(wrapper.get('form.path-create-form [role="status"]').text()).toBe("Adding path…");
+    expect(
+      vi.mocked(api).mock.calls.filter(([path, options]) => path === "/paths" && options?.method === "POST"),
+    ).toHaveLength(1);
+
+    finishCreate({ id: "path-reading", name: "Reading", color: "#E8754E", status: "ACTIVE" });
+    await flushPromises();
+    await wrapper.unmount();
+  });
+
+  it("creates a path, shows it in the list, and reloads it from the API", async () => {
+    const savedPaths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: false },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths" && options?.method === "POST") {
+        const created = {
+          ...JSON.parse(String(options.body)),
+          id: "path-2",
+          status: "ACTIVE",
+          pinned: false,
+        };
+        savedPaths.push(created);
+        return created;
+      }
+      if (path === "/paths") return savedPaths;
+      return undefined;
+    });
+
+    const first = mount(PathsView);
+    await flushPromises();
+    await first.get('button[aria-label="Add path"]').trigger("click");
+    await first.get('input[aria-label="New path name"]').setValue("Reading");
+    await first.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+    expect(first.findAll(".path-title").map((title) => title.text())).toContain("Reading");
+    first.unmount();
+
+    setActivePinia(createPinia());
+    const reloaded = mount(PathsView);
+    await flushPromises();
+    expect(reloaded.findAll(".path-title").map((title) => title.text())).toContain("Reading");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/paths", expect.objectContaining({ method: "POST" }));
+    reloaded.unmount();
   });
 
   it("saves a custom path text color", async () => {
@@ -377,16 +677,14 @@ describe("PathsView", () => {
     expect(JSON.parse(String(updateCall?.[1]?.body)).textColor).toBeNull();
   });
 
-  it("pins paths and persists keyboard-accessible ordering", async () => {
+  it("updates the visible pin state when pinning and unpinning a path", async () => {
     let pinned = false;
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths")
-        return [
-          { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned },
-          { id: "path-2", name: "Writing", status: "ACTIVE", pinned: false },
-        ];
+        return [{ id: "path-1", name: "Algorithms", status: "ACTIVE", pinned }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
       if (path === "/paths/path-1/pin") {
-        pinned = true;
+        pinned = JSON.parse(String(options?.body)).pinned;
         return { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned };
       }
       return undefined;
@@ -394,7 +692,12 @@ describe("PathsView", () => {
     const wrapper = mount(PathsView);
     await flushPromises();
 
-    await wrapper.get(".path-pin-button").trigger("click");
+    const pinButton = wrapper.get(".path-pin-button");
+    expect(pinButton.attributes("aria-pressed")).toBe("false");
+    expect(pinButton.attributes("aria-label")).toBe("Pin Algorithms");
+
+    await pinButton.trigger("click");
+    await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/paths/path-1/pin",
       expect.objectContaining({ body: '{"pinned":true}' }),
@@ -402,7 +705,95 @@ describe("PathsView", () => {
     expect(wrapper.get(".path-pin-button").attributes("aria-label")).toBe(
       "Unpin Algorithms",
     );
-    expect(wrapper.findAll(".path-order-button")).toHaveLength(0);
+    expect(wrapper.get(".path-pin-button").attributes("aria-pressed")).toBe("true");
+
+    await wrapper.get(".path-pin-button").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/path-1/pin",
+      expect.objectContaining({ body: '{"pinned":false}' }),
+    );
+    expect(wrapper.get(".path-pin-button").attributes("aria-pressed")).toBe("false");
+    expect(wrapper.get(".path-pin-button").attributes("aria-label")).toBe("Pin Algorithms");
+    expect(wrapper.findAll(".path-order-button")).toHaveLength(2);
+    expect(wrapper.findAll(".path-order-button[disabled]")).toHaveLength(2);
+  });
+
+  it("persists a reordered path list and renders the returned order", async () => {
+    let orderedIds = ["path-1", "path-2"];
+    const paths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+      { id: "path-2", name: "Writing", status: "ACTIVE" },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths")
+        return orderedIds.map((id) => paths.find((item) => item.id === id));
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths/order" && options?.method === "PUT") {
+        orderedIds = JSON.parse(String(options.body)).pathIds;
+        return undefined;
+      }
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const [firstPath, secondPath] = wrapper.findAll("article.path");
+    await firstPath!.trigger("dragstart");
+    await secondPath!.trigger("drop");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/order",
+      expect.objectContaining({
+        method: "PUT",
+        body: '{"pathIds":["path-2","path-1"]}',
+      }),
+    );
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual([
+      "Writing",
+      "Algorithms",
+    ]);
+
+    wrapper.unmount();
+    usePathsStore().reset();
+    const reloaded = mount(PathsView);
+    await flushPromises();
+    expect(reloaded.findAll(".path-title").map((title) => title.text())).toEqual([
+      "Writing",
+      "Algorithms",
+    ]);
+  });
+
+  it("reorders paths with accessible buttons and disables moves at list boundaries", async () => {
+    let orderedIds = ["path-1", "path-2"];
+    const seededPaths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+      { id: "path-2", name: "Writing", status: "ACTIVE" },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return orderedIds.map((id) => seededPaths.find((item) => item.id === id));
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths/order" && options?.method === "PUT") {
+        orderedIds = JSON.parse(String(options.body)).pathIds;
+        return undefined;
+      }
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.get('button[aria-label="Move Algorithms up"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.get('button[aria-label="Move Writing down"]').attributes("disabled")).toBeDefined();
+    await wrapper.get('button[aria-label="Move Writing up"]').trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/order",
+      expect.objectContaining({ method: "PUT", body: '{"pathIds":["path-2","path-1"]}' }),
+    );
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual(["Writing", "Algorithms"]);
+    await wrapper.unmount();
   });
 
   it("keeps long path titles on one truncated line", async () => {
@@ -475,25 +866,57 @@ describe("PathsView", () => {
     );
   });
 
+  it("preserves a failed path edit and lets the user retry", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Edit")!
+      .trigger("click");
+    const name = wrapper.get('input[aria-label="Edit path name"]');
+    await name.setValue("Algorithms revised");
+    vi.mocked(api).mockRejectedValueOnce(new Error("network"));
+    await wrapper.get("form.path-edit").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not update path.");
+    expect((name.element as HTMLInputElement).value).toBe("Algorithms revised");
+
+    vi.mocked(api).mockResolvedValueOnce({
+      id: "path-1",
+      name: "Algorithms revised",
+      description: "Problem solving",
+      color: "#E8754E",
+      status: "ACTIVE",
+      pinned: false,
+    });
+    await wrapper.get("form.path-edit").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Algorithms revised");
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, options]) => path === "/paths/path-1" && options?.method === "PUT",
+      ),
+    ).toHaveLength(2);
+  });
+
   it("searches for a merge target, confirms the destructive merge, and refreshes paths", async () => {
+    let listedPaths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+      { id: "path-2", name: "Writing", description: "Drafting", status: "ACTIVE" },
+    ];
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
-        if (path === "/paths")
-          return [
-            { id: "path-1", name: "Algorithms", status: "ACTIVE" },
-            {
-              id: "path-2",
-              name: "Writing",
-              description: "Drafting",
-              status: "ACTIVE",
-            },
-          ];
-        if (path === "/paths/path-1/merge" && options?.method === "POST")
+        if (path === "/paths") return listedPaths;
+        if (path === "/paths/path-1/merge" && options?.method === "POST") {
+          listedPaths = listedPaths.filter(({ id }) => id !== "path-1");
           return undefined;
+        }
         return undefined;
       },
     );
-    const wrapper = mount(PathsView);
+    const wrapper = mount(PathsView, { attachTo: document.body });
     await flushPromises();
     await wrapper
       .findAll("button.text-button")
@@ -503,17 +926,23 @@ describe("PathsView", () => {
       .findAll("form.path-edit button")
       .find((button) => button.text().trim() === "Merge")!
       .trigger("click");
+    await flushPromises();
 
-    expect(wrapper.get(".merge-path-dialog").text()).toContain(
-      "Merge “Algorithms” into…",
-    );
-    await wrapper.get('input[aria-label="Edit path name"]');
+    const mergeDialog = wrapper.get('[role="dialog"]');
+    expect(mergeDialog.attributes("aria-modal")).toBe("true");
+    expect(mergeDialog.attributes("aria-labelledby")).toBe("merge-path-heading");
+    expect(wrapper.get("#merge-path-heading").text()).toBe("Merge “Algorithms” into…");
+    expect(document.activeElement).toBe(wrapper.get("#merge-path-search").element);
+    expect(
+      wrapper.findAll('input[name="merge-target-path"]').map((input) => (input.element as HTMLInputElement).value),
+    ).toEqual(["path-2"]);
     await wrapper.get("#merge-path-search").setValue("writing");
     await wrapper.get('input[name="merge-target-path"]').setValue("path-2");
     await wrapper.get(".merge-path-dialog button.primary").trigger("click");
-    expect(wrapper.get(".prompt-dialog").text()).toContain(
-      "Merge Algorithms into Writing?",
-    );
+    const destructiveConfirmation = wrapper.get('[role="dialog"]');
+    expect(destructiveConfirmation.attributes("aria-modal")).toBe("true");
+    expect(destructiveConfirmation.attributes("aria-labelledby")).toBe("prompt-dialog-message");
+    expect(wrapper.get("#prompt-dialog-message").text()).toContain("Merge Algorithms into Writing?");
     expect(wrapper.find(".merge-path-dialog").exists()).toBe(false);
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
@@ -523,9 +952,23 @@ describe("PathsView", () => {
       body: JSON.stringify({ targetPathId: "path-2" }),
     });
     expect(wrapper.find(".merge-path-dialog").exists()).toBe(false);
+    expect(wrapper.findAll(".path-list .path")).toHaveLength(1);
+    expect(wrapper.get(".path-list .path").text()).toContain("Writing");
+    expect(wrapper.text()).not.toContain("Algorithms");
+    wrapper.unmount();
   });
 
   it("closes the merge chooser without changing paths", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) =>
+      path === "/paths"
+        ? [
+            { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+            { id: "path-2", name: "Writing", status: "ACTIVE" },
+          ]
+        : path === "/labels?scope=TIME_ENTRY"
+          ? []
+        : undefined,
+    );
     const wrapper = mount(PathsView);
     await flushPromises();
     await wrapper
@@ -539,11 +982,89 @@ describe("PathsView", () => {
     await wrapper.get(".merge-path-dialog button.text-button").trigger("click");
 
     expect(wrapper.find(".merge-path-dialog").exists()).toBe(false);
+    expect(wrapper.findAll(".path-list .path")).toHaveLength(2);
+    expect(
+      wrapper.get<HTMLInputElement>('[aria-label="Edit path name"]').element.value,
+    ).toBe("Algorithms");
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toContain("Writing");
     expect(
       vi
         .mocked(api)
         .mock.calls.some(([path]) => String(path).includes("/merge")),
     ).toBe(false);
+
+    await wrapper
+      .findAll("form.path-edit button")
+      .find((button) => button.text().trim() === "Merge")!
+      .trigger("click");
+    await wrapper.get('input[name="merge-target-path"]').setValue("path-2");
+    await wrapper.get(".merge-path-dialog button.primary").trigger("click");
+    expect(wrapper.get(".prompt-dialog").text()).toContain("Merge Algorithms into Writing?");
+    await wrapper.get(".prompt-dialog button.text-button").trigger("click");
+    await flushPromises();
+    expect(wrapper.findAll(".path-list .path")).toHaveLength(2);
+    expect(
+      vi
+        .mocked(api)
+        .mock.calls.some(([path]) => String(path).includes("/merge")),
+    ).toBe(false);
+  });
+
+  it("keeps both paths recoverable and permits retry after a failed merge", async () => {
+    let listedPaths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+      { id: "path-2", name: "Writing", status: "ACTIVE" },
+    ];
+    let mergeAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return listedPaths;
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths/path-1/merge" && options?.method === "POST") {
+        mergeAttempts += 1;
+        if (mergeAttempts === 1) throw new Error("temporary merge failure");
+        listedPaths = listedPaths.filter(({ id }) => id !== "path-1");
+        return undefined;
+      }
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    const chooseMerge = async () => {
+      let mergeButton = wrapper
+        .findAll("form.path-edit button")
+        .find((button) => button.text().trim() === "Merge");
+      if (!mergeButton) {
+        const source = wrapper
+          .findAll(".path-list .path")
+          .find((path) => path.text().includes("Algorithms"))!;
+        await source
+          .findAll("button.text-button")
+          .find((button) => button.text().trim() === "Edit")!
+          .trigger("click");
+        mergeButton = wrapper
+          .findAll("form.path-edit button")
+          .find((button) => button.text().trim() === "Merge");
+      }
+      await mergeButton!.trigger("click");
+      await wrapper.get('input[name="merge-target-path"]').setValue("path-2");
+      await wrapper.get(".merge-path-dialog button.primary").trigger("click");
+      await wrapper.get(".prompt-dialog button.primary").trigger("click");
+      await flushPromises();
+    };
+
+    await chooseMerge();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not merge paths. Try again.");
+    expect(wrapper.findAll(".path-list .path")).toHaveLength(2);
+    expect(
+      wrapper.get<HTMLInputElement>('[aria-label="Edit path name"]').element.value,
+    ).toBe("Algorithms");
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toContain("Writing");
+
+    await chooseMerge();
+    expect(mergeAttempts).toBe(2);
+    expect(wrapper.findAll(".path-list .path")).toHaveLength(1);
+    expect(wrapper.get(".path-title").text()).toBe("Writing");
   });
 
   it("confirms removal and offers a timed undo", async () => {
@@ -555,13 +1076,16 @@ describe("PathsView", () => {
       .find((button) => button.text() === "Remove")!
       .trigger("click");
 
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual(["Algorithms"]);
     expect(wrapper.find(".prompt-dialog").text()).toContain(
       "Remove Algorithms? You can undo this for a few seconds.",
     );
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1", {
       method: "DELETE",
     });
+    expect(wrapper.findAll(".path-title")).toHaveLength(0);
     expect(wrapper.text()).toContain("Removed “Algorithms”.");
     expect(wrapper.get(".undo-snackbar").attributes("role")).toBe("status");
     expect(wrapper.get(".undo-snackbar").classes()).toContain("snackbar");
@@ -569,6 +1093,73 @@ describe("PathsView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1/restore", {
       method: "POST",
     });
+  });
+
+  it("restores a removed path to the active list after undo", async () => {
+    const path = {
+      id: "path-1",
+      name: "Algorithms",
+      description: "Problem solving",
+      color: "#E8754E",
+      status: "ACTIVE",
+      pinned: false,
+      boardId: "board-1",
+      boardHidden: false,
+    };
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [path];
+      if (requestPath === "/labels?scope=TIME_ENTRY") return [];
+      if (requestPath === "/paths/path-1/summary")
+        return {
+          path,
+          trackedSeconds: 3600,
+          recentActivity: [
+            {
+              id: "restored-activity",
+              timeEntryId: "restored-session",
+              title: "Restored session",
+              occurredAt: "2026-08-28T10:00:00Z",
+            },
+          ],
+        };
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Remove")!
+      .trigger("click");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual([]);
+
+    await wrapper.get(".undo-snackbar button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toContain(
+      "Algorithms",
+    );
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1/restore", {
+      method: "POST",
+    });
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Edit")!
+      .trigger("click");
+    expect(
+      wrapper.get<HTMLInputElement>('input[role="switch"][name="boardVisible"]').element.checked,
+    ).toBe(true);
+    await wrapper
+      .findAll("form.path-edit button")
+      .find((button) => button.text().trim() === "Cancel")!
+      .trigger("click");
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "History")!
+      .trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".path-history-dialog").text()).toContain("Restored session");
   });
 
   it("reports an undo failure after removing a path", async () => {
@@ -632,6 +1223,38 @@ describe("PathsView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe(
       "Could not load path history.",
     );
+  });
+
+  it("retries a failed path history load", async () => {
+    let summaryAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-retry", name: "Research", status: "ACTIVE" }];
+      if (path === "/paths/path-retry/summary") {
+        summaryAttempts += 1;
+        if (summaryAttempts === 1) throw new Error("temporary failure");
+        return {
+          path: { id: "path-retry", name: "Research", status: "ACTIVE" },
+          trackedSeconds: 60,
+          recentActivity: [],
+        };
+      }
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const historyButton = wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "History")!;
+
+    await historyButton.trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not load path history.");
+    await historyButton.trigger("click");
+    await flushPromises();
+    expect(summaryAttempts).toBe(2);
+    expect(wrapper.get(".path-history-dialog").text()).toContain("Research");
+    expect(wrapper.get(".path-history-dialog").text()).toContain("No recent activity yet.");
   });
 
   it("does not remove a path when the confirmation is cancelled", async () => {

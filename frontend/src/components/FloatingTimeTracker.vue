@@ -39,6 +39,7 @@ const {
 const {
   toggleRun,
   updateTimer,
+  cancelSession,
   rememberPath,
   pauseSession,
   resumeSession,
@@ -194,6 +195,15 @@ async function editStartedAt() {
   }
   timerStartedAt.value = value;
   await updateTimer();
+}
+async function discardRunningSession() {
+  const confirmation = await promptDialog.value?.open(
+    "Discard this running session?",
+    "",
+    { confirmation: true, confirmLabel: "Discard" },
+  );
+  if (confirmation === null || confirmation === undefined) return;
+  await cancelSession();
 }
 onMounted(() => {
   timerStore.acquire();
@@ -370,6 +380,17 @@ onUnmounted(() => {
             @keydown.enter="runFromDescription"
           ></textarea>
         </div>
+        <div v-if="timer" class="tracker-field tracker-field-wide tracker-session-actions">
+          <button
+            type="button"
+            class="text-button danger"
+            aria-label="Discard session"
+            :disabled="actionBusy"
+            @click="discardRunningSession"
+          >
+            Discard session…
+          </button>
+        </div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">
           {{ error }}
         </p>
@@ -379,6 +400,37 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+@media (orientation: landscape) and (max-height: 500px) {
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) {
+    inset-inline: auto;
+    right: 8px;
+    width: max-content;
+    padding: 0;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker {
+    width: auto;
+    max-width: calc(100vw - 16px);
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-bar {
+    gap: 4px;
+    padding: 0;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-summary,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-path,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-context {
+    display: none;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-action,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-pause,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-toggle {
+    width: 44px;
+    height: 44px;
+  }
+}
 .tracker-prompt-host {
   display: contents;
 }

@@ -1,4 +1,5 @@
 import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
+import { format, parseISO } from "date-fns";
 import CalendarView from "./CalendarView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
@@ -177,6 +178,12 @@ describe("CalendarView", () => {
   });
 
   it("defaults to Marker and saves No marker with a zero portion", async () => {
+    const today = new Date();
+    const selectedDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
     const wrapper = mountView();
     await flushPromises();
     await wrapper.get('input[type="checkbox"]').setValue(true);
@@ -184,16 +191,62 @@ describe("CalendarView", () => {
     expect((select.element as HTMLSelectElement).value).toBe("");
     expect(select.get('option[value=""]').text()).toBe("Marker");
     await select.setValue("0");
+    vi.mocked(api).mockResolvedValueOnce({
+      date: selectedDate,
+      note: null,
+      labels: [
+        {
+          labelId: "leave",
+          name: "Sick leave",
+          color: "#2878D5",
+          portion: 0,
+        },
+      ],
+    });
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       expect.stringMatching(/^\/calendar\/days\//),
       expect.objectContaining({ body: expect.stringContaining('"portion":0') }),
     );
+    expect(
+      (wrapper.get('input[type="checkbox"]').element as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    expect((select.element as HTMLSelectElement).value).toBe("0");
     wrapper.unmount();
   });
 
+  it.each(["0", "0.25", "0.5", "0.75", "1"])(
+    "saves the selected Sick leave portion exactly (%s)",
+    async (portion) => {
+      const wrapper = mountView();
+      await flushPromises();
+      await wrapper.get('input[type="checkbox"]').setValue(true);
+      await wrapper
+        .get('select[aria-label="Sick leave day portion"]')
+        .setValue(portion);
+      await wrapper.get("button.primary").trigger("click");
+      await flushPromises();
+
+      const saveCall = vi.mocked(api).mock.calls.find(
+        ([path, options]) =>
+          path.startsWith("/calendar/days/") && options?.method === "PUT",
+      );
+      expect(saveCall).toBeDefined();
+      expect(JSON.parse(String(saveCall![1]?.body)).labels).toEqual([
+        { labelId: "leave", portion: Number(portion) },
+      ]);
+    },
+  );
+
   it("loads labels and a month range, then saves a selected day with a full-day label", async () => {
+    const today = new Date();
+    const selectedDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
     const wrapper = mountView();
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/labels");
@@ -216,12 +269,54 @@ describe("CalendarView", () => {
           path.startsWith("/calendar/days/") && options?.method === "PUT",
       );
     expect(saveCall).toBeDefined();
+    expect(saveCall![0]).toBe(`/calendar/days/${selectedDate}`);
     expect(saveCall![1]).toEqual(
       expect.objectContaining({ body: expect.stringContaining('"portion":1') }),
     );
     expect(saveCall![1]).toEqual(
       expect.objectContaining({
         body: expect.stringContaining('"note":"Doctor visit"'),
+      }),
+    );
+  });
+
+  it("saves the selected day from the note editor with Control or Meta+Enter", async () => {
+    const selectedDate = format(new Date(), "yyyy-MM-dd");
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get("textarea").setValue("Submitted from the keyboard");
+
+    await wrapper.get("textarea").trigger("keydown", {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      `/calendar/days/${selectedDate}`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          note: "Submitted from the keyboard",
+          labels: [],
+        }),
+      }),
+    );
+
+    await wrapper.get("textarea").setValue("Submitted with Meta");
+    await wrapper.get("textarea").trigger("keydown", {
+      key: "Enter",
+      metaKey: true,
+    });
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      `/calendar/days/${selectedDate}`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          note: "Submitted with Meta",
+          labels: [{ labelId: "leave", portion: 1 }],
+        }),
       }),
     );
   });
@@ -253,28 +348,57 @@ describe("CalendarView", () => {
   it("drag-selects two calendar days and applies a label across the inclusive range", async () => {
     const wrapper = mountView();
     await flushPromises();
+    const initialRequest = vi
+      .mocked(api)
+      .mock.calls.find(([path]) => String(path).startsWith("/calendar/days?"))?.[0];
+    const gridStart = new URL(
+      String(initialRequest),
+      "https://knowledge-base.test",
+    ).searchParams.get("startDate")!;
+    const dateAt = (offset: number) => {
+      const date = new Date(`${gridStart}T00:00:00Z`);
+      date.setUTCDate(date.getUTCDate() + offset);
+      return date.toISOString().slice(0, 10);
+    };
+    const expectedStart = dateAt(8);
+    const expectedEnd = dateAt(10);
     const days = wrapper.findAll("button.calendar-day");
     await days[8].trigger("mousedown", { button: 0 });
     await days[10].trigger("mouseenter");
     await days[10].trigger("mouseup", { button: 0 });
+    expect(wrapper.get(".day-editor-heading h2").text()).toBe(
+      `${format(parseISO(expectedStart), "MMM d")} – ${format(parseISO(expectedEnd), "MMM d, yyyy")}`,
+    );
     await wrapper.get('input[type="checkbox"]').setValue(true);
     await wrapper
       .get('select[aria-label="Sick leave day portion"]')
       .setValue("1");
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
-    expect(vi.mocked(api)).toHaveBeenCalledWith(
-      "/calendar/days/range",
-      expect.objectContaining({
-        method: "PUT",
-        body: expect.stringContaining('"portion":1'),
-      }),
+    const rangeSave = vi.mocked(api).mock.calls.find(
+      ([path, options]) => path === "/calendar/days/range" && options?.method === "PUT",
     );
+    expect(rangeSave).toBeDefined();
+    expect(JSON.parse(String(rangeSave![1]?.body))).toMatchObject({
+      startDate: expectedStart,
+      endDate: expectedEnd,
+      labels: [{ labelId: "leave", portion: 1 }],
+    });
   });
 
   it("supports month navigation and cancelling a range selection", async () => {
     const wrapper = mountView();
     await flushPromises();
+    const monthSelect = wrapper.get(
+      'select[aria-label="Calendar month"]',
+    ).element as HTMLSelectElement;
+    const yearSelect = wrapper.get(
+      'select[aria-label="Calendar year"]',
+    ).element as HTMLSelectElement;
+    const initialMonth = Number(monthSelect.value);
+    const initialYear = Number(yearSelect.value);
+    const previousMonth = initialMonth === 0 ? 11 : initialMonth - 1;
+    const previousYear = initialMonth === 0 ? initialYear - 1 : initialYear;
     const initialDayRequest = vi
       .mocked(api)
       .mock.calls.find(
@@ -283,6 +407,8 @@ describe("CalendarView", () => {
       )?.[0];
     await wrapper.get('[aria-label="Previous month"]').trigger("click");
     await flushPromises();
+    expect(Number(monthSelect.value)).toBe(previousMonth);
+    expect(Number(yearSelect.value)).toBe(previousYear);
     const previousRequest = vi
       .mocked(api)
       .mock.calls.filter(
@@ -293,6 +419,8 @@ describe("CalendarView", () => {
     expect(previousRequest).not.toBe(initialDayRequest);
     await wrapper.get('[aria-label="Next month"]').trigger("click");
     await flushPromises();
+    expect(Number(monthSelect.value)).toBe(initialMonth);
+    expect(Number(yearSelect.value)).toBe(initialYear);
     const requests = vi
       .mocked(api)
       .mock.calls.filter(
@@ -314,6 +442,91 @@ describe("CalendarView", () => {
         .findAll("button.ghost")
         .some((button) => button.text() === "Cancel range"),
     ).toBe(false);
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([path, options]) =>
+          path === "/calendar/days/range" && options?.method === "PUT",
+      ),
+    ).toBe(false);
+    await days[9].trigger("mousedown", { button: 0 });
+    await days[11].trigger("mouseenter");
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([path, options]) =>
+          path === "/calendar/days/range" && options?.method === "PUT",
+      ),
+    ).toBe(false);
+  });
+
+  it("returns to today and selects today's calendar date", async () => {
+    const today = new Date();
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get('[aria-label="Previous month"]').trigger("click");
+    await flushPromises();
+
+    await wrapper.get('[aria-label="Today"]').trigger("click");
+    await flushPromises();
+
+    expect(
+      (wrapper.get('select[aria-label="Calendar month"]').element as HTMLSelectElement)
+        .value,
+    ).toBe(String(today.getMonth()));
+    expect(
+      (wrapper.get('select[aria-label="Calendar year"]').element as HTMLSelectElement)
+        .value,
+    ).toBe(String(today.getFullYear()));
+    expect(
+      wrapper.get('button.calendar-day[aria-pressed="true"] time').text(),
+    ).toBe(String(today.getDate()));
+
+    await wrapper.get('[aria-label="Today"]').trigger("click");
+    await flushPromises();
+    expect(
+      wrapper.get('button.calendar-day[aria-pressed="true"] time').text(),
+    ).toBe(String(today.getDate()));
+  });
+
+  it("announces when the Calendar Today action selects the current date", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('[aria-label="Today"]').trigger("click");
+
+    expect(wrapper.get('[role="status"][aria-live="polite"]').text()).toBe(
+      "Today is selected.",
+    );
+  });
+
+  it("changes the calendar month and year from their selectors", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    const monthSelect = wrapper.get(
+      'select[aria-label="Calendar month"]',
+    );
+    const yearSelect = wrapper.get('select[aria-label="Calendar year"]');
+    const initialMonth = Number(
+      (monthSelect.element as HTMLSelectElement).value,
+    );
+    const initialYear = Number((yearSelect.element as HTMLSelectElement).value);
+    const requestedMonth = (initialMonth + 1) % 12;
+
+    await monthSelect.setValue(String(requestedMonth));
+    await flushPromises();
+    expect((monthSelect.element as HTMLSelectElement).value).toBe(
+      String(requestedMonth),
+    );
+    expect(wrapper.find("button.calendar-day.selected time").text()).toBe("1");
+
+    await yearSelect.setValue(String(initialYear + 1));
+    await flushPromises();
+    expect((yearSelect.element as HTMLSelectElement).value).toBe(
+      String(initialYear + 1),
+    );
+    expect((monthSelect.element as HTMLSelectElement).value).toBe(
+      String(requestedMonth),
+    );
+    expect(wrapper.find("button.calendar-day.selected time").text()).toBe("1");
   });
 
   it("keeps a same-day pointer gesture as a single-day save", async () => {
@@ -356,6 +569,73 @@ describe("CalendarView", () => {
         .mocked(api)
         .mock.calls.some(([path]) => path === "/calendar/days/range"),
     ).toBe(true);
+  });
+
+  it("selects and applies a date range through a keyboard-operable control", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('[aria-label="Start date range selection"]').trigger("click");
+    expect(wrapper.text()).toContain("Choose a start date, then choose an end date.");
+    const days = wrapper.findAll("button.calendar-day");
+    await days[8].trigger("click");
+    expect(wrapper.text()).toContain("Choose an end date to complete the range.");
+    await days[10].trigger("click");
+    expect(wrapper.get(".day-editor-heading h2").text()).toContain("–");
+    expect(wrapper.get("button.primary").text()).toContain("Apply to range");
+
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([path, options]) =>
+          path === "/calendar/days/range" && options?.method === "PUT",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps a failed range available for review and a successful retry", async () => {
+    let rangeAttempts = 0;
+    vi.mocked(api).mockImplementation(
+      async (path: string, options?: RequestInit) => {
+        if (isCatalogRequest(path, options)) return catalog();
+        if (path.startsWith("/calendar/days?")) return [];
+        if (path === "/calendar/days/range" && options?.method === "PUT") {
+          rangeAttempts += 1;
+          const body = JSON.parse(String(options.body));
+          if (rangeAttempts === 1) throw new Error("network");
+          return [body.startDate, body.endDate].map((date) => ({
+            date,
+            note: body.note,
+            labels: body.labels,
+          }));
+        }
+        return undefined;
+      },
+    );
+    const wrapper = mountView();
+    await flushPromises();
+    const days = wrapper.findAll("button.calendar-day");
+    await days[8].trigger("mousedown", { button: 0 });
+    await days[10].trigger("mouseenter");
+    await days[10].trigger("mouseup", { button: 0 });
+    await wrapper.get("textarea").setValue("Range draft");
+
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "Unable to save this day.",
+    );
+    expect(wrapper.get(".day-editor-heading h2").text()).toContain("–");
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "Range draft",
+    );
+    expect(wrapper.get("button.primary").text()).toContain("Apply to range");
+
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+    expect(rangeAttempts).toBe(2);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
   });
 
   it("shows an error when calendar records fail to load", async () => {
@@ -407,6 +687,9 @@ describe("CalendarView", () => {
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toBe(
       "Unable to save this day.",
+    );
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "A note",
     );
   });
 
@@ -620,6 +903,11 @@ describe("CalendarView", () => {
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
     expect(daySave().labels).toEqual([]);
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([, options]) => options?.method === "DELETE",
+      ),
+    ).toBe(false);
   });
 
   it("CP-08: creates a label visible everywhere from the picker", async () => {

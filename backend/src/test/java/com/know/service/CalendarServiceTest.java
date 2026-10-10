@@ -173,4 +173,30 @@ class CalendarServiceTest {
                 }));
     assertEquals("updated", record.getNote());
   }
+
+  @Test
+  void applyRangeVisitsBothEndpointsAndEveryDayBetweenThem() {
+    UUID user = UUID.randomUUID();
+    LocalDate start = LocalDate.of(2026, 9, 7);
+    LocalDate middle = start.plusDays(1);
+    LocalDate end = start.plusDays(2);
+    when(records.findByUserIdAndRecordDateForUpdate(user, start))
+        .thenReturn(Optional.empty());
+    when(records.findByUserIdAndRecordDateForUpdate(user, middle))
+        .thenReturn(Optional.empty());
+    when(records.findByUserIdAndRecordDateForUpdate(user, end))
+        .thenReturn(Optional.empty());
+    when(records.save(any(DailyRecord.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(assignments.findAllByIdDailyRecordId(any())).thenReturn(List.of());
+    when(records.findAllByUserIdAndRecordDateBetweenOrderByRecordDate(user, start, end))
+        .thenReturn(List.of());
+
+    service().applyRange(user, start, end, "Range note", List.of());
+
+    verify(records).findByUserIdAndRecordDateForUpdate(user, start);
+    verify(records).findByUserIdAndRecordDateForUpdate(user, middle);
+    verify(records).findByUserIdAndRecordDateForUpdate(user, end);
+    verify(records, times(3)).findByUserIdAndRecordDateForUpdate(eq(user), any());
+  }
 }

@@ -41,6 +41,10 @@ describe("PromptDialog", () => {
     });
     await nextTick();
 
+    const dialog = wrapper.get('[role="dialog"]');
+    expect(dialog.attributes("aria-modal")).toBe("true");
+    expect(dialog.attributes("aria-labelledby")).toBe("prompt-dialog-message");
+    expect(wrapper.get("#prompt-dialog-message").text()).toBe("Remove this path?");
     expect(wrapper.find("input, textarea").exists()).toBe(false);
     expect(wrapper.get("button.primary").text()).toBe("Confirm");
     await wrapper.get("button.primary").trigger("click");

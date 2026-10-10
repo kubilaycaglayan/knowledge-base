@@ -1,7 +1,9 @@
 import { config, flushPromises, mount } from "@vue/test-utils";
 import SessionsView from "./SessionsView.vue";
 import { api } from "../lib/api";
+import { formatDateTime } from "../lib/date";
 import { createPinia, setActivePinia } from "pinia";
+import { useTimerStore } from "../stores/timer";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -101,6 +103,24 @@ describe("SessionsView", () => {
     );
   });
 
+  it("shows a loading state instead of the empty state until session history resolves", async () => {
+    let finishHistory: (value: unknown) => void = () => undefined;
+    vi.mocked(api).mockImplementation((path: string) => {
+      if (path.startsWith("/time-entries?"))
+        return new Promise((resolve) => { finishHistory = resolve; });
+      return Promise.resolve([]);
+    });
+    const wrapper = mount(SessionsView);
+
+    expect(wrapper.get('[role="status"]').text()).toBe("Loading sessions…");
+    expect(wrapper.text()).not.toContain("No sessions recorded yet.");
+
+    finishHistory({ page: 0, totalPages: 1, totalSessions: 0, sessions: [] });
+    await flushPromises();
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain("No sessions recorded yet.");
+  });
+
   it("refreshes the sessions list when the tracker completes a session", async () => {
     let historyLoads = 0;
     vi.mocked(api).mockImplementation(async (path: string) => {
@@ -187,6 +207,9 @@ describe("SessionsView", () => {
     expect(latestSession.get(".session-card-labels").text()).toBe("Vue");
     expect(latestSession.get(".session-description").text()).toBe(
       "Most recent",
+    );
+    expect(latestSession.get(".session-summary").text()).toContain(
+      formatDateTime("2026-08-27T11:00:00Z"),
     );
     expect(
       latestSession.get(".session-summary").findAll("span")[0].text(),
@@ -309,9 +332,67 @@ describe("SessionsView", () => {
       "/time-entries/new",
       expect.objectContaining({
         method: "PUT",
-        body: expect.stringContaining('"source":"IOS"'),
+        body: expect.stringContaining('"pathId":"path-1"'),
       }),
     );
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, init]) => String(path).startsWith("/time-entries/") && init?.method === "PUT",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("updates the selected session label chips after saving additions and removals", async () => {
+    let selectedLabels = ["label-1"];
+    const session = {
+      id: "labels-session",
+      startedAt: "2026-08-27T11:00:00Z",
+      endedAt: "2026-08-27T12:00:00Z",
+      durationSeconds: 3600,
+      source: "WEB",
+      pathId: "path-1",
+      labelIds: selectedLabels,
+    };
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.startsWith("/time-entries?"))
+        return {
+          page: 0,
+          totalPages: 1,
+          totalSessions: 1,
+          sessions: [{ ...session, labelIds: selectedLabels }],
+        };
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Learning", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-1", name: "Vue", color: null, scopes: ["TIME_ENTRY"] }];
+      if (path === "/time-entries/labels-session" && init?.method === "PUT") {
+        selectedLabels = JSON.parse(String(init.body)).labelIds;
+        return { ...session, labelIds: selectedLabels };
+      }
+      return undefined;
+    });
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+
+    const card = () => wrapper.get("article.session-card");
+    expect(card().get(".session-card-labels").text()).toBe("Vue");
+    await card().get("button.text-button").trigger("click");
+    let input = await openSessionLabels(wrapper);
+    pickerOption("Vue")?.click();
+    await flushPromises();
+    await card().get("form").trigger("submit");
+    await flushPromises();
+    expect(card().get(".session-card-labels").text()).toBe("");
+
+    await card().get("button.text-button").trigger("click");
+    input = await openSessionLabels(wrapper);
+    await typeInPicker(input, "Vue");
+    pickerOption("Vue")?.click();
+    await flushPromises();
+    await card().get("form").trigger("submit");
+    await flushPromises();
+    expect(card().get(".session-card-labels").text()).toBe("Vue");
+    expect(selectedLabels).toEqual(["label-1"]);
   });
 
   it("creates a typed new label from the session label picker", async () => {
@@ -417,6 +498,31 @@ describe("SessionsView", () => {
   });
 
   it("starts a new server timer from a completed session", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) =>
+      path === "/timers" && init?.method === "POST"
+        ? { id: "timer-from-session", startedAt: "2026-10-10T10:00:00Z", running: true }
+        : path.startsWith("/time-entries?")
+          ? {
+              page: 0,
+              totalPages: 1,
+              totalSessions: 1,
+              sessions: [{
+                id: "source-session",
+                startedAt: "2026-08-27T11:00:00Z",
+                endedAt: "2026-08-28T12:00:00Z",
+                durationSeconds: 3600,
+                description: "Most recent",
+                source: "WEB",
+                pathId: "path-1",
+                labelIds: ["label-1"],
+              }],
+            }
+          : path === "/paths"
+            ? [{ id: "path-1", name: "Learning", status: "ACTIVE" }]
+            : path === "/labels?scope=TIME_ENTRY"
+              ? [{ id: "label-1", name: "Vue", color: "#2878D5", scopes: ["TIME_ENTRY"] }]
+              : undefined,
+    );
     const wrapper = mount(SessionsView);
     await flushPromises();
 
@@ -426,6 +532,7 @@ describe("SessionsView", () => {
     expect(startAgain.attributes("title")).toBe("Start again");
     expect(startAgain.find("svg").exists()).toBe(true);
     await startAgain.trigger("click");
+    await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/timers",
       expect.objectContaining({
@@ -437,6 +544,10 @@ describe("SessionsView", () => {
         }),
       }),
     );
+    expect(useTimerStore().current).toMatchObject({
+      id: "timer-from-session",
+      running: true,
+    });
   });
 
   it("hides restart for sessions without a path or labels", async () => {
@@ -470,40 +581,143 @@ describe("SessionsView", () => {
   });
 
   it("confirms and soft-deletes a completed session", async () => {
+    let sessions = [
+      {
+        id: "new",
+        startedAt: "2026-08-28T11:00:00Z",
+        endedAt: "2026-08-28T12:00:00Z",
+        durationSeconds: 3600,
+        description: "Selected for removal",
+        source: "WEB",
+        pathId: "path-1",
+        labelIds: ["label-1"],
+      },
+      {
+        id: "old",
+        startedAt: "2026-08-27T11:00:00Z",
+        endedAt: "2026-08-27T12:00:00Z",
+        durationSeconds: 3600,
+        description: "Keep this session",
+        source: "MANUAL",
+        pathId: "path-1",
+        labelIds: ["label-1"],
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.startsWith("/time-entries?"))
+        return { page: 0, totalPages: 1, totalSessions: sessions.length, sessions };
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Learning", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-1", name: "Vue", color: null, scopes: ["TIME_ENTRY"] }];
+      if (path === "/time-entries/new" && init?.method === "DELETE") {
+        sessions = sessions.filter(({ id }) => id !== "new");
+        return undefined;
+      }
+      return undefined;
+    });
     const wrapper = mount(SessionsView);
     await flushPromises();
 
-    await wrapper.get("button.danger").trigger("click");
+    const selected = wrapper.findAll("article.session-card").find((card) => card.text().includes("Selected for removal"))!;
+    await selected.get("button.danger").trigger("click");
     expect(wrapper.find(".prompt-dialog").text()).toContain(
       "Remove this session? This cannot be undone.",
     );
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/new", {
       method: "DELETE",
     });
+    expect(wrapper.findAll("article.session-card")).toHaveLength(1);
+    expect(wrapper.get("article.session-card").text()).toContain("Keep this session");
+    expect(wrapper.text()).not.toContain("Selected for removal");
+  });
+
+  it("keeps a completed session after delete fails and removes it on retry", async () => {
+    let deleteAttempts = 0;
+    let sessions = [{
+      id: "retry-session",
+      startedAt: "2026-08-28T11:00:00Z",
+      endedAt: "2026-08-28T12:00:00Z",
+      durationSeconds: 3600,
+      description: "Retry this removal",
+      source: "WEB",
+      pathId: "path-1",
+      labelIds: [],
+    }];
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.startsWith("/time-entries?"))
+        return { page: 0, totalPages: 1, totalSessions: sessions.length, sessions };
+      if (path === "/paths") return [{ id: "path-1", name: "Learning", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/time-entries/retry-session" && init?.method === "DELETE") {
+        deleteAttempts += 1;
+        if (deleteAttempts === 1) throw new Error("offline");
+        sessions = [];
+        return undefined;
+      }
+      return undefined;
+    });
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    const removeSelected = async () => {
+      await wrapper.get("article.session-card button.danger").trigger("click");
+      await wrapper.get(".prompt-dialog button.primary").trigger("click");
+      await flushPromises();
+    };
+
+    await removeSelected();
+    expect(wrapper.get('[role="alert"]').text()).toContain("Could not remove this session.");
+    expect(wrapper.get("article.session-card").text()).toContain("Retry this removal");
+
+    await removeSelected();
+    expect(deleteAttempts).toBe(2);
+    expect(wrapper.findAll("article.session-card")).toHaveLength(0);
+    expect(wrapper.text()).not.toContain("Retry this removal");
+    wrapper.unmount();
   });
 
   it("loads the selected pagination page", async () => {
+    const pageRecords = [
+      [
+        { id: "newest", startedAt: "2026-09-03T08:00:00Z", endedAt: "2026-09-03T09:00:00Z", durationSeconds: 3600, description: "Newest", source: "WEB" },
+        { id: "middle", startedAt: "2026-09-02T08:00:00Z", endedAt: "2026-09-02T09:00:00Z", durationSeconds: 3600, description: "Middle", source: "WEB" },
+      ],
+      [
+        { id: "older", startedAt: "2026-09-01T08:00:00Z", endedAt: "2026-09-01T09:00:00Z", durationSeconds: 3600, description: "Older", source: "WEB" },
+        { id: "oldest", startedAt: "2026-08-31T08:00:00Z", endedAt: "2026-08-31T09:00:00Z", durationSeconds: 3600, description: "Oldest", source: "WEB" },
+      ],
+    ];
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path.startsWith("/time-entries?"))
         return {
           page: path.includes("page=1") ? 1 : 0,
           totalPages: 2,
-          totalSessions: 51,
-          sessions: [],
+          totalSessions: 4,
+          sessions: pageRecords[path.includes("page=1") ? 1 : 0],
         };
       if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
       return undefined;
     });
     const wrapper = mount(SessionsView);
     await flushPromises();
-    await wrapper
-      .get('nav[aria-label="Session pages"]')
-      .findAll("button")[1]
-      .trigger("click");
+    const pages = wrapper.get('nav[aria-label="Session pages"]').findAll("button");
+    const descriptions = () => wrapper.findAll(".session-card .session-description").map((item) => item.text());
+    expect(pages.map((button) => button.text())).toEqual(["1", "2"]);
+    expect(pages[0].attributes("aria-current")).toBe("page");
+    expect(pages[1].attributes("aria-current")).toBeUndefined();
+    expect(descriptions()).toEqual(["Newest", "Middle"]);
+    const firstPageRows = descriptions();
+    await pages[1].trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries?page=1&size=50");
+    expect(pages[0].attributes("aria-current")).toBeUndefined();
+    expect(pages[1].attributes("aria-current")).toBe("page");
+    const secondPageRows = descriptions();
+    expect(secondPageRows).toEqual(["Older", "Oldest"]);
+    expect(new Set([...firstPageRows, ...secondPageRows]).size).toBe(4);
   });
 
   it("rejects an edit when either time field is missing", async () => {
@@ -615,5 +829,7 @@ describe("SessionsView", () => {
             path === "/time-entries/new" && options?.method === "DELETE",
         ),
     ).toBe(false);
+    expect(wrapper.findAll("article.session-card")).toHaveLength(2);
+    expect(wrapper.text()).toContain("Most recent");
   });
 });

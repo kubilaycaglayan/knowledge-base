@@ -1,17 +1,20 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import SettingsView from "./SettingsView.vue";
 import { api, download } from "../lib/api";
+import { setThemePreference, themePreference } from "../lib/theme";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn(), download: vi.fn() }));
 
 describe("SettingsView", () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({
-      email: "person@example.com",
-      hasPassword: false,
-      hasGoogle: true,
-    });
+    vi.mocked(api).mockImplementation(async (path: string) =>
+      path === "/auth/me"
+        ? { email: "person@example.com", hasPassword: false, hasGoogle: true }
+        : [],
+    );
   });
 
   afterEach(() => {
@@ -23,13 +26,30 @@ describe("SettingsView", () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain("Sign-in methods");
+    expect(wrapper.get(".account-summary strong").text()).toBe("person@example.com");
     expect(
       (wrapper.get(".theme-select").element as HTMLSelectElement).value,
     ).toBe("auto");
     expect(wrapper.text()).not.toContain("Download Knowledge Base CSV");
+    await wrapper.get('[role="tab"]:nth-child(2)').trigger("click");
+    expect(wrapper.get('[role="tabpanel"]').text()).toContain("Import Knowledge Base CSV files");
     await wrapper.get('[role="tab"]:nth-child(3)').trigger("click");
     expect(wrapper.text()).toContain("Download Knowledge Base CSV");
     expect(wrapper.text()).not.toContain("Sign-in methods");
+  });
+
+  it("updates and persists the appearance preference immediately", async () => {
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get(".theme-select").setValue("dark");
+
+    expect(themePreference.value).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("knowledge-base-theme")).toBe("dark");
+    expect((wrapper.get(".theme-select").element as HTMLSelectElement).value).toBe("dark");
+
+    setThemePreference("auto");
+    await wrapper.unmount();
   });
 
   it("downloads a Knowledge Base CSV from the Export tab", async () => {
@@ -44,6 +64,17 @@ describe("SettingsView", () => {
       "knowledge-base-export.csv",
     );
     expect(wrapper.text()).toContain("Your Knowledge Base export is ready.");
+  });
+
+  it("reports an export failure without claiming a file was downloaded", async () => {
+    vi.mocked(download).mockRejectedValue(new Error("offline"));
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-export"]').trigger("click");
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="status"]').text()).toBe("Could not export your data. Try again.");
   });
 
   it("requires the current password for accounts that also use Google sign-in", async () => {
@@ -150,6 +181,32 @@ describe("SettingsView", () => {
       }),
     );
     expect(store.mock.calls[0][0]).toBeInstanceOf(PasswordCredentialMock);
+    expect(wrapper.get('[role="status"]').text()).toContain("Password saved.");
+    wrapper.unmount();
+  });
+
+  it("preserves credential inputs and offers recovery when saving fails", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/auth/me")
+        return { email: "person@example.com", hasPassword: true, hasGoogle: false };
+      throw new Error("incorrect current password");
+    });
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get('input[name="currentPassword"]').setValue("wrong-current");
+    await wrapper.get('input[name="newPassword"]').setValue("new-password");
+    await wrapper.get('input[name="confirmPassword"]').setValue("new-password");
+    await wrapper.get("form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain("Check your current password and try again.");
+    expect((wrapper.get('input[name="currentPassword"]').element as HTMLInputElement).value).toBe("wrong-current");
+    expect((wrapper.get('input[name="newPassword"]').element as HTMLInputElement).value).toBe("new-password");
+    expect((wrapper.get('input[name="confirmPassword"]').element as HTMLInputElement).value).toBe("new-password");
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/auth/password",
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 
   it("rejects mismatched new passwords before calling the API", async () => {

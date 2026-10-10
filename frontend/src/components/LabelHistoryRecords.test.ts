@@ -45,3 +45,68 @@ it("retries failures and shows an empty state", async () => {
   await flushPromises();
   expect(wrapper.get('[role="status"]').text()).toContain("No sessions");
 });
+
+it.each([
+  [0, "/sessions/s1"],
+  [1, "/calendar?date=2026-05-02"],
+  [2, "/notes/s1"],
+  [3, "/logs/s1"],
+])("links a related record kind to its route", async (buttonIndex, href) => {
+  vi.mocked(api).mockResolvedValue({ items: [record], hasMore: false });
+  const wrapper = setup();
+  await flushPromises();
+  await wrapper.findAll(".record-filters button")[buttonIndex].trigger("click");
+  await flushPromises();
+
+  expect(wrapper.get(`a[href="${href}"]`).text()).toContain("Reading session");
+});
+
+it("moves between history pages without repeating or reordering records", async () => {
+  const first = record;
+  const second = { ...record, id: "s2", date: "2026-05-01T09:00:00Z", title: "Earlier session" };
+  vi.mocked(api).mockImplementation(async (path: string) =>
+    path.endsWith("page=0")
+      ? { items: [first], hasMore: true }
+      : { items: [second], hasMore: false },
+  );
+  const wrapper = setup();
+  await flushPromises();
+  expect(wrapper.findAll(".record-title").map((node) => node.text())).toEqual([
+    "Reading session",
+  ]);
+
+  await wrapper.get(".record-pagination button:last-child").trigger("click");
+  await flushPromises();
+  expect(wrapper.findAll(".record-title").map((node) => node.text())).toEqual([
+    "Earlier session",
+  ]);
+
+  await wrapper.get(".record-pagination button:first-child").trigger("click");
+  await flushPromises();
+  expect(wrapper.findAll(".record-title").map((node) => node.text())).toEqual([
+    "Reading session",
+  ]);
+});
+
+it("retries a failed related-record page without duplicating rows", async () => {
+  const second = { ...record, id: "s2", title: "Earlier session" };
+  let pageOneAttempts = 0;
+  vi.mocked(api).mockImplementation(async (path: string) => {
+    if (path.endsWith("page=0")) return { items: [record], hasMore: true };
+    pageOneAttempts += 1;
+    if (pageOneAttempts === 1) throw new Error("offline");
+    return { items: [second], hasMore: false };
+  });
+  const wrapper = setup();
+  await flushPromises();
+  await wrapper.get(".record-pagination button:last-child").trigger("click");
+  await flushPromises();
+  expect(wrapper.get('[role="alert"]').text()).toContain("Could not load related records.");
+
+  await wrapper.get('[role="alert"] button').trigger("click");
+  await flushPromises();
+  expect(pageOneAttempts).toBe(2);
+  expect(wrapper.findAll(".record-title").map((node) => node.text())).toEqual([
+    "Earlier session",
+  ]);
+});

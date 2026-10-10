@@ -325,17 +325,29 @@ export const useTimerStore = defineStore("timer", () => {
         const versionAtRequest = ++timerStateVersion;
         const submitted = formState();
         pendingSubmission = submitted;
-        const started = await api<Timer>("/timers", {
-          method: "POST",
-          body: JSON.stringify({
-            pathId: pathId.value || null,
-            labelIds: selectedLabelIds.value,
-            description: description.value || null,
-          }),
-        });
-        if (versionAtRequest === timerStateVersion)
-          applyTimer(started, false, submitted);
-        rememberPath(pathId.value);
+        let started: Timer | null = null;
+        try {
+          started = await api<Timer>("/timers", {
+            method: "POST",
+            body: JSON.stringify({
+              pathId: pathId.value || null,
+              labelIds: selectedLabelIds.value,
+              description: description.value || null,
+            }),
+          });
+        } catch (cause) {
+          // A concurrent start may win between the initial sync and this
+          // request. Reconcile to the account's authoritative running timer.
+          const existing = await api<Timer | null>("/timers/current");
+          if (!existing) throw cause;
+          if (versionAtRequest === timerStateVersion) applyTimer(existing);
+          started = null;
+        }
+        if (started) {
+          if (versionAtRequest === timerStateVersion)
+            applyTimer(started, false, submitted);
+          rememberPath(pathId.value);
+        }
       }
       historyVersion.value++;
     } catch {
@@ -349,6 +361,28 @@ export const useTimerStore = defineStore("timer", () => {
         saveQueued = false;
         void updateTimer();
       }
+    }
+  }
+  async function cancelSession() {
+    if (actionBusy.value || busy.value || !timer.value) return;
+    actionBusy.value = true;
+    busy.value = true;
+    error.value = "";
+    try {
+      const versionAtRequest = ++timerStateVersion;
+      await api(`/timers/${timer.value.id}/cancel`, {
+        method: "POST",
+        body: "{}",
+      });
+      reportsStore.clear();
+      sessionsStore.clearPages();
+      if (versionAtRequest === timerStateVersion) applyTimer(null);
+      historyVersion.value++;
+    } catch {
+      error.value = "Could not discard the session. Try again.";
+    } finally {
+      busy.value = false;
+      actionBusy.value = false;
     }
   }
   async function updateTimer(alreadyBusy = false) {
@@ -722,6 +756,7 @@ export const useTimerStore = defineStore("timer", () => {
     setCurrent,
     clear,
     toggleRun,
+    cancelSession,
     pauseSession,
     resumeSession,
     startSession,

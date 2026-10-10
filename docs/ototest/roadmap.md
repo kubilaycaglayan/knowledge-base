@@ -32,6 +32,9 @@ to shared tests or be marked as non-interactive with a reason.
 - `/development` is temporary label-picker tooling. It remains directly
   addressable but is excluded from the authenticated product navbar and
   supported route coverage; the navbar test asserts its absence.
+- Board deep links now explain when an unavailable board ID falls back to All
+  boards; the browser acceptance test checks the announced message and
+  normalized route.
 - iOS is out of scope for `#ototest` while the app is not in use. No iOS test
   flows or milestones are included.
 - See [the audit](../test-coverage-audit.md) and
@@ -44,7 +47,7 @@ to shared tests or be marked as non-interactive with a reason.
 | --- | --- | --- | --- | --- |
 | OTOTEST-01 | Build the route, API, feature, and control inventories | High | — | Complete |
 | OTOTEST-02 | Close backend API behavior-map gaps | High | 01 | Complete |
-| OTOTEST-03 | Map and complete web route and control behavior coverage | High | 01 | Proposed |
+| OTOTEST-03 | Map and complete web route and control behavior coverage | High | 01 | In progress |
 | OTOTEST-04 | Add missing real-stack journeys and extension browser coverage | High | 01–03 | Proposed |
 | OTOTEST-05 | Enforce traceability and keep coverage current | High | 01–04 | Proposed |
 

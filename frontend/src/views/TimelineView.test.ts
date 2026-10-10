@@ -32,7 +32,7 @@ describe("TimelineView", () => {
     expect(wrapper.text()).toContain("No activity matches these filters.");
   });
 
-  it("saves a note attached to an activity", async () => {
+  it("saves a note only on the selected activity", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
       if (path.startsWith("/activities?"))
@@ -40,7 +40,13 @@ describe("TimelineView", () => {
           {
             id: "activity-1",
             type: "NOTE_CREATED",
-            title: "Read chapter",
+            title: "First activity",
+            occurredAt: "2026-08-25T12:00:00Z",
+          },
+          {
+            id: "activity-2",
+            type: "NOTE_CREATED",
+            title: "Second activity",
             occurredAt: "2026-08-25T12:00:00Z",
           },
         ];
@@ -49,8 +55,11 @@ describe("TimelineView", () => {
     const wrapper = mount(TimelineView);
     await flushPromises();
 
-    const addNoteButton = wrapper
-      .findAll("button.text-button")
+    const activity = wrapper
+      .findAll("article.timeline-entry")
+      .find((entry) => entry.text().includes("Second activity"));
+    const addNoteButton = activity
+      ?.findAll("button.text-button")
       .find((button) => button.text() === "Add note");
     expect(addNoteButton).toBeDefined();
     await addNoteButton!.trigger("click");
@@ -72,9 +81,46 @@ describe("TimelineView", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          activityId: "activity-1",
+          activityId: "activity-2",
           title: "Key idea",
           content: "Spaced repetition helps.",
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    { modifier: "Control", ctrlKey: true, metaKey: false },
+    { modifier: "Meta", ctrlKey: false, metaKey: true },
+  ])("submits an activity note with $modifier+Enter", async ({ ctrlKey, metaKey }) => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path.startsWith("/activities?"))
+        return [{
+          id: "activity-keyboard",
+          type: "NOTE_CREATED",
+          title: "Keyboard activity",
+          occurredAt: "2026-08-25T12:00:00Z",
+        }];
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    await wrapper.get("article.timeline-entry button.text-button").trigger("click");
+    await wrapper.get('input[aria-label="Activity note title"]').setValue("Keyboard note");
+    const content = wrapper.get('textarea[aria-label="Activity note content"]');
+    await content.setValue("Saved from the keyboard.");
+    await content.trigger("keydown", { key: "Enter", ctrlKey, metaKey });
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/notes",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          activityId: "activity-keyboard",
+          title: "Keyboard note",
+          content: "Saved from the keyboard.",
         }),
       }),
     );
@@ -169,6 +215,271 @@ describe("TimelineView", () => {
     );
   });
 
+  it("limits timeline results to the selected activity type", async () => {
+    const allActivities = [
+      {
+        id: "note-activity",
+        type: "NOTE_CREATED",
+        title: "Created research note",
+        occurredAt: "2026-08-25T12:00:00Z",
+      },
+      {
+        id: "timer-activity",
+        type: "TIMER_STOPPED",
+        title: "Completed focus session",
+        occurredAt: "2026-08-25T13:00:00Z",
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [];
+      if (requestPath.startsWith("/activities?")) {
+        const params = new URLSearchParams(requestPath.slice(requestPath.indexOf("?") + 1));
+        return params.has("type")
+          ? allActivities.filter((activity) => activity.type === params.get("type"))
+          : allActivities;
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Created research note");
+    expect(wrapper.text()).toContain("Completed focus session");
+
+    await wrapper
+      .get('select[aria-label="Activity type"]')
+      .setValue("TIMER_STOPPED");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Completed focus session");
+    expect(wrapper.text()).not.toContain("Created research note");
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith(
+      "/activities?type=TIMER_STOPPED",
+    );
+  });
+
+  it("limits timeline results to the selected path", async () => {
+    const allActivities = [
+      {
+        id: "learning-activity",
+        type: "TIMER_STOPPED",
+        title: "Learning session",
+        occurredAt: "2026-08-25T12:00:00Z",
+        pathId: "path-learning",
+      },
+      {
+        id: "writing-activity",
+        type: "TIMER_STOPPED",
+        title: "Writing session",
+        occurredAt: "2026-08-25T13:00:00Z",
+        pathId: "path-writing",
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths")
+        return [
+          { id: "path-learning", name: "Learning" },
+          { id: "path-writing", name: "Writing" },
+        ];
+      if (requestPath.startsWith("/activities?")) {
+        const params = new URLSearchParams(requestPath.slice(requestPath.indexOf("?") + 1));
+        return params.has("pathId")
+          ? allActivities.filter((activity) => activity.pathId === params.get("pathId"))
+          : allActivities;
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Learning session");
+    expect(wrapper.text()).toContain("Writing session");
+
+    await wrapper.get('select[aria-label="Path"]').setValue("path-learning");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Learning session");
+    expect(wrapper.text()).not.toContain("Writing session");
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith(
+      "/activities?pathId=path-learning",
+    );
+  });
+
+  it("shows the empty state when an applied filter has no matches", async () => {
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [];
+      if (requestPath.startsWith("/activities?")) {
+        return requestPath.includes("type=NOTE_CREATED")
+          ? []
+          : [
+              {
+                id: "timer-activity",
+                type: "TIMER_STOPPED",
+                title: "Completed focus session",
+                occurredAt: "2026-08-25T13:00:00Z",
+              },
+            ];
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Completed focus session");
+
+    await wrapper
+      .get('select[aria-label="Activity type"]')
+      .setValue("NOTE_CREATED");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("No activity matches these filters.");
+    expect(wrapper.text()).not.toContain("Completed focus session");
+  });
+
+  it("does not let an earlier filter response replace newer results", async () => {
+    let resolveInitial!: (activities: unknown[]) => void;
+    let resolveFiltered!: (activities: unknown[]) => void;
+    vi.mocked(api).mockImplementation((requestPath: string) => {
+      if (requestPath === "/paths") return Promise.resolve([]);
+      if (requestPath.startsWith("/activities?")) {
+        return new Promise((resolve) => {
+          if (requestPath.includes("type=NOTE_CREATED"))
+            resolveFiltered = resolve;
+          else resolveInitial = resolve;
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    await vi.waitFor(() => expect(resolveInitial).toBeTypeOf("function"));
+
+    await wrapper
+      .get('select[aria-label="Activity type"]')
+      .setValue("NOTE_CREATED");
+    await wrapper.get("form.filters").trigger("submit");
+    await vi.waitFor(() => expect(resolveFiltered).toBeTypeOf("function"));
+
+    resolveFiltered([
+      {
+        id: "newer-activity",
+        type: "NOTE_CREATED",
+        title: "Current filtered result",
+        occurredAt: "2026-08-25T13:00:00Z",
+      },
+    ]);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Current filtered result");
+
+    resolveInitial([
+      {
+        id: "older-activity",
+        type: "TIMER_STOPPED",
+        title: "Stale unfiltered result",
+        occurredAt: "2026-08-25T12:00:00Z",
+      },
+    ]);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Current filtered result");
+    expect(wrapper.text()).not.toContain("Stale unfiltered result");
+  });
+
+  it("rejects a reversed date range without replacing current results", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path.startsWith("/activities?"))
+        return [
+          {
+            id: "existing-activity",
+            type: "NOTE_CREATED",
+            title: "Existing timeline result",
+            occurredAt: "2026-08-15T12:00:00Z",
+          },
+        ];
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    const activityRequestCount = vi.mocked(api).mock.calls.filter(
+      ([path]) => typeof path === "string" && path.startsWith("/activities?"),
+    ).length;
+    expect(wrapper.text()).toContain("Existing timeline result");
+
+    await wrapper.get('input[aria-label="From date"]').setValue("2026-08-31");
+    await wrapper.get('input[aria-label="To date"]').setValue("2026-08-01");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "The end date must be on or after the start date.",
+    );
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path]) => typeof path === "string" && path.startsWith("/activities?"),
+      ),
+    ).toHaveLength(activityRequestCount);
+    expect(wrapper.text()).toContain("Existing timeline result");
+
+    await wrapper.get('input[aria-label="From date"]').setValue("2026-08-01");
+    await wrapper.get('input[aria-label="To date"]').setValue("2026-08-31");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path]) => typeof path === "string" && path.startsWith("/activities?"),
+      ),
+    ).toHaveLength(activityRequestCount + 1);
+  });
+
+  it("clears all timeline filters back to the default state", async () => {
+    const activities = [
+      {
+        id: "activity-1",
+        type: "TIMER_STOPPED",
+        title: "Learning session",
+        occurredAt: "2026-08-15T12:00:00Z",
+        pathId: "path-1",
+      },
+      {
+        id: "activity-2",
+        type: "NOTE_CREATED",
+        title: "General note",
+        occurredAt: "2026-08-20T12:00:00Z",
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [{ id: "path-1", name: "Learning" }];
+      if (requestPath.startsWith("/activities?")) {
+        const params = new URLSearchParams(requestPath.slice(requestPath.indexOf("?") + 1));
+        return params.has("type") || params.has("pathId") || params.has("from") || params.has("to")
+          ? activities.slice(0, 1)
+          : activities;
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    await wrapper.get('select[aria-label="Activity type"]').setValue("TIMER_STOPPED");
+    await wrapper.get('select[aria-label="Path"]').setValue("path-1");
+    await wrapper.get('input[aria-label="From date"]').setValue("2026-08-01");
+    await wrapper.get('input[aria-label="To date"]').setValue("2026-08-31");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+    expect(wrapper.text()).not.toContain("General note");
+
+    await wrapper.get("button.clear-timeline-filters").trigger("click");
+    await flushPromises();
+
+    expect((wrapper.get('select[aria-label="Activity type"]').element as HTMLSelectElement).value).toBe("");
+    expect((wrapper.get('select[aria-label="Path"]').element as HTMLSelectElement).value).toBe("");
+    expect((wrapper.get('input[aria-label="From date"]').element as HTMLInputElement).value).toBe("");
+    expect((wrapper.get('input[aria-label="To date"]').element as HTMLInputElement).value).toBe("");
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/activities?");
+    expect(wrapper.text()).toContain("General note");
+  });
+
   it("reports initial-load and note-save failures and ignores incomplete notes", async () => {
     vi.mocked(api).mockRejectedValueOnce(new Error("paths failed"));
     const failedLoad = mount(TimelineView);
@@ -177,6 +488,7 @@ describe("TimelineView", () => {
       "Unable to load activity.",
     );
 
+    let noteSaveAttempts = 0;
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
         if (path === "/paths") return [];
@@ -189,8 +501,10 @@ describe("TimelineView", () => {
               occurredAt: "2026-08-25T12:00:00Z",
             },
           ];
-        if (path === "/notes" && options?.method === "POST")
-          throw new Error("note failed");
+        if (path === "/notes" && options?.method === "POST") {
+          noteSaveAttempts += 1;
+          if (noteSaveAttempts === 1) throw new Error("note failed");
+        }
         return undefined;
       },
     );
@@ -230,6 +544,24 @@ describe("TimelineView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe(
       "Could not save activity note.",
     );
+    expect(
+      (wrapper.get('input[aria-label="Activity note title"]')
+        .element as HTMLInputElement).value,
+    ).toBe("Insight");
+    expect(
+      (wrapper.get('textarea[aria-label="Activity note content"]')
+        .element as HTMLTextAreaElement).value,
+    ).toBe("Content");
+
+    await wrapper
+      .findAll("button.primary")
+      .find((button) => button.text() === "Save note")!
+      .trigger("click");
+    await flushPromises();
+    expect(noteSaveAttempts).toBe(2);
+    expect(
+      wrapper.find('input[aria-label="Activity note title"]').exists(),
+    ).toBe(false);
   });
 
   it("closes an activity note editor without saving", async () => {
@@ -262,5 +594,17 @@ describe("TimelineView", () => {
     expect(
       wrapper.find('input[aria-label="Activity note title"]').exists(),
     ).toBe(false);
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Add note")!
+      .trigger("click");
+    expect(
+      (wrapper.get('input[aria-label="Activity note title"]')
+        .element as HTMLInputElement).value,
+    ).toBe("");
+    expect(
+      (wrapper.get('textarea[aria-label="Activity note content"]')
+        .element as HTMLTextAreaElement).value,
+    ).toBe("");
   });
 });

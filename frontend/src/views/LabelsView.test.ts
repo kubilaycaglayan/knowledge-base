@@ -7,6 +7,20 @@ import { createMemoryHistory, createRouter } from "vue-router";
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("LabelsView", () => {
+  it("shows the intentional empty state when no labels exist", async () => {
+    setActivePinia(createPinia());
+    vi.mocked(api).mockResolvedValue([]);
+    const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    try {
+      await flushPromises();
+      expect(wrapper.text()).toContain("No labels yet. Add one above to get started.");
+      expect(wrapper.findAll(".label-row")).toHaveLength(0);
+      expect(wrapper.findAll('[role="alert"]')).toHaveLength(0);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("restores and updates the label query in the URL", async () => {
     vi.mocked(api).mockResolvedValue([
       { id: "one", name: "Study", color: null, scopes: ["NOTE"] },
@@ -244,6 +258,94 @@ describe("LabelsView", () => {
         }),
       }),
     );
+  });
+
+  it("rejects blank and duplicate label names without losing the draft", async () => {
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels" && !options)
+        return [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }];
+      if (path === "/labels" && options?.method === "POST")
+        throw new Error("duplicate");
+      return undefined;
+    });
+    const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add label"]').trigger("click");
+    const form = wrapper.get(".label-create-form");
+    const name = wrapper.get('input[name="label-name"]');
+
+    await name.setValue("   ");
+    await form.trigger("submit");
+    expect(wrapper.get('[role="alert"]').text()).toBe("Enter a name.");
+    expect(vi.mocked(api).mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
+
+    await name.setValue("Study");
+    await form.trigger("submit");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "Could not create this label. Names must be unique.",
+    );
+    expect((name.element as HTMLInputElement).value).toBe("Study");
+  });
+
+  it("keeps a label after removal is cancelled or fails", async () => {
+    const cancelledOpen = vi.fn().mockResolvedValue(null);
+    vi.mocked(api).mockResolvedValue([
+      { id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] },
+    ]);
+    const cancelled = mount(LabelsView, {
+      global: {
+        stubs: {
+          PromptDialog: { template: "<div />", methods: { open: cancelledOpen } },
+        },
+      },
+    });
+    await flushPromises();
+    await cancelled.get('button[aria-label="Remove Study"]').trigger("click");
+    await flushPromises();
+    expect(cancelled.text()).toContain("Study");
+    expect(vi.mocked(api).mock.calls.some(([, options]) => options?.method === "DELETE")).toBe(false);
+
+    const confirmOpen = vi.fn().mockResolvedValue("confirmed");
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels" && !options)
+        return [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }];
+      if (path.startsWith("/labels/one") && options?.method === "DELETE")
+        throw new Error("assigned or unavailable");
+      return undefined;
+    });
+    const failed = mount(LabelsView, {
+      global: {
+        stubs: {
+          PromptDialog: { template: "<div />", methods: { open: confirmOpen } },
+        },
+      },
+    });
+    await flushPromises();
+    await failed.get('button[aria-label="Remove Study"]').trigger("click");
+    await flushPromises();
+    expect(confirmOpen).toHaveBeenCalledTimes(2);
+    expect(failed.text()).toContain("Study");
+    expect(failed.get('[role="alert"]').text()).toBe("Could not remove this label.");
+  });
+
+  it("preserves a label edit draft when saving fails", async () => {
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels" && !options)
+        return [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }];
+      if (path === "/labels/one" && options?.method === "PUT")
+        throw new Error("temporary failure");
+      return undefined;
+    });
+    const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    await flushPromises();
+    await wrapper.get('button[aria-label="Edit Study"]').trigger("click");
+    const name = wrapper.get('.label-edit-dialog input[name="label-name"]');
+    await name.setValue("Study notes");
+    await wrapper.get(".label-edit-dialog form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain("Could not save this label.");
+    expect((name.element as HTMLInputElement).value).toBe("Study notes");
   });
 
   it("shows Logs as an editable label scope", async () => {
