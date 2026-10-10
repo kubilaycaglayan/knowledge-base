@@ -37,6 +37,15 @@ class LabelApiTest {
   }
 
   @Test
+  void unknownLabelScopeIsRejectedBeforeServiceInvocation() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    mvc.perform(get("/api/v1/labels?scope=UNKNOWN").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(service, history);
+  }
+
+  @Test
   void invalidLabelPayloadIsRejected() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());

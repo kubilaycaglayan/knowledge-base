@@ -187,7 +187,8 @@ browser interaction evidence remains a separate layer.
 ## Flow: Cover Labels operations
 
 - [x] `GET /api/v1/labels` covers the unfiltered list, scope filtering, and
-  owner isolation.
+  owner isolation; an unknown scope returns 400 before service execution
+  (`LabelApiTest.unknownLabelScopeIsRejectedBeforeServiceInvocation`).
 - [x] `POST /api/v1/labels` covers creation, defaults, colors, and scopes.
   It also rejects blank/over-limit names and accepts the 80-character
   maximum (`LabelApiTest.invalidLabelPayloadIsRejected` and
