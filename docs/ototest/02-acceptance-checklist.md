@@ -918,8 +918,16 @@ browser interaction evidence remains a separate layer.
   the suite. CI provisions a per-run database in the `backend-postgres` job
   (`.github/workflows/verify.yml`); migration transformation tests remain
   separately named under `db.migration`.
-- [ ] Each new migration that transforms existing rows has a focused assertion
-  for the transformed data and supported upgrade behavior.
+- [x] Each new migration that transforms existing rows has a focused assertion
+  for transformed data and rerun/upgrade behavior. The two Java migrations that
+  backfill serialized note and board-card content in this revision's history
+  each have a named fixture-based transformation test:
+  `V65DeriveNoteContentTextTest.rewritesDocumentCopiesAndLeavesLegacyTextAlone`
+  covers transformed rich documents, preserved legacy text, null copies,
+  idempotent reruns, and auto-commit restoration;
+  `V67DeriveBoardCardBodyTextTest.fillsThePlainTextOfEveryCardBody` covers rich,
+  empty, legacy, and non-document bodies. Migration files and tests were
+  introduced together in commits `1bf189e` and `064b7d1` respectively.
 
 ## Flow: Match each operation to the right evidence layer
 
