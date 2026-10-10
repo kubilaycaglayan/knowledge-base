@@ -294,8 +294,11 @@ the extension has its own scope in OTOTEST-04.
 - [x] Escape closes dialogs where Escape is an advertised dismissal action.
   Evidence: the same browser test sends Escape and verifies New board closes
   and the Boards dialog is restored.
-- [ ] Clicking a dialog backdrop closes only dialogs that support backdrop
-  dismissal.
+- [x] Clicking a dialog backdrop closes only dialogs that support backdrop
+  dismissal. Evidence: `closes backdrop-dismissible dialogs but keeps
+  destructive confirmations open` in `frontend/scripts/board.acceptance.test.mjs`
+  closes the Boards manager on a backdrop click, keeps Archive card open on a
+  backdrop click, then cancels without archiving the card.
 
 ### Flow: Receive operation feedback
 

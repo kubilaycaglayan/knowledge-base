@@ -996,6 +996,25 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await manager.getByRole("button", { name: "Add board" }).evaluate((button) => document.activeElement === button), true);
   });
 
+  it("closes backdrop-dismissible dialogs but keeps destructive confirmations open", async (t) => {
+    const { page } = await fixture(t);
+    await boardAction(page, "Manage boards");
+    const manager = page.getByRole("dialog", { name: "Boards" });
+    await manager.waitFor();
+    await page.locator(".dialog-backdrop").click({ position: { x: 8, y: 8 } });
+    await manager.waitFor({ state: "detached" });
+
+    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
+    await page.getByRole("button", { name: "Archive card" }).click();
+    const confirmation = page.getByRole("alertdialog", { name: "Archive card?" });
+    await confirmation.waitFor();
+    await page.locator(".dialog-backdrop.confirm-layer").click({ position: { x: 8, y: 8 } });
+    await confirmation.waitFor();
+    await confirmation.getByRole("button", { name: "Cancel" }).click();
+    await confirmation.waitFor({ state: "detached" });
+    assert.equal(await page.locator(".board-card", { hasText: "Ship timeline" }).count(), 1);
+  });
+
   it("renames the selected board from board settings, without losing its active view", async (t) => {
     const { page } = await fixture(t);
     await selectedTab(page).click();
