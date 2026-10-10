@@ -122,7 +122,10 @@ browser interaction evidence remains a separate layer.
   verifier-level malformed tokens are covered by
   `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
   Claim-level unverified email, missing email/subject, and normalized identity
-  behavior are covered by `GoogleIdTokenIdentityVerifierTest`. The configured
+  behavior are covered by
+  `GoogleIdTokenIdentityVerifierTest.rejectsProviderIdentitiesWithoutVerifiedEmailOrSubject`
+  and `GoogleIdTokenIdentityVerifierTest.normalizesVerifiedProviderIdentityAndFallsBackToEmailName`.
+  The configured
   audience is asserted directly through the Google library verifier by
   `GoogleIdTokenIdentityVerifierTest.configuredVerifierTrustsOnlyTheTrimmedConfiguredAudience`;
   Google rejects tokens whose audience does not match this configured client ID.
@@ -298,10 +301,12 @@ browser interaction evidence remains a separate layer.
   aggregation arithmetic, including cross-owner isolation.
 - [x] Timer duration assertions use server responses or persisted rows:
   `TimerPauseIntegrationTest.pauseRecordsTheSegmentAndKeepsTheSessionContext`
-  compares pause response, draft, and recorded entry; `finishEndsAPausedSession`
-  compares paused response with persisted segment; `ManualTimeEntryIntegrationTest`
-  verifies response/readback duration; `TimerServiceEdgeTest` verifies stop
-  threshold behavior from the service result.
+  compares pause response, draft, and recorded entry;
+  `TimerPauseIntegrationTest.finishEndsAPausedSession` compares paused response
+  with persisted segment; `ManualTimeEntryIntegrationTest.manualEntryPersistsDurationAndRejectsInvalidIntervals`
+  verifies response/readback duration; `TimerServiceEdgeTest.stoppingATimerUnderTwoSecondsDiscardsItInsteadOfSavingASession`
+  and `TimerServiceEdgeTest.stoppingATimerAtTwoSecondsPersistsTheSession`
+  verify stop threshold behavior from the service result.
 
 ## Flow: Cover timer WebSocket transport
 
@@ -359,14 +364,18 @@ browser interaction evidence remains a separate layer.
   (`BoardStatusRenameIntegrationTest.statusRenamePersistsAndRejectsAStatusFromAnotherBoard`).
 - [x] `PUT /api/v1/boards/{id}/statuses/{statusId}/sort` covers MANUAL,
   PRIORITY, and PRIORITY_LAST, priority ordering, and invalid/foreign/archived
-  restrictions (`BoardColumnSortIntegrationTest`).
+  restrictions (`BoardColumnSortIntegrationTest.statusesDefaultToManualSort`,
+  `BoardColumnSortIntegrationTest.statusSortCanBeSetAndCleared`,
+  `BoardColumnSortIntegrationTest.priorityPagesOrderByPriorityThenPosition`,
+  and `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`).
 - [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
   missing, and foreign status IDs, with saved order preserved after rejected
   requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`).
 - [x] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
   active cards after existing destination cards, persisted archive state, and
   preventing removal of the final active status
-  (`BoardStatusArchiveIntegrationTest`).
+  (`BoardStatusArchiveIntegrationTest.archivingStatusMovesCardsAfterExistingDestinationCards`,
+  `BoardStatusArchiveIntegrationTest.archivingFinalActiveStatusConflicts`).
 - [x] `POST /api/v1/boards/{id}/statuses/{statusId}/restore` covers active
   response/readback state, stable identity, position, and board ownership
   (`BoardStatusRestoreIntegrationTest.restoredStatusPersistsItsActiveStateIdentityAndPosition`).
@@ -375,18 +384,27 @@ browser interaction evidence remains a separate layer.
   (`BoardCardListIntegrationTest.cardListDefaultsFiltersStatusesAndListsArchivedCardsForOwner`).
 - [x] `GET /api/v1/boards/{id}/cards/page` covers empty/small/exact/overflow
   boundaries, safe default page size, stable cursor, PRIORITY and PRIORITY_LAST
-  page walks (`BoardControllerApiTest` and `BoardColumnSortIntegrationTest`).
+  page walks (`BoardControllerApiTest.cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor`,
+  `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
+  `BoardColumnSortIntegrationTest.priorityPagesWalkEveryCardOnce`, and
+  `BoardColumnSortIntegrationTest.priorityLastPagesOrderLowFirst`).
 - [x] `POST /api/v1/boards/{id}/cards` covers persisted card creation with
   paths/labels, requested status/position, and date/status/path/label
   validation (`KnowIntegrationTest.boardCardsAcceptMultiplePathsAndBoardScopedLabels`
-  and `BoardControllerApiTest`).
+  and `BoardControllerApiTest.cardIsCreatedInTheRequestedStatusAtItsEnd`,
+  `invalidCardDateRangeIsRejectedBeforePersistence`,
+  `cardCreateRejectsAForeignOrArchivedStatus`,
+  `cardCanReferenceMultipleOwnedPaths`, and
+  `cardRejectsForeignPathAndLabelReferences`).
 - [x] `GET /api/v1/boards/{id}/cards/{cardId}` covers owned detail plus missing,
   foreign, and wrong-board card IDs
   (`BoardCardDetailIntegrationTest.cardDetailReturnsOwnedCardAndHidesMissingOrMisnestedCards`).
 - [x] `PUT /api/v1/boards/{id}/cards/{cardId}` covers persisted scalar and
   owned-reference updates, foreign reference rejection, and stale
   `expectedUpdatedAt` conflict behavior
-  (`BoardCardUpdateIntegrationTest` and `BoardControllerApiTest`).
+  (`BoardCardUpdateIntegrationTest.cardUpdatePersistsFieldsAndOwnedReferences`,
+  `BoardControllerApiTest.staleCardUpdateReturnsConflictWithoutOverwritingTheNewerCard`,
+  and `BoardControllerApiTest.cardRejectsForeignPathAndLabelReferences`).
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/move` covers persisted target
   status/position order and rejection of foreign and archived statuses
   (`BoardCardMoveIntegrationTest.cardMovePersistsDestinationPositionAndRejectsForeignOrArchivedStatuses`);
@@ -409,15 +427,19 @@ browser interaction evidence remains a separate layer.
   (`KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/restore` covers active-status
   restoration, fallback to an active status after the prior status is archived,
-  and persisted visibility/placement (`BoardCardRestoreIntegrationTest` and
-  `KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
+  and persisted visibility/placement
+  (`BoardCardRestoreIntegrationTest.restoringCardWithArchivedStatusFallsBackToFirstActiveStatus`
+  and `KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
 - [x] `GET /api/v1/boards/{id}/gantt` covers window validation, active dated,
   undated, and out-of-window cards per API behavior, plus archived-status
-  filtering (`KnowIntegrationTest` and `BoardControllerApiTest`).
+  filtering (`KnowIntegrationTest.ganttReturnsDatedCardsWithOpenViewDisabled`,
+  `KnowIntegrationTest.ganttExcludesCardsInArchivedStatuses`,
+  `BoardControllerApiTest.ganttIncludesUndatedAndOutOfWindowActiveCards`, and
+  `BoardControllerApiTest.ganttRejectsReversedDateWindows`).
 - [x] `GET /api/v1/boards/all/columns` covers merged names/order, user tab
   scope, hidden/archived/foreign exclusions, and empty/authenticated behavior
   (`AllBoardsIntegrationTest.columnsMergeByNameInTabOrder` and
-  `columnsCoverOnlyTheUsersTabBoards`).
+  `AllBoardsIntegrationTest.columnsCoverOnlyTheUsersTabBoards`).
 - [x] `GET /api/v1/boards/all/columns/cards/page` covers cross-board cursors,
   many-page stability, empty/unknown columns, invalid limits, foreign-user
   isolation, and sort modes (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
@@ -586,8 +608,10 @@ browser interaction evidence remains a separate layer.
   return 404 and leave owner data unchanged
   (`CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`,
   `CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources`,
-  `BoardDetailIntegrationTest`, `BoardCardDetailIntegrationTest`,
-  `NoteDetailIntegrationTest`, and `LogDetailIntegrationTest`).
+  `BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`,
+  `BoardCardDetailIntegrationTest.cardDetailReturnsOwnedCardAndHidesMissingOrMisnestedCards`,
+  `NoteDetailIntegrationTest.noteDetailReturnsOwnedNoteAndHidesMissingForeignAndArchivedIds`,
+  and `LogDetailIntegrationTest.logDetailReturnsOwnedLogAndHidesMissingAndForeignIds`).
 - [x] Mutations that accept referenced IDs verify those IDs belong to the
   authenticated user, with foreign path/activity/entry/label/status/board
   references and unchanged owner data covered by
@@ -608,7 +632,10 @@ browser interaction evidence remains a separate layer.
   and `clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`).
 - [x] Cross-user coverage uses disposable owner and intruder accounts and
   verifies responses plus unchanged owner data
-  (`CrossUserIsolationIntegrationTest` and the import batch ownership tests).
+  (`CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources`,
+  `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`,
+  `KnowIntegrationTest.knowledgeBaseBatchListAndUndoAreOwnerScopedAndRepeatedUndoIsIdempotent`,
+  and `KnowIntegrationTest.clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`).
 - [x] Authenticated network, timeout, 404, 500, 502, 503, and 504 failures do
   not erase the current session; a stale 401 cannot clear a newer sign-in
   (`frontend/src/lib/api.test.ts`: `turns server failures into a human-readable error and preserves technical details`,
