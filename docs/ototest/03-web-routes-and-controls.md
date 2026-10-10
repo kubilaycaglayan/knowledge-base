@@ -14,11 +14,11 @@ and recovery states.
 
 ## Tasks
 
-- [ ] Create one route matrix from `frontend/src/main.ts`; include redirects,
+- [x] Create one route matrix from `frontend/src/main.ts`; include redirects,
   deep links, query state, and dialogs opened from record-specific URLs.
-- [ ] Mark route behavior as covered by view test, navigation test, fixture
+- [x] Mark route behavior as covered by view test, navigation test, fixture
   browser test, real-stack browser test, or gap.
-- [ ] Create action inventories for Sessions/timer, Paths, Timeline, Logs,
+- [x] Create action inventories for Sessions/timer, Paths, Timeline, Logs,
   Reports, Calendar, Imports, Settings, Labels, Boards/archive, and Notes.
 - [ ] For each action, identify its visible label/accessibility name, action
   target, resulting state/navigation/request, and linked test name.
