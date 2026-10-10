@@ -71,8 +71,10 @@ browser interaction evidence remains a separate layer.
   Unknown board-card priority binding is explicitly marked as a
   maintainer-owned contract decision on create, update, and create-in-column
   rows in [`01-api-matrix.md`](01-api-matrix.md).
-- [ ] Mark unsupported/internal operations with a rationale and owner rather
-  than silently omitting them.
+- [x] Mark unsupported/internal operations with a rationale and owner rather
+  than silently omitting them. Both documented timer-cancel route aliases are
+  explicitly marked as having no current supported web/extension caller; the
+  Knowledge Base maintainers own the client-support or deprecation decision.
 
 ## Flow: Inventory every API operation
 
