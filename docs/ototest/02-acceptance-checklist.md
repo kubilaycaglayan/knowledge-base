@@ -514,8 +514,10 @@ browser interaction evidence remains a separate layer.
   or log entities (`KnowIntegrationTest.knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo`,
   `KnowIntegrationTest.knowledgeBaseCsvImportAcceptsLegacyRowsWithoutColorOrLogEntities`,
   and `KnowledgeBaseTransferServiceTest.importingTheSameStableIdsSkipsExistingRecords`).
-- [ ] `POST /api/v1/imports/knowledge-base` covers malformed CSV, unsupported
-  values, and documented rollback/partial-result behavior.
+- [x] `POST /api/v1/imports/knowledge-base` covers malformed CSV, unsupported
+  values, and rollback after an earlier valid row was processed
+  (`KnowIntegrationTest.knowledgeBaseCsvImportRejectsMalformedAndUnsupportedRowsWithoutPartialState`
+  and `KnowledgeBaseTransferServiceTest.rejectsMissingOversizedAndMalformedCsvBeforeCreatingAImportBatch`).
 - [x] `GET /api/v1/imports/knowledge-base/batches` covers owner-scoped batch
   list behavior.
 - [x] `DELETE /api/v1/imports/knowledge-base/batches/{id}` covers undo,
