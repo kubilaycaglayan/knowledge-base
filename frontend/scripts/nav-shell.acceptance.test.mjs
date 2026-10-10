@@ -36,7 +36,7 @@ async function fixture(t, width, { warmup = false } = {}) {
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path.startsWith("/reports")) body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
     else if (path === "/timers/draft" || path === "/preferences") body = {};
-    await route.fulfill({ json: body });
+    await route.fulfill({ status: path === "/notes/gone" ? 404 : 200, json: path === "/notes/gone" ? { message: "Not found" } : body });
   });
   const page = await context.newPage();
   await page.goto(server.resolvedUrls.local[0]);
@@ -139,6 +139,13 @@ it("loads a note editor when the browser opens its deep link directly", async (t
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Browser deep link");
   await page.getByRole("textbox", { name: "Note content" }).waitFor();
   assert.match(await page.getByRole("textbox", { name: "Note content" }).innerText(), /Loaded directly/);
+});
+
+it("shows an unavailable state for a missing note opened by browser deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}notes/gone`);
+  await page.getByRole("alert").filter({ hasText: "Unable to open this note." }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/gone");
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {

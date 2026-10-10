@@ -703,9 +703,11 @@ the extension has its own scope in OTOTEST-04.
   deep link directly' scripts/nav-shell.acceptance.test.mjs` (mocked API).
 - [ ] Closing a note returns to its list context and clears its selected URL.
 - [x] Opening a missing or inaccessible note shows a recoverable unavailable
-  state in the component route test. Evidence: `cd frontend && npx vitest run
-  src/views/DeepLinks.test.ts` — `shows a recoverable error when a directly
-  linked note is unavailable` (mocked API).
+  state in component and desktop Chromium tests. Evidence: `cd frontend && npx
+  vitest run src/views/DeepLinks.test.ts` — `shows a recoverable error when a
+  directly linked note is unavailable`; `cd frontend && node --test
+  --test-name-pattern='missing note opened by browser deep link' scripts/nav-
+  shell.acceptance.test.mjs` (mocked API).
 
 ### Flow: Edit note content
 
