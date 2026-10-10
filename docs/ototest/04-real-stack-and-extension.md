@@ -19,7 +19,7 @@ persistence boundaries.
   `notes.real-stack.acceptance.test.mjs`.
 - [ ] Add representative create/edit/archive/restore journeys for Notes,
   Paths, Logs, Labels, and Calendar against isolated disposable data.
-- [ ] Add report filter/range and settings/preferences persistence journeys
+- [x] Add report filter/range and settings/preferences persistence journeys
   where persistence affects user-visible behavior.
 - [ ] Add import/export journeys for supported Clockify and Knowledge Base
   transfer flows, including validation and failure recovery.
@@ -110,8 +110,14 @@ permissions, or unavailable API recovery.
   `frontend/scripts/calendar.real-stack.acceptance.test.mjs`, run with
   `./scripts/run-calendar-e2e.sh`. It follows a query-selected date and checks
   each state with a fresh range API read.
+- **Reports and Settings, desktop Chromium:** `persists report range in
+  navigation and theme preference after reload` in
+  `frontend/scripts/reports-settings.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-reports-settings-e2e.sh`. It checks report range values via
+  the API and URL, and theme preference via local storage, document theme, and
+  the Settings control.
 
-Reports, Settings, both transfer formats, and
+Both transfer formats and
 the remaining signed-in timer/notes and service-worker recovery journeys remain
 open for this milestone.
 

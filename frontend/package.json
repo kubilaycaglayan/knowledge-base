@@ -21,6 +21,7 @@
     "test:logs:e2e": "node --test scripts/logs.real-stack.acceptance.test.mjs",
     "test:labels:e2e": "node --test scripts/labels.real-stack.acceptance.test.mjs",
     "test:calendar:e2e": "node --test scripts/calendar.real-stack.acceptance.test.mjs",
+    "test:reports-settings:e2e": "node --test scripts/reports-settings.real-stack.acceptance.test.mjs",
     "test:lines:e2e": "node --test --test-concurrency=1 scripts/line-history.real-stack.acceptance.test.mjs",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview"
