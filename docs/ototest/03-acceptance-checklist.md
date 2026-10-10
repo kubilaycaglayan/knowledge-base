@@ -1151,7 +1151,7 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Move one card between statuses
 
-- [x] Moving a card to another status places it once in the destination. Evidence: `boards.test.ts` / `reconciles a moved card in both Kanban and Gantt collections` and `reorders neighboring cards when moving within the same status`; `BoardView.test.ts` / `flushes pending edits when closed and moves the card from the status select`.
+- [x] Moving a card to another status places it once in the destination. Evidence: `boards.test.ts` / `reconciles a moved card in both Kanban and Gantt collections` and `reorders neighboring cards when moving within the same status`; `BoardView.test.ts` / `flushes pending edits when closed and moves the card from the status select`; `board.acceptance.test.mjs` / `keeps one card present through edit, move, archive, and restore` verifies the card remains exactly once in its destination after reload.
 
 ### Flow: Reorder cards in an unsorted column
 

@@ -889,6 +889,11 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
     await setCardStatus(page, "Never disappears", "Pending");
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Never disappears" }).waitFor();
+    await page.reload();
+    const movedCard = page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Never disappears" });
+    await movedCard.waitFor();
+    assert.equal(await page.locator(".kanban-column").first().getByRole("heading", { name: "Never disappears" }).count(), 0, "Reload keeps the card out of its previous status");
+    assert.equal(await movedCard.count(), 1, "Reload keeps the card in exactly one destination status");
     await archiveCardFromEditor(page, "Never disappears");
     await restoreFromArchive(page, "Never disappears");
     await page.getByRole("heading", { name: "Never disappears" }).waitFor();
