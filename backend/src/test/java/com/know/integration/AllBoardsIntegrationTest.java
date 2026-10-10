@@ -638,6 +638,35 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     JsonNode unchanged = get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody();
     assertEquals(statusId(token, work, "Blocked"), unchanged.get("statusId").asText());
     assertFalse(statusNames(token, work).contains("Invalid"));
+
+    String overlongName = "m".repeat(81);
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        post(
+                "/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column",
+                token,
+                "{\"columnName\":\"" + overlongName + "\",\"position\":0}")
+            .getStatusCode());
+    assertEquals(
+        statusId(token, work, "Blocked"),
+        get("/api/v1/boards/" + work + "/cards/" + cardId, token)
+            .getBody()
+            .get("statusId")
+            .asText());
+    assertFalse(statusNames(token, work).contains(overlongName));
+
+    String maximumName = "m".repeat(80);
+    ResponseEntity<JsonNode> atLimit =
+        post(
+            "/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column",
+            token,
+            "{\"columnName\":\"" + maximumName + "\",\"position\":0}");
+    assertEquals(HttpStatus.OK, atLimit.getStatusCode());
+    assertEquals(maximumName, atLimit.getBody().get("status").get("name").asText());
+    List<String> namesAfterMove = statusNames(token, work);
+    assertEquals(maximumName, namesAfterMove.get(namesAfterMove.size() - 1));
+    JsonNode movedAtLimit = get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody();
+    assertEquals(atLimit.getBody().get("status").get("id"), movedAtLimit.get("statusId"));
   }
 
   // AB-08
