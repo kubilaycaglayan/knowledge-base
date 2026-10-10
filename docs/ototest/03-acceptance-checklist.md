@@ -404,6 +404,10 @@ the extension has its own scope in OTOTEST-04.
   running state. Evidence: `KnowIntegrationTest.stoppingARunningTimerSavesItsCompletedIntervalAndClearsCurrentState`
   uses a controlled 75-second interval and verifies it appears in history and
   is no longer current.
+- [x] Finishing a paused session clears the tracker and its saved draft
+  context. Evidence: `FloatingTimeTracker.test.ts` / `finishes a paused
+  session and clears its draft context` verifies the finish request, cleared
+  draft payload, and Start timer state.
 
 ### Flow: Cancel a running session
 

@@ -545,6 +545,33 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("finishes a paused session and clears its draft context", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
+      if (path === "/timers/current") return null;
+      if (path === "/timers/draft" && !options.method)
+        return { pathId: "path-1", labelIds: ["label-1"], description: "Paused work", pausedSeconds: 120 };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Stop timer"]').trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/finish", { method: "POST", body: "{}" });
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/draft", {
+      method: "PUT",
+      body: JSON.stringify({ pathId: null, labelIds: [], description: null }),
+    });
+    expect(wrapper.get('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Resume session"]').exists()).toBe(false);
+    expect(useTimerStore().description).toBe("");
+    expect(useTimerStore().selectedLabelIds).toEqual([]);
+    wrapper.unmount();
+  });
+
   // SP-10
   it("keeps a paused session after resume fails and resumes it after retry", async () => {
     let resumeAttempts = 0;
