@@ -947,8 +947,14 @@ browser interaction evidence remains a separate layer.
   `SearchServiceTextTest.termsSplitOnWhitespaceDropDuplicatesAndStopAtTheCap`,
   and `SearchServiceTextTest.longTextIsCutAroundTheEarliestMatch`; API-layer
   tests are retained separately for binding and HTTP status behavior.
-- [ ] Persistence, ownership, transaction, and multi-record behavior link to
-  integration evidence.
+- [x] Persistence, ownership, transaction, and multi-record behavior link to
+  integration evidence. Operation rows name persistence/readback assertions
+  for writes, owner-scope assertions for direct and referenced IDs, and
+  transaction cases where atomicity applies. Cross-operation isolation is
+  linked to `CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources`
+  and `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`;
+  guarded failure/readback assertions are enumerated in the transaction
+  rollback evidence section of [`01-api-matrix.md`](01-api-matrix.md#multi-record-transaction-rollback-evidence).
 - [ ] PostgreSQL constraints, SQL semantics, and migration behavior link to
   guarded PostgreSQL evidence.
 - [ ] Browser E2E evidence is required only where client interaction or
