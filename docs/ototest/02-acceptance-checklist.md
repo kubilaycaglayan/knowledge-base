@@ -989,8 +989,11 @@ browser interaction evidence remains a separate layer.
   referenced IDs, and generic malformed-body coverage only alongside focused
   endpoint assertions; it does not use any of them to claim unrelated positive
   or persistence behavior.
-- [ ] Relevant CI job or local command is recorded beside each executable
-  evidence link.
+- [x] Relevant CI job or local command is recorded beside each executable
+  evidence link. The matrix's evidence-command map names `verify`'s `backend`
+  job and the Docker Gradle local command for Java/API/service suites,
+  `backend-postgres` for guarded database assertions, `web-and-extension` for
+  client suites, and the named real-browser/E2E jobs for browser coverage.
 - [ ] Unavailable, manual, or environment-guarded evidence is labeled with an
   owner and a runbook/command rather than marked complete.
 
