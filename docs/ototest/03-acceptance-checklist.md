@@ -294,7 +294,11 @@ the extension has its own scope in OTOTEST-04.
   frontend && npx vitest run src/views/PathsView.test.ts -t 'reordered path
   list'` simulates drag and drop, asserts the ordered Path IDs sent to the API,
   and verifies the order after a fresh component load (mocked API).
-- [ ] Hiding a path's board asks for confirmation before removing its board tab.
+- [x] Hiding a path's board asks for confirmation before removing its board
+  tab. Evidence: `cd frontend && npx vitest run src/views/PathsView.test.ts -t
+  'board switch off|hide confirmation button|hide confirmation keeps'` checks
+  confirmation copy, explicit Hide board action, cancellation, and that no
+  visibility request occurs before confirmation (mocked API).
 - [ ] Showing a hidden path board restores its tab.
 
 ### Flow: Open a path history
