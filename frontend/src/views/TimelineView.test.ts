@@ -89,7 +89,10 @@ describe("TimelineView", () => {
     );
   });
 
-  it("submits an activity note with Control or Meta+Enter", async () => {
+  it.each([
+    { modifier: "Control", ctrlKey: true, metaKey: false },
+    { modifier: "Meta", ctrlKey: false, metaKey: true },
+  ])("submits an activity note with $modifier+Enter", async ({ ctrlKey, metaKey }) => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
       if (path.startsWith("/activities?"))
@@ -107,7 +110,7 @@ describe("TimelineView", () => {
     await wrapper.get('input[aria-label="Activity note title"]').setValue("Keyboard note");
     const content = wrapper.get('textarea[aria-label="Activity note content"]');
     await content.setValue("Saved from the keyboard.");
-    await content.trigger("keydown", { key: "Enter", ctrlKey: true });
+    await content.trigger("keydown", { key: "Enter", ctrlKey, metaKey });
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith(
