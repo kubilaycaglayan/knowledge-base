@@ -955,8 +955,18 @@ browser interaction evidence remains a separate layer.
   and `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`;
   guarded failure/readback assertions are enumerated in the transaction
   rollback evidence section of [`01-api-matrix.md`](01-api-matrix.md#multi-record-transaction-rollback-evidence).
-- [ ] PostgreSQL constraints, SQL semantics, and migration behavior link to
-  guarded PostgreSQL evidence.
+- [x] PostgreSQL constraints, SQL semantics, and migration behavior link to
+  guarded PostgreSQL evidence. Direct database constraints and referential
+  actions are asserted by
+  `PostgresDatabaseConstraintIntegrationTest.postgresEnforcesTimeEntryChecksAndPathReferentialActions`
+  and `PostgresDatabaseConstraintIntegrationTest.postgresEnforcesDomainBoardCalendarAndLogChecksOnDirectWrites`;
+  PostgreSQL-specific search SQL is exercised by the inherited
+  `SearchIntegrationTest.nearMissSpellingsMatchLongerTermsWhenNothingMatchesLiterally`
+  in `SearchPostgresIntegrationTest`. The `backend-postgres` job applies
+  Flyway to its guarded disposable database, runs these assertions, and
+  validates startup against a separately migrated disposable database;
+  transformed-row fixtures remain individually named under the migration
+  criterion above.
 - [x] Browser E2E evidence is required only where client interaction or
   cross-layer behavior is the risk, and is not used as a substitute for API
   contract evidence. This milestone's scope explicitly covers supported web
