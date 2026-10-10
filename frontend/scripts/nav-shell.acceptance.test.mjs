@@ -13,12 +13,12 @@ const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body:
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, calendarLabels = [] } = {}) {
+async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeeds = [] } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
   const reportQueries = [];
-  const paths = [];
+  const paths = [...pathSeeds];
   const calendarDays = [];
   await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
   // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
@@ -34,6 +34,12 @@ async function fixture(t, width, { warmup = false, calendarLabels = [] } = {}) {
     else if (path === "/paths" && method === "POST") {
       body = { ...route.request().postDataJSON(), id: "path-1", status: "ACTIVE", pinned: false };
       paths.push(body);
+    }
+    else if (path.startsWith("/paths/") && method === "PUT") {
+      const id = path.split("/").at(-1);
+      const index = paths.findIndex((item) => item.id === id);
+      body = { ...paths[index], ...route.request().postDataJSON() };
+      if (index >= 0) paths[index] = body;
     }
     else if (path === "/paths") body = paths;
     else if (path === "/paths/path-1/summary") body = { path: paths[0], trackedSeconds: 0, recentActivity: [] };
@@ -197,19 +203,36 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   assert.equal(new URL(page.url()).pathname, "/paths");
 });
 
-it("selects and saves a Path color using only the keyboard", async (t) => {
-  const { page, paths } = await fixture(t, 1440);
+it("changes and persists an existing Path color using only the keyboard", async (t) => {
+  const initialPath = {
+    id: "path-edit",
+    name: "Keyboard path",
+    color: "#F8FAFC",
+    description: "",
+    status: "ACTIVE",
+    pinned: false,
+  };
+  const { page, paths } = await fixture(t, 1440, { pathSeeds: [initialPath] });
   page.setDefaultTimeout(4000);
   await visit(page, "/paths");
-  await page.getByRole("button", { name: "Add path" }).click();
-  await page.getByRole("textbox", { name: "New path name" }).fill("Keyboard path");
-  const blue = page.getByRole("button", { name: "Choose path color: Blue (#3B82F6)" });
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const editColorButton = page.getByRole("button", { name: "Choose edit path color" });
+  await editColorButton.click();
+  const blue = page.getByRole("button", { name: "Set edit path color: Blue (#3B82F6)" });
   await blue.focus();
   await page.keyboard.press("Enter");
-  assert.equal(await blue.getAttribute("aria-pressed"), "true");
-  await page.locator("form.path-create-form button[type=submit]").click();
+  assert.equal(await editColorButton.evaluate((element) => getComputedStyle(element).backgroundColor), "rgb(59, 130, 246)");
+  await page.locator("form.path-edit button.primary").click();
   await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
   assert.equal(paths[0]?.color, "#3B82F6");
+
+  await page.reload();
+
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.equal(
+    await page.locator(".path .dot").evaluate((element) => getComputedStyle(element).backgroundColor),
+    "rgb(59, 130, 246)",
+  );
 });
 
 it("restores report filters after navigation and browser Back/Forward", async (t) => {

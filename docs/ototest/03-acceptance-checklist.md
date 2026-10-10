@@ -273,8 +273,8 @@ the extension has its own scope in OTOTEST-04.
   named option and selected `aria-pressed` state; `frontend/src/views/PathsView.test.ts`,
   `submits a selected path color from the shared palette` verifies path color
   selection and persistence request; `scripts/nav-shell.acceptance.test.mjs`,
-  `selects and saves a Path color using only the keyboard` verifies keyboard
-  activation and the resulting color payload.
+  `changes and persists an existing Path color using only the keyboard`
+  verifies keyboard activation and the resulting color after reload.
 - [ ] Pinning or unpinning a path updates its visible pinned state.
 - [ ] Reordering paths updates the visible order after reload.
 - [ ] Hiding a path's board asks for confirmation before removing its board tab.
