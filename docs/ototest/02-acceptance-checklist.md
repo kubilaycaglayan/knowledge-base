@@ -817,6 +817,10 @@ browser interaction evidence remains a separate layer.
   boundary by `PathAuthorizationApiTest.pathMergeRequiresAValidTargetId`.
   Board status create/update's blank and maximum-length rules are covered by
   `BoardControllerApiTest.statusCreateAndUpdateValidateRequiredNameAndMaximumLength`.
+  Note create and update accept each exact DTO length maximum at the HTTP
+  boundary and reject the first value above it
+  (`NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits` and
+  `NoteApiTest.noteUpdateValidatesRequiredContentAndTextLimits`).
   The DTO annotation and service-range audit found named evidence for the
   declared constraints across auth, note/log, calendar, timer, import, and
   board request types. The criterion remains open because `CardRequest.priority`
