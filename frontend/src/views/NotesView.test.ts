@@ -691,6 +691,47 @@ describe("NotesView", () => {
     reopened.unmount();
   });
 
+  it("pastes rich note content without retaining unsafe markup", async () => {
+    let savedContent = "";
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        const payload = JSON.parse(String(options.body));
+        savedContent = payload.content;
+        return { ...note, ...payload };
+      }
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const editor = wrapper.findComponent(EditorContent).props("editor")!;
+    editor.commands.setTextSelection({ from: 13, to: 13 });
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", {
+      value: {
+        types: ["text/html", "text/plain"],
+        getData: (type: string) => type === "text/html"
+          ? '<p>Pasted <strong>formatting</strong><script>unsafe()</script></p>'
+          : type === "text/plain" ? "Pasted formattingunsafe()" : "",
+        files: [],
+      },
+    });
+    wrapper.get(".ProseMirror").element.dispatchEvent(event);
+    await flushPromises();
+
+    expect(wrapper.get(".ProseMirror strong").text()).toBe("formatting");
+    expect(wrapper.find(".ProseMirror script").exists()).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    expect(savedContent).not.toContain("<script");
+    expect(savedContent).toContain('"bold"');
+    wrapper.unmount();
+  });
+
   it("toggles a per-line edit-time gutter that the URL remembers", async () => {
     const stamped = { ...note, lineEdits: ["2026-09-02T10:00:00Z"] };
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => (path === "/notes/note-1" && !options ? stamped : undefined));
