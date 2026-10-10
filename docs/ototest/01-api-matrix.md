@@ -48,6 +48,15 @@ import operations are recorded with their raw CSV body or parsed Clockify
 entry shape. Missing field-level assertions remain gaps rather than being
 inferred from a DTO annotation alone.
 
+**Response-contract audit:** the controller-method response inventory records
+each method's success status and declared body type. The response-field catalog
+records the serialized fields of each returned DTO/entity; operation rows name
+the methods and the response assertions that establish observed values. JSON
+body responses use the Spring/Jackson JSON representation; empty responses have
+no body, and CSV export explicitly records its media type, charset, and
+attachment disposition in the operation evidence. No unverified response
+field is described as asserted.
+
 **Evidence-layer convention:** qualified `Class.method` references name the
 assertion to inspect; the Java test package identifies its evidence layer:
 `com.know.api` is controller/HTTP, `com.know.service` is service/domain,
@@ -139,9 +148,9 @@ asserted. A field in this catalog is not itself a claim that tests verify it.
 | `KnowledgeService.NoteView` | `id`, `pathId`, `activityId`, `timeEntryId`, `title`, `content`, `createdAt`, `updatedAt`, `deletedAt`, `version`, `contentText`, `tags`, `pinned`, `sortOrder`, `lineEdits` |
 | `KnowledgeService.NotePage` | `items` (`NoteView` list), `page`, `size`, `totalItems`, `totalPages` |
 | `KnowledgeService.TagView` | `id`, `name` |
-| `ReportService.Report` | `period`, `from`, `to`, `totalSeconds`, `days`, `paths`, `sessionLabels`, `calendarLabels`, `sankey`; `Day`: `date`, `totalSeconds`, `paths`, `sessionLabels`, `calendarNote`, `calendarLabels`; `Category`: `id`, `label`, `seconds`, `color`; `CalendarLabel`: `id`, `label`, `color`, `portion`; `CalendarLabelTotal`: `id`, `label`, `color`, `days`, `markers`; `Sankey`: `granularity`, `nodes`, `links`; `SankeyNode`: `id`, `label`, `color`, `depth`, `value`, path/board/status fields, `endedAt`, `durationSeconds`; `SankeyLink`: `source`, `target`, source/target labels, `value` |
+| `ReportService.Report` | `period`, `from`, `to`, `totalSeconds`, `days`, `paths`, `sessionLabels`, `calendarLabels`, `sankey`; `Day`: `date`, `totalSeconds`, `paths`, `sessionLabels`, `calendarNote`, `calendarLabels`; `Category`: `id`, `label`, `seconds`, `color`; `CalendarLabel`: `id`, `label`, `color`, `portion`; `CalendarLabelTotal`: `id`, `label`, `color`, `days`, `markers`; `Sankey`: `granularity`, `nodes`, `links`; `SankeyNode`: `id`, `label`, `color`, `depth`, `value`, `pathName`, `pathColor`, `boardId`, `boardName`, `statusName`, `endedAt`, `durationSeconds`; `SankeyLink`: `source`, `target`, `sourceLabel`, `targetLabel`, `value` |
 | `SearchService.Response` | `groups` (`Group`: `type`, `total`, `capped`, `results`), `fuzzy`, `incomplete`; `Result`: `type`, `id`, `title`, `snippet`, `at`, `date`, `archived`, `via`, `viaName`, `color`, path/board/status fields, `endedAt`, `durationSeconds` |
-| `UserPreferencesService.View` | `theme`, `kanbanWide`, `ganttWide`, `recentPathIds`, `lastCardBoardId`, `board` (`BoardState`: board/view/range/search/sort/display fields) |
+| `UserPreferencesService.View` | `theme`, `kanbanWide`, `ganttWide`, `recentPathIds`, `lastCardBoardId`, `board` (`BoardState`: `boardId`, `view`, `ganttFrom`, `ganttTo`, `search`, `ganttSorts`, `ganttShowPriority`, `ganttShowStatus`, `ganttShowPath`) |
 | `TimerService.DraftView` | `pathId`, `labelIds`, `description`, `pausedSeconds` |
 | `TimerService.TimeView` | `id`, `pathId`, `labelIds`, `startedAt`, `endedAt`, `durationSeconds`, `description`, `source`, `running`, `carriedSeconds` |
 | `TimerService.HistoryPage` | `sessions` (`TimeView` list), `page`, `pageSize`, `totalSessions`, `totalPages` |

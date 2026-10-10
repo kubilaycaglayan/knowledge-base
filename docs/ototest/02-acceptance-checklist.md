@@ -103,8 +103,11 @@ browser interaction evidence remains a separate layer.
   constraints for JSON operations, raw CSV import shape, service-level
   reference/set rules, and states that methods without a declared body have
   no request body; unproven field behavior remains a gap.
-- [ ] Include response code, response fields, and relevant headers/content
-  types in each applicable row.
+- [x] Include response code, response fields, and relevant headers/content
+  types in each applicable row. The API matrix maps every operation's
+  controller method to its success status/body type, catalogs each serialized
+  response shape, and names observed response assertions. Empty responses and
+  the CSV export headers/media type are called out explicitly.
 - [ ] Include authentication requirements and any intentionally public
   operation in each applicable row.
 - [ ] Include direct resource IDs and referenced resource IDs that require
