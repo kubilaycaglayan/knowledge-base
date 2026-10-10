@@ -266,13 +266,13 @@ describe("LogsView", () => {
     expect(wrapper.find("#new-log-time").classes()).toContain(
       "timestamp-input-drift",
     );
-    expect(wrapper.get(".timestamp-reset").classes()).toContain(
+    expect(wrapper.get('button[aria-label="Use browser time"]').classes()).toContain(
       "timestamp-reset-visible",
     );
     vi.advanceTimersByTime(61_000);
     await wrapper.vm.$nextTick();
     expect(timestamp.value).toBe("2026-09-11T12:00");
-    await wrapper.get(".timestamp-reset").trigger("click");
+    await wrapper.get('button[aria-label="Use browser time"]').trigger("click");
     expect(timestamp.value).toBe("2026-09-11T12:02");
     expect(wrapper.get(".timestamp-reset").classes()).not.toContain(
       "timestamp-reset-visible",
