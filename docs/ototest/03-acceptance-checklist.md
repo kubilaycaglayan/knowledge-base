@@ -38,7 +38,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open the authenticated home workspace
 
-- [ ] Opening `/` while signed in displays the Sessions workspace.
+- [x] Opening `/` while signed in displays the Sessions workspace, document
+  title, empty state and inline tracker in desktop Chromium. Evidence: `cd
+  frontend && node --test --test-name-pattern='opens the Sessions workspace
+  directly' scripts/nav-shell.acceptance.test.mjs` (mocked API).
 - [ ] The document title identifies Knowledge Base and the current page.
 - [ ] The skip-to-content link moves focus to the main content region.
 - [ ] The brand link navigates home without a full page reload.

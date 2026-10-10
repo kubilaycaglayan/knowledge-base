@@ -123,6 +123,15 @@ it("navigates home from the logo without a page reload and reuses cached session
   assert.equal(requests.filter((path) => homeData.includes(path)).length, before, "Returning home must reuse cached sessions, paths, and labels");
 });
 
+it("opens the Sessions workspace directly with its empty state and inline tracker", async (t) => {
+  const { page } = await fixture(t, 1440);
+  assert.equal(new URL(page.url()).pathname, "/");
+  assert.equal(await page.title(), "Knowledge Base · Sessions");
+  await page.getByRole("region", { name: "Sessions" }).waitFor();
+  await page.getByText("No sessions recorded yet.", { exact: true }).waitFor();
+  await page.locator(".floating-tracker-host.inline").waitFor();
+});
+
 it("redirects /sessions to the Sessions home and restores history with Back and Forward", async (t) => {
   const { page } = await fixture(t, 1440);
   await visit(page, "/logs");
