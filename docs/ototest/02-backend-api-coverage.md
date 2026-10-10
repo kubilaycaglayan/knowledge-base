@@ -1,7 +1,7 @@
 # OTOTEST-02 — Backend API behavior coverage
 
 **Priority:** High  
-**Status:** In progress  
+**Status:** Complete
 **Dependencies:** OTOTEST-01
 
 Track evidence and completion criteria in the [OTOTEST-02 acceptance
@@ -22,22 +22,31 @@ behavior tests.
   timer/time-entry aliases. The named examples have successful persisted or
   controller-boundary evidence in `01-api-matrix.md`; timer stop/cancel
   aliases now also have integration-level status and resulting-state parity.
-- [ ] For each uncovered operation, add or extend focused API/integration
-  coverage for response status/body and persisted side effects.
-- [ ] Cover invalid path/query/body inputs, missing referenced records, and
-  conflict behavior where the operation supports them.
-- [ ] Check ownership for both directly addressed resources and referenced
+- [x] For each uncovered operation, add or extend focused API/integration
+  coverage for response status/body and persisted side effects. All 107
+  operation rows name assertion-level evidence in
+  [`01-api-matrix.md`](01-api-matrix.md); unsupported client surfaces retain
+  an owner and scope rationale.
+- [x] Cover invalid path/query/body inputs, missing referenced records, and
+  conflict behavior where the operation supports them; see the linked
+  controller, service, integration, and PostgreSQL assertions in the matrix.
+- [x] Check ownership for both directly addressed resources and referenced
   resource IDs (paths, labels, boards/statuses/cards, notes, timers, and
-  entries as applicable).
-- [ ] Verify pagination, ordering, filters, inclusive date boundaries,
-  archived state, and idempotency where part of the contract.
-- [ ] Keep PostgreSQL-specific constraints, transaction rollback, and Flyway
-  migration behavior in the guarded disposable PostgreSQL job.
-- [ ] Add focused data migration assertions for each new migration that
-  transforms existing rows; do not attempt to re-test every historical
-  migration unless a regression or supported upgrade path requires it.
-- [ ] Link API documentation operations to tests and update it when contracts
-  change.
+  entries as applicable); see the ownership and cross-user evidence in the
+  matrix and acceptance checklist.
+- [x] Verify pagination, ordering, filters, inclusive date boundaries,
+  archived state, and idempotency where part of the contract; evidence is
+  linked per applicable operation in the matrix.
+- [x] Keep PostgreSQL-specific constraints, transaction rollback, and Flyway
+  migration behavior in the guarded disposable PostgreSQL job. Run
+  `38033441885` passed the empty-database suite and migrated-database startup
+  check on PostgreSQL 16.15 at Flyway v67.
+- [x] Add focused data migration assertions for each new migration that
+  transforms existing rows; OTOTEST-02 added no data-transforming migration.
+  Existing migration evidence remains in the guarded PostgreSQL suite.
+- [x] Link API documentation operations to tests and update it when contracts
+  change. [`docs/api.md`](../api.md) links to the operation-level test
+  references in [`01-api-matrix.md`](01-api-matrix.md).
 
 ## Execution plan
 

@@ -8,7 +8,7 @@ or run record.
 | ID | Focus | Priority | Status |
 | --- | --- | --- | --- |
 | [OTOTEST-01](01-coverage-inventories.md) | Route, API, feature, and control inventories | High | Complete |
-| [OTOTEST-02](02-backend-api-coverage.md) | Backend API behavioral test mapping | High | In progress |
+| [OTOTEST-02](02-backend-api-coverage.md) | Backend API behavioral test mapping | High | Complete |
 | [OTOTEST-03](03-web-routes-and-controls.md) | Web routes and interactive controls | High | Proposed |
 | [OTOTEST-04](04-real-stack-and-extension.md) | Real-stack journeys and Chrome extension integration | High | Proposed |
 | [OTOTEST-05](05-traceability-and-gates.md) | Ongoing traceability and CI gates | High | Proposed |

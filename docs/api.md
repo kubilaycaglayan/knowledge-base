@@ -1,5 +1,8 @@
 # API
 
+Operation-specific backend test references are maintained in the
+[OTOTEST-02 API behavior matrix](ototest/01-api-matrix.md).
+
 `GET /labels/{id}/history/records?kind=sessions|dates|notes|logs&page=0`
 returns `{ items: [{ id, date, title, preview }], hasMore }`. Pages contain up to
 10 records, newest first with ID as the tie-breaker. `date` is an ISO instant

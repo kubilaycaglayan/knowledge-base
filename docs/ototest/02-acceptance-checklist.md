@@ -1,7 +1,7 @@
 # OTOTEST-02 acceptance checklist: backend API behavior coverage
 
 **Milestone:** [OTOTEST-02 — Backend API behavior coverage](02-backend-api-coverage.md)  
-**Status:** In progress; checked criteria have named test evidence in the API matrix
+**Status:** Complete; operation-level assertions and current CI evidence are recorded below
 **Product surface:** Knowledge Base `/api/v1` operations used by supported web and Chrome clients  
 **Out of scope:** Native client behavior, UI-route acceptance, and installing or exercising the Chrome extension as a browser journey (covered by OTOTEST-03/04)
 
@@ -1062,6 +1062,14 @@ browser interaction evidence remains a separate layer.
   skipped; the report path is the same. Batch 17 revision
   `d720c643cf53b7706bde4c84d61fd3c84cd9cf94` passed the same local command
   with 601 tests, 0 failures, and 89 skipped; the report path is the same.
-- [ ] OTOTEST-02 is not marked complete until every operation and alias is
+- [x] OTOTEST-02 is not marked complete until every operation and alias is
   covered or explicitly excluded, the API docs and matrix agree, and the
-  required backend/PostgreSQL evidence is recorded.
+  required backend/PostgreSQL evidence is recorded. All 107 matrix operations
+  and aliases have named functional evidence or an explicit client-scope
+  rationale; [`docs/api.md`](../api.md) links to the matrix. Commit
+  `8a2254896abe6b62ec5421feb9fd3729eaedbbf9` passed local backend tests
+  (601 tests, 0 failures, 89 skipped) and [workflow run
+  38033441885](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38033441885)
+  passed backend, guarded PostgreSQL, web/extension, smoke, and browser
+  verification jobs. The PostgreSQL job verified the empty database and
+  migrated-database startup on PostgreSQL 16.15 at Flyway v67.
