@@ -1001,8 +1001,17 @@ browser interaction evidence remains a separate layer.
 - [ ] Existing HARD-01 through HARD-07 evidence is reused by link when it
   proves the required behavior; duplicate coverage is not added without a
   distinct risk.
-- [ ] Acceptance evidence records the exact source revision, command or CI job,
-  result, and report link.
+- [x] Acceptance evidence records the exact source revision, command or CI job,
+  result, and report link. Batch 14 revision
+  `6943ebf9d574e4f8814b57976f2ba2b7a99b7444` passed the local full backend
+  command from the matrix evidence section: 598 tests, 0 failures, 89 skipped;
+  the generated report is
+  [`backend/build/reports/tests/test/index.html`](../../backend/build/reports/tests/test/index.html).
+  The same revision passed hosted `backend` and `backend-postgres` in both
+  [PR #150 run 38019735005](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019735005)
+  and [run 38019738515](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019738515);
+  both disposable PostgreSQL jobs also completed migrated-database startup
+  verification.
 - [ ] OTOTEST-02 is not marked complete until every operation and alias is
   covered or explicitly excluded, the API docs and matrix agree, and the
   required backend/PostgreSQL evidence is recorded.
