@@ -72,6 +72,8 @@ async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeed
       body = { id: `calendar-label-${calendarLabels.length + 1}`, ...route.request().postDataJSON() };
       calendarLabels.push(body);
     }
+    else if (path === "/labels/label-deep-link/history") body = { labelId: "label-deep-link", name: "Deep link label", color: "#3B82F6", firstUsedAt: null, lastUsedAt: null, totalUses: 0, trackedSeconds: 0, uses: { sessions: 0, logs: 0, notes: 0, calendarDays: 0, cards: 0 }, timeline: [], hours: [], related: [] };
+    else if (path === "/labels/label-deep-link/history/records") body = { items: [], hasMore: false };
     else if (path === "/labels") body = calendarLabels;
     else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
@@ -760,6 +762,16 @@ it("shows an unavailable history state for a missing label deep link", async (t)
   await page.goto(`${server.resolvedUrls.local[0]}labels/gone`);
   await page.getByRole("alert").filter({ hasText: "Could not load this label’s history." }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/labels/gone");
+});
+
+it("opens label history when the browser loads its deep link directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}labels/label-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("heading", { name: "Deep link label" }).waitFor();
+  await dialog.getByText("Not used yet.", { exact: false }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/labels/label-deep-link");
+  assert.ok(requests.some((path) => path.startsWith("/labels/label-deep-link/history")));
 });
 
 it("loads a note editor when the browser opens its deep link directly", async (t) => {
