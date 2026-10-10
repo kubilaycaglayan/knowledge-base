@@ -259,6 +259,43 @@ describe("TimelineView", () => {
     );
   });
 
+  it("rejects a reversed date range without replacing current results", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path.startsWith("/activities?"))
+        return [
+          {
+            id: "existing-activity",
+            type: "NOTE_CREATED",
+            title: "Existing timeline result",
+            occurredAt: "2026-08-15T12:00:00Z",
+          },
+        ];
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    const activityRequestCount = vi.mocked(api).mock.calls.filter(
+      ([path]) => typeof path === "string" && path.startsWith("/activities?"),
+    ).length;
+    expect(wrapper.text()).toContain("Existing timeline result");
+
+    await wrapper.get('input[aria-label="From date"]').setValue("2026-08-31");
+    await wrapper.get('input[aria-label="To date"]').setValue("2026-08-01");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "The end date must be on or after the start date.",
+    );
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path]) => typeof path === "string" && path.startsWith("/activities?"),
+      ),
+    ).toHaveLength(activityRequestCount);
+    expect(wrapper.text()).toContain("Existing timeline result");
+  });
+
   it("reports initial-load and note-save failures and ignores incomplete notes", async () => {
     vi.mocked(api).mockRejectedValueOnce(new Error("paths failed"));
     const failedLoad = mount(TimelineView);
