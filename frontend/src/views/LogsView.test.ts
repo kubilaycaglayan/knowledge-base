@@ -229,28 +229,72 @@ describe("LogsView", () => {
   });
 
   it("edits text and timestamp in place without dropping the draft", async () => {
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/labels?scope=LOG"
+        ? []
+        : [
+            log("new", "Recent thought", "2026-09-11T11:30:00Z"),
+            log("old", "Older thought", "2026-09-10T11:00:00Z"),
+          ],
+    );
     const wrapper = mount(LogsView);
     await flushPromises();
-    await wrapper.get('button[aria-label^="Edit log"]').trigger("click");
+    await wrapper.get('#log-old button[aria-label^="Edit log"]').trigger("click");
     await wrapper
-      .get('textarea[aria-label^="Edit log"]')
+      .get('#log-old textarea[aria-label^="Edit log"]')
       .setValue("Changed thought");
     await wrapper
-      .get('input[aria-label="Edit log timestamp"]')
+      .get('#log-old input[aria-label="Edit log timestamp"]')
       .setValue("2026-09-11T10:15");
     vi.mocked(api).mockResolvedValueOnce(
-      log("new", "Changed thought", "2026-09-11T10:15:00Z", 1),
+      log("old", "Changed thought", "2026-09-11T10:15:00Z", 1),
     );
-    await wrapper.get(".log-entry .primary").trigger("click");
+    await wrapper.get("#log-old .primary").trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
-      "/logs/new",
+      "/logs/old",
       expect.objectContaining({
         method: "PUT",
         body: expect.stringContaining('"body":"Changed thought"'),
       }),
     );
-    expect(wrapper.text()).toContain("Changed thought");
+    expect(wrapper.findAll(".log-body").map((node) => node.text())).toEqual([
+      "Recent thought",
+      "Changed thought",
+    ]);
+    expect(wrapper.findAll(".log-entry").map((node) => node.attributes("id"))).toEqual([
+      "log-new",
+      "log-old",
+    ]);
+    expect(wrapper.get("#log-old").element.closest(".log-group")?.querySelector(".log-group-heading")?.textContent).toBe("Today");
+  });
+
+  it("preserves an edited log draft after a failed update and allows retry", async () => {
+    let attempts = 0;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels?scope=LOG") return [];
+      if (path === "/logs/new" && options?.method === "PUT") {
+        attempts += 1;
+        if (attempts === 1) throw new Error("temporary failure");
+        return log("new", "Recovered edit", "2026-09-11T11:30:00Z", 1);
+      }
+      if (path === "/logs") return [log("new", "Recent thought", "2026-09-11T11:30:00Z")];
+      return undefined;
+    });
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label^="Edit log"]').trigger("click");
+    await wrapper.get('textarea[aria-label^="Edit log"]').setValue("Recovered edit");
+    await wrapper.get(".log-entry .primary").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain("Your text is still here");
+    expect((wrapper.get('textarea[aria-label^="Edit log"]').element as HTMLTextAreaElement).value).toBe("Recovered edit");
+    await wrapper.get(".log-entry .primary").trigger("click");
+    await flushPromises();
+    expect(attempts).toBe(2);
+    expect(wrapper.find('textarea[aria-label^="Edit log"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain("Recovered edit");
   });
 
   it("keeps the new-log timestamp current until it is manually changed", async () => {
