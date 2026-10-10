@@ -559,7 +559,10 @@ the extension has its own scope in OTOTEST-04.
   Evidence: the same test verifies the August 2020 then July 2020 headings.
 - [x] Session rows show their timestamps and labels. Evidence: the same test
   verifies each session's `time[datetime]` and the Draft label chip.
-- [ ] Opening an activity record navigates to that record's supported detail.
+- [x] Opening an activity record navigates to that record's supported detail.
+  Evidence: `PathsView.test.ts` / `shows only the selected path sessions
+  grouped with timestamps and labels` opens the activity's identified session
+  in the session editor and verifies the fetched record description.
 - [x] An empty path history has an explicit empty state. Evidence: `cd
   frontend && npx vitest run src/views/PathsView.test.ts -t 'empty state for a
   path history'` checks the empty message and absence of activity rows (mocked

@@ -364,6 +364,17 @@ describe("PathsView", () => {
             },
           ],
         };
+      if (path === "/time-entries/entry-newer")
+        return {
+          id: "entry-newer",
+          pathId: "path-2",
+          labelIds: ["label-draft"],
+          startedAt: "2020-08-28T09:00:00Z",
+          endedAt: "2020-08-28T10:00:00Z",
+          durationSeconds: 3600,
+          description: "Draft introduction",
+          source: "WEB",
+        };
       return undefined;
     });
 
@@ -388,6 +399,14 @@ describe("PathsView", () => {
     ]);
     expect(dialog.find('time[datetime="2020-08-28T10:00:00Z"]').exists()).toBe(true);
     expect(dialog.find('time[datetime="2020-07-28T10:00:00Z"]').exists()).toBe(true);
+
+    await dialog.find("button.path-history-edit").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries/entry-newer");
+    expect(wrapper.get(".session-edit-dialog").text()).toContain("Edit session");
+    expect(
+      wrapper.get<HTMLTextAreaElement>('[aria-label="Edit session description"]').element.value,
+    ).toBe("Draft introduction");
   });
 
   it("merges a completed timer into one activity with its details", async () => {
