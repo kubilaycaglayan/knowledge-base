@@ -489,8 +489,9 @@ browser interaction evidence remains a separate layer.
   (`AllBoardsIntegrationTest.columnsMergeByNameInTabOrder` and
   `AllBoardsIntegrationTest.columnsCoverOnlyTheUsersTabBoards`).
 - [x] `GET /api/v1/boards/all/columns/cards/page` covers cross-board cursors,
-  many-page stability, empty/unknown columns, invalid limits, foreign-user
-  isolation, the first and middle pages, limits at 1 and 100, and sort modes
+  many-page stability, empty/unknown columns, missing names, malformed and
+  out-of-range cursor/limit values, foreign-user isolation, the first and middle
+  pages, limits at 1 and 100, and sort modes
   (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
   `AllBoardsIntegrationTest.columnCursorWalkRemainsStableAcrossManyPages`, and
   `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
