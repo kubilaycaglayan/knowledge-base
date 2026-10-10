@@ -1013,6 +1013,38 @@ describe("PathsView", () => {
     );
   });
 
+  it("retries a failed path history load", async () => {
+    let summaryAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-retry", name: "Research", status: "ACTIVE" }];
+      if (path === "/paths/path-retry/summary") {
+        summaryAttempts += 1;
+        if (summaryAttempts === 1) throw new Error("temporary failure");
+        return {
+          path: { id: "path-retry", name: "Research", status: "ACTIVE" },
+          trackedSeconds: 60,
+          recentActivity: [],
+        };
+      }
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const historyButton = wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "History")!;
+
+    await historyButton.trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not load path history.");
+    await historyButton.trigger("click");
+    await flushPromises();
+    expect(summaryAttempts).toBe(2);
+    expect(wrapper.get(".path-history-dialog").text()).toContain("Research");
+    expect(wrapper.get(".path-history-dialog").text()).toContain("No recent activity yet.");
+  });
+
   it("does not remove a path when the confirmation is cancelled", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();

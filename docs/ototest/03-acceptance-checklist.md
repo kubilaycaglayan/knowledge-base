@@ -567,7 +567,10 @@ the extension has its own scope in OTOTEST-04.
   frontend && npx vitest run src/views/PathsView.test.ts -t 'empty state for a
   path history'` checks the empty message and absence of activity rows (mocked
   API).
-- [ ] A failed history load presents a recoverable error.
+- [x] A failed history load presents a recoverable error. Evidence:
+  `PathsView.test.ts` / `retries a failed path history load` verifies the
+  failure message and that retrying opens the history dialog after the next
+  summary request succeeds.
 
 ### Flow: Merge one path into another
 
