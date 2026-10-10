@@ -1259,7 +1259,9 @@ visible Saved state. It does not offer a recovery choice, so this criterion
 remains open.
 
 Coverage note: `NotesView.test.ts` / `flushes a pending autosave before
-navigating back to the note list` verifies navigation waits for the autosave;
+navigating back to the note list` and `waits for an in-flight save and flushes
+a newer draft before leaving` verify pending/queued autosaves finish before
+navigation;
 `keeps a failed draft in the editor, retries it, then permits navigation`
 verifies failed saves keep the user on the editor with the draft, then allow
 navigation after Retry succeeds. No explicit stay/discard warning is offered,

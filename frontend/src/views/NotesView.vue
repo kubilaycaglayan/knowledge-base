@@ -67,6 +67,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let creating = false;
 let saveInFlight = false;
 let saveQueued = false;
+let saveInFlightPromise: Promise<void> | null = null;
 
 const isEditor = computed(() => route.name === "note-editor");
 // ?lines=1 shows when each body line was last edited.
@@ -277,14 +278,17 @@ function updateNoteLabels(ids: string[]) {
 function scheduleSave() {
   status.value = "saving";
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(save, 650);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    void save();
+  }, 650);
 }
-async function save() {
-  if (!selected.value || !editor.value) return;
+function save(): Promise<void> {
+  if (!selected.value || !editor.value) return Promise.resolve();
   const noteId = selected.value.id;
   if (saveInFlight) {
     saveQueued = true;
-    return;
+    return saveInFlightPromise ?? Promise.resolve();
   }
   saveInFlight = true;
   status.value = "saving";
@@ -294,53 +298,70 @@ async function save() {
     contentText: plainText(editor.value.state.doc),
     tags: [...tags.value],
   };
-  try {
-    let saved: Note;
+  saveInFlightPromise = (async () => {
     try {
-      saved = await api<Note>(`/notes/${noteId}`, {
-        method: "PUT",
-        body: JSON.stringify({ ...snapshot, version: selected.value.version }),
-      });
-    } catch (cause) {
-      if (!String(cause).includes("Note changed in another window"))
-        throw cause;
-      const latest = await api<Note>(`/notes/${noteId}`);
-      if (selected.value?.id === noteId) notesStore.setSelected(latest);
-      saved = await api<Note>(`/notes/${noteId}`, {
-        method: "PUT",
-        body: JSON.stringify({ ...snapshot, version: latest.version }),
-      });
+      let saved: Note;
+      try {
+        saved = await api<Note>(`/notes/${noteId}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...snapshot, version: selected.value.version }),
+        });
+      } catch (cause) {
+        if (!String(cause).includes("Note changed in another window"))
+          throw cause;
+        const latest = await api<Note>(`/notes/${noteId}`);
+        if (selected.value?.id === noteId) notesStore.setSelected(latest);
+        saved = await api<Note>(`/notes/${noteId}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...snapshot, version: latest.version }),
+        });
+      }
+      notesStore.upsert(saved);
+      notesStore.clearPages();
+      // The user may have opened another note while this save was in flight.
+      if (selected.value?.id !== noteId || !editor.value) return;
+      notesStore.setSelected(saved);
+      const stillOnSnapshot =
+        title.value.trim() === snapshot.title &&
+        JSON.stringify(editor.value.getJSON()) === snapshot.content &&
+        JSON.stringify(tags.value) === JSON.stringify(snapshot.tags);
+      if (stillOnSnapshot) {
+        title.value = saved.title;
+        tags.value = saved.tags || [];
+      }
+      status.value = "saved";
+    } catch {
+      status.value = "error";
+    } finally {
+      saveInFlight = false;
+      saveInFlightPromise = null;
+      if (saveQueued) {
+        saveQueued = false;
+        scheduleSave();
+      }
     }
-    notesStore.upsert(saved);
-    notesStore.clearPages();
-    // The user may have opened another note while this save was in flight.
-    if (selected.value?.id !== noteId || !editor.value) return;
-    notesStore.setSelected(saved);
-    const stillOnSnapshot =
-      title.value.trim() === snapshot.title &&
-      JSON.stringify(editor.value.getJSON()) === snapshot.content &&
-      JSON.stringify(tags.value) === JSON.stringify(snapshot.tags);
-    if (stillOnSnapshot) {
-      title.value = saved.title;
-      tags.value = saved.tags || [];
-    }
-    status.value = "saved";
-  } catch {
-    status.value = "error";
-  } finally {
-    saveInFlight = false;
-    if (saveQueued) {
-      saveQueued = false;
-      scheduleSave();
-    }
-  }
+  })();
+  return saveInFlightPromise;
 }
 async function flushPendingSave() {
-  if (!saveTimer) return status.value !== "error";
-  clearTimeout(saveTimer);
-  saveTimer = null;
-  await save();
-  return status.value !== "error";
+  while (true) {
+    if (status.value === "error") return false;
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      await save();
+      continue;
+    }
+    if (saveQueued) {
+      if (saveInFlightPromise) await saveInFlightPromise;
+      else {
+        saveQueued = false;
+        await save();
+      }
+      continue;
+    }
+    return status.value !== "error";
+  }
 }
 function retrySave() {
   if (status.value === "error") scheduleSave();
