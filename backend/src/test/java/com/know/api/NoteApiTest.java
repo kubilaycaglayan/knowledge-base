@@ -115,7 +115,14 @@ class NoteApiTest {
             post("/api/v1/notes")
                 .with(authentication(auth))
                 .contentType("application/json")
-                .content("{\"title\":\"" + "t".repeat(240) + "\",\"content\":\"Useful\"}"))
+                .content(
+                    "{\"title\":\""
+                        + "t".repeat(240)
+                        + "\",\"content\":\""
+                        + "c".repeat(200000)
+                        + "\",\"contentText\":\""
+                        + "p".repeat(200000)
+                        + "\"}"))
         .andExpect(status().isOk());
   }
 
@@ -146,7 +153,14 @@ class NoteApiTest {
             put(endpoint)
                 .with(authentication(auth))
                 .contentType("application/json")
-                .content("{\"title\":\"" + "t".repeat(240) + "\",\"content\":\"Useful\"}"))
+                .content(
+                    "{\"title\":\""
+                        + "t".repeat(240)
+                        + "\",\"content\":\""
+                        + "c".repeat(200000)
+                        + "\",\"contentText\":\""
+                        + "p".repeat(200000)
+                        + "\"}"))
         .andExpect(status().isOk());
   }
 

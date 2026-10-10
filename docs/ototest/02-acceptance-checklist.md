@@ -817,6 +817,10 @@ browser interaction evidence remains a separate layer.
   boundary by `PathAuthorizationApiTest.pathMergeRequiresAValidTargetId`.
   Board status create/update's blank and maximum-length rules are covered by
   `BoardControllerApiTest.statusCreateAndUpdateValidateRequiredNameAndMaximumLength`.
+  Note create and update accept each exact DTO length maximum at the HTTP
+  boundary and reject the first value above it
+  (`NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits` and
+  `NoteApiTest.noteUpdateValidatesRequiredContentAndTextLimits`).
   The DTO annotation and service-range audit found named evidence for the
   declared constraints across auth, note/log, calendar, timer, import, and
   board request types. The criterion remains open because `CardRequest.priority`
@@ -869,8 +873,21 @@ browser interaction evidence remains a separate layer.
   `SearchIntegrationTest.groupsAreLimitedAndPagedWithATotal`, and
   `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
   `BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`).
-- [ ] Ordered lists have stable tie-break and reorder persistence evidence
-  where ordering is part of the contract.
+- [x] Ordered lists have stable tie-break and reorder persistence evidence
+  where ordering is part of the contract. Equal occurrence times use the
+  descending ID tie-break for logs
+  (`LogListIntegrationTest.logsWithTheSameOccurrenceTimeUseDescendingIdAsAStableTieBreak`),
+  and equal completion times use descending start time for time-entry history
+  (`TimeEntryHistoryIntegrationTest.equalCompletionTimesUseStartedAtAsTheHistoryTieBreak`).
+  Persistent user reorders are read back for boards and notes
+  (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`,
+  `PinOrderIntegrationTest.noteOrderEndpointPersistsCompleteOrderAndRejectsDuplicateOrForeignIds`),
+  paths and boards (`PathBoardIntegrationTest.boardListFollowsTabOrder`,
+  `PathBoardIntegrationTest.customBoardsCanSitBetweenPathBoards`, and
+  `PathBoardIntegrationTest.reorderingBoards`), and board statuses/cards
+  (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds` and
+  `BoardCardMoveIntegrationTest.cardMovePersistsDestinationPositionAndRejectsForeignOrArchivedStatuses`). The
+  API matrix links the operation-specific order/readback assertions.
 - [x] Optimistic version or expected-update-time contracts have both current
   version success and stale version conflict evidence. Note saves, log updates,
   and board-card updates have successful persisted-update and stale-conflict
@@ -885,8 +902,15 @@ browser interaction evidence remains a separate layer.
 - [x] Concurrent timer-start behavior verifies the one-running-timer invariant
   through service behavior, concurrent HTTP starts, and the PostgreSQL
   uniqueness safeguard (tests linked in the timer operation row above).
-- [ ] Multi-record mutation failures verify transaction rollback where
-  persistence must remain atomic.
+- [x] Multi-record mutation failures verify transaction rollback where
+  persistence must remain atomic. [`01-api-matrix.md`'s transaction rollback
+  evidence section](01-api-matrix.md#multi-record-transaction-rollback-evidence)
+  catalogs exact guarded PostgreSQL assertions for path merge/create/restore/
+  rename/order, board reorder/archive/card moves and creation, note order and
+  associations, label scope/assignment changes, calendar day/range writes,
+  Clockify imports, and import undo. Each named assertion verifies unchanged
+  persisted state after its injected write failure; the PostgreSQL-specific
+  guard and runnable CI/local commands are documented with the inventory.
 - [x] PostgreSQL-specific constraint assertions run only under the guarded
   disposable PostgreSQL path. `PostgresDatabaseConstraintIntegrationTest`
   assumes `KB_TEST_POSTGRES_URL`, and `IntegrationTestSupport` verifies that
@@ -894,28 +918,63 @@ browser interaction evidence remains a separate layer.
   the suite. CI provisions a per-run database in the `backend-postgres` job
   (`.github/workflows/verify.yml`); migration transformation tests remain
   separately named under `db.migration`.
-- [ ] Each new migration that transforms existing rows has a focused assertion
-  for the transformed data and supported upgrade behavior.
+- [x] Each new migration that transforms existing rows has a focused assertion
+  for transformed data and rerun/upgrade behavior. The two Java migrations that
+  backfill serialized note and board-card content in this revision's history
+  each have a named fixture-based transformation test:
+  `V65DeriveNoteContentTextTest.rewritesDocumentCopiesAndLeavesLegacyTextAlone`
+  covers transformed rich documents, preserved legacy text, null copies,
+  idempotent reruns, and auto-commit restoration;
+  `V67DeriveBoardCardBodyTextTest.fillsThePlainTextOfEveryCardBody` covers rich,
+  empty, legacy, and non-document bodies. Migration files and tests were
+  introduced together in commits `1bf189e` and `064b7d1` respectively.
 
 ## Flow: Match each operation to the right evidence layer
 
-- [ ] HTTP status, serialization, request binding, and exception translation
-  link to controller/API evidence.
-- [ ] Domain decisions and deterministic branching rules link to focused
-  service/domain evidence.
-- [ ] Persistence, ownership, transaction, and multi-record behavior link to
-  integration evidence.
+- [x] HTTP status, serialization, request binding, and exception translation
+  link to controller/API evidence. Every operation row names exact assertions;
+  the status/body-type inventory and serialized-field catalog are cross-linked
+  from [`01-api-matrix.md`](01-api-matrix.md). Representative boundary evidence
+  includes `TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`,
+  `NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits`,
+  `KnowledgeBaseTransferControllerApiTest.importRequiresCsvContentAndRejectsOtherMediaTypesBeforeServiceAccess`,
+  and `ApiExceptionHandlerTest.domainStatusErrorsPreserveStatusAndReason`.
+- [x] Domain decisions and deterministic branching rules link to focused
+  service/domain evidence. Operation rows include named service/domain tests
+  where branching belongs there, including
+  `TimerServiceEdgeTest.manualAndRunningConfigurationRejectInvalidTimeWindowsBeforeMutation`,
+  `LabelManagementServiceTest.refusesRemovingAUsedScope`,
+  `SearchServiceTextTest.termsSplitOnWhitespaceDropDuplicatesAndStopAtTheCap`,
+  and `SearchServiceTextTest.longTextIsCutAroundTheEarliestMatch`; API-layer
+  tests are retained separately for binding and HTTP status behavior.
+- [x] Persistence, ownership, transaction, and multi-record behavior link to
+  integration evidence. Operation rows name persistence/readback assertions
+  for writes, owner-scope assertions for direct and referenced IDs, and
+  transaction cases where atomicity applies. Cross-operation isolation is
+  linked to `CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources`
+  and `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`;
+  guarded failure/readback assertions are enumerated in the transaction
+  rollback evidence section of [`01-api-matrix.md`](01-api-matrix.md#multi-record-transaction-rollback-evidence).
 - [ ] PostgreSQL constraints, SQL semantics, and migration behavior link to
   guarded PostgreSQL evidence.
-- [ ] Browser E2E evidence is required only where client interaction or
+- [x] Browser E2E evidence is required only where client interaction or
   cross-layer behavior is the risk, and is not used as a substitute for API
-  contract evidence.
+  contract evidence. This milestone's scope explicitly covers supported web
+  and extension API behavior at the server boundary; browser journeys remain
+  in OTOTEST-03/04. The API matrix names real browser/real-stack candidates as
+  a separate evidence layer and explicitly says mocked client tests do not
+  establish browser or API evidence. Controller/API, service, integration,
+  and guarded PostgreSQL assertions are linked from the backend operation rows.
 - [ ] Each API matrix row links the exact named assertion for each evidence
   layer it claims.
-- [ ] Existing `SecurityHardeningIntegrationTest`,
+- [x] Existing `SecurityHardeningIntegrationTest`,
   `CrossUserIsolationIntegrationTest`, and
   `InputValidationIntegrationTest` are linked only to the specific behavior
-  they actually assert.
+  they actually assert. The matrix uses the security suite for anonymous and
+  malformed-token responses, the cross-user suite for foreign direct and
+  referenced IDs, and generic malformed-body coverage only alongside focused
+  endpoint assertions; it does not use any of them to claim unrelated positive
+  or persistence behavior.
 - [ ] Relevant CI job or local command is recorded beside each executable
   evidence link.
 - [ ] Unavailable, manual, or environment-guarded evidence is labeled with an
