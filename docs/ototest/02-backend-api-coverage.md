@@ -16,10 +16,12 @@ behavior tests.
 
 ## Tasks
 
-- [ ] Use the OTOTEST-01 endpoint matrix to identify operations without a
+- [x] Use the OTOTEST-01 endpoint matrix to identify operations without a
   positive functional assertion, including `/api/v1/preferences`, activity
   filtering, all-boards columns/sort/page/Gantt, import/export variants, and
-  timer/time-entry aliases.
+  timer/time-entry aliases. The named examples have successful persisted or
+  controller-boundary evidence in `01-api-matrix.md`; timer stop/cancel
+  aliases now also have integration-level status and resulting-state parity.
 - [ ] For each uncovered operation, add or extend focused API/integration
   coverage for response status/body and persisted side effects.
 - [ ] Cover invalid path/query/body inputs, missing referenced records, and
