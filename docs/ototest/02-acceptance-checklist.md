@@ -125,8 +125,11 @@ browser interaction evidence remains a separate layer.
   linked Google subject (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`);
   the account endpoint likewise omits the stored hash
   (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
-- [ ] Authentication throttling behavior links to focused rate-limit evidence
-  without substituting that evidence for successful auth operation behavior.
+- [x] Authentication throttling has focused HTTP-boundary evidence for login,
+  registration, and Google token exchange
+  (`AuthControllerApiTest.rateLimitedAuthenticationReturnsTooManyRequests`,
+  `loginBudgetIsPerNormalizedEmailAndIgnoresForwardedAddressHeaders`, and
+  `registrationAndGoogleBudgetsAreAppliedAtTheHttpBoundary`).
 
 ## Flow: Cover Paths operations
 
