@@ -957,9 +957,14 @@ browser interaction evidence remains a separate layer.
   rollback evidence section of [`01-api-matrix.md`](01-api-matrix.md#multi-record-transaction-rollback-evidence).
 - [ ] PostgreSQL constraints, SQL semantics, and migration behavior link to
   guarded PostgreSQL evidence.
-- [ ] Browser E2E evidence is required only where client interaction or
+- [x] Browser E2E evidence is required only where client interaction or
   cross-layer behavior is the risk, and is not used as a substitute for API
-  contract evidence.
+  contract evidence. This milestone's scope explicitly covers supported web
+  and extension API behavior at the server boundary; browser journeys remain
+  in OTOTEST-03/04. The API matrix names real browser/real-stack candidates as
+  a separate evidence layer and explicitly says mocked client tests do not
+  establish browser or API evidence. Controller/API, service, integration,
+  and guarded PostgreSQL assertions are linked from the backend operation rows.
 - [ ] Each API matrix row links the exact named assertion for each evidence
   layer it claims.
 - [ ] Existing `SecurityHardeningIntegrationTest`,
