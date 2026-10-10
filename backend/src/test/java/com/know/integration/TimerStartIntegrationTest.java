@@ -81,7 +81,7 @@ class TimerStartIntegrationTest extends IntegrationTestSupport {
         api.post("/api/v1/timers/" + second.get("id").asText() + "/stop", owner, null);
     assertEquals(canonicalStop.status(), idStop.status(), idStop.body());
     JsonNode stoppedById = idStop.json();
-    assertEquals(stoppedByCanonical.get("id").asText(), stoppedById.get("id").asText());
+    assertEquals(second.get("id").asText(), stoppedById.get("id").asText());
     assertEquals(stoppedByCanonical.get("running"), stoppedById.get("running"));
     assertCurrentIsEmpty(owner);
 
