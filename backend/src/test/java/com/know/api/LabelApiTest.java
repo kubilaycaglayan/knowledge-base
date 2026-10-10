@@ -80,4 +80,27 @@ class LabelApiTest {
         .andExpect(status().isBadRequest());
     verifyNoInteractions(service);
   }
+
+  @Test
+  void labelUpdateValidatesNameAndAcceptsTheMaximumLength() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    String endpoint = "/api/v1/labels/" + UUID.randomUUID();
+    for (String name : List.of(" ", "l".repeat(81))) {
+      mvc.perform(
+              put(endpoint)
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content("{\"name\":\"" + name + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(service);
+
+    mvc.perform(
+            put(endpoint)
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{\"name\":\"" + "l".repeat(80) + "\"}"))
+        .andExpect(status().isOk());
+  }
 }

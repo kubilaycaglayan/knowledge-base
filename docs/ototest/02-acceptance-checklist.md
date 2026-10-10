@@ -193,7 +193,9 @@ browser interaction evidence remains a separate layer.
   maximum (`LabelApiTest.invalidLabelPayloadIsRejected` and
   `LabelApiTest.labelNameLimitRejectsOverlongAndAcceptsMaximumLength`).
 - [x] `PUT /api/v1/labels/{id}` covers update, invalid scope/color values, and
-  assignment-sensitive restrictions.
+  assignment-sensitive restrictions; blank/over-limit names return 400 and
+  the 80-character maximum succeeds
+  (`LabelApiTest.labelUpdateValidatesNameAndAcceptsTheMaximumLength`).
 - [x] `DELETE /api/v1/labels/{id}` covers unassigned deletion.
 - [x] `DELETE /api/v1/labels/{id}?removeAssignments=true` covers explicit
   assignment removal while preserving the assigned records.
