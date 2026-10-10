@@ -371,6 +371,9 @@ the extension has its own scope in OTOTEST-04.
 - [ ] Deleting a log requires confirmation or offers a visible undo action.
 - [ ] Cancelling deletion leaves the log unchanged.
 - [ ] Confirming deletion removes only the selected log.
+- [x] A failed delete keeps the log visible and permits a successful retry.
+  Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
+  'keeps a log after delete fails'` (component test; mocked API).
 
 ## Reports
 

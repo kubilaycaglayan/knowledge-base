@@ -293,6 +293,35 @@ describe("LogsView", () => {
     expect(wrapper.text()).not.toContain("Recent thought");
   });
 
+  it("keeps a log after delete fails and removes it when the user retries", async () => {
+    let deleteAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/labels?scope=LOG") return [];
+      if (path === "/logs/new" && options?.method === "DELETE") {
+        deleteAttempts += 1;
+        if (deleteAttempts === 1) throw new Error("temporary failure");
+        return undefined;
+      }
+      if (path === "/logs") return [log("new", "Recent thought", "2026-09-11T11:30:00Z")];
+      return undefined;
+    });
+    const wrapper = mount(LogsView);
+    await flushPromises();
+
+    await wrapper.get('button[aria-label^="Remove log"]').trigger("click");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Unable to remove this log. Please try again.");
+    expect(wrapper.text()).toContain("Recent thought");
+
+    await wrapper.get('button[aria-label^="Remove log"]').trigger("click");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+    expect(deleteAttempts).toBe(2);
+    expect(wrapper.text()).not.toContain("Recent thought");
+    wrapper.unmount();
+  });
+
   it("opens log labels and toggles a selected label", async () => {
     vi.mocked(api).mockImplementation(async (path, options) => {
       if (path === "/labels?scope=LOG")
