@@ -558,6 +558,41 @@ describe("PathsView", () => {
     );
   });
 
+  it("preserves a failed path edit and lets the user retry", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Edit")!
+      .trigger("click");
+    const name = wrapper.get('input[aria-label="Edit path name"]');
+    await name.setValue("Algorithms revised");
+    vi.mocked(api).mockRejectedValueOnce(new Error("network"));
+    await wrapper.get("form.path-edit").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not update path.");
+    expect((name.element as HTMLInputElement).value).toBe("Algorithms revised");
+
+    vi.mocked(api).mockResolvedValueOnce({
+      id: "path-1",
+      name: "Algorithms revised",
+      description: "Problem solving",
+      color: "#E8754E",
+      status: "ACTIVE",
+      pinned: false,
+    });
+    await wrapper.get("form.path-edit").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Algorithms revised");
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, options]) => path === "/paths/path-1" && options?.method === "PUT",
+      ),
+    ).toHaveLength(2);
+  });
+
   it("searches for a merge target, confirms the destructive merge, and refreshes paths", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {

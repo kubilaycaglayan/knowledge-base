@@ -271,7 +271,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Edit one path
 
-- [ ] Editing a path name and description updates only that path.
+- [x] Editing a path name and description updates only that path. Evidence:
+  `frontend/src/views/PathsView.test.ts`, `edits path name description and
+  color inline` checks the exact Path PUT URL/body; `preserves a failed path
+  edit and lets the user retry` verifies that the edit remains recoverable.
 - [x] Editing a path color exposes an accessible color name and visible
   selection state. Evidence: `frontend/src/components/ColorPalette.test.ts`,
   `announces the currently selected color through pressed state` verifies the
