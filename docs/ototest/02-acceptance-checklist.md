@@ -471,7 +471,8 @@ browser interaction evidence remains a separate layer.
   `AllBoardsIntegrationTest.columnsCoverOnlyTheUsersTabBoards`).
 - [x] `GET /api/v1/boards/all/columns/cards/page` covers cross-board cursors,
   many-page stability, empty/unknown columns, invalid limits, foreign-user
-  isolation, and sort modes (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
+  isolation, the first and middle pages, limits at 1 and 100, and sort modes
+  (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
   `AllBoardsIntegrationTest.columnCursorWalkRemainsStableAcrossManyPages`, and
   `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `PUT /api/v1/boards/all/columns/sort` covers per-user sort persistence,

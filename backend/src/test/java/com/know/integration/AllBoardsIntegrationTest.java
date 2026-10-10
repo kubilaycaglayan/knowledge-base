@@ -186,6 +186,21 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     JsonNode empty = get("/api/v1/boards/all/columns/cards/page?name=Nowhere&cursor=-1&limit=20", token).getBody();
     assertEquals(0, empty.get("items").size());
     assertTrue(empty.get("nextCursor").isNull());
+    JsonNode first = get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=1", token).getBody();
+    assertEquals(1, first.get("items").size());
+    assertTrue(first.get("nextCursor").asInt() >= 0);
+    JsonNode middle =
+        get(
+                "/api/v1/boards/all/columns/cards/page?name=Backlog&cursor="
+                    + first.get("nextCursor").asInt()
+                    + "&limit=1",
+                token)
+            .getBody();
+    assertEquals(1, middle.get("items").size());
+    assertNotEquals(first.get("items").get(0).get("id"), middle.get("items").get(0).get("id"));
+    JsonNode finalPage = get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=100", token).getBody();
+    assertEquals(5, finalPage.get("items").size());
+    assertTrue(finalPage.get("nextCursor").isNull());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=0", token).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-2&limit=20", token).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=101", token).getStatusCode());
