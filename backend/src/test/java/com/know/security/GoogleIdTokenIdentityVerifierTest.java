@@ -22,7 +22,7 @@ class GoogleIdTokenIdentityVerifierTest {
 
   @Test
   void missingClientIdAlsoDisablesVerification() {
-    GoogleIdTokenIdentityVerifier verifier = new GoogleIdTokenIdentityVerifier(null);
+    GoogleIdTokenIdentityVerifier verifier = new GoogleIdTokenIdentityVerifier((String) null);
 
     assertEquals(Optional.empty(), verifier.verify("token"));
   }
