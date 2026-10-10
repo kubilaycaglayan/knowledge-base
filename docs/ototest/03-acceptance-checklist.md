@@ -925,10 +925,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Import Knowledge Base data
 
-- [ ] The Knowledge Base import view accepts the supported input method.
+- [x] The Knowledge Base import view accepts pasted CSV text. Evidence: `ImportsView.test.ts` / `imports Knowledge Base CSV text and reports the server outcome` submits the CSV text in the supported text/csv request.
 - [ ] Invalid or unsupported import data produces a readable validation
   result without partial visible records.
-- [ ] A valid import reports created, skipped, and failed record counts.
+- [x] A valid import reports created, skipped, and created Path counts. Evidence: the same test verifies the visible imported, skipped, and created Path summary and the resulting batch history.
 - [ ] Re-importing the same external identities does not visibly duplicate
   records.
 - [ ] Import history identifies completed batches and their outcomes.
