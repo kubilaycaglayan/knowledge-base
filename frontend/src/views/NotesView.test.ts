@@ -638,7 +638,7 @@ describe("NotesView", () => {
     await r.isReady();
     const wrapper = mountNotes(r);
     await flushPromises();
-    const editor = wrapper.findComponent(EditorContent).props("editor");
+    const editor = wrapper.findComponent(EditorContent).props("editor")!;
     editor.commands.setTextSelection({ from: 1, to: 13 });
     await wrapper.get('button[aria-label="Bold"]').trigger("mousedown");
     await wrapper.get('button[aria-label="Bold"]').trigger("click");
@@ -667,7 +667,7 @@ describe("NotesView", () => {
     await r.isReady();
     const first = mountNotes(r);
     await flushPromises();
-    const editor = first.findComponent(EditorContent).props("editor");
+    const editor = first.findComponent(EditorContent).props("editor")!;
     editor.commands.setContent({
       type: "doc",
       content: [
