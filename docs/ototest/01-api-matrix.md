@@ -156,6 +156,13 @@ asserted. A field in this catalog is not itself a claim that tests verify it.
 | `BoardController.CardPage` | `items` (`CardView` list), `nextCursor` |
 | `AllBoardsController.ColumnView` | `name`, `cardSort`, `statuses` (`StatusView` list) |
 | `AllBoardsController.ColumnSortView` | `name`, `cardSort` |
+| `Activity` (JSON getter surface) | `id`, `pathId`, `timeEntryId`, `type`, `title`, `detail`, `occurredAt`, `importBatchId`, `labelIds`; authenticated `userId` has no getter and is not serialized |
+| `ClockifyImportService.ImportSummary` | `batchId`, `imported`, `skipped`, `createdPaths` |
+| `ClockifyImportService.ImportBatchView` | `id`, `source`, `imported`, `skipped`, `createdPaths`, `createdAt`, `undoneAt` |
+| `ClockifyImportService.UndoSummary` | `batchId`, `deletedEntries`, `deletedActivities` |
+| `KnowledgeBaseTransferService.ImportSummary` | `batchId`, `imported`, `skipped`, `createdPaths` |
+| `KnowledgeBaseTransferService.BatchView` | `id`, `source`, `imported`, `skipped`, `createdPaths`, `createdAt`, `undoneAt` |
+| `KnowledgeBaseTransferService.UndoSummary` | `batchId`, `deletedEntries`, `deletedActivities`, `deletedPaths`, `deletedLogs` |
 
 | Verb + composed path | Controller method / inputs | Candidate evidence / current classification | State and important edges to map |
 | --- | --- | --- | --- |
