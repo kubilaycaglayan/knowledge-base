@@ -120,6 +120,35 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void loginUsesTheSameFailureForUnknownEmailAndWrongPassword() throws Exception {
+    User existing = new User("known@example.com", "hash", "known");
+    when(users.findByEmailIgnoreCase("known@example.com")).thenReturn(Optional.of(existing));
+    when(users.findByEmailIgnoreCase("unknown@example.com")).thenReturn(Optional.empty());
+    when(encoder.matches("wrong-password-value", "hash")).thenReturn(false);
+
+    String knownFailure =
+        mvc.perform(
+                post("/api/v1/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"known@example.com\",\"password\":\"wrong-password-value\"}"))
+            .andExpect(status().isUnauthorized())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String unknownFailure =
+        mvc.perform(
+                post("/api/v1/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"unknown@example.com\",\"password\":\"wrong-password-value\"}"))
+            .andExpect(status().isUnauthorized())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    org.junit.jupiter.api.Assertions.assertEquals(knownFailure, unknownFailure);
+  }
+
+  @Test
   void invalidGoogleTokenIsRejectedBeforeAccountLookup() throws Exception {
     when(google.verify("bad-token")).thenReturn(Optional.empty());
     mvc.perform(

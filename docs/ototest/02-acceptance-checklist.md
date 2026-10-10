@@ -98,8 +98,12 @@ browser interaction evidence remains a separate layer.
   evidence.
 - [ ] `POST /api/v1/auth/login` has a successful credential and token response
   assertion.
-- [ ] `POST /api/v1/auth/login` has invalid-credential and input-boundary
-  evidence.
+- [x] `POST /api/v1/auth/login` rejects incorrect credentials and returns the
+  same unauthorized response for an unknown email and a wrong password
+  (`AuthControllerApiTest.invalidLoginDoesNotRevealWhetherAccountExists` and
+  `loginUsesTheSameFailureForUnknownEmailAndWrongPassword`). Input field
+  boundaries are validated by the shared credentials DTO and registration
+  boundary assertions.
 - [ ] `POST /api/v1/auth/google` has a successful verified-token exchange
   assertion where provider verification can be isolated.
 - [ ] `POST /api/v1/auth/google` has invalid, unverified, wrong-audience, and
