@@ -276,6 +276,35 @@ describe("NotesView", () => {
     await reloaded.unmount();
   });
 
+  it("switches between archived and active notes and restores the URL state", async () => {
+    const archivedNote = { ...note, id: "archived-note", title: "Archived draft", deletedAt: "2026-09-03T10:00:00Z" };
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/notes?")) return undefined;
+      const params = new URLSearchParams(path.split("?")[1]);
+      return params.get("archived") === "true" ? page([archivedNote]) : page([note]);
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    expect(wrapper.get(".note-row").text()).toContain("Learning");
+
+    await wrapper.get(".notes-pagination-summary button").trigger("click");
+    await flushPromises();
+    expect(r.currentRoute.value.query.archived).toBe("1");
+    expect(wrapper.get(".note-row").text()).toContain("Archived draft");
+    expect(wrapper.findAll(".note-row")).toHaveLength(1);
+    expect(wrapper.get(".note-row").text()).toContain("Restore");
+
+    await wrapper.get(".notes-pagination-summary button").trigger("click");
+    await flushPromises();
+    expect(r.currentRoute.value.query.archived).toBeUndefined();
+    expect(wrapper.get(".note-row").text()).toContain("Learning");
+    expect(wrapper.findAll(".note-row")).toHaveLength(1);
+    await wrapper.unmount();
+  });
+
   it("changes page size and pages through notes without repeating records", async () => {
     const notes = Array.from({ length: 25 }, (_, index) => ({
       ...note,
