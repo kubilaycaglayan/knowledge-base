@@ -55,7 +55,11 @@ class ActivityApiTest {
     var auth = new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of());
 
     for (String query :
-        List.of("from=not-a-timestamp", "pathId=not-a-uuid", "type=not-an-activity-type")) {
+        List.of(
+            "from=not-a-timestamp",
+            "to=not-a-timestamp",
+            "pathId=not-a-uuid",
+            "type=not-an-activity-type")) {
       mvc.perform(get("/api/v1/activities?" + query).with(authentication(auth)))
           .andExpect(status().isBadRequest());
     }
