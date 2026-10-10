@@ -126,7 +126,9 @@ profile. The browser journey checks the manifest permissions, popup and
 options entrypoints, API URL persistence, a Clockify content-script to
 service-worker request, signed-in timer start/stop, note creation and editing,
 expired-session recovery, and unavailable-API recovery against a disposable
-loopback fixture. Unexpected console and page errors fail the suite. It requires
+loopback fixture. It restarts the persistent Chromium profile to confirm the
+packaged extension worker reconnects with its local sign-in state. Unexpected
+console and page errors fail the suite. It requires
 `xvfb-run` on a headless Linux host and uses only a local fixture token. The
 test profile and fixture server are removed when the run exits. To run just
 the browser assertions after building the extension, use

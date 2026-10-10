@@ -24,6 +24,28 @@ let extensionNotes = [];
 let savedExtensionNote = null;
 const fixtureRequests = [];
 
+async function launchExtensionContext() {
+  const launched = await chromium.launchPersistentContext(profilePath, {
+    ...(browserPath ? { executablePath: browserPath } : {}),
+    headless: false,
+    args: [
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+    ],
+  });
+  launched.on("console", (message) => {
+    if (message.type() === "error") {
+      if (apiUnavailable && message.text().includes("503 (Service Unavailable)")) expectedUnavailableApiErrors.push(message.text());
+      else if (authExpired && message.text().includes("401 (Unauthorized)")) expectedUnavailableApiErrors.push(message.text());
+      else errors.push(message.text());
+    }
+  });
+  launched.on("page", (page) => page.on("pageerror", (error) => errors.push(error.message)));
+  return launched;
+}
+
 before(async () => {
   const manifest = JSON.parse(await readFile(join(extensionPath, "manifest.json"), "utf8"));
   assert.equal(manifest.manifest_version, 3);
@@ -104,24 +126,7 @@ before(async () => {
   await new Promise((resolveListen) => apiServer.listen(26580, "127.0.0.1", resolveListen));
 
   profilePath = await mkdtemp(join(tmpdir(), "knowledge-base-extension-e2e-"));
-  context = await chromium.launchPersistentContext(profilePath, {
-    ...(browserPath ? { executablePath: browserPath } : {}),
-    headless: false,
-    args: [
-      `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`,
-      "--no-first-run",
-      "--no-default-browser-check",
-    ],
-  });
-  context.on("console", (message) => {
-    if (message.type() === "error") {
-      if (apiUnavailable && message.text().includes("503 (Service Unavailable)")) expectedUnavailableApiErrors.push(message.text());
-      else if (authExpired && message.text().includes("401 (Unauthorized)")) expectedUnavailableApiErrors.push(message.text());
-      else errors.push(message.text());
-    }
-  });
-  context.on("page", (page) => page.on("pageerror", (error) => errors.push(error.message)));
+  context = await launchExtensionContext();
   const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker", { timeout: 15000 });
   extensionId = new URL(worker.url()).host;
 });
@@ -216,6 +221,15 @@ it("signs in, syncs a timer through the packaged popup, and recovers from an una
   await popup.getByText("Extension note round trip").waitFor();
   assert.equal(savedExtensionNote.title, "Extension note round trip");
   assert.equal(savedExtensionNote.contentText, "Saved through the signed-in packaged extension.");
+
+  await context.close();
+  context = await launchExtensionContext();
+  const restartedWorker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker", { timeout: 15000 });
+  assert.equal(new URL(restartedWorker.url()).host, extensionId, "the packaged worker restarts with the same installed extension");
+  const afterRestart = await context.newPage();
+  await afterRestart.goto(`chrome-extension://${extensionId}/popup.html`);
+  await afterRestart.getByRole("button", { name: "Start timer" }).waitFor();
+  assert.equal(await afterRestart.evaluate(() => chrome.storage.local.get("token").then((values) => values.token)), "disposable-e2e-token");
 
   apiUnavailable = true;
   const reconnect = await context.newPage();

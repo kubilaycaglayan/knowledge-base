@@ -28,7 +28,7 @@ persistence boundaries.
 - [x] Exercise authentication/session recovery and at least one ownership
   boundary through the browser where it adds evidence beyond API integration
   tests.
-- [ ] Reuse the disposable Compose conventions and isolated port/credential
+- [x] Reuse the disposable Compose conventions and isolated port/credential
   generation from current runners. Cleanup must remain project-scoped.
 
 ## Journey workflow and minimum slices
@@ -64,8 +64,8 @@ persistence boundaries.
   `extension.real-browser.acceptance.test.mjs`.
 - [x] Exercise sign-in/configuration, timer start/stop/sync, notes flows, and
   Clockify behavior supported by the current product.
-- [ ] Verify service-worker restart/reconnect behavior and errors from denied
-  permissions or unavailable API dependencies where feasible.
+- [ ] Verify errors from denied permissions where feasible. The packaged suite
+  now covers worker restart/reconnect, unavailable API, and expired auth.
 - [x] Capture browser console errors and fail on unexpected extension/runtime
   errors; keep secrets out of logs and artifacts.
 - [ ] Keep fast Node module tests as the primary location for exhaustive edge
@@ -75,9 +75,11 @@ persistence boundaries.
 The packaged browser suite verifies install, manifest permissions, popup and
 options rendering, saved API configuration, a Clockify content-script request
 through the service worker, signed-in timer start/stop, note creation/editing,
-expired-session return to sign-in, and recovery UI for an unavailable API.
-Unexpected console and page errors fail the suite. Worker restart and denied
-permissions remain uncovered.
+expired-session return to sign-in, recovery UI for an unavailable API, and a
+fresh packaged worker after restarting the persistent Chromium profile.
+Unexpected console and page errors fail the suite. Denied host-permission
+behavior remains uncovered because the test installation grants the declared
+loopback host permission.
 
 ## Completed browser slices
 
@@ -127,8 +129,8 @@ permissions remain uncovered.
   reimports it, recovers from invalid Clockify JSON, and checks the imported
   batch through the API.
 
-The remaining signed-in timer/notes and service-worker recovery journeys remain
-open for this milestone.
+Extension Notes and signed-in timer flows are now covered. Extension worker
+restart and denied-permission behavior remain open.
 
 ## Acceptance
 
