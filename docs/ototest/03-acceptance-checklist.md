@@ -1187,8 +1187,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] Rich-text toolbar actions apply the selected formatting at the caret. Evidence: `NotesView.test.ts` / `applies selected formatting in the note editor and autosaves it` selects body text, applies Bold, and verifies the saved content mark.
 - [x] Checklist/list/quote/code formatting remains intact after save and reopen. Evidence: `NotesView.test.ts` / `preserves list, checklist, quote, and code blocks after save and reopen` verifies saved content renders with each structure after remount.
 - [x] Pasting formatted content does not create unsafe or visibly corrupted content. Evidence: `NotesView.test.ts` / `pastes rich note content without retaining unsafe markup` verifies rich formatting is retained, script markup is discarded, and sanitized content autosaves.
-- [ ] Long content remains readable and editable without breaking the page
-  layout.
+- [x] Long content remains readable and editable without breaking the page layout. Evidence: `nav-shell.acceptance.test.mjs` / `keeps long note titles and paragraphs within a phone-width editor` verifies long title/body content and checks document, editor, and ProseMirror widths at 390px.
 
 ### Flow: Inspect note line history
 
