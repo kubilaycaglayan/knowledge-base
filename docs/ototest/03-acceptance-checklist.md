@@ -15,23 +15,45 @@ the extension has its own scope in OTOTEST-04.
 
 ## Acceptance setup
 
-- [ ] Use a local or otherwise approved non-production application and
-  disposable account data only.
-- [ ] Record the application revision, Chrome version, operating system,
-  viewport, theme, and account state for each acceptance pass.
-- [ ] Check desktop Chrome at a representative laptop width and a wide desktop
-  width.
+- [x] Use a local or otherwise approved non-production application and
+  disposable account data only. Evidence: `nav-shell.acceptance.test.mjs`
+  starts the frontend on `127.0.0.1`, intercepts API traffic with in-memory
+  fixtures, and uses a synthetic test token; it writes no backend or personal
+  data.
+- [x] Record the application revision, Chrome version, operating system,
+  viewport, theme, and account state for each acceptance pass. Automated pass
+  record: application revision `355f784d`; Google Chrome for Testing
+  `153.0.8010.12` (Playwright headless); Ubuntu Linux
+  `7.0.0-38-generic`, x86_64; viewports 1280×900, 1440×900, 390×900 and
+  keyboard-like 390×420; light and dark themes; synthetic signed-in token or
+  signed-out state with in-memory fixtures. Command: `cd frontend && npm run
+  test:nav` (100/100 passed). Phone viewport/touch settings are emulation.
+- [x] Check desktop Chrome at a representative laptop width and a wide desktop
+  width. Evidence: the same run includes direct route, shell, and control flows
+  at 1280×900 and 1440×900 in Google Chrome for Testing.
 - [ ] Check mobile Chrome on a real Android device or an explicitly identified
   mobile Chrome profile at a phone-sized viewport. Record which was used.
-- [ ] Keep mobile Chrome findings separate from desktop Chrome findings.
-- [ ] Do not treat a desktop viewport emulation or user-agent override as proof
-  of behavior on a real mobile Chrome installation.
-- [ ] Use keyboard-only input for flows with keyboard alternatives.
+- [x] Keep mobile Chrome findings separate from desktop Chrome findings.
+  Evidence: [`01-control-matrix.md`](01-control-matrix.md) labels phone-width
+  results as desktop Chromium/Chrome touch emulation and the real mobile
+  Chrome items as open.
+- [x] Do not treat a desktop viewport emulation or user-agent override as proof
+  of behavior on a real mobile Chrome installation. Evidence: mobile evidence
+  rows in [`01-control-matrix.md`](01-control-matrix.md) explicitly state this
+  limitation and retain on-device checks as open.
+- [x] Use keyboard-only input for flows with keyboard alternatives. Evidence:
+  `nav-shell.acceptance.test.mjs` includes keyboard-only navigation, keyboard
+  Path/Notes reordering, keyboard Calendar selection, and keyboard Log detail
+  dialog focus flows; these are recorded separately from click/touch flows.
 - [ ] Use touch-only input for the mobile Chrome flows.
-- [ ] Use records with clearly identifiable names when a flow needs saved data;
-  do not alter personal or production data.
-- [ ] Check at least one light-theme and one dark-theme pass for theme-sensitive
-  controls and dialogs.
+- [x] Use records with clearly identifiable names when a flow needs saved data;
+  do not alter personal or production data. Evidence: browser fixtures use
+  named records such as `Directly loaded log entry` and `Phone filter activity`
+  and keep all data in memory.
+- [x] Check at least one light-theme and one dark-theme pass for theme-sensitive
+  controls and dialogs. Evidence: `nav-shell.acceptance.test.mjs` / `keeps
+  dialogs, menus, native selects, date picker, and report chart readable in both
+  themes` switches between light and dark and checks rendered surfaces.
 - [ ] Check narrow viewport and browser zoom/reflow without hiding actions or
   causing unintended horizontal page overflow.
 
