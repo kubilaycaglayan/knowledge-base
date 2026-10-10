@@ -233,6 +233,18 @@ describe("NotesView", () => {
     await new Promise((resolve) => setTimeout(resolve, 280));
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toContain("Unable to load notes.");
+    await wrapper.unmount();
+
+    const reloadedRouter = router();
+    await reloadedRouter.push("/notes?q=graph");
+    await reloadedRouter.isReady();
+    const reloaded = mountNotes(reloadedRouter);
+    await flushPromises();
+    expect(
+      (reloaded.get('input[aria-label="Search notes"]').element as HTMLInputElement).value,
+    ).toBe("graph");
+    expect(reloaded.findAll(".note-row")).toHaveLength(1);
+    await reloaded.unmount();
   });
 
   it("creates a note from the icon action and opens the editor", async () => {
