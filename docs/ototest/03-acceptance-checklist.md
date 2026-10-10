@@ -71,8 +71,13 @@ the extension has its own scope in OTOTEST-04.
   each top-level workspace route and the `/sessions` redirect; the dedicated
   browser cases in the same file directly load `/sessions/:id`, `/paths/:id`,
   `/logs/:id`, `/labels/:id`, `/notes/:id`, and `/board/archive` (mocked API).
-- [ ] Refreshing a supported route preserves the route and its valid query
-  state.
+- [x] Refreshing a supported route preserves the route and its valid query
+  state. Evidence: `cd frontend && node --test --test-name-pattern='loads
+  report filters from a direct query URL|loads a Calendar date deep link|keeps
+  the Labels search query' scripts/nav-shell.acceptance.test.mjs` reloads
+  Reports date/aggregation/path/label filters, the Calendar selected date, and
+  the Labels search query, then verifies the route and rendered state (mocked
+  API).
 - [x] Opening `/sessions` from another supported route resolves to `/`; Back
   restores the prior route and Forward returns to Sessions. Evidence:
   `cd frontend && npm run test:nav` — `redirects /sessions to the Sessions

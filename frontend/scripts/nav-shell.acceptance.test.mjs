@@ -364,6 +364,25 @@ it("loads report filters from a direct query URL and keeps them on reload", asyn
   assert.ok(reportQueries.filter((value) => value.includes("startDate=2026-09-01") && value.includes("endDate=2026-09-07")).length >= 2);
 });
 
+it("keeps the Labels search query after a direct load and browser reload", async (t) => {
+  const { page } = await fixture(t, 1440, {
+    calendarLabels: [{ id: "label-focus", name: "Deep focus", color: "#3B82F6", scopes: ["NOTE", "LOG"] }],
+  });
+  const url = `${server.resolvedUrls.local[0]}labels?q=Deep%20focus`;
+  await page.goto(url);
+  await page.locator(".labels-view").waitFor();
+  const assertQueryState = async () => {
+    assert.equal(new URL(page.url()).searchParams.get("q"), "Deep focus");
+    assert.equal(await page.getByRole("searchbox", { name: "Search labels" }).inputValue(), "Deep focus");
+    await page.getByText("Deep focus", { exact: true }).waitFor();
+  };
+  await assertQueryState();
+
+  await page.reload();
+  await page.locator(".labels-view").waitFor();
+  await assertQueryState();
+});
+
 it("switches report aggregation by keyboard and preserves Path and Label filters", async (t) => {
   const { page } = await fixture(t, 1440);
   page.setDefaultTimeout(5000);
