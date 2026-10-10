@@ -572,7 +572,9 @@ browser interaction evidence remains a separate layer.
   assignment lists and nested label IDs also return 400 before service access
   (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`).
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
-  subsequent absence, foreign-user isolation, and repeated deletion.
+  subsequent absence, foreign-user isolation, repeated deletion, and malformed
+  or impossible path-date rejection before service execution
+  (`CalendarApiTest.calendarDayDeleteRejectsMalformedPathDatesBeforeServiceAccess`).
 - [x] `PUT /api/v1/calendar/days/range` covers inclusive start/end mutation,
   preserves an existing note and label assignment, and confirms all changes
   through a subsequent range read

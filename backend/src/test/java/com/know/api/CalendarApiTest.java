@@ -110,4 +110,14 @@ class CalendarApiTest {
 
     verifyNoInteractions(service);
   }
+
+  @Test
+  void calendarDayDeleteRejectsMalformedPathDatesBeforeServiceAccess() throws Exception {
+    for (String date : List.of("not-a-date", "2026-02-30")) {
+      mvc.perform(delete("/api/v1/calendar/days/" + date).with(authentication(auth)))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
 }
