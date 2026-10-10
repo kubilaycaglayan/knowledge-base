@@ -1,5 +1,8 @@
 # Knowledge Base UI roadmap
 
+- [x] Show an accessible loading status on the Sessions page until the first
+  session-history request resolves; do not flash the empty state while data is
+  still loading.
 - [x] Page jumps in global search: typing a main page's name (Board, Logs,
   Notes, Calendar, Reports, Settings, …) lists it under Pages above the
   record results, matched instantly in the browser; Enter on the top match

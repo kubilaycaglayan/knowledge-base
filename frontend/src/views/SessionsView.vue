@@ -29,6 +29,7 @@ type Path = {
 type SessionGroup = { key: string; label: string; sessions: Session[] };
 
 const sessions = ref<Session[]>([]);
+const initialLoading = ref(true);
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const sessionsStore = useSessionsStore();
@@ -158,6 +159,8 @@ async function load(nextPage = page.value, force = false) {
     labelsStore.setAll(loadedLabels, "TIME_ENTRY");
   } catch {
     error.value = "Unable to load sessions.";
+  } finally {
+    initialLoading.value = false;
   }
 }
 function beginEdit(session: Session) {
@@ -368,7 +371,8 @@ onMounted(load);
           </article>
         </div>
       </section>
-      <p v-if="!sessions.length && !error" class="empty">
+      <p v-if="initialLoading" class="empty" role="status">Loading sessions…</p>
+      <p v-else-if="!sessions.length && !error" class="empty">
         No sessions recorded yet.
       </p>
     </div>

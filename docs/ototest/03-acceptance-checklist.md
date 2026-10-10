@@ -316,8 +316,13 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Load the Sessions list
 
-- [ ] The Sessions page distinguishes initial loading, no-session, loaded, and
-  request-error states.
+- [x] The Sessions page distinguishes initial loading, no-session, loaded, and
+  request-error states. Evidence: `SessionsView.test.ts` / `shows a loading
+  state instead of the empty state until session history resolves`, `lists
+  sessions by latest completion time with path and label context`, and `shows
+  an error when the initial session load fails`; the browser test
+  `opens the Sessions workspace directly with its empty state and inline
+  tracker` covers the no-session state.
 - [ ] The no-session state offers a clear next action.
 - [ ] Session rows show their date/time, path, description, and available
   labels.
