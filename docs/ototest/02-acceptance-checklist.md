@@ -967,10 +967,14 @@ browser interaction evidence remains a separate layer.
   and guarded PostgreSQL assertions are linked from the backend operation rows.
 - [ ] Each API matrix row links the exact named assertion for each evidence
   layer it claims.
-- [ ] Existing `SecurityHardeningIntegrationTest`,
+- [x] Existing `SecurityHardeningIntegrationTest`,
   `CrossUserIsolationIntegrationTest`, and
   `InputValidationIntegrationTest` are linked only to the specific behavior
-  they actually assert.
+  they actually assert. The matrix uses the security suite for anonymous and
+  malformed-token responses, the cross-user suite for foreign direct and
+  referenced IDs, and generic malformed-body coverage only alongside focused
+  endpoint assertions; it does not use any of them to claim unrelated positive
+  or persistence behavior.
 - [ ] Relevant CI job or local command is recorded beside each executable
   evidence link.
 - [ ] Unavailable, manual, or environment-guarded evidence is labeled with an
