@@ -118,10 +118,27 @@ body. Unless marked otherwise, the success status is `200`.
 | `AllBoardsController.sortColumn` | `ColumnSortView` / 200 |
 | `AllBoardsController.gantt` | `List<CardView>` / 200 |
 
-Input binding names and request types remain in each operation row where
-present; the named controller method is linked to its source class directory
-above. Rows with generic input notes still need a field-by-field binding audit
-before API-02 can be accepted.
+### Declared response fields
+
+The following catalog records serialized response record fields as declared
+in controller/service source. An operation row's controller method maps it to
+the type above; its evidence column names the fields or outcomes actually
+asserted. A field in this catalog is not itself a claim that tests verify it.
+
+| Response type | Declared fields |
+|---|---|
+| `GoogleConfig` | `clientId` |
+| `AuthResponse` | `token`, `userId`, `email`, `displayName` |
+| `AccountView` | `userId`, `email`, `displayName`, `hasPassword`, `hasGoogle` |
+| `PathResponse` | `id`, `name`, `description`, `color`, `textColor`, `status`, `pinned`, `sortOrder`, `activityLabel`, `boardId`, `boardHidden`, `createdAt`, `updatedAt` |
+| `PathSummary` | `path` (`PathResponse`), `trackedSeconds`, `recentActivity` |
+| `LabelManagementService.View` | `id`, `name`, `color`, `scopes`, `system` |
+| `LabelHistoryService.History` | `labelId`, `name`, `color`, `firstUsedAt`, `lastUsedAt`, `totalUses`, `trackedSeconds`, `uses`, `timeline`, `hours`, `related` |
+| `LabelHistoryService.Records` | `items` (`RecordView`: `id`, `date`, `title`, `preview`), `hasMore` |
+| `LogService.LogView` | `id`, `body`, `occurredAt`, `labelIds`, `createdAt`, `updatedAt`, `version` |
+| `KnowledgeService.NoteView` | `id`, `pathId`, `activityId`, `timeEntryId`, `title`, `content`, `createdAt`, `updatedAt`, `deletedAt`, `version`, `contentText`, `tags`, `pinned`, `sortOrder`, `lineEdits` |
+| `KnowledgeService.NotePage` | `items` (`NoteView` list), `page`, `size`, `totalItems`, `totalPages` |
+| `KnowledgeService.TagView` | `id`, `name` |
 
 | Verb + composed path | Controller method / inputs | Candidate evidence / current classification | State and important edges to map |
 | --- | --- | --- | --- |
