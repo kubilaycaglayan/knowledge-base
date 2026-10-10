@@ -1244,11 +1244,17 @@ so the warning and discard criteria remain open.
 ### Flow: Use the Notes editor in mobile Chrome
 
 - [x] The note list and editor can be reached with touch at phone width. Evidence: `nav-shell.acceptance.test.mjs` / `opens and uses the Notes editor with touch-sized controls on mobile` opens a note from the mobile list and returns to it from the editor.
-- [ ] Editing controls remain visible or reachable while the mobile keyboard
-  is open.
+- [x] Editing controls remain visible or reachable while the mobile keyboard
+  is open. Supplemental Chromium evidence: `nav-shell.acceptance.test.mjs` /
+  `keeps the Notes draft and editor controls reachable across a keyboard-like
+  viewport resize` checks the formatting control intersects the reduced
+  viewport. A real mobile keyboard still needs verification.
 - [ ] The editor scrolls as intended without trapping the page or hiding Save.
 - [x] Rich-text controls have touch targets suitable for repeated editing. Evidence: the same mobile browser test checks every toolbar button is at least 44×44px.
-- [ ] Closing the keyboard preserves the caret and entered content.
+- [x] Closing the keyboard preserves the caret and entered content.
+  Supplemental Chromium evidence: the same viewport-resize test asserts the
+  draft text and caret selection survive restoring the taller viewport. A real
+  mobile keyboard still needs verification.
 
 ## Cross-cutting behavior
 

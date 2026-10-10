@@ -1266,6 +1266,56 @@ it("opens and uses the Notes editor with touch-sized controls on mobile", async 
   await page.waitForFunction(() => location.pathname === "/notes");
 });
 
+it("keeps the Notes draft and editor controls reachable across a keyboard-like viewport resize", async (t) => {
+  const note = {
+    id: "n1",
+    title: "Browser deep link",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }),
+    contentText: "Loaded directly",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
+  const body = page.getByRole("textbox", { name: "Note content" });
+  await body.waitFor();
+  await body.tap();
+  await page.keyboard.type("Draft stays here");
+  const draft = await body.innerText();
+  assert.match(draft, /Draft stays here/);
+
+  // Model the visible area left above a software keyboard; Chromium does not open a real mobile keyboard.
+  await page.setViewportSize({ width: 390, height: 320 });
+  await page.waitForTimeout(100);
+  const editorVisible = await body.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < innerHeight;
+  });
+  assert.ok(editorVisible, "the focused editor should remain in the visible viewport");
+  assert.equal(await body.evaluate((element) => element === document.activeElement), true);
+  assert.ok(await page.getByRole("button", { name: "Back to notes" }).isVisible());
+  const toolbarButton = page.locator(".note-toolbar button").first();
+  const toolbarInViewport = await toolbarButton.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < innerHeight;
+  });
+  assert.ok(toolbarInViewport, "a formatting control should remain reachable above the keyboard-like viewport");
+  const caret = () => body.evaluate(() => {
+    const selection = window.getSelection();
+    return { text: selection?.anchorNode?.textContent, offset: selection?.anchorOffset };
+  });
+  const caretBeforeResize = await caret();
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  assert.equal(await body.innerText(), draft);
+  assert.equal(await body.evaluate((element) => element === document.activeElement), true);
+  assert.deepEqual(await caret(), caretBeforeResize);
+});
+
 it("keeps long note titles and paragraphs within a phone-width editor", async (t) => {
   const longTitle = `Planning ${"weekly priorities ".repeat(10)}`.trim();
   const longBody = `${"A".repeat(400)} ${"Long body paragraph with readable words. ".repeat(40)}`;
