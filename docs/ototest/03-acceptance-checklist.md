@@ -220,7 +220,12 @@ the extension has its own scope in OTOTEST-04.
 - [x] The selected appearance remains in effect after reloading the app.
   Evidence: the same browser test reloads Reports in both themes and verifies
   the stored preference is applied from the mocked preferences API.
-- [ ] Dialogs, menus, native selects, and charts remain legible in both themes.
+- [x] Dialogs, menus, native selects, and charts remain legible in both themes.
+  Evidence: `keeps dialogs, menus, native selects, date picker, and report
+  chart readable in both themes` in `frontend/scripts/nav-shell.acceptance.test.mjs`
+  checks computed text/background contrast at 4.5:1 or better for the Board
+  manager dialog and Gantt board menu, Settings native theme select, Reports
+  date picker, and visible Reports SVG chart labels in light and dark themes.
 
 ### Flow: Search for a product page
 

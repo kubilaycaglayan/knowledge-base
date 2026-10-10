@@ -13,7 +13,7 @@ const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body:
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [] } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -90,7 +90,9 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
     else if (path.startsWith("/reports")) {
       reportQueries.push(url.searchParams.toString());
-      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
+      const chartPath = { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
+      const chartDay = { date: today, totalSeconds: 3600, paths: [chartPath] };
+      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: themeSurfaces ? 3600 : 0, days: themeSurfaces ? [chartDay] : [], paths: themeSurfaces ? [chartPath] : [], sessionLabels: [], calendarLabels: [] };
     }
     else if (path === "/preferences" && method === "PUT") {
       Object.assign(preferences, route.request().postDataJSON());
@@ -1090,6 +1092,89 @@ it("applies light and dark appearance changes across routes and reloads", async 
   await page.locator(".reports-page").waitFor();
   assert.equal(await root.getAttribute("data-theme"), "light");
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--workspace-background").trim()), "#f7f8fa");
+});
+
+it("keeps dialogs, menus, native selects, date picker, and report chart readable in both themes", async (t) => {
+  const { page } = await fixture(t, 1440, { themeSurfaces: true });
+  const contrast = (foreground, background) => {
+    const luminance = (color) => {
+      const hex = color.match(/^#([\da-f]{3}|[\da-f]{6})$/i)?.[1];
+      const normalizedHex = hex?.length === 3 ? [...hex].map((digit) => digit + digit).join("") : hex;
+      const channels = normalizedHex
+        ? normalizedHex.match(/../g).map((channel) => parseInt(channel, 16))
+        : color.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const linear = channels.map((channel) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+    };
+    const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+    return (values[0] + 0.05) / (values[1] + 0.05);
+  };
+  const assertReadable = (foreground, background, label) => {
+    assert.ok(contrast(foreground, background) >= 4.5, `${label} contrast must be at least 4.5:1 (${foreground} on ${background})`);
+  };
+  const surfaceColors = async (selector) => page.locator(selector).first().evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { foreground: style.color, background: style.backgroundColor };
+  });
+
+  for (const themeName of ["light", "dark"]) {
+    await page.goto(`${server.resolvedUrls.local[0]}settings`);
+    await page.locator(".settings-view").waitFor();
+    await page.getByRole("combobox", { name: "Theme preference" }).selectOption(themeName);
+    const nativeSelect = await surfaceColors(".theme-select");
+    assertReadable(nativeSelect.foreground, nativeSelect.background, `${themeName} native select`);
+
+    await page.goto(`${server.resolvedUrls.local[0]}board`);
+    await page.locator(".board-page").waitFor();
+    await page.getByRole("button", { name: "Manage boards" }).click();
+    const dialog = page.locator(".confirm-dialog[role=dialog]");
+    await dialog.waitFor();
+    const dialogColors = await surfaceColors(".confirm-dialog[role=dialog]");
+    assertReadable(dialogColors.foreground, dialogColors.background, `${themeName} dialog`);
+    await dialog.getByRole("button", { name: "Done" }).click();
+
+    await openGantt(page);
+    await page.getByRole("button", { name: /^Choose board:/ }).click();
+    await page.getByRole("menu", { name: "Choose board" }).waitFor();
+    const menu = await surfaceColors(".board-more-menu");
+    const menuItem = await surfaceColors(".board-more-menu .board-more-item");
+    assertReadable(menuItem.foreground, menu.background, `${themeName} menu`);
+
+    await page.goto(`${server.resolvedUrls.local[0]}reports`);
+    await page.locator(".reports-page").waitFor();
+    const chart = page.locator(".chart-frame");
+    await chart.locator("svg").waitFor();
+    const chartColors = await page.evaluate(() => {
+      const text = document.querySelector(".chart-frame svg text[fill]");
+      return {
+        foreground: text?.getAttribute("fill") || "",
+        background: getComputedStyle(document.documentElement).getPropertyValue("--workspace-surface").trim(),
+      };
+    });
+    assert.ok(chartColors.foreground, `${themeName} report chart has visible SVG labels`);
+    assertReadable(chartColors.foreground, chartColors.background, `${themeName} report chart labels`);
+
+    const dateRange = page.getByLabel("Report date range");
+    await dateRange.click();
+    const dateMenu = page.locator(".report-date-range .dp__menu");
+    await dateMenu.waitFor();
+    const dateColors = await page.evaluate(() => {
+      const menu = document.querySelector(".report-date-range .dp__menu");
+      const cell = menu?.querySelector(".dp__cell_inner");
+      if (!menu || !cell) return null;
+      return {
+        foreground: getComputedStyle(cell).color,
+        background: getComputedStyle(menu).backgroundColor,
+        themeClass: menu.className,
+      };
+    });
+    assert.ok(dateColors, `${themeName} date picker renders calendar cells`);
+    assert.match(dateColors.themeClass, new RegExp(`dp__theme_${themeName}`));
+    assertReadable(dateColors.foreground, dateColors.background, `${themeName} date picker`);
+  }
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
