@@ -1186,8 +1186,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] Editing paragraphs and plain text saves without losing line breaks. Evidence: `NotesView.test.ts` / `saves a plain-text copy with one line per body line, as the extension edits it` checks each saved line.
 - [x] Rich-text toolbar actions apply the selected formatting at the caret. Evidence: `NotesView.test.ts` / `applies selected formatting in the note editor and autosaves it` selects body text, applies Bold, and verifies the saved content mark.
 - [x] Checklist/list/quote/code formatting remains intact after save and reopen. Evidence: `NotesView.test.ts` / `preserves list, checklist, quote, and code blocks after save and reopen` verifies saved content renders with each structure after remount.
-- [ ] Pasting formatted content does not create unsafe or visibly corrupted
-  content.
+- [x] Pasting formatted content does not create unsafe or visibly corrupted content. Evidence: `NotesView.test.ts` / `pastes rich note content without retaining unsafe markup` verifies rich formatting is retained, script markup is discarded, and sanitized content autosaves.
 - [ ] Long content remains readable and editable without breaking the page
   layout.
 
