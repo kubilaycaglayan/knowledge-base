@@ -916,7 +916,7 @@ describe("PathsView", () => {
         return undefined;
       },
     );
-    const wrapper = mount(PathsView);
+    const wrapper = mount(PathsView, { attachTo: document.body });
     await flushPromises();
     await wrapper
       .findAll("button.text-button")
@@ -926,19 +926,23 @@ describe("PathsView", () => {
       .findAll("form.path-edit button")
       .find((button) => button.text().trim() === "Merge")!
       .trigger("click");
+    await flushPromises();
 
-    expect(wrapper.get(".merge-path-dialog").text()).toContain(
-      "Merge “Algorithms” into…",
-    );
+    const mergeDialog = wrapper.get('[role="dialog"]');
+    expect(mergeDialog.attributes("aria-modal")).toBe("true");
+    expect(mergeDialog.attributes("aria-labelledby")).toBe("merge-path-heading");
+    expect(wrapper.get("#merge-path-heading").text()).toBe("Merge “Algorithms” into…");
+    expect(document.activeElement).toBe(wrapper.get("#merge-path-search").element);
     expect(
       wrapper.findAll('input[name="merge-target-path"]').map((input) => (input.element as HTMLInputElement).value),
     ).toEqual(["path-2"]);
     await wrapper.get("#merge-path-search").setValue("writing");
     await wrapper.get('input[name="merge-target-path"]').setValue("path-2");
     await wrapper.get(".merge-path-dialog button.primary").trigger("click");
-    expect(wrapper.get(".prompt-dialog").text()).toContain(
-      "Merge Algorithms into Writing?",
-    );
+    const destructiveConfirmation = wrapper.get('[role="dialog"]');
+    expect(destructiveConfirmation.attributes("aria-modal")).toBe("true");
+    expect(destructiveConfirmation.attributes("aria-labelledby")).toBe("prompt-dialog-message");
+    expect(wrapper.get("#prompt-dialog-message").text()).toContain("Merge Algorithms into Writing?");
     expect(wrapper.find(".merge-path-dialog").exists()).toBe(false);
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
@@ -951,6 +955,7 @@ describe("PathsView", () => {
     expect(wrapper.findAll(".path-list .path")).toHaveLength(1);
     expect(wrapper.get(".path-list .path").text()).toContain("Writing");
     expect(wrapper.text()).not.toContain("Algorithms");
+    wrapper.unmount();
   });
 
   it("closes the merge chooser without changing paths", async () => {

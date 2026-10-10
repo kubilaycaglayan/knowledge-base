@@ -639,6 +639,11 @@ the extension has its own scope in OTOTEST-04.
   statuses where supported. Evidence:
   `PathBoardIntegrationTest.mergingPathsMovesCardsByStatusName` checks matched
   status mapping, fallback status, card data, and archived cards.
+- [x] The merge chooser and destructive confirmation expose named modal
+  dialogs, and focus enters the target search field. Evidence:
+  `PathsView.test.ts` / `searches for a merge target, confirms the destructive
+  merge, and refreshes paths` checks both dialog semantics and verifies the
+  chooser focuses “Find a target path”.
 - [x] Cancelling the merge leaves both paths unchanged. Evidence:
   `PathsView.test.ts` / `closes the merge chooser without changing paths`
   cancels both the chooser and the destructive confirmation and verifies no
