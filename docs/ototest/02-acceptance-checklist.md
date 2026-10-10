@@ -66,8 +66,11 @@ browser interaction evidence remains a separate layer.
   state; for restore operations, link evidence of the restored state. The
   path, note, label, time-entry, calendar, import-batch, board/status, and card
   operation rows name the resulting read, list, or persistence observation.
-- [ ] Mark an operation `gap` when its contract is unclear or no assertion
+- [x] Mark an operation `gap` when its contract is unclear or no assertion
   proves the behavior; do not infer coverage from a neighboring operation.
+  Unknown board-card priority binding is explicitly marked as a
+  maintainer-owned contract decision on create, update, and create-in-column
+  rows in [`01-api-matrix.md`](01-api-matrix.md).
 - [ ] Mark unsupported/internal operations with a rationale and owner rather
   than silently omitting them.
 
