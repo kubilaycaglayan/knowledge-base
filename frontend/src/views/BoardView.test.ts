@@ -1716,6 +1716,37 @@ describe("BoardView", () => {
       expect(wrapper.find('[role="alertdialog"][aria-labelledby="archive-board-title"]').exists()).toBe(true);
       await wrapper.unmount();
     });
+
+    it("reports a status archive failure and retries after confirmation", async () => {
+      const store = seedBoard(["Backlog", "Done"]);
+      const archiveStatus = vi.fn()
+        .mockRejectedValueOnce(new Error("offline"))
+        .mockResolvedValue(undefined);
+      (store.archiveStatus as any) = archiveStatus;
+      const wrapper = mountBoard();
+      try {
+        await flushPromises();
+        await openSettingsFor(wrapper, "Test Board");
+
+        const openArchiveConfirmation = async () => {
+          await wrapper.get('button[aria-label="Archive Backlog status"]').trigger("click");
+          await wrapper.get('[aria-labelledby="archive-status-title"] button:last-child').trigger("click");
+          await flushPromises();
+        };
+        await openArchiveConfirmation();
+
+        expect(wrapper.get('[role="alert"]').text()).toContain("Could not archive status.");
+        expect(wrapper.find('button[aria-label="Archive Backlog status"]').exists()).toBe(true);
+        expect(archiveStatus).toHaveBeenCalledTimes(1);
+
+        await wrapper.get('[aria-label="Dismiss board error"]').trigger("click");
+        await openArchiveConfirmation();
+        expect(archiveStatus).toHaveBeenCalledTimes(2);
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      } finally {
+        await wrapper.unmount();
+      }
+    });
   });
   it("keeps the column heading as the accessible name for its section", async () => {
     seedBoard(["Backlog"]);

@@ -1120,7 +1120,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] Archiving a status reassigns its cards and keeps them available in the board. Evidence: `board.acceptance.test.mjs` / `reassigns cards when a status is archived` verifies the card remains visible in Gantt.
 - [x] Attempting to archive the last active status gives the user visible feedback. Evidence: `BoardView.test.ts` / `explains why the last active status cannot be archived` and `board.acceptance.test.mjs` / `explains why the last active status is disabled in board settings` verify the disabled action has a visible reason and accessible description; `board.acceptance.test.mjs` / `explains when another client makes a status the last active one` verifies a concurrent 409 is announced and leaves the status available; `BoardControllerApiTest.finalActiveStatusCannotBeArchived` covers the backend invariant.
 - [x] Restoring an archived status returns it to the board. Evidence: `BoardArchiveView.test.ts` / `restores an archived status through an icon button`.
-- [x] A failed status update leaves the board in a recoverable state. Evidence: `boards.test.ts` / `keeps a status active when archive fails` retains the status after the rejected update.
+- [x] A failed status update leaves the board in a recoverable state. Evidence: `boards.test.ts` / `keeps a status active when archive fails` retains the status after the rejected update; `BoardView.test.ts` / `reports a status archive failure and retries after confirmation` checks visible feedback, the retained action, and a second confirmed attempt.
 
 ### Flow: Create one board card
 
