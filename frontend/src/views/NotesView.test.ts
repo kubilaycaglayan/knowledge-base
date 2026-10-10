@@ -233,6 +233,38 @@ describe("NotesView", () => {
     wrapper.unmount();
   });
 
+  it("reorders notes with accessible move controls", async () => {
+    const second = { ...note, id: "note-2", title: "Writing" };
+    let orderedNotes = [note, second];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path.startsWith("/notes?")) return page(orderedNotes);
+      if (path === "/notes/order" && options?.method === "PUT") {
+        const ids = JSON.parse(String(options.body)).noteIds;
+        orderedNotes = ids.map((id: string) => [note, second].find((item) => item.id === id)!);
+      }
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+
+    const moveDown = wrapper.get('button[aria-label="Move Learning down"]');
+    expect(moveDown.element.tagName).toBe("BUTTON");
+    await moveDown.trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/notes/order",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ noteIds: ["note-2", "note-1"] }),
+      }),
+    );
+    expect(wrapper.findAll(".note-row strong").map((title) => title.text())).toEqual(["Writing", "Learning"]);
+    wrapper.unmount();
+  });
+
   it("reuses the cached notes page when returning to the list", async () => {
     const firstRouter = router();
     await firstRouter.push("/notes");
