@@ -525,6 +525,10 @@ the extension has its own scope in OTOTEST-04.
   `frontend/src/views/PathsView.test.ts`, `edits path name description and
   color inline` checks the exact Path PUT URL/body; `preserves a failed path
   edit and lets the user retry` verifies that the edit remains recoverable.
+- [x] Renaming a Path linked to a board updates its tab name after reloading
+  Board. Evidence: `nav-shell.acceptance.test.mjs` / `updates the board tab
+  name when its Path is renamed` edits a Path then directly loads Board from
+  the same mocked API fixture.
 - [x] Editing a path color exposes an accessible color name and visible
   selection state. Evidence: `frontend/src/components/ColorPalette.test.ts`,
   `announces the currently selected color through pressed state` verifies the

@@ -658,6 +658,25 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   assert.equal(new URL(page.url()).pathname, "/paths");
 });
 
+it("updates the board tab name when its Path is renamed", async (t) => {
+  const { page } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-reading", name: "Reading", status: "ACTIVE", boardId: "board-reading", boardHidden: false }],
+  });
+  const appUrl = server.resolvedUrls.local[0];
+  await page.goto(`${appUrl}paths`);
+  await page.locator(".paths-page").waitFor();
+  const pathCard = page.locator("article.path").filter({ hasText: "Reading" });
+  await pathCard.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("textbox", { name: "Edit path name" }).fill("Writing");
+  await page.getByRole("button", { name: "Save path" }).click();
+  await page.getByRole("heading", { name: "Writing", level: 2 }).waitFor();
+
+  await page.goto(`${appUrl}board`);
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Writing", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Reading", exact: true }).count(), 0);
+});
+
 it("reorders Paths by keyboard with the accessible Move up action", async (t) => {
   const pathSeeds = [
     { id: "path-a", name: "Algorithms", status: "ACTIVE" },
