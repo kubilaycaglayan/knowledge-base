@@ -468,6 +468,35 @@ describe("NotesView", () => {
     });
   });
 
+  it("flushes a pending autosave before navigating back to the note list", async () => {
+    const writes: { path: string; body: string }[] = [];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        writes.push({ path, body: String(options.body) });
+        return { ...note, ...JSON.parse(String(options.body)) };
+      }
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      if (path === "/notes" || path.startsWith("/notes?")) return page();
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Unsaved before leaving");
+
+    await r.push("/notes");
+    await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+
+    expect(writes).toHaveLength(1);
+    expect(JSON.parse(writes[0].body).title).toBe("Unsaved before leaving");
+    wrapper.unmount();
+  });
+
   it("suggests matching existing labels while typing and applies a selected label", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
