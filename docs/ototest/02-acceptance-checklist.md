@@ -1045,8 +1045,8 @@ browser interaction evidence remains a separate layer.
   result, and report link. Batch 14 revision
   `6943ebf9d574e4f8814b57976f2ba2b7a99b7444` passed the local full backend
   command from the matrix evidence section: 598 tests, 0 failures, 89 skipped;
-  the generated report is
-  [`backend/build/reports/tests/test/index.html`](../../backend/build/reports/tests/test/index.html).
+  its generated report is available locally at
+  `backend/build/reports/tests/test/index.html` after the backend suite runs.
   The same revision passed hosted `backend` and `backend-postgres` in both
   [PR #150 run 38019735005](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019735005)
   and [run 38019738515](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019738515);
