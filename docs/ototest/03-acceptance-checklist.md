@@ -647,9 +647,9 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Save a timeline activity note
 
-- [ ] Saving a note on one activity updates only that activity.
-- [ ] Cancelling an activity note edit discards the unsaved draft.
-- [ ] A failed note save preserves the draft and provides a retry action.
+- [x] Saving a note on one activity updates only that activity. Evidence: `TimelineView.test.ts` / `saves a note only on the selected activity` creates two visible activities and verifies the note request carries only the selected activity ID.
+- [x] Cancelling an activity note edit discards the unsaved draft. Evidence: `TimelineView.test.ts` / `closes an activity note editor without saving` reopens the editor and verifies both fields are empty.
+- [x] A failed note save preserves the draft and provides a retry action. Evidence: `TimelineView.test.ts` / `reports initial-load and note-save failures and ignores incomplete notes` verifies entered fields survive a failed request and the Save note action retries successfully.
 
 ### Flow: Create a log
 
