@@ -19,6 +19,7 @@
     "test:notes:e2e": "node --test scripts/notes.real-stack.acceptance.test.mjs",
     "test:paths:e2e": "node --test scripts/paths.real-stack.acceptance.test.mjs",
     "test:logs:e2e": "node --test scripts/logs.real-stack.acceptance.test.mjs",
+    "test:labels:e2e": "node --test scripts/labels.real-stack.acceptance.test.mjs",
     "test:lines:e2e": "node --test --test-concurrency=1 scripts/line-history.real-stack.acceptance.test.mjs",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview"

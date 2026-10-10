@@ -146,6 +146,10 @@ disposable stack. It creates and edits a log through the UI, confirms each
 version from the API and after reload, then exercises the removal confirmation
 and verifies the deleted entry stays absent.
 
+`./scripts/run-labels-e2e.sh` runs a desktop Chromium Labels journey in a
+separate disposable stack. It creates, edits, and removes an unassigned label,
+checking the API state and the rendered row after reload.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and

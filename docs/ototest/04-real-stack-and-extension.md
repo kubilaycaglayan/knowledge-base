@@ -100,8 +100,13 @@ permissions, or unavailable API recovery.
   persisted API state` in `frontend/scripts/logs.real-stack.acceptance.test.mjs`,
   run with `./scripts/run-logs-e2e.sh`. The flow confirms deletion before
   removing the entry and checks the API and UI after reload.
+- **Labels, desktop Chromium:** `creates, edits, removes, and reloads a Label
+  with persisted API state` in
+  `frontend/scripts/labels.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-labels-e2e.sh`. It covers confirmation for removing an
+  unassigned label and verifies it stays absent after reload.
 
-Labels, Calendar, Reports, Settings, both transfer formats, and
+Calendar, Reports, Settings, both transfer formats, and
 the remaining signed-in timer/notes and service-worker recovery journeys remain
 open for this milestone.
 
