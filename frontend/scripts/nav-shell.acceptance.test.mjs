@@ -1485,6 +1485,21 @@ it("applies light and dark appearance changes across routes and reloads", async 
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--workspace-background").trim()), "#f7f8fa");
 });
 
+it("suppresses global search motion when reduced motion is preferred", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.locator(".global-search-trigger").click();
+  const dialog = page.locator(".global-search");
+  await dialog.waitFor();
+  const motion = await dialog.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { animation: style.animationName, transition: style.transitionDuration };
+  });
+  assert.equal(motion.animation, "none");
+  assert.equal(motion.transition, "0s");
+});
+
 it("keeps dialogs, menus, native selects, date picker, and report chart readable in both themes", async (t) => {
   const { page } = await fixture(t, 1440, { themeSurfaces: true });
   const contrast = (foreground, background) => {

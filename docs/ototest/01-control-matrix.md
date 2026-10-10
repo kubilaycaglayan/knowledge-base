@@ -224,7 +224,7 @@ The rows below expand the checklist's 19 session actions into evidence-backed in
 
 ## Desktop/mobile and accessibility evidence
 
-Current unit/component tests run in Vitest/jsdom and do not prove behavior in desktop or mobile Chrome. Existing Playwright scripts are desktop browser journeys. The source review found no mobile Chrome run record tied to these action families. Classify mobile browser behavior as `gap` until a named run exists. For each dialog/menu/control, map accessible name, focus entry/return, visible focus, live feedback, escape/cancel, zoom/reflow and reduced-motion evidence. A shared helper test is not evidence for a control unless the action's assertion uses it.
+Current unit/component tests run in Vitest/jsdom and do not prove behavior in desktop or mobile Chrome. Existing Playwright scripts are desktop browser journeys. The source review found no mobile Chrome run record tied to these action families. Classify mobile browser behavior as `gap` until a named run exists. For each dialog/menu/control, map accessible name, focus entry/return, visible focus, live feedback, escape/cancel, zoom/reflow and reduced-motion evidence. `nav-shell.acceptance.test.mjs` / `suppresses global search motion when reduced motion is preferred` verifies the rendered search panel has no animation or transition with reduced motion enabled. A shared helper test is not evidence for a control unless the action's assertion uses it.
 
 ## Update rule
 

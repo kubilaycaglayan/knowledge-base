@@ -1354,7 +1354,12 @@ so the warning and discard criteria remain open.
 
 ### Flow: Honor reduced-motion preferences
 
-- [ ] Reduced-motion preferences suppress or simplify nonessential movement.
+- [x] Reduced-motion preferences suppress or simplify nonessential movement.
+  Evidence: `nav-shell.acceptance.test.mjs` / `suppresses global search motion
+  when reduced motion is preferred` checks the rendered search panel has no
+  animation or transition when Chromium emulates `prefers-reduced-motion:
+  reduce`; `frontend/src/style.css` applies the same reduced-motion rule across
+  the application.
 - [ ] Status and selection are communicated with text, shape, or accessible
   labels as well as color.
 
