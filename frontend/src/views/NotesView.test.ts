@@ -144,6 +144,7 @@ describe("NotesView", () => {
 
     await wrapper.get('button[aria-label="Back to notes"]').trigger("click");
     await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(r.currentRoute.value.path).toBe("/notes");
     expect(r.currentRoute.value.query.q).toBe("graph");
     expect(wrapper.find(".note-editor").exists()).toBe(false);

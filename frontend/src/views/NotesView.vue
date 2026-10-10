@@ -395,7 +395,7 @@ async function loadEditor() {
   }
 }
 async function closeEditor() {
-  await router.push({ name: "notes" });
+  await router.push({ name: "notes", query: route.query });
 }
 function previousPage() {
   if (page.value > 0) {
@@ -535,7 +535,7 @@ onBeforeUnmount(() => {
           <RouterLink
             v-if="!showArchived"
             class="note-card-link"
-            :to="{ name: 'note-editor', params: { id: note.id } }"
+            :to="{ name: 'note-editor', params: { id: note.id }, query: route.query }"
             :aria-label="`Open ${note.title || 'untitled note'}`"
           ></RouterLink>
           <span class="note-row-main"
