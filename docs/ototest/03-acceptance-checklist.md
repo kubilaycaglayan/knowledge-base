@@ -400,7 +400,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open one session
 
-- [ ] Opening a session row displays its record-specific URL and editor.
+- [x] Opening a session row displays its record-specific URL and editor.
+  Evidence: `DeepLinks.test.ts` / `shows a session that isn't on the loaded
+  page and closes back to the list` verifies the selected record and opens its
+  edit form; `links each listed session's date to its own address` verifies
+  the row's `/sessions/s1` URL.
 
 ### Flow: Edit one session
 

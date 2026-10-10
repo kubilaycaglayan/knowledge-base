@@ -97,6 +97,14 @@ describe("/sessions/:id", () => {
     expect(shown.textContent).toContain("Photography");
     expect(shown.textContent).toContain("Deepwork");
     expect(shown.textContent).toContain("1h 30 minutes");
+    button("Edit")!.click();
+    await flushPromises();
+    expect(document.querySelector('[role="dialog"] form')).not.toBeNull();
+    expect(
+      document.querySelector<HTMLTextAreaElement>(
+        '[aria-label="Edit session description"]',
+      )?.value,
+    ).toBe("Edited the sunset series");
     button("Close session")!.click();
     await flushPromises();
     expect(router.currentRoute.value.fullPath).toBe("/");
