@@ -774,6 +774,11 @@ the extension has its own scope in OTOTEST-04.
   'keeps a log after delete fails'` (component test; mocked API); the browser
   test above forces a 503, confirms the row remains and the alert appears, then
   retries successfully.
+- [x] Removing a Log from its detail dialog moves focus into the confirmation
+  and returns it to the Remove action after cancellation. Evidence:
+  `nav-shell.acceptance.test.mjs` / `moves focus into and back from Log removal
+  confirmation in the detail dialog` verifies safe cancel-action focus,
+  Escape/button cancellation focus return, and no DELETE request.
 
 ## Reports
 
@@ -1420,8 +1425,9 @@ criteria remain open.
   returns focus from the Path create dialog` checks initial focus on the name
   field and focus restoration after Escape; `opens the first-board dialog
   with keyboard focus and returns focus on Escape` checks the same lifecycle
-  from the Boards workspace. Other dialog/menu/picker patterns remain to be
-  checked.
+  from the Boards workspace; `moves focus into and back from Log removal
+  confirmation in the detail dialog` covers nested destructive confirmation
+  entry and return. Other dialog/menu/picker patterns remain to be checked.
 - [ ] Drag, date-range, and reorder actions have a keyboard alternative where
   those actions are not inherently pointer-only.
 
