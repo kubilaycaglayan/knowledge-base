@@ -331,7 +331,10 @@ the extension has its own scope in OTOTEST-04.
 - [x] The new log appears in the chronological group for its timestamp and
   remains after remount when fetched from the API fixture (same test).
 - [ ] Submitting blank log text shows validation and creates no log.
-- [ ] A failed create preserves the entered text and timestamp for retry.
+- [x] A failed create preserves the entered text and timestamp for retry.
+  Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
+  'preserves log text and timestamp after a failed create'` (component test;
+  mocked API).
 - [ ] The timestamp reset action uses the current browser time as labeled.
 
 ### Flow: Edit one log

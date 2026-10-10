@@ -156,6 +156,42 @@ describe("LogsView", () => {
     reloaded.unmount();
   });
 
+  it("preserves log text and timestamp after a failed create and retries the same payload", async () => {
+    const attempts: { body: string; occurredAt: string }[] = [];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/labels?scope=LOG") return [];
+      if (path === "/logs" && options?.method === "POST") {
+        const payload = JSON.parse(String(options.body));
+        attempts.push(payload);
+        if (attempts.length === 1) throw new Error("temporary failure");
+        return log("created", payload.body, payload.occurredAt, 0);
+      }
+      if (path === "/logs") return [];
+      return undefined;
+    });
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    const body = "Keep this log for retry";
+    const timestamp = "2026-09-10T09:30";
+    await wrapper.get("#new-log-body").setValue(body);
+    await wrapper.get('[aria-label="Log timestamp"]').setValue(timestamp);
+    await wrapper.get("#new-log-body").trigger("keydown.enter");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Unable to save log. Please try again.");
+    expect((wrapper.get("#new-log-body").element as HTMLTextAreaElement).value).toBe(body);
+    expect((wrapper.get('[aria-label="Log timestamp"]').element as HTMLInputElement).value).toBe(timestamp);
+
+    await wrapper.get("#new-log-body").trigger("keydown.enter");
+    await flushPromises();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toEqual(attempts[1]);
+    expect(attempts[1]).toEqual({ body, occurredAt: new Date(`${timestamp}:00`).toISOString() });
+    expect(wrapper.findAll(".log-entry").some((entry) => entry.text().includes(body))).toBe(true);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("resets the composer height after saving a multiline log", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
