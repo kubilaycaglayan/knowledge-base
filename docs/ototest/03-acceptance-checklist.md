@@ -155,8 +155,11 @@ the extension has its own scope in OTOTEST-04.
   (mocked API browser test).
 - [ ] A missing or inaccessible record ID produces a clear not-found or
   unavailable state without exposing another user's record.
-- [ ] `/development` remains outside supported product navigation and has no
-  authenticated navbar link.
+- [x] `/development` remains outside supported product navigation and has no
+  authenticated navbar link. Evidence: `cd frontend && node --test
+  --test-name-pattern='keeps every supported primary destination reachable'
+  scripts/nav-shell.acceptance.test.mjs` asserts the exact authenticated
+  navigation href set, which contains no `/development` destination.
 
 ### Flow: Recover from an unauthenticated deep link
 
