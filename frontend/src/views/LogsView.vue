@@ -283,7 +283,12 @@ async function setLogLabels(log: Log, nextLabelIds: string[]) {
   }
 }
 async function saveNew() {
-  if (status.value === "saving" || !body.value.trim()) return;
+  if (status.value === "saving") return;
+  if (!body.value.trim()) {
+    status.value = "idle";
+    error.value = "Enter log text before saving.";
+    return;
+  }
   status.value = "saving";
   error.value = "";
   const snapshot = { body: body.value, occurredAt: occurredAt.value };
