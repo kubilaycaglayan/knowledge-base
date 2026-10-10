@@ -927,15 +927,13 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Import Knowledge Base data
 
 - [x] The Knowledge Base import view accepts pasted CSV text. Evidence: `ImportsView.test.ts` / `imports Knowledge Base CSV text and reports the server outcome` submits the CSV text in the supported text/csv request.
-- [ ] Invalid or unsupported import data produces a readable validation
-  result without partial visible records.
+- [x] Invalid or unsupported import data produces a readable validation result without partial visible records. Evidence: `ImportsView.test.ts` / `keeps server diagnostics hidden behind an expandable disclosure` checks the UI error state; `KnowIntegrationTest.knowledgeBaseCsvImportRejectsMalformedAndUnsupportedRowsWithoutPartialState` checks no Paths or batches remain after rejection.
 - [x] A valid import reports created, skipped, and created Path counts. Evidence: the same test verifies the visible imported, skipped, and created Path summary and the resulting batch history.
-- [ ] Re-importing the same external identities does not visibly duplicate
-  records.
-- [ ] Import history identifies completed batches and their outcomes.
-- [ ] Import history pagination preserves stable batch ordering.
-- [ ] Undoing one import batch affects only records from that batch.
-- [ ] A failed import or undo reports failure and leaves a recoverable view.
+- [x] Re-importing the same external identities does not visibly duplicate records. Evidence: `KnowledgeBaseTransferServiceTest.importingTheSameStableIdsSkipsExistingRecords` verifies existing IDs are skipped; `ImportsView.test.ts` / `imports Knowledge Base CSV text and reports the server outcome` verifies skipped counts are shown.
+- [x] Import history identifies completed batches and their outcomes. Evidence: the same import test verifies the resulting batch summary; `ImportsView.test.ts` / `undoes only the selected Knowledge Base batch and refreshes its status` verifies its undone state.
+- [x] Import history pagination preserves stable batch ordering. Evidence: `ImportsView.test.ts` / `keeps Knowledge Base batch history in stable order across pages` checks all entries in order across next and previous page transitions.
+- [x] Undoing one import batch affects only records from that batch. Evidence: `ImportsView.test.ts` / `undoes only the selected Knowledge Base batch and refreshes its status` confirms only the selected batch is undone; `KnowIntegrationTest.knowledgeBaseUndoDeletesOnlyRecordsFromTheSelectedBatch` confirms the second batch's Path remains available.
+- [x] A failed import or undo reports failure and leaves a recoverable view. Evidence: `ImportsView.test.ts` / `keeps server diagnostics hidden behind an expandable disclosure` checks import failure; `keeps a Knowledge Base batch available after undo failure and retries it` verifies recovery.
 
 ### Flow: Import Clockify data
 
