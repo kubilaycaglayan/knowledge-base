@@ -257,6 +257,47 @@ describe("CalendarView", () => {
     );
   });
 
+  it("saves the selected day from the note editor with Control or Meta+Enter", async () => {
+    const selectedDate = format(new Date(), "yyyy-MM-dd");
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get("textarea").setValue("Submitted from the keyboard");
+
+    await wrapper.get("textarea").trigger("keydown", {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      `/calendar/days/${selectedDate}`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          note: "Submitted from the keyboard",
+          labels: [],
+        }),
+      }),
+    );
+
+    await wrapper.get("textarea").setValue("Submitted with Meta");
+    await wrapper.get("textarea").trigger("keydown", {
+      key: "Enter",
+      metaKey: true,
+    });
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      `/calendar/days/${selectedDate}`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          note: "Submitted with Meta",
+          labels: [{ labelId: "leave", portion: 1 }],
+        }),
+      }),
+    );
+  });
+
   it("opens the fifteen-color palette and persists a selected label color", async () => {
     const wrapper = mountView();
     await flushPromises();
