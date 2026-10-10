@@ -942,11 +942,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Import Clockify data
 
-- [ ] The Clockify import view accepts its supported file or pasted data.
-- [ ] Invalid Clockify data identifies the problem without creating records.
-- [ ] A valid import shows its outcome and created session records.
-- [ ] Importing the same Clockify identities again does not visibly duplicate
-  sessions.
+- [x] The Clockify import view accepts its supported pasted JSON data. Evidence: `ImportsView.test.ts` / `imports Clockify JSON and reloads the batch list` submits JSON and reloads batch history.
+- [x] Invalid Clockify data identifies the problem without creating records. Evidence: `ImportsView.test.ts` / `reports malformed and structurally invalid Clockify input` checks actionable messages and confirms neither payload is submitted; `KnowIntegrationTest.clockifyImportRejectsMalformedAndUnsupportedPayloadsWithoutPersistingData` verifies no records persist.
+- [x] A valid import shows its outcome and creates session records. Evidence: `ImportsView.test.ts` / `imports Clockify JSON and reloads the batch list` checks the visible summary; `KnowIntegrationTest.clockifyImportCreatesEntriesAndPaths` verifies imported entries and Paths.
+- [x] Importing the same Clockify identities again does not visibly duplicate sessions. Evidence: `KnowIntegrationTest.clockifyImportIsIdempotentOnDuplicateExternalId` verifies duplicate external IDs are skipped.
 
 ### Flow: Export Knowledge Base data
 
