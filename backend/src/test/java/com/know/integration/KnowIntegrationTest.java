@@ -846,14 +846,15 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     String batchId = ownerBatches.get(0).get("id").asText();
 
     assertTrue(get("/api/v1/imports/knowledge-base/batches", other).getBody().isEmpty());
-    var foreignBatchStatus =
-        delete("/api/v1/imports/knowledge-base/batches/" + batchId, other).getStatusCode();
-    var missingBatchStatus =
-        delete(
-                "/api/v1/imports/knowledge-base/batches/" + UUID.randomUUID(), other)
-            .getStatusCode();
+    ResponseEntity<JsonNode> foreignBatchReply =
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, other);
+    ResponseEntity<JsonNode> missingBatchReply =
+        delete("/api/v1/imports/knowledge-base/batches/" + UUID.randomUUID(), other);
+    var foreignBatchStatus = foreignBatchReply.getStatusCode();
+    var missingBatchStatus = missingBatchReply.getStatusCode();
     assertEquals(HttpStatus.NOT_FOUND, foreignBatchStatus);
     assertEquals(foreignBatchStatus, missingBatchStatus);
+    assertEquals(foreignBatchReply.getBody(), missingBatchReply.getBody());
     assertEquals(HttpStatus.OK, get("/api/v1/paths/" + pathId, owner).getStatusCode());
 
     ResponseEntity<JsonNode> undo =
@@ -2356,12 +2357,15 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(secondBatchId, listed.get(0).get("id").asText(), "Batch list is newest first");
     assertEquals(firstBatchId, listed.get(1).get("id").asText());
     assertTrue(get("/api/v1/imports/clockify/batches", other).getBody().isEmpty());
-    var foreignBatchStatus =
-        delete("/api/v1/imports/clockify/batches/" + secondBatchId, other).getStatusCode();
-    var missingBatchStatus =
-        delete("/api/v1/imports/clockify/batches/" + UUID.randomUUID(), other).getStatusCode();
+    ResponseEntity<JsonNode> foreignBatchReply =
+        delete("/api/v1/imports/clockify/batches/" + secondBatchId, other);
+    ResponseEntity<JsonNode> missingBatchReply =
+        delete("/api/v1/imports/clockify/batches/" + UUID.randomUUID(), other);
+    var foreignBatchStatus = foreignBatchReply.getStatusCode();
+    var missingBatchStatus = missingBatchReply.getStatusCode();
     assertEquals(HttpStatus.NOT_FOUND, foreignBatchStatus);
     assertEquals(foreignBatchStatus, missingBatchStatus);
+    assertEquals(foreignBatchReply.getBody(), missingBatchReply.getBody());
     assertEquals(2, get("/api/v1/time-entries", owner).getBody().size());
 
     ResponseEntity<JsonNode> undo =

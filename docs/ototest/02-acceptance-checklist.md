@@ -591,8 +591,12 @@ browser interaction evidence remains a separate layer.
   `KnowIntegrationTest.knowledgeBaseBatchListAndUndoAreOwnerScopedAndRepeatedUndoIsIdempotent`
   and `clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`; foreign
   and missing batch IDs both return 404.
-- [ ] Foreign resources are not distinguished from missing resources where
-  the API contract intentionally returns not found.
+- [x] Foreign resources are not distinguished from missing resources where
+  the API contract intentionally returns not found: direct resource operations
+  and both import batch undo routes assert identical 404 response bodies
+  (`CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`,
+  `KnowIntegrationTest.knowledgeBaseBatchListAndUndoAreOwnerScopedAndRepeatedUndoIsIdempotent`,
+  and `clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`).
 - [x] Cross-user coverage uses disposable owner and intruder accounts and
   verifies responses plus unchanged owner data
   (`CrossUserIsolationIntegrationTest` and the import batch ownership tests).

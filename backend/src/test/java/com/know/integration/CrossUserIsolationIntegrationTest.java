@@ -266,8 +266,21 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
       String missingPath = template.replace("{id}", UUID.randomUUID().toString());
       ApiClient.Reply foreign = api.send(operation[0], foreignPath, intruder, operation[3]);
       ApiClient.Reply missing = api.send(operation[0], missingPath, intruder, operation[3]);
-      if (foreign.status() != 404 || missing.status() != 404)
-        failures.add(operation[0] + " " + template + " -> foreign " + foreign.status() + ", missing " + missing.status());
+      if (foreign.status() != 404
+          || missing.status() != 404
+          || !foreign.body().equals(missing.body()))
+        failures.add(
+            operation[0]
+                + " "
+                + template
+                + " -> foreign "
+                + foreign.status()
+                + " "
+                + foreign.body()
+                + ", missing "
+                + missing.status()
+                + " "
+                + missing.body());
     }
 
     assertTrue(failures.isEmpty(), "Foreign and missing IDs differed:\n" + String.join("\n", failures));
