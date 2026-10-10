@@ -481,7 +481,9 @@ browser interaction evidence remains a separate layer.
   filtering (`KnowIntegrationTest.ganttReturnsDatedCardsWithOpenViewDisabled`,
   `KnowIntegrationTest.ganttExcludesCardsInArchivedStatuses`,
   `BoardControllerApiTest.ganttIncludesUndatedAndOutOfWindowActiveCards`, and
-  `BoardControllerApiTest.ganttRejectsReversedDateWindows`).
+  `BoardControllerApiTest.ganttRejectsReversedDateWindows`); missing, malformed,
+  and impossible `from`/`to` values return 400 before repository access
+  (`BoardControllerApiTest.boardGanttRequiresValidFromAndToDatesBeforeRepositoryAccess`).
 - [x] `GET /api/v1/boards/all/columns` covers merged names/order, user tab
   scope, hidden/archived/foreign exclusions, and empty/authenticated behavior
   (`AllBoardsIntegrationTest.columnsMergeByNameInTabOrder` and
