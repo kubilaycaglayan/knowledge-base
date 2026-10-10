@@ -213,6 +213,22 @@ class PathAuthorizationApiTest {
   }
 
   @Test
+  void pathMergeRequiresAValidTargetId() throws Exception {
+    UUID owner = UUID.randomUUID(), source = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+
+    for (String request : List.of("{\"targetPathId\":null}", "{\"targetPathId\":\"not-a-uuid\"}")) {
+      mvc.perform(
+              post("/api/v1/paths/" + source + "/merge")
+                  .with(authentication(auth))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(request))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(pathManagement);
+  }
+
+  @Test
   void pathSummaryIncludesElapsedRunningTimer() throws Exception {
     UUID owner = UUID.randomUUID(), pathId = UUID.randomUUID();
     Path path = new Path(owner, "Learning", null);

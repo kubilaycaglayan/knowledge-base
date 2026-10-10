@@ -621,6 +621,8 @@ browser interaction evidence remains a separate layer.
 
 - [ ] Every request DTO's required, length, format, and range validations have
   an assertion at the layer that owns the contract.
+  Path merge's required target and UUID format are covered at the controller
+  boundary by `PathAuthorizationApiTest.pathMergeRequiresAValidTargetId`.
 - [ ] Every path/query parameter with a documented allowed range has lower,
   upper, and out-of-range boundary evidence.
 - [ ] Date and timestamp operations have timezone, leap-day, inclusive-range,
