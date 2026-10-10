@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -22,6 +22,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   const pathOrderWrites = [];
   const paths = [...pathSeeds];
   let notes = [...noteSeeds];
+  const logs = [...logSeeds];
   const calendarDays = [];
   const preferences = { theme: "light", kanbanWide: false, ganttWide: false, recentPathIds: [] };
   let currentTimer = null;
@@ -46,7 +47,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
     else if (path === "/auth/login" && method === "POST") body = { token: "signed-in-nav-test-token" };
     else if (path === "/logs/log-deep-link") body = { id: "log-deep-link", body: logBody, occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] };
-    else if (path === "/logs") body = [];
+    else if (path === "/logs") body = logs;
     else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
     else if (path === "/paths" && method === "POST") {
       body = { ...route.request().postDataJSON(), id: "path-1", status: "ACTIVE", pinned: false };
@@ -552,6 +553,23 @@ it("opens each primary navigation route and updates the active link and title", 
   await page.goForward();
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.waitForFunction(() => document.title === "Knowledge Base · Logs");
+});
+
+it("restores the Log search query from a direct URL after reload", async (t) => {
+  const { page } = await fixture(t, 1280, {
+    logSeeds: [
+      { id: "log-match", body: "A distinctive browser query", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] },
+      { id: "log-other", body: "A different entry", occurredAt: "2026-10-02T10:00:00Z", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, labelIds: [] },
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}logs?q=distinctive`);
+  await page.locator(".log-entry", { hasText: "A distinctive browser query" }).waitFor();
+  assert.equal(await page.locator(".log-entry").count(), 1, "The direct-link query filters the loaded list");
+  await page.keyboard.press("/");
+  assert.equal(await page.getByRole("searchbox", { name: "Search all logs" }).inputValue(), "distinctive");
+  await page.reload();
+  await page.locator(".log-entry", { hasText: "A distinctive browser query" }).waitFor();
+  assert.equal(await page.locator(".log-entry").count(), 1, "Reload preserves the filtered result from the URL");
 });
 
 it("downloads the Knowledge Base export from Settings in the browser", async (t) => {

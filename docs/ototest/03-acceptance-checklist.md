@@ -727,7 +727,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] A matching query filters the visible log records. Evidence: `LogsView.test.ts` / `filters logs, shows no matches, clears search, and restores URL query state` retains only matching log text.
 - [x] Clearing the query restores the unfiltered records. Evidence: the same test clears the input and verifies all three fixture logs return.
 - [x] A no-match query displays a clear empty result. Evidence: the same test checks `No logs match this search.`.
-- [x] Query state is restored through URL or browser history where supported. Evidence: the same test verifies `q` is reflected in the URL, cleared with the input, and restored on `popstate`.
+- [x] Query state is restored through URL or browser history where supported. Evidence: `LogsView.test.ts` / `filters logs, shows no matches, clears search, and restores URL query state` verifies `q` is reflected in the URL, cleared with the input, and restored on `popstate`; `nav-shell.acceptance.test.mjs` / `restores the Log search query from a direct URL after reload` verifies direct-load and reload filtering in the browser.
 
 ### Flow: Page through log history
 
