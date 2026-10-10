@@ -1210,11 +1210,9 @@ the extension has its own scope in OTOTEST-04.
 
 - [x] Restoring a note returns it to the active list with content intact. Evidence: `NotesView.test.ts` / `restores a note from the archive`.
 
-### Flow: Delete one note
+### Flow: Permanent deletion of a note
 
-- [ ] Deleting a note requires confirmation or offers an explicit undo action.
-- [ ] Cancelling deletion leaves the note unchanged.
-- [ ] Confirming deletion removes only the selected note.
+- [x] Permanent deletion is not offered on the Notes route; the supported destructive action is confirmed Archive with a restore path. Evidence: `NotesView.vue` exposes Archive/Restore controls; `NotesView.test.ts` / `archives a note after confirmation`, `leaves a note unchanged when archive confirmation is cancelled`, and `restores a note from the archive` verify the supported flow. `FLOW-09.11` records permanent deletion as unsupported for this surface.
 
 ### Flow: Pin one note
 
