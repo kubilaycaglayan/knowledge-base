@@ -318,6 +318,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.OK, reg.getStatusCode());
     assertNotNull(reg.getBody().get("token").asText());
     assertFalse(reg.getBody().get("userId").asText().isBlank());
+    assertFalse(reg.getBody().has("passwordHash"));
+    assertFalse(reg.getBody().has("googleSubject"));
 
     // Duplicate registration is rejected
     ResponseEntity<JsonNode> dup =
@@ -329,6 +331,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         post("/api/v1/auth/login", null, json("email", email, "password", pw));
     assertEquals(HttpStatus.OK, login.getStatusCode());
     assertNotNull(login.getBody().get("token").asText());
+    assertFalse(login.getBody().has("passwordHash"));
+    assertFalse(login.getBody().has("googleSubject"));
 
     // Wrong password is rejected
     ResponseEntity<JsonNode> bad =

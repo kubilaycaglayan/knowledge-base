@@ -62,7 +62,9 @@ class AuthControllerApiTest {
                     "{\"email\":\"Person@Example.com\",\"password\":\"correct-horse-battery\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.token").isNotEmpty())
-        .andExpect(jsonPath("$.email").value("person@example.com"));
+        .andExpect(jsonPath("$.email").value("person@example.com"))
+        .andExpect(jsonPath("$.passwordHash").doesNotExist())
+        .andExpect(jsonPath("$.googleSubject").doesNotExist());
     verify(encoder).encode("correct-horse-battery");
   }
 

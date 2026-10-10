@@ -121,8 +121,10 @@ browser interaction evidence remains a separate layer.
   change behavior evidence.
 - [ ] `PUT /api/v1/auth/password` has current-password, new-password
   validation, and Google-linked-account boundary evidence as applicable.
-- [ ] Authentication responses do not expose password hashes, provider
-  secrets, or unnecessary token material beyond the documented bearer token.
+- [x] Registration and login responses do not expose password hashes or the
+  linked Google subject (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`);
+  the account endpoint likewise omits the stored hash
+  (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
 - [ ] Authentication throttling behavior links to focused rate-limit evidence
   without substituting that evidence for successful auth operation behavior.
 
