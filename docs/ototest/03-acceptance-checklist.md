@@ -256,8 +256,11 @@ the extension has its own scope in OTOTEST-04.
   Control+Enter and native link behavior` in
   `frontend/scripts/nav-shell.acceptance.test.mjs` verifies the selected Note
   opens in a separate browser tab while the original search remains open.
-- [ ] Every result supports standard link behavior, including opening a new
-  tab from the browser context menu.
+- [x] Every result supports standard link behavior, including opening a new
+  tab from the browser context menu. Evidence: the global search new-tab browser
+  test verifies a result is an anchor, opens on Control-click, and leaves the
+  `contextmenu` event unprevented; `GlobalSearch.test.ts` also verifies modified
+  clicks are left to the browser.
 - [ ] Show more reveals additional results only for the selected result type.
 - [ ] A literal match is preferred over a fuzzy near-match.
 - [ ] A near-match suggestion is available when there is no literal result and

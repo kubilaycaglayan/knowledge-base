@@ -1271,6 +1271,15 @@ it("opens the active global search result in a new tab with Control+Enter and na
   await linkTab.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(linkTab.url()).pathname, "/notes/search-note");
   assert.equal(await dialog.isVisible(), true);
+
+  await note.evaluate((element) => {
+    element.addEventListener("contextmenu", (event) => {
+      window.__navContextMenuAllowed = !event.defaultPrevented;
+    }, { once: true });
+  });
+  await note.click({ button: "right" });
+  assert.equal(await page.evaluate(() => window.__navContextMenuAllowed), true);
+  assert.equal(new URL(page.url()).pathname, "/");
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
