@@ -162,7 +162,9 @@ browser interaction evidence remains a separate layer.
 
 - [x] `GET /api/v1/paths` covers the default active-only list, owner scope,
   and ordering. The endpoint has no filter or archived-visibility query.
-- [x] `POST /api/v1/paths` covers successful creation and persisted values.
+- [x] `POST /api/v1/paths` covers successful creation and persisted values,
+  rejects blank names and over-limit name/description, and accepts both exact
+  maxima (`PathAuthorizationApiTest.pathNamesAreValidatedBeforePersistence`).
 - [x] `GET /api/v1/paths/{id}` covers owned, missing, and foreign IDs.
 - [x] `GET /api/v1/paths/{id}/summary` covers aggregation values across
   adjacent persisted intervals and elapsed running time. The endpoint has no
