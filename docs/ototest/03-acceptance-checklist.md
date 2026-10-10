@@ -260,8 +260,10 @@ the extension has its own scope in OTOTEST-04.
   -t 'creates a path, shows it in the list'`; `cd frontend && node --test
   --test-name-pattern='creates a Path in the browser' scripts/nav-
   shell.acceptance.test.mjs` (mocked API; no real database persistence claim).
-- [ ] Submitting an empty or whitespace-only name identifies the validation
-  issue without creating a path.
+- [x] Submitting an empty or whitespace-only name identifies the validation
+  issue without creating a path. Evidence: `frontend/src/views/PathsView.test.ts`,
+  `rejects a whitespace-only path name without creating a path` checks inline
+  feedback and asserts no POST request.
 - [ ] A failed create preserves entered values and offers a retry.
 
 ### Flow: Edit one path

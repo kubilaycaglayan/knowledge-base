@@ -348,6 +348,21 @@ describe("PathsView", () => {
     expect(JSON.parse(String(createCall?.[1]?.body)).textColor).toBeNull();
   });
 
+  it("rejects a whitespace-only path name without creating a path", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    await wrapper.get('input[aria-label="New path name"]').setValue("   ");
+    await wrapper.get("form.path-create-form").trigger("submit");
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Enter a path name.");
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([path, options]) => path === "/paths" && options?.method === "POST",
+      ),
+    ).toBe(false);
+  });
+
   it("creates a path, shows it in the list, and reloads it from the API", async () => {
     const savedPaths = [
       { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: false },
