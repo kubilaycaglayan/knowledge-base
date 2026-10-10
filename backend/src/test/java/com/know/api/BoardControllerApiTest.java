@@ -591,4 +591,16 @@ class BoardControllerApiTest {
             eq(boardId), eq(statusId), eq(-1), argThat(page -> page.getPageSize() == 101));
     verifyNoMoreInteractions(cards);
   }
+
+  @Test
+  void cardPageRejectsMalformedStatusIdBeforeResourceLookup() throws Exception {
+    UUID boardId = UUID.randomUUID();
+
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards/page?statusId=not-a-uuid")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards);
+  }
 }
