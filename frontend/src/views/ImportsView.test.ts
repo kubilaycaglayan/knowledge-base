@@ -120,6 +120,36 @@ describe("ImportsView", () => {
     expect(wrapper.text()).toContain("2 imported");
   });
 
+  it("imports a selected Knowledge Base CSV file", async () => {
+    const csv = 'entity,id,payload\npath,5e457350-f981-4f0a-a6cf-9a2e104ae1e5,"{}"\n';
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/imports/knowledge-base")
+        return { batchId: "file-batch", imported: 1, skipped: 0, createdPaths: 0 };
+      if (path === "/imports/knowledge-base/batches") return [];
+      return undefined;
+    });
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    await flushPromises();
+    const file = new File([csv], "backup.csv", { type: "text/csv" });
+    const input = wrapper.get('input[type="file"]').element as HTMLInputElement;
+    Object.defineProperty(input, "files", { configurable: true, value: [file] });
+    await wrapper.get('input[type="file"]').trigger("change");
+    await flushPromises();
+
+    expect((wrapper.get('textarea[aria-label="Knowledge Base CSV"]').element as HTMLTextAreaElement).value).toBe(csv);
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/imports/knowledge-base",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "text/csv" },
+        body: csv,
+      }),
+    );
+    await wrapper.unmount();
+  });
+
   it("disables repeated Knowledge Base import submissions while a batch is pending", async () => {
     let finishImport!: (summary: { batchId: string; imported: number; skipped: number; createdPaths: number }) => void;
     const pendingImport = new Promise<{ batchId: string; imported: number; skipped: number; createdPaths: number }>((resolve) => {
