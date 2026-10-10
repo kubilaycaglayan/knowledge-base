@@ -415,7 +415,8 @@ the extension has its own scope in OTOTEST-04.
 - [x] Reloading a report URL restores its date range and aggregation.
   Evidence: `cd frontend && node --test --test-name-pattern='loads report
   filters from a direct query URL' scripts/nav-shell.acceptance.test.mjs`
-  (desktop Chromium; mocked API).
+  (desktop Chromium; mocked API); the same browser check verifies Path and
+  Label filter query values.
 - [x] Malformed report dates and unsupported aggregation values fall back to
   the current week and Daily aggregation. Evidence:
   `frontend/src/views/ReportsView.test.ts`, `falls back to the default range

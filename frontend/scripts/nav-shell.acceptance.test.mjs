@@ -232,7 +232,7 @@ it("restores report filters after navigation and browser Back/Forward", async (t
 
 it("loads report filters from a direct query URL and keeps them on reload", async (t) => {
   const { page, reportQueries } = await fixture(t, 1440);
-  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
+  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month&pathId=path-1&labelId=label-1";
   await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
   await page.locator(".reports-page").waitFor();
   await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
