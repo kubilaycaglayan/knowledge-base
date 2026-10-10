@@ -22,12 +22,13 @@ public final class GoogleIdTokenIdentityVerifier implements GoogleIdentityVerifi
 
   @Autowired
   public GoogleIdTokenIdentityVerifier(@Value("${app.google-client-id:}") String clientId) {
-    if (clientId == null || clientId.isBlank()) {
-      verifier = null;
-      return;
-    }
+    verifier = createVerifier(clientId);
+  }
+
+  static GoogleIdTokenVerifier createVerifier(String clientId) {
+    if (clientId == null || clientId.isBlank()) return null;
     try {
-      verifier =
+      return
           new GoogleIdTokenVerifier.Builder(
                   GoogleNetHttpTransport.newTrustedTransport(), GsonFactory.getDefaultInstance())
               .setAudience(List.of(clientId.trim()))

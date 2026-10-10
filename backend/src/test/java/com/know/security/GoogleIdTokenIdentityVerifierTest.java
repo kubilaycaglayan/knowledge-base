@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +33,15 @@ class GoogleIdTokenIdentityVerifierTest {
     GoogleIdTokenIdentityVerifier verifier = new GoogleIdTokenIdentityVerifier("client-id");
 
     assertTrue(verifier.verify("malformed-token").isEmpty());
+  }
+
+  @Test
+  void configuredVerifierTrustsOnlyTheTrimmedConfiguredAudience() {
+    GoogleIdTokenVerifier verifier =
+        GoogleIdTokenIdentityVerifier.createVerifier("  web-client-id.apps.googleusercontent.com  ");
+
+    assertEquals(
+        List.of("web-client-id.apps.googleusercontent.com"), verifier.getAudience());
   }
 
   @Test

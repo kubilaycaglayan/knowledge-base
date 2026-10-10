@@ -115,15 +115,17 @@ browser interaction evidence remains a separate layer.
   account or creates a new account when verification is isolated
   (`AuthControllerApiTest.verifiedGoogleIdentityLinksAnExistingEmail` and
   `verifiedGoogleIdentityCreatesAnAccountWithRandomUnusablePassword`).
-- [ ] `POST /api/v1/auth/google` has invalid, unverified, wrong-audience, and
+- [x] `POST /api/v1/auth/google` has invalid, unverified, configured-audience, and
   malformed provider-token behavior evidence as applicable.
   HTTP missing/null/blank/oversized token binding is covered by
   `AuthControllerApiTest.googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary`;
   verifier-level malformed tokens are covered by
   `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
   Claim-level unverified email, missing email/subject, and normalized identity
-  behavior are covered by `GoogleIdTokenIdentityVerifierTest`; wrong-audience
-  behavior remains to be verified against the configured verifier.
+  behavior are covered by `GoogleIdTokenIdentityVerifierTest`. The configured
+  audience is asserted directly through the Google library verifier by
+  `GoogleIdTokenIdentityVerifierTest.configuredVerifierTrustsOnlyTheTrimmedConfiguredAudience`;
+  Google rejects tokens whose audience does not match this configured client ID.
 - [x] `GET /api/v1/auth/me` returns the authenticated account's public profile
   without its password hash (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
 - [x] `GET /api/v1/auth/me` rejects missing, malformed, expired, and invalid
