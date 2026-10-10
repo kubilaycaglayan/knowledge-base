@@ -53,7 +53,8 @@ to shared tests or be marked as non-interactive with a reason.
 
 The latest OTOTEST-05 local gate evidence is recorded in
 [`runs/2026-10-10-ototest-05-local-gates.md`](runs/2026-10-10-ototest-05-local-gates.md).
-Hosted CI evidence remains pending for the current branch.
+Hosted `verify` passed for the current branch; physical Android and the
+remaining product acceptance flows are still outstanding.
 
 Each milestone has its own task and acceptance document:
 

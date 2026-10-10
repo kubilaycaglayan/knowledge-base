@@ -38,7 +38,8 @@ make the required test layers visible in local guidance and CI.
   behavior gaps remain explicitly classified and owned.
 - [x] Execute the local release gate set and record passing run evidence in
   [`runs/2026-10-10-ototest-05-local-gates.md`](runs/2026-10-10-ototest-05-local-gates.md).
-  Hosted CI results remain unavailable until the branch is pushed.
+  Hosted `verify` also passes for the pushed branch; the run is linked in the
+  evidence record. Physical Android acceptance remains outstanding.
 - [x] Review audit/matrix freshness after the OTOTEST-04 route/view/test
   changes; repeat this review during later release readiness and major API
   changes.

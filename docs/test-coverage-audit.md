@@ -100,4 +100,6 @@ claim that these additional browser suites have run in CI; those remain
 tracked in the matrices until their behavior-specific evidence is added.
 The [OTOTEST-05 local gate record](ototest/runs/2026-10-10-ototest-05-local-gates.md)
 contains the source reconciliation snapshot and passing local suite results;
-hosted CI results remain pending.
+the linked hosted `verify` run passed for the current branch. Remaining
+behavior-specific and physical Android evidence is still tracked in the
+matrices and acceptance checklist.

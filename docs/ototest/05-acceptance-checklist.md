@@ -27,9 +27,9 @@ and milestone status consistency. It resolves qualified API evidence names to
 existing Java test methods and deliberately makes no claims about assertion
 quality.
 
-The local release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
-It documents passed local gates and explicitly records that hosted CI and
-physical Android acceptance are not available in this worktree review.
+The release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
+It documents passed local gates and the passing hosted `verify` run. Physical
+Android acceptance remains outstanding.
 
 For every accepted route, operation, control family, gesture, permission, or
 gate below, the maintained inventory or release record must identify:

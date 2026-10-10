@@ -8,7 +8,7 @@
 | Owner | Knowledge Base maintainers |
 | Browser and profile | Playwright desktop Chromium; packaged extension used a fresh disposable profile; Orca 46 in its disposable container |
 | Result | Listed automated checks passed locally unless a limitation is stated below |
-| CI run/artifact URL | Not available; this branch was not pushed for a hosted workflow run |
+| CI run/artifact URL | [Hosted `verify` run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246), passed for commit `f7a9b6ba6aabc6819835a67f0fda0c8452272898` |
 
 ## Gate results
 
@@ -26,6 +26,7 @@
 | Screen reader browser | `./scripts/run-line-history-orca.sh` | Pass: Orca 46 read the line history states and did not announce gutter timestamps |
 | OTOTEST-04 feature browser journeys | `./scripts/run-notes-e2e.sh`; `./scripts/run-paths-e2e.sh`; `./scripts/run-logs-e2e.sh`; `./scripts/run-labels-e2e.sh`; `./scripts/run-calendar-e2e.sh`; `./scripts/run-reports-settings-e2e.sh`; `./scripts/run-transfers-e2e.sh` | Pass sequentially; Notes 2 tests and each other suite 1 test. The wrappers share local HTTPS port 26443, so the initial parallel Notes/Transfers attempts collided; both passed when rerun sequentially. |
 | Repository checks | `node scripts/check-accessibility.mjs`; `node scripts/check-security.mjs`; `node scripts/check-smoke-cleanup.mjs`; `node scripts/check-hardening-status.mjs`; `node --check chrome-extension/popup.js`; `node --check chrome-extension/options.js`; `bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh`; `./scripts/check-image-prune.sh`; `git diff --check` | Pass: accessibility 38 checks, security 49, cleanup 17; syntax and image-prune checks passed |
+| Hosted `verify` | [GitHub Actions run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246) | Pass for commit `f7a9b6ba6aabc6819835a67f0fda0c8452272898`: backend, PostgreSQL/Flyway, web and extension build/integrity, deployed-shaped smoke, timer WebSocket, line history, and Orca jobs passed; historical iOS jobs skipped as configured |
 
 ## Source reconciliation
 
@@ -49,8 +50,8 @@
 
 ## Limits and follow-up
 
-- Hosted GitHub Actions results and artifact links are unavailable until the
-  branch is pushed and CI runs.
+- Hosted `verify` passed for the pushed revision (linked above). The workflow
+  does not cover physical Android acceptance.
 - This is desktop Chromium evidence. It does not claim physical Android Chrome
   acceptance, Google account consent, a live Clockify session, or host
   permission prompt rendering.
