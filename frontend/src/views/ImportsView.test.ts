@@ -264,6 +264,36 @@ describe("ImportsView", () => {
     expect(wrapper.get('[role="status"]').text()).toContain("Removed 2 imported sessions");
   });
 
+  it("keeps a Knowledge Base batch available after undo failure and retries it", async () => {
+    const batches = [
+      { id: "kb-batch-retry", source: "KNOWLEDGE_BASE", imported: 1, skipped: 0, createdPaths: 1, createdAt: "2026-08-26T10:00:00Z", undoneAt: null as string | null },
+    ];
+    let attempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/imports/knowledge-base/batches") return batches;
+      if (path === "/imports/knowledge-base/batches/kb-batch-retry" && options?.method === "DELETE") {
+        attempts += 1;
+        if (attempts === 1) throw new Error("offline");
+        batches[0].undoneAt = "2026-08-27T10:00:00Z";
+        return { deletedEntries: 1, deletedActivities: 0, deletedPaths: 1 };
+      }
+      return undefined;
+    });
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    await flushPromises();
+    await wrapper.find("button.text-button.danger").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not undo this import batch.");
+    expect(wrapper.findAll(".history-row")).toHaveLength(1);
+    expect(wrapper.find("button.text-button.danger").exists()).toBe(true);
+
+    await wrapper.find("button.text-button.danger").trigger("click");
+    await flushPromises();
+    expect(attempts).toBe(2);
+    expect(wrapper.get(".history-row").text()).toContain("undone");
+    expect(wrapper.get('[role="status"]').text()).toContain("Removed 1 imported sessions");
+  });
+
   it("reports malformed and structurally invalid Clockify input", async () => {
     const wrapper = mount(ImportsView);
     await flushPromises();

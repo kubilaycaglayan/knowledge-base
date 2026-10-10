@@ -872,6 +872,41 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void knowledgeBaseUndoDeletesOnlyRecordsFromTheSelectedBatch() {
+    String token = freshToken();
+    UUID firstPathId = UUID.randomUUID();
+    UUID secondPathId = UUID.randomUUID();
+    String firstCsv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                firstPathId,
+                "{\"name\":\"First batch path\",\"description\":null,\"color\":\"#123456\",\"status\":\"ACTIVE\"}");
+    String secondCsv =
+        "entity,id,payload\n"
+            + csvRow(
+                "path",
+                secondPathId,
+                "{\"name\":\"Second batch path\",\"description\":null,\"color\":\"#654321\",\"status\":\"ACTIVE\"}");
+
+    ResponseEntity<JsonNode> firstImport = importCsv(token, firstCsv);
+    ResponseEntity<JsonNode> secondImport = importCsv(token, secondCsv);
+    assertEquals(HttpStatus.OK, firstImport.getStatusCode());
+    assertEquals(HttpStatus.OK, secondImport.getStatusCode());
+    assertEquals(2, get("/api/v1/paths", token).getBody().size());
+
+    ResponseEntity<JsonNode> undo =
+        delete(
+            "/api/v1/imports/knowledge-base/batches/"
+                + firstImport.getBody().get("batchId").asText(),
+            token);
+    assertEquals(HttpStatus.OK, undo.getStatusCode());
+    assertEquals(1, undo.getBody().get("deletedPaths").asInt());
+    assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/paths/" + firstPathId, token).getStatusCode());
+    assertEquals("Second batch path", get("/api/v1/paths/" + secondPathId, token).getBody().get("name").asText());
+  }
+
+  @Test
   void knowledgeBaseImportSkipsDuplicatesWithinFileAndPreservesOtherUsersData() {
     String ownerToken = freshToken();
     String importingToken = freshToken();
