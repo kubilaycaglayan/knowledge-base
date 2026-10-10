@@ -1044,16 +1044,16 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Archive one board
 
 - [x] Archiving a board requires confirmation and removes it from active tabs. Evidence: `BoardView.test.ts` / `confirms before archiving a status or the board` checks the confirmation dialog; `boards.test.ts` covers the archive action and active board selection.
-- [ ] A missing selected board falls back to a valid board and explains the
-  unavailable selection where appropriate.
+- [x] A missing selected board falls back to All boards. Evidence: `board.acceptance.test.mjs` / `resolves an invalid board query to the All boards view` checks URL normalization and selected state.
+- [ ] The board explains that a requested board is unavailable after fallback.
 
 ### Flow: Manage one board's statuses
 
 - [x] Creating a status adds one column to the selected board. Evidence: `BoardView.test.ts` / `renames, reorders, and adds statuses` checks the created status request.
 - [x] Renaming a status updates its column heading. Evidence: the same test verifies the selected status update request.
 - [x] Reordering statuses updates their displayed order after reload. Evidence: the same test exercises keyboard reordering and verifies the persisted order; `boards.test.ts` / `persists status order and replaces the local order from the server` checks server reconciliation.
-- [ ] Archiving a status handles its cards and disallowed last-active-status
-  case with visible feedback.
+- [x] Archiving a status reassigns its cards and keeps them available in the board. Evidence: `board.acceptance.test.mjs` / `reassigns cards when a status is archived` verifies the card remains visible in Gantt.
+- [ ] Attempting to archive the last active status gives the user visible feedback. Backend rejection is covered by `BoardControllerApiTest.finalActiveStatusCannotBeArchived`; UI feedback remains unverified.
 - [x] Restoring an archived status returns it to the board. Evidence: `BoardArchiveView.test.ts` / `restores an archived status through an icon button`.
 - [x] A failed status update leaves the board in a recoverable state. Evidence: `boards.test.ts` / `keeps a status active when archive fails` retains the status after the rejected update.
 
@@ -1067,12 +1067,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Edit one board card
 
-- [ ] Saving title and body updates the selected card.
+- [x] Saving title and body updates the selected card. Evidence: `board.acceptance.test.mjs` / `autosaves edits and closes with Cmd/Ctrl+Enter from the body` verifies the title appears on the card and the body edit flushes on close; `formats a card body from the toolbar on desktop and phone` checks formatted body content.
 - [x] Saving path, priority, status, and date fields updates the selected card's displayed metadata. Evidence: `BoardView.test.ts` / `sets and clears the card path from the header picker`, `puts dates, priority, status, labels, and an icon-only archive button in the editor footer`, `saves a single confirmed day as both start and due date`, and `flushes pending edits when closed and moves the card from the status select`.
 - [x] Adding/removing BOARD labels updates the selected card's label chips. Evidence: `BoardView.test.ts` / `picks card labels from a searchable chip selector in the editor footer` and `shows each selected label's name on its chip and removes it from the chip`.
 - [x] Closing the editor clears its selected card from the URL. Evidence: the same test verifies only the selected board remains in the route query after close.
-- [ ] A failed card save preserves the draft and identifies the recovery
-  action.
+- [x] A failed card save preserves the draft and identifies the recovery action. Evidence: `board.acceptance.test.mjs` / `keeps a failed card save retryable without losing the draft` checks the retained title and Retry action.
 - [x] A stale card edit reports a conflict without silently replacing the current saved version. Evidence: `BoardView.test.ts` / `shows the newer card's times after a conflict and the retried save's times after Retry`; `boards.test.ts` / `keeps the current card intact when an edit times out`.
 
 ### Flow: Move one card between statuses
@@ -1105,10 +1104,9 @@ the extension has its own scope in OTOTEST-04.
 - [x] Undated cards remain discoverable in the card name gutter. Evidence: `BoardView.test.ts` / `keeps all active cards in the Gantt gutter while limiting bars to the visible dates`.
 - [x] Cards outside the visible interval remain discoverable in the gutter. Evidence: the same test and `shows edge arrows for dated cards outside the visible timeline`.
 - [x] A card's inclusive start/end dates occupy the intended timeline days. Evidence: `BoardView.test.ts` / `selects and saves an inclusive date range when dragging across an undated row` and `previews a one-day bar on an undated card's row and saves the hovered date on click`.
-- [ ] Dragging a card bar changes its dates by whole days and shows save
-  feedback.
-- [ ] Resizing either edge changes the matching endpoint date.
-- [ ] Cancelling a drag leaves the saved date range unchanged.
+- [x] Dragging a card bar changes its dates by whole days and shows save feedback. Evidence: `board.acceptance.test.mjs` / `moves and resizes Gantt dates and marks today across the chart` checks the exact updated date payload.
+- [x] Resizing either edge changes the matching endpoint date. Evidence: the same test checks left and right endpoint updates.
+- [x] Cancelling a drag leaves the saved date range unchanged. Evidence: `board.acceptance.test.mjs` / `cancels a Gantt drag and restores dates after a failed save` checks cancellation sends no request and both cancellation and failed save restore the original bar.
 - [x] Offscreen date arrows move the visible window to include that card. Evidence: `BoardView.test.ts` / `moves the timeline start to the card's start date from its edge arrow` and `moves the timeline end to the card's end date from its right edge arrow`.
 - [x] Hiding and restoring the card list preserves the user's selected view. Evidence: `BoardView.test.ts` / `hides and shows the Gantt card list from the timeline's top-left toggle` and `remembers the hidden Gantt card list in this browser`.
 - [ ] Gantt controls remain visible and operable at phone width where Gantt is
