@@ -572,22 +572,29 @@ browser interaction evidence remains a separate layer.
   `CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources`,
   `BoardDetailIntegrationTest`, `BoardCardDetailIntegrationTest`,
   `NoteDetailIntegrationTest`, and `LogDetailIntegrationTest`).
-- [ ] Each mutation that accepts referenced IDs verifies those IDs belong to
-  the authenticated user.
-- [ ] Referenced path, label, board, status, card, note, timer, entry, and batch
-  IDs are checked wherever applicable to the operation.
+- [x] Mutations that accept referenced IDs verify those IDs belong to the
+  authenticated user, with foreign path/activity/entry/label/status/board
+  references and unchanged owner data covered by
+  `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`.
+- [x] Referenced path, label, board, status, card, activity, entry, and batch
+  IDs are checked wherever applicable. Notes, timers, and cards are addressed
+  directly by their own resource routes rather than accepted as references;
+  import batch references are covered by the two owner-scoped undo tests below.
   Batch list and undo ownership are covered for both import types by
   `KnowIntegrationTest.knowledgeBaseBatchListAndUndoAreOwnerScopedAndRepeatedUndoIsIdempotent`
   and `clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`; foreign
   and missing batch IDs both return 404.
 - [ ] Foreign resources are not distinguished from missing resources where
   the API contract intentionally returns not found.
-- [ ] Cross-user coverage uses at least two disposable accounts and verifies
-  both the response and the unchanged owner data.
+- [x] Cross-user coverage uses disposable owner and intruder accounts and
+  verifies responses plus unchanged owner data
+  (`CrossUserIsolationIntegrationTest` and the import batch ownership tests).
 - [ ] Authenticated network/server failures do not falsely count as token
   rejection or erase the current session.
-- [ ] Error responses preserve their intended status through exception/error
-  dispatch rather than being converted to unrelated authentication errors.
+- [x] Response status errors preserve their intended status and reason in the
+  API error envelope (`ApiExceptionHandlerTest.domainStatusErrorsPreserveStatusAndReason`);
+  authenticated and anonymous route outcomes are covered by the integration
+  security and ownership tests.
 
 ## Flow: Verify validation, boundaries, and concurrency
 
