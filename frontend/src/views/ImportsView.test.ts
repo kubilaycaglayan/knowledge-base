@@ -305,10 +305,18 @@ describe("ImportsView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe(
       "Paste valid Clockify JSON.",
     );
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      "/imports/clockify",
+      expect.objectContaining({ method: "POST" }),
+    );
     await input.setValue('{"entries":[]}');
     await wrapper.get("button.primary").trigger("click");
     expect(wrapper.get('[role="alert"]').text()).toBe(
       "Clockify JSON needs a timeentries array.",
+    );
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      "/imports/clockify",
+      expect.objectContaining({ method: "POST" }),
     );
   });
 
