@@ -663,13 +663,18 @@ the extension has its own scope in OTOTEST-04.
 - [x] Removing a path requires confirmation and explains the visible impact.
   Evidence: `frontend/src/views/PathsView.test.ts`, `confirms removal and
   offers a timed undo` asserts the confirmation copy and DELETE request;
-  `does not remove a path when the confirmation is cancelled` verifies cancel.
+  `does not remove a path when the confirmation is cancelled` verifies cancel;
+  `nav-shell.acceptance.test.mjs` / `confirms Path removal and restores it
+  through the Undo action` verifies Escape cancellation, confirmed removal,
+  snackbar recovery, and the visible restored Path.
 
 ### Flow: Restore one path
 
 - [x] The removed path can be restored using the offered recovery action.
   Evidence: `frontend/src/views/PathsView.test.ts`, `restores a removed path
-  to the active list after undo` checks the visible Path returns after restore.
+  to the active list after undo` checks the visible Path returns after restore;
+  `nav-shell.acceptance.test.mjs` / `confirms Path removal and restores it
+  through the Undo action` verifies the Undo request and active list state.
 - [x] Restoring the path makes its history and associated board available
   again. Evidence: `PathsView.test.ts` / `restores a removed path to the active
   list after undo` verifies its history can be reopened and the board visibility
@@ -757,15 +762,18 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Delete one log
 
-- [x] Deleting a log requires confirmation or offers a visible undo action. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` verifies a modal dialog with an accessible name and destructive warning before issuing DELETE.
+- [x] Deleting a log requires confirmation or offers a visible undo action. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` verifies a modal dialog with an accessible name and destructive warning before issuing DELETE; `nav-shell.acceptance.test.mjs` / `confirms Log removal, preserves it on cancel or failure, then retries successfully` verifies the browser confirmation flow.
 - [x] Cancelling deletion leaves the log unchanged and sends no DELETE request.
   Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
   'leaves a log unchanged when deletion is cancelled'` (component test;
-  mocked API).
-- [x] Confirming deletion removes only the selected log. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` verifies the selected log is removed and other loaded log records remain.
+  mocked API); the browser test above verifies both Escape and Cancel leave the
+  record unchanged and send no DELETE request.
+- [x] Confirming deletion removes only the selected log. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` verifies the selected log is removed and other loaded log records remain; the browser test above verifies the selected row disappears while the other fixture row remains.
 - [x] A failed delete keeps the log visible and permits a successful retry.
   Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
-  'keeps a log after delete fails'` (component test; mocked API).
+  'keeps a log after delete fails'` (component test; mocked API); the browser
+  test above forces a 503, confirms the row remains and the alert appears, then
+  retries successfully.
 
 ## Reports
 
@@ -1320,10 +1328,11 @@ Coverage note: `NotesView.test.ts` / `flushes a pending autosave before
 navigating back to the note list` and `waits for an in-flight save and flushes
 a newer draft before leaving` verify pending/queued autosaves finish before
 navigation;
-`keeps a failed draft in the editor, retries it, then permits navigation`
-verifies failed saves keep the user on the editor with the draft, then allow
-navigation after Retry succeeds. No explicit stay/discard warning is offered,
-so the warning and discard criteria remain open.
+`nav-shell.acceptance.test.mjs` / `keeps a Note draft open when autosave fails
+during navigation and recovers on retry` verifies a failed save keeps the user
+on the editor with the draft, then allows navigation after Retry succeeds.
+No explicit stay/discard warning is offered, so the warning and discard
+criteria remain open.
 
 ### Flow: Use the Notes editor in mobile Chrome
 
