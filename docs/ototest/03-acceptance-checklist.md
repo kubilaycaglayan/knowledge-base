@@ -1001,7 +1001,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] Import history identifies completed batches and their outcomes. Evidence: the same import test verifies the resulting batch summary; `ImportsView.test.ts` / `undoes only the selected Knowledge Base batch and refreshes its status` verifies its undone state.
 - [x] Import history pagination preserves stable batch ordering. Evidence: `ImportsView.test.ts` / `keeps Knowledge Base batch history in stable order across pages` checks all entries in order across next and previous page transitions.
 - [x] Undoing one import batch affects only records from that batch. Evidence: `ImportsView.test.ts` / `undoes only the selected Knowledge Base batch and refreshes its status` confirms only the selected batch is undone; `KnowIntegrationTest.knowledgeBaseUndoDeletesOnlyRecordsFromTheSelectedBatch` confirms the second batch's Path remains available.
-- [x] A failed import or undo reports failure and leaves a recoverable view. Evidence: `ImportsView.test.ts` / `keeps server diagnostics hidden behind an expandable disclosure` checks import failure; `keeps a Knowledge Base batch available after undo failure and retries it` verifies recovery.
+- [x] A failed import or undo reports failure and leaves a recoverable view. Evidence: `ImportsView.test.ts` / `keeps server diagnostics hidden behind an expandable disclosure` checks import failure; `keeps a Knowledge Base batch available after undo failure and retries it` verifies undo recovery; `nav-shell.acceptance.test.mjs` / `keeps Knowledge Base import data available after a failed request and retries it` verifies the entered CSV remains available and a successful retry produces the batch.
 
 ### Flow: Import Clockify data
 

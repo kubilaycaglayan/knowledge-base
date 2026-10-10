@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -30,6 +30,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let pausedTimer = {};
   let rejectNextReportsRequest = rejectReportsAuth;
   let searchFailurePending = failSearchOnce;
+  let importFailurePending = failImportOnce;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
       localStorage.setItem("know_token", "nav-test-token");
@@ -48,6 +49,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     if (searchFailurePending && path === "/search") {
       searchFailurePending = false;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary search failure" }) });
+      return;
+    }
+    if (importFailurePending && path === "/imports/knowledge-base" && method === "POST") {
+      importFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary import failure" }) });
       return;
     }
     let body = [];
@@ -625,6 +631,23 @@ it("submits a Knowledge Base import and reloads its batch result", async (t) => 
   await page.reload();
   await page.locator("#imports-panel-knowledge-base").waitFor();
   await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
+});
+
+it("keeps Knowledge Base import data available after a failed request and retries it", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { failImportOnce: true });
+  await page.goto(`${server.resolvedUrls.local[0]}imports`);
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  const csv = page.getByRole("textbox", { name: "Knowledge Base CSV" });
+  await csv.fill("type,id\\nPATH,retry-path");
+  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await page.getByRole("alert").filter({ hasText: "Could not import Knowledge Base data." }).waitFor();
+  assert.equal(await csv.inputValue(), "type,id\\nPATH,retry-path", "A rejected request keeps the entered CSV");
+  assert.equal(await page.getByText(/2 imported · 1 skipped · 1 paths/).count(), 0, "A failed request creates no visible batch");
+
+  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await page.getByRole("status").filter({ hasText: "Imported 2 records, skipped 1 duplicates, and created 1 paths." }).waitFor();
+  await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
+  assert.equal(requests.filter((path) => path === "/imports/knowledge-base").length, 2);
 });
 
 it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
