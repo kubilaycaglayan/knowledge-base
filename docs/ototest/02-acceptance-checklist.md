@@ -601,7 +601,7 @@ browser interaction evidence remains a separate layer.
   persisted palette color, and malformed or unsupported colors without creating
   records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`);
   blank/over-limit names are rejected and the 80-character maximum is accepted
-  (`CalendarLabelPickerIntegrationTest.calendarLabelNamesEnforceTheBlankAndMaximumLengthRules`).
+  (`CalendarLabelPickerIntegrationTest.calendarLabelNamesEnforceTheBlankAndMaximumLengthRulesOnCreateAndUpdate`).
 - [x] `PUT /api/v1/calendar/labels/{id}` covers owner-only updates, response
   and list readback, day-assignment propagation, and invalid palette colors
   (`KnowIntegrationTest.calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords`).
