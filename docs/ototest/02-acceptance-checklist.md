@@ -329,7 +329,9 @@ browser interaction evidence remains a separate layer.
   (`BoardListIntegrationTest.boardListDefaultsToVisibleActiveAndSupportsArchivedAndHiddenLists`).
 - [x] `POST /api/v1/boards` covers custom board creation, trimmed response and
   readback, and the four ordered default statuses
-  (`BoardCreationIntegrationTest.creatingCustomBoardReturnsAndPersistsBoardWithDefaultStatuses`).
+  (`BoardCreationIntegrationTest.creatingCustomBoardReturnsAndPersistsBoardWithDefaultStatuses`);
+  blank and over-120-character names return 400 while the 120-character limit
+  succeeds (`BoardControllerApiTest.boardCreateRequiresNonblankNameAndAcceptsTheMaximumLength`).
 - [x] `PUT /api/v1/boards/order` covers complete board ordering, duplicate and
   foreign board IDs, and unchanged order after rejected requests
   (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`).

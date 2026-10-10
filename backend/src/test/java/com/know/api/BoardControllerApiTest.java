@@ -52,6 +52,31 @@ class BoardControllerApiTest {
     verify(statuses).save(argThat(status -> status.getName().equals("Done") && status.getPosition() == 3));
   }
 
+  @Test
+  void boardCreateRequiresNonblankNameAndAcceptsTheMaximumLength() throws Exception {
+    for (String name : List.of(" ", "b".repeat(121))) {
+      mvc.perform(
+              post("/api/v1/boards")
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"name\":\"" + name + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+
+    when(boards.save(any(Board.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(statuses.save(any(BoardStatus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    String maximumName = "b".repeat(120);
+    mvc.perform(
+            post("/api/v1/boards")
+                .with(authentication(auth()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"" + maximumName + "\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value(maximumName));
+    verify(statuses, times(4)).save(any(BoardStatus.class));
+  }
+
   @Test void foreignBoardIsNotObservable() throws Exception {
     UUID boardId = UUID.randomUUID();
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.empty());
