@@ -764,6 +764,37 @@ describe("PathsView", () => {
     ]);
   });
 
+  it("reorders paths with accessible buttons and disables moves at list boundaries", async () => {
+    let orderedIds = ["path-1", "path-2"];
+    const seededPaths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+      { id: "path-2", name: "Writing", status: "ACTIVE" },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths") return orderedIds.map((id) => seededPaths.find((item) => item.id === id));
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths/order" && options?.method === "PUT") {
+        orderedIds = JSON.parse(String(options.body)).pathIds;
+        return undefined;
+      }
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.get('button[aria-label="Move Algorithms up"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.get('button[aria-label="Move Writing down"]').attributes("disabled")).toBeDefined();
+    await wrapper.get('button[aria-label="Move Writing up"]').trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/order",
+      expect.objectContaining({ method: "PUT", body: '{"pathIds":["path-2","path-1"]}' }),
+    );
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual(["Writing", "Algorithms"]);
+    await wrapper.unmount();
+  });
+
   it("keeps long path titles on one truncated line", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
