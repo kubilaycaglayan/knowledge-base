@@ -329,6 +329,7 @@ describe("boards store concurrency", () => {
 
     // BS-01: archiving the open board falls back to All boards.
     expect(store.selectedId).toBe("all");
+    expect(store.boards.map((board) => board.id)).toEqual(["board-b"]);
     expect(store.cards).toEqual([]);
     expect(store.statuses).toEqual([]);
   });
