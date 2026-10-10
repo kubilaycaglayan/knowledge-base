@@ -676,11 +676,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Search the log list
 
-- [ ] Opening Log search exposes its input and documented keyboard shortcut.
-- [ ] A matching query filters the visible log records.
-- [ ] Clearing the query restores the unfiltered records.
-- [ ] A no-match query displays a clear empty result.
-- [ ] Query state is restored through URL or browser history where supported.
+- [x] Opening Log search exposes its input and documented keyboard shortcut. Evidence: `LogsView.test.ts` / `keeps search hidden until / opens it, leaving Cmd/Ctrl+K to global search` verifies slash opens the input and the global shortcut remains untouched.
+- [x] A matching query filters the visible log records. Evidence: `LogsView.test.ts` / `filters logs, shows no matches, clears search, and restores URL query state` retains only matching log text.
+- [x] Clearing the query restores the unfiltered records. Evidence: the same test clears the input and verifies all three fixture logs return.
+- [x] A no-match query displays a clear empty result. Evidence: the same test checks `No logs match this search.`.
+- [x] Query state is restored through URL or browser history where supported. Evidence: the same test verifies `q` is reflected in the URL, cleared with the input, and restored on `popstate`.
 
 ### Flow: Page through log history
 
