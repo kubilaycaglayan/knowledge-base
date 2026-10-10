@@ -689,6 +689,40 @@ describe("PathsView", () => {
     });
   });
 
+  it("restores a removed path to the active list after undo", async () => {
+    const path = {
+      id: "path-1",
+      name: "Algorithms",
+      description: "Problem solving",
+      color: "#E8754E",
+      status: "ACTIVE",
+      pinned: false,
+    };
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [path];
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Remove")!
+      .trigger("click");
+    await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual([]);
+
+    await wrapper.get(".undo-snackbar button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toContain(
+      "Algorithms",
+    );
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1/restore", {
+      method: "POST",
+    });
+  });
+
   it("reports an undo failure after removing a path", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {

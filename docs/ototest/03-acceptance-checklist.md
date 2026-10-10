@@ -317,7 +317,9 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Restore one path
 
-- [ ] The removed path can be restored using the offered recovery action.
+- [x] The removed path can be restored using the offered recovery action.
+  Evidence: `frontend/src/views/PathsView.test.ts`, `restores a removed path
+  to the active list after undo` checks the visible Path returns after restore.
 - [ ] Restoring the path makes its history and associated board available
   again.
 
