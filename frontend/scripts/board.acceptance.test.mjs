@@ -1922,13 +1922,21 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   });
 
   it("reorders cards in a column with the keyboard alternative", async (t) => {
-    const { page } = await fixture(t, 390, true);
+    const { page, getCardMoveRequests } = await fixture(t, 390, true);
     const column = page.locator(".kanban-column").first();
     const first = column.locator(".board-card").first();
     await first.focus();
     await page.keyboard.press("Alt+ArrowDown");
     await page.waitForFunction(() => document.querySelector(".kanban-column")?.querySelector(".board-card h3")?.textContent === "Dense card 2");
     assert.equal(await column.locator(".board-card h3").first().innerText(), "Dense card 2");
+    assert.equal(getCardMoveRequests(), 1, "Keyboard reorder persists through the move endpoint");
+    await page.reload();
+    await page.locator(".board-card").first().waitFor();
+    assert.deepEqual(
+      await page.locator(".kanban-column").first().locator(".board-card h3").allInnerTexts().then((titles) => titles.slice(0, 2)),
+      ["Dense card 2", "Dense card 1"],
+      "The reordered cards retain their positions after reload",
+    );
   });
 
   it("restores an archived status from the archive page", async (t) => {
