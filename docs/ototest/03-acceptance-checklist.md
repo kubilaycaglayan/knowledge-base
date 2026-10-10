@@ -544,7 +544,10 @@ the extension has its own scope in OTOTEST-04.
 - [x] Reordering paths updates the visible order after reload. Evidence: `cd
   frontend && npx vitest run src/views/PathsView.test.ts -t 'reordered path
   list'` simulates drag and drop, asserts the ordered Path IDs sent to the API,
-  and verifies the order after a fresh component load (mocked API).
+  and verifies the order after a fresh component load (mocked API);
+  `nav-shell.acceptance.test.mjs` / `reorders Paths with browser drag and
+  persists the ordered IDs` verifies Chromium drag, request order, and direct
+  page reload from the updated API fixture.
 - [x] Path order can be changed with keyboard and touch controls without
   dragging. Evidence: `nav-shell.acceptance.test.mjs` / `reorders Paths by
   keyboard with the accessible Move up action` verifies Enter-operated up and

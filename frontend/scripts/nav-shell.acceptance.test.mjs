@@ -715,6 +715,23 @@ it("reorders Paths by touch with a 44px Move up target", async (t) => {
   assert.deepEqual(pathOrderWrites, [["path-b", "path-a"]]);
 });
 
+it("reorders Paths with browser drag and persists the ordered IDs", async (t) => {
+  const pathSeeds = [
+    { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+    { id: "path-b", name: "Writing", status: "ACTIVE" },
+  ];
+  const { page, pathOrderWrites } = await fixture(t, 1440, { pathSeeds });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  const source = page.locator("article.path").filter({ hasText: "Algorithms" });
+  const target = page.locator("article.path").filter({ hasText: "Writing" });
+  await source.waitFor();
+  await source.dragTo(target);
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"]]);
+  await page.reload();
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+});
+
 it("moves focus into and returns focus from the Path create dialog", async (t) => {
   const { page } = await fixture(t, 1440);
   await visit(page, "/paths");
