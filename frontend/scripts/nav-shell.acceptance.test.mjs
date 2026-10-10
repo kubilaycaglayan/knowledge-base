@@ -1164,6 +1164,35 @@ it("loads a note editor when the browser opens its deep link directly", async (t
   assert.match(await page.getByRole("textbox", { name: "Note content" }).innerText(), /Loaded directly/);
 });
 
+it("opens and uses the Notes editor with touch-sized controls on mobile", async (t) => {
+  const note = {
+    id: "n1",
+    title: "Browser deep link",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }),
+    contentText: "Loaded directly",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await visit(page, "/notes");
+  const noteLink = page.getByRole("link", { name: "Open Browser deep link" });
+  await noteLink.tap();
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/n1");
+  await page.getByRole("textbox", { name: "Note content" }).tap();
+  const controls = await page.locator(".note-toolbar button").evaluateAll((elements) => elements.map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }));
+  assert.ok(controls.length > 0 && controls.every(({ width, height }) => width >= 44 && height >= 44));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.getByRole("button", { name: "Back to notes" }).tap();
+  await page.waitForFunction(() => location.pathname === "/notes");
+});
+
 it("shows an unavailable state for a missing note opened by browser deep link", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}notes/gone`);
