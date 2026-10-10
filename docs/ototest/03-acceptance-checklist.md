@@ -1150,8 +1150,8 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Filter archived notes
 
-- [ ] Enabling the archived filter shows archived notes only.
-- [ ] Clearing filters restores the active note list.
+- [x] Enabling the archived filter shows archived notes only. Evidence: `NotesView.test.ts` / `switches between archived and active notes and restores the URL state` verifies the archived query, archived row, and Restore action.
+- [x] Clearing filters restores the active note list. Evidence: the same test switches back, verifies the query is cleared, and confirms the active note returns.
 - [x] Changing page size updates the number of visible note rows. Evidence: `NotesView.test.ts` / `changes page size and pages through notes without repeating records` checks the 20-row default and 25 rows at page size 50.
 - [x] Moving between note pages preserves stable order without duplicates. Evidence: the same test checks that page 2 contains the final five ordered titles exactly once.
 
