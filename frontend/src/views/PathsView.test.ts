@@ -45,7 +45,7 @@ describe("PathsView", () => {
   it("shows tracked time and recent activity for a path", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
-    await wrapper.get("button.text-button").trigger("click");
+    await wrapper.get('button.text-button[aria-haspopup="dialog"]').trigger("click");
     await flushPromises();
 
     expect(wrapper.find(".path-history-dialog").exists()).toBe(true);
@@ -256,7 +256,7 @@ describe("PathsView", () => {
   it("closes path history from its dialog", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
-    const historyButton = wrapper.get("button.text-button");
+    const historyButton = wrapper.get('button.text-button[aria-haspopup="dialog"]');
 
     await historyButton.trigger("click");
     await flushPromises();
@@ -447,7 +447,7 @@ describe("PathsView", () => {
 
     const wrapper = mount(PathsView);
     await flushPromises();
-    await wrapper.get("button.text-button").trigger("click");
+    await wrapper.get('button.text-button[aria-haspopup="dialog"]').trigger("click");
     await flushPromises();
 
     const activityLine = wrapper.get(".path-history-entry");
@@ -489,7 +489,7 @@ describe("PathsView", () => {
     const descriptionLink = wrapper.get('a[href="https://example.com/guide"]');
     expect(descriptionLink.attributes("target")).toBe("_blank");
     expect(descriptionLink.classes()).toContain("plain-link");
-    await wrapper.get("button.text-button").trigger("click");
+    await wrapper.get('button.text-button[aria-haspopup="dialog"]').trigger("click");
     await flushPromises();
     expect(
       wrapper.get('a[href="https://example.com/session"]').attributes("rel"),
@@ -715,7 +715,8 @@ describe("PathsView", () => {
     );
     expect(wrapper.get(".path-pin-button").attributes("aria-pressed")).toBe("false");
     expect(wrapper.get(".path-pin-button").attributes("aria-label")).toBe("Pin Algorithms");
-    expect(wrapper.findAll(".path-order-button")).toHaveLength(0);
+    expect(wrapper.findAll(".path-order-button")).toHaveLength(2);
+    expect(wrapper.findAll(".path-order-button[disabled]")).toHaveLength(2);
   });
 
   it("persists a reordered path list and renders the returned order", async () => {

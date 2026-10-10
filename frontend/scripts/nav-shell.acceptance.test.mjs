@@ -19,6 +19,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   t.after(() => context.close());
   const requests = [];
   const reportQueries = [];
+  const pathOrderWrites = [];
   const paths = [...pathSeeds];
   let notes = [...noteSeeds];
   const calendarDays = [];
@@ -50,6 +51,13 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/paths" && method === "POST") {
       body = { ...route.request().postDataJSON(), id: "path-1", status: "ACTIVE", pinned: false };
       paths.push(body);
+    }
+    else if (path === "/paths/order" && method === "PUT") {
+      const { pathIds } = route.request().postDataJSON();
+      pathOrderWrites.push(pathIds);
+      const byId = new Map(paths.map((item) => [item.id, item]));
+      paths.splice(0, paths.length, ...pathIds.map((id) => byId.get(id)).filter(Boolean));
+      body = paths;
     }
     else if (path.startsWith("/paths/") && method === "PUT") {
       const id = path.split("/").at(-1);
@@ -180,7 +188,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   await page.goto(server.resolvedUrls.local[0]);
   if (authenticated) await page.locator(".dashboard-shell > header nav").waitFor();
   else await page.locator(".auth").waitFor();
-  return { page, requests, reportQueries, calendarLabels, paths };
+  return { page, requests, reportQueries, calendarLabels, paths, pathOrderWrites };
 }
 
 async function until(condition) {
@@ -648,6 +656,44 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   await page.reload();
   await page.locator(".path-title", { hasText: "Reading" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/paths");
+});
+
+it("reorders Paths by keyboard with the accessible Move up action", async (t) => {
+  const pathSeeds = [
+    { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+    { id: "path-b", name: "Writing", status: "ACTIVE" },
+  ];
+  const { page, pathOrderWrites } = await fixture(t, 1440, { pathSeeds });
+  await visit(page, "/paths");
+  const up = page.getByRole("button", { name: "Move Writing up" });
+  await up.waitFor();
+  assert.equal(await page.getByRole("button", { name: "Move Algorithms up" }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: "Move Writing down" }).isDisabled(), true);
+  await up.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+  const down = page.getByRole("button", { name: "Move Writing down" });
+  assert.equal(await down.isDisabled(), false);
+  await down.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Algorithms,Writing");
+  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"], ["path-a", "path-b"]]);
+});
+
+it("reorders Paths by touch with a 44px Move up target", async (t) => {
+  const pathSeeds = [
+    { id: "path-a", name: "Algorithms", status: "ACTIVE" },
+    { id: "path-b", name: "Writing", status: "ACTIVE" },
+  ];
+  const { page, pathOrderWrites } = await fixture(t, 390, { pathSeeds });
+  await visit(page, "/paths");
+  const up = page.getByRole("button", { name: "Move Writing up" });
+  await up.waitFor();
+  const target = await up.boundingBox();
+  assert.ok(target && target.width >= 44 && target.height >= 44, JSON.stringify(target));
+  await up.tap();
+  await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
+  assert.deepEqual(pathOrderWrites, [["path-b", "path-a"]]);
 });
 
 it("moves focus into and returns focus from the Path create dialog", async (t) => {

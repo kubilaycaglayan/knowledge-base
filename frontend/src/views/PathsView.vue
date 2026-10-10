@@ -250,6 +250,11 @@ async function movePath(path: Path, target: Path) {
     error.value = "Could not reorder paths.";
   }
 }
+function movePathByOffset(path: Path, offset: -1 | 1) {
+  const index = paths.value.findIndex((value) => value.id === path.id);
+  const target = paths.value[index + offset];
+  if (target) void movePath(path, target);
+}
 function openAddDialog() {
   error.value = "";
   selectedColorOpen.value = false;
@@ -592,7 +597,7 @@ onBeforeUnmount(() => {
         Loading paths…
       </p>
       <article
-        v-for="path in paths"
+        v-for="(path, pathIndex) in paths"
         :key="path.id"
         class="path card"
         draggable="true"
@@ -712,6 +717,20 @@ onBeforeUnmount(() => {
             <p v-else>No description yet</p>
           </div>
           <div class="row-actions">
+            <button
+              type="button"
+              class="text-button path-order-button"
+              :aria-label="`Move ${path.name} up`"
+              :disabled="pathIndex === 0"
+              @click="movePathByOffset(path, -1)"
+            >Move up</button>
+            <button
+              type="button"
+              class="text-button path-order-button"
+              :aria-label="`Move ${path.name} down`"
+              :disabled="pathIndex === paths.length - 1"
+              @click="movePathByOffset(path, 1)"
+            >Move down</button>
             <button
               class="text-button"
               aria-haspopup="dialog"
@@ -1045,6 +1064,10 @@ onBeforeUnmount(() => {
   border-color: var(--workspace-control-border);
   background: var(--workspace-hover);
   color: var(--workspace-text);
+}
+.path-order-button {
+  min-width: 44px;
+  min-height: 44px;
 }
 .path-title {
   min-width: 0;
