@@ -216,6 +216,57 @@ it("renders every supported top-level route after a direct browser load", async 
   }
 });
 
+it("opens each primary navigation route and updates the active link and title", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const destinations = [
+    ["Board", "/board", ".board-page", "Board"],
+    ["Logs", "/logs", ".logs-page", "Logs"],
+    ["Notes", "/notes", ".notes-page", "Notes"],
+    ["Calendar", "/calendar", ".calendar-page", "Calendar"],
+    ["Reports", "/reports", ".reports-page", "Reports"],
+    ["Paths", "/paths", ".paths-page", "Paths"],
+    ["Labels", "/labels", ".labels-view", "Labels"],
+  ];
+
+  for (const [label, path, selector, title] of destinations) {
+    await nav.getByRole("link", { name: label, exact: true }).click();
+    await page.waitForFunction((expected) => location.pathname === expected, path);
+    await page.locator(selector).waitFor();
+    const activeLink = nav.getByRole("link", { name: label, exact: true });
+    assert.equal(await activeLink.getAttribute("aria-current"), "page");
+    await page.waitForFunction((expected) => document.title === expected, `Knowledge Base · ${title}`);
+  }
+
+  await nav.getByRole("link", { name: "Board", exact: true }).click();
+  await page.waitForFunction(() => location.pathname === "/board");
+  await nav.getByRole("link", { name: "Logs", exact: true }).click();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === "/board");
+  await page.waitForFunction(() => document.title === "Knowledge Base · Board");
+  await page.goForward();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.waitForFunction(() => document.title === "Knowledge Base · Logs");
+});
+
+it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const reportsLink = nav.getByRole("link", { name: "Reports", exact: true });
+  await reportsLink.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.locator(".reports-page").waitFor();
+
+  const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
+  const newTab = page.context().waitForEvent("page");
+  await calendarLink.click({ modifiers: ["Control"] });
+  const opened = await newTab;
+  await opened.locator(".calendar-page").waitFor();
+  assert.equal(new URL(opened.url()).pathname, "/calendar");
+});
+
 it("redirects /sessions to the Sessions home and restores history with Back and Forward", async (t) => {
   const { page } = await fixture(t, 1440);
   await visit(page, "/logs");

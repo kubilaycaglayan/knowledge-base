@@ -53,12 +53,25 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Navigate with the primary navigation
 
-- [ ] Each primary navigation link opens its corresponding route.
-- [ ] The active page is identifiable without relying on color alone.
-- [ ] Navigation links support keyboard activation and open-in-new-tab behavior.
-- [ ] Browser Back returns to the prior route.
-- [ ] Browser Forward returns to the next route.
-- [ ] The document title updates after each route change.
+- [x] Each primary navigation link opens its corresponding route. Evidence:
+  `cd frontend && node --test --test-name-pattern='opens each primary
+  navigation route' scripts/nav-shell.acceptance.test.mjs` activates all seven
+  primary links and checks their destination routes (mocked API browser test).
+- [x] The active page is identifiable without relying on color alone.
+  Evidence: the same test checks `aria-current="page"` on each active link.
+- [x] Navigation links support keyboard activation and open-in-new-tab
+  behavior. Evidence: `cd frontend && node --test
+  --test-name-pattern='supports keyboard navigation and opening a primary
+  link' scripts/nav-shell.acceptance.test.mjs` activates Reports with Enter
+  and opens Calendar in a new tab (browser test).
+- [x] Browser Back returns to the prior route. Evidence: the primary
+  navigation route test navigates Board → Logs and checks Back returns to
+  Board.
+- [x] Browser Forward returns to the next route. Evidence: the same test
+  checks Forward returns to Logs.
+- [x] The document title updates after each route change. Evidence: the
+  primary navigation route test checks all seven route titles and their Back /
+  Forward transitions.
 - [ ] The floating tracker is available on eligible routes.
 - [ ] The floating tracker is hidden on Sessions routes.
 - [ ] The floating tracker does not cover the focused mobile text input.
