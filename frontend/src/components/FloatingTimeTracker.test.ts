@@ -379,7 +379,7 @@ describe("FloatingTimeTracker", () => {
     await wrapper.get('button[aria-label="Discard session"]').trigger("click");
     await wrapper.get('[role="dialog"] button.primary').trigger("click");
     await flushPromises();
-    expect(wrapper.get('button[aria-label="Stop timer"]').exists()).toBe(true);
+    expect(wrapper.get('button[aria-label="Stop timer"]').attributes("aria-label")).toBe("Stop timer");
     expect(wrapper.get(".tracker-error").text()).toContain("Could not discard the session.");
 
     currentTimer = null;
@@ -1388,7 +1388,7 @@ describe("FloatingTimeTracker", () => {
       expect(sockets).toHaveLength(1);
       sockets[0].onclose?.();
       await flushPromises();
-      expect(wrapper.get('button[aria-label="Stop timer"]').exists()).toBe(true);
+      expect(wrapper.get('button[aria-label="Stop timer"]').attributes("aria-label")).toBe("Stop timer");
       expect(useTimerStore().description).toBe("Recovered by polling");
 
       await vi.advanceTimersByTimeAsync(5_000);

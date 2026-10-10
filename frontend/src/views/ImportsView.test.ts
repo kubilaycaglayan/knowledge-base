@@ -55,7 +55,7 @@ describe("ImportsView", () => {
       await flushPromises();
       expect(wrapper.text()).toContain("No Knowledge Base imports yet.");
       expect(wrapper.findAll(".history-row")).toHaveLength(0);
-      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      expect(wrapper.findAll('[role="alert"]')).toHaveLength(0);
     } finally {
       wrapper.unmount();
     }

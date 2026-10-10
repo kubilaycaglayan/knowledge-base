@@ -881,7 +881,7 @@ describe("PathsView", () => {
       "Merge “Algorithms” into…",
     );
     expect(
-      wrapper.findAll('input[name="merge-target-path"]').map((input) => input.element.value),
+      wrapper.findAll('input[name="merge-target-path"]').map((input) => (input.element as HTMLInputElement).value),
     ).toEqual(["path-2"]);
     await wrapper.get("#merge-path-search").setValue("writing");
     await wrapper.get('input[name="merge-target-path"]').setValue("path-2");

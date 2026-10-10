@@ -15,7 +15,7 @@ describe("LabelsView", () => {
       await flushPromises();
       expect(wrapper.text()).toContain("No labels yet. Add one above to get started.");
       expect(wrapper.findAll(".label-row")).toHaveLength(0);
-      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      expect(wrapper.findAll('[role="alert"]')).toHaveLength(0);
     } finally {
       wrapper.unmount();
     }

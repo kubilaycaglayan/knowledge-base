@@ -114,8 +114,8 @@ describe("NotesView", () => {
       await flushPromises();
       expect(wrapper.get(".notes-empty").text()).toBe("Your notes will appear here.");
       expect(wrapper.findAll(".note-row")).toHaveLength(0);
-      expect(wrapper.get('button[aria-label="Create new note"]').exists()).toBe(true);
-      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      expect(wrapper.get('button[aria-label="Create new note"]').attributes("aria-label")).toBe("Create new note");
+      expect(wrapper.findAll('[role="alert"]')).toHaveLength(0);
     } finally {
       wrapper.unmount();
     }

@@ -435,10 +435,10 @@ describe("TimelineView", () => {
     await wrapper.get("button.clear-timeline-filters").trigger("click");
     await flushPromises();
 
-    expect(wrapper.get('select[aria-label="Activity type"]').element.value).toBe("");
-    expect(wrapper.get('select[aria-label="Path"]').element.value).toBe("");
-    expect(wrapper.get('input[aria-label="From date"]').element.value).toBe("");
-    expect(wrapper.get('input[aria-label="To date"]').element.value).toBe("");
+    expect((wrapper.get('select[aria-label="Activity type"]').element as HTMLSelectElement).value).toBe("");
+    expect((wrapper.get('select[aria-label="Path"]').element as HTMLSelectElement).value).toBe("");
+    expect((wrapper.get('input[aria-label="From date"]').element as HTMLInputElement).value).toBe("");
+    expect((wrapper.get('input[aria-label="To date"]').element as HTMLInputElement).value).toBe("");
     expect(vi.mocked(api)).toHaveBeenLastCalledWith("/activities?");
     expect(wrapper.text()).toContain("General note");
   });
