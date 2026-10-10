@@ -391,7 +391,10 @@ the extension has its own scope in OTOTEST-04.
   aggregation period.
 - [ ] Changing aggregation preserves the selected date interval.
 - [ ] Report range and supported filters are represented by the URL.
-- [ ] Browser Back and Forward restore the corresponding report state.
+- [x] Browser Back and Forward restore the report interval and aggregation
+  after navigating to another route. Evidence: `cd frontend && node --test
+  --test-name-pattern='restores report filters after navigation'
+  scripts/nav-shell.acceptance.test.mjs` (desktop Chromium; mocked API).
 - [ ] Reloading a report URL restores its supported range and filter state.
 
 ### Flow: Filter report totals by path

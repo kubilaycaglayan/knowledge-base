@@ -165,6 +165,37 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   assert.equal(new URL(page.url()).pathname, "/paths");
 });
 
+it("restores report filters after navigation and browser Back/Forward", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const search = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
+  await page.evaluate((query) => {
+    history.pushState({}, "", `/reports${query}`);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }, search);
+  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.locator(".reports-page").waitFor();
+  const assertReportQuery = async () => {
+    await page.waitForFunction(() => location.pathname === "/reports" && new URLSearchParams(location.search).get("startDate") === "2026-09-01");
+    const params = new URLSearchParams(new URL(page.url()).search);
+    assert.equal(params.get("endDate"), "2026-09-07");
+    assert.equal(params.get("aggregation"), "month");
+  };
+  await assertReportQuery();
+
+  await page.locator('a[href="/logs"]').first().click();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.locator(".logs-page").waitFor();
+  await page.locator('a[href="/reports"]').first().click();
+  await page.waitForFunction(() => location.pathname === "/reports");
+  await page.locator(".reports-page").waitFor();
+  await assertReportQuery();
+
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.goForward();
+  await assertReportQuery();
+});
+
 it("opens a session detail when the browser loads its deep link directly", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);
