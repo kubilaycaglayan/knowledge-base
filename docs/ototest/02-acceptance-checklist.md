@@ -1020,9 +1020,18 @@ browser interaction evidence remains a separate layer.
 - [x] Missing positive operation coverage remains visible as a gap even when
   broad security sweeps pass. Unknown board-card priority binding remains a
   maintainer-owned gap on all three affected operation rows.
-- [ ] Existing HARD-01 through HARD-07 evidence is reused by link when it
+- [x] Existing HARD-01 through HARD-07 evidence is reused by link when it
   proves the required behavior; duplicate coverage is not added without a
-  distinct risk.
+  distinct risk. OTOTEST-02 reuses the search operation assertions from
+  [HARD-01's acceptance checklist](../../harden-tests/milestones/01-acceptance-checklist.md),
+  PostgreSQL/time/volume and rollback evidence from
+  [HARD-03](../../harden-tests/milestones/03-acceptance-checklist.md),
+  authentication and rate-limit evidence from
+  [HARD-04](../../harden-tests/milestones/04-acceptance-checklist.md), and
+  durable command/run conventions from
+  [HARD-07](../../harden-tests/milestones/07-acceptance-checklist.md). HARD-02
+  browser journeys, HARD-05 performance measurements, and closed HARD-06 iOS
+  validation do not prove backend API behavior and are not duplicated here.
 - [x] Acceptance evidence records the exact source revision, command or CI job,
   result, and report link. Batch 14 revision
   `6943ebf9d574e4f8814b57976f2ba2b7a99b7444` passed the local full backend
