@@ -335,11 +335,13 @@ decision rather than assumed to be used.
 
 Evidence command/workflow mapping:
 
-- Java controller/service/API tests: `verify` workflow backend test jobs and
+- Java controller/service/API tests: `verify` workflow's `backend` job and
   `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle
   test --no-daemon` (local repository instructions add a unique
-  `--project-cache-dir`). PostgreSQL integration uses the isolated disposable
-  database workflow; it is not implied by an ordinary unit/service run.
+  `--project-cache-dir`). Every `PostgresDatabaseConstraintIntegrationTest`
+  assertion maps to the `backend-postgres` job, which provisions a uniquely
+  named disposable PostgreSQL database and runs the complete backend suite;
+  PostgreSQL evidence is not implied by the ordinary backend job.
 - Vue component/store tests and build: `verify` workflow web job runs
   `cd frontend && npm ci && npm test && npm run build`.
 - Extension module tests/build/manifest validation: `verify` workflow extension
