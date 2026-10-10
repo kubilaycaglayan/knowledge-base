@@ -428,8 +428,10 @@ the extension has its own scope in OTOTEST-04.
   label chips after save. Evidence: `SessionsView.test.ts` / `updates the
   selected session label chips after saving additions and removals` removes
   and restores the label through the save and history reload.
-- [ ] Closing the session detail returns to the list and clears its selected
-  record URL state.
+- [x] Closing the session detail returns to the list and clears its selected
+  record URL state. Evidence: `DeepLinks.test.ts` / `shows a session that isn't
+  on the loaded page and closes back to the list` closes the dialog, verifies
+  the route returns to `/`, and confirms the dialog is removed.
 
 ### Flow: Start a new session from a completed session
 
