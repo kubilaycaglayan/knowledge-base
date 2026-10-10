@@ -1414,6 +1414,11 @@ criteria remain open.
 ### Flow: Operate the application with mobile Chrome touch
 
 - [ ] Primary touch targets are comfortably tappable at phone width.
+  Partial evidence: `nav-shell.acceptance.test.mjs` / `filters Timeline
+  activity with phone-width controls and sends the selected values` checks
+  44×44px targets for Timeline type/Path selectors and key filter actions at
+  390px in desktop Chromium touch emulation. Other routes and real mobile
+  Chrome still need verification.
 - [x] Mobile text controls use an input size that avoids unintended browser
   zoom where applicable. Supplemental Chromium evidence:
   `nav-shell.acceptance.test.mjs` / `uses at least 16px text controls on

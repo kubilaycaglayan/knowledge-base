@@ -336,6 +336,11 @@ textarea:disabled {
   .ghost {
     min-height: 44px;
   }
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
   .add {
     align-items: stretch;
   }
