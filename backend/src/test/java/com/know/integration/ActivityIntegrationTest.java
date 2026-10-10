@@ -90,6 +90,8 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
     JsonNode exactRange = activities(owner, "?from=" + atBoundary + "&to=" + atBoundary);
     assertEquals(1, exactRange.size(), "Both date bounds include an event at the boundary");
     assertEquals(firstActivity.get("id").asText(), exactRange.get(0).get("id").asText());
+    assertEquals(1, activities(owner, "?from=" + atBoundary).size(), "The lower date bound is inclusive");
+    assertEquals(1, activities(owner, "?to=" + atBoundary).size(), "The upper date bound is inclusive");
 
     String equivalentOffset = occurredAt.atOffset(ZoneOffset.ofHours(-5)).toString();
     JsonNode offsetRange = activities(owner, "?from=" + equivalentOffset + "&to=" + equivalentOffset);
@@ -98,5 +100,6 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
 
     assertTrue(activities(owner, "?from=" + occurredAt.plusSeconds(60)).isEmpty());
     assertTrue(activities(owner, "?to=" + occurredAt.minusSeconds(60)).isEmpty());
+    assertTrue(activities(owner, "?from=" + occurredAt.plusSeconds(60) + "&to=" + atBoundary).isEmpty());
   }
 }
