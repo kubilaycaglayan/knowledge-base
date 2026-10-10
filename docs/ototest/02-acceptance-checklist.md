@@ -1048,7 +1048,13 @@ browser interaction evidence remains a separate layer.
   [PR #150 run 38019735005](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019735005)
   and [run 38019738515](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019738515);
   both disposable PostgreSQL jobs also completed migrated-database startup
-  verification.
+  verification. Batch 15 revision
+  `acc5844a1d776ee8ac4504426cf5b7593142131f` passed the same local command:
+  599 tests, 0 failures, 89 skipped; the report path is the same. Both
+  [PR #151 run 38020895042](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38020895042)
+  and [run 38020898909](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38020898909)
+  passed all active jobs, including backend and guarded PostgreSQL with
+  migrated-database startup verification.
 - [ ] OTOTEST-02 is not marked complete until every operation and alias is
   covered or explicitly excluded, the API docs and matrix agree, and the
   required backend/PostgreSQL evidence is recorded.
