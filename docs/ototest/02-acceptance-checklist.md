@@ -902,8 +902,15 @@ browser interaction evidence remains a separate layer.
 - [x] Concurrent timer-start behavior verifies the one-running-timer invariant
   through service behavior, concurrent HTTP starts, and the PostgreSQL
   uniqueness safeguard (tests linked in the timer operation row above).
-- [ ] Multi-record mutation failures verify transaction rollback where
-  persistence must remain atomic.
+- [x] Multi-record mutation failures verify transaction rollback where
+  persistence must remain atomic. [`01-api-matrix.md`'s transaction rollback
+  evidence section](01-api-matrix.md#multi-record-transaction-rollback-evidence)
+  catalogs exact guarded PostgreSQL assertions for path merge/create/restore/
+  rename/order, board reorder/archive/card moves and creation, note order and
+  associations, label scope/assignment changes, calendar day/range writes,
+  Clockify imports, and import undo. Each named assertion verifies unchanged
+  persisted state after its injected write failure; the PostgreSQL-specific
+  guard and runnable CI/local commands are documented with the inventory.
 - [x] PostgreSQL-specific constraint assertions run only under the guarded
   disposable PostgreSQL path. `PostgresDatabaseConstraintIntegrationTest`
   assumes `KB_TEST_POSTGRES_URL`, and `IntegrationTestSupport` verifies that

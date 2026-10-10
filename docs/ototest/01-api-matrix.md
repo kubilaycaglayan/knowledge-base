@@ -351,6 +351,45 @@ Evidence command/workflow mapping:
   layers; mocked tests do not establish browser/API evidence.
 - No suites were run while authoring OTOTEST-01.
 
+## Multi-record transaction rollback evidence
+
+Guarded PostgreSQL assertions verify original persisted rows after a later
+write in an atomic multi-record operation fails. The operation rows above link
+the exact path merge/create/restore/rename/order, board tab/status/card
+reorder/move/archive/transfer/create, calendar range/day replacement,
+Clockify import, and label mutation assertions. Additional related evidence:
+
+- Path and board operations:
+  `PostgresDatabaseConstraintIntegrationTest.postgresPathMergeRollsBackEarlierSessionMovesWhenBoardMoveFails`,
+  `postgresPathCreateRollsBackWhenDefaultBoardStatusSeedingFails`,
+  `postgresPathRestoreRollsBackPathWhenBoardRestoreFails`,
+  `postgresPathRenameRollsBackWhenAssociatedBoardRenameFails`,
+  `postgresPathOrderRollsBackEarlierRowsWhenLaterUpdateFails`,
+  `postgresBoardTabOrderRollsBackEarlierRowsWhenLaterUpdateFails`,
+  `postgresStatusOrderRollsBackEarlierRowsWhenLaterUpdateFails`,
+  `postgresStatusArchiveRollsBackEarlierCardMovesWhenALaterMoveFails`,
+  `postgresCardMoveRollsBackEarlierPositionUpdatesWhenLaterUpdateFails`,
+  `postgresMoveToNewColumnRollsBackColumnWhenCardMoveFails`,
+  `postgresCardCreateRollsBackNewColumnWhenCardInsertFails`, and
+  `postgresCardTransferRollsBackTargetStatusWhenCardMoveFails`.
+- Notes and relationships:
+  `PostgresDatabaseConstraintIntegrationTest.postgresNoteOrderRollsBackEarlierRowsWhenLaterUpdateFails`,
+  `postgresNoteCreateRollsBackNoteAndTagWhenActivityWriteFails`,
+  `postgresNoteUpdateRollsBackContentAndOldTagsWhenReplacementTagWriteFails`,
+  `postgresCreateOperationsRollBackParentsWhenAssociationWritesFail`, and
+  `postgresLabelDeleteRollsBackEarlierAssignmentDeletesWhenALaterJoinFails`.
+- Calendar, labels, and imports:
+  `PostgresDatabaseConstraintIntegrationTest.postgresCalendarRangeFailureRollsBackEarlierDayAndAssignments`,
+  `postgresCalendarDayReplacementRollsBackNoteAndOldLabelsWhenNewAssignmentFails`,
+  `postgresCalendarLabelCreateRollsBackLabelWhenScopeInsertFails`,
+  `postgresLabelUpdateRollsBackNameAndScopesWhenScopeInsertionFails`,
+  `KnowIntegrationTest.postgresImportRollsBackEarlierRowsWhenALaterRecordViolatesAConstraint`,
+  `KnowIntegrationTest.postgresClockifyUndoRollsBackEarlierEntryDeleteWhenBatchUpdateFails`, and
+  `KnowIntegrationTest.postgresKnowledgeBaseUndoRollsBackEarlierDeletesWhenBatchUpdateFails`.
+
+These tests use isolated guarded PostgreSQL as required for database-triggered
+failures; they are not claimed by H2-only or mocked controller runs.
+
 ## Notes and checklist
 
 The matrix lists every mapping found in the controllers. `BoardControllerApiTest`, `TimerApiTest`, and similar class references are candidate suites, not proof that every row has a positive operation assertion; the matrix labels unverified evidence as gaps. The `/api/v1/timers/stop` and `/api/v1/timers/cancel` aliases are separate rows so their parity can be verified. API authentication, owner isolation, invalid input, persisted effects, and PostgreSQL-only constraints are separate evidence dimensions; a broad rejection sweep does not establish a successful operation contract.
