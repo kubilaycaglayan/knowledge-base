@@ -109,6 +109,30 @@ describe("FloatingTimeTracker", () => {
     expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
   });
 
+  it("visibly advances the running timer once per second", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T10:00:00Z"));
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return { id: "timer-1", labelIds: [], startedAt: "2026-09-12T10:00:00Z", running: true };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    try {
+      await flushPromises();
+      expect(wrapper.get('[role="timer"]').text()).toBe("00:00:00");
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(wrapper.get('[role="timer"]').text()).toBe("00:00:02");
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it("starts immediately when the description is edited before clicking start", async () => {
     let resolveDraft: (() => void) | undefined;
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
