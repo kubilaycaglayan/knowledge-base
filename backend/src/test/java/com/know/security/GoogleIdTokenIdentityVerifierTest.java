@@ -68,6 +68,19 @@ class GoogleIdTokenIdentityVerifierTest {
     assertEquals("person", identity.displayName());
   }
 
+  @Test
+  void trimsVerifiedProviderDisplayName() throws Exception {
+    GoogleIdToken.Payload payload = mock(GoogleIdToken.Payload.class);
+    when(payload.getEmail()).thenReturn("person@example.com");
+    when(payload.getEmailVerified()).thenReturn(true);
+    when(payload.getSubject()).thenReturn("provider-subject");
+    when(payload.get("name")).thenReturn("  Person Name  ");
+
+    var identity = verifierReturning(payload).verify("valid-token").orElseThrow();
+
+    assertEquals("Person Name", identity.displayName());
+  }
+
   private GoogleIdTokenIdentityVerifier verifierReturning(GoogleIdToken.Payload payload)
       throws Exception {
     GoogleIdToken token = mock(GoogleIdToken.class);

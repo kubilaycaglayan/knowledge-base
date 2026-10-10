@@ -50,11 +50,12 @@ public final class GoogleIdTokenIdentityVerifier implements GoogleIdentityVerifi
       }
       String subject = payload.getSubject();
       if (subject == null || subject.isBlank()) return Optional.empty();
+      String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
       String displayName =
           payload.get("name") instanceof String name && !name.isBlank()
               ? name.trim()
-              : email.substring(0, email.indexOf('@'));
-      return Optional.of(new Identity(subject, email.trim().toLowerCase(Locale.ROOT), displayName));
+              : normalizedEmail.substring(0, normalizedEmail.indexOf('@'));
+      return Optional.of(new Identity(subject, normalizedEmail, displayName));
     } catch (Exception ignored) {
       return Optional.empty();
     }
