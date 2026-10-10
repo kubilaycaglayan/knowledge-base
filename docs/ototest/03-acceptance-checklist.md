@@ -420,7 +420,9 @@ the extension has its own scope in OTOTEST-04.
 - [x] Malformed report dates and unsupported aggregation values fall back to
   the current week and Daily aggregation. Evidence:
   `frontend/src/views/ReportsView.test.ts`, `falls back to the default range
-  when the URL contains malformed report filters`.
+  when the URL contains malformed report filters`; `scripts/nav-shell.acceptance.test.mjs`,
+  `normalizes malformed report query values on direct browser load` checks the
+  normalized URL and selected aggregation in desktop Chromium.
 
 ### Flow: Filter report totals by path
 

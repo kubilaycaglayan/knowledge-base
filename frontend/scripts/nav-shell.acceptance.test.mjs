@@ -277,6 +277,31 @@ it("switches report aggregation by keyboard and preserves Path and Label filters
   assert.equal(query.get("aggregation"), "week");
 });
 
+it("normalizes malformed report query values on direct browser load", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(
+    `${server.resolvedUrls.local[0]}reports?startDate=not-a-date&endDate=2026-09-07&aggregation=unknown`,
+  );
+  await page.locator(".reports-page").waitFor();
+  const expectedWeek = await page.evaluate(() => {
+    const start = new Date();
+    const weekday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - weekday);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return { start: iso(start), end: iso(end) };
+  });
+
+  await page.waitForFunction((expected) => {
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === expected.start &&
+      params.get("endDate") === expected.end &&
+      params.get("aggregation") === "day";
+  }, expectedWeek);
+  assert.equal(await page.getByRole("combobox", { name: "Report aggregation" }).inputValue(), "DAY");
+});
+
 it("keeps report date and total controls reachable on a phone viewport", async (t) => {
   const { page, reportQueries } = await fixture(t, 390);
   await page.goto(`${server.resolvedUrls.local[0]}reports`);
