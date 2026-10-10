@@ -774,6 +774,16 @@ it("opens label history when the browser loads its deep link directly", async (t
   assert.ok(requests.some((path) => path.startsWith("/labels/label-deep-link/history")));
 });
 
+it("opens the board archive when the browser loads its route directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}board/archive`);
+  await page.locator(".archive-page").waitFor();
+  await page.getByRole("heading", { name: "Archive", exact: true }).waitFor();
+  await page.getByText("No archived boards.", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/board/archive");
+  assert.ok(requests.includes("/boards"));
+});
+
 it("loads a note editor when the browser opens its deep link directly", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);

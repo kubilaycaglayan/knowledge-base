@@ -95,7 +95,11 @@ the extension has its own scope in OTOTEST-04.
   `cd frontend && node --test --test-name-pattern='loads a note editor when
   the browser opens its deep link directly' scripts/nav-shell.acceptance.test.mjs`
   verifies the editor, selected title, and route (mocked API browser test).
-- [ ] Direct loading `/board/archive` opens the board archive.
+- [x] Direct loading `/board/archive` opens the board archive. Evidence: `cd
+  frontend && node --test --test-name-pattern='opens the board archive when the
+  browser loads its route directly' scripts/nav-shell.acceptance.test.mjs`
+  verifies the archive page and its empty board state on a direct route load
+  (mocked API browser test).
 - [ ] A missing or inaccessible record ID produces a clear not-found or
   unavailable state without exposing another user's record.
 - [ ] `/development` remains outside supported product navigation and has no
