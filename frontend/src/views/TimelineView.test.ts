@@ -212,6 +212,53 @@ describe("TimelineView", () => {
     );
   });
 
+  it("limits timeline results to the selected path", async () => {
+    const allActivities = [
+      {
+        id: "learning-activity",
+        type: "TIMER_STOPPED",
+        title: "Learning session",
+        occurredAt: "2026-08-25T12:00:00Z",
+        pathId: "path-learning",
+      },
+      {
+        id: "writing-activity",
+        type: "TIMER_STOPPED",
+        title: "Writing session",
+        occurredAt: "2026-08-25T13:00:00Z",
+        pathId: "path-writing",
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths")
+        return [
+          { id: "path-learning", name: "Learning" },
+          { id: "path-writing", name: "Writing" },
+        ];
+      if (requestPath.startsWith("/activities?")) {
+        const params = new URLSearchParams(requestPath.slice(requestPath.indexOf("?") + 1));
+        return params.has("pathId")
+          ? allActivities.filter((activity) => activity.pathId === params.get("pathId"))
+          : allActivities;
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Learning session");
+    expect(wrapper.text()).toContain("Writing session");
+
+    await wrapper.get('select[aria-label="Path"]').setValue("path-learning");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Learning session");
+    expect(wrapper.text()).not.toContain("Writing session");
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith(
+      "/activities?pathId=path-learning",
+    );
+  });
+
   it("reports initial-load and note-save failures and ignores incomplete notes", async () => {
     vi.mocked(api).mockRejectedValueOnce(new Error("paths failed"));
     const failedLoad = mount(TimelineView);

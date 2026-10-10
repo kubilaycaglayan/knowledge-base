@@ -627,7 +627,10 @@ the extension has its own scope in OTOTEST-04.
   `TimelineView.test.ts` / `limits timeline results to the selected activity
   type` starts with mixed activities and verifies only matching activity is
   visible after filtering.
-- [ ] Choosing a path limits results to activity associated with that path.
+- [x] Choosing a path limits results to activity associated with that path.
+  Evidence: `TimelineView.test.ts` / `limits timeline results to the selected
+  path` begins with activities for two Paths and verifies only the selected
+  Path's activity remains visible after filtering.
 - [ ] Choosing a valid date interval limits results to its intended inclusive
   dates.
 - [ ] Submitting a reversed date interval shows validation and does not display
