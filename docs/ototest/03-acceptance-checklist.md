@@ -210,10 +210,16 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Change the appearance preference
 
-- [ ] Switching between light and dark appearance updates the current page.
-- [ ] The selected appearance remains in effect after navigating to another
-  route.
-- [ ] The selected appearance remains in effect after reloading the app.
+- [x] Switching between light and dark appearance updates the current page.
+  Evidence: `applies light and dark appearance changes across routes and
+  reloads` in `frontend/scripts/nav-shell.acceptance.test.mjs` checks the root
+  theme, color scheme, and workspace background after each selection.
+- [x] The selected appearance remains in effect after navigating to another
+  route. Evidence: the same browser test changes the preference in Settings,
+  then checks it on Reports; the API fixture stores preference updates.
+- [x] The selected appearance remains in effect after reloading the app.
+  Evidence: the same browser test reloads Reports in both themes and verifies
+  the stored preference is applied from the mocked preferences API.
 - [ ] Dialogs, menus, native selects, and charts remain legible in both themes.
 
 ### Flow: Search for a product page

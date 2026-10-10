@@ -20,6 +20,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   const reportQueries = [];
   const paths = [...pathSeeds];
   const calendarDays = [];
+  const preferences = { theme: "light", kanbanWide: false, ganttWide: false, recentPathIds: [] };
   let rejectNextReportsRequest = rejectReportsAuth;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
@@ -91,7 +92,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       reportQueries.push(url.searchParams.toString());
       body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
     }
-    else if (path === "/timers/draft" || path === "/preferences") body = {};
+    else if (path === "/preferences" && method === "PUT") {
+      Object.assign(preferences, route.request().postDataJSON());
+      body = preferences;
+    }
+    else if (path === "/preferences") body = preferences;
+    else if (path === "/timers/draft") body = {};
     else if (path === "/calendar/days" && method === "GET") body = calendarDays;
     else if (path === "/calendar/days/range" && method === "PUT") body = [];
     else if (path.startsWith("/calendar/days/") && method === "PUT") {
@@ -1052,6 +1058,38 @@ it("shows an unavailable state for a missing note opened by browser deep link", 
   await page.goto(`${server.resolvedUrls.local[0]}notes/gone`);
   await page.getByRole("alert").filter({ hasText: "Unable to open this note." }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/notes/gone");
+});
+
+it("applies light and dark appearance changes across routes and reloads", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}settings`);
+  await page.locator(".settings-view").waitFor();
+
+  const root = page.locator("html");
+  const preference = page.getByRole("combobox", { name: "Theme preference" });
+  await preference.selectOption("dark");
+  assert.equal(await root.getAttribute("data-theme"), "dark");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "dark");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--workspace-background").trim()), "#151a22");
+
+  await visit(page, "/reports");
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await root.getAttribute("data-theme"), "dark");
+  await page.reload();
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await root.getAttribute("data-theme"), "dark");
+
+  await visit(page, "/settings");
+  await page.locator(".settings-view").waitFor();
+  await page.getByRole("combobox", { name: "Theme preference" }).selectOption("light");
+  assert.equal(await root.getAttribute("data-theme"), "light");
+  assert.equal(await page.evaluate(() => localStorage.getItem("knowledge-base-theme")), "light");
+  await visit(page, "/reports");
+  await page.locator(".reports-page").waitFor();
+  await page.reload();
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await root.getAttribute("data-theme"), "light");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--workspace-background").trim()), "#f7f8fa");
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
