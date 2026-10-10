@@ -126,8 +126,11 @@ browser interaction evidence remains a separate layer.
 - [x] Compare the resulting operation rows with the generated `/v3/api-docs`
   operation set (107 exact method/path matches, no set differences) and
   `docs/api.md`; operation rows are linked to documented API families.
-- [ ] Compare the operation rows with supported web API call sites and mark
-  server operations with no supported client use for a scope decision.
+- [x] Compare the operation rows with supported web API call sites and mark
+  server operations with no supported client use for a scope decision. The
+  dated source audit in the API matrix identifies the only seven operations
+  with no supported web/desktop-extension caller and assigns the support or
+  deprecation decision to Knowledge Base maintainers.
 
 ## Flow: Cover authentication and account operations
 

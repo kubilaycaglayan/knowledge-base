@@ -67,6 +67,17 @@ rows. The evidence column names the ownership or wrong-parent assertion where
 verified, including whether the API hides a foreign resource or rejects a
 foreign reference at the documented boundary.
 
+**Supported-client callsite audit:** the web API client and its callers under
+`frontend/src/`, plus the desktop extension callers in `chrome-extension/popup.js`
+and `chrome-extension/entrypoints/background.ts`, were compared against all
+107 operation rows on 2026-10-10 (`main` source revision `7d3a1c3`). Every
+operation has a supported caller except the seven routes explicitly marked
+with client-scope gaps: `/api/v1/statistics`, the four
+`/api/v1/calendar/labels` operations, and the two timer-cancel aliases. The
+calendar UI uses the shared `/api/v1/labels?scope=CALENDAR` API; this does not
+count as a caller for the calendar-specific aliases. The Knowledge Base
+maintainers own decisions to add client support or deprecate these routes.
+
 **Evidence-layer convention:** qualified `Class.method` references name the
 assertion to inspect; the Java test package identifies its evidence layer:
 `com.know.api` is controller/HTTP, `com.know.service` is service/domain,
