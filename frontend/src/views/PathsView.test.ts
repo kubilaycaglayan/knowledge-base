@@ -83,6 +83,33 @@ describe("PathsView", () => {
     expect(wrapper.get('[role="dialog"] h2').text()).toBe("Add a path");
   });
 
+  it("shows an explicit empty state for a path history without activity", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Algorithms", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths/path-1/summary")
+        return {
+          path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          trackedSeconds: 0,
+          recentActivity: [],
+        };
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper
+      .get('button.text-button[aria-haspopup="dialog"]')
+      .trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get(".path-history-dialog").text()).toContain(
+      "No recent activity yet.",
+    );
+    expect(wrapper.findAll(".path-history-entry")).toHaveLength(0);
+  });
+
   it("opens and saves the session editor from path history", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {

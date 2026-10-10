@@ -297,7 +297,10 @@ the extension has its own scope in OTOTEST-04.
 - [ ] Path history groups activity chronologically with date headings.
 - [ ] Session rows show their timestamps and labels.
 - [ ] Opening an activity record navigates to that record's supported detail.
-- [ ] An empty path history has an explicit empty state.
+- [x] An empty path history has an explicit empty state. Evidence: `cd
+  frontend && npx vitest run src/views/PathsView.test.ts -t 'empty state for a
+  path history'` checks the empty message and absence of activity rows (mocked
+  API).
 - [ ] A failed history load presents a recoverable error.
 
 ### Flow: Merge one path into another
