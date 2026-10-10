@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card] } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -70,6 +70,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     }
     else if (path === "/boards") {
       if (url.searchParams.get("archived") === "true") body = [];
+      else if (boardList) body = boardList;
       else {
         const pathBoards = paths
           .filter((item) => item.boardId && !item.boardHidden)
@@ -1357,6 +1358,23 @@ it("shows an add-card action for a loaded empty Board column", async (t) => {
   assert.equal(await empty.innerText(), "No cards yet");
   assert.equal(await page.locator(".board-card").count(), 0);
   assert.equal(await page.getByRole("button", { name: "Add card to Backlog" }).isVisible(), true);
+});
+
+it("opens the first-board dialog with keyboard focus and returns focus on Escape", async (t) => {
+  const { page } = await fixture(t, 1440, { boardList: [] });
+  await page.goto(`${server.resolvedUrls.local[0]}board`);
+  const trigger = page.locator(".board-empty button");
+  await trigger.waitFor();
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "New board" });
+  await dialog.waitFor();
+  const name = dialog.getByRole("textbox", { name: "New board name" });
+  await page.waitForFunction(() => document.activeElement?.id === "new-board-name");
+  assert.equal(await name.evaluate((element) => element === document.activeElement), true);
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
 });
 
 it("shows an unavailable state for a missing path opened by browser deep link", async (t) => {

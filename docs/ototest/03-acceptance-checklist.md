@@ -1335,8 +1335,10 @@ so the warning and discard criteria remain open.
   return behavior.
   Partial evidence: `nav-shell.acceptance.test.mjs` / `moves focus into and
   returns focus from the Path create dialog` checks initial focus on the name
-  field and focus restoration after Escape. Other dialog/menu/picker patterns
-  remain to be checked.
+  field and focus restoration after Escape; `opens the first-board dialog
+  with keyboard focus and returns focus on Escape` checks the same lifecycle
+  from the Boards workspace. Other dialog/menu/picker patterns remain to be
+  checked.
 - [ ] Drag, date-range, and reorder actions have a keyboard alternative where
   those actions are not inherently pointer-only.
 
