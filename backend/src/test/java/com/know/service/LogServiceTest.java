@@ -70,6 +70,7 @@ class LogServiceTest {
   @Test
   void staleVersionIsAConflictAndLeavesTheLogUnchanged() {
     Log log = stored();
+    when(logLabels.findAllByIdLogId(log.getId())).thenReturn(List.of());
     assertEquals(
         HttpStatus.CONFLICT,
         status(() -> service.update(user, log.getId(), "Changed", at, log.getVersion() + 1)));
