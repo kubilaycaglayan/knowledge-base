@@ -77,7 +77,16 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("shows a conflict message and stays idle when the server rejects a timer start", async () => {
+  it("resolves a start conflict to the account's already-running timer", async () => {
+    let timerStartedElsewhere = false;
+    const existingTimer = {
+      id: "timer-existing",
+      pathId: "path-existing",
+      description: "Session started in another tab",
+      labelIds: [],
+      startedAt: new Date().toISOString(),
+      running: true,
+    };
     vi.mocked(api).mockImplementation(
       async (path: string, options: RequestInit = {}) => {
         if (
@@ -86,9 +95,12 @@ describe("FloatingTimeTracker", () => {
           path === "/calendar/labels"
         )
           return [];
-        if (path === "/timers/current") return null;
-        if (path === "/timers" && options.method === "POST")
+        if (path === "/timers/current")
+          return timerStartedElsewhere ? existingTimer : null;
+        if (path === "/timers" && options.method === "POST") {
+          timerStartedElsewhere = true;
           throw new Error("A timer is already running");
+        }
         return undefined;
       },
     );
@@ -102,11 +114,11 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
 
     expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/timers" && options?.method === "POST")).toBe(true);
-    expect(wrapper.get(".tracker-error").text()).toContain(
-      "Could not update the timer. Only one timer can run at a time.",
-    );
-    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
-    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/current");
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain("Session started in another tab");
+    expect(wrapper.find(".tracker-error").exists()).toBe(false);
   });
 
   it("visibly advances the running timer once per second", async () => {
