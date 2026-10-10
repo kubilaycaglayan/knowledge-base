@@ -41,8 +41,10 @@ browser interaction evidence remains a separate layer.
   state effect, evidence link, evidence layer, and current gap (API-01/02 in
   OTOTEST-01; layer conventions and source-based contract reading are recorded
   in the API matrix).
-- [ ] Use exact test names or named assertions as evidence; a test filename
-  without a relevant assertion does not prove coverage.
+- [x] Use exact test names or named assertions as evidence; a test filename
+  without a relevant assertion does not prove coverage. All 342 qualified
+  references in the current operation matrix resolve to a test method; the
+  evidence description beside each reference names the behavior asserted.
 - [x] Distinguish unit/domain, controller/API, service, persistence
   integration, PostgreSQL-guarded, deployed-shaped, browser, and manual
   evidence using test package and guarded-run conventions in the API matrix.
