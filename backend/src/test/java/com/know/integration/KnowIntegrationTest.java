@@ -2848,6 +2848,12 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             token,
             "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.30}]}");
     assertEquals(HttpStatus.BAD_REQUEST, invalidPortion.getStatusCode());
+    JsonNode unchangedDay =
+        get("/api/v1/calendar/days?startDate=2026-09-15&endDate=2026-09-15", token)
+            .getBody()
+            .get(0);
+    assertEquals(maximumDayNote, unchangedDay.get("note").asText());
+    assertTrue(unchangedDay.get("labels").isEmpty());
 
     ResponseEntity<JsonNode> oversizedRange =
         put(
