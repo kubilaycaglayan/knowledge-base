@@ -780,7 +780,7 @@ describe("FloatingTimeTracker", () => {
     }
   });
 
-  it("applies an extension description update when the web field is focused but untouched", async () => {
+  it("applies remote timer updates to untouched fields and preserves a local draft", async () => {
     const originalWebSocket = globalThis.WebSocket;
     const sockets: MockSocket[] = [];
     class MockSocket {
@@ -845,7 +845,9 @@ describe("FloatingTimeTracker", () => {
         "Changed from extension",
       );
 
-      await description.setValue("Local draft");
+      (description.element as HTMLTextAreaElement).value = "Local draft";
+      await description.trigger("input");
+      expect(useTimerStore().description).toBe("Local draft");
       sockets[0].onmessage?.({
         data: JSON.stringify({
           type: "TIMER_STATE",

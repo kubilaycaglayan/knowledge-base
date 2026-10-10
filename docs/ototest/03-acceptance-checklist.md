@@ -495,9 +495,11 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Reconcile live timer updates
 
 - [x] A timer change made in another open app view becomes visible in the
-  current view. Evidence: `FloatingTimeTracker.test.ts` / `applies an extension
-  description update when the web field is focused but untouched` applies the
-  live timer snapshot to the open tracker.
+  current view without replacing a locally edited field. Evidence:
+  `FloatingTimeTracker.test.ts` / `applies remote timer updates to untouched
+  fields and preserves a local draft` applies a remote description to an
+  untouched field, then types locally and verifies the next remote update does
+  not replace the draft.
 - [x] Temporary live-channel loss falls back to the supported refresh/polling
   behavior without creating a duplicate timer. Evidence:
   `FloatingTimeTracker.test.ts` / `recovers by polling during socket loss and
