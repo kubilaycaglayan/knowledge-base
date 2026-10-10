@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -33,6 +33,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let searchFailurePending = failSearchOnce;
   let importFailurePending = failImportOnce;
   let logDeleteFailurePending = failLogDeleteOnce;
+  let noteUpdateFailurePending = failNoteUpdateOnce;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
       localStorage.setItem("know_token", "nav-test-token");
@@ -61,6 +62,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     if (logDeleteFailurePending && path.startsWith("/logs/") && method === "DELETE") {
       logDeleteFailurePending = false;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary log delete failure" }) });
+      return;
+    }
+    if (noteUpdateFailurePending && path.startsWith("/notes/") && method === "PUT") {
+      noteUpdateFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary note update failure" }) });
       return;
     }
     let body = [];
@@ -154,6 +160,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       const { noteIds } = route.request().postDataJSON();
       notes = noteIds.map((id) => notes.find((item) => item.id === id)).filter(Boolean);
       body = notes;
+    }
+    else if (path.startsWith("/notes/") && method === "PUT") {
+      const id = path.split("/").at(-1);
+      const index = notes.findIndex((note) => note.id === id);
+      if (index >= 0) notes[index] = { ...notes[index], ...route.request().postDataJSON(), updatedAt: new Date().toISOString(), version: notes[index].version + 1 };
+      body = notes[index] || null;
     }
     else if (path === "/notes") {
       const archived = url.searchParams.get("archived") === "true";
@@ -1722,6 +1734,43 @@ it("restores the Notes list and editor through browser Back and Forward", async 
   await page.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/notes/history-note");
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "History browser note");
+});
+
+it("keeps a Note draft open when autosave fails during navigation and recovers on retry", async (t) => {
+  const note = {
+    id: "note-recovery",
+    title: "Autosave recovery note",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Saved version" }] }] }),
+    contentText: "Saved version",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-01T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page, requests } = await fixture(t, 1440, { noteSeeds: [note], failNoteUpdateOnce: true });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/note-recovery`);
+  const title = page.getByRole("textbox", { name: "Note title" });
+  const content = page.getByRole("textbox", { name: "Note content" });
+  await content.waitFor();
+  await content.fill("Draft preserved after failed autosave");
+  await page.getByRole("status").filter({ hasText: "Not saved" }).waitFor();
+
+  await page.getByRole("link", { name: "Logs", exact: true }).click();
+  await page.waitForTimeout(100);
+  assert.equal(new URL(page.url()).pathname, "/notes/note-recovery", "Failed save blocks navigation away from the editor");
+  assert.match(await content.innerText(), /Draft preserved after failed autosave/);
+
+  await page.getByRole("button", { name: "Retry save" }).click();
+  await page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+  assert.equal(requests.filter((path) => path === "/notes/note-recovery").length, 3, "One detail read and two update attempts prove the retry");
+  await page.getByRole("link", { name: "Logs", exact: true }).click();
+  await page.locator(".logs-page").waitFor();
+  assert.equal(new URL(page.url()).pathname, "/logs");
+
+  await page.goto(`${server.resolvedUrls.local[0]}notes`);
+  await page.getByText("Draft preserved after failed autosave", { exact: true }).waitFor();
+  assert.equal(await title.count(), 0, "The editor is closed after the saved draft is recovered");
 });
 
 it("restores the archived Notes filter from its direct URL after reload", async (t) => {
