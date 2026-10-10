@@ -24,6 +24,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let notes = [...noteSeeds];
   const logs = [...logSeeds];
   const calendarDays = [];
+  const importBatches = [];
   const preferences = { theme: "light", kanbanWide: false, ganttWide: false, recentPathIds: [] };
   let currentTimer = null;
   let pausedTimer = {};
@@ -133,6 +134,13 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/notes/n1") body = notes.find((note) => note.id === "n1") || { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
+    else if (path === "/imports/knowledge-base/batches") body = importBatches;
+    else if (path === "/imports/clockify/batches") body = [];
+    else if (path === "/imports/knowledge-base" && method === "POST") {
+      const batch = { id: "browser-import-batch", source: "KNOWLEDGE_BASE", imported: 2, skipped: 1, createdPaths: 1, createdAt: "2026-10-10T10:00:00Z", undoneAt: null };
+      importBatches.unshift(batch);
+      body = { batchId: batch.id, imported: batch.imported, skipped: batch.skipped, createdPaths: batch.createdPaths };
+    }
     else if (path === "/search") {
       const query = url.searchParams.get("q");
       const moreType = url.searchParams.get("types");
@@ -602,6 +610,21 @@ it("opens the Imports route directly and switches import sources", async (t) => 
   assert.equal(await page.getByRole("tab", { name: "Clockify" }).getAttribute("aria-selected"), "true");
   assert.ok(requests.includes("/imports/knowledge-base/batches"));
   assert.ok(requests.includes("/imports/clockify/batches"));
+});
+
+it("submits a Knowledge Base import and reloads its batch result", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}imports`);
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  await page.getByRole("textbox", { name: "Knowledge Base CSV" }).fill("type,id\\nPATH,p1");
+  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await page.getByRole("status").filter({ hasText: "Imported 2 records, skipped 1 duplicates, and created 1 paths." }).waitFor();
+  await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
+  assert.ok(requests.includes("/imports/knowledge-base"));
+
+  await page.reload();
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
 });
 
 it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
