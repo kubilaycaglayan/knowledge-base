@@ -697,8 +697,10 @@ the extension has its own scope in OTOTEST-04.
 - [ ] Opening a note row sets the note-specific URL.
 - [ ] Directly loading a valid `/notes/:id` URL opens that note.
 - [ ] Closing a note returns to its list context and clears its selected URL.
-- [ ] Opening a missing or inaccessible note shows a recoverable unavailable
-  state.
+- [x] Opening a missing or inaccessible note shows a recoverable unavailable
+  state in the component route test. Evidence: `cd frontend && npx vitest run
+  src/views/DeepLinks.test.ts` — `shows a recoverable error when a directly
+  linked note is unavailable` (mocked API).
 
 ### Flow: Edit note content
 

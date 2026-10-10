@@ -398,4 +398,14 @@ describe("/notes?archived=1&q=", () => {
     await vi.waitFor(() => expect(router.currentRoute.value.query.archived).toBeUndefined());
     expect(router.currentRoute.value.query.q).toBe("Old gear");
   });
+
+  it("shows a recoverable error when a directly linked note is unavailable", async () => {
+    respond(/^\/notes\?/, { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 });
+    respond("/notes/labels", []);
+    respond("/notes/gone", notFound);
+    await open(NotesView, "/notes/gone", [["/notes", "notes"], ["/notes/:id", "note-editor"]]);
+
+    expect(router.currentRoute.value.fullPath).toBe("/notes/gone");
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("Unable to open this note.");
+  });
 });
