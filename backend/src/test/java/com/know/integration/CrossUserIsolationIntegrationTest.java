@@ -48,6 +48,13 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
             .get("id")
             .asText());
     ids.put(
+        "activity",
+        api.get("/api/v1/activities?pathId=" + ids.get("path"), owner)
+            .json()
+            .get(0)
+            .get("id")
+            .asText());
+    ids.put(
         "note",
         api.created(
                 "POST",
@@ -116,6 +123,7 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
     String board = "/api/v1/boards/" + ids.get("board");
     return List.of(
             "/api/v1/paths/" + ids.get("path"),
+            "/api/v1/activities?pathId=" + ids.get("path"),
             "/api/v1/notes/" + ids.get("note"),
             "/api/v1/logs/" + ids.get("log"),
             "/api/v1/labels",
@@ -302,6 +310,9 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
             },
             new String[] {
               "POST", "/api/v1/notes", "{\"timeEntryId\":\"" + ids.get("entry") + "\",\"content\":\"<p>Mine</p>\"}"
+            },
+            new String[] {
+              "POST", "/api/v1/notes", "{\"activityId\":\"" + ids.get("activity") + "\",\"content\":\"<p>Mine</p>\"}"
             },
             new String[] {
               "PUT", "/api/v1/logs/" + intruderLog + "/labels", "{\"labelIds\":[\"" + ids.get("label") + "\"]}"

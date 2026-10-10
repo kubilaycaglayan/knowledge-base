@@ -204,7 +204,8 @@ browser interaction evidence remains a separate layer.
 - [x] Activity filtering covers inclusive/exclusive boundary behavior as
   documented for each supported date/time input.
 - [x] Activity results do not reveal another user's records through direct or
-  referenced IDs.
+  referenced IDs. Note creation with a foreign `activityId` is rejected by
+  `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`.
 
 ## Flow: Cover timers and time entries
 
