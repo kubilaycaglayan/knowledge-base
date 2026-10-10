@@ -192,6 +192,21 @@ describe("LogsView", () => {
     wrapper.unmount();
   });
 
+  for (const text of ["", "   "]) {
+    it(`shows validation and does not create a log for ${text ? "whitespace" : "blank"} text`, async () => {
+      const wrapper = mount(LogsView);
+      await flushPromises();
+      await wrapper.get("#new-log-body").setValue(text);
+      await wrapper.get("#new-log-body").trigger("keydown.enter");
+      await flushPromises();
+
+      expect(wrapper.get('[role="alert"]').text()).toBe("Enter log text before saving.");
+      expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/logs" && options?.method === "POST")).toBe(false);
+      expect((wrapper.get("#new-log-body").element as HTMLTextAreaElement).value).toBe(text);
+      wrapper.unmount();
+    });
+  }
+
   it("resets the composer height after saving a multiline log", async () => {
     const wrapper = mount(LogsView);
     await flushPromises();
