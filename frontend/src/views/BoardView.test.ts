@@ -1640,6 +1640,21 @@ describe("BoardView", () => {
       await wrapper.unmount();
     });
 
+    it("explains why the last active status cannot be archived", async () => {
+      const store = seedBoard(["Backlog"]);
+      const wrapper = mountBoard();
+      await flushPromises();
+      await openSettingsFor(wrapper, "Test Board");
+      const dialog = wrapper.find('[role="dialog"][aria-labelledby="board-settings-title"]');
+      const archive = dialog.find('button[aria-label="Archive Backlog status"]');
+
+      expect((archive.element as HTMLButtonElement).disabled).toBe(true);
+      expect(archive.attributes("aria-describedby")).toBe("last-active-status-help");
+      expect(dialog.find("#last-active-status-help").text()).toContain("Boards must keep one active status.");
+      expect(store.archiveStatus).not.toHaveBeenCalled();
+      await wrapper.unmount();
+    });
+
     it("renames, reorders, and adds statuses", async () => {
       const { store, wrapper, dialog } = await openSettings();
       const doing = dialog().find('input[aria-label="Status name Doing"]');
