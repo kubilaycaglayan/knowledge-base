@@ -32,7 +32,7 @@ describe("TimelineView", () => {
     expect(wrapper.text()).toContain("No activity matches these filters.");
   });
 
-  it("saves a note attached to an activity", async () => {
+  it("saves a note only on the selected activity", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
       if (path.startsWith("/activities?"))
@@ -40,7 +40,13 @@ describe("TimelineView", () => {
           {
             id: "activity-1",
             type: "NOTE_CREATED",
-            title: "Read chapter",
+            title: "First activity",
+            occurredAt: "2026-08-25T12:00:00Z",
+          },
+          {
+            id: "activity-2",
+            type: "NOTE_CREATED",
+            title: "Second activity",
             occurredAt: "2026-08-25T12:00:00Z",
           },
         ];
@@ -49,8 +55,11 @@ describe("TimelineView", () => {
     const wrapper = mount(TimelineView);
     await flushPromises();
 
-    const addNoteButton = wrapper
-      .findAll("button.text-button")
+    const activity = wrapper
+      .findAll("article.timeline-entry")
+      .find((entry) => entry.text().includes("Second activity"));
+    const addNoteButton = activity
+      ?.findAll("button.text-button")
       .find((button) => button.text() === "Add note");
     expect(addNoteButton).toBeDefined();
     await addNoteButton!.trigger("click");
@@ -72,7 +81,7 @@ describe("TimelineView", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          activityId: "activity-1",
+          activityId: "activity-2",
           title: "Key idea",
           content: "Spaced repetition helps.",
         }),
@@ -442,6 +451,7 @@ describe("TimelineView", () => {
       "Unable to load activity.",
     );
 
+    let noteSaveAttempts = 0;
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
         if (path === "/paths") return [];
@@ -454,8 +464,10 @@ describe("TimelineView", () => {
               occurredAt: "2026-08-25T12:00:00Z",
             },
           ];
-        if (path === "/notes" && options?.method === "POST")
-          throw new Error("note failed");
+        if (path === "/notes" && options?.method === "POST") {
+          noteSaveAttempts += 1;
+          if (noteSaveAttempts === 1) throw new Error("note failed");
+        }
         return undefined;
       },
     );
@@ -495,6 +507,24 @@ describe("TimelineView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe(
       "Could not save activity note.",
     );
+    expect(
+      (wrapper.get('input[aria-label="Activity note title"]')
+        .element as HTMLInputElement).value,
+    ).toBe("Insight");
+    expect(
+      (wrapper.get('textarea[aria-label="Activity note content"]')
+        .element as HTMLTextAreaElement).value,
+    ).toBe("Content");
+
+    await wrapper
+      .findAll("button.primary")
+      .find((button) => button.text() === "Save note")!
+      .trigger("click");
+    await flushPromises();
+    expect(noteSaveAttempts).toBe(2);
+    expect(
+      wrapper.find('input[aria-label="Activity note title"]').exists(),
+    ).toBe(false);
   });
 
   it("closes an activity note editor without saving", async () => {
@@ -527,5 +557,17 @@ describe("TimelineView", () => {
     expect(
       wrapper.find('input[aria-label="Activity note title"]').exists(),
     ).toBe(false);
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Add note")!
+      .trigger("click");
+    expect(
+      (wrapper.get('input[aria-label="Activity note title"]')
+        .element as HTMLInputElement).value,
+    ).toBe("");
+    expect(
+      (wrapper.get('textarea[aria-label="Activity note content"]')
+        .element as HTMLTextAreaElement).value,
+    ).toBe("");
   });
 });
