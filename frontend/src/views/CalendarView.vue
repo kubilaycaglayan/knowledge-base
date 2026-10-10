@@ -70,6 +70,7 @@ const newLabelColor = ref(labelColors[0]);
 const newLabelColorOpen = ref(false);
 const editingColor = ref<string | null>(null);
 const error = ref("");
+const loading = ref(true);
 const todayAnnouncement = ref("");
 const saving = ref(false);
 const selectingRange = ref(false);
@@ -178,6 +179,7 @@ function toggleLabel(label: Label) {
   chosen.value = next;
 }
 async function load() {
+  loading.value = true;
   error.value = "";
   try {
     // The visible calendar includes spillover days from adjacent months. Load
@@ -205,6 +207,8 @@ async function load() {
     selectDay(parseISO(selected.value));
   } catch {
     error.value = "Unable to load calendar records.";
+  } finally {
+    loading.value = false;
   }
 }
 async function save() {
@@ -501,9 +505,13 @@ watch(
       </section>
       <aside
         class="day-editor"
+        :aria-busy="loading"
         @keydown.ctrl.enter.prevent="save"
         @keydown.meta.enter.prevent="save"
       >
+        <p v-if="loading" class="muted" role="status" aria-live="polite">
+          Loading calendar records…
+        </p>
         <div class="day-editor-heading">
           <h2>{{ selectedRange ? rangeTitle : selectedTitle }}</h2>
           <button
@@ -511,6 +519,7 @@ watch(
             class="ghost calendar-range-start"
             type="button"
             aria-label="Start date range selection"
+            :disabled="loading || saving"
             @click="beginRangeSelection"
           >
             Select range
@@ -534,12 +543,13 @@ watch(
         <label
           >Note<textarea
             v-model="note"
+            :disabled="loading || saving"
             rows="5"
             maxlength="20000"
             placeholder="What happened today?"
           ></textarea>
         </label>
-        <fieldset>
+        <fieldset :disabled="loading || saving">
           <legend>Labels</legend>
           <div v-for="label in labels" :key="label.id" class="day-label">
             <input
@@ -594,7 +604,7 @@ watch(
             Add or create a label below to begin.
           </p>
         </fieldset>
-        <div class="new-calendar-label">
+        <div class="new-calendar-label" :inert="loading || saving">
           <LabelPicker
             v-model="pickedIds"
             :labels="allLabels"
@@ -629,11 +639,11 @@ watch(
         </div>
         <button
           class="primary"
-          :disabled="saving || selectingRange"
+          :disabled="loading || saving || selectingRange"
           @click="save"
         >
           {{
-            saving ? "Saving…" : selectedRange ? "Apply to range" : "Save day"
+            loading ? "Loading…" : saving ? "Saving…" : selectedRange ? "Apply to range" : "Save day"
           }}
         </button>
       </aside>

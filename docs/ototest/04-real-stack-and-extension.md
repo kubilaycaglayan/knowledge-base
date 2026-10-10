@@ -1,7 +1,7 @@
 # OTOTEST-04 — Real-stack and extension journeys
 
 **Priority:** High  
-**Status:** Proposed  
+**Status:** Complete
 **Dependencies:** OTOTEST-01, OTOTEST-02, OTOTEST-03
 
 ## Goal
@@ -12,21 +12,23 @@ persistence boundaries.
 
 ## Web journey tasks
 
-- [ ] Select real-stack journeys from documented uncovered risks rather than
+- [x] Select real-stack journeys from documented uncovered risks rather than
   duplicating existing board, timer, search, line-history, and auth-rate-limit
-  suites.
-- [ ] Add representative create/edit/archive/restore journeys for Notes,
+  suites. The first uncovered slice is Notes create/edit/archive/restore,
+  asserted through UI, fresh API reads, and reloads in
+  `notes.real-stack.acceptance.test.mjs`.
+- [x] Add representative create/edit/archive/restore journeys for Notes,
   Paths, Logs, Labels, and Calendar against isolated disposable data.
-- [ ] Add report filter/range and settings/preferences persistence journeys
+- [x] Add report filter/range and settings/preferences persistence journeys
   where persistence affects user-visible behavior.
-- [ ] Add import/export journeys for supported Clockify and Knowledge Base
+- [x] Add import/export journeys for supported Clockify and Knowledge Base
   transfer flows, including validation and failure recovery.
-- [ ] Assert server persistence after navigation or reload for selected
+- [x] Assert server persistence after navigation or reload for selected
   mutation workflows.
-- [ ] Exercise authentication/session recovery and at least one ownership
+- [x] Exercise authentication/session recovery and at least one ownership
   boundary through the browser where it adds evidence beyond API integration
   tests.
-- [ ] Reuse the disposable Compose conventions and isolated port/credential
+- [x] Reuse the disposable Compose conventions and isolated port/credential
   generation from current runners. Cleanup must remain project-scoped.
 
 ## Journey workflow and minimum slices
@@ -53,20 +55,88 @@ persistence boundaries.
 
 ## Chrome extension tasks
 
-- [ ] Define a repeatable Chromium test harness for loading the built
+- [x] Define a repeatable Chromium test harness for loading the built
   Manifest V3 extension with a local Knowledge Base API or controlled test
-  server.
-- [ ] Exercise extension build/install/load and verify the manifest, required
-  permissions, popup and options entrypoints.
-- [ ] Exercise sign-in/configuration, timer start/stop/sync, notes flows, and
+  server. `./scripts/run-extension-browser-e2e.sh` builds the package and runs
+  the browser journey against a loopback API fixture.
+- [x] Exercise extension build/install/load and verify the manifest, required
+  permissions, popup and options entrypoints. Evidence:
+  `extension.real-browser.acceptance.test.mjs`.
+- [x] Exercise sign-in/configuration, timer start/stop/sync, notes flows, and
   Clockify behavior supported by the current product.
-- [ ] Verify service-worker restart/reconnect behavior and errors from denied
-  permissions or unavailable API dependencies where feasible.
-- [ ] Capture browser console errors and fail on unexpected extension/runtime
+- [x] Verify denied permission recovery through the extension Options module
+  tests in `chrome-extension/options.test.js`. The packaged suite covers worker
+  restart/reconnect, unavailable API, and expired auth. Browser-native host
+  permission prompts are not automated in this Chromium harness.
+- [x] Capture browser console errors and fail on unexpected extension/runtime
   errors; keep secrets out of logs and artifacts.
-- [ ] Keep fast Node module tests as the primary location for exhaustive edge
+- [x] Keep fast Node module tests as the primary location for exhaustive edge
   cases; browser tests should focus on browser integration and critical
   journeys.
+
+The packaged browser suite verifies install, manifest permissions, popup and
+options rendering, saved API configuration, a Clockify content-script request
+through the service worker, signed-in timer start/stop, note creation/editing,
+expired-session return to sign-in, recovery UI for an unavailable API, and a
+fresh packaged worker after restarting the persistent Chromium profile.
+Unexpected console and page errors fail the suite. Denied host-permission
+behavior is asserted by the Options module suite; Chromium prompt rendering
+remains outside the packaged browser journey.
+
+## Completed browser slices
+
+- **Notes, desktop Chromium:** `creates, edits, archives, restores, and reloads
+  a note with persisted API state` in
+  `frontend/scripts/notes.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-notes-e2e.sh`. It delays the initial note read to verify the
+  title stays unavailable until the saved value has loaded, then checks the
+  saved title/body through a fresh API read and verifies archive/restore across
+  reloads.
+- **Notes ownership, mobile-sized Chromium:** `rejects a second browser account
+  reading the first user's note` in the same real-stack Notes suite. A second
+  disposable account requests the first account's note ID and receives 404.
+- **Chrome extension, desktop Chromium:** the packaged popup/options and
+  Clockify content-script to service-worker journey in
+  `frontend/scripts/extension.real-browser.acceptance.test.mjs`, run with
+  `./scripts/run-extension-browser-e2e.sh`.
+- **Paths, desktop Chromium:** `creates, edits, removes, restores, and reloads
+  a Path with persisted API state` in
+  `frontend/scripts/paths.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-paths-e2e.sh`. It verifies the removal confirmation and undo,
+  then checks the restored description after reload.
+- **Logs, desktop Chromium:** `creates, edits, deletes, and reloads a Log with
+  persisted API state` in `frontend/scripts/logs.real-stack.acceptance.test.mjs`,
+  run with `./scripts/run-logs-e2e.sh`. The flow confirms deletion before
+  removing the entry and checks the API and UI after reload.
+- **Labels, desktop Chromium:** `creates, edits, removes, and reloads a Label
+  with persisted API state` in
+  `frontend/scripts/labels.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-labels-e2e.sh`. It covers confirmation for removing an
+  unassigned label and verifies it stays absent after reload.
+- **Calendar, desktop Chromium:** `creates, edits, clears, and reloads a
+  Calendar day note with persisted API state` in
+  `frontend/scripts/calendar.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-calendar-e2e.sh`. It follows a query-selected date and checks
+  each state with a fresh range API read.
+- **Reports and Settings, desktop Chromium:** `persists report range in
+  navigation and theme preference after reload` in
+  `frontend/scripts/reports-settings.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-reports-settings-e2e.sh`. It checks report range values via
+  the API and URL, and theme preference via local storage, document theme, and
+  the Settings control.
+- **Transfers, desktop Chromium:** `exports and reimports Knowledge Base CSV,
+  validates input, and imports Clockify sessions` in
+  `frontend/scripts/transfers.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-transfers-e2e.sh`. It exports a real Path, imports that CSV
+  into a second disposable account with a fresh destination ID, and confirms
+  the Path through that account's API. It recovers from invalid Clockify JSON,
+  imports a Clockify session, and confirms its batch and session through fresh
+  API reads.
+
+The extension test restarts the persistent Chromium profile while a timer is
+running, confirms the worker reconnects to the same server timer, and stops
+the timer. The Options module tests cover denied permission handling;
+browser-native prompt rendering remains outside the packaged browser journey.
 
 ## Acceptance
 

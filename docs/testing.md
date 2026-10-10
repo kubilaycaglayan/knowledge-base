@@ -120,6 +120,58 @@ bodies with the Line history gutter on and checks:
   after clicking.
 Set `LINE_HISTORY_E2E_SCREENSHOTS=<dir>` to keep screenshots.
 
+`./scripts/run-extension-browser-e2e.sh` builds the Manifest V3 extension and
+loads that packaged build in desktop Chromium with a fresh temporary browser
+profile. The browser journey checks the manifest permissions, popup and
+options entrypoints, API URL persistence, a Clockify content-script to
+service-worker request, signed-in timer start/stop, note creation and editing,
+expired-session recovery, and unavailable-API recovery against a disposable
+loopback fixture. It restarts the persistent Chromium profile to confirm the
+packaged extension worker reconnects with its local sign-in state. Unexpected
+console and page errors fail the suite. It requires
+`xvfb-run` on a headless Linux host and uses only a local fixture token. The
+test profile and fixture server are removed when the run exits. To run just
+the browser assertions after building the extension, use
+`(cd frontend && npm run test:extension:e2e)`.
+
+`./scripts/run-notes-e2e.sh` runs a desktop Chromium Notes journey against a
+unique disposable Compose stack. It creates a note in the UI, edits its title
+and body, verifies a fresh API read, archives and restores it, then checks the
+active note after reload. It also uses a second account in a mobile-sized
+Chromium context to verify that the first account's note returns 404. The
+runner generates local credentials and removes only its own Compose project
+and volumes.
+
+`./scripts/run-paths-e2e.sh` runs a desktop Chromium Paths journey in a separate
+disposable Compose project. It creates a Path through the UI, edits it, removes
+it with the supported undo window, and confirms each saved state through fresh
+API reads and reloads.
+
+`./scripts/run-logs-e2e.sh` runs a desktop Chromium Logs journey in its own
+disposable stack. It creates and edits a log through the UI, confirms each
+version from the API and after reload, then exercises the removal confirmation
+and verifies the deleted entry stays absent.
+
+`./scripts/run-labels-e2e.sh` runs a desktop Chromium Labels journey in a
+separate disposable stack. It creates, edits, and removes an unassigned label,
+checking the API state and the rendered row after reload.
+
+`./scripts/run-calendar-e2e.sh` runs a desktop Chromium Calendar day journey
+against a separate disposable stack. It creates and edits a day note through
+the date-linked route, verifies each value through a fresh API range read, then
+clears the note and confirms the day disappears after reload.
+
+`./scripts/run-reports-settings-e2e.sh` runs desktop Chromium report-range and
+theme-preference journeys in its own disposable Compose project. It checks the
+report range through the API and URL after reload, and the selected theme in
+local storage, the rendered document, and the Settings control after reload.
+
+`./scripts/run-transfers-e2e.sh` runs desktop Chromium export/import journeys
+in a separate disposable stack. It exports a Path, imports it into a second
+disposable account, and verifies it through that account's API. It also
+recovers from invalid Clockify JSON and confirms the imported batch and session
+through fresh API reads.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and
