@@ -250,7 +250,10 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Load the Paths list
 
 - [ ] The Paths page distinguishes loading, empty, loaded, and failed states.
-- [ ] The empty state offers a clear path-creation action.
+- [x] The empty state offers a clear path-creation action. Evidence: `cd
+  frontend && npx vitest run src/views/PathsView.test.ts -t 'shows an empty
+  paths state with a path creation action'` checks the empty-list message and
+  that Add path opens the creation dialog (mocked API).
 
 ### Flow: Create one path
 

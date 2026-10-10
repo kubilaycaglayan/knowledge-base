@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import PathsView from "./PathsView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
+import { usePathsStore } from "../stores/paths";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -9,6 +10,7 @@ describe("PathsView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setActivePinia(createPinia());
+    usePathsStore().reset();
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [
@@ -59,6 +61,26 @@ describe("PathsView", () => {
       wrapper.find(".path-history-entry .activity-duration").exists(),
     ).toBe(false);
     expect(wrapper.text()).toContain("2 minutes tracked");
+  });
+
+  it("shows an empty paths state with a path creation action", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.findAll(".path-title")).toHaveLength(0);
+    expect(wrapper.find(".empty").text()).toBe(
+      "Your first path is waiting to be named.",
+    );
+    expect(wrapper.get('button[aria-label="Add path"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    expect(wrapper.get('[role="dialog"] h2').text()).toBe("Add a path");
   });
 
   it("opens and saves the session editor from path history", async () => {
