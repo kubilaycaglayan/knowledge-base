@@ -705,7 +705,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Create one note
 
-- [ ] Creating a note opens its editor and adds the note to the list.
+- [x] Creating a note opens its editor, sets its record-specific URL, and
+  adds it to the list after remount from the API fixture. Evidence: `cd
+  frontend && npx vitest run src/views/NotesView.test.ts -t 'creates a note
+  from the icon action'` (component test; mocked API).
 
 ### Flow: Open one note
 

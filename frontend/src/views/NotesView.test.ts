@@ -202,11 +202,21 @@ describe("NotesView", () => {
   });
 
   it("creates a note from the icon action and opens the editor", async () => {
-    const created = { ...note, id: "new-note", title: "" };
+    const created = {
+      ...note,
+      id: "new-note",
+      title: "",
+      content: JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }),
+      contentText: "",
+    };
+    let savedNotes = page();
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
-        if (path === "/notes" && options?.method === "POST") return created;
-        if (path.startsWith("/notes?")) return page();
+        if (path === "/notes" && options?.method === "POST") {
+          savedNotes = page([created]);
+          return created;
+        }
+        if (path.startsWith("/notes?")) return savedNotes;
         if (path === "/notes/new-note") return created;
         return undefined;
       },
@@ -219,10 +229,24 @@ describe("NotesView", () => {
     await wrapper.get('button[aria-label="Create new note"]').trigger("click");
     await flushPromises();
     expect(r.currentRoute.value.name).toBe("note-editor");
+    expect(r.currentRoute.value.fullPath).toBe("/notes/new-note");
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/notes",
       expect.objectContaining({ method: "POST" }),
     );
+    await r.push("/notes");
+    await flushPromises();
+    expect(wrapper.get(".note-row").text()).toContain("Empty note");
+    wrapper.unmount();
+
+    setActivePinia(createPinia());
+    const reloadedRouter = router();
+    await reloadedRouter.push("/notes");
+    await reloadedRouter.isReady();
+    const reloaded = mountNotes(reloadedRouter);
+    await flushPromises();
+    expect(reloaded.get(".note-row").text()).toContain("Empty note");
+    reloaded.unmount();
   });
 
   it("loads the editor and autosaves title and rich content without a save button", async () => {
