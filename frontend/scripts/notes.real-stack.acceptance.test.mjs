@@ -132,7 +132,7 @@ it("creates, edits, deep-links, archives, restores, and reloads a note with pers
   assert.ok(restored.data.contentText.includes(body));
 });
 
-it("rejects a second browser account reading the first user's note", async () => {
+it("rejects foreign note reads and keeps missing or foreign deep links private", async () => {
   assert.ok(noteId, "the primary browser journey created a note to protect");
   const otherContext = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "light", reducedMotion: "reduce" });
   const otherPage = await otherContext.newPage();
@@ -153,5 +153,21 @@ it("rejects a second browser account reading the first user's note", async () =>
   }, noteId);
   assert.equal(result.status, 404, "foreign note IDs are not readable from a second user's browser session");
   assert.ok(!result.body.includes(marker), "the foreign response must not disclose the note's title or content marker");
+
+  await otherPage.goto(`${baseUrl}/notes/${noteId}`, { waitUntil: "domcontentloaded" });
+  const foreignAlert = otherPage.getByRole("alert");
+  await foreignAlert.filter({ hasText: "Unable to open this note." }).waitFor();
+  assert.equal(await foreignAlert.innerText(), "Unable to open this note.");
+  assert.ok(!(await otherPage.locator(".notes-page").innerText()).includes(marker));
+
+  const missingPage = await otherContext.newPage();
+  missingPage.setDefaultTimeout(10000);
+  const missingId = `missing-${Date.now()}`;
+  await missingPage.goto(`${baseUrl}/notes/${missingId}`, { waitUntil: "domcontentloaded" });
+  const missingAlert = missingPage.getByRole("alert");
+  await missingAlert.filter({ hasText: "Unable to open this note." }).waitFor();
+  assert.equal(await missingAlert.innerText(), "Unable to open this note.");
+  assert.equal(new URL(missingPage.url()).pathname, `/notes/${missingId}`);
+  assert.ok(!(await missingPage.locator(".notes-page").innerText()).includes(marker));
   await otherContext.close();
 });

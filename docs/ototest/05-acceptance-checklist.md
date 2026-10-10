@@ -199,7 +199,7 @@ load, and route-state evidence must remain individually identifiable.
   authenticated shell is available.
 - [x] A route with a selected record resolves that record from its route
   parameter.
-- [ ] Missing or inaccessible IDs produce a safe state without exposing
+- [x] Missing or inaccessible IDs produce a safe state without exposing
   protected details.
 - [ ] An unknown URL produces the documented not-found or safe fallback
   behavior and does not render an unrelated protected record.
