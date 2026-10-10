@@ -563,6 +563,8 @@ browser interaction evidence remains a separate layer.
   service access (`CalendarApiTest.calendarDaysRequireValidDateQueryValuesBeforeServiceAccess`).
 - [x] `PUT /api/v1/calendar/days/{date}` covers replacing one day's note and
   label assignments, including persisted readback and omitted marker portions;
+  malformed and impossible path dates return 400 before service execution
+  (`CalendarApiTest.calendarDayWritesRejectMalformedPathDatesBeforeServiceAccess`);
   missing assignment IDs and duplicate labels are rejected before changing the
   saved day (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`
   and `KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`);

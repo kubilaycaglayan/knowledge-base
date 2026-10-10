@@ -96,4 +96,18 @@ class CalendarApiTest {
 
     verifyNoInteractions(service);
   }
+
+  @Test
+  void calendarDayWritesRejectMalformedPathDatesBeforeServiceAccess() throws Exception {
+    for (String date : List.of("not-a-date", "2026-02-30")) {
+      mvc.perform(
+              put("/api/v1/calendar/days/" + date)
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content("{\"labels\":[]}"))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
 }
