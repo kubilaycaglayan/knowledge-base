@@ -600,8 +600,14 @@ browser interaction evidence remains a separate layer.
 - [x] Cross-user coverage uses disposable owner and intruder accounts and
   verifies responses plus unchanged owner data
   (`CrossUserIsolationIntegrationTest` and the import batch ownership tests).
-- [ ] Authenticated network/server failures do not falsely count as token
-  rejection or erase the current session.
+- [x] Authenticated network, timeout, 404, 500, 502, 503, and 504 failures do
+  not erase the current session; a stale 401 cannot clear a newer sign-in
+  (`frontend/src/lib/api.test.ts`: `turns server failures into a human-readable error and preserves technical details`,
+  `preserves client error text and sign-in on HTTP 404`,
+  `preserves sign-in on HTTP %s`,
+  `preserves sign-in when the API connection drops during deployment`,
+  `aborts requests that remain pending for 15 seconds`, and
+  `does not erase a newer sign-in when an older request returns 401`).
 - [x] Response status errors preserve their intended status and reason in the
   API error envelope (`ApiExceptionHandlerTest.domainStatusErrorsPreserveStatusAndReason`);
   authenticated and anonymous route outcomes are covered by the integration
