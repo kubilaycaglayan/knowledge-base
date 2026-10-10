@@ -596,7 +596,10 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/preferences` covers default and previously saved preference
   values for the signed-in user.
 - [x] `PUT /api/v1/preferences` covers successful round trip and invalid
-  preference values.
+  preference values; board search accepts 200 characters, rejects 201, and
+  Gantt sort state accepts two rules and rejects more than two without
+  overwriting the saved state
+  (`UserPreferencesIntegrationTest.boardStateEnforcesMaximumSearchAndGanttSortCount`).
 - [x] Preferences remain isolated between two disposable users.
 
 ## Flow: Cover imports and exports
