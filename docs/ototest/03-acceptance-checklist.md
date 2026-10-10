@@ -465,16 +465,14 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Use report controls in mobile Chrome
 
-- [x] The custom range selector opens and remains operable with touch input.
-  Evidence: `scripts/nav-shell.acceptance.test.mjs`, `keeps report date and
-  total controls reachable on a phone viewport` taps the picker and a date
-  preset at 390px.
-- [x] Report dates and totals are readable without clipping at phone width.
-  Evidence: the same browser test checks date and total text widths against
-  their containers at 390px.
-- [x] Chart and filter controls remain reachable without unintended page
-  horizontal overflow. Evidence: the same test checks chart bounds, visible
-  path/group controls, and document width at 390px.
+- [ ] The custom range selector opens and remains operable with touch input.
+- [ ] Report dates and totals are readable without clipping at phone width.
+- [ ] Chart and filter controls remain reachable without unintended page
+  horizontal overflow.
+  Supplemental evidence only: `scripts/nav-shell.acceptance.test.mjs`,
+  `keeps report date and total controls reachable on a phone viewport` checks
+  touch emulation at 390px in desktop Chromium. It does not satisfy the real
+  mobile Chrome acceptance setup above.
 
 ## Calendar
 
