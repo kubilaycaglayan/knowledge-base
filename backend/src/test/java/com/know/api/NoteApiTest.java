@@ -40,16 +40,18 @@ class NoteApiTest {
   }
 
   @Test
-  void noteOrderingRejectsNullIdListBeforeServiceAccess() throws Exception {
+  void noteOrderingRejectsNullOrMissingIdListBeforeServiceAccess() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
 
-    mvc.perform(
-            put("/api/v1/notes/order")
-                .with(authentication(auth))
-                .contentType("application/json")
-                .content("{\"noteIds\":null}"))
-        .andExpect(status().isBadRequest());
+    for (String body : List.of("{\"noteIds\":null}", "{}")) {
+      mvc.perform(
+              put("/api/v1/notes/order")
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
 
     verifyNoInteractions(service);
   }
