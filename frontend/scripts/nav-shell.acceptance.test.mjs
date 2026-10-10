@@ -90,6 +90,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       body = logs[index] || null;
     }
     else if (path === "/logs/log-deep-link") body = { id: "log-deep-link", body: logBody, occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] };
+    else if (path === "/logs" && method === "POST") {
+      const payload = route.request().postDataJSON();
+      const created = { id: `phone-log-${logs.length + 1}`, ...payload, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1, labelIds: [] };
+      logs.push(created);
+      body = created;
+    }
     else if (path === "/logs") body = logs;
     else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
     else if (path === "/paths" && method === "POST") {
@@ -663,6 +669,36 @@ it("restores the Log search query from a direct URL after reload", async (t) => 
   await page.reload();
   await page.locator(".log-entry", { hasText: "A distinctive browser query" }).waitFor();
   assert.equal(await page.locator(".log-entry").count(), 1, "Reload preserves the filtered result from the URL");
+});
+
+it("creates a Log with phone-width controls and shows the saved record", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}logs`);
+
+  const body = page.getByRole("textbox", { name: "Log text" });
+  const timestamp = page.getByRole("textbox", { name: "Log timestamp" });
+  await body.fill("A log created from the phone layout");
+  await timestamp.fill("2026-10-01T09:30");
+
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  const createRequest = page.waitForRequest((request) => {
+    if (request.method() !== "POST" || !new URL(request.url()).pathname.endsWith("/logs")) return false;
+    const payload = request.postDataJSON();
+    return payload.body === "A log created from the phone layout" && payload.occurredAt === "2026-10-01T09:30:00.000Z";
+  });
+  await save.click();
+  await createRequest;
+  await page.locator(".log-entry", { hasText: "A log created from the phone layout" }).waitFor();
+
+  const targetSizes = await Promise.all([body, timestamp, save].map((locator) =>
+    locator.evaluate((element) => {
+      const { width, height } = element.getBoundingClientRect();
+      return { width, height };
+    }),
+  ));
+  for (const size of targetSizes) {
+    assert.ok(size.width >= 44 && size.height >= 44, `Expected a 44px phone touch target, got ${size.width}×${size.height}px`);
+  }
 });
 
 it("edits a Log in the browser and reloads the saved text", async (t) => {
