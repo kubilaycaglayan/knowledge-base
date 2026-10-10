@@ -3,6 +3,8 @@ package com.know.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -98,7 +100,9 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
 
     for (ZoneOffset offset : List.of(ZoneOffset.ofHours(-5), ZoneOffset.ofHours(3))) {
       String equivalentOffset = occurredAt.atOffset(offset).toString();
-      JsonNode offsetRange = activities(owner, "?from=" + equivalentOffset + "&to=" + equivalentOffset);
+      String encodedOffset = URLEncoder.encode(equivalentOffset, StandardCharsets.UTF_8);
+      JsonNode offsetRange = activities(owner, "?from=" + encodedOffset + "&to=" + encodedOffset);
+      assertTrue(offsetRange.isArray(), "Offset filter returns an activity list: " + offsetRange);
       assertEquals(1, offsetRange.size(), "Offset timestamps resolve to the same instant: " + offset);
       assertEquals(firstActivity.get("id").asText(), offsetRange.get(0).get("id").asText());
     }
