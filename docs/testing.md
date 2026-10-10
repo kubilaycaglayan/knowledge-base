@@ -11,6 +11,57 @@ source-backed outline for route, page-region, control, gesture, security, and
 edge-case inventories. `/development` is temporary tooling and excluded from
 supported product route coverage and navigation.
 
+## Coverage change checklist and gates
+
+For a route, API contract, visible control, gesture, permission, or security
+boundary change, update the matching inventory in the same review and add or
+adjust a named behavioral assertion. Record an explicit exclusion or owner for
+an unresolved gap. Run `node scripts/check-ototest-inventory.mjs` to catch stale
+local Markdown links, unclassified rows, duplicate route/API keys, milestone
+status drift, missing source/evidence locations, and API evidence references
+that no longer resolve to Java test methods. It checks inventory integrity,
+not behavioral coverage.
+
+| Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
+| --- | --- | --- | --- |
+| Frontend unit and component | `verify / web-and-extension` (`npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build`) | `cd frontend && npm test && node --test scripts/vitest-scope.test.mjs && npm run build` | About 30 seconds with dependencies installed; Node 22 and `frontend/npm ci` |
+| Backend unit and API integration | `verify / backend` | `gradle test` in the documented Gradle container | About 1–2 minutes; Docker and Gradle 8.13/JDK 21 container |
+| PostgreSQL and Flyway | `verify / backend-postgres` (fresh disposable DB and migrated startup) | Guarded local disposable PostgreSQL procedure above | About 2–3 minutes for empty-database full suite plus migrated startup; Docker and PostgreSQL 16 |
+| Browser real-stack | `verify / smoke`, `verify / timer-websocket-e2e`, `verify / line-history-e2e`, and `verify / line-history-orca`; browser acceptance scripts also run with their dedicated `scripts/run-*-e2e.sh` wrappers | Fixture-backed `npm run test:*` suites and domain real-stack wrappers are opt-in; install Playwright Chromium and use only disposable stacks | Around 1–2 minutes for smoke, 10–30 seconds per domain wrapper after images are built, and about 20–40 seconds for line-history/Orca; cold Docker builds take longer. Wrappers share HTTPS port 26443 and run sequentially. |
+| Packaged extension browser | No dedicated CI gate yet; module tests and build run in `verify / web-and-extension` | `./scripts/run-extension-browser-e2e.sh` (desktop Chromium, Xvfb on headless Linux) | About 5 seconds after dependencies are installed; Chromium, Playwright, and Xvfb on headless Linux |
+| Repository safety and accessibility | `verify / web-and-extension` runs accessibility, security, cleanup, and hardening-status checks | Same named `node scripts/check-*.mjs` commands | A few seconds; Node 22 |
+| iOS | Out of scope while the app is inactive; historical jobs remain disabled | Manual macOS workflow only if the supported-client decision changes | No current gate/runtime |
+
+Browser suites that need a local application or installed extension remain
+opt-in until their CI runtime, isolation, and artifact handling are established. A
+release evidence record should use the
+[#ototest execution template](ototest/evidence-template.md); never commit
+tokens, personal data, or secret-bearing artifacts.
+The runtimes above are approximate observations from the 2026-10-10 local
+OTOTEST-05 gate run, not CI service-level guarantees; the
+[run record](ototest/runs/2026-10-10-ototest-05-local-gates.md) lists exact
+commands and outcomes.
+
+## Manual and platform-limited evidence
+
+- **Physical Android Chrome:** Knowledge Base maintainers use a disposable
+  account and local isolated environment, open the app from Android Chrome,
+  and perform the mobile route/control cases selected from the OTOTEST
+  acceptance checklist. Record device, Android/Chrome versions, viewport,
+  input method, route/action, outcome, and redacted evidence with the
+  [execution template](ototest/evidence-template.md). Verify saved mutations
+  after reload or a fresh API read. Desktop viewport emulation is supplemental
+  and must not be recorded as a device run.
+- **Extension permission prompt:** Knowledge Base maintainers build the
+  packaged extension with `npm run build --prefix chrome-extension`, load
+  `chrome-extension/.output/chrome-mv3` in a fresh desktop Chrome profile,
+  and record the requested permission, allow/deny action, resulting feature
+  behavior, Chrome version, and redacted evidence. Use only a local fixture or
+  disposable Knowledge Base account; live Google consent and Clockify account
+  data are not required for this permission check.
+- **iOS:** Out of scope while the app is inactive. Historical CI jobs remain
+  disabled and do not establish a current product gate.
+
 The backend suite covers authentication and ownership boundaries, paths, notes, text logs, reusable labels, session timers, time-entry editing, imports, reporting, activity search, boards, and Flyway migrations. Board checks should cover default statuses, nested ownership, invalid date ranges, status archive safeguards, card archive/restore, cursor pages, and Gantt overlap filtering for single, open-ended, and inclusive ranges.
 
 Three backend integration suites guard the API as a whole (see

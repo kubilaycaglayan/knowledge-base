@@ -1,7 +1,7 @@
 # OTOTEST-05 — Traceability and ongoing gates acceptance checklist
 
 **Priority:** High
-**Status:** Proposed
+**Status:** In progress
 **Depends on:** OTOTEST-01 through OTOTEST-04
 **Product surfaces reviewed:** Knowledge Base web application in desktop Chrome
 and the same web application in Android Chrome
@@ -18,6 +18,18 @@ the web shell in `frontend/src/App.vue`, and the gate definitions in
 maintained and evidenced; checking a box does not claim a test or gate has run.
 
 ## Evidence record
+
+Use the [execution evidence template](evidence-template.md) for each run that
+is cited as completion evidence. The automated inventory check is
+`node scripts/check-ototest-inventory.mjs`; it verifies local Markdown links,
+unique route/API row keys, nonempty source/evidence and classification fields,
+and milestone status consistency. It resolves qualified API evidence names to
+existing Java test methods and deliberately makes no claims about assertion
+quality.
+
+The local release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
+It documents passed local gates and explicitly records that hosted CI and
+physical Android acceptance are not available in this worktree review.
 
 For every accepted route, operation, control family, gesture, permission, or
 gate below, the maintained inventory or release record must identify:
@@ -440,15 +452,17 @@ physical-device pass.
 
 ### Flow: Define one required CI gate
 
-- [ ] Every required gate is named by workflow and job/step.
-- [ ] The gate is assigned to its evidence layer: frontend unit/component,
+- [x] Every existing required gate is named by workflow and job/step in the
+  testing guidance.
+- [x] The gate is assigned to its evidence layer: frontend unit/component,
   backend unit/API, PostgreSQL/migration, real-stack browser, extension
-  browser, or repository checks.
-- [ ] The gate specifies its trigger: pull request, push, scheduled, opt-in,
-  or manual.
-- [ ] The gate states runtime expectations, setup requirements, and any
-  external service dependency.
-- [ ] A disabled or historical workflow is visibly labeled disabled and is
+  browser, or repository checks. The extension browser is identified as local
+  opt-in because it has no dedicated workflow job.
+- [x] The gate specifies its trigger: pull request, push, scheduled, opt-in,
+  or manual. Existing `verify` workflow jobs run on push and pull request.
+- [x] The gate states approximate observed local runtime and setup for each
+  evidence layer; it labels these observations as nonbinding CI estimates.
+- [x] A disabled or historical workflow is visibly labeled disabled and is
   not presented as a required passing gate.
 
 ### Flow: Maintain the frontend gate
@@ -496,7 +510,7 @@ physical-device pass.
 
 ### Flow: Record one release evidence run
 
-- [ ] The evidence record identifies the release/milestone and reviewed
+- [x] The evidence template identifies the release/milestone and reviewed
   commit.
 - [ ] Each required suite records its exact workflow/job or local command.
 - [ ] Each suite records pass, fail, skipped, unavailable, or manual status.
@@ -548,9 +562,10 @@ physical-device pass.
 
 ### Flow: Validate one inventory row
 
-- [ ] The consistency review identifies rows without a status.
-- [ ] The consistency review identifies duplicate stable IDs.
-- [ ] The consistency review identifies broken evidence links.
+- [x] The consistency review identifies rows without an evidence
+  classification.
+- [x] The consistency review identifies duplicate route and API row keys.
+- [x] The CI check identifies broken local Markdown inventory links.
 - [ ] The consistency review identifies a row with no source, owner, or
   evidence classification.
 - [ ] A source scan is treated only as drift detection, never as behavioral
@@ -600,8 +615,9 @@ physical-device pass.
   follow-up.
 - [ ] Required gate commands and CI job names agree with the current workflow
   definitions.
-- [ ] Manual and environment-limited checks have a reproducible procedure
-  and assigned owner.
+- [x] Manual and environment-limited checks have a reproducible procedure
+  and assigned owner in `docs/testing.md` (physical Android Chrome and
+  extension permission prompts; iOS is out of scope).
 - [ ] Release evidence links to passing runs for every required gate.
 - [ ] Desktop Chrome, Android Chrome, and desktop extension evidence are not
   conflated.

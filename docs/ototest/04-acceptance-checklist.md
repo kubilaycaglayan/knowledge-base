@@ -6,6 +6,12 @@
 
 **Status:** Draft acceptance checklist; no flows are marked passed.
 
+The automated browser journey implementation for OTOTEST-04 is described in
+the [milestone brief](04-real-stack-and-extension.md); its latest local
+execution evidence is in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
+This checklist remains a separate manual product-flow evaluation and makes no
+physical Android device or live-provider acceptance claim.
+
 This checklist describes product behavior to accept for OTOTEST-04. It is not
 a test plan or a claim that any flow passed. Each flow below has one user
 responsibility. It covers the Knowledge Base web application in desktop Chrome

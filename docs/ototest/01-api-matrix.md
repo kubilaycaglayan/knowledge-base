@@ -1,17 +1,18 @@
 # OTOTEST-01 — Backend API operation inventory
 
-**Source revision:** `80fecc6c4019463cd38110bffa672438012df2d8` (`origin/main` at review)
+**Source revision:** `a488663c` (OTOTEST-05 reviewed source; API controller sources unchanged since `80fecc6c`)
 **Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-10; 107 composed method/path rows reconciled against 105 mapping annotations, including multi-path mappings
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Evidence candidates:** [controller/API tests](../../backend/src/test/java/com/know/api/), [integration tests](../../backend/src/test/java/com/know/integration/), and [service tests](../../backend/src/test/java/com/know/service/)
-**Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. Tests were not run in OTOTEST-01.
+**Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. OTOTEST-01 itself did not run these suites; the latest local results are recorded in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
 
-**OpenAPI reconciliation:** On 2026-10-10, the generated development
-`/v3/api-docs` document contained 107 method/path pairs, matching the 107
-matrix rows exactly (no missing or extra operations). A source check also
-resolved all 382 qualified test references in the evidence column to an
-existing test class and method; this validates names, not the relevance of
-every assertion.
+**OpenAPI reconciliation:** On 2026-10-10 at source revision `80fecc6c`, the
+generated development `/v3/api-docs` document contained 107 method/path pairs,
+matching the 107 matrix rows exactly (no missing or extra operations). A
+follow-up inventory check at `a488663c` counted 385 qualified evidence
+references (307 unique class/method pairs) and resolved each unique pair to an
+existing Java test class and method. These checks validate operation/reference
+integrity, not the relevance of every assertion.
 
 All operations require authentication unless the row says public. The authenticated principal is the owner scope for user data. “Candidate” identifies a suite to inspect; it is not a coverage claim until an assertion is mapped to the operation. `Gap` means the inventory has not established a named assertion for that operation. Unresolved gaps are owned by Knowledge Base maintainers.
 

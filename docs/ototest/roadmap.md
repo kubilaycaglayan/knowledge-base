@@ -49,7 +49,11 @@ to shared tests or be marked as non-interactive with a reason.
 | OTOTEST-02 | Close backend API behavior-map gaps | High | 01 | Complete |
 | OTOTEST-03 | Map and complete web route and control behavior coverage | High | 01 | In progress |
 | OTOTEST-04 | Add missing real-stack journeys and extension browser coverage | High | 01–03 | Complete |
-| OTOTEST-05 | Enforce traceability and keep coverage current | High | 01–04 | Proposed |
+| OTOTEST-05 | Enforce traceability and keep coverage current | High | 01–04 | In progress |
+
+The latest OTOTEST-05 local gate evidence is recorded in
+[`runs/2026-10-10-ototest-05-local-gates.md`](runs/2026-10-10-ototest-05-local-gates.md).
+Hosted CI evidence remains pending for the current branch.
 
 Each milestone has its own task and acceptance document:
 
@@ -59,6 +63,8 @@ Each milestone has its own task and acceptance document:
 - [OTOTEST-03 — Web routes and controls](03-web-routes-and-controls.md)
 - [OTOTEST-04 — Real-stack and extension journeys](04-real-stack-and-extension.md)
 - [OTOTEST-05 — Traceability and ongoing gates](05-traceability-and-gates.md)
+  - [OTOTEST-05 acceptance checklist](05-acceptance-checklist.md)
+  - [Execution evidence template](evidence-template.md)
 - [Milestone index](README.md)
 - [Product test tree: routes → page regions → actions → edge/security cases](product-test-tree.md)
 
