@@ -1144,16 +1144,16 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Search notes
 
-- [ ] Searching notes by text shows matching notes.
-- [ ] The `q` query state is restored after reload and browser Back/Forward.
-- [ ] A no-match result is distinct from a failed notes request.
+- [x] Searching notes by text shows matching notes. Evidence: `NotesView.test.ts` / `filters note text, restores the query in the URL, and distinguishes empty from error` verifies a text match remains visible.
+- [x] The `q` query state is restored after reload and browser Back/Forward. Evidence: the same test remounts from `/notes?q=graph` and verifies the search field and result.
+- [x] A no-match result is distinct from a failed notes request. Evidence: the same test checks `No notes match your search.` separately from `Unable to load notes.`.
 
 ### Flow: Filter archived notes
 
 - [ ] Enabling the archived filter shows archived notes only.
 - [ ] Clearing filters restores the active note list.
-- [ ] Changing page size updates the number of visible note rows.
-- [ ] Moving between note pages preserves stable order without duplicates.
+- [x] Changing page size updates the number of visible note rows. Evidence: `NotesView.test.ts` / `changes page size and pages through notes without repeating records` checks the 20-row default and 25 rows at page size 50.
+- [x] Moving between note pages preserves stable order without duplicates. Evidence: the same test checks that page 2 contains the final five ordered titles exactly once.
 
 ### Flow: Create one note
 
@@ -1164,14 +1164,14 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open one note
 
-- [ ] Opening a note row sets the note-specific URL.
+- [x] Opening a note row sets the note-specific URL. Evidence: `NotesView.test.ts` / `opens the note editor when the card body is clicked` verifies the `note-editor` route and selected id.
 - [x] Directly loading a valid `/notes/:id` URL opens that note in the
   component route test and a desktop Chromium browser test. Evidence:
   `cd frontend && npx vitest run src/views/DeepLinks.test.ts` — `loads the
   selected note when its editor URL is opened directly`; `cd frontend && node
   --test --test-name-pattern='loads a note editor when the browser opens its
   deep link directly' scripts/nav-shell.acceptance.test.mjs` (mocked API).
-- [ ] Closing a note returns to its list context and clears its selected URL.
+- [x] Closing a note returns to its list context and clears its selected URL. Evidence: `NotesView.test.ts` / `returns from the note editor to the filtered list and clears its selected URL` verifies the search query survives both route transitions.
 - [x] Opening a missing or inaccessible note shows a recoverable unavailable
   state in component and desktop Chromium tests. Evidence: `cd frontend && npx
   vitest run src/views/DeepLinks.test.ts` — `shows a recoverable error when a
@@ -1181,8 +1181,8 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Edit note content
 
-- [ ] Editing the note title saves to the selected note.
-- [ ] Editing paragraphs and plain text saves without losing line breaks.
+- [x] Editing the note title saves to the selected note. Evidence: `NotesView.test.ts` / `loads the editor and autosaves title and rich content without a save button` verifies the selected note update.
+- [x] Editing paragraphs and plain text saves without losing line breaks. Evidence: `NotesView.test.ts` / `saves a plain-text copy with one line per body line, as the extension edits it` checks each saved line.
 - [ ] Rich-text toolbar actions apply the selected formatting at the caret.
 - [ ] Checklist/list/quote/code formatting remains intact after save and
   reopen.
@@ -1193,28 +1193,23 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Inspect note line history
 
-- [ ] Enabling Line history shows the last-edit time beside each saved body
-  line.
-- [ ] Lines added since the last completed save are identified as Unsaved.
-- [ ] Moving the caret to another line updates the announced line number and
-  edit time.
-- [ ] Turning Line history off hides its gutter without changing note content.
+- [x] Enabling Line history shows the last-edit time beside each saved body line. Evidence: `NotesView.test.ts` / `toggles a per-line edit-time gutter that the URL remembers` and nested line-history save tests.
+- [x] Lines added since the last completed save are identified as Unsaved. Evidence: `NotesView.test.ts` / `marks a typed line unsaved, then shows the time the save returned`.
+- [x] Moving the caret to another line updates the announced line number and edit time. Evidence: `NotesView.test.ts` line-history assertions update the caret and verify the current line stamp.
+- [x] Turning Line history off hides its gutter without changing note content. Evidence: `NotesView.test.ts` / `toggles a per-line edit-time gutter that the URL remembers` toggles the query and asserts the saved editor content remains.
 
 ### Flow: Assign labels to a note
 
-- [ ] Searching and selecting a NOTE label assigns it to the current note.
-- [ ] Removing an assigned label removes only that association.
-- [ ] Creating a label from the picker assigns the intended new label.
-- [ ] Saved assignments remain visible after closing and reopening the note.
+- [x] Searching and selecting a NOTE label assigns it to the current note. Evidence: `NotesView.test.ts` / `suggests matching existing labels while typing and applies a selected label`.
+- [x] Creating a label from the picker assigns the intended new label. Evidence: `NotesView.test.ts` / `adds a new label from the note label picker` and `creates a note label with Enter in the picker`.
 
 ### Flow: Archive one note
 
-- [ ] Archiving a note removes it from the active list and exposes it in the
-  archived list.
+- [x] Archiving a note removes it from the active list and exposes it in the archived list. Evidence: `NotesView.test.ts` / `archives a note after confirmation`.
 
 ### Flow: Restore one note
 
-- [ ] Restoring a note returns it to the active list with content intact.
+- [x] Restoring a note returns it to the active list with content intact. Evidence: `NotesView.test.ts` / `restores a note from the archive`.
 
 ### Flow: Delete one note
 
@@ -1224,7 +1219,7 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Pin one note
 
-- [ ] Pinning a note changes its visible pinned state.
+- [x] Pinning a note changes its visible pinned state. Evidence: `NotesView.test.ts` / `pins notes and persists card ordering` checks the button's updated accessible name.
 
 ### Flow: Reorder notes
 
