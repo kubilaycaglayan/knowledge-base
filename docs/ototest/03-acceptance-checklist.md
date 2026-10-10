@@ -1080,8 +1080,7 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Reorder cards in an unsorted column
 
-- [ ] Reordering cards in an unsorted column persists the final order after
-  reload.
+- [x] Reordering cards in an unsorted column persists the final order after reload. Evidence: `board.acceptance.test.mjs` / `reorders cards in a column with the keyboard alternative` moves the first dense card, verifies the saved move request, reloads, and asserts the first two cards retain their reordered positions.
 
 ### Flow: Sort cards by priority
 
