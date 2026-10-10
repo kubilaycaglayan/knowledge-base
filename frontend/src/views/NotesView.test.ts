@@ -1116,6 +1116,8 @@ describe("NotesView", () => {
   });
 
   it("archives a note after confirmation", async () => {
+    const second = { ...note, id: "note-2", title: "Writing" };
+    let listLoads = 0;
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -1124,7 +1126,8 @@ describe("NotesView", () => {
       async (path: string, options?: RequestInit) => {
         if (path === "/notes/note-1" && options?.method === "DELETE")
           return undefined;
-        if (path.startsWith("/notes?")) return page();
+        if (path.startsWith("/notes?"))
+          return page(listLoads++ === 0 ? [note, second] : [second]);
         return undefined;
       },
     );
@@ -1138,6 +1141,32 @@ describe("NotesView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1", {
       method: "DELETE",
     });
+    expect(wrapper.text()).toContain("Writing");
+    expect(wrapper.text()).not.toContain("Learning");
+    expect(vi.mocked(api).mock.calls.some(([path, options]) =>
+      path === "/notes/note-2" && options?.method === "DELETE",
+    )).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it("leaves a note unchanged when archive confirmation is cancelled", async () => {
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+
+    await wrapper.get(".note-row button.danger").trigger("click");
+
+    expect(confirm).toHaveBeenCalledWith(
+      "Move “Learning” to Archive? You can restore it from the archive at any time.",
+    );
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith("/notes/note-1", {
+      method: "DELETE",
+    });
+    expect(wrapper.text()).toContain("Learning");
     vi.unstubAllGlobals();
   });
 
