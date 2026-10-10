@@ -49,6 +49,18 @@ describe("ImportsView", () => {
     ).toBe("true");
   });
 
+  it("shows the empty Knowledge Base import history state", async () => {
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    try {
+      await flushPromises();
+      expect(wrapper.text()).toContain("No Knowledge Base imports yet.");
+      expect(wrapper.findAll(".history-row")).toHaveLength(0);
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("imports Clockify JSON and reloads the batch list", async () => {
     const wrapper = mount(ImportsView);
     await flushPromises();

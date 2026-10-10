@@ -7,6 +7,20 @@ import { createMemoryHistory, createRouter } from "vue-router";
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
 describe("LabelsView", () => {
+  it("shows the intentional empty state when no labels exist", async () => {
+    setActivePinia(createPinia());
+    vi.mocked(api).mockResolvedValue([]);
+    const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    try {
+      await flushPromises();
+      expect(wrapper.text()).toContain("No labels yet. Add one above to get started.");
+      expect(wrapper.findAll(".label-row")).toHaveLength(0);
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("restores and updates the label query in the URL", async () => {
     vi.mocked(api).mockResolvedValue([
       { id: "one", name: "Study", color: null, scopes: ["NOTE"] },

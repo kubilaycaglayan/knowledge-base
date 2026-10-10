@@ -944,6 +944,9 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Import Knowledge Base data
 
+- [x] An empty Knowledge Base import history is identified clearly. Evidence:
+  `ImportsView.test.ts` / `shows the empty Knowledge Base import history state`
+  verifies the message, absence of batch rows, and absence of an error alert.
 - [x] The Knowledge Base import view accepts pasted CSV text. Evidence: `ImportsView.test.ts` / `imports Knowledge Base CSV text and reports the server outcome` submits the CSV text in the supported text/csv request.
 - [x] Invalid or unsupported import data produces a readable validation result without partial visible records. Evidence: `ImportsView.test.ts` / `keeps server diagnostics hidden behind an expandable disclosure` checks the UI error state; `KnowIntegrationTest.knowledgeBaseCsvImportRejectsMalformedAndUnsupportedRowsWithoutPartialState` checks no Paths or batches remain after rejection.
 - [x] A valid import reports created, skipped, and created Path counts. Evidence: the same test verifies the visible imported, skipped, and created Path summary and the resulting batch history.
@@ -988,6 +991,9 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Search labels
 
+- [x] An empty label collection has an actionable empty state. Evidence:
+  `LabelsView.test.ts` / `shows the intentional empty state when no labels
+  exist` verifies the message, absence of label rows, and absence of an error.
 - [x] Opening Labels search focuses the query input using the documented shortcut. Evidence: `LabelsView.test.ts` / `focuses label search with / and filters names, leaving Cmd/Ctrl+K to global search`.
 - [x] Searching filters labels by name. Evidence: the same test checks the matching label.
 - [x] The `q` query state survives URL and browser-history navigation where supported. Evidence: `LabelsView.test.ts` / `restores and updates the label query in the URL` checks initial query state, updates, browser-history navigation, and clearing.
