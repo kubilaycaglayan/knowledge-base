@@ -381,12 +381,15 @@ describe("LogsView", () => {
   });
 
   it("opens log labels and toggles a selected label", async () => {
+    let labelIds: string[] = [];
     vi.mocked(api).mockImplementation(async (path, options) => {
       if (path === "/labels?scope=LOG")
         return [{ id: "important", name: "Important", color: "#2878D5" }];
-      if (path === "/logs/new/labels" && options?.method === "PUT")
-        return { ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds: ["important"] };
-      return [log("new", "Recent thought", "2026-09-11T11:30:00Z")];
+      if (path === "/logs/new/labels" && options?.method === "PUT") {
+        labelIds = JSON.parse(String(options.body)).labelIds;
+        return { ...log("new", "Recent thought", "2026-09-11T11:30:00Z"), labelIds };
+      }
+      return [log("new", "Recent thought", "2026-09-11T11:30:00Z", 0, labelIds)];
     });
     const wrapper = mount(LogsView);
     await flushPromises();
@@ -404,6 +407,16 @@ describe("LogsView", () => {
     expect(
       wrapper.get('button[aria-label^="Choose labels"]').classes(),
     ).toContain("has-selection");
+
+    document.querySelector<HTMLButtonElement>('.label-picker-menu [role="option"]')?.click();
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith(
+      "/logs/new/labels",
+      expect.objectContaining({ method: "PUT", body: '{"labelIds":[]}' }),
+    );
+    expect(
+      wrapper.get('button[aria-label^="Choose labels"]').classes(),
+    ).not.toContain("has-selection");
   });
 
   it("closes log labels when the user clicks elsewhere", async () => {
