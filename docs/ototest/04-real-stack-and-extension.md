@@ -1,7 +1,7 @@
 # OTOTEST-04 — Real-stack and extension journeys
 
 **Priority:** High  
-**Status:** Proposed  
+**Status:** In progress
 **Dependencies:** OTOTEST-01, OTOTEST-02, OTOTEST-03
 
 ## Goal
@@ -53,11 +53,13 @@ persistence boundaries.
 
 ## Chrome extension tasks
 
-- [ ] Define a repeatable Chromium test harness for loading the built
+- [x] Define a repeatable Chromium test harness for loading the built
   Manifest V3 extension with a local Knowledge Base API or controlled test
-  server.
-- [ ] Exercise extension build/install/load and verify the manifest, required
-  permissions, popup and options entrypoints.
+  server. `./scripts/run-extension-browser-e2e.sh` builds the package and runs
+  the browser journey against a loopback API fixture.
+- [x] Exercise extension build/install/load and verify the manifest, required
+  permissions, popup and options entrypoints. Evidence:
+  `extension.real-browser.acceptance.test.mjs`.
 - [ ] Exercise sign-in/configuration, timer start/stop/sync, notes flows, and
   Clockify behavior supported by the current product.
 - [ ] Verify service-worker restart/reconnect behavior and errors from denied
@@ -67,6 +69,12 @@ persistence boundaries.
 - [ ] Keep fast Node module tests as the primary location for exhaustive edge
   cases; browser tests should focus on browser integration and critical
   journeys.
+
+The first browser slice verifies packaged install, manifest permissions, popup
+and options rendering, saved API configuration, and a Clockify content-script
+message reaching the background service worker and loopback API fixture. It
+does not yet cover signed-in timer or notes flows, worker restart, denied
+permissions, or unavailable API recovery.
 
 ## Acceptance
 

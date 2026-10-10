@@ -120,6 +120,16 @@ bodies with the Line history gutter on and checks:
   after clicking.
 Set `LINE_HISTORY_E2E_SCREENSHOTS=<dir>` to keep screenshots.
 
+`./scripts/run-extension-browser-e2e.sh` builds the Manifest V3 extension and
+loads that packaged build in desktop Chromium with a fresh temporary browser
+profile. The browser journey checks the manifest permissions, popup and
+options entrypoints, API URL persistence, and a Clockify content-script to
+service-worker request against a disposable loopback API fixture. It requires
+`xvfb-run` on a headless Linux host and uses only a local fixture token. The
+test profile and fixture server are removed when the run exits. To run just
+the browser assertions after building the extension, use
+`(cd frontend && npm run test:extension:e2e)`.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and

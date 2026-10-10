@@ -48,7 +48,7 @@ to shared tests or be marked as non-interactive with a reason.
 | OTOTEST-01 | Build the route, API, feature, and control inventories | High | — | Complete |
 | OTOTEST-02 | Close backend API behavior-map gaps | High | 01 | Complete |
 | OTOTEST-03 | Map and complete web route and control behavior coverage | High | 01 | In progress |
-| OTOTEST-04 | Add missing real-stack journeys and extension browser coverage | High | 01–03 | Proposed |
+| OTOTEST-04 | Add missing real-stack journeys and extension browser coverage | High | 01–03 | In progress |
 | OTOTEST-05 | Enforce traceability and keep coverage current | High | 01–04 | Proposed |
 
 Each milestone has its own task and acceptance document:
