@@ -523,6 +523,9 @@ the extension has its own scope in OTOTEST-04.
   persistence in desktop Chromium.
 - [x] Saving label assignments updates only the selected day. Evidence: the
   same test checks the exact date URL and label portion in the save payload.
+  `scripts/nav-shell.acceptance.test.mjs`, `reloads a saved Calendar label
+  assignment on its selected day` additionally verifies mocked-API readback
+  after reload.
 - [x] An existing label hidden from the Calendar list can still be found in
   the assignment picker. Evidence: `frontend/src/views/CalendarView.test.ts`,
   `CP-05: picks labels hidden from Calendar as chips without changing them`.

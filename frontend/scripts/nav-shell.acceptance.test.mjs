@@ -13,7 +13,7 @@ const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body:
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false } = {}) {
+async function fixture(t, width, { warmup = false, calendarLabels = [] } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -43,6 +43,7 @@ async function fixture(t, width, { warmup = false } = {}) {
     else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [card];
     else if (path === "/boards/board-1/gantt") body = [card];
     else if (path === "/timers/current") body = null;
+    else if (path === "/labels") body = calendarLabels;
     else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path.startsWith("/reports")) {
@@ -53,9 +54,19 @@ async function fixture(t, width, { warmup = false } = {}) {
     else if (path === "/calendar/days" && method === "GET") body = calendarDays;
     else if (path === "/calendar/days/range" && method === "PUT") body = [];
     else if (path.startsWith("/calendar/days/") && method === "PUT") {
+      const payload = route.request().postDataJSON();
       const record = {
         date: path.split("/").at(-1),
-        ...route.request().postDataJSON(),
+        note: payload.note,
+        labels: (payload.labels || []).map((assignment) => {
+          const label = calendarLabels.find((item) => item.id === assignment.labelId);
+          return {
+            labelId: assignment.labelId,
+            name: label?.name || assignment.labelId,
+            color: label?.color || null,
+            portion: assignment.portion,
+          };
+        }),
       };
       const index = calendarDays.findIndex((day) => day.date === record.date);
       if (index === -1) calendarDays.push(record);
@@ -433,6 +444,35 @@ it("reloads a saved Calendar note from its selected day record", async (t) => {
     note,
   );
   assert.equal(await page.locator(".day-editor textarea").inputValue(), note);
+});
+
+it("reloads a saved Calendar label assignment on its selected day", async (t) => {
+  const label = {
+    id: "leave",
+    name: "Sick leave",
+    color: "#2878D5",
+    scopes: ["CALENDAR"],
+  };
+  const { page } = await fixture(t, 1440, { calendarLabels: [label] });
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const checkbox = page.getByRole("checkbox", { name: "Sick leave" });
+  await checkbox.check();
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save day" }).click();
+  await saved;
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => {
+    const checkbox = document.querySelector('.day-label input[type="checkbox"]');
+    return checkbox instanceof HTMLInputElement && checkbox.checked;
+  });
+  assert.equal(await page.getByRole("checkbox", { name: "Sick leave" }).isChecked(), true);
 });
 
 it("opens a session detail when the browser loads its deep link directly", async (t) => {
