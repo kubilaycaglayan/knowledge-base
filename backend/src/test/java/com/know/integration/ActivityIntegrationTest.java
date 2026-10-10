@@ -3,8 +3,7 @@ package com.know.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -15,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /** Persistence-backed behavior for the activity query filters. */
 class ActivityIntegrationTest extends IntegrationTestSupport {
@@ -54,6 +54,20 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
 
   JsonNode activities(String token, String query) {
     return exchange(HttpMethod.GET, "/api/v1/activities" + query, token, null).getBody();
+  }
+
+  JsonNode activitiesAtRange(String token, String from, String to) {
+    URI uri =
+        UriComponentsBuilder.fromHttpUrl(base)
+            .path("/api/v1/activities")
+            .queryParam("from", from)
+            .queryParam("to", to)
+            .build()
+            .encode()
+            .toUri();
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(token);
+    return rest.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), JsonNode.class).getBody();
   }
 
   @Test
@@ -100,8 +114,7 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
 
     for (ZoneOffset offset : List.of(ZoneOffset.ofHours(-5), ZoneOffset.ofHours(3))) {
       String equivalentOffset = occurredAt.atOffset(offset).toString();
-      String encodedOffset = URLEncoder.encode(equivalentOffset, StandardCharsets.UTF_8);
-      JsonNode offsetRange = activities(owner, "?from=" + encodedOffset + "&to=" + encodedOffset);
+      JsonNode offsetRange = activitiesAtRange(owner, equivalentOffset, equivalentOffset);
       assertTrue(offsetRange.isArray(), "Offset filter returns an activity list: " + offsetRange);
       assertEquals(1, offsetRange.size(), "Offset timestamps resolve to the same instant: " + offset);
       assertEquals(firstActivity.get("id").asText(), offsetRange.get(0).get("id").asText());
