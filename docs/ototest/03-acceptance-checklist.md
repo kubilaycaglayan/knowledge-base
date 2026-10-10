@@ -479,8 +479,14 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Navigate calendar months
 
-- [ ] Previous and next month actions show the adjacent month.
-- [ ] Month and year selectors open and select the requested month/year.
+- [x] Previous and next month actions show the adjacent month. Evidence:
+  `frontend/src/views/CalendarView.test.ts`, `supports month navigation and
+  cancelling a range selection` verifies both month and year values before
+  and after the adjacent-month round trip.
+- [x] Month and year selectors open and select the requested month/year.
+  Evidence: `frontend/src/views/CalendarView.test.ts`, `changes the calendar
+  month and year from their selectors` checks the selected month, year, and
+  first-day selection.
 - [ ] The Today action returns to the current date while retaining the expected
   visible grid.
 - [ ] Weekday headings and dates remain aligned when the month starts or ends

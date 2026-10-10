@@ -275,6 +275,16 @@ describe("CalendarView", () => {
   it("supports month navigation and cancelling a range selection", async () => {
     const wrapper = mountView();
     await flushPromises();
+    const monthSelect = wrapper.get(
+      'select[aria-label="Calendar month"]',
+    ).element as HTMLSelectElement;
+    const yearSelect = wrapper.get(
+      'select[aria-label="Calendar year"]',
+    ).element as HTMLSelectElement;
+    const initialMonth = Number(monthSelect.value);
+    const initialYear = Number(yearSelect.value);
+    const previousMonth = initialMonth === 0 ? 11 : initialMonth - 1;
+    const previousYear = initialMonth === 0 ? initialYear - 1 : initialYear;
     const initialDayRequest = vi
       .mocked(api)
       .mock.calls.find(
@@ -283,6 +293,8 @@ describe("CalendarView", () => {
       )?.[0];
     await wrapper.get('[aria-label="Previous month"]').trigger("click");
     await flushPromises();
+    expect(Number(monthSelect.value)).toBe(previousMonth);
+    expect(Number(yearSelect.value)).toBe(previousYear);
     const previousRequest = vi
       .mocked(api)
       .mock.calls.filter(
@@ -293,6 +305,8 @@ describe("CalendarView", () => {
     expect(previousRequest).not.toBe(initialDayRequest);
     await wrapper.get('[aria-label="Next month"]').trigger("click");
     await flushPromises();
+    expect(Number(monthSelect.value)).toBe(initialMonth);
+    expect(Number(yearSelect.value)).toBe(initialYear);
     const requests = vi
       .mocked(api)
       .mock.calls.filter(
@@ -314,6 +328,37 @@ describe("CalendarView", () => {
         .findAll("button.ghost")
         .some((button) => button.text() === "Cancel range"),
     ).toBe(false);
+  });
+
+  it("changes the calendar month and year from their selectors", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    const monthSelect = wrapper.get(
+      'select[aria-label="Calendar month"]',
+    );
+    const yearSelect = wrapper.get('select[aria-label="Calendar year"]');
+    const initialMonth = Number(
+      (monthSelect.element as HTMLSelectElement).value,
+    );
+    const initialYear = Number((yearSelect.element as HTMLSelectElement).value);
+    const requestedMonth = (initialMonth + 1) % 12;
+
+    await monthSelect.setValue(String(requestedMonth));
+    await flushPromises();
+    expect((monthSelect.element as HTMLSelectElement).value).toBe(
+      String(requestedMonth),
+    );
+    expect(wrapper.find("button.calendar-day.selected time").text()).toBe("1");
+
+    await yearSelect.setValue(String(initialYear + 1));
+    await flushPromises();
+    expect((yearSelect.element as HTMLSelectElement).value).toBe(
+      String(initialYear + 1),
+    );
+    expect((monthSelect.element as HTMLSelectElement).value).toBe(
+      String(requestedMonth),
+    );
+    expect(wrapper.find("button.calendar-day.selected time").text()).toBe("1");
   });
 
   it("keeps a same-day pointer gesture as a single-day save", async () => {
