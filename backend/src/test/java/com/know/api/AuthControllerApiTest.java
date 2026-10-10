@@ -96,6 +96,20 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin() throws Exception {
+    for (String path : List.of("/api/v1/auth/register", "/api/v1/auth/login")) {
+      for (String request :
+          List.of(
+              "{\"email\":\" \",\"password\":\"correct-horse-battery\"}",
+              "{\"email\":\"person@example.com\",\"password\":\" \"}")) {
+        mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(request))
+            .andExpect(status().isBadRequest());
+      }
+    }
+    verifyNoInteractions(users, encoder);
+  }
+
+  @Test
   void duplicateRegistrationIsRejected() throws Exception {
     User existing = new User("person@example.com", "hash", "person");
     when(users.findByEmailIgnoreCase("person@example.com")).thenReturn(Optional.of(existing));
@@ -163,6 +177,14 @@ class AuthControllerApiTest {
 
   @Test
   void googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary() throws Exception {
+    for (String request : List.of("{}", "{\"idToken\":null}")) {
+      mvc.perform(
+              post("/api/v1/auth/google")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(request))
+          .andExpect(status().isBadRequest());
+    }
+
     mvc.perform(
             post("/api/v1/auth/google")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +216,9 @@ class AuthControllerApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"idToken\":\"good-token\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.email").value("person@example.com"));
+        .andExpect(jsonPath("$.email").value("person@example.com"))
+        .andExpect(jsonPath("$.passwordHash").doesNotExist())
+        .andExpect(jsonPath("$.googleSubject").doesNotExist());
     org.junit.jupiter.api.Assertions.assertEquals("google-sub", existing.getGoogleSubject());
     verify(users).save(existing);
     verifyNoInteractions(encoder);
@@ -217,7 +241,9 @@ class AuthControllerApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"idToken\":\"new-token\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.email").value("new@example.com"));
+        .andExpect(jsonPath("$.email").value("new@example.com"))
+        .andExpect(jsonPath("$.passwordHash").doesNotExist())
+        .andExpect(jsonPath("$.googleSubject").doesNotExist());
     var account = org.mockito.ArgumentCaptor.forClass(User.class);
     verify(users).save(account.capture());
     org.junit.jupiter.api.Assertions.assertEquals("new-sub", account.getValue().getGoogleSubject());
@@ -271,7 +297,7 @@ class AuthControllerApiTest {
   @Test
   void passwordSetupRejectsNewPasswordsOutsideTheSupportedLength() throws Exception {
     var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
-    for (String password : List.of("short", "p".repeat(201))) {
+    for (String password : List.of("", " ", "12345678", "p".repeat(201))) {
       mvc.perform(
               org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
                       "/api/v1/auth/password")

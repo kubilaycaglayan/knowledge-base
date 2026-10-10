@@ -178,6 +178,7 @@ describe("api", () => {
 
   it("aborts requests that remain pending for 15 seconds", async () => {
     vi.useFakeTimers();
+    localStorage.setItem("know_token", "valid-token");
     const fetchMock = vi
       .fn()
       .mockImplementation(
@@ -201,6 +202,7 @@ describe("api", () => {
     await vi.advanceTimersByTimeAsync(15000);
 
     await rejection;
+    expect(localStorage.getItem("know_token")).toBe("valid-token");
     vi.useRealTimers();
   });
 

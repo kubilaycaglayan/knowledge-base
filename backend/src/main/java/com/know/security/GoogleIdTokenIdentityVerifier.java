@@ -8,6 +8,7 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,11 @@ import org.springframework.stereotype.Component;
 public final class GoogleIdTokenIdentityVerifier implements GoogleIdentityVerifier {
   private final GoogleIdTokenVerifier verifier;
 
+  GoogleIdTokenIdentityVerifier(GoogleIdTokenVerifier verifier) {
+    this.verifier = verifier;
+  }
+
+  @Autowired
   public GoogleIdTokenIdentityVerifier(@Value("${app.google-client-id:}") String clientId) {
     if (clientId == null || clientId.isBlank()) {
       verifier = null;
@@ -44,11 +50,12 @@ public final class GoogleIdTokenIdentityVerifier implements GoogleIdentityVerifi
       }
       String subject = payload.getSubject();
       if (subject == null || subject.isBlank()) return Optional.empty();
+      String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
       String displayName =
           payload.get("name") instanceof String name && !name.isBlank()
               ? name.trim()
-              : email.substring(0, email.indexOf('@'));
-      return Optional.of(new Identity(subject, email.trim().toLowerCase(Locale.ROOT), displayName));
+              : normalizedEmail.substring(0, normalizedEmail.indexOf('@'));
+      return Optional.of(new Identity(subject, normalizedEmail, displayName));
     } catch (Exception ignored) {
       return Optional.empty();
     }
