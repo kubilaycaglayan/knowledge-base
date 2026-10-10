@@ -238,7 +238,7 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
     assertTrue(
         ok(
                 HttpMethod.GET,
-                "/api/v1/calendar/days?startDate=2025-10-01&endDate=2026-10-02",
+                "/api/v1/calendar/days?startDate=2025-10-01&endDate=2026-10-01",
                 token,
                 null)
             .isEmpty());
