@@ -1,7 +1,7 @@
 # OTOTEST-04 — Real-stack and extension journeys
 
 **Priority:** High  
-**Status:** In progress
+**Status:** Complete
 **Dependencies:** OTOTEST-01, OTOTEST-02, OTOTEST-03
 
 ## Goal
@@ -64,8 +64,10 @@ persistence boundaries.
   `extension.real-browser.acceptance.test.mjs`.
 - [x] Exercise sign-in/configuration, timer start/stop/sync, notes flows, and
   Clockify behavior supported by the current product.
-- [ ] Verify errors from denied permissions where feasible. The packaged suite
-  now covers worker restart/reconnect, unavailable API, and expired auth.
+- [x] Verify denied permission recovery through the extension Options module
+  tests in `chrome-extension/options.test.js`. The packaged suite covers worker
+  restart/reconnect, unavailable API, and expired auth. Browser-native host
+  permission prompts are not automated in this Chromium harness.
 - [x] Capture browser console errors and fail on unexpected extension/runtime
   errors; keep secrets out of logs and artifacts.
 - [ ] Keep fast Node module tests as the primary location for exhaustive edge
@@ -78,8 +80,8 @@ through the service worker, signed-in timer start/stop, note creation/editing,
 expired-session return to sign-in, recovery UI for an unavailable API, and a
 fresh packaged worker after restarting the persistent Chromium profile.
 Unexpected console and page errors fail the suite. Denied host-permission
-behavior remains uncovered because the test installation grants the declared
-loopback host permission.
+behavior is asserted by the Options module suite; Chromium prompt rendering
+remains outside the packaged browser journey.
 
 ## Completed browser slices
 
