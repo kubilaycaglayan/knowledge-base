@@ -825,7 +825,7 @@ browser interaction evidence remains a separate layer.
   both create and update in
   `BoardControllerApiTest.cardTitleLimitRejectsOverlongAndAcceptsMaximumLength`.
   Card creation accepts and reads back every declared `BoardPriority` value
-  (`BoardCardUpdateIntegrationTest.cardCreateAcceptsEveryDeclaredPriority`);
+  (`BoardCardUpdateIntegrationTest.cardCreateAndInColumnAcceptEveryDeclaredPriority`);
   only the expected contract for unknown values remains unresolved.
   The DTO annotation and service-range audit found named evidence for the
   declared constraints across auth, note/log, calendar, timer, import, and

@@ -73,7 +73,7 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
-  void cardCreateAcceptsEveryDeclaredPriority() {
+  void cardCreateAndInColumnAcceptEveryDeclaredPriority() {
     String owner = api.register();
     String boardId =
         api.created("POST", "/api/v1/boards", owner, "{\"name\":\"Priorities\"}")
@@ -92,6 +92,27 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
           api.get("/api/v1/boards/" + boardId + "/cards/" + created.get("id").asText(), owner)
               .json();
       assertEquals(priority, persisted.get("priority").asText());
+
+      JsonNode placed =
+          api.created(
+              "POST",
+              "/api/v1/boards/" + boardId + "/cards/in-column",
+              owner,
+              "{\"columnName\":\"Review\",\"title\":\"In-column "
+                  + priority
+                  + "\",\"priority\":\""
+                  + priority
+                  + "\"}");
+      assertEquals(priority, placed.get("card").get("priority").asText());
+      JsonNode placedReadback =
+          api.get(
+                  "/api/v1/boards/"
+                      + boardId
+                      + "/cards/"
+                      + placed.get("card").get("id").asText(),
+                  owner)
+              .json();
+      assertEquals(priority, placedReadback.get("priority").asText());
     }
   }
 }
