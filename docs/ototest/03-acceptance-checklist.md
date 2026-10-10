@@ -382,8 +382,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Finish a running session
 
-- [ ] Finishing a running session records a completed interval and removes the
-  running state.
+- [x] Finishing a running session records a completed interval and removes the
+  running state. Evidence: `KnowIntegrationTest.stoppingARunningTimerSavesItsCompletedIntervalAndClearsCurrentState`
+  uses a controlled 75-second interval and verifies it appears in history and
+  is no longer current.
 
 ### Flow: Cancel a running session
 
