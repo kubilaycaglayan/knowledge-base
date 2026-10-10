@@ -9,6 +9,7 @@ const pages = ["/", "/board", "/logs", "/notes", "/calendar", "/reports", "/path
 const today = new Date().toISOString().slice(0, 10);
 const statuses = ["Backlog", "In Progress", "Done"].map((name, position) => ({ id: `status-${position}`, name, position, archived: false, cardSort: "MANUAL" }));
 const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: today, dueDate: today, position: 0, archived: false, pathIds: [], labelIds: [] };
+const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, at: "2026-10-01T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null });
 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
@@ -89,21 +90,33 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
-    else if (path === "/search") body = {
-      groups: url.searchParams.get("q") ? [{
-        type: "NOTE",
-        total: 1,
-        capped: false,
-        results: [{ id: "search-note", type: "NOTE", title: "Reports research note", snippet: "Found report draft", at: "2026-10-01T10:00:00Z", date: null, archived: false, via: "LABEL", viaName: "Reports label", color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null }],
-      }, {
-        type: "LOG",
-        total: 1,
-        capped: false,
-        results: [{ id: "search-log", type: "LOG", title: "Report export log", snippet: "Export completed", at: "2026-10-02T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null }],
-      }] : [],
-      fuzzy: false,
-      incomplete: false,
-    };
+    else if (path === "/search") {
+      const query = url.searchParams.get("q");
+      const moreType = url.searchParams.get("types");
+      const moreResults = query?.toLocaleLowerCase() === "more";
+      const noteResults = moreType === "NOTE"
+        ? [searchResult("more-note-2", "NOTE", "More note two", "Second note"), searchResult("more-note-3", "NOTE", "More note three", "Third note")]
+        : moreType === "LOG"
+          ? [searchResult("more-log-2", "LOG", "More log two", "Second log")]
+          : [searchResult("more-note-1", "NOTE", "More note one", "First note")];
+      const logResults = moreType === "LOG"
+        ? [searchResult("more-log-2", "LOG", "More log two", "Second log")]
+        : moreType === "NOTE"
+          ? []
+          : [searchResult("more-log-1", "LOG", "More log one", "First log")];
+      const reportsResults = [
+        [{ type: "NOTE", total: 1, capped: false, results: [{ ...searchResult("search-note", "NOTE", "Reports research note", "Found report draft"), via: "LABEL", viaName: "Reports label" }] }],
+        [{ type: "LOG", total: 1, capped: false, results: [searchResult("search-log", "LOG", "Report export log", "Export completed")] }],
+      ].flat();
+      const groups = !query ? [] : moreResults
+        ? moreType === "NOTE"
+          ? [{ type: "NOTE", total: 3, capped: false, results: noteResults }]
+          : moreType === "LOG"
+            ? [{ type: "LOG", total: 2, capped: false, results: logResults }]
+            : [{ type: "NOTE", total: 3, capped: false, results: noteResults }, { type: "LOG", total: 2, capped: false, results: logResults }]
+        : reportsResults;
+      body = { groups, fuzzy: false, incomplete: false };
+    }
     else if (path.startsWith("/reports")) {
       reportQueries.push(url.searchParams.toString());
       const chartPath = { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
@@ -1280,6 +1293,28 @@ it("opens the active global search result in a new tab with Control+Enter and na
   await note.click({ button: "right" });
   assert.equal(await page.evaluate(() => window.__navContextMenuAllowed), true);
   assert.equal(new URL(page.url()).pathname, "/");
+});
+
+it("loads more global search results only for the selected record type", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  await page.getByRole("dialog", { name: "Search everything" }).waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("More");
+  await page.getByRole("option", { name: /Show 2 more notes/ }).waitFor();
+  await page.getByRole("option", { name: /Show 1 more logs/ }).waitFor();
+
+  await page.getByRole("option", { name: /Show 2 more notes/ }).click();
+  await page.locator("#global-search-note-more-note-2").waitFor();
+  await page.locator("#global-search-note-more-note-3").waitFor();
+  assert.equal(await page.locator("#global-search-log-more-log-2").count(), 0);
+  assert.equal(await page.getByRole("option", { name: /Show 1 more logs/ }).count(), 1);
+
+  await page.getByRole("option", { name: /Show 1 more logs/ }).click();
+  await page.locator("#global-search-log-more-log-2").waitFor();
+  assert.equal(await page.locator("#global-search-note-more-note-2").count(), 1);
+  assert.equal(await page.locator("#global-search-note-more-note-3").count(), 1);
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {

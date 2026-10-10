@@ -261,7 +261,10 @@ the extension has its own scope in OTOTEST-04.
   test verifies a result is an anchor, opens on Control-click, and leaves the
   `contextmenu` event unprevented; `GlobalSearch.test.ts` also verifies modified
   clicks are left to the browser.
-- [ ] Show more reveals additional results only for the selected result type.
+- [x] Show more reveals additional results only for the selected result type.
+  Evidence: `loads more global search results only for the selected record
+  type` in `frontend/scripts/nav-shell.acceptance.test.mjs` expands Notes while
+  Logs remain unchanged, then expands Logs without replacing the Notes results.
 - [ ] A literal match is preferred over a fuzzy near-match.
 - [ ] A near-match suggestion is available when there is no literal result and
   suggestions are supported.
