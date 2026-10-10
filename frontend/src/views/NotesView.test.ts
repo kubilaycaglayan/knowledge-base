@@ -2,6 +2,7 @@ import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import vuetify from "../plugins/vuetify";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import NotesView from "./NotesView.vue";
+import { EditorContent } from "@tiptap/vue-3";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
 
@@ -536,6 +537,36 @@ describe("NotesView", () => {
     expect(toolbar.exists()).toBe(true);
     expect(host.element.lastElementChild).toBe(toolbar.element.closest(".rich-text-toolbar"));
     expect(toolbar.find('button[aria-label="Bold"]').exists()).toBe(true);
+  });
+
+  it("applies selected formatting in the note editor and autosaves it", async () => {
+    let savedBody = "";
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        const payload = JSON.parse(String(options.body));
+        savedBody = payload.content;
+        return { ...note, ...payload };
+      }
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const editor = wrapper.findComponent(EditorContent).props("editor");
+    editor.commands.setTextSelection({ from: 1, to: 13 });
+    await wrapper.get('button[aria-label="Bold"]').trigger("mousedown");
+    await wrapper.get('button[aria-label="Bold"]').trigger("click");
+    expect(wrapper.get(".ProseMirror strong").text()).toBe("Graph theory");
+
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    const persisted = JSON.parse(savedBody);
+    expect(persisted.content[0].content[0].marks).toContainEqual({ type: "bold" });
+    wrapper.unmount();
   });
 
   it("toggles a per-line edit-time gutter that the URL remembers", async () => {
