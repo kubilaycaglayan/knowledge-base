@@ -77,7 +77,6 @@ describe("NotesView", () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path.startsWith("/notes?") || path === "/notes") return page();
       if (path === "/notes/note-1") return note;
-      if (path === "/notes" && false) return note;
       return undefined;
     });
   });
@@ -125,6 +124,29 @@ describe("NotesView", () => {
 
     expect(r.currentRoute.value.name).toBe("note-editor");
     expect(r.currentRoute.value.params.id).toBe("note-1");
+  });
+
+  it("returns from the note editor to the filtered list and clears its selected URL", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path.startsWith("/notes?")) return page();
+      if (path === "/notes/note-1" && options?.method === "PUT") return note;
+      if (path === "/notes/note-1") return note;
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes?q=graph");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get(".note-card-link").trigger("click");
+    await flushPromises();
+    expect(r.currentRoute.value.path).toBe("/notes/note-1");
+
+    await wrapper.get('button[aria-label="Back to notes"]').trigger("click");
+    await flushPromises();
+    expect(r.currentRoute.value.path).toBe("/notes");
+    expect(r.currentRoute.value.query.q).toBe("graph");
+    expect(wrapper.find(".note-editor").exists()).toBe(false);
   });
 
   it("pins notes and persists card ordering", async () => {
