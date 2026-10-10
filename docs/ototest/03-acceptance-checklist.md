@@ -428,9 +428,13 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Filter report totals by label
 
-- [ ] Selecting a TIME_ENTRY label limits totals and breakdowns to sessions
-  carrying that label.
-- [ ] Clearing the label filter restores the unfiltered report values.
+- [x] Selecting a TIME_ENTRY label limits totals and breakdowns to sessions
+  carrying that label. Evidence: `frontend/src/views/ReportsView.test.ts`,
+  `filters report totals by time-entry label and restores them when cleared`
+  verifies the label query and filtered aggregate response.
+- [x] Clearing the label filter restores the unfiltered report values.
+  Evidence: the same component test verifies the label query is removed and
+  the unfiltered categories and totals return.
 
 ### Flow: Read report summaries and charts
 

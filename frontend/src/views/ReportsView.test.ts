@@ -314,6 +314,78 @@ describe("ReportsView", () => {
     expect(wrapper.text()).toContain("Other");
   });
 
+  it("filters report totals by time-entry label and restores them when cleared", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      const filtered = params.getAll("labelId").includes("label-1");
+      const paths = filtered
+        ? [{ id: "path-1", label: "Wander", seconds: 3600 }]
+        : [
+            { id: "path-1", label: "Wander", seconds: 3600 },
+            { id: "path-2", label: "Other", seconds: 3600 },
+          ];
+      const sessionLabels = filtered
+        ? [{ id: "label-1", label: "Deep work", seconds: 3600 }]
+        : [
+            { id: "label-1", label: "Deep work", seconds: 3600 },
+            { id: "label-2", label: "Errands", seconds: 3600 },
+          ];
+      return {
+        period: "WEEK",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: filtered ? 3600 : 7200,
+        days: [
+          {
+            date: "2026-08-25",
+            totalSeconds: filtered ? 3600 : 7200,
+            paths,
+            sessionLabels,
+            calendarLabels: [],
+          },
+        ],
+        paths,
+        sessionLabels,
+        calendarLabels: [],
+      } as never;
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    await wrapper.get('[aria-label="Group by"]').setValue("Labels");
+    await flushPromises();
+    expect(wrapper.text()).toContain("Errands");
+    expect(wrapper.text()).toContain("02:00:00");
+
+    const view = wrapper.vm as unknown as {
+      selectLabels: (ids: string[]) => Promise<void>;
+    };
+    await view.selectLabels(["label-1"]);
+    await flushPromises();
+    const filteredRequest = [...vi.mocked(api).mock.calls]
+      .reverse()
+      .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    const filteredParams = new URL(
+      filteredRequest,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(filteredParams.getAll("labelId")).toEqual(["label-1"]);
+    expect(filteredParams.get("startDate")).toBe(
+      new URL(window.location.href).searchParams.get("startDate"),
+    );
+    expect(wrapper.text()).toContain("Deep work");
+    expect(wrapper.text()).not.toContain("Errands");
+    expect(wrapper.text()).toContain("01:00:00");
+
+    await view.selectLabels([]);
+    await flushPromises();
+    expect(new URL(window.location.href).searchParams.getAll("labelId")).toEqual(
+      [],
+    );
+    expect(wrapper.text()).toContain("Errands");
+    expect(wrapper.text()).toContain("02:00:00");
+  });
+
   it("shows each selected path and label name on its filter chip", async () => {
     window.history.replaceState({}, "", "/reports?pathId=path-1&labelId=label-1");
     const { VSelect: _nativeSelect, VTextField: _plainInput, ...stubs } = global.stubs;
