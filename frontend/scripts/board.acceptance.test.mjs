@@ -1948,6 +1948,24 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.locator(".kanban-column").nth(1).locator("h2").innerText(), "Backlog");
   });
 
+  it("reorders statuses with the keyboard and persists their order after reload", async (t) => {
+    const { page } = await fixture(t, 1440);
+    const settings = await openBoardSettings(page);
+    const pending = settings.getByRole("button", { name: "Reorder Pending" });
+    await pending.focus();
+    await page.keyboard.press("ArrowUp");
+    await page.waitForFunction(() => {
+      const names = [...document.querySelectorAll(".settings-statuses input")].map((input) => input.getAttribute("aria-label")?.replace("Status name ", ""));
+      return names.join(",") === "Pending,Backlog,In Progress,Done";
+    });
+    await settings.getByRole("button", { name: "Done", exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll(".kanban-column h2")].map((heading) => heading.textContent?.trim()).join(",") === "Pending,Backlog,In Progress,Done");
+
+    await page.reload();
+    await page.locator(".board-page").waitFor();
+    await page.waitForFunction(() => [...document.querySelectorAll(".kanban-column h2")].map((heading) => heading.textContent?.trim()).join(",") === "Pending,Backlog,In Progress,Done");
+  });
+
   it("moves an existing card with pointer drag and drop", async (t) => {
     const { page } = await fixture(t);
     await page.locator(".board-card").first().evaluate((card, target) => {
