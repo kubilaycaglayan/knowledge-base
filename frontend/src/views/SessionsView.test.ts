@@ -341,6 +341,59 @@ describe("SessionsView", () => {
     ).toHaveLength(1);
   });
 
+  it("updates the selected session label chips after saving additions and removals", async () => {
+    let selectedLabels = ["label-1"];
+    const session = {
+      id: "labels-session",
+      startedAt: "2026-08-27T11:00:00Z",
+      endedAt: "2026-08-27T12:00:00Z",
+      durationSeconds: 3600,
+      source: "WEB",
+      pathId: "path-1",
+      labelIds: selectedLabels,
+    };
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.startsWith("/time-entries?"))
+        return {
+          page: 0,
+          totalPages: 1,
+          totalSessions: 1,
+          sessions: [{ ...session, labelIds: selectedLabels }],
+        };
+      if (path === "/paths")
+        return [{ id: "path-1", name: "Learning", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-1", name: "Vue", color: null, scopes: ["TIME_ENTRY"] }];
+      if (path === "/time-entries/labels-session" && init?.method === "PUT") {
+        selectedLabels = JSON.parse(String(init.body)).labelIds;
+        return { ...session, labelIds: selectedLabels };
+      }
+      return undefined;
+    });
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+
+    const card = () => wrapper.get("article.session-card");
+    expect(card().get(".session-card-labels").text()).toBe("Vue");
+    await card().get("button.text-button").trigger("click");
+    let input = await openSessionLabels(wrapper);
+    pickerOption("Vue")?.click();
+    await flushPromises();
+    await card().get("form").trigger("submit");
+    await flushPromises();
+    expect(card().get(".session-card-labels").text()).toBe("");
+
+    await card().get("button.text-button").trigger("click");
+    input = await openSessionLabels(wrapper);
+    await typeInPicker(input, "Vue");
+    pickerOption("Vue")?.click();
+    await flushPromises();
+    await card().get("form").trigger("submit");
+    await flushPromises();
+    expect(card().get(".session-card-labels").text()).toBe("Vue");
+    expect(selectedLabels).toEqual(["label-1"]);
+  });
+
   it("creates a typed new label from the session label picker", async () => {
     const defaultApi = vi.mocked(api).getMockImplementation()!;
     vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) =>

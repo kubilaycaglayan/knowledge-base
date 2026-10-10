@@ -424,8 +424,10 @@ the extension has its own scope in OTOTEST-04.
   `edits the session, refusing an end before the start` checks the range error,
   confirms no update request is sent, cancels editing, and verifies the saved
   description and 1h 30 minute duration remain unchanged.
-- [ ] Assigning or removing a TIME_ENTRY label updates the selected session's
-  label chips after save.
+- [x] Assigning or removing a TIME_ENTRY label updates the selected session's
+  label chips after save. Evidence: `SessionsView.test.ts` / `updates the
+  selected session label chips after saving additions and removals` removes
+  and restores the label through the save and history reload.
 - [ ] Closing the session detail returns to the list and clears its selected
   record URL state.
 
