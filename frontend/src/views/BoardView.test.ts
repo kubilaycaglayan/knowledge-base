@@ -90,6 +90,21 @@ describe("BoardView", () => {
     });
   }
 
+  it("shows the first-board prompt after an empty board list has loaded", async () => {
+    const boardsStore = useBoardsStore();
+    boardsStore.boardsLoaded = true;
+    boardsStore.boards = [];
+    boardsStore.selectedId = "";
+    const wrapper = mountBoard();
+    try {
+      await flushPromises();
+      expect(wrapper.text()).toContain("Create your first board");
+      expect(wrapper.findAll(".kanban-column")).toHaveLength(0);
+    } finally {
+      await wrapper.unmount();
+    }
+  });
+
   // Board settings open from the single "Manage boards" gear, via the board's name in the Boards dialog.
   async function openSettingsFor(wrapper: ReturnType<typeof mountBoard>, name: string) {
     await wrapper.find('button[aria-label="Manage boards"]').trigger("click");

@@ -1038,6 +1038,9 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Select one board
 
+- [x] A loaded empty board list offers a first-board action. Evidence:
+  `BoardView.test.ts` / `shows the first-board prompt after an empty board list
+  has loaded` checks the prompt and confirms no Kanban columns are rendered.
 - [x] Selecting a board tab displays that board's columns and cards. Evidence: `BoardView.test.ts` / `shows board selection as tabs` and `clicking an unselected board tab switches boards instead of renaming` verify the selected tab and board change.
 - [x] Selecting All boards displays the available boards together and identifies each card's owning board. Evidence: `BoardView.test.ts` / `shows merged columns with a one-line board badge` and `labels each merged column region by its own heading`.
 
