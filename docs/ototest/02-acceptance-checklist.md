@@ -380,9 +380,10 @@ browser interaction evidence remains a separate layer.
   blank and over-120-character names return 400 while the 120-character limit
   succeeds (`BoardControllerApiTest.boardCreateRequiresNonblankNameAndAcceptsTheMaximumLength`).
 - [x] `PUT /api/v1/boards/order` covers complete board ordering, duplicate and
-  foreign board IDs, missing/null/empty ID lists, and unchanged order after
-  rejected requests
-  (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`).
+  foreign board IDs, missing/null/empty/non-array lists and malformed UUID
+  items, and unchanged order after rejected requests
+  (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`
+  and `BoardControllerApiTest.boardOrderRequiresANonemptyIdList`).
 - [x] `POST /api/v1/boards/{id}/visibility` covers persisted hide/unhide,
   active-list visibility, card preservation, custom-board conflict, and foreign
   ownership (`PathBoardIntegrationTest.hidingAPathBoardKeepsItsCards`,
@@ -422,7 +423,8 @@ browser interaction evidence remains a separate layer.
   `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`,
   and `BoardControllerApiTest.statusSortRequiresAnExplicitSortMode`).
 - [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
-  missing, and foreign status IDs, missing/null/empty ID lists, with saved order preserved after rejected
+  missing, and foreign status IDs, missing/null/empty/non-array ID lists and
+  malformed UUID items, with saved order preserved after rejected
   requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`
   and `BoardControllerApiTest.statusOrderRequiresANonemptyIdList`).
 - [x] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
