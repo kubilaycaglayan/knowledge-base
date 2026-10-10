@@ -102,13 +102,25 @@ const today = new Date();
 const initialParams = new URLSearchParams(window.location.search);
 const requestedStart = initialParams.get("startDate");
 const requestedEnd = initialParams.get("endDate");
-const selectedRange = ref<DateRange>({
-  startDate:
-    requestedStart ||
-    format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
-  endDate:
-    requestedEnd || format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
-});
+function isIsoDate(value: string | null): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = parseISO(value);
+  return !Number.isNaN(parsed.getTime()) && format(parsed, "yyyy-MM-dd") === value;
+}
+const requestedRangeIsValid =
+  isIsoDate(requestedStart) &&
+  isIsoDate(requestedEnd) &&
+  requestedStart <= requestedEnd;
+const hasRequestedRange = initialParams.has("startDate") || initialParams.has("endDate");
+const defaultRange: DateRange = {
+  startDate: format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+  endDate: format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+};
+const selectedRange = ref<DateRange>(
+  requestedRangeIsValid
+    ? { startDate: requestedStart, endDate: requestedEnd }
+    : defaultRange,
+);
 const aggregationValues: Aggregation[] = [
   "DAY",
   "WEEK",
@@ -120,11 +132,28 @@ const trendlineModes: TrendlineMode[] = ["OFF", "LINEAR", "PARABOLIC"];
 const requestedAggregation = new URLSearchParams(window.location.search)
   .get("aggregation")
   ?.toUpperCase();
+const requestedAggregationIsValid = aggregationValues.includes(
+  requestedAggregation as Aggregation,
+);
 const aggregation = ref<Aggregation>(
-  aggregationValues.includes(requestedAggregation as Aggregation)
+  requestedAggregationIsValid
     ? (requestedAggregation as Aggregation)
     : "DAY",
 );
+function normalizeInvalidQuery() {
+  const normalizeRange = hasRequestedRange && !requestedRangeIsValid;
+  const normalizeAggregation =
+    initialParams.has("aggregation") && !requestedAggregationIsValid;
+  if (!normalizeRange && !normalizeAggregation) return;
+  const url = new URL(window.location.href);
+  if (normalizeRange) {
+    url.searchParams.set("startDate", selectedRange.value.startDate);
+    url.searchParams.set("endDate", selectedRange.value.endDate);
+  }
+  if (normalizeAggregation)
+    url.searchParams.set("aggregation", aggregation.value.toLowerCase());
+  window.history.replaceState(window.history.state, "", url);
+}
 const selectedPathIds = ref<string[]>(initialParams.getAll("pathId"));
 const selectedLabelIds = ref<string[]>(initialParams.getAll("labelId"));
 const pathsStore = usePathsStore();
@@ -480,6 +509,7 @@ function shiftAnchor(amount: number) {
   void load();
 }
 onMounted(() => {
+  normalizeInvalidQuery();
   window.addEventListener("popstate", syncReportStateFromUrl);
   void load();
   void loadPaths();
