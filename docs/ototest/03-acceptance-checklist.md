@@ -1224,7 +1224,7 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Reorder notes
 
 - [x] Reordering notes changes their visible order after reload. Evidence: `NotesView.test.ts` / `pins notes and persists card ordering` checks the new order on the list and after remount from the API fixture.
-- [x] Keyboard/touch alternatives are available where drag reordering is supported. Evidence: `NotesView.test.ts` / `reorders notes with accessible move controls` verifies semantic Move up/Move down buttons; `.note-order-button` provides a 44px minimum target.
+- [x] Keyboard/touch alternatives are available where drag reordering is supported. Evidence: `NotesView.test.ts` / `reorders notes with accessible move controls`; `nav-shell.acceptance.test.mjs` / `reorders notes with a touch-sized control at phone width` and `reorders notes with the keyboard on desktop` verify the 44px touch target and browser keyboard operation.
 - [x] A failed reorder restores the saved order or provides a clear retry. Evidence: `NotesView.test.ts` / `keeps note order after a failed reorder and allows a retry` verifies the saved order remains visible, the error is announced, and a second drag succeeds.
 
 ### Flow: Recover unsaved note changes
