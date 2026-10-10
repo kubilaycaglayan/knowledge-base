@@ -578,7 +578,8 @@ browser interaction evidence remains a separate layer.
   IDs are checked wherever applicable to the operation.
   Batch list and undo ownership are covered for both import types by
   `KnowIntegrationTest.knowledgeBaseBatchListAndUndoAreOwnerScopedAndRepeatedUndoIsIdempotent`
-  and `clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`.
+  and `clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`; foreign
+  and missing batch IDs both return 404.
 - [ ] Foreign resources are not distinguished from missing resources where
   the API contract intentionally returns not found.
 - [ ] Cross-user coverage uses at least two disposable accounts and verifies

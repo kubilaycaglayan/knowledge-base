@@ -846,9 +846,14 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     String batchId = ownerBatches.get(0).get("id").asText();
 
     assertTrue(get("/api/v1/imports/knowledge-base/batches", other).getBody().isEmpty());
-    assertEquals(
-        HttpStatus.NOT_FOUND,
-        delete("/api/v1/imports/knowledge-base/batches/" + batchId, other).getStatusCode());
+    HttpStatus foreignBatchStatus =
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, other).getStatusCode();
+    HttpStatus missingBatchStatus =
+        delete(
+                "/api/v1/imports/knowledge-base/batches/" + UUID.randomUUID(), other)
+            .getStatusCode();
+    assertEquals(HttpStatus.NOT_FOUND, foreignBatchStatus);
+    assertEquals(foreignBatchStatus, missingBatchStatus);
     assertEquals(HttpStatus.OK, get("/api/v1/paths/" + pathId, owner).getStatusCode());
 
     ResponseEntity<JsonNode> undo =
@@ -2351,9 +2356,12 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(secondBatchId, listed.get(0).get("id").asText(), "Batch list is newest first");
     assertEquals(firstBatchId, listed.get(1).get("id").asText());
     assertTrue(get("/api/v1/imports/clockify/batches", other).getBody().isEmpty());
-    assertEquals(
-        HttpStatus.NOT_FOUND,
-        delete("/api/v1/imports/clockify/batches/" + secondBatchId, other).getStatusCode());
+    HttpStatus foreignBatchStatus =
+        delete("/api/v1/imports/clockify/batches/" + secondBatchId, other).getStatusCode();
+    HttpStatus missingBatchStatus =
+        delete("/api/v1/imports/clockify/batches/" + UUID.randomUUID(), other).getStatusCode();
+    assertEquals(HttpStatus.NOT_FOUND, foreignBatchStatus);
+    assertEquals(foreignBatchStatus, missingBatchStatus);
     assertEquals(2, get("/api/v1/time-entries", owner).getBody().size());
 
     ResponseEntity<JsonNode> undo =
