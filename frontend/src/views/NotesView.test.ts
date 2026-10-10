@@ -1300,13 +1300,18 @@ describe("NotesView", () => {
   });
 
   it("restores a note from the archive", async () => {
+    let restored = false;
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
-        if (path === "/notes/note-1/restore" && options?.method === "POST")
+        if (path === "/notes/note-1/restore" && options?.method === "POST") {
+          restored = true;
           return undefined;
-        if (path.includes("archived=true"))
-          return page([{ ...note, deletedAt: "2026-09-03T10:00:00Z" }]);
-        if (path.startsWith("/notes?")) return page();
+        }
+        if (path.startsWith("/notes?")) {
+          const archived = new URLSearchParams(path.split("?")[1]).get("archived") === "true";
+          if (archived) return page(restored ? [] : [{ ...note, deletedAt: "2026-09-03T10:00:00Z" }]);
+          return page([note]);
+        }
         return undefined;
       },
     );
@@ -1322,5 +1327,13 @@ describe("NotesView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1/restore", {
       method: "POST",
     });
+    expect(wrapper.findAll(".note-row")).toHaveLength(0);
+    expect(wrapper.text()).toContain("Your notes will appear here.");
+    expect(wrapper.get("button").text()).toBe("Active notes");
+
+    await wrapper.get(".notes-pagination-summary button").trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".note-row").text()).toContain("Learning");
+    expect(wrapper.get(".note-row").text()).toContain("Graph theory");
   });
 });
