@@ -19,6 +19,7 @@ async function fixture(t, width, { warmup = false } = {}) {
   const requests = [];
   const reportQueries = [];
   const paths = [];
+  const calendarDays = [];
   await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
   // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
   if (warmup) await context.addInitScript(() => localStorage.setItem("know_warmup", "force"));
@@ -49,6 +50,18 @@ async function fixture(t, width, { warmup = false } = {}) {
       body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
     }
     else if (path === "/timers/draft" || path === "/preferences") body = {};
+    else if (path === "/calendar/days" && method === "GET") body = calendarDays;
+    else if (path === "/calendar/days/range" && method === "PUT") body = [];
+    else if (path.startsWith("/calendar/days/") && method === "PUT") {
+      const record = {
+        date: path.split("/").at(-1),
+        ...route.request().postDataJSON(),
+      };
+      const index = calendarDays.findIndex((day) => day.date === record.date);
+      if (index === -1) calendarDays.push(record);
+      else calendarDays[index] = record;
+      body = record;
+    }
     const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone" || path.startsWith("/labels/gone/history");
     await route.fulfill({ status: missingRecord ? 404 : 200, json: missingRecord ? { message: "Not found" } : body });
   });
@@ -367,6 +380,29 @@ it("selects a calendar day with touch and updates its details panel", async (t) 
     await page.locator(".day-editor-heading h2").textContent(),
     new RegExp(`\\b${targetDay}\\b`),
   );
+});
+
+it("reloads a saved Calendar note from its selected day record", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const note = "Browser fixture calendar note";
+  await page.locator(".day-editor textarea").fill(note);
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save day" }).click();
+  await saved;
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(
+    (expected) => document.querySelector(".day-editor textarea")?.value === expected,
+    note,
+  );
+  assert.equal(await page.locator(".day-editor textarea").inputValue(), note);
 });
 
 it("opens a session detail when the browser loads its deep link directly", async (t) => {

@@ -518,7 +518,9 @@ the extension has its own scope in OTOTEST-04.
 - [x] Saving a note updates only the selected day. Evidence:
   `frontend/src/views/CalendarView.test.ts`, `loads labels and a month range,
   then saves a selected day with a full-day label` checks the exact date URL
-  and note payload.
+  and note payload; `scripts/nav-shell.acceptance.test.mjs`, `reloads a saved
+  Calendar note from its selected day record` verifies mocked-API save/reload
+  persistence in desktop Chromium.
 - [x] Saving label assignments updates only the selected day. Evidence: the
   same test checks the exact date URL and label portion in the save payload.
 - [x] An existing label hidden from the Calendar list can still be found in
