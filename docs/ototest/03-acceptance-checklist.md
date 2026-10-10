@@ -1448,6 +1448,11 @@ criteria remain open.
   still needs verification.
 - [ ] The on-screen keyboard does not permanently obscure the active control
   or its save/recovery action.
+  Partial evidence: `nav-shell.acceptance.test.mjs` / `creates a Log with
+  phone-width controls and keeps Save reachable after viewport resize` retains
+  the typed draft and scrolls Save into view at a 420px viewport height after
+  focusing the timestamp field. This emulates reduced viewport height; actual
+  Android keyboard behavior remains unverified.
 - [ ] Modals and drawers keep their content scroll contained and provide a
   reachable close action.
 - [ ] Gestures have a tap or keyboard alternative unless the gesture is

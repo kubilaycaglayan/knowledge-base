@@ -671,16 +671,25 @@ it("restores the Log search query from a direct URL after reload", async (t) => 
   assert.equal(await page.locator(".log-entry").count(), 1, "Reload preserves the filtered result from the URL");
 });
 
-it("creates a Log with phone-width controls and shows the saved record", async (t) => {
+it("creates a Log with phone-width controls and keeps Save reachable after viewport resize", async (t) => {
   const { page } = await fixture(t, 390);
   await page.goto(`${server.resolvedUrls.local[0]}logs`);
 
   const body = page.getByRole("textbox", { name: "Log text" });
   const timestamp = page.getByRole("textbox", { name: "Log timestamp" });
   await body.fill("A log created from the phone layout");
+  await page.setViewportSize({ width: 390, height: 420 });
+  await timestamp.focus();
   await timestamp.fill("2026-10-01T09:30");
 
   const save = page.getByRole("button", { name: "Save", exact: true });
+  await save.scrollIntoViewIfNeeded();
+  const saveVisible = await save.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  });
+  assert.equal(saveVisible, true, "Save remains reachable after the phone viewport shrinks around the active timestamp field");
+  assert.equal(await body.inputValue(), "A log created from the phone layout", "Viewport resizing preserves the draft text");
   const createRequest = page.waitForRequest((request) => {
     if (request.method() !== "POST" || !new URL(request.url()).pathname.endsWith("/logs")) return false;
     const payload = request.postDataJSON();
