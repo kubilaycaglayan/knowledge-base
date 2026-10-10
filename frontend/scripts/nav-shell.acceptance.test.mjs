@@ -1512,8 +1512,12 @@ it("opens a log detail when the browser loads its deep link directly", async (t)
   await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
   const dialog = page.getByRole("dialog");
   await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
+  assert.equal(await dialog.getAttribute("aria-modal"), "true");
   assert.equal(new URL(page.url()).pathname, "/logs/log-deep-link");
   assert.ok(requests.includes("/logs/log-deep-link"));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.getByRole("heading", { name: "Logs", exact: true }).waitFor();
 });
 
 it("wraps very long Log text within the phone-width detail layout", async (t) => {
