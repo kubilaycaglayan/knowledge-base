@@ -418,9 +418,13 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Filter report totals by path
 
-- [ ] Selecting a path limits totals, breakdowns, and daily values to that
-  path's tracked time.
-- [ ] Clearing the path filter restores all path totals for the same interval.
+- [x] Selecting a path limits totals, breakdowns, and daily values to that
+  path's tracked time. Evidence: `frontend/src/views/ReportsView.test.ts`,
+  `filters the report by path and restores all path totals when cleared`
+  verifies the selected path query and the path-specific report response.
+- [x] Clearing the path filter restores all path totals for the same interval.
+  Evidence: the same component test verifies the path query is removed, the
+  interval is unchanged, and the unfiltered cached report returns.
 
 ### Flow: Filter report totals by label
 

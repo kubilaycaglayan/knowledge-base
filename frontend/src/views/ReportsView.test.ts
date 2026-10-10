@@ -230,6 +230,90 @@ describe("ReportsView", () => {
     expect(query.getAll("pathId")).toEqual(["path-1", "path-2"]);
   });
 
+  it("filters the report by path and restores all path totals when cleared", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      const pathIds = params.getAll("pathId");
+      const filtered = pathIds.includes("path-1");
+      const paths = filtered
+        ? [{ id: "path-1", label: "Wander", seconds: 3600 }]
+        : [
+            { id: "path-1", label: "Wander", seconds: 3600 },
+            { id: "path-2", label: "Other", seconds: 3600 },
+          ];
+      return {
+        period: "WEEK",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: filtered ? 3600 : 7200,
+        days: [
+          {
+            date: "2026-08-25",
+            totalSeconds: filtered ? 3600 : 7200,
+            paths,
+            sessionLabels: [],
+          },
+        ],
+        paths,
+        sessionLabels: [],
+        calendarLabels: [],
+      } as never;
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    const initialRequest = [...vi.mocked(api).mock.calls]
+      .reverse()
+      .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    const unfilteredRange = new URL(
+      initialRequest,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(wrapper.text()).toContain("02:00:00");
+    expect(wrapper.text()).toContain("Other");
+
+    await (
+      wrapper.vm as unknown as { selectPaths: (ids: string[]) => Promise<void> }
+    ).selectPaths(["path-1"]);
+    await flushPromises();
+    const filteredRequest = [...vi.mocked(api).mock.calls]
+      .reverse()
+      .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    expect(
+      new URL(filteredRequest, "https://knowledge-base.test").searchParams.getAll(
+        "pathId",
+      ),
+    ).toEqual(["path-1"]);
+    const filteredParams = new URL(
+      filteredRequest,
+      "https://knowledge-base.test",
+    ).searchParams;
+    expect(filteredParams.get("startDate")).toBe(
+      unfilteredRange.get("startDate"),
+    );
+    expect(filteredParams.get("endDate")).toBe(
+      unfilteredRange.get("endDate"),
+    );
+    expect(wrapper.text()).toContain("01:00:00");
+    expect(wrapper.text()).not.toContain("Other");
+
+    await (
+      wrapper.vm as unknown as { selectPaths: (ids: string[]) => Promise<void> }
+    ).selectPaths([]);
+    await flushPromises();
+    expect(new URL(window.location.href).searchParams.getAll("pathId")).toEqual(
+      [],
+    );
+    expect(new URL(window.location.href).searchParams.get("startDate")).toBe(
+      unfilteredRange.get("startDate"),
+    );
+    expect(new URL(window.location.href).searchParams.get("endDate")).toBe(
+      unfilteredRange.get("endDate"),
+    );
+    expect(wrapper.text()).toContain("02:00:00");
+    expect(wrapper.text()).toContain("Other");
+  });
+
   it("shows each selected path and label name on its filter chip", async () => {
     window.history.replaceState({}, "", "/reports?pathId=path-1&labelId=label-1");
     const { VSelect: _nativeSelect, VTextField: _plainInput, ...stubs } = global.stubs;
