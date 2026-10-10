@@ -69,6 +69,45 @@ describe("ImportsView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/imports/clockify/batches");
   });
 
+  it("imports Knowledge Base CSV text and reports the server outcome", async () => {
+    const csv = 'entity,id,payload\npath,5e457350-f981-4f0a-a6cf-9a2e104ae1e5,"{}"\n';
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/imports/knowledge-base/batches")
+        return [
+          {
+            id: "kb-batch-1",
+            source: "KNOWLEDGE_BASE",
+            imported: 2,
+            skipped: 1,
+            createdPaths: 1,
+            createdAt: "2026-08-26T10:00:00Z",
+            undoneAt: null,
+          },
+        ];
+      if (path === "/imports/knowledge-base")
+        return { batchId: "kb-batch-1", imported: 2, skipped: 1, createdPaths: 1 };
+      return undefined;
+    });
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    await flushPromises();
+    await wrapper.get('textarea[aria-label="Knowledge Base CSV"]').setValue(csv);
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/imports/knowledge-base",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "text/csv" },
+        body: csv,
+      }),
+    );
+    expect(wrapper.get('[role="status"]').text()).toContain(
+      "Imported 2 records, skipped 1 duplicates, and created 1 paths.",
+    );
+    expect(wrapper.text()).toContain("2 imported");
+  });
+
   it("invalidates cached sessions and reports after importing activity", async () => {
     const reports = useReportsStore();
     const sessions = useSessionsStore();
