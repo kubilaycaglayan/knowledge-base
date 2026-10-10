@@ -45,4 +45,19 @@ class LogListIntegrationTest extends IntegrationTestSupport {
     assertFalse(rows.toString().contains("Foreign latest"));
     assertTrue(api.get("/api/v1/logs", api.register()).json().isEmpty());
   }
+
+  @Test
+  void logsWithTheSameOccurrenceTimeUseDescendingIdAsAStableTieBreak() {
+    String owner = api.register();
+    String occurredAt = "2026-09-03T09:00:00Z";
+    JsonNode first = log(owner, "First tied log", occurredAt);
+    JsonNode second = log(owner, "Second tied log", occurredAt);
+    List<String> expected =
+        List.of(first.get("id").asText(), second.get("id").asText()).stream()
+            .sorted(java.util.Comparator.reverseOrder())
+            .toList();
+
+    JsonNode rows = api.get("/api/v1/logs", owner).json();
+    assertEquals(expected, rows.findValuesAsText("id"));
+  }
 }
