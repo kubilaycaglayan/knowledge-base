@@ -112,10 +112,11 @@ browser interaction evidence remains a separate layer.
   `AuthControllerApiTest.googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary`;
   verifier-level malformed tokens are covered by
   `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
-- [ ] `GET /api/v1/auth/me` has a successful current-account response
-  assertion.
-- [ ] `GET /api/v1/auth/me` has missing, malformed, expired, and invalid bearer
-  token outcomes linked to authentication/security evidence.
+- [x] `GET /api/v1/auth/me` returns the authenticated account's public profile
+  without its password hash (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
+- [x] `GET /api/v1/auth/me` rejects missing, malformed, expired, and invalid
+  bearer tokens (`SecurityHardeningIntegrationTest.everyProtectedRouteRejectsAnonymousRequests`
+  and `malformedTokensAreRejectedWithoutServerErrors`).
 - [ ] `PUT /api/v1/auth/password` has first-password setup and existing-password
   change behavior evidence.
 - [ ] `PUT /api/v1/auth/password` has current-password, new-password

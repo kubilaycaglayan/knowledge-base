@@ -225,6 +225,27 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile() throws Exception {
+    UUID id = UUID.randomUUID();
+    User user = new User("person@example.com", "private-hash", "Person");
+    when(users.findById(id)).thenReturn(Optional.of(user));
+    var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/auth/me").with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.userId").value(id.toString()))
+        .andExpect(jsonPath("$.email").value("person@example.com"))
+        .andExpect(jsonPath("$.displayName").value("Person"))
+        .andExpect(jsonPath("$.hasPassword").value(true))
+        .andExpect(jsonPath("$.hasGoogle").value(false))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("private-hash"))));
+  }
+
+  @Test
   void googleOnlyUserCanSetPasswordAfterAuthentication() throws Exception {
     UUID id = UUID.randomUUID();
     User user = new User("person@example.com", "random-hash", "Person", false);
