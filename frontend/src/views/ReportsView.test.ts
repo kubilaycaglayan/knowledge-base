@@ -448,18 +448,54 @@ describe("ReportsView", () => {
   });
 
   it("shifts the selected interval in both directions without changing aggregation", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (!path.startsWith("/reports?")) return [] as never;
+      const params = new URL(path, "https://knowledge-base.test").searchParams;
+      return {
+        period: "WEEK",
+        from: params.get("startDate"),
+        to: params.get("endDate"),
+        totalSeconds: 0,
+        days: [],
+        paths: [],
+        sessionLabels: [],
+        calendarLabels: [],
+      } as never;
+    });
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
+    const latestReportRequest = () =>
+      [...vi.mocked(api).mock.calls]
+        .reverse()
+        .find(([path]) => path.startsWith("/reports?"))?.[0] as string;
+    const initial = new URL(
+      latestReportRequest(),
+      "https://knowledge-base.test",
+    ).searchParams;
+    const initialStart = initial.get("startDate")!;
+    const initialEnd = initial.get("endDate")!;
+
     await wrapper.get('[aria-label="Previous date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
       expect.stringContaining("aggregation=DAY"),
     );
+    const previous = new URL(window.location.href).searchParams;
+    expect(previous.get("startDate")).toBe(
+      format(subDays(new Date(`${initialStart}T00:00:00`), 7), "yyyy-MM-dd"),
+    );
+    expect(previous.get("endDate")).toBe(
+      format(subDays(new Date(`${initialEnd}T00:00:00`), 7), "yyyy-MM-dd"),
+    );
+
     await wrapper.get('[aria-label="Next date range"]').trigger("click");
     await flushPromises();
     expect(vi.mocked(api).mock.calls.at(-1)?.[0]).toEqual(
       expect.stringContaining("aggregation=DAY"),
     );
+    const next = new URL(window.location.href).searchParams;
+    expect(next.get("startDate")).toBe(initialStart);
+    expect(next.get("endDate")).toBe(initialEnd);
   });
 
   it("loads yearly aggregations and shifts the interval forward", async () => {

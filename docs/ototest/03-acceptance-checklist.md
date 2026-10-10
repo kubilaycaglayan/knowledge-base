@@ -393,8 +393,10 @@ the extension has its own scope in OTOTEST-04.
   `frontend/src/views/ReportsView.test.ts`, `keeps the selected aggregation
   when the date interval changes` asserts both ISO endpoints in the report
   request.
-- [ ] Moving to the previous/next range changes the interval by the selected
-  aggregation period.
+- [x] Moving to the previous/next range moves the complete selected interval
+  and preserves aggregation. Evidence: `frontend/src/views/ReportsView.test.ts`,
+  `shifts the selected interval in both directions without changing
+  aggregation` asserts both endpoints in both directions.
 - [ ] Changing aggregation preserves the selected date interval.
 - [ ] Report range and supported filters are represented by the URL.
 - [x] Browser Back and Forward restore the report interval and aggregation
