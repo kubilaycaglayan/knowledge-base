@@ -3,6 +3,7 @@
 **Source revision:** `a488663c` (OTOTEST-05 reviewed source).
 **Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-10.
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
+**Inventory owner:** Knowledge Base maintainers; keep action evidence current and assign behavior gaps.
 **Test command:** `cd frontend && npm test` (Vitest); browser suites are individual `frontend/package.json` scripts. The inventory-creation pass did not execute them; latest local results are in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
 
 Test source directories: [web component tests](../../frontend/src/), [web browser acceptance scripts](../../frontend/scripts/), and [shared workflow definitions](../../.github/workflows/verify.yml).

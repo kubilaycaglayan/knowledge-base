@@ -3,6 +3,7 @@
 **Source revision:** `a488663c` (OTOTEST-05 reviewed source)
 **Source review:** `frontend/src/main.ts`, changed feature views, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`, 2026-10-10
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
+**Inventory owner:** Knowledge Base maintainers; maintain route evidence and assign follow-up gaps.
 **Evidence command:** `cd frontend && npm test` (Vitest); browser suites use their named npm scripts. The inventory-creation pass did not run tests; the latest local results are recorded in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
 
 “Component” means a Vue/Vitest assertion; it does not prove browser history, real API persistence, or visual layout. Rows marked gap have no assertion located for the stated route behavior. All unresolved route gaps are owned by Knowledge Base maintainers. `/development` is temporary tooling and excluded from supported route completeness.

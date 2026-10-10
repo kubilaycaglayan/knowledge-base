@@ -93,9 +93,10 @@ Calendar, Reports/Settings, and transfers, plus a packaged desktop Chrome
 extension browser journey. See the [OTOTEST-04 acceptance checklist](ototest/04-acceptance-checklist.md)
 for its recorded evidence and boundaries. OTOTEST-05 adds a CI check for
 stale local inventory links, duplicate route/API keys, missing row
-classifications and milestone-status drift, a same-review inventory update
-rule, explicit evidence-layer gate guidance, and a reusable run-record
-template. This does not close the remaining route/API/control behavior gaps or
+classifications or matrix owners, and milestone-status drift. It also adds a
+same-review inventory update rule, explicit evidence-layer gate guidance, and
+a reusable run-record template. This does not close the remaining
+route/API/control behavior gaps or
 claim that these additional browser suites have run in CI; those remain
 tracked in the matrices until their behavior-specific evidence is added.
 The [OTOTEST-05 local gate record](ototest/runs/2026-10-10-ototest-05-local-gates.md)

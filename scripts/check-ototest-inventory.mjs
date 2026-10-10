@@ -44,11 +44,21 @@ function checkTable(filename, headerText, { identityColumn = 0, sourceColumn = 1
   }
 }
 
+function checkInventoryOwner(filename) {
+  const source = fs.readFileSync(path.join(inventoryRoot, filename), "utf8");
+  if (!/^\*\*Inventory owner:\*\*\s+\S/m.test(source)) {
+    problems.push(`${filename}: missing inventory owner`);
+  }
+}
+
 checkTable("01-route-matrix.md", "| Route / state |", { classifiedColumn: 3 });
 checkTable("01-api-matrix.md", "| Verb + composed path |", { classifiedColumn: 2 });
 checkTable("01-control-matrix.md", "| Checklist IDs |", { classifiedColumn: 5 });
 checkTable("01-extension-and-feature-map.md", "| Entry point / capability |", { classifiedColumn: 3 });
 checkTable("01-extension-and-feature-map.md", "| Feature domain |", { classifiedColumn: 3 });
+for (const filename of ["01-route-matrix.md", "01-api-matrix.md", "01-control-matrix.md", "01-extension-and-feature-map.md"]) {
+  checkInventoryOwner(filename);
+}
 
 const apiRows = readTable("01-api-matrix.md", "| Verb + composed path |");
 const apiTestClasses = new Map();

@@ -19,7 +19,8 @@ make the required test layers visible in local guidance and CI.
   changed route/control/API behavior updates its inventory and adds or updates
   a named test. See [`docs/testing.md`](../testing.md) and the repository
   [pull request template](../../.github/pull_request_template.md).
-- [x] Extend the consistency check to flag unclassified rows, duplicate route
+- [x] Extend the consistency check to flag unclassified rows, ownerless
+  matrices, duplicate route
   and API row identities, stale local Markdown links, status drift, and API
   evidence references that no longer resolve to Java test methods.
   Control-matrix IDs are cross-references shared with the feature checklist,

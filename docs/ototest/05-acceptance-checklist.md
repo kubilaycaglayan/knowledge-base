@@ -23,9 +23,9 @@ Use the [execution evidence template](evidence-template.md) for each run that
 is cited as completion evidence. The automated inventory check is
 `node scripts/check-ototest-inventory.mjs`; it verifies local Markdown links,
 unique route/API row keys, nonempty source/evidence and classification fields,
-and milestone status consistency. It resolves qualified API evidence names to
-existing Java test methods and deliberately makes no claims about assertion
-quality.
+matrix ownership, and milestone status consistency. It resolves qualified API
+evidence names to existing Java test methods and deliberately makes no claims
+about assertion quality.
 
 The release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
 It documents passed local gates and the passing hosted `verify` run. Physical
@@ -467,24 +467,24 @@ physical-device pass.
 
 ### Flow: Maintain the frontend gate
 
-- [ ] The local command and CI job for frontend component behavior are
+- [x] The local command and CI job for frontend component behavior are
   recorded separately from the production web build.
-- [ ] The web build is represented as build evidence and not as behavioral
+- [x] The web build is represented as build evidence and not as behavioral
   acceptance by itself.
-- [ ] Web-app real-browser assertions are associated with the exact browser
+- [x] Web-app real-browser assertions are associated with the exact browser
   workflow/job that executes them.
-- [ ] Desktop Chromium and Android/mobile Chromium evidence are distinguished
+- [x] Desktop Chromium and Android/mobile Chromium evidence are distinguished
   when the covered behavior is platform-sensitive.
 
 ### Flow: Maintain the backend gate
 
-- [ ] The backend test command and workflow job are recorded with the
+- [x] The backend test command and workflow job are recorded with the
   supported Java/Gradle environment.
-- [ ] API contract and ownership evidence are associated with the applicable
+- [x] API contract and ownership evidence are associated with the applicable
   integration assertions, not only controller source scans.
-- [ ] PostgreSQL-backed checks identify their disposable database/service,
+- [x] PostgreSQL-backed checks identify their disposable database/service,
   migration mode, and cleanup boundary.
-- [ ] Migration validation evidence distinguishes an empty-database migration
+- [x] Migration validation evidence distinguishes an empty-database migration
   from startup against a migrated database.
 
 ### Flow: Maintain the real-stack browser gate
@@ -512,47 +512,47 @@ physical-device pass.
 
 - [x] The evidence template identifies the release/milestone and reviewed
   commit.
-- [ ] Each required suite records its exact workflow/job or local command.
-- [ ] Each suite records pass, fail, skipped, unavailable, or manual status.
-- [ ] Skipped or unavailable evidence includes the reason and responsible
+- [x] Each required suite records its exact workflow/job or local command.
+- [x] Each suite records pass, fail, skipped, unavailable, or manual status.
+- [x] Skipped or unavailable evidence includes the reason and responsible
   owner.
-- [ ] Browser/device profile and evidence artifact links are recorded for
+- [x] Browser/device profile and evidence artifact links are recorded for
   browser-based checks.
-- [ ] The record lists known limitations and unresolved coverage gaps.
-- [ ] Credentials and personal data are absent from checked-in records and
+- [x] The record lists known limitations and unresolved coverage gaps.
+- [x] Credentials and personal data are absent from checked-in records and
   shared artifacts.
 
 ### Flow: Resolve one failed required gate
 
-- [ ] A failing required gate blocks acceptance until the failure is fixed or
+- [x] A failing required gate blocks acceptance until the failure is fixed or
   an approved scope decision is documented.
-- [ ] The failure record links the failing assertion or job and the relevant
+- [x] The failure record links the failing assertion or job and the relevant
   redacted artifact.
-- [ ] The owner records whether the issue is a product defect, test/evidence
+- [x] The owner records whether the issue is a product defect, test/evidence
   defect, environment failure, or documented limitation.
-- [ ] The repaired gate is rerun and the successful run is linked before the
+- [x] The repaired gate is rerun and the successful run is linked before the
   row is marked covered.
 
 ### Flow: Review one inventory during release readiness
 
-- [ ] The route inventory is reconciled against `frontend/src/main.ts`.
-- [ ] The endpoint inventory is reconciled against Spring controller
+- [x] The route inventory is reconciled against `frontend/src/main.ts`.
+- [x] The endpoint inventory is reconciled against Spring controller
   mappings and the documented API contract.
-- [ ] The control/feature inventory is reconciled against the current page
+- [x] The control/feature inventory is reconciled against the current page
   templates and shared components.
-- [ ] The extension permission inventory is reconciled against the current
+- [x] The extension permission inventory is reconciled against the current
   Manifest V3 configuration.
-- [ ] Unmapped product behavior is assigned a status and owner before the
+- [x] Unmapped product behavior is assigned a status and owner before the
   release review closes.
-- [ ] The review revision and resulting evidence links are recorded.
+- [x] The review revision and resulting evidence links are recorded.
 
 ### Flow: Update project guidance for one coverage-status change
 
-- [ ] `docs/testing.md` identifies the current test layers and authoritative
+- [x] `docs/testing.md` identifies the current test layers and authoritative
   local/CI commands.
-- [ ] `docs/test-coverage-audit.md` reflects changed gap status and remaining
+- [x] `docs/test-coverage-audit.md` reflects changed gap status and remaining
   limitations.
-- [ ] The OTOTEST roadmap and milestone index agree on the milestone status.
+- [x] The OTOTEST roadmap and milestone index agree on the milestone status.
 - [ ] A milestone is marked Complete only after its acceptance and passing
   run evidence are linked.
 - [ ] A closed decision names the affected scope, decision owner, and
@@ -566,18 +566,18 @@ physical-device pass.
   classification.
 - [x] The consistency review identifies duplicate route and API row keys.
 - [x] The CI check identifies broken local Markdown inventory links.
-- [ ] The consistency review identifies a row with no source, owner, or
+- [x] The consistency review identifies a row with no source, matrix owner, or
   evidence classification.
-- [ ] A source scan is treated only as drift detection, never as behavioral
+- [x] A source scan is treated only as drift detection, never as behavioral
   coverage evidence.
 
 ### Flow: Resolve one stale evidence reference
 
-- [ ] A stale reference is repaired, or the row is marked as a gap with an
+- [x] A stale reference is repaired, or the row is marked as a gap with an
   owner.
-- [ ] The replacement reference proves the same behavior and evidence layer
+- [x] The replacement reference proves the same behavior and evidence layer
   as the prior reference.
-- [ ] A weaker replacement is not silently treated as equivalent evidence.
+- [x] A weaker replacement is not silently treated as equivalent evidence.
 
 ## Isolation and artifact safety
 
@@ -634,6 +634,7 @@ route/component/API mapping or workflow job, evidence layer, exact
 assertion/procedure, reviewed source revision, result, and run/artifact link.
 Record desktop Chrome and Android Chrome outcomes independently when their
 behavior differs. Record any excluded or unavailable evidence with its reason
-and owner. This checklist defines acceptance expectations only; it does not
-claim that OTOTEST-05 gates, tests, or product flows have been implemented or
-executed.
+and owner. Checked criteria link to the current inventory, guidance, and run
+evidence. Unchecked criteria remain open product-flow or release-review
+acceptance items; completing gate setup does not imply those behaviors have
+been exercised or their gaps closed.

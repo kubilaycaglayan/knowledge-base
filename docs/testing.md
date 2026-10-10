@@ -17,10 +17,10 @@ For a route, API contract, visible control, gesture, permission, or security
 boundary change, update the matching inventory in the same review and add or
 adjust a named behavioral assertion. Record an explicit exclusion or owner for
 an unresolved gap. Run `node scripts/check-ototest-inventory.mjs` to catch stale
-local Markdown links, unclassified rows, duplicate route/API keys, milestone
-status drift, missing source/evidence locations, and API evidence references
-that no longer resolve to Java test methods. It checks inventory integrity,
-not behavioral coverage.
+local Markdown links, unclassified rows, ownerless matrices, duplicate
+route/API keys, milestone status drift, missing source/evidence locations, and
+API evidence references that no longer resolve to Java test methods. It checks
+inventory integrity, not behavioral coverage.
 
 | Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
 | --- | --- | --- | --- |
