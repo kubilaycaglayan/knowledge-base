@@ -46,6 +46,20 @@ class LabelApiTest {
   }
 
   @Test
+  void labelHistoryRequiresValidKindAndIntegerPageBeforeServiceInvocation() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    String endpoint = "/api/v1/labels/" + UUID.randomUUID() + "/history/records";
+
+    for (String query : List.of("", "?kind=unknown", "?kind=sessions&page=next")) {
+      mvc.perform(get(endpoint + query).with(authentication(auth)))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service, history);
+  }
+
+  @Test
   void invalidLabelPayloadIsRejected() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());

@@ -54,6 +54,11 @@ class TimeEntryHistoryIntegrationTest extends IntegrationTestSupport {
 
     JsonNode secondPage = api.get("/api/v1/time-entries?page=1&size=2", owner).json();
     assertEquals(List.of(oldest.get("id").asText()), secondPage.get("sessions").findValuesAsText("id"));
+
+    JsonNode middlePage = api.get("/api/v1/time-entries?page=1&size=1", owner).json();
+    assertEquals(List.of(middle.get("id").asText()), middlePage.get("sessions").findValuesAsText("id"));
+    JsonNode finalPage = api.get("/api/v1/time-entries?page=2&size=1", owner).json();
+    assertEquals(List.of(oldest.get("id").asText()), finalPage.get("sessions").findValuesAsText("id"));
     JsonNode emptyPage = api.get("/api/v1/time-entries?page=0&size=2", api.register()).json();
     assertEquals(0, emptyPage.get("totalSessions").asInt());
     assertEquals(1, emptyPage.get("totalPages").asInt());

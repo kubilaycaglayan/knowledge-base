@@ -69,8 +69,13 @@ browser interaction evidence remains a separate layer.
 - [x] Include every `PATCH` mapping as its own operation row; none are
   currently declared.
 - [x] Include every `DELETE` mapping as its own operation row.
-- [ ] Include each alias route separately and state whether it has the same
-  status, request, response, and side effect as its canonical route.
+- [x] Include each alias route separately and state whether it has the same
+  status, request, response, and side effect as its canonical route. The two
+  controller mapping arrays are timer stop/cancel; each route has its own
+  matrix row, and `TimerApiTest.canonicalAndExplicitStopRoutesUseTheSameTimerAndResponse`,
+  `TimerApiTest.canonicalAndExplicitCancelRoutesCancelTheSameTimer`, and
+  `TimerStartIntegrationTest.timerStopAndCancelAliasesHaveMatchingStatusShapeAndEffects`
+  compare response/status and resulting current-timer state.
 - [ ] Include query parameters, defaults, accepted ranges, and repeated
   parameters in each applicable row.
 - [ ] Include request body fields, validation constraints, and optional fields
@@ -215,15 +220,17 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/labels/{id}/history` covers owner scope, timezone
   validation, totals, timeline, hourly values, and related labels.
 - [x] `GET /api/v1/labels/{id}/history/records` covers every supported record
-  kind, pagination, ordering, preview limits, and empty pages.
+  kind, pagination, ordering, preview limits, and empty pages. Missing/unknown
+  kind and non-integer page values return 400 before service access
+  (`LabelApiTest.labelHistoryRequiresValidKindAndIntegerPageBeforeServiceInvocation`).
 - [x] Label history excludes deleted or archived record types according to the
   documented contract.
 
 ## Flow: Cover Notes operations
 
 - [x] `GET /api/v1/notes` covers active, archived, paginated, and query-filtered
-  list behavior; negative page clamps to zero, page size clamps to 1–100, and
-  a page beyond the end is empty
+  list behavior; negative page clamps to zero and page size clamps to 1–100.
+  First, middle, final, and beyond-final pages return the expected results
   (`NoteListIntegrationTest.notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage`).
 - [x] `GET /api/v1/notes/labels` covers available NOTE labels and owner scope.
 - [x] `GET /api/v1/notes/{id}` covers owned, missing, foreign, and archived
@@ -299,7 +306,11 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/timers` covers server-owned start time, selected context,
   and one-running-timer behavior.
 - [x] Concurrent `POST /api/v1/timers` requests preserve the one-running-timer
-  invariant (`TimerPauseIntegrationTest.concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant`).
+  invariant (`TimerPauseIntegrationTest.concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant`);
+  service behavior rejects a second start before target validation or mutation
+  (`TimerServiceEdgeTest.startingWhileAnotherTimerRunsConflictsBeforeTargetValidationOrMutation`),
+  and guarded PostgreSQL evidence directly exercises the partial unique index
+  (`PostgresDatabaseConstraintIntegrationTest.postgresEnforcesTimeEntryChecksAndPathReferentialActions`).
 - [x] `PUT /api/v1/timers/{id}` covers update, optional stop/end-time behavior,
   and owner-scoped timer IDs; null label lists and missing start values are
   rejected before service execution
@@ -340,6 +351,8 @@ browser interaction evidence remains a separate layer.
   (`TimerApiTest.timeEntryHistoryRoutesUnpagedAndExplicitlyPagedRequestsToService`);
   non-integer page/size values return 400 before service execution
   (`TimerApiTest.timeEntryHistoryRejectsNonIntegerPaginationBeforeServiceAccess`).
+  Persisted first, middle, final, and empty-owner pages are covered by
+  `TimeEntryHistoryIntegrationTest.historyIsOwnerScopedNewestFirstAndPaginatesWithMetadata`.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
   persisted targets/duration, foreign ownership, and invalid interval boundaries;
@@ -443,7 +456,9 @@ browser interaction evidence remains a separate layer.
   (`BoardCardListIntegrationTest.cardListDefaultsFiltersStatusesAndListsArchivedCardsForOwner`).
 - [x] `GET /api/v1/boards/{id}/cards/page` covers empty/small/exact/overflow
   boundaries, safe default page size, stable cursor, PRIORITY and PRIORITY_LAST
-  page walks (`BoardControllerApiTest.cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor`,
+  page walks, malformed/out-of-range cursor and limit rejection
+  (`BoardControllerApiTest.cardPageValidatesCursorAndLimitBoundariesBeforeCardLookup`,
+  `BoardControllerApiTest.cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor`,
   `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
   `BoardColumnSortIntegrationTest.priorityPagesWalkEveryCardOnce`, and
   `BoardColumnSortIntegrationTest.priorityLastPagesOrderLowFirst`).
@@ -768,24 +783,39 @@ browser interaction evidence remains a separate layer.
   upper, and out-of-range boundary evidence.
 - [ ] Date and timestamp operations have timezone, leap-day, inclusive-range,
   and reversed-range evidence where applicable.
-- [ ] Pagination has first-page, middle-page, final-page, invalid-cursor, and
+- [x] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
   The all-board column card page has a multi-page persisted walk and rejects
   cursors below `-1` and limits outside `1..100`
   (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition` and
-  `columnCursorWalkRemainsStableAcrossManyPages`).
+  `columnCursorWalkRemainsStableAcrossManyPages`). Note and time-entry history
+  assert first/middle/final/beyond-final pages; label history walks six
+  PostgreSQL-backed pages without gaps; search walks first, middle, final, and
+  empty offsets; board cursor paging covers empty, exact, overflow, and invalid
+  limits (`NoteListIntegrationTest.notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage`,
+  `TimeEntryHistoryIntegrationTest.historyIsOwnerScopedNewestFirstAndPaginatesWithMetadata`,
+  `LabelHistoryIntegrationTest.postgresHighVolumeRecordPagesHaveStableOrderWithoutGaps`,
+  `SearchIntegrationTest.groupsAreLimitedAndPagedWithATotal`, and
+  `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
+  `BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`).
 - [ ] Ordered lists have stable tie-break and reorder persistence evidence
   where ordering is part of the contract.
 - [ ] Optimistic version or expected-update-time contracts have both current
   version success and stale version conflict evidence.
 - [ ] Idempotent operations document and assert repeated-request outcomes
   where idempotency is part of the API contract.
-- [ ] Concurrent timer-start behavior verifies the one-running-timer invariant
-  through both service behavior and the PostgreSQL uniqueness safeguard.
+- [x] Concurrent timer-start behavior verifies the one-running-timer invariant
+  through service behavior, concurrent HTTP starts, and the PostgreSQL
+  uniqueness safeguard (tests linked in the timer operation row above).
 - [ ] Multi-record mutation failures verify transaction rollback where
   persistence must remain atomic.
-- [ ] PostgreSQL-specific constraints and migration behavior run only under
-  the guarded disposable PostgreSQL path.
+- [x] PostgreSQL-specific constraint assertions run only under the guarded
+  disposable PostgreSQL path. `PostgresDatabaseConstraintIntegrationTest`
+  assumes `KB_TEST_POSTGRES_URL`, and `IntegrationTestSupport` verifies that
+  configured database with `PostgresTestDatabaseGuard` before wiring it into
+  the suite. CI provisions a per-run database in the `backend-postgres` job
+  (`.github/workflows/verify.yml`); migration transformation tests remain
+  separately named under `db.migration`.
 - [ ] Each new migration that transforms existing rows has a focused assertion
   for the transformed data and supported upgrade behavior.
 

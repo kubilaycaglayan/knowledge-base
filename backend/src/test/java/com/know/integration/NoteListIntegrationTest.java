@@ -83,8 +83,12 @@ class NoteListIntegrationTest extends IntegrationTestSupport {
   @Test
   void notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage() {
     String owner = api.register();
-    api.created("POST", "/api/v1/notes", owner, "{\"title\":\"First\",\"content\":\"one\"}");
-    api.created("POST", "/api/v1/notes", owner, "{\"title\":\"Second\",\"content\":\"two\"}");
+    JsonNode first =
+        api.created("POST", "/api/v1/notes", owner, "{\"title\":\"First\",\"content\":\"one\"}");
+    JsonNode second =
+        api.created("POST", "/api/v1/notes", owner, "{\"title\":\"Second\",\"content\":\"two\"}");
+    JsonNode third =
+        api.created("POST", "/api/v1/notes", owner, "{\"title\":\"Third\",\"content\":\"three\"}");
 
     JsonNode lowerBound = api.get("/api/v1/notes?page=-3&size=0", owner).json();
     assertEquals(0, lowerBound.get("page").asInt());
@@ -93,11 +97,16 @@ class NoteListIntegrationTest extends IntegrationTestSupport {
 
     JsonNode upperBound = api.get("/api/v1/notes?page=0&size=101", owner).json();
     assertEquals(100, upperBound.get("size").asInt());
-    assertEquals(2, upperBound.get("items").size());
+    assertEquals(3, upperBound.get("items").size());
 
-    JsonNode emptyPage = api.get("/api/v1/notes?page=2&size=1", owner).json();
-    assertEquals(2, emptyPage.get("page").asInt());
+    JsonNode middlePage = api.get("/api/v1/notes?page=1&size=1", owner).json();
+    assertEquals(second.get("id").asText(), middlePage.get("items").get(0).get("id").asText());
+    JsonNode finalPage = api.get("/api/v1/notes?page=2&size=1", owner).json();
+    assertEquals(first.get("id").asText(), finalPage.get("items").get(0).get("id").asText());
+
+    JsonNode emptyPage = api.get("/api/v1/notes?page=3&size=1", owner).json();
+    assertEquals(3, emptyPage.get("page").asInt());
     assertEquals(0, emptyPage.get("items").size());
-    assertEquals(2, emptyPage.get("totalItems").asLong());
+    assertEquals(3, emptyPage.get("totalItems").asLong());
   }
 }

@@ -2504,6 +2504,15 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   @Test
   void calendarDaysUseInclusiveBoundsAndRejectInvalidRanges() {
     String token = freshToken();
+    assertEquals(
+        HttpStatus.OK,
+        put("/api/v1/calendar/days/2024-02-29", token, "{\"note\":\"Leap day\",\"labels\":[]}")
+            .getStatusCode());
+    assertEquals(
+        List.of("2024-02-29"),
+        get("/api/v1/calendar/days?startDate=2024-02-29&endDate=2024-02-29", token)
+            .getBody()
+            .findValuesAsText("date"));
     for (String date :
         List.of("2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"))
       assertEquals(
@@ -2839,6 +2848,12 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             token,
             "{\"labels\":[{\"labelId\":\"" + labelId + "\",\"portion\":0.30}]}");
     assertEquals(HttpStatus.BAD_REQUEST, invalidPortion.getStatusCode());
+    JsonNode unchangedDay =
+        get("/api/v1/calendar/days?startDate=2026-09-15&endDate=2026-09-15", token)
+            .getBody()
+            .get(0);
+    assertEquals(maximumDayNote, unchangedDay.get("note").asText());
+    assertTrue(unchangedDay.get("labels").isEmpty());
 
     ResponseEntity<JsonNode> oversizedRange =
         put(

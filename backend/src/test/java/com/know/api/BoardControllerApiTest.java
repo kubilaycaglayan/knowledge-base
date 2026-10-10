@@ -353,6 +353,17 @@ class BoardControllerApiTest {
     verifyNoInteractions(cards);
   }
 
+  @Test void cardCreateRejectsImpossibleDateBeforeRepositoryAccess() throws Exception {
+    UUID boardId = UUID.randomUUID();
+    mvc.perform(
+            post("/api/v1/boards/" + boardId + "/cards")
+                .with(authentication(auth()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"bad date\",\"startDate\":\"2026-02-30\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(boards, statuses, cards);
+  }
+
   @Test void cardIsCreatedInTheRequestedStatusAtItsEnd() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
@@ -547,5 +558,37 @@ class BoardControllerApiTest {
         .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(20)).andExpect(jsonPath("$.nextCursor").value(nullValue()));
     mvc.perform(get("/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId).with(authentication(auth())))
         .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(20)).andExpect(jsonPath("$.nextCursor").value(19));
+  }
+
+  @Test
+  void cardPageValidatesCursorAndLimitBoundariesBeforeCardLookup() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), statusId = UUID.randomUUID();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(statusId, boardId)).thenReturn(Optional.of(status));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(
+            eq(boardId), eq(statusId), eq(-1), any()))
+        .thenReturn(List.of());
+    String endpoint = "/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId;
+
+    mvc.perform(get(endpoint + "&limit=1").with(authentication(auth())))
+        .andExpect(status().isOk());
+    mvc.perform(get(endpoint + "&limit=100").with(authentication(auth())))
+        .andExpect(status().isOk());
+
+    for (String query :
+        List.of("&cursor=-2", "&limit=0", "&limit=101", "&cursor=next", "&limit=many")) {
+      mvc.perform(get(endpoint + query).with(authentication(auth())))
+          .andExpect(status().isBadRequest());
+    }
+
+    verify(cards)
+        .findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(
+            eq(boardId), eq(statusId), eq(-1), argThat(page -> page.getPageSize() == 2));
+    verify(cards)
+        .findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(
+            eq(boardId), eq(statusId), eq(-1), argThat(page -> page.getPageSize() == 101));
+    verifyNoMoreInteractions(cards);
   }
 }

@@ -63,4 +63,50 @@ class TimerStartIntegrationTest extends IntegrationTestSupport {
     JsonNode current = api.get("/api/v1/timers/current", owner).json();
     assertEquals(timer.get("id").asText(), current.get("id").asText());
   }
+
+  @Test
+  void timerStopAndCancelAliasesHaveMatchingStatusShapeAndEffects() {
+    String owner = api.register();
+
+    JsonNode first = startTimer(owner);
+    ApiClient.Reply canonicalStop = api.post("/api/v1/timers/stop", owner, null);
+    assertEquals(200, canonicalStop.status(), canonicalStop.body());
+    JsonNode stoppedByCanonical = canonicalStop.json();
+    assertEquals(first.get("id").asText(), stoppedByCanonical.get("id").asText());
+    assertFalse(stoppedByCanonical.get("running").asBoolean());
+    assertCurrentIsEmpty(owner);
+
+    JsonNode second = startTimer(owner);
+    ApiClient.Reply idStop =
+        api.post("/api/v1/timers/" + second.get("id").asText() + "/stop", owner, null);
+    assertEquals(canonicalStop.status(), idStop.status(), idStop.body());
+    JsonNode stoppedById = idStop.json();
+    assertEquals(second.get("id").asText(), stoppedById.get("id").asText());
+    assertEquals(stoppedByCanonical.get("running"), stoppedById.get("running"));
+    assertCurrentIsEmpty(owner);
+
+    startTimer(owner);
+    ApiClient.Reply canonicalCancel = api.post("/api/v1/timers/cancel", owner, null);
+    assertEquals(204, canonicalCancel.status(), canonicalCancel.body());
+    assertCurrentIsEmpty(owner);
+
+    JsonNode fourth = startTimer(owner);
+    ApiClient.Reply idCancel =
+        api.post("/api/v1/timers/" + fourth.get("id").asText() + "/cancel", owner, null);
+    assertEquals(canonicalCancel.status(), idCancel.status(), idCancel.body());
+    assertCurrentIsEmpty(owner);
+  }
+
+  private void assertCurrentIsEmpty(String owner) {
+    ApiClient.Reply current = api.get("/api/v1/timers/current", owner);
+    assertEquals(200, current.status(), current.body());
+    assertTrue(current.body().isBlank() || current.json().isNull(), current.body());
+  }
+
+  private JsonNode startTimer(String owner) {
+    ApiClient.Reply start =
+        api.post("/api/v1/timers", owner, "{\"labelIds\":[],\"description\":\"Alias check\"}");
+    assertEquals(201, start.status(), start.body());
+    return start.json();
+  }
 }
