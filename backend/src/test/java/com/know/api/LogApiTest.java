@@ -86,6 +86,7 @@ class LogApiTest {
             "{}",
             "{\"body\":\" \",\"occurredAt\":\"" + timestamp + "\"}",
             "{\"body\":\"valid\"}",
+            "{\"body\":\"valid\",\"occurredAt\":\"not-an-instant\"}",
             "{\"body\":\"" + "x".repeat(20001) + "\",\"occurredAt\":\"" + timestamp + "\"}")) {
       mvc.perform(
               post(endpoint)
