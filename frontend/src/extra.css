@@ -1993,10 +1993,16 @@
   .report-date-range {
     flex: 1 1 100%;
     width: 100%;
+    flex-wrap: wrap;
   }
   .report-date-range .dp__main {
     width: auto;
-    flex: 1 1 0;
+    flex: 1 1 100%;
+  }
+  .report-date-range .range-arrow:nth-child(2) {
+    margin-left: auto;
+    border-left: 1px solid var(--workspace-control-border);
+    border-radius: 4px 0 0 4px;
   }
   .report-type-note {
     padding-bottom: 8px;
