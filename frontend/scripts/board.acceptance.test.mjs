@@ -818,6 +818,15 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor({ state: "detached" });
 
     await boardAction(page, "Kanban");
+    const archiveLink = page.locator("footer.board-footer").getByRole("link", { name: "Archived items" });
+    const archiveBounds = await archiveLink.boundingBox();
+    const trackerBounds = await page.locator(".floating-tracker-host .floating-tracker-bar").boundingBox();
+    assert.ok(archiveBounds && trackerBounds);
+    assert.ok(
+      archiveBounds.y + archiveBounds.height <= trackerBounds.y ||
+        archiveBounds.y >= trackerBounds.y + trackerBounds.height,
+      "The Archive action must stay outside the floating timer hit area",
+    );
     await restoreFromArchive(page, "Ship timeline");
     await boardAction(page, "Gantt");
     await page.locator(".timeline-bar", { hasText: "Ship timeline" }).waitFor();
