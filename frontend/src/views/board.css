@@ -247,6 +247,7 @@
 
 /* Card labels: a compact chip picker in the editor footer, one clipped row on cards. */
 .card-labels-picker-wrap { position:relative; flex:1 1 12rem; min-width:10rem; } .card-labels-picker { min-width:0; }
+.card-labels-picker-wrap :deep(.measure-row) { max-width:100%; overflow:hidden; }
 .card-labels-picker :deep(.v-field) { min-height:36px; border-radius:6px; background:var(--workspace-hover); box-shadow:none; font-size:.85rem; }
 .card-labels-picker :deep(.v-field__input) { min-height:36px; max-height:36px; padding-block:2px; gap:3px; flex-wrap:nowrap; overflow:hidden; } .card-labels-picker :deep(.v-autocomplete__selection:empty) { display:none; } .card-labels-picker :deep(.v-autocomplete__selection) { flex:0 0 auto; margin:0; }
 .card-labels-more, .card-labels-measure-chip { display:inline-flex; align-items:center; flex:0 0 auto; height:24px; padding:0 8px; border-radius:4px; font-size:.75rem; white-space:nowrap; } .card-labels-more { background:var(--workspace-selected); color:var(--muted-text); font-variant-numeric:tabular-nums; } .card-labels-measure-chip { padding-right:28px; }
