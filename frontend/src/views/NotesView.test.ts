@@ -548,7 +548,10 @@ describe("NotesView", () => {
 
     expect(writes).toHaveLength(1);
     expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
-    expect(wrapper.get('input[aria-label="Note title"]').element.value).toBe("Keep this draft");
+    expect(
+      (wrapper.get('input[aria-label="Note title"]').element as HTMLInputElement)
+        .value,
+    ).toBe("Keep this draft");
     expect(wrapper.get(".save-state").text()).toBe("Not saved");
     wrapper.unmount();
   });
