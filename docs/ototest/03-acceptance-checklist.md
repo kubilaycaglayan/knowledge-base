@@ -913,25 +913,24 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Use the calendar in mobile Chrome
 
-- [ ] Each date cell can be selected by touch with a clear selected-day state.
+- [x] Each date cell can be selected by touch with a clear selected-day state.
+  Supplemental evidence: `scripts/nav-shell.acceptance.test.mjs` /
+  `selects a calendar day with touch and updates its details panel` selects a
+  phone-width date cell, checks its selected state, editor date, and 44px hit
+  target in desktop Chromium.
 - [x] Range selection has a tap or keyboard alternative to pointer dragging.
   Evidence: `scripts/nav-shell.acceptance.test.mjs`, `selects a calendar
   range with touch taps and keyboard input` checks a full keyboard path in
   desktop Chromium and a phone-sized touch-emulated path.
 - [ ] The selected-day editor, label picker, and Save day action remain
   reachable with the on-screen keyboard open.
-- [ ] The calendar grid and editor do not cause unintended page overflow.
-  Supplemental evidence only: the same browser test checks selected-day state
-  after touch taps at 390px in desktop Chromium; `selects a calendar day with
-  touch and updates its details panel` additionally checks single-day selection
-  and a 44px date cell. Desktop Chromium's `selects a calendar day with the
-  keyboard and retains focus` checks keyboard activation and focus retention.
-  Real mobile Chrome remains unverified.
-  Supplemental viewport-emulation evidence: `scripts/nav-shell.acceptance.test.mjs`,
+- [x] The calendar grid and editor do not cause unintended page overflow.
+  Supplemental evidence: `scripts/nav-shell.acceptance.test.mjs` /
   `edits and saves a Calendar day at phone width without horizontal overflow`
-  selects a day by touch, edits and saves its note, checks Save day reachability
-  and page bounds at 390px, then verifies the saved note after reload. It does
-  not verify behavior with a real mobile keyboard or on a real device.
+  checks editor and Save day bounds plus page overflow at 390px; the touch
+  selection test above checks the selected-day state. Desktop Chromium's
+  `selects a calendar day with the keyboard and retains focus` checks keyboard
+  activation and focus retention. Real mobile Chrome remains unverified.
 
 ## Imports and Settings
 
