@@ -1106,6 +1106,48 @@ it("preserves a Timeline activity note after failure and saves it on retry", asy
   await activity.waitFor();
 });
 
+it("filters Timeline activity with phone-width controls and sends the selected values", async (t) => {
+  const { page } = await fixture(t, 390, {
+    pathSeeds: [{ id: "timeline-path", name: "Timeline Path", status: "ACTIVE" }],
+    timelineSeeds: [{ id: "phone-timeline-activity", type: "TIME_TRACKED", title: "Phone filter activity", detail: "A filtered activity", occurredAt: "2026-10-01T10:00:00Z", pathId: "timeline-path", timeEntryId: "phone-timeline-session" }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}timeline`);
+
+  const activityType = page.getByRole("combobox", { name: "Activity type" });
+  const path = page.getByRole("combobox", { name: "Path" });
+  const from = page.getByRole("textbox", { name: "From date" });
+  const to = page.getByRole("textbox", { name: "To date" });
+  await activityType.selectOption("TIME_TRACKED");
+  await path.selectOption("timeline-path");
+  await from.fill("2026-09-30");
+  await to.fill("2026-10-01");
+
+  const filterRequest = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith("/activities") &&
+      url.searchParams.get("type") === "TIME_TRACKED" &&
+      url.searchParams.get("pathId") === "timeline-path" &&
+      url.searchParams.get("from") === "2026-09-30T00:00:00Z" &&
+      url.searchParams.get("to") === "2026-10-01T23:59:59Z";
+  });
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await filterRequest;
+  await page.getByRole("heading", { name: "Phone filter activity" }).waitFor();
+
+  const touchTargetSizes = await Promise.all([
+    activityType,
+    path,
+    page.getByRole("button", { name: "Filter", exact: true }),
+    page.getByRole("button", { name: "Last 7 days" }),
+  ].map(async (locator) => locator.evaluate((element) => {
+    const { width, height } = element.getBoundingClientRect();
+    return { width, height };
+  })));
+  for (const size of touchTargetSizes) {
+    assert.ok(size.width >= 44 && size.height >= 44, `Expected a 44px phone touch target, got ${size.width}×${size.height}px`);
+  }
+});
+
 it("restores a hidden Path board tab after showing it from Paths", async (t) => {
   const { page, requests } = await fixture(t, 1440, {
     pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE", boardId: "board-1", boardHidden: true }],
