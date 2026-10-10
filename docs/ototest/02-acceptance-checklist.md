@@ -794,6 +794,8 @@ browser interaction evidence remains a separate layer.
   non-UTC offsets, and empty reversed ranges in
   `ActivityIntegrationTest.activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner`;
   remaining date-bearing operations still need a complete applicability audit.
+  This activity coverage passed the backend and guarded PostgreSQL jobs at
+  source `e9c2109e9b7b82dcdfb8b87d6fdf6016e36c1335` in [PR #145 CI](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38016095062).
 - [x] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
   The all-board column card page has a multi-page persisted walk and rejects
