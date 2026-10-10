@@ -26,6 +26,7 @@ describe("SettingsView", () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain("Sign-in methods");
+    expect(wrapper.get(".account-summary strong").text()).toBe("person@example.com");
     expect(
       (wrapper.get(".theme-select").element as HTMLSelectElement).value,
     ).toBe("auto");
