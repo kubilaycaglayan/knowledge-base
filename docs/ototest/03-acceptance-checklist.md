@@ -336,8 +336,10 @@ the extension has its own scope in OTOTEST-04.
   previous/next actions. Evidence: `SessionsView.test.ts` / `loads the selected
   pagination page` verifies page 1 is marked current, page 2 is available, and
   the current-page marker follows the selected page after loading it.
-- [ ] Loading another page preserves stable chronological order without
-  repeating rows.
+- [x] Loading another page preserves stable chronological order without
+  repeating rows. Evidence: `SessionsView.test.ts` / `loads the selected
+  pagination page` checks ordered descriptions across both pages and verifies
+  the combined page results contain no repeated row.
 
 ### Flow: Start a session from the tracker
 

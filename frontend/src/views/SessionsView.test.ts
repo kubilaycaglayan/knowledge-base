@@ -507,13 +507,23 @@ describe("SessionsView", () => {
   });
 
   it("loads the selected pagination page", async () => {
+    const pageRecords = [
+      [
+        { id: "newest", startedAt: "2026-09-03T08:00:00Z", endedAt: "2026-09-03T09:00:00Z", durationSeconds: 3600, description: "Newest", source: "WEB" },
+        { id: "middle", startedAt: "2026-09-02T08:00:00Z", endedAt: "2026-09-02T09:00:00Z", durationSeconds: 3600, description: "Middle", source: "WEB" },
+      ],
+      [
+        { id: "older", startedAt: "2026-09-01T08:00:00Z", endedAt: "2026-09-01T09:00:00Z", durationSeconds: 3600, description: "Older", source: "WEB" },
+        { id: "oldest", startedAt: "2026-08-31T08:00:00Z", endedAt: "2026-08-31T09:00:00Z", durationSeconds: 3600, description: "Oldest", source: "WEB" },
+      ],
+    ];
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path.startsWith("/time-entries?"))
         return {
           page: path.includes("page=1") ? 1 : 0,
           totalPages: 2,
-          totalSessions: 51,
-          sessions: [],
+          totalSessions: 4,
+          sessions: pageRecords[path.includes("page=1") ? 1 : 0],
         };
       if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
       return undefined;
@@ -521,14 +531,20 @@ describe("SessionsView", () => {
     const wrapper = mount(SessionsView);
     await flushPromises();
     const pages = wrapper.get('nav[aria-label="Session pages"]').findAll("button");
+    const descriptions = () => wrapper.findAll(".session-card .session-description").map((item) => item.text());
     expect(pages.map((button) => button.text())).toEqual(["1", "2"]);
     expect(pages[0].attributes("aria-current")).toBe("page");
     expect(pages[1].attributes("aria-current")).toBeUndefined();
+    expect(descriptions()).toEqual(["Newest", "Middle"]);
+    const firstPageRows = descriptions();
     await pages[1].trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries?page=1&size=50");
     expect(pages[0].attributes("aria-current")).toBeUndefined();
     expect(pages[1].attributes("aria-current")).toBe("page");
+    const secondPageRows = descriptions();
+    expect(secondPageRows).toEqual(["Older", "Oldest"]);
+    expect(new Set([...firstPageRows, ...secondPageRows]).size).toBe(4);
   });
 
   it("rejects an edit when either time field is missing", async () => {
