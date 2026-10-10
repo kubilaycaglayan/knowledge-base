@@ -391,6 +391,27 @@ it("selects a calendar day with touch and updates its details panel", async (t) 
   );
 });
 
+it("selects a calendar day with the keyboard and retains focus", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const target = page.locator("button.calendar-day:not(.muted)").nth(2);
+  const targetDay = await target.locator("time").textContent();
+  await target.focus();
+  await page.keyboard.press("Enter");
+
+  assert.equal(await target.getAttribute("aria-pressed"), "true");
+  assert.equal(
+    await page.locator('button.calendar-day[aria-pressed="true"]').count(),
+    1,
+  );
+  assert.equal(await target.evaluate((element) => element === document.activeElement), true);
+  assert.match(
+    await page.locator(".day-editor-heading h2").textContent(),
+    new RegExp(`\\b${targetDay}\\b`),
+  );
+});
+
 it("reloads a saved Calendar note from its selected day record", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);

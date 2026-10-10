@@ -571,7 +571,9 @@ the extension has its own scope in OTOTEST-04.
   Supplemental evidence only: the same browser test checks selected-day state
   after touch taps at 390px in desktop Chromium; `selects a calendar day with
   touch and updates its details panel` additionally checks single-day selection
-  and a 44px date cell. Real mobile Chrome remains unverified.
+  and a 44px date cell. Desktop Chromium's `selects a calendar day with the
+  keyboard and retains focus` checks keyboard activation and focus retention.
+  Real mobile Chrome remains unverified.
 
 ## Imports and Settings
 
