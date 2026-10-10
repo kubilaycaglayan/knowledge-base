@@ -118,8 +118,11 @@ browser interaction evidence remains a separate layer.
   fields are listed in the API matrix; the owner-scope rule is explicit and
   operation evidence names foreign-owner or wrong-parent assertions where
   verified.
-- [ ] Include each operation's read, create, update, archive, delete, ordering,
-  import, or other observable effect.
+- [x] Include each operation's read, create, update, archive, delete, ordering,
+  import, or other observable effect. The API matrix's evidence column records
+  returned/read-back state for reads and the observed persisted state, removal,
+  reassignment, ordering, or import result for mutations; operations without
+  state changes are described as reads or empty responses.
 - [x] Compare the resulting operation rows with the generated `/v3/api-docs`
   operation set (107 exact method/path matches, no set differences) and
   `docs/api.md`; operation rows are linked to documented API families.
