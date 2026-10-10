@@ -57,6 +57,13 @@ function clearRange() {
   to.value = "";
   void load();
 }
+function clearFilters() {
+  type.value = "";
+  pathId.value = "";
+  from.value = "";
+  to.value = "";
+  void load();
+}
 function openNote(activity: Activity) {
   noteActivityId.value = activity.id;
   noteTitle.value = "";
@@ -120,6 +127,12 @@ onMounted(async () => {
           Last 30 days</button
         ><button type="button" class="text-button" @click="clearRange">
           All time
+        </button><button
+          type="button"
+          class="text-button clear-timeline-filters"
+          @click="clearFilters"
+        >
+          Clear filters
         </button>
       </div>
       <select v-model="type" aria-label="Activity type">

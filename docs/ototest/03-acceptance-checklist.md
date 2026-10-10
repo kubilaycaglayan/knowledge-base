@@ -641,7 +641,7 @@ the extension has its own scope in OTOTEST-04.
   reversed date range without replacing current results` verifies the inline
   error, no filtered request, retained results, and recovery after correcting
   the dates.
-- [ ] Clearing timeline filters returns the default timeline state.
+- [x] Clearing timeline filters returns the default timeline state. Evidence: [`TimelineView.test.ts`](../../frontend/src/views/TimelineView.test.ts), `clears all timeline filters back to the default state`.
 - [ ] A filter with no matches displays an explicit empty state.
 - [ ] A stale response from an earlier filter does not replace newer results.
 
