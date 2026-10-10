@@ -531,6 +531,24 @@ describe("PathsView", () => {
     ).toBe(false);
   });
 
+  it("preserves an overlong Path name after the server rejects it", async () => {
+    const longName = "P".repeat(161);
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    const name = wrapper.get('input[aria-label="New path name"]');
+    await name.setValue(longName);
+    vi.mocked(api).mockRejectedValueOnce(new Error("Path name is too long"));
+    await wrapper.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create path.");
+    expect((name.element as HTMLInputElement).value).toBe(longName);
+    const request = vi.mocked(api).mock.calls.find(([path, options]) => path === "/paths" && options?.method === "POST");
+    expect(JSON.parse(String(request?.[1]?.body)).name).toBe(longName);
+    await wrapper.unmount();
+  });
+
   it("preserves a failed path create and lets the user retry", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();
