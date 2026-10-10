@@ -42,15 +42,20 @@ class TimerApiTest {
     UUID user = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
     when(service.history(user)).thenReturn(List.of());
+    when(service.historyPage(user, 0, 50))
+        .thenReturn(new TimerService.HistoryPage(List.of(), 0, 50, 0, 1));
     when(service.historyPage(user, 2, 7))
         .thenReturn(new TimerService.HistoryPage(List.of(), 2, 7, 0, 1));
 
     mvc.perform(get("/api/v1/time-entries").with(authentication(auth)))
         .andExpect(status().isOk());
+    mvc.perform(get("/api/v1/time-entries?page=0").with(authentication(auth)))
+        .andExpect(status().isOk());
     mvc.perform(get("/api/v1/time-entries?page=2&size=7").with(authentication(auth)))
         .andExpect(status().isOk());
 
     verify(service).history(user);
+    verify(service).historyPage(user, 0, 50);
     verify(service).historyPage(user, 2, 7);
   }
 
