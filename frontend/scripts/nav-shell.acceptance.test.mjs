@@ -301,10 +301,16 @@ it("keeps report date and total controls reachable on a phone viewport", async (
     const params = new URL(location.href).searchParams;
     return params.get("startDate") === expected && params.get("endDate") === expected;
   });
+  const expectedPrevious = await page.evaluate(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 2);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  });
   await page.getByRole("button", { name: "Previous date range" }).click();
-  await page.waitForFunction(() =>
-    new URL(location.href).searchParams.has("startDate"),
-  );
+  await page.waitForFunction((expected) => {
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === expected && params.get("endDate") === expected;
+  }, expectedPrevious);
 
   const dimensions = await page.evaluate(() => ({
     viewport: window.innerWidth,
