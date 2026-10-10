@@ -827,6 +827,8 @@ it("keeps report date and total controls reachable on a phone viewport", async (
       locator.boundingBox(),
     ),
   );
+  const dateInputBounds = await page.getByRole("textbox", { name: "Datepicker input" }).boundingBox();
+  assert.ok(dateInputBounds && dateInputBounds.width >= 240, "the selected date interval has enough input width to remain readable");
   assert.ok(
     bounds.every((box) => box && box.x >= 0 && box.x + box.width <= 390),
   );
