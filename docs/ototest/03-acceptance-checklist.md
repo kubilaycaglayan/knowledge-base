@@ -327,8 +327,11 @@ the extension has its own scope in OTOTEST-04.
   Sessions workspace directly with its empty state and inline tracker` in
   `frontend/scripts/nav-shell.acceptance.test.mjs` verifies the Start timer
   button is available alongside the empty-state message.
-- [ ] Session rows show their date/time, path, description, and available
-  labels.
+- [x] Session rows show their date/time, path, description, and available
+  labels. Evidence: `SessionsView.test.ts` / `lists sessions by latest
+  completion time with path and label context` checks the rendered timestamp,
+  description, Path, and label; the fixture contains an available session
+  label.
 - [ ] Session history pagination exposes the current page and available
   previous/next actions.
 - [ ] Loading another page preserves stable chronological order without

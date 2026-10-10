@@ -1,6 +1,7 @@
 import { config, flushPromises, mount } from "@vue/test-utils";
 import SessionsView from "./SessionsView.vue";
 import { api } from "../lib/api";
+import { formatDateTime } from "../lib/date";
 import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
@@ -205,6 +206,9 @@ describe("SessionsView", () => {
     expect(latestSession.get(".session-card-labels").text()).toBe("Vue");
     expect(latestSession.get(".session-description").text()).toBe(
       "Most recent",
+    );
+    expect(latestSession.get(".session-summary").text()).toContain(
+      formatDateTime("2026-08-27T11:00:00Z"),
     );
     expect(
       latestSession.get(".session-summary").findAll("span")[0].text(),
