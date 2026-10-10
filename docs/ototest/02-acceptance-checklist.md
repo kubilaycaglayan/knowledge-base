@@ -171,8 +171,8 @@ browser interaction evidence remains a separate layer.
   date range inputs.
 - [x] `PUT /api/v1/paths/{id}` covers successful persisted update and invalid
   color values; stale/conflicting state is not applicable because this request
-  has no optimistic version field. Blank names and over-limit descriptions are
-  also rejected before owner lookup
+  has no optimistic version field. Blank or over-160-character names and
+  over-limit descriptions are also rejected before owner lookup
   (`PathAuthorizationApiTest.pathUpdateValidatesTextAndColorBeforeOwnershipLookup`).
 - [x] `DELETE /api/v1/paths/{id}` covers the documented delete/archive effect
   and subsequent read behavior.
