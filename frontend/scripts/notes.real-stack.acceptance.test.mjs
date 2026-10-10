@@ -46,7 +46,7 @@ before(async () => {
 
 after(async () => browser?.close());
 
-it("creates, edits, archives, restores, and reloads a note with persisted API state", async () => {
+it("creates, edits, deep-links, archives, restores, and reloads a note with persisted API state", async () => {
   await page.goto(`${baseUrl}/notes`, { waitUntil: "domcontentloaded", timeout: 30000 });
   let releaseNoteRead;
   let signalNoteRead;
@@ -102,6 +102,17 @@ it("creates, edits, archives, restores, and reloads a note with persisted API st
   await page.getByRole("link", { name: `Open ${title}` }).waitFor();
   await page.reload();
   await page.getByRole("link", { name: `Open ${title}` }).waitFor();
+
+  await page.goto(`${baseUrl}/notes/${noteId}`, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction((expectedTitle) => document.querySelector('[aria-label="Note title"]')?.value === expectedTitle, title);
+  await page.waitForFunction((expectedBody) => document.querySelector('[aria-label="Note content"]')?.innerText.includes(expectedBody), body);
+  assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), title);
+  assert.ok((await page.getByRole("textbox", { name: "Note content" }).innerText()).includes(body));
+  const deepLinked = await api(`/notes/${noteId}`);
+  assert.equal(deepLinked.status, 200);
+  assert.equal(deepLinked.data.title, title);
+  assert.ok(deepLinked.data.contentText.includes(body));
+  await page.getByRole("button", { name: "Back to notes" }).click();
 
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator(".note-row").filter({ hasText: title }).getByRole("button", { name: "Archive" }).click();
