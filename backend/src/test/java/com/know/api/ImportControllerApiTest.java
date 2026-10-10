@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.know.service.ClockifyImportService;
 import java.util.List;
@@ -56,6 +57,21 @@ class ImportControllerApiTest {
         .andExpect(jsonPath("$.imported").value(1))
         .andExpect(jsonPath("$.createdPaths").value(1));
     verify(service).importEntries(eq(user), any(ClockifyImportService.ClockifyImportRequest.class));
+  }
+
+  @Test
+  void clockifyImportRequiresAtLeastOneEntryBeforeCallingTheService() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    for (String body : List.of("{}", "{\"timeentries\":null}", "{\"timeentries\":[]}")) {
+      mvc.perform(
+              post("/api/v1/imports/clockify")
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(service);
   }
 
   @Test

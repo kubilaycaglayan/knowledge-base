@@ -625,6 +625,8 @@ browser interaction evidence remains a separate layer.
   (`KnowIntegrationTest.clockifyImportRejectsMalformedAndUnsupportedPayloadsWithoutPersistingData`
   and PostgreSQL-only
   `KnowIntegrationTest.postgresClockifyImportRollsBackEarlierPathEntryAndBatchOnLaterInvalidInterval`).
+  Missing, null, and empty `timeentries` lists return 400 before invoking the
+  import service (`ImportControllerApiTest.clockifyImportRequiresAtLeastOneEntryBeforeCallingTheService`).
 - [x] `GET /api/v1/imports/clockify/batches` covers owner-scoped batch listing
   and ordering.
 - [x] `DELETE /api/v1/imports/clockify/batches/{id}` covers undo effects,
