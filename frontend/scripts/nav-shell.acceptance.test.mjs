@@ -20,7 +20,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, calenda
   const reportQueries = [];
   const paths = [...pathSeeds];
   const calendarDays = [];
-  if (authenticated) await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
+  if (authenticated) await context.addInitScript(() => {
+    if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
+      localStorage.setItem("know_token", "nav-test-token");
+      sessionStorage.setItem("nav_auth_seeded", "true");
+    }
+  });
   // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
   if (warmup) await context.addInitScript(() => localStorage.setItem("know_warmup", "force"));
   await context.route("**/api/**", async (route) => {
@@ -298,6 +303,24 @@ it("rejects external and protocol-relative post-login redirects", async (t) => {
     assert.equal(new URL(page.url()).origin, new URL(server.resolvedUrls.local[0]).origin);
     assert.equal(new URL(page.url()).pathname, "/");
   }
+});
+
+it("clears authentication on sign-out and keeps protected routes gated on Back and reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await visit(page, "/reports");
+  await page.locator(".reports-page").waitFor();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
+
+  await page.goBack();
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/");
+  assert.equal(await page.locator(".reports-page").count(), 0);
+
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.locator(".reports-page").count(), 0);
 });
 
 it("opens each primary navigation route and updates the active link and title", async (t) => {

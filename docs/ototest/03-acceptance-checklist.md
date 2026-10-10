@@ -181,10 +181,17 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Sign out
 
-- [ ] Activating Sign out clears the authenticated view and returns to the
-  signed-out experience.
-- [ ] Protected routes are not available through browser Back after sign-out.
-- [ ] Reopening a protected route after sign-out requires authentication.
+- [x] Activating Sign out clears the authenticated view and returns to the
+  signed-out experience. Evidence: `cd frontend && node --test
+  --test-name-pattern='clears authentication on sign-out'
+  scripts/nav-shell.acceptance.test.mjs` checks the sign-in view and cleared
+  token (mocked API browser test).
+- [x] Protected routes are not available through browser Back after sign-out.
+  Evidence: the same test signs out from Reports, navigates Back, and checks
+  that protected Reports content is absent.
+- [x] Reopening a protected route after sign-out requires authentication.
+  Evidence: the same test directly reloads `/reports` after logout and checks
+  for the sign-in view instead of Reports content.
 
 ### Flow: Recover from a rejected saved session
 
