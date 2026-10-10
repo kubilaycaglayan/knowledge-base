@@ -635,7 +635,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-      <footer v-if="totalPages > 1 || totalItems" class="notes-pagination">
+      <footer v-if="totalPages > 1 || totalItems || showArchived" class="notes-pagination">
         <div class="notes-pagination-summary">
           <span>{{ totalItems }} note{{ totalItems === 1 ? "" : "s" }}</span>
           <button class="flat-button" @click="toggleArchive">
