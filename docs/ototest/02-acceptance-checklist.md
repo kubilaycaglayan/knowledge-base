@@ -41,8 +41,10 @@ browser interaction evidence remains a separate layer.
   state effect, evidence link, evidence layer, and current gap (API-01/02 in
   OTOTEST-01; layer conventions and source-based contract reading are recorded
   in the API matrix).
-- [ ] Use exact test names or named assertions as evidence; a test filename
-  without a relevant assertion does not prove coverage.
+- [x] Use exact test names or named assertions as evidence; a test filename
+  without a relevant assertion does not prove coverage. All 342 qualified
+  references in the current operation matrix resolve to a test method; the
+  evidence description beside each reference names the behavior asserted.
 - [x] Distinguish unit/domain, controller/API, service, persistence
   integration, PostgreSQL-guarded, deployed-shaped, browser, and manual
   evidence using test package and guarded-run conventions in the API matrix.
@@ -783,6 +785,10 @@ browser interaction evidence remains a separate layer.
   upper, and out-of-range boundary evidence.
 - [ ] Date and timestamp operations have timezone, leap-day, inclusive-range,
   and reversed-range evidence where applicable.
+  Activity filtering now asserts inclusive lower/upper bounds, equivalent
+  non-UTC offsets, and empty reversed ranges in
+  `ActivityIntegrationTest.activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner`;
+  remaining date-bearing operations still need a complete applicability audit.
 - [x] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
   The all-board column card page has a multi-page persisted walk and rejects
@@ -802,8 +808,12 @@ browser interaction evidence remains a separate layer.
   where ordering is part of the contract.
 - [ ] Optimistic version or expected-update-time contracts have both current
   version success and stale version conflict evidence.
-- [ ] Idempotent operations document and assert repeated-request outcomes
-  where idempotency is part of the API contract.
+- [x] Idempotent operations document and assert repeated-request outcomes
+  where idempotency is part of the API contract. Evidence includes repeated
+  calendar-day deletion, board archive and restore, Clockify duplicate source
+  imports, and both import-batch undo routes; each corresponding operation row
+  in [`01-api-matrix.md`](01-api-matrix.md) names the exact assertion and
+  resulting state/count.
 - [x] Concurrent timer-start behavior verifies the one-running-timer invariant
   through service behavior, concurrent HTTP starts, and the PostgreSQL
   uniqueness safeguard (tests linked in the timer operation row above).
@@ -847,8 +857,10 @@ browser interaction evidence remains a separate layer.
 
 - [ ] Every behavior change updates `docs/api.md` and its API matrix row in the
   same review.
-- [ ] Every controller mapping, overload, and alias has exactly one inventory
-  entry or a documented exclusion.
+- [x] Every controller mapping, overload, and alias has exactly one inventory
+  entry or a documented exclusion. At the recorded source baseline, 105
+  mapping annotations compose to 107 routes; the matrix contains 107 unique
+  method/path pairs and no duplicate rows.
 - [ ] Each state-changing operation asserts persisted state or an observable
   event, not only a successful HTTP response.
 - [ ] Each delete/archive/restore operation asserts the resulting state from a

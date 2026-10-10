@@ -3,13 +3,21 @@ package com.know.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Active, archived, searched, paginated, and owner-scoped note lists. */
 class NoteListIntegrationTest extends IntegrationTestSupport {
   @LocalServerPort int port;
+  @Autowired JdbcTemplate jdbc;
   ApiClient api;
 
   @BeforeEach
@@ -108,5 +116,29 @@ class NoteListIntegrationTest extends IntegrationTestSupport {
     assertEquals(3, emptyPage.get("page").asInt());
     assertEquals(0, emptyPage.get("items").size());
     assertEquals(3, emptyPage.get("totalItems").asLong());
+  }
+
+  @Test
+  void notesWithTheSameUpdatedAtUseDescendingIdAcrossPages() {
+    String owner = api.register();
+    JsonNode first =
+        api.created("POST", "/api/v1/notes", owner, "{\"title\":\"First\",\"content\":\"one\"}");
+    JsonNode second =
+        api.created("POST", "/api/v1/notes", owner, "{\"title\":\"Second\",\"content\":\"two\"}");
+    Instant tiedUpdatedAt = Instant.parse("2026-09-01T12:00:00Z");
+    jdbc.update(
+        "update note set updated_at = ? where id in (?, ?)",
+        Timestamp.from(tiedUpdatedAt),
+        UUID.fromString(first.get("id").asText()),
+        UUID.fromString(second.get("id").asText()));
+    String[] expected =
+        Stream.of(first.get("id").asText(), second.get("id").asText())
+            .sorted(Comparator.reverseOrder())
+            .toArray(String[]::new);
+
+    JsonNode firstPage = api.get("/api/v1/notes?page=0&size=1", owner).json();
+    JsonNode secondPage = api.get("/api/v1/notes?page=1&size=1", owner).json();
+    assertEquals(expected[0], firstPage.get("items").get(0).get("id").asText());
+    assertEquals(expected[1], secondPage.get("items").get(0).get("id").asText());
   }
 }

@@ -64,4 +64,21 @@ class TimeEntryHistoryIntegrationTest extends IntegrationTestSupport {
     assertEquals(1, emptyPage.get("totalPages").asInt());
     assertEquals(0, emptyPage.get("sessions").size());
   }
+
+  @Test
+  void equalCompletionTimesUseStartedAtAsTheHistoryTieBreak() {
+    String owner = api.register();
+    String completedAt = "2026-09-03T10:00:00Z";
+    JsonNode earlierStart = entry(owner, "Earlier start", "2026-09-03T08:00:00Z", completedAt);
+    JsonNode laterStart = entry(owner, "Later start", "2026-09-03T09:00:00Z", completedAt);
+
+    JsonNode all = api.get("/api/v1/time-entries", owner).json();
+    assertEquals(
+        List.of(laterStart.get("id").asText(), earlierStart.get("id").asText()),
+        all.findValuesAsText("id"));
+    JsonNode secondPage = api.get("/api/v1/time-entries?page=1&size=1", owner).json();
+    assertEquals(
+        List.of(earlierStart.get("id").asText()),
+        secondPage.get("sessions").findValuesAsText("id"));
+  }
 }

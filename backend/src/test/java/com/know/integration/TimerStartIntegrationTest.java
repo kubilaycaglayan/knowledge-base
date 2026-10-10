@@ -97,6 +97,22 @@ class TimerStartIntegrationTest extends IntegrationTestSupport {
     assertCurrentIsEmpty(owner);
   }
 
+  @Test
+  void timerIdAliasesRejectForeignOwnersWithoutChangingTheRunningTimer() {
+    String owner = api.register();
+    String other = api.register();
+    JsonNode running = startTimer(owner);
+    String id = running.get("id").asText();
+
+    assertEquals(404, api.post("/api/v1/timers/" + id + "/stop", other, null).status());
+    assertEquals(404, api.post("/api/v1/timers/" + id + "/cancel", other, null).status());
+
+    JsonNode unchanged = api.get("/api/v1/timers/current", owner).json();
+    assertEquals(id, unchanged.get("id").asText());
+    assertTrue(unchanged.get("running").asBoolean());
+    assertCurrentIsEmpty(other);
+  }
+
   private void assertCurrentIsEmpty(String owner) {
     ApiClient.Reply current = api.get("/api/v1/timers/current", owner);
     assertEquals(200, current.status(), current.body());
