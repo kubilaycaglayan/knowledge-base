@@ -1870,6 +1870,18 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.getByRole("alertdialog", { name: "Archive status?" }).count(), 0);
   });
 
+  it("explains why the last active status is disabled in board settings", async (t) => {
+    const { page } = await fixture(t);
+    await page.route("**/api/v1/boards/board-1/statuses", (route) => route.fulfill({ json: [statuses[0]] }));
+    await page.reload();
+    const settings = await openBoardSettings(page);
+    const archive = settings.getByRole("button", { name: "Archive Backlog status" });
+
+    await settings.getByText("Boards must keep one active status.").waitFor();
+    assert.equal(await archive.isDisabled(), true);
+    assert.equal(await archive.getAttribute("aria-describedby"), "last-active-status-help");
+  });
+
   it("explains when another client makes a status the last active one", async (t) => {
     const { page } = await fixture(t);
     await page.route("**/api/v1/boards/board-1/statuses/status-0/archive", (route) => route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "A board must keep one active status." }) }));
