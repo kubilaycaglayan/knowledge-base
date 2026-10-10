@@ -1508,9 +1508,13 @@ criteria remain open.
   extension coverage is tracked by OTOTEST-04. Evidence:
   [`README.md`](README.md) defines iOS as out of scope and tracks extension
   coverage under OTOTEST-04.
-- [ ] The checklist is reviewed against the current router, page templates,
+- [x] The checklist is reviewed against the current router, page templates,
   shared components, and product test tree before OTOTEST-03 is marked
-  complete.
+  complete. Evidence: `01-route-matrix.md` reconciles all 19 entries in the
+  current `frontend/src/main.ts`; `01-control-matrix.md` records review of the
+  page views, shared components, and `product-test-tree.md`. The route matrix
+  was refreshed with the latest Logs, Paths, Board archive, and Notes browser
+  evidence; action-level and manual gaps remain open above.
 
 ## Traceability record for milestone review
 
