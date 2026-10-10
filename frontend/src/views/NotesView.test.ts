@@ -868,16 +868,19 @@ describe("NotesView", () => {
     wrapper.unmount();
   });
 
-  it("keeps the note editor open when flushing edits before navigation fails", async () => {
+  it("keeps a failed draft in the editor, retries it, then permits navigation", async () => {
     const writes: string[] = [];
+    let savedNote = note;
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/notes/note-1" && options?.method === "PUT") {
         writes.push(String(options.body));
-        throw new Error("offline");
+        if (writes.length === 1) throw new Error("offline");
+        savedNote = { ...note, ...JSON.parse(String(options.body)) };
+        return savedNote;
       }
       if (path === "/notes/note-1") return note;
       if (path === "/notes/labels") return [];
-      if (path === "/notes" || path.startsWith("/notes?")) return page();
+      if (path === "/notes" || path.startsWith("/notes?")) return page([savedNote]);
       return undefined;
     });
     const r = router();
@@ -897,6 +900,15 @@ describe("NotesView", () => {
         .value,
     ).toBe("Keep this draft");
     expect(wrapper.get(".save-state").text()).toBe("Not saved");
+    await wrapper.get('button[aria-label="Retry save"]').trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    expect(writes).toHaveLength(2);
+    expect(wrapper.get(".save-state").text()).toBe("Saved");
+    await r.push("/notes");
+    await flushPromises();
+    expect(r.currentRoute.value.fullPath).toBe("/notes");
+    expect(wrapper.text()).toContain("Keep this draft");
     wrapper.unmount();
   });
 
