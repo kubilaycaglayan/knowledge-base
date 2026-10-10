@@ -134,9 +134,17 @@ describe("/sessions/:id", () => {
     await flushPromises();
     expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain("has to end after it starts");
     expect(putCalls("/time-entries/s1")).toHaveLength(0);
+    button("Cancel")!.click();
+    await flushPromises();
+    expect(dialog()!.textContent).toContain("Edited the sunset series");
+    expect(dialog()!.textContent).toContain("1h 30 minutes");
 
-    end.value = start.value.replace(/T\d\d/, (hour) => `T${String(Number(hour.slice(1)) + 2).padStart(2, "0")}`);
-    end.dispatchEvent(new Event("input"));
+    button("Edit")!.click();
+    await flushPromises();
+    const correctedStart = document.querySelector<HTMLInputElement>('[aria-label="Edit session start"]')!;
+    const correctedEnd = document.querySelector<HTMLInputElement>('[aria-label="Edit session end"]')!;
+    correctedEnd.value = correctedStart.value.replace(/T\d\d/, (hour) => `T${String(Number(hour.slice(1)) + 2).padStart(2, "0")}`);
+    correctedEnd.dispatchEvent(new Event("input"));
     const description = document.querySelector<HTMLTextAreaElement>('[aria-label="Edit session description"]')!;
     description.value = "Edited and exported";
     description.dispatchEvent(new Event("input"));

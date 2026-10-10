@@ -419,8 +419,11 @@ the extension has its own scope in OTOTEST-04.
   displayed interval and duration. Evidence: `DeepLinks.test.ts` / `edits the
   session, refusing an end before the start` saves the revised interval and
   verifies the dialog updates from 1h 30 minutes to 2h.
-- [ ] Submitting an incomplete or reversed interval identifies the invalid
-  field and preserves the prior saved values.
+- [x] Submitting an incomplete or reversed interval identifies the invalid
+  field and preserves the prior saved values. Evidence: `DeepLinks.test.ts` /
+  `edits the session, refusing an end before the start` checks the range error,
+  confirms no update request is sent, cancels editing, and verifies the saved
+  description and 1h 30 minute duration remain unchanged.
 - [ ] Assigning or removing a TIME_ENTRY label updates the selected session's
   label chips after save.
 - [ ] Closing the session detail returns to the list and clears its selected
