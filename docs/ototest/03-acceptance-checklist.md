@@ -1366,10 +1366,11 @@ so the warning and discard criteria remain open.
   adjacent controls or create page-wide overflow.
   Partial evidence: `nav-shell.acceptance.test.mjs` / `keeps long note titles
   and paragraphs within a phone-width editor`, `wraps very long Log text
-  within the phone-width detail layout`, and `keeps a long Path description
-  inside its phone-width card`; `PathsView.test.ts` / `keeps long path titles
-  on one truncated line`. Very long descriptions in other routes and
-  route-specific combinations still need explicit coverage.
+  within the phone-width detail layout`, `keeps a long Path description
+  inside its phone-width card`, and `wraps a long Board card title inside its
+  phone-width card`; `PathsView.test.ts` / `keeps long path titles on one
+  truncated line`. Very long descriptions in other routes and route-specific
+  combinations still need explicit coverage.
 - [ ] Empty strings and empty collections render intentional empty states.
   Partial evidence: `LogsView.test.ts` / `shows the intentional empty state
   when no logs exist` checks the empty message without rows or an error;

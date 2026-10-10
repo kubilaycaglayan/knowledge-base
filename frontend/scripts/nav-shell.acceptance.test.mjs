@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logBody = "Directly loaded log entry" } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -78,9 +78,9 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       }
     }
     else if (path === "/boards/board-1/statuses") body = statuses;
-    else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [card] : [], nextCursor: null };
-    else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [card];
-    else if (path === "/boards/board-1/gantt") body = [card];
+    else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [{ ...card, title: boardCardTitle }] : [], nextCursor: null };
+    else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [{ ...card, title: boardCardTitle }];
+    else if (path === "/boards/board-1/gantt") body = [{ ...card, title: boardCardTitle }];
     else if (path === "/timers" && method === "POST") {
       currentTimer = { id: "browser-timer", ...route.request().postDataJSON(), startedAt: new Date().toISOString(), running: true };
       body = currentTimer;
@@ -1327,6 +1327,23 @@ it("keeps a long Path description inside its phone-width card", async (t) => {
     };
   });
   assert.equal(layout.lineClamp, "2");
+  assert.ok(layout.left >= 0 && layout.right <= 390, JSON.stringify(layout));
+  assert.ok(layout.scrollWidth <= layout.clientWidth, JSON.stringify(layout));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+it("wraps a long Board card title inside its phone-width card", async (t) => {
+  const title = `${"UnbrokenBoardTitle".repeat(20)} ${"A long card title must wrap without pushing adjacent controls. ".repeat(5)}`;
+  const { page, requests } = await fixture(t, 390, { boardCardTitle: title });
+  await page.goto(`${server.resolvedUrls.local[0]}board?board=board-1`);
+  const heading = page.locator(".board-card h3");
+  await heading.waitFor();
+  assert.equal((await heading.innerText()).trim(), title.trim());
+  const layout = await heading.evaluate((element) => {
+    const card = element.closest(".board-card");
+    const rect = card.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, clientWidth: card.clientWidth, scrollWidth: card.scrollWidth };
+  });
   assert.ok(layout.left >= 0 && layout.right <= 390, JSON.stringify(layout));
   assert.ok(layout.scrollWidth <= layout.clientWidth, JSON.stringify(layout));
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
