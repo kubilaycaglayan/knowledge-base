@@ -45,3 +45,18 @@ it("retries failures and shows an empty state", async () => {
   await flushPromises();
   expect(wrapper.get('[role="status"]').text()).toContain("No sessions");
 });
+
+it.each([
+  [0, "/sessions/s1"],
+  [1, "/calendar?date=2026-05-02"],
+  [2, "/notes/s1"],
+  [3, "/logs/s1"],
+])("links a related record kind to its route", async (buttonIndex, href) => {
+  vi.mocked(api).mockResolvedValue({ items: [record], hasMore: false });
+  const wrapper = setup();
+  await flushPromises();
+  await wrapper.findAll(".record-filters button")[buttonIndex].trigger("click");
+  await flushPromises();
+
+  expect(wrapper.get(`a[href="${href}"]`).text()).toContain("Reading session");
+});
