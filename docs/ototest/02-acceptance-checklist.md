@@ -216,7 +216,9 @@ browser interaction evidence remains a separate layer.
 ## Flow: Cover Notes operations
 
 - [x] `GET /api/v1/notes` covers active, archived, paginated, and query-filtered
-  list behavior.
+  list behavior; negative page clamps to zero, page size clamps to 1–100, and
+  a page beyond the end is empty
+  (`NoteListIntegrationTest.notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage`).
 - [x] `GET /api/v1/notes/labels` covers available NOTE labels and owner scope.
 - [x] `GET /api/v1/notes/{id}` covers owned, missing, foreign, and archived
   note IDs.
