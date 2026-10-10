@@ -643,7 +643,7 @@ the extension has its own scope in OTOTEST-04.
   the dates.
 - [x] Clearing timeline filters returns the default timeline state. Evidence: [`TimelineView.test.ts`](../../frontend/src/views/TimelineView.test.ts), `clears all timeline filters back to the default state`.
 - [x] A filter with no matches displays an explicit empty state. Evidence: `TimelineView.test.ts` / `shows the empty state when an applied filter has no matches` verifies prior results are replaced by the explicit empty state.
-- [ ] A stale response from an earlier filter does not replace newer results.
+- [x] A stale response from an earlier filter does not replace newer results. Evidence: `TimelineView.test.ts` / `does not let an earlier filter response replace newer results` resolves the newer filtered request first, then verifies the earlier response cannot replace it.
 
 ### Flow: Save a timeline activity note
 

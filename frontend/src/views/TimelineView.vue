@@ -22,12 +22,14 @@ const activities = ref<Activity[]>([]),
 const noteActivityId = ref(""),
   noteTitle = ref(""),
   noteContent = ref("");
+let latestLoad = 0;
 const pathName = (id?: string) => {
   if (!id) return "";
   return paths.value.find((path) => path.id === id)?.name || "";
 };
 const dateValue = (date: Date) => date.toISOString().slice(0, 10);
 async function load() {
+  const loadId = ++latestLoad;
   if (from.value && to.value && from.value > to.value) {
     error.value = "The end date must be on or after the start date.";
     return;
@@ -39,9 +41,10 @@ async function load() {
     if (pathId.value) params.set("pathId", pathId.value);
     if (from.value) params.set("from", `${from.value}T00:00:00Z`);
     if (to.value) params.set("to", `${to.value}T23:59:59Z`);
-    activities.value = await api<Activity[]>(`/activities?${params}`);
+    const result = await api<Activity[]>(`/activities?${params}`);
+    if (loadId === latestLoad) activities.value = result;
   } catch {
-    error.value = "Unable to load activity.";
+    if (loadId === latestLoad) error.value = "Unable to load activity.";
   }
 }
 function setRange(days: number) {
