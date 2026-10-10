@@ -62,7 +62,9 @@ class AuthControllerApiTest {
                     "{\"email\":\"Person@Example.com\",\"password\":\"correct-horse-battery\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.token").isNotEmpty())
-        .andExpect(jsonPath("$.email").value("person@example.com"));
+        .andExpect(jsonPath("$.email").value("person@example.com"))
+        .andExpect(jsonPath("$.passwordHash").doesNotExist())
+        .andExpect(jsonPath("$.googleSubject").doesNotExist());
     verify(encoder).encode("correct-horse-battery");
   }
 
@@ -72,6 +74,23 @@ class AuthControllerApiTest {
             post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"person@example.com\",\"password\":\"short\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(users, encoder);
+  }
+
+  @Test
+  void registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength() throws Exception {
+    mvc.perform(
+            post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-email\",\"password\":\"correct-horse-battery\"}"))
+        .andExpect(status().isBadRequest());
+
+    String oversizedPassword = "p".repeat(201);
+    mvc.perform(
+            post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"person@example.com\",\"password\":\"" + oversizedPassword + "\"}"))
         .andExpect(status().isBadRequest());
     verifyNoInteractions(users, encoder);
   }
@@ -103,6 +122,35 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void loginUsesTheSameFailureForUnknownEmailAndWrongPassword() throws Exception {
+    User existing = new User("known@example.com", "hash", "known");
+    when(users.findByEmailIgnoreCase("known@example.com")).thenReturn(Optional.of(existing));
+    when(users.findByEmailIgnoreCase("unknown@example.com")).thenReturn(Optional.empty());
+    when(encoder.matches("wrong-password-value", "hash")).thenReturn(false);
+
+    String knownFailure =
+        mvc.perform(
+                post("/api/v1/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"known@example.com\",\"password\":\"wrong-password-value\"}"))
+            .andExpect(status().isUnauthorized())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String unknownFailure =
+        mvc.perform(
+                post("/api/v1/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"unknown@example.com\",\"password\":\"wrong-password-value\"}"))
+            .andExpect(status().isUnauthorized())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    org.junit.jupiter.api.Assertions.assertEquals(knownFailure, unknownFailure);
+  }
+
+  @Test
   void invalidGoogleTokenIsRejectedBeforeAccountLookup() throws Exception {
     when(google.verify("bad-token")).thenReturn(Optional.empty());
     mvc.perform(
@@ -111,6 +159,23 @@ class AuthControllerApiTest {
                 .content("{\"idToken\":\"bad-token\"}"))
         .andExpect(status().isUnauthorized());
     verifyNoInteractions(users);
+  }
+
+  @Test
+  void googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary() throws Exception {
+    mvc.perform(
+            post("/api/v1/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\" \"}"))
+        .andExpect(status().isBadRequest());
+
+    String oversizedToken = "x".repeat(10001);
+    mvc.perform(
+            post("/api/v1/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\"" + oversizedToken + "\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(google, users);
   }
 
   @Test
@@ -162,6 +227,27 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile() throws Exception {
+    UUID id = UUID.randomUUID();
+    User user = new User("person@example.com", "private-hash", "Person");
+    when(users.findById(id)).thenReturn(Optional.of(user));
+    var auth = new UsernamePasswordAuthenticationToken(id.toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/auth/me").with(authentication(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.userId").value(user.getId().toString()))
+        .andExpect(jsonPath("$.email").value("person@example.com"))
+        .andExpect(jsonPath("$.displayName").value("Person"))
+        .andExpect(jsonPath("$.hasPassword").value(true))
+        .andExpect(jsonPath("$.hasGoogle").value(false))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("private-hash"))));
+  }
+
+  @Test
   void googleOnlyUserCanSetPasswordAfterAuthentication() throws Exception {
     UUID id = UUID.randomUUID();
     User user = new User("person@example.com", "random-hash", "Person", false);
@@ -180,6 +266,21 @@ class AuthControllerApiTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.hasPassword").value(true));
     verify(encoder).encode("new-secure-password");
+  }
+
+  @Test
+  void passwordSetupRejectsNewPasswordsOutsideTheSupportedLength() throws Exception {
+    var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    for (String password : List.of("short", "p".repeat(201))) {
+      mvc.perform(
+              org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                      "/api/v1/auth/password")
+                  .with(authentication(auth))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"newPassword\":\"" + password + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(users, encoder);
   }
 
   @Test

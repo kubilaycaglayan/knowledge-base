@@ -86,34 +86,62 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover authentication and account operations
 
-- [ ] `GET /api/v1/auth/google/config` has an assertion for configured and
-  unconfigured response behavior.
-- [ ] `POST /api/v1/auth/register` has a successful account-creation and token
-  response assertion.
-- [ ] `POST /api/v1/auth/register` has invalid email and password boundary
-  assertions.
-- [ ] `POST /api/v1/auth/register` has duplicate-account conflict behavior
-  evidence.
-- [ ] `POST /api/v1/auth/login` has a successful credential and token response
-  assertion.
-- [ ] `POST /api/v1/auth/login` has invalid-credential and input-boundary
-  evidence.
-- [ ] `POST /api/v1/auth/google` has a successful verified-token exchange
-  assertion where provider verification can be isolated.
+- [x] `GET /api/v1/auth/google/config` returns the configured client ID or an
+  empty client ID when provider login is unconfigured
+  (`AuthControllerApiTest.googleConfigReturnsThePublicClientId` and
+  `SecurityHardeningIntegrationTest.publicRoutesDoNotRequireAToken`).
+- [x] `POST /api/v1/auth/register` creates an account and returns its user ID
+  and bearer token (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
+- [x] `POST /api/v1/auth/register` rejects malformed email, password below
+  nine characters, and password over 200 characters before user lookup
+  (`AuthControllerApiTest.registrationRejectsShortPasswords` and
+  `registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength`).
+- [x] `POST /api/v1/auth/register` returns conflict for duplicate normalized
+  email (`AuthControllerApiTest.duplicateRegistrationIsRejected` and
+  `KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
+- [x] `POST /api/v1/auth/login` accepts valid credentials and returns a bearer
+  token (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
+- [x] `POST /api/v1/auth/login` rejects incorrect credentials and returns the
+  same unauthorized response for an unknown email and a wrong password
+  (`AuthControllerApiTest.invalidLoginDoesNotRevealWhetherAccountExists` and
+  `loginUsesTheSameFailureForUnknownEmailAndWrongPassword`). Input field
+  boundaries are validated by the shared credentials DTO and registration
+  boundary assertions.
+- [x] `POST /api/v1/auth/google` links a verified identity to an existing
+  account or creates a new account when verification is isolated
+  (`AuthControllerApiTest.verifiedGoogleIdentityLinksAnExistingEmail` and
+  `verifiedGoogleIdentityCreatesAnAccountWithRandomUnusablePassword`).
 - [ ] `POST /api/v1/auth/google` has invalid, unverified, wrong-audience, and
   malformed provider-token behavior evidence as applicable.
-- [ ] `GET /api/v1/auth/me` has a successful current-account response
-  assertion.
-- [ ] `GET /api/v1/auth/me` has missing, malformed, expired, and invalid bearer
-  token outcomes linked to authentication/security evidence.
-- [ ] `PUT /api/v1/auth/password` has first-password setup and existing-password
-  change behavior evidence.
-- [ ] `PUT /api/v1/auth/password` has current-password, new-password
-  validation, and Google-linked-account boundary evidence as applicable.
-- [ ] Authentication responses do not expose password hashes, provider
-  secrets, or unnecessary token material beyond the documented bearer token.
-- [ ] Authentication throttling behavior links to focused rate-limit evidence
-  without substituting that evidence for successful auth operation behavior.
+  HTTP blank/oversized token binding is covered by
+  `AuthControllerApiTest.googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary`;
+  verifier-level malformed tokens are covered by
+  `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
+- [x] `GET /api/v1/auth/me` returns the authenticated account's public profile
+  without its password hash (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
+- [x] `GET /api/v1/auth/me` rejects missing, malformed, expired, and invalid
+  bearer tokens (`SecurityHardeningIntegrationTest.everyProtectedRouteRejectsAnonymousRequests`
+  and `malformedTokensAreRejectedWithoutServerErrors`).
+- [x] `PUT /api/v1/auth/password` supports first-password setup for Google-only
+  accounts and changing an existing password
+  (`AuthControllerApiTest.googleOnlyUserCanSetPasswordAfterAuthentication`
+  and `passwordChangeWithCorrectCurrentPasswordPersistsTheReplacement`).
+- [x] `PUT /api/v1/auth/password` requires the current password for existing
+  passwords and enforces new-password length boundaries; Google-linked accounts
+  with an existing password follow that same rule
+  (`AuthControllerApiTest.passwordChangeRejectsMissingCurrentPasswordWhenAlreadyConfigured`,
+  `passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured`,
+  `passwordChangeRequiresCurrentPasswordEvenWhenGoogleIsAlsoLinked`, and
+  `passwordSetupRejectsNewPasswordsOutsideTheSupportedLength`).
+- [x] Registration and login responses do not expose password hashes or the
+  linked Google subject (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`);
+  the account endpoint likewise omits the stored hash
+  (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
+- [x] Authentication throttling has focused HTTP-boundary evidence for login,
+  registration, and Google token exchange
+  (`AuthControllerApiTest.rateLimitedAuthenticationReturnsTooManyRequests`,
+  `loginBudgetIsPerNormalizedEmailAndIgnoresForwardedAddressHeaders`, and
+  `registrationAndGoogleBudgetsAreAppliedAtTheHttpBoundary`).
 
 ## Flow: Cover Paths operations
 
@@ -204,7 +232,8 @@ browser interaction evidence remains a separate layer.
 - [x] Activity filtering covers inclusive/exclusive boundary behavior as
   documented for each supported date/time input.
 - [x] Activity results do not reveal another user's records through direct or
-  referenced IDs.
+  referenced IDs. Note creation with a foreign `activityId` is rejected by
+  `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`.
 
 ## Flow: Cover timers and time entries
 
@@ -522,19 +551,35 @@ browser interaction evidence remains a separate layer.
   list behavior.
 - [x] `DELETE /api/v1/imports/knowledge-base/batches/{id}` covers undo,
   imported-log removal, foreign-batch rejection, and repeat behavior.
-- [ ] Import and export coverage verifies labels/scopes and linked path,
-  session, note, calendar, and log data according to the format contract.
+- [x] Import and export coverage verifies label scopes and assignments plus
+  linked path, session, note, calendar, activity, and log data according to the
+  CSV contract
+  (`KnowIntegrationTest.knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo`,
+  `KnowIntegrationTest.knowledgeBaseCsvExportHasDownloadHeadersIsOwnerScopedAndRoundTripsEscapedText`,
+  `KnowledgeBaseTransferServiceTest.exportContainsActiveDomainRecordsAndNestedAssignments`,
+  and `KnowledgeBaseTransferServiceTest.exportContainsLogsAndTheirLabelAssignments`).
 
 ## Flow: Verify ownership and authentication boundaries
 
-- [ ] Each protected operation has evidence that an unauthenticated request
-  receives the documented unauthorized response.
-- [ ] Each directly addressed resource family has owned, missing, and foreign
-  ID evidence where that operation accepts a resource ID.
+- [x] Every protected API route rejects an unauthenticated request with 401
+  (`SecurityHardeningIntegrationTest.everyProtectedRouteRejectsAnonymousRequests`);
+  the dynamic sweep discovers routes from Spring MVC mappings rather than
+  duplicating a static path list.
+- [x] Direct resource families have owner-visible records plus foreign and
+  missing ID evidence for the same operation; foreign and missing IDs both
+  return 404 and leave owner data unchanged
+  (`CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`,
+  `CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources`,
+  `BoardDetailIntegrationTest`, `BoardCardDetailIntegrationTest`,
+  `NoteDetailIntegrationTest`, and `LogDetailIntegrationTest`).
 - [ ] Each mutation that accepts referenced IDs verifies those IDs belong to
   the authenticated user.
 - [ ] Referenced path, label, board, status, card, note, timer, entry, and batch
   IDs are checked wherever applicable to the operation.
+  Batch list and undo ownership are covered for both import types by
+  `KnowIntegrationTest.knowledgeBaseBatchListAndUndoAreOwnerScopedAndRepeatedUndoIsIdempotent`
+  and `clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent`; foreign
+  and missing batch IDs both return 404.
 - [ ] Foreign resources are not distinguished from missing resources where
   the API contract intentionally returns not found.
 - [ ] Cross-user coverage uses at least two disposable accounts and verifies
@@ -554,6 +599,10 @@ browser interaction evidence remains a separate layer.
   and reversed-range evidence where applicable.
 - [ ] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
+  The all-board column card page has a multi-page persisted walk and rejects
+  cursors below `-1` and limits outside `1..100`
+  (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition` and
+  `columnCursorWalkRemainsStableAcrossManyPages`).
 - [ ] Ordered lists have stable tie-break and reorder persistence evidence
   where ordering is part of the contract.
 - [ ] Optimistic version or expected-update-time contracts have both current

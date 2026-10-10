@@ -318,6 +318,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.OK, reg.getStatusCode());
     assertNotNull(reg.getBody().get("token").asText());
     assertFalse(reg.getBody().get("userId").asText().isBlank());
+    assertFalse(reg.getBody().has("passwordHash"));
+    assertFalse(reg.getBody().has("googleSubject"));
 
     // Duplicate registration is rejected
     ResponseEntity<JsonNode> dup =
@@ -329,6 +331,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
         post("/api/v1/auth/login", null, json("email", email, "password", pw));
     assertEquals(HttpStatus.OK, login.getStatusCode());
     assertNotNull(login.getBody().get("token").asText());
+    assertFalse(login.getBody().has("passwordHash"));
+    assertFalse(login.getBody().has("googleSubject"));
 
     // Wrong password is rejected
     ResponseEntity<JsonNode> bad =
@@ -842,9 +846,14 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     String batchId = ownerBatches.get(0).get("id").asText();
 
     assertTrue(get("/api/v1/imports/knowledge-base/batches", other).getBody().isEmpty());
-    assertEquals(
-        HttpStatus.NOT_FOUND,
-        delete("/api/v1/imports/knowledge-base/batches/" + batchId, other).getStatusCode());
+    var foreignBatchStatus =
+        delete("/api/v1/imports/knowledge-base/batches/" + batchId, other).getStatusCode();
+    var missingBatchStatus =
+        delete(
+                "/api/v1/imports/knowledge-base/batches/" + UUID.randomUUID(), other)
+            .getStatusCode();
+    assertEquals(HttpStatus.NOT_FOUND, foreignBatchStatus);
+    assertEquals(foreignBatchStatus, missingBatchStatus);
     assertEquals(HttpStatus.OK, get("/api/v1/paths/" + pathId, owner).getStatusCode());
 
     ResponseEntity<JsonNode> undo =
@@ -2347,9 +2356,12 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     assertEquals(secondBatchId, listed.get(0).get("id").asText(), "Batch list is newest first");
     assertEquals(firstBatchId, listed.get(1).get("id").asText());
     assertTrue(get("/api/v1/imports/clockify/batches", other).getBody().isEmpty());
-    assertEquals(
-        HttpStatus.NOT_FOUND,
-        delete("/api/v1/imports/clockify/batches/" + secondBatchId, other).getStatusCode());
+    var foreignBatchStatus =
+        delete("/api/v1/imports/clockify/batches/" + secondBatchId, other).getStatusCode();
+    var missingBatchStatus =
+        delete("/api/v1/imports/clockify/batches/" + UUID.randomUUID(), other).getStatusCode();
+    assertEquals(HttpStatus.NOT_FOUND, foreignBatchStatus);
+    assertEquals(foreignBatchStatus, missingBatchStatus);
     assertEquals(2, get("/api/v1/time-entries", owner).getBody().size());
 
     ResponseEntity<JsonNode> undo =
