@@ -380,6 +380,41 @@ describe("/calendar?date=", () => {
     await flushPromises();
     expect(router.currentRoute.value.query.date).toBe("2025-04-01");
   });
+
+  it("moves from December into January across the year boundary", async () => {
+    respond(/^\/calendar\/days\?/, []);
+    await open(CalendarView, "/calendar?date=2025-12-31", ["/calendar"]);
+    document.querySelector<HTMLButtonElement>('[aria-label="Next month"]')!.click();
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.date).toBe("2026-01-01");
+    expect(document.body.textContent).toContain("January 1, 2026");
+    expect(
+      document.querySelector<HTMLSelectElement>(
+        'select[aria-label="Calendar month"]',
+      )?.value,
+    ).toBe("0");
+    expect(
+      document.querySelector<HTMLSelectElement>(
+        'select[aria-label="Calendar year"]',
+      )?.value,
+    ).toBe("2026");
+  });
+
+  it("aligns dates with Monday-first weekdays when the month starts and ends midweek", async () => {
+    respond(/^\/calendar\/days\?/, []);
+    await open(CalendarView, "/calendar?date=2025-03-14", ["/calendar"]);
+
+    const weekdays = [...document.querySelectorAll(".calendar-weekday")].map(
+      (element) => element.textContent?.trim(),
+    );
+    const days = [...document.querySelectorAll("button.calendar-day")].map(
+      (button) => button.querySelector("time")?.textContent?.trim(),
+    );
+    expect(weekdays).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+    expect(days.slice(0, 7)).toEqual(["24", "25", "26", "27", "28", "1", "2"]);
+    expect(days.slice(-7)).toEqual(["31", "1", "2", "3", "4", "5", "6"]);
+  });
 });
 
 describe("/notes?archived=1&q=", () => {

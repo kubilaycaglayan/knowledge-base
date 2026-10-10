@@ -489,14 +489,23 @@ the extension has its own scope in OTOTEST-04.
   first-day selection.
 - [ ] The Today action returns to the current date while retaining the expected
   visible grid.
-- [ ] Weekday headings and dates remain aligned when the month starts or ends
-  midweek.
-- [ ] Leap day and month/year boundaries display on the correct calendar day.
+- [x] Weekday headings and dates remain aligned when the month starts or ends
+  midweek. Evidence: `frontend/src/views/DeepLinks.test.ts`, `aligns dates
+  with Monday-first weekdays when the month starts and ends midweek` checks
+  the calendar's leading and trailing week rows.
+- [x] Leap day and month/year boundaries display on the correct calendar day.
+  Evidence: `frontend/src/views/DeepLinks.test.ts`, `follows a new date while
+  open, and ignores impossible dates` checks February 29; `moves from December
+  into January across the year boundary` checks January 1, 2026.
 
 ### Flow: Open a calendar date from its URL
 
-- [ ] A valid `?date=YYYY-MM-DD` URL selects and displays that date.
-- [ ] An invalid date query does not select an impossible calendar date.
+- [x] A valid `?date=YYYY-MM-DD` URL selects and displays that date. Evidence:
+  `frontend/src/views/DeepLinks.test.ts`, `opens the month of the linked day
+  with that day selected`.
+- [x] An invalid date query does not select an impossible calendar date.
+  Evidence: `frontend/src/views/DeepLinks.test.ts`, `follows a new date while
+  open, and ignores impossible dates` checks leap day and rejects February 30.
 
 ### Flow: Edit one calendar day
 
