@@ -167,9 +167,10 @@ report range through the API and URL after reload, and the selected theme in
 local storage, the rendered document, and the Settings control after reload.
 
 `./scripts/run-transfers-e2e.sh` runs desktop Chromium export/import journeys
-in a separate disposable stack. It downloads and reimports Knowledge Base CSV,
-recovers from invalid Clockify JSON, and confirms the imported Clockify batch
-through a fresh API read.
+in a separate disposable stack. It exports a Path, imports it into a second
+disposable account, and verifies it through that account's API. It also
+recovers from invalid Clockify JSON and confirms the imported batch and session
+through fresh API reads.
 
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca

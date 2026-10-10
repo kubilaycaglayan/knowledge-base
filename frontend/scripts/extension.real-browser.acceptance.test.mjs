@@ -207,11 +207,6 @@ it("signs in, syncs a timer through the packaged popup, and recovers from an una
   assert.equal(timerStartRequest.body.pathId, null);
   assert.equal(timerStartRequest.body.description, "OTOTEST extension timer");
   assert.equal(timerStartRequest.body.source, "CHROME_EXTENSION");
-  await popup.getByRole("button", { name: "Stop timer" }).click();
-  await popup.waitForFunction(() => document.querySelector("#toggle")?.getAttribute("aria-label") === "Start timer", null, { timeout: 5000 }).catch(async () => {
-    throw new Error(`Timer did not stop: status=${await popup.locator("#status").textContent()}, error=${await popup.locator("#error").textContent()}, requests=${fixtureRequests.slice(-12).join(" | ")}`);
-  });
-  assert.equal(timerStopCount, 1);
 
   await popup.getByRole("button", { name: "Notes" }).click();
   await popup.getByRole("button", { name: "Create note" }).click();
@@ -228,8 +223,12 @@ it("signs in, syncs a timer through the packaged popup, and recovers from an una
   assert.equal(new URL(restartedWorker.url()).host, extensionId, "the packaged worker restarts with the same installed extension");
   const afterRestart = await context.newPage();
   await afterRestart.goto(`chrome-extension://${extensionId}/popup.html`);
-  await afterRestart.getByRole("button", { name: "Start timer" }).waitFor();
+  await afterRestart.getByRole("button", { name: "Stop timer" }).waitFor();
+  assert.equal(currentTimer.description, "OTOTEST extension timer", "the running timer survives the browser restart in the API fixture");
   assert.equal(await afterRestart.evaluate(() => chrome.storage.local.get("token").then((values) => values.token)), "disposable-e2e-token");
+  await afterRestart.getByRole("button", { name: "Stop timer" }).click();
+  await afterRestart.getByRole("button", { name: "Start timer" }).waitFor();
+  assert.equal(timerStopCount, 1);
 
   apiUnavailable = true;
   const reconnect = await context.newPage();

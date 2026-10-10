@@ -70,7 +70,7 @@ persistence boundaries.
   permission prompts are not automated in this Chromium harness.
 - [x] Capture browser console errors and fail on unexpected extension/runtime
   errors; keep secrets out of logs and artifacts.
-- [ ] Keep fast Node module tests as the primary location for exhaustive edge
+- [x] Keep fast Node module tests as the primary location for exhaustive edge
   cases; browser tests should focus on browser integration and critical
   journeys.
 
@@ -127,14 +127,16 @@ remains outside the packaged browser journey.
 - **Transfers, desktop Chromium:** `exports and reimports Knowledge Base CSV,
   validates input, and imports Clockify sessions` in
   `frontend/scripts/transfers.real-stack.acceptance.test.mjs`, run with
-  `./scripts/run-transfers-e2e.sh`. It verifies the downloaded CSV header,
-  reimports it, recovers from invalid Clockify JSON, and checks the imported
-  batch through the API.
+  `./scripts/run-transfers-e2e.sh`. It exports a real Path, imports that CSV
+  into a second disposable account with a fresh destination ID, and confirms
+  the Path through that account's API. It recovers from invalid Clockify JSON,
+  imports a Clockify session, and confirms its batch and session through fresh
+  API reads.
 
-Extension Notes and signed-in timer flows are now covered. Worker restart and
-reconnect are covered by reopening the persistent Chromium profile. Denied
-host-permission behavior remains open because the test installation grants
-the declared loopback host permission.
+The extension test restarts the persistent Chromium profile while a timer is
+running, confirms the worker reconnects to the same server timer, and stops
+the timer. The Options module tests cover denied permission handling;
+browser-native prompt rendering remains outside the packaged browser journey.
 
 ## Acceptance
 
