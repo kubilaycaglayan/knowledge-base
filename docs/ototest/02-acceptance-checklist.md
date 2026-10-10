@@ -939,8 +939,14 @@ browser interaction evidence remains a separate layer.
   `NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits`,
   `KnowledgeBaseTransferControllerApiTest.importRequiresCsvContentAndRejectsOtherMediaTypesBeforeServiceAccess`,
   and `ApiExceptionHandlerTest.domainStatusErrorsPreserveStatusAndReason`.
-- [ ] Domain decisions and deterministic branching rules link to focused
-  service/domain evidence.
+- [x] Domain decisions and deterministic branching rules link to focused
+  service/domain evidence. Operation rows include named service/domain tests
+  where branching belongs there, including
+  `TimerServiceEdgeTest.manualAndRunningConfigurationRejectInvalidTimeWindowsBeforeMutation`,
+  `LabelManagementServiceTest.refusesRemovingAUsedScope`,
+  `SearchServiceTextTest.termsSplitOnWhitespaceDropDuplicatesAndStopAtTheCap`,
+  and `SearchServiceTextTest.longTextIsCutAroundTheEarliestMatch`; API-layer
+  tests are retained separately for binding and HTTP status behavior.
 - [ ] Persistence, ownership, transaction, and multi-record behavior link to
   integration evidence.
 - [ ] PostgreSQL constraints, SQL semantics, and migration behavior link to
