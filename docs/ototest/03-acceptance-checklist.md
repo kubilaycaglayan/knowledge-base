@@ -375,7 +375,10 @@ the extension has its own scope in OTOTEST-04.
   its description, path, and labels. Evidence: `FloatingTimeTracker.test.ts` /
   `resumes a paused session with Cmd+Enter` verifies carried seconds and the
   resumed session's description, Path, and labels.
-- [ ] Paused state remains understandable after navigating away and returning.
+- [x] Paused state remains understandable after navigating away and returning.
+  Evidence: `nav-shell.acceptance.test.mjs` / `keeps a paused session
+  understandable after route navigation and reload` verifies the Paused status
+  and Resume session action on another route after reload.
 
 ### Flow: Finish a running session
 

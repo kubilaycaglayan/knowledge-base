@@ -23,6 +23,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   const calendarDays = [];
   const preferences = { theme: "light", kanbanWide: false, ganttWide: false, recentPathIds: [] };
   let currentTimer = null;
+  let pausedTimer = {};
   let rejectNextReportsRequest = rejectReportsAuth;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
@@ -83,6 +84,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       currentTimer = { id: "browser-timer", ...route.request().postDataJSON(), startedAt: new Date().toISOString(), running: true };
       body = currentTimer;
     }
+    else if (path === "/timers/pause" && method === "POST") {
+      pausedTimer = { ...currentTimer, pausedSeconds: 3 };
+      currentTimer = null;
+      body = pausedTimer;
+    }
     else if (/^\/timers\/[^/]+\/stop$/.test(path) && method === "POST") {
       body = { id: currentTimer?.id, endedAt: new Date().toISOString(), running: false };
       currentTimer = null;
@@ -137,7 +143,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       body = preferences;
     }
     else if (path === "/preferences") body = preferences;
-    else if (path === "/timers/draft") body = {};
+    else if (path === "/timers/draft") body = pausedTimer;
     else if (path === "/calendar/days" && method === "GET") body = calendarDays;
     else if (path === "/calendar/days/range" && method === "PUT") body = [];
     else if (path.startsWith("/calendar/days/") && method === "PUT") {
@@ -284,6 +290,23 @@ it("keeps a running timer active after route navigation and browser reload", asy
   await page.locator(".board-page").waitFor();
   await page.getByRole("button", { name: "Stop timer" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/board");
+});
+
+it("keeps a paused session understandable after route navigation and reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.getByRole("textbox", { name: "Timer description" }).fill("Paused browser session");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByRole("button", { name: "Pause session" }).click();
+  await page.getByText("Paused", { exact: true }).waitFor();
+
+  await visit(page, "/board");
+  await page.locator(".board-page").waitFor();
+  await page.getByText("Paused", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Resume session" }).waitFor();
+  await page.reload();
+  await page.locator(".board-page").waitFor();
+  await page.getByText("Paused", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Resume session" }).waitFor();
 });
 
 it("moves focus from the skip link to the main content", async (t) => {
