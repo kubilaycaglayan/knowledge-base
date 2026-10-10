@@ -618,6 +618,7 @@ it("confirms Log removal and keeps the entry when confirmation is cancelled", as
   assert.equal(await dialog.getAttribute("aria-modal"), "true");
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await entry.waitFor();
+  assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Cancel returns focus to the Remove log control");
   assert.equal(requests.includes("/logs/remove-log"), false, "Cancel sends no delete request");
 
   await remove.click();
