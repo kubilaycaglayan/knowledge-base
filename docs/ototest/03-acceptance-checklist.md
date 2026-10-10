@@ -65,7 +65,12 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open a supported route directly
 
-- [ ] Directly loading each supported route renders its matching page.
+- [x] Directly loading each supported route renders its matching page.
+  Evidence: `cd frontend && node --test --test-name-pattern='renders every
+  supported top-level route' scripts/nav-shell.acceptance.test.mjs` hard-loads
+  each top-level workspace route and the `/sessions` redirect; the dedicated
+  browser cases in the same file directly load `/sessions/:id`, `/paths/:id`,
+  `/logs/:id`, `/labels/:id`, `/notes/:id`, and `/board/archive` (mocked API).
 - [ ] Refreshing a supported route preserves the route and its valid query
   state.
 - [x] Opening `/sessions` from another supported route resolves to `/`; Back

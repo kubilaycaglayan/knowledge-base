@@ -77,6 +77,7 @@ async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeed
     else if (path === "/labels") body = calendarLabels;
     else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
+    else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
     else if (path.startsWith("/reports")) {
       reportQueries.push(url.searchParams.toString());
       body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
@@ -189,6 +190,30 @@ it("opens the Sessions workspace directly with its empty state and inline tracke
   await page.getByRole("region", { name: "Sessions" }).waitFor();
   await page.getByText("No sessions recorded yet.", { exact: true }).waitFor();
   await page.locator(".floating-tracker-host.inline").waitFor();
+});
+
+it("renders every supported top-level route after a direct browser load", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const routes = [
+    ["/", ".session-list"],
+    ["/sessions", ".session-list", "/"],
+    ["/paths", ".paths-page"],
+    ["/timeline", 'h1:text-is("Timeline")'],
+    ["/logs", ".logs-page"],
+    ["/reports", ".reports-page"],
+    ["/calendar", ".calendar-page"],
+    ["/imports", 'h1:text-is("Imports")'],
+    ["/settings", ".settings-view"],
+    ["/labels", ".labels-view"],
+    ["/board", ".board-page"],
+    ["/notes", ".notes-page"],
+  ];
+
+  for (const [path, selector, canonicalPath = path] of routes) {
+    await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
+    await page.locator(selector).waitFor();
+    assert.equal(new URL(page.url()).pathname, canonicalPath);
+  }
 });
 
 it("redirects /sessions to the Sessions home and restores history with Back and Forward", async (t) => {
