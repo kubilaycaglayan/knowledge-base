@@ -363,6 +363,38 @@ describe("PathsView", () => {
     ).toBe(false);
   });
 
+  it("preserves a failed path create and lets the user retry", async () => {
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    const name = wrapper.get('input[aria-label="New path name"]');
+    await name.setValue("Reading");
+    vi.mocked(api).mockRejectedValueOnce(new Error("network"));
+    await wrapper.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Could not create path.");
+    expect((name.element as HTMLInputElement).value).toBe("Reading");
+
+    vi.mocked(api).mockResolvedValueOnce({
+      id: "path-retry",
+      name: "Reading",
+      description: null,
+      color: "#F8FAFC",
+      status: "ACTIVE",
+      pinned: false,
+    });
+    await wrapper.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Reading");
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, options]) => path === "/paths" && options?.method === "POST",
+      ),
+    ).toHaveLength(2);
+  });
+
   it("creates a path, shows it in the list, and reloads it from the API", async () => {
     const savedPaths = [
       { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: false },

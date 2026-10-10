@@ -264,7 +264,10 @@ the extension has its own scope in OTOTEST-04.
   issue without creating a path. Evidence: `frontend/src/views/PathsView.test.ts`,
   `rejects a whitespace-only path name without creating a path` checks inline
   feedback and asserts no POST request.
-- [ ] A failed create preserves entered values and offers a retry.
+- [x] A failed create preserves entered values and offers a retry. Evidence:
+  `frontend/src/views/PathsView.test.ts`, `preserves a failed path create and
+  lets the user retry` checks the retained draft, visible error, and successful
+  second create request.
 
 ### Flow: Edit one path
 
