@@ -37,7 +37,7 @@ async function fixture(t, width, { warmup = false } = {}) {
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path.startsWith("/reports")) body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
     else if (path === "/timers/draft" || path === "/preferences") body = {};
-    const missingRecord = path === "/notes/gone" || path === "/time-entries/gone";
+    const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone";
     await route.fulfill({ status: missingRecord ? 404 : 200, json: missingRecord ? { message: "Not found" } : body });
   });
   const page = await context.newPage();
@@ -147,6 +147,20 @@ it("shows an unavailable state for a missing session opened by browser deep link
   const dialog = page.getByRole("dialog");
   await dialog.filter({ hasText: "This session doesn’t exist any more" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/sessions/gone");
+});
+
+it("shows an unavailable state for a missing log opened by browser deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/gone`);
+  await page.getByRole("dialog").filter({ hasText: "This log doesn’t exist any more" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/logs/gone");
+});
+
+it("shows an unavailable state for a missing path opened by browser deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}paths/gone`);
+  await page.getByText("That path doesn’t exist any more").waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths/gone");
 });
 
 it("loads a note editor when the browser opens its deep link directly", async (t) => {
