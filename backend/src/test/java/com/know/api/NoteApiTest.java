@@ -3,6 +3,7 @@ package com.know.api;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -75,6 +76,37 @@ class NoteApiTest {
 
     mvc.perform(
             post("/api/v1/notes")
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{\"title\":\"" + "t".repeat(240) + "\",\"content\":\"Useful\"}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void noteUpdateValidatesRequiredContentAndTextLimits() throws Exception {
+    UUID user = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+    String endpoint = "/api/v1/notes/" + UUID.randomUUID();
+
+    for (String body :
+        List.of(
+            "{\"title\":\"Missing content\"}",
+            "{\"title\":\"Empty content\",\"content\":\" \"}",
+            "{\"title\":\"" + "t".repeat(241) + "\",\"content\":\"Useful\"}",
+            "{\"title\":\"Useful\",\"content\":\"Body\",\"contentText\":\""
+                + "c".repeat(200001)
+                + "\"}")) {
+      mvc.perform(
+              put(endpoint)
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(service);
+
+    mvc.perform(
+            put(endpoint)
                 .with(authentication(auth))
                 .contentType("application/json")
                 .content("{\"title\":\"" + "t".repeat(240) + "\",\"content\":\"Useful\"}"))

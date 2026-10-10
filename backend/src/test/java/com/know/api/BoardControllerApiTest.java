@@ -111,6 +111,32 @@ class BoardControllerApiTest {
         .andExpect(jsonPath("$.name").value("After"));
   }
 
+  @Test
+  void boardUpdateValidatesNameAndAcceptsTheMaximumLength() throws Exception {
+    String invalidEndpoint = "/api/v1/boards/" + UUID.randomUUID();
+    for (String name : List.of(" ", "b".repeat(121))) {
+      mvc.perform(
+              put(invalidEndpoint)
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"name\":\"" + name + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+
+    Board board = new Board(owner, "Before");
+    String maximumName = "b".repeat(120);
+    when(boards.findByIdAndUserId(board.getId(), owner)).thenReturn(Optional.of(board));
+    when(boards.save(board)).thenReturn(board);
+    mvc.perform(
+            put("/api/v1/boards/" + board.getId())
+                .with(authentication(auth()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"" + maximumName + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value(maximumName));
+  }
+
   @Test void everyBoardMutationRejectsAForeignBoard() throws Exception {
     UUID boardId = UUID.randomUUID();
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.empty());
@@ -170,6 +196,48 @@ class BoardControllerApiTest {
             "{\"statusId\":\"" + UUID.randomUUID() + "\",\"position\":-1}")) {
       mvc.perform(
               post(endpoint)
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
+  @Test
+  void statusSortRequiresAnExplicitSortMode() throws Exception {
+    String endpoint =
+        "/api/v1/boards/" + UUID.randomUUID() + "/statuses/" + UUID.randomUUID() + "/sort";
+    for (String body : List.of("{}", "{\"cardSort\":null}")) {
+      mvc.perform(
+              put(endpoint)
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
+  @Test
+  void boardOrderRequiresANonemptyIdList() throws Exception {
+    for (String body : List.of("{}", "{\"ids\":null}", "{\"ids\":[]}")) {
+      mvc.perform(
+              put("/api/v1/boards/order")
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
+  @Test
+  void statusOrderRequiresANonemptyIdList() throws Exception {
+    String endpoint = "/api/v1/boards/" + UUID.randomUUID() + "/statuses/order";
+    for (String body : List.of("{}", "{\"ids\":null}", "{\"ids\":[]}")) {
+      mvc.perform(
+              put(endpoint)
                   .with(authentication(auth()))
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(body))
@@ -306,7 +374,7 @@ class BoardControllerApiTest {
     verify(cards, never()).save(any(BoardCard.class));
   }
 
-  @Test void oversizedCardTitleIsRejectedBeforePersistence() throws Exception {
+  @Test void cardTitleLimitRejectsOverlongAndAcceptsMaximumLength() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
     BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
@@ -317,6 +385,18 @@ class BoardControllerApiTest {
         .content("{\"title\":\"" + "x".repeat(241) + "\"}"))
         .andExpect(status().isBadRequest());
     verifyNoInteractions(cards);
+
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(boardId, status.getId()))
+        .thenReturn(List.of());
+    when(cards.save(any(BoardCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    String maximumTitle = "x".repeat(240);
+    mvc.perform(
+            post("/api/v1/boards/" + boardId + "/cards")
+                .with(authentication(auth()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"" + maximumTitle + "\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.title").value(maximumTitle));
   }
 
   @Test void staleCardUpdateReturnsConflictWithoutOverwritingTheNewerCard() throws Exception {

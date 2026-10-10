@@ -171,7 +171,9 @@ browser interaction evidence remains a separate layer.
   date range inputs.
 - [x] `PUT /api/v1/paths/{id}` covers successful persisted update and invalid
   color values; stale/conflicting state is not applicable because this request
-  has no optimistic version field.
+  has no optimistic version field. Blank names and over-limit descriptions are
+  also rejected before owner lookup
+  (`PathAuthorizationApiTest.pathUpdateValidatesTextAndColorBeforeOwnershipLookup`).
 - [x] `DELETE /api/v1/paths/{id}` covers the documented delete/archive effect
   and subsequent read behavior.
 - [x] `POST /api/v1/paths/{id}/merge` covers source/target ownership, invalid
@@ -191,7 +193,9 @@ browser interaction evidence remains a separate layer.
   maximum (`LabelApiTest.invalidLabelPayloadIsRejected` and
   `LabelApiTest.labelNameLimitRejectsOverlongAndAcceptsMaximumLength`).
 - [x] `PUT /api/v1/labels/{id}` covers update, invalid scope/color values, and
-  assignment-sensitive restrictions.
+  assignment-sensitive restrictions; blank/over-limit names return 400 and
+  the 80-character maximum succeeds
+  (`LabelApiTest.labelUpdateValidatesNameAndAcceptsTheMaximumLength`).
 - [x] `DELETE /api/v1/labels/{id}` covers unassigned deletion.
 - [x] `DELETE /api/v1/labels/{id}?removeAssignments=true` covers explicit
   assignment removal while preserving the assigned records.
@@ -222,6 +226,9 @@ browser interaction evidence remains a separate layer.
   fields.
 - [x] `PUT /api/v1/notes/{id}` covers optimistic version success and stale
   version conflict behavior.
+- [x] `PUT /api/v1/notes/{id}` rejects missing/blank content and title or
+  contentText values over field limits, and accepts the maximum title
+  (`NoteApiTest.noteUpdateValidatesRequiredContentAndTextLimits`).
 - [x] `PUT /api/v1/notes/{id}` covers ownership for its supported references:
   the update body has no path, activity, time-entry, or label ID fields; tags
   are names and a same-name foreign label is not reused or exposed.
@@ -273,7 +280,9 @@ browser interaction evidence remains a separate layer.
 - [x] Concurrent `POST /api/v1/timers` requests preserve the one-running-timer
   invariant (`TimerPauseIntegrationTest.concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant`).
 - [x] `PUT /api/v1/timers/{id}` covers update, optional stop/end-time behavior,
-  and owner-scoped timer IDs.
+  and owner-scoped timer IDs; null label lists and missing start values are
+  rejected before service execution
+  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
 - [x] `POST /api/v1/timers/stop` covers stopping the current timer.
 - [x] `POST /api/v1/timers/{id}/stop` covers the explicit-ID alias and its
   parity with the canonical stop behavior.
@@ -297,12 +306,16 @@ browser interaction evidence remains a separate layer.
 - [x] Resume after a selected path becomes inactive covers validation and
   preservation of the paused draft (`TimerPauseIntegrationTest.resumeRequiresAPausedSession`).
 - [x] `POST /api/v1/time-entries` covers manual entry creation, persisted
-  duration/time, and missing/reversed interval validation.
+  duration/time, and missing/reversed interval validation; null label lists,
+  missing end times, and over-limit descriptions return 400
+  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
 - [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
   optional page/size pagination metadata.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
-  persisted targets/duration, foreign ownership, and invalid interval boundaries.
+  persisted targets/duration, foreign ownership, and invalid interval boundaries;
+  null label lists return 400 before service execution
+  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
 - [x] `DELETE /api/v1/time-entries/{id}` covers soft-delete behavior, owner
   isolation, and subsequent detail/history visibility.
 - [x] `GET /api/v1/statistics` covers tracked-seconds and date/path/label
@@ -341,7 +354,8 @@ browser interaction evidence remains a separate layer.
   blank and over-120-character names return 400 while the 120-character limit
   succeeds (`BoardControllerApiTest.boardCreateRequiresNonblankNameAndAcceptsTheMaximumLength`).
 - [x] `PUT /api/v1/boards/order` covers complete board ordering, duplicate and
-  foreign board IDs, and unchanged order after rejected requests
+  foreign board IDs, missing/null/empty ID lists, and unchanged order after
+  rejected requests
   (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`).
 - [x] `POST /api/v1/boards/{id}/visibility` covers persisted hide/unhide,
   active-list visibility, card preservation, custom-board conflict, and foreign
@@ -355,7 +369,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs
   (`BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`).
 - [x] `PUT /api/v1/boards/{id}` covers persisted custom-board rename and the
-  path-board conflict (`BoardRenameIntegrationTest.customBoardRenamePersistsAndPathBoardRenameConflicts`).
+  path-board conflict (`BoardRenameIntegrationTest.customBoardRenamePersistsAndPathBoardRenameConflicts`);
+  blank and over-limit names are rejected and the 120-character maximum is
+  accepted (`BoardControllerApiTest.boardUpdateValidatesNameAndAcceptsTheMaximumLength`).
 - [x] `POST /api/v1/boards/{id}/archive` covers response/detail state, archived
   and active list visibility, repeated archive idempotence, and mutation
   restrictions (`KnowIntegrationTest.archivedBoardsAreRetainedReadOnlyAndArchiveRestoreIsIdempotent`).
@@ -377,10 +393,12 @@ browser interaction evidence remains a separate layer.
   restrictions (`BoardColumnSortIntegrationTest.statusesDefaultToManualSort`,
   `BoardColumnSortIntegrationTest.statusSortCanBeSetAndCleared`,
   `BoardColumnSortIntegrationTest.priorityPagesOrderByPriorityThenPosition`,
-  and `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`).
+  `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`,
+  and `BoardControllerApiTest.statusSortRequiresAnExplicitSortMode`).
 - [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
-  missing, and foreign status IDs, with saved order preserved after rejected
-  requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`).
+  missing, and foreign status IDs, missing/null/empty ID lists, with saved order preserved after rejected
+  requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`
+  and `BoardControllerApiTest.statusOrderRequiresANonemptyIdList`).
 - [x] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
   active cards after existing destination cards, persisted archive state, and
   preventing removal of the final active status
@@ -405,7 +423,9 @@ browser interaction evidence remains a separate layer.
   `invalidCardDateRangeIsRejectedBeforePersistence`,
   `cardCreateRejectsAForeignOrArchivedStatus`,
   `cardCanReferenceMultipleOwnedPaths`, and
-  `cardRejectsForeignPathAndLabelReferences`).
+  `cardRejectsForeignPathAndLabelReferences`); titles over 240 characters
+  return 400 and the exact maximum succeeds
+  (`BoardControllerApiTest.cardTitleLimitRejectsOverlongAndAcceptsMaximumLength`).
 - [x] `GET /api/v1/boards/{id}/cards/{cardId}` covers owned detail plus missing,
   foreign, and wrong-board card IDs
   (`BoardCardDetailIntegrationTest.cardDetailReturnsOwnedCardAndHidesMissingOrMisnestedCards`).
@@ -434,7 +454,8 @@ browser interaction evidence remains a separate layer.
   target columns, persisted transfer readback, path-board references, and
   foreign/archived board rejection
   (`AllBoardsIntegrationTest.transferMovesACardToAnotherBoard` and
-  `transferRejectsForeignAndArchivedBoards`).
+  `AllBoardsIntegrationTest.transferRejectsForeignAndArchivedBoards`);
+  missing and null destination IDs return 400 without moving the card.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/archive` covers response/detail
   state, archived vs active list visibility, and preserved relationships
   (`KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
@@ -455,12 +476,15 @@ browser interaction evidence remains a separate layer.
   `AllBoardsIntegrationTest.columnsCoverOnlyTheUsersTabBoards`).
 - [x] `GET /api/v1/boards/all/columns/cards/page` covers cross-board cursors,
   many-page stability, empty/unknown columns, invalid limits, foreign-user
-  isolation, and sort modes (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
-  `columnCursorWalkRemainsStableAcrossManyPages`, and `columnPagesFollowTheColumnSort`).
+  isolation, the first and middle pages, limits at 1 and 100, and sort modes
+  (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
+  `AllBoardsIntegrationTest.columnCursorWalkRemainsStableAcrossManyPages`, and
+  `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `PUT /api/v1/boards/all/columns/sort` covers per-user sort persistence,
-  priority order across boards, isolation from board-local modes, reset, and
-  invalid values (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
-  and `columnPagesFollowTheColumnSort`).
+  priority order across boards, isolation from board-local modes, reset, invalid
+  body/name/sort values, and the exact 80-character name maximum
+  (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
+  and `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `GET /api/v1/boards/all/gantt` covers reversed range validation, returns
   dated and undated cards regardless of the requested window, and excludes
   archived boards and hidden path boards
@@ -483,7 +507,9 @@ browser interaction evidence remains a separate layer.
   (`CalendarLabelPickerIntegrationTest.calendarLabelListIncludesOnlyOwnedCalendarScopedLabelsInNameOrder`).
 - [x] `POST /api/v1/calendar/labels` covers trimmed creation, optional color,
   persisted palette color, and malformed or unsupported colors without creating
-  records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`).
+  records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`);
+  blank/over-limit names are rejected and the 80-character maximum is accepted
+  (`CalendarLabelPickerIntegrationTest.calendarLabelNamesEnforceTheBlankAndMaximumLengthRules`).
 - [x] `PUT /api/v1/calendar/labels/{id}` covers owner-only updates, response
   and list readback, day-assignment propagation, and invalid palette colors
   (`KnowIntegrationTest.calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords`).
@@ -498,7 +524,8 @@ browser interaction evidence remains a separate layer.
   label assignments, including persisted readback and omitted marker portions;
   missing assignment IDs and duplicate labels are rejected before changing the
   saved day (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`
-  and `KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`).
+  and `KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`);
+  the 20000-character note limit is accepted and 20001 is rejected.
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
   subsequent absence, foreign-user isolation, and repeated deletion.
 - [x] `PUT /api/v1/calendar/days/range` covers inclusive start/end mutation,
@@ -513,7 +540,7 @@ browser interaction evidence remains a separate layer.
   and `KnowIntegrationTest.noMarkerCalendarLabelsPersistButDoNotAppearInReports`).
 - [x] Calendar range operations cover malformed dates, reversed and over-year
   ranges, missing required start/end values, and acceptance of the one-year
-  maximum span
+  maximum span; range note length accepts 20000 characters and rejects 20001
   (`KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`).
 
 ## Flow: Cover Reports, Search, and Preferences

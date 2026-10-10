@@ -186,6 +186,21 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     JsonNode empty = get("/api/v1/boards/all/columns/cards/page?name=Nowhere&cursor=-1&limit=20", token).getBody();
     assertEquals(0, empty.get("items").size());
     assertTrue(empty.get("nextCursor").isNull());
+    JsonNode first = get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=1", token).getBody();
+    assertEquals(1, first.get("items").size());
+    assertTrue(first.get("nextCursor").asInt() >= 0);
+    JsonNode middle =
+        get(
+                "/api/v1/boards/all/columns/cards/page?name=Backlog&cursor="
+                    + first.get("nextCursor").asInt()
+                    + "&limit=1",
+                token)
+            .getBody();
+    assertEquals(1, middle.get("items").size());
+    assertNotEquals(first.get("items").get(0).get("id"), middle.get("items").get(0).get("id"));
+    JsonNode finalPage = get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=100", token).getBody();
+    assertEquals(5, finalPage.get("items").size());
+    assertTrue(finalPage.get("nextCursor").isNull());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=0", token).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-2&limit=20", token).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=101", token).getStatusCode());
@@ -490,6 +505,16 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals("PRIORITY_LAST", columns(token).get(3).get("cardSort").asText());
     put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Done\",\"cardSort\":\"MANUAL\"}");
     assertEquals("MANUAL", columns(token).get(3).get("cardSort").asText());
+
+    String maximumName = "c".repeat(80);
+    ResponseEntity<JsonNode> maximumNameSort =
+        put(
+            "/api/v1/boards/all/columns/sort",
+            token,
+            "{\"name\":\"" + maximumName + "\",\"cardSort\":\"PRIORITY\"}");
+    assertEquals(HttpStatus.OK, maximumNameSort.getStatusCode());
+    assertEquals(maximumName, maximumNameSort.getBody().get("name").asText());
+    assertEquals("PRIORITY", maximumNameSort.getBody().get("cardSort").asText());
   }
 
   // AB-05
@@ -641,6 +666,8 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{\"boardId\":\"" + foreign + "\"}").getStatusCode());
     assertEquals(HttpStatus.CONFLICT, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{\"boardId\":\"" + old + "\"}").getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", other, "{\"boardId\":\"" + foreign + "\"}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{\"boardId\":null}").getStatusCode());
     assertEquals(work, get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody().get("boardId").asText());
   }
 }

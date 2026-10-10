@@ -98,6 +98,27 @@ class PathAuthorizationApiTest {
   }
 
   @Test
+  void pathUpdateValidatesTextAndColorBeforeOwnershipLookup() throws Exception {
+    UUID owner = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+    String endpoint = "/api/v1/paths/" + UUID.randomUUID();
+
+    for (String body :
+        List.of(
+            "{\"name\":\" \"}",
+            "{\"name\":\"Path\",\"description\":\"" + "d".repeat(2001) + "\"}",
+            "{\"name\":\"Path\",\"color\":\"red\"}")) {
+      mvc.perform(
+              put(endpoint)
+                  .with(authentication(auth))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(paths, boardService);
+  }
+
+  @Test
   void pathColorsAcceptPaletteHexValuesAndRejectUnsafeValues() throws Exception {
     UUID owner = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());

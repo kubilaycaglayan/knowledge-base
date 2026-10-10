@@ -150,6 +150,60 @@ class TimerApiTest {
   }
 
   @Test
+  void runningAndManualEntryRequestsRequireTheirLabelAndTimeFields() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    String timer = UUID.randomUUID().toString();
+    String start = "2026-10-09T10:00:00Z";
+    String end = "2026-10-09T11:00:00Z";
+
+    mvc.perform(
+            put("/api/v1/timers/" + timer)
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"labelIds\":null,\"startedAt\":\"" + start + "\"}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            put("/api/v1/timers/" + timer)
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"labelIds\":[],\"startedAt\":null}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            post("/api/v1/time-entries")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"labelIds\":[],\"startedAt\":\"" + start + "\"}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            post("/api/v1/time-entries")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"labelIds\":[],\"startedAt\":\""
+                        + start
+                        + "\",\"endedAt\":\""
+                        + end
+                        + "\",\"description\":\""
+                        + "d".repeat(5001)
+                        + "\"}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            put("/api/v1/time-entries/" + UUID.randomUUID())
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"labelIds\":null,\"startedAt\":\""
+                        + start
+                        + "\",\"endedAt\":\""
+                        + end
+                        + "\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
   void canonicalAndExplicitStopRoutesUseTheSameTimerAndResponse() throws Exception {
     UUID user = UUID.randomUUID(), timer = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());

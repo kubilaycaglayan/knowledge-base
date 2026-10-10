@@ -124,6 +124,32 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
     assertEquals(2, ok(HttpMethod.GET, "/api/v1/calendar/labels", token, null).size());
   }
 
+  @Test
+  void calendarLabelNamesEnforceTheBlankAndMaximumLengthRules() {
+    String token = token();
+    for (String body :
+        List.of(
+            "{\"name\":\" \"}", "{\"name\":\"" + "l".repeat(81) + "\"}")) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST,
+          exchange(HttpMethod.POST, "/api/v1/calendar/labels", token, body).getStatusCode());
+    }
+    assertTrue(ok(HttpMethod.GET, "/api/v1/calendar/labels", token, null).isEmpty());
+
+    String maximumName = "l".repeat(80);
+    ResponseEntity<JsonNode> maximum =
+        exchange(
+            HttpMethod.POST,
+            "/api/v1/calendar/labels",
+            token,
+            "{\"name\":\"" + maximumName + "\"}");
+    assertEquals(HttpStatus.CREATED, maximum.getStatusCode());
+    assertEquals(maximumName, maximum.getBody().get("name").asText());
+    assertEquals(
+        List.of(maximumName),
+        ok(HttpMethod.GET, "/api/v1/calendar/labels", token, null).findValuesAsText("name"));
+  }
+
   /** A label hidden from Calendar, as created outside the Calendar page. */
   String hiddenLabel(String token, String name) {
     return ok(
