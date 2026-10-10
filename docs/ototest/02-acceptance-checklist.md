@@ -57,10 +57,15 @@ browser interaction evidence remains a separate layer.
   persistence, authorization, transaction, or database behavior. Operation
   rows link backend test methods only; browser E2E, frontend tests, and guarded
   PostgreSQL evidence are classified separately in the matrix conventions.
-- [ ] For each state mutation, link evidence of the persisted state or another
-  observable effect after the request.
-- [ ] For delete/archive operations, link evidence of absence or archived
-  state; for restore operations, link evidence of the restored state.
+- [x] For each state mutation, link evidence of the persisted state or another
+  observable effect after the request. The mutation rows in
+  [`01-api-matrix.md`](01-api-matrix.md) identify response/readback state,
+  reassignment, ordering, emitted activity, or removal outcomes for each
+  operation.
+- [x] For delete/archive operations, link evidence of absence or archived
+  state; for restore operations, link evidence of the restored state. The
+  path, note, label, time-entry, calendar, import-batch, board/status, and card
+  operation rows name the resulting read, list, or persistence observation.
 - [ ] Mark an operation `gap` when its contract is unclear or no assertion
   proves the behavior; do not infer coverage from a neighboring operation.
 - [ ] Mark unsupported/internal operations with a rationale and owner rather
