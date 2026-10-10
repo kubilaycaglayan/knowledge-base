@@ -371,8 +371,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Resume a paused session
 
-- [ ] Resuming a paused session continues from its accumulated time and keeps
-  its description, path, and labels.
+- [x] Resuming a paused session continues from its accumulated time and keeps
+  its description, path, and labels. Evidence: `FloatingTimeTracker.test.ts` /
+  `resumes a paused session with Cmd+Enter` verifies carried seconds and the
+  resumed session's description, Path, and labels.
 - [ ] Paused state remains understandable after navigating away and returning.
 
 ### Flow: Finish a running session

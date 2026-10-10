@@ -395,12 +395,13 @@ describe("FloatingTimeTracker", () => {
     const calls: string[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (options.method) calls.push(`${options.method} ${path}`);
-      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
       if (path === "/timers/current") return null;
-      if (path === "/timers/draft" && !options.method) return { labelIds: [], description: "Paused work", pausedSeconds: 120 };
+      if (path === "/timers/draft" && !options.method) return { pathId: "path-1", labelIds: ["label-1"], description: "Paused work", pausedSeconds: 120 };
       if (path === "/timers/draft") return { ...JSON.parse(options.body as string), pausedSeconds: 120 };
       if (path === "/timers/resume")
-        return { id: "timer-2", labelIds: [], description: "Paused work", startedAt: new Date().toISOString(), carriedSeconds: 120, running: true };
+        return { id: "timer-2", pathId: "path-1", labelIds: ["label-1"], description: "Paused work", startedAt: new Date().toISOString(), carriedSeconds: 120, running: true };
       return undefined;
     });
     const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
@@ -412,6 +413,11 @@ describe("FloatingTimeTracker", () => {
     expect(calls).toContain("POST /timers/resume");
     expect(calls).not.toContain("POST /timers");
     expect(calls).not.toContain("POST /timers/finish");
+    const timerStore = useTimerStore();
+    expect(timerStore.current?.carriedSeconds).toBe(120);
+    expect(timerStore.pathId).toBe("path-1");
+    expect(timerStore.selectedLabelIds).toEqual(["label-1"]);
+    expect(timerStore.description).toBe("Paused work");
     wrapper.unmount();
   });
 
