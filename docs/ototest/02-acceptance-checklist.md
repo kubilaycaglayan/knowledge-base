@@ -580,7 +580,9 @@ browser interaction evidence remains a separate layer.
   through a subsequent range read
   (`KnowIntegrationTest.calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels`);
   required dates, assignment list, and nested label IDs return 400 before service
-  access (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`).
+  access (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`);
+  missing/null/malformed start dates and a missing end date are rejected before
+  service execution (`CalendarApiTest.calendarRangeRequiresValidDateBodyFieldsBeforeServiceAccess`).
 - [x] Calendar day writes cover owned-label validation without mutating label
   scopes, foreign-label rejection, and each supported marker/portion value
   (`CalendarLabelPickerIntegrationTest.dayAcceptsAnOwnedLabelHiddenFromCalendarWithoutChangingItsScopes`,

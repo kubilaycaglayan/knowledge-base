@@ -120,4 +120,23 @@ class CalendarApiTest {
 
     verifyNoInteractions(service);
   }
+
+  @Test
+  void calendarRangeRequiresValidDateBodyFieldsBeforeServiceAccess() throws Exception {
+    for (String body :
+        List.of(
+            "{\"endDate\":\"2026-10-02\",\"labels\":[]}",
+            "{\"startDate\":\"2026-10-01\",\"labels\":[]}",
+            "{\"startDate\":null,\"endDate\":\"2026-10-02\",\"labels\":[]}",
+            "{\"startDate\":\"not-a-date\",\"endDate\":\"2026-10-02\",\"labels\":[]}")) {
+      mvc.perform(
+              put("/api/v1/calendar/days/range")
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
 }
