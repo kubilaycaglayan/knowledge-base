@@ -14,12 +14,13 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [] } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
   const reportQueries = [];
   const paths = [...pathSeeds];
+  let notes = [...noteSeeds];
   const calendarDays = [];
   const preferences = { theme: "light", kanbanWide: false, ganttWide: false, recentPathIds: [] };
   let currentTimer = null;
@@ -101,7 +102,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/labels/label-deep-link/history") body = { labelId: "label-deep-link", name: "Deep link label", color: "#3B82F6", firstUsedAt: null, lastUsedAt: null, totalUses: 0, trackedSeconds: 0, uses: { sessions: 0, logs: 0, notes: 0, calendarDays: 0, cards: 0 }, timeline: [], hours: [], related: [] };
     else if (path === "/labels/label-deep-link/history/records") body = { items: [], hasMore: false };
     else if (path === "/labels") body = calendarLabels;
-    else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
+    else if (path === "/notes/order" && method === "PUT") {
+      const { noteIds } = route.request().postDataJSON();
+      notes = noteIds.map((id) => notes.find((item) => item.id === id)).filter(Boolean);
+      body = notes;
+    }
+    else if (path === "/notes") body = { items: url.searchParams.get("archived") === "true" ? [] : notes, page: 0, size: 20, totalItems: notes.length, totalPages: notes.length ? 1 : 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
@@ -334,6 +340,32 @@ it("keeps every supported primary destination reachable at phone width", async (
     assert.ok(destination.rect.width > 0 && destination.rect.height >= 44, `${destination.text} has a phone-sized target`);
     assert.ok(destination.rect.left >= 0 && destination.rect.right <= 390, `${destination.text} stays within the phone viewport`);
   }
+});
+
+const reorderNotes = () => [
+  { id: "note-a", title: "Browser note A", content: "{}", contentText: "First note", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, tags: [], pinned: false },
+  { id: "note-b", title: "Browser note B", content: "{}", contentText: "Second note", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false },
+];
+
+it("reorders notes with a touch-sized control at phone width", async (t) => {
+  const { page, requests } = await fixture(t, 390, { noteSeeds: reorderNotes() });
+  await visit(page, "/notes");
+  const moveDown = page.getByRole("button", { name: "Move Browser note A down" });
+  const bounds = await moveDown.boundingBox();
+  assert.ok(bounds && bounds.width >= 44 && bounds.height >= 44);
+  await moveDown.tap();
+  await page.waitForFunction(() => [...document.querySelectorAll(".note-row strong")].map((item) => item.textContent).join() === "Browser note B,Browser note A");
+  assert.ok(requests.includes("/notes/order"));
+});
+
+it("reorders notes with the keyboard on desktop", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { noteSeeds: reorderNotes() });
+  await visit(page, "/notes");
+  const moveDown = page.getByRole("button", { name: "Move Browser note A down" });
+  await moveDown.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => [...document.querySelectorAll(".note-row strong")].map((item) => item.textContent).join() === "Browser note B,Browser note A");
+  assert.ok(requests.includes("/notes/order"));
 });
 
 it("renders every supported top-level route after a direct browser load", async (t) => {
