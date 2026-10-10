@@ -1663,6 +1663,17 @@ it("scrolls long Notes content without trapping the page or hiding formatting co
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 });
 
+it("keeps the active-notes recovery action in an empty archive", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}notes?archived=1`);
+  await page.locator(".notes-page").waitFor();
+  await page.getByText("No archived notes.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Active notes", exact: true }).click();
+
+  await page.getByText("Your notes will appear here.", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.has("archived"), false);
+});
+
 it("shows an unavailable state for a missing note opened by browser deep link", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}notes/gone`);

@@ -1258,6 +1258,7 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Restore one note
 
 - [x] Restoring a note returns it to the active list with content intact. Evidence: `NotesView.test.ts` / `restores a note from the archive`.
+- [x] An empty archive explains its state and offers a route back to Active notes. Evidence: `NotesView.test.ts` / `restores a note from the archive` checks the empty message and action; `nav-shell.acceptance.test.mjs` / `keeps the active-notes recovery action in an empty archive` verifies the direct query route, recovery click, and cleared URL filter.
 
 ### Flow: Permanent deletion of a note
 

@@ -269,6 +269,9 @@ compatibility identifiers, and server-owned timer rules remain unchanged.
 - [x] Keep archived notes indefinitely: the nightly 30-day archive purge is
   removed, so no background job deletes notes and any archived note can be
   restored.
+- [x] Keep an empty Notes archive understandable and navigable: show
+  “No archived notes.” and leave the Active notes action available after the
+  last archived note is restored.
 - [x] Remember the Boards page state on the server: the open board, the
   Kanban/Gantt view and range, and the card search are stored in
   `user_preferences` (V53) and restored on `/board` after other pages,
