@@ -2899,9 +2899,11 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             token,
             "{\"startDate\":\"2026-01-01\",\"endDate\":\"2027-01-01\",\"labels\":[]}");
     assertEquals(HttpStatus.OK, maximumRange.getStatusCode());
-    assertEquals(1, maximumRange.getBody().size());
+    assertEquals(2, maximumRange.getBody().size());
     assertEquals("2026-01-02", maximumRange.getBody().get(0).get("date").asText());
     assertEquals(maximumDayNote, maximumRange.getBody().get(0).get("note").asText());
+    assertEquals("2026-09-15", maximumRange.getBody().get(1).get("date").asText());
+    assertEquals(maximumDayNote, maximumRange.getBody().get(1).get("note").asText());
   }
 
   @Test
