@@ -542,6 +542,17 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertFalse(titles.contains("archived-board"));
     assertFalse(titles.contains("hidden-path-board"));
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/gantt?from=2026-09-10&to=2026-09-01", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/gantt", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/gantt?from=2026-09-01", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/gantt?to=2026-09-10", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/gantt?from=not-a-date&to=2026-09-10", token).getStatusCode());
   }
 
   // AB-06

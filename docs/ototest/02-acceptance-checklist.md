@@ -501,7 +501,8 @@ browser interaction evidence remains a separate layer.
   and `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `GET /api/v1/boards/all/gantt` covers reversed range validation, returns
   dated and undated cards regardless of the requested window, and excludes
-  archived boards and hidden path boards
+  archived boards and hidden path boards; missing and malformed date query
+  values return 400
   (`AllBoardsIntegrationTest.ganttCoversEveryTabBoard`).
 - [x] Multi-record board mutations cover PostgreSQL transaction rollback for
   board/status ordering, status archive card moves, card moves, and creating a
