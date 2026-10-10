@@ -247,6 +247,52 @@ describe("NotesView", () => {
     await reloaded.unmount();
   });
 
+  it("changes page size and pages through notes without repeating records", async () => {
+    const notes = Array.from({ length: 25 }, (_, index) => ({
+      ...note,
+      id: `note-${index}`,
+      title: `Note ${String(index).padStart(2, "0")}`,
+    }));
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path.startsWith("/notes?")) {
+        const params = new URLSearchParams(path.split("?")[1]);
+        const size = Number(params.get("size"));
+        const pageIndex = Number(params.get("page"));
+        return {
+          items: notes.slice(pageIndex * size, (pageIndex + 1) * size),
+          page: pageIndex,
+          size,
+          totalItems: notes.length,
+          totalPages: Math.ceil(notes.length / size),
+        };
+      }
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    expect(wrapper.findAll(".note-row")).toHaveLength(20);
+
+    await wrapper.get('select[aria-label="Notes per page"]').setValue("50");
+    await flushPromises();
+    expect(wrapper.findAll(".note-row")).toHaveLength(25);
+    expect(wrapper.text()).toContain("Page 1 of 1");
+
+    await wrapper.get('select[aria-label="Notes per page"]').setValue("20");
+    await flushPromises();
+    await wrapper.findAll("button").find((button) => button.text() === "Next")!.trigger("click");
+    await flushPromises();
+    expect(wrapper.findAll(".note-row strong").map((title) => title.text())).toEqual([
+      "Note 20",
+      "Note 21",
+      "Note 22",
+      "Note 23",
+      "Note 24",
+    ]);
+  });
+
   it("creates a note from the icon action and opens the editor", async () => {
     const created = {
       ...note,
