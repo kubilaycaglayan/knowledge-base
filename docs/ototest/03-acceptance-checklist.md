@@ -448,9 +448,15 @@ the extension has its own scope in OTOTEST-04.
 - [x] Changing trendline mode updates or removes the trendline as selected.
   Evidence: `frontend/src/views/ReportsView.test.ts`, `cycles the trendline
   mode and persists it in the report URL` checks chart props and URL state.
-- [ ] Empty report data produces zero totals and a clear empty state.
-- [ ] Loading and request-error states remain distinct from a valid empty
-  report.
+- [x] Empty report data produces zero totals and a clear empty state.
+  Evidence: `frontend/src/views/ReportsView.test.ts`, `shows zero totals and
+  an explicit empty state for a valid empty report` checks `00:00:00`, the
+  no-tracked-time message, and absence of an error alert.
+- [x] Loading and request-error states remain distinct from a valid empty
+  report. Evidence: the same test checks the valid empty state;
+  `shows loading feedback while a report request is pending` and
+  `shows an error when the report request fails` assert separate status and
+  alert states.
 - [x] Chart values are available in an accessible textual or tabular form.
   Evidence: `frontend/src/views/ReportsView.test.ts`, `aggregates chart values
   at the selected semantic interval` checks the chart's accessible label and

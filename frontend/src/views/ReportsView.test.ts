@@ -760,6 +760,25 @@ describe("ReportsView", () => {
     expect(wrapper.find('[role="status"]').exists()).toBe(false);
   });
 
+  it("shows zero totals and an explicit empty state for a valid empty report", async () => {
+    vi.mocked(api).mockResolvedValueOnce({
+      period: "WEEK",
+      from: "2026-08-24",
+      to: "2026-08-30",
+      totalSeconds: 0,
+      days: [],
+      paths: [],
+      sessionLabels: [],
+      calendarLabels: [],
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+
+    expect(wrapper.get(".total-display").text()).toBe("00:00:00");
+    expect(wrapper.text()).toContain("No tracked time in this period.");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
   it("falls back to the default range when the URL contains malformed report filters", async () => {
     window.history.replaceState(
       {},
