@@ -1773,6 +1773,30 @@ it("opens a log detail when the browser loads its deep link directly", async (t)
   await page.getByRole("heading", { name: "Logs", exact: true }).waitFor();
 });
 
+it("moves focus into and back from Log removal confirmation in the detail dialog", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
+  const remove = dialog.getByRole("button", { name: "Remove…", exact: true });
+
+  await remove.click();
+  const confirmation = page.getByRole("alertdialog");
+  const keep = confirmation.getByRole("button", { name: "Keep log" });
+  await confirmation.waitFor();
+  assert.equal(await keep.evaluate((button) => button === document.activeElement), true, "Focus enters on the safe cancel action");
+
+  await page.keyboard.press("Escape");
+  assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Escape returns focus to the Remove trigger");
+  assert.equal(requests.filter((path) => path === "/logs/log-deep-link").length, 1, "Cancellation sends no delete request");
+
+  await remove.click();
+  await confirmation.waitFor();
+  await keep.click();
+  assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Keep log returns focus to the Remove trigger");
+  assert.equal(requests.filter((path) => path === "/logs/log-deep-link").length, 1, "Button cancellation sends no delete request");
+});
+
 it("wraps very long Log text within the phone-width detail layout", async (t) => {
   const longText = `${"UnbrokenText".repeat(80)} ${"A long log entry should wrap around controls and stay readable. ".repeat(30)}`;
   const { page } = await fixture(t, 390, { logBody: longText });
