@@ -43,6 +43,10 @@ async function fixture(t, width, { warmup = false, calendarLabels = [] } = {}) {
     else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [card];
     else if (path === "/boards/board-1/gantt") body = [card];
     else if (path === "/timers/current") body = null;
+    else if (path === "/labels" && method === "POST") {
+      body = { id: `calendar-label-${calendarLabels.length + 1}`, ...route.request().postDataJSON() };
+      calendarLabels.push(body);
+    }
     else if (path === "/labels") body = calendarLabels;
     else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
@@ -79,7 +83,7 @@ async function fixture(t, width, { warmup = false, calendarLabels = [] } = {}) {
   const page = await context.newPage();
   await page.goto(server.resolvedUrls.local[0]);
   await page.locator(".dashboard-shell > header nav").waitFor();
-  return { page, requests, reportQueries };
+  return { page, requests, reportQueries, calendarLabels };
 }
 
 async function until(condition) {
@@ -473,6 +477,40 @@ it("reloads a saved Calendar label assignment on its selected day", async (t) =>
     return checkbox instanceof HTMLInputElement && checkbox.checked;
   });
   assert.equal(await page.getByRole("checkbox", { name: "Sick leave" }).isChecked(), true);
+});
+
+it("creates a Calendar label with default scopes and reloads its assignment", async (t) => {
+  const { page, calendarLabels } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  await page.getByRole("button", { name: "Open label picker" }).click();
+  const input = page.locator('.label-picker-menu input[aria-label="Add or create calendar label"]');
+  await input.fill("Vacation");
+  await page.getByRole("option", { name: "Create Vacation" }).click();
+
+  assert.deepEqual(
+    { color: calendarLabels[0]?.color, scopes: calendarLabels[0]?.scopes },
+    { color: "#F8FAFC", scopes: ["NOTE", "CALENDAR", "TIME_ENTRY", "LOG", "BOARD"] },
+  );
+  const checkbox = page.getByRole("checkbox", { name: "Vacation" });
+  assert.equal(await checkbox.isChecked(), true);
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save day" }).click();
+  await saved;
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => {
+    const row = [...document.querySelectorAll(".day-label")]
+      .find((item) => item.querySelector("label")?.textContent?.trim() === "Vacation");
+    const checkbox = row?.querySelector('input[type="checkbox"]');
+    return checkbox instanceof HTMLInputElement && checkbox.checked;
+  });
+  assert.equal(await page.getByRole("checkbox", { name: "Vacation" }).isChecked(), true);
 });
 
 it("opens a session detail when the browser loads its deep link directly", async (t) => {

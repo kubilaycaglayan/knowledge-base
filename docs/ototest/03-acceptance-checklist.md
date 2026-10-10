@@ -531,7 +531,10 @@ the extension has its own scope in OTOTEST-04.
   `CP-05: picks labels hidden from Calendar as chips without changing them`.
 - [x] Creating a label from the picker creates and assigns the intended label.
   Evidence: `frontend/src/views/CalendarView.test.ts`, `CP-06: keeps Calendar
-  labels in the list and the dropdown in sync`.
+  labels in the list and the dropdown in sync`; supplemental browser test
+  `scripts/nav-shell.acceptance.test.mjs`, `creates a Calendar label with
+  default scopes and reloads its assignment` checks the default color/scopes
+  and assignment after reload with mocked API data.
 - [x] Removing an assignment does not delete the label itself. Evidence:
   `frontend/src/views/CalendarView.test.ts`, `CP-07: removes a picked label
   from its chip` verifies the saved day has no labels and no DELETE is sent.
