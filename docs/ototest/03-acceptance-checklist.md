@@ -537,10 +537,21 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Apply a calendar range edit
 
-- [ ] Selecting a range displays its inclusive start and end dates.
-- [ ] Applying a range edit updates each day from the start through the end.
-- [ ] Cancelling or restarting range selection does not apply a partial range.
-- [ ] A failed range save leaves the user able to review and retry the range.
+- [x] Selecting a range displays its inclusive start and end dates. Evidence:
+  `frontend/src/views/CalendarView.test.ts`, `drag-selects two calendar days
+  and applies a label across the inclusive range` checks the exact range title
+  and submitted endpoints.
+- [x] Applying a range edit updates each day from the start through the end.
+  Evidence: `CalendarServiceTest.applyRangeVisitsBothEndpointsAndEveryDayBetweenThem`
+  verifies all dates are visited, including both endpoints; the view test
+  verifies the selected endpoints reach the range API.
+- [x] Cancelling or restarting range selection does not apply a partial range.
+  Evidence: `frontend/src/views/CalendarView.test.ts`, `supports month
+  navigation and cancelling a range selection` verifies no range write after
+  cancellation or starting another incomplete selection.
+- [x] A failed range save leaves the user able to review and retry the range.
+  Evidence: `frontend/src/views/CalendarView.test.ts`, `keeps a failed range
+  available for review and a successful retry`.
 
 ### Flow: Use the calendar in mobile Chrome
 
