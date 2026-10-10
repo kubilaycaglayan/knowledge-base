@@ -536,8 +536,13 @@ browser interaction evidence remains a separate layer.
   (`SecurityHardeningIntegrationTest.everyProtectedRouteRejectsAnonymousRequests`);
   the dynamic sweep discovers routes from Spring MVC mappings rather than
   duplicating a static path list.
-- [ ] Each directly addressed resource family has owned, missing, and foreign
-  ID evidence where that operation accepts a resource ID.
+- [x] Direct resource families have owner-visible records plus foreign and
+  missing ID evidence for the same operation; foreign and missing IDs both
+  return 404 and leave owner data unchanged
+  (`CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`,
+  `CrossUserIsolationIntegrationTest.intruderCannotReadChangeOrDeleteOwnedResources`,
+  `BoardDetailIntegrationTest`, `BoardCardDetailIntegrationTest`,
+  `NoteDetailIntegrationTest`, and `LogDetailIntegrationTest`).
 - [ ] Each mutation that accepts referenced IDs verifies those IDs belong to
   the authenticated user.
 - [ ] Referenced path, label, board, status, card, note, timer, entry, and batch

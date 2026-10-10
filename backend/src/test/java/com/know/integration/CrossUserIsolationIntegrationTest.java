@@ -234,6 +234,38 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
     assertEquals(before, ownerViews(), "Owner data changed after refused attempts");
   }
 
+  @Test
+  void foreignAndMissingDirectIdsHaveTheSameNotFoundResponse() {
+    String board = "/api/v1/boards/" + ids.get("board");
+    String[][] operations = {
+      {"GET", "/api/v1/paths/{id}", ids.get("path"), null},
+      {"GET", "/api/v1/notes/{id}", ids.get("note"), null},
+      {"GET", "/api/v1/logs/{id}", ids.get("log"), null},
+      {"PUT", "/api/v1/labels/{id}", ids.get("label"), "{\"name\":\"Hidden\",\"scopes\":[\"NOTE\"]}"},
+      {"GET", "/api/v1/boards/{id}", ids.get("board"), null},
+      {"PUT", board + "/statuses/{id}", ids.get("status"), "{\"name\":\"Hidden\"}"},
+      {"GET", board + "/cards/{id}", ids.get("card"), null},
+      {"GET", "/api/v1/time-entries/{id}", ids.get("entry"), null},
+      {"PUT", "/api/v1/timers/{id}", ids.get("entry"), "{\"labelIds\":[],\"startedAt\":\"2026-09-01T09:00:00Z\"}"},
+      {"PUT", "/api/v1/calendar/labels/{id}", ids.get("calendarLabel"), "{\"name\":\"Hidden\",\"color\":\"#2878D5\"}"}
+    };
+    List<String> before = ownerViews();
+    List<String> failures = new ArrayList<>();
+
+    for (String[] operation : operations) {
+      String template = operation[1];
+      String foreignPath = template.replace("{id}", operation[2]);
+      String missingPath = template.replace("{id}", UUID.randomUUID().toString());
+      ApiClient.Reply foreign = api.send(operation[0], foreignPath, intruder, operation[3]);
+      ApiClient.Reply missing = api.send(operation[0], missingPath, intruder, operation[3]);
+      if (foreign.status() != 404 || missing.status() != 404)
+        failures.add(operation[0] + " " + template + " -> foreign " + foreign.status() + ", missing " + missing.status());
+    }
+
+    assertTrue(failures.isEmpty(), "Foreign and missing IDs differed:\n" + String.join("\n", failures));
+    assertEquals(before, ownerViews(), "Owner data changed after foreign-ID requests");
+  }
+
   // TH-07: another user's ids cannot be attached to the intruder's own data.
   @Test
   void intruderCannotReferenceOwnedResourcesFromTheirOwnData() {
