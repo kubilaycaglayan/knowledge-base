@@ -416,6 +416,27 @@ it("returns the Calendar to today with a touch-sized navigation control", async 
   );
 });
 
+it("loads a Calendar date deep link and retains it after browser reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const url = `${server.resolvedUrls.local[0]}calendar?date=2026-09-01`;
+  await page.goto(url);
+  await page.locator(".calendar-page").waitFor();
+  const assertLinkedDate = async () => {
+    assert.equal(new URL(page.url()).searchParams.get("date"), "2026-09-01");
+    assert.equal(await page.getByRole("combobox", { name: "Calendar month" }).inputValue(), "8");
+    assert.equal(await page.getByRole("combobox", { name: "Calendar year" }).inputValue(), "2026");
+    assert.equal(await page.locator('button.calendar-day[aria-pressed="true"] time').textContent(), "1");
+  };
+  await assertLinkedDate();
+  assert.match(await page.title(), /Knowledge Base.*Calendar/);
+
+  await page.reload();
+
+  await page.locator(".calendar-page").waitFor();
+  await assertLinkedDate();
+  assert.match(await page.title(), /Knowledge Base.*Calendar/);
+});
+
 it("selects a calendar day with touch and updates its details panel", async (t) => {
   const { page } = await fixture(t, 390);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);

@@ -509,7 +509,9 @@ the extension has its own scope in OTOTEST-04.
 
 - [x] A valid `?date=YYYY-MM-DD` URL selects and displays that date. Evidence:
   `frontend/src/views/DeepLinks.test.ts`, `opens the month of the linked day
-  with its saved note and label selected`.
+  with its saved note and label selected`; `scripts/nav-shell.acceptance.test.mjs`,
+  `loads a Calendar date deep link and retains it after browser reload` checks
+  selected month/day and the page title before and after reload.
 - [x] An invalid date query does not select an impossible calendar date.
   Evidence: `frontend/src/views/DeepLinks.test.ts`, `follows a new date while
   open, and ignores impossible dates` checks leap day and rejects February 30.
