@@ -20,6 +20,8 @@ let timerStopCount = 0;
 let currentTimer = null;
 let apiUnavailable = false;
 let authExpired = false;
+let extensionNotes = [];
+let savedExtensionNote = null;
 const fixtureRequests = [];
 
 before(async () => {
@@ -80,6 +82,20 @@ before(async () => {
       timerStopCount += 1;
       currentTimer = null;
       json(200, { stopped: true });
+      return;
+    }
+    if (request.url === "/api/v1/notes" && request.method === "GET") { json(200, extensionNotes); return; }
+    if (request.url === "/api/v1/notes" && request.method === "POST") {
+      savedExtensionNote = { id: "fixture-note", ...JSON.parse(Buffer.concat(chunks).toString("utf8")), version: 1 };
+      extensionNotes = [savedExtensionNote, ...extensionNotes];
+      json(200, savedExtensionNote);
+      return;
+    }
+    if (request.url === "/api/v1/notes/fixture-note" && request.method === "GET") { json(200, savedExtensionNote); return; }
+    if (request.url === "/api/v1/notes/fixture-note" && request.method === "PUT") {
+      savedExtensionNote = { ...savedExtensionNote, ...JSON.parse(Buffer.concat(chunks).toString("utf8")), version: (savedExtensionNote?.version || 1) + 1 };
+      extensionNotes = [savedExtensionNote];
+      json(200, savedExtensionNote);
       return;
     }
     response.writeHead(404);
@@ -191,6 +207,15 @@ it("signs in, syncs a timer through the packaged popup, and recovers from an una
     throw new Error(`Timer did not stop: status=${await popup.locator("#status").textContent()}, error=${await popup.locator("#error").textContent()}, requests=${fixtureRequests.slice(-12).join(" | ")}`);
   });
   assert.equal(timerStopCount, 1);
+
+  await popup.getByRole("button", { name: "Notes" }).click();
+  await popup.getByRole("button", { name: "Create note" }).click();
+  await popup.getByRole("textbox", { name: "Note title" }).fill("Extension note round trip");
+  await popup.getByRole("textbox", { name: "Note", exact: true }).fill("Saved through the signed-in packaged extension.");
+  await popup.getByRole("button", { name: "Back to notes" }).click();
+  await popup.getByText("Extension note round trip").waitFor();
+  assert.equal(savedExtensionNote.title, "Extension note round trip");
+  assert.equal(savedExtensionNote.contentText, "Saved through the signed-in packaged extension.");
 
   apiUnavailable = true;
   const reconnect = await context.newPage();

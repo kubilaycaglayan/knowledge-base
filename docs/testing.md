@@ -124,8 +124,9 @@ Set `LINE_HISTORY_E2E_SCREENSHOTS=<dir>` to keep screenshots.
 loads that packaged build in desktop Chromium with a fresh temporary browser
 profile. The browser journey checks the manifest permissions, popup and
 options entrypoints, API URL persistence, a Clockify content-script to
-service-worker request, signed-in timer start/stop, expired-session recovery,
-and unavailable-API recovery against a disposable loopback fixture. It requires
+service-worker request, signed-in timer start/stop, note creation and editing,
+expired-session recovery, and unavailable-API recovery against a disposable
+loopback fixture. Unexpected console and page errors fail the suite. It requires
 `xvfb-run` on a headless Linux host and uses only a local fixture token. The
 test profile and fixture server are removed when the run exits. To run just
 the browser assertions after building the extension, use

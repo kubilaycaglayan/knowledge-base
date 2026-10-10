@@ -62,13 +62,11 @@ persistence boundaries.
 - [x] Exercise extension build/install/load and verify the manifest, required
   permissions, popup and options entrypoints. Evidence:
   `extension.real-browser.acceptance.test.mjs`.
-- [ ] Exercise sign-in/configuration, timer start/stop/sync, notes flows, and
+- [x] Exercise sign-in/configuration, timer start/stop/sync, notes flows, and
   Clockify behavior supported by the current product.
-  Sign-in and timer start/stop now run in the packaged browser suite; Notes
-  remains covered only by popup module tests.
 - [ ] Verify service-worker restart/reconnect behavior and errors from denied
   permissions or unavailable API dependencies where feasible.
-- [ ] Capture browser console errors and fail on unexpected extension/runtime
+- [x] Capture browser console errors and fail on unexpected extension/runtime
   errors; keep secrets out of logs and artifacts.
 - [ ] Keep fast Node module tests as the primary location for exhaustive edge
   cases; browser tests should focus on browser integration and critical
@@ -76,9 +74,10 @@ persistence boundaries.
 
 The packaged browser suite verifies install, manifest permissions, popup and
 options rendering, saved API configuration, a Clockify content-script request
-through the service worker, signed-in timer start/stop, expired-session return
-to sign-in, and recovery UI for an unavailable API. It does not yet cover
-extension Notes, worker restart, or denied permissions.
+through the service worker, signed-in timer start/stop, note creation/editing,
+expired-session return to sign-in, and recovery UI for an unavailable API.
+Unexpected console and page errors fail the suite. Worker restart and denied
+permissions remain uncovered.
 
 ## Completed browser slices
 
