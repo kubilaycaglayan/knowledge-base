@@ -607,7 +607,8 @@ browser interaction evidence remains a separate layer.
   `preserves sign-in on HTTP %s`,
   `preserves sign-in when the API connection drops during deployment`,
   `aborts requests that remain pending for 15 seconds`, and
-  `does not erase a newer sign-in when an older request returns 401`).
+  `does not erase a newer sign-in when an older request returns 401`; verified
+  with `cd frontend && npm test -- --run src/lib/api.test.ts` (16 tests passed).
 - [x] Response status errors preserve their intended status and reason in the
   API error envelope (`ApiExceptionHandlerTest.domainStatusErrorsPreserveStatusAndReason`);
   authenticated and anonymous route outcomes are covered by the integration
