@@ -631,8 +631,11 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `TimelineView.test.ts` / `limits timeline results to the selected
   path` begins with activities for two Paths and verifies only the selected
   Path's activity remains visible after filtering.
-- [ ] Choosing a valid date interval limits results to its intended inclusive
-  dates.
+- [x] Choosing a valid date interval limits results to its intended inclusive
+  dates. Evidence: `TimelineView.test.ts` / `submits activity, path, and date
+  filters together` verifies the requested start-of-day and end-of-day
+  boundaries; `ActivityIntegrationTest.activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner`
+  verifies activities exactly on each bound are included.
 - [ ] Submitting a reversed date interval shows validation and does not display
   a misleading result set.
 - [ ] Clearing timeline filters returns the default timeline state.
