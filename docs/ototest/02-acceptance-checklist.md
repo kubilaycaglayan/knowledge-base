@@ -446,7 +446,7 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/{id}/cards/page` covers empty/small/exact/overflow
   boundaries, safe default page size, stable cursor, PRIORITY and PRIORITY_LAST
   page walks, malformed/out-of-range cursor and limit rejection
-  (`BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`,
+  (`BoardControllerApiTest.cardPageValidatesCursorAndLimitBoundariesBeforeCardLookup`,
   `BoardControllerApiTest.cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor`,
   `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
   `BoardColumnSortIntegrationTest.priorityPagesWalkEveryCardOnce`, and

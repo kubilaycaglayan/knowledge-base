@@ -550,13 +550,21 @@ class BoardControllerApiTest {
   }
 
   @Test
-  void cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup() throws Exception {
+  void cardPageValidatesCursorAndLimitBoundariesBeforeCardLookup() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId(), statusId = UUID.randomUUID();
     BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
     when(statuses.findByIdAndBoardId(statusId, boardId)).thenReturn(Optional.of(status));
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(
+            eq(boardId), eq(statusId), eq(-1), any()))
+        .thenReturn(List.of());
     String endpoint = "/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId;
+
+    mvc.perform(get(endpoint + "&limit=1").with(authentication(auth())))
+        .andExpect(status().isOk());
+    mvc.perform(get(endpoint + "&limit=100").with(authentication(auth())))
+        .andExpect(status().isOk());
 
     for (String query :
         List.of("&cursor=-2", "&limit=0", "&limit=101", "&cursor=next", "&limit=many")) {
@@ -564,6 +572,12 @@ class BoardControllerApiTest {
           .andExpect(status().isBadRequest());
     }
 
-    verifyNoInteractions(cards);
+    verify(cards)
+        .findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(
+            eq(boardId), eq(statusId), eq(-1), argThat(page -> page.getPageSize() == 2));
+    verify(cards)
+        .findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(
+            eq(boardId), eq(statusId), eq(-1), argThat(page -> page.getPageSize() == 101));
+    verifyNoMoreInteractions(cards);
   }
 }
