@@ -22,6 +22,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   const paths = [...pathSeeds];
   const calendarDays = [];
   const preferences = { theme: "light", kanbanWide: false, ganttWide: false, recentPathIds: [] };
+  let currentTimer = null;
   let rejectNextReportsRequest = rejectReportsAuth;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
@@ -78,7 +79,15 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [card] : [], nextCursor: null };
     else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [card];
     else if (path === "/boards/board-1/gantt") body = [card];
-    else if (path === "/timers/current") body = null;
+    else if (path === "/timers" && method === "POST") {
+      currentTimer = { id: "browser-timer", ...route.request().postDataJSON(), startedAt: new Date().toISOString(), running: true };
+      body = currentTimer;
+    }
+    else if (/^\/timers\/[^/]+\/stop$/.test(path) && method === "POST") {
+      body = { id: currentTimer?.id, endedAt: new Date().toISOString(), running: false };
+      currentTimer = null;
+    }
+    else if (path === "/timers/current") body = currentTimer;
     else if (path === "/labels" && method === "POST") {
       body = { id: `calendar-label-${calendarLabels.length + 1}`, ...route.request().postDataJSON() };
       calendarLabels.push(body);
@@ -260,6 +269,21 @@ it("opens the Sessions workspace directly with its empty state and inline tracke
   assert.equal(await pageHeadings.count(), 1);
   assert.equal((await pageHeadings.first().textContent())?.trim(), "Sessions");
   await page.locator(".floating-tracker-host.inline").waitFor();
+});
+
+it("keeps a running timer active after route navigation and browser reload", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.getByRole("textbox", { name: "Timer description" }).fill("Persist across views");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+
+  await visit(page, "/board");
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  await page.reload();
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/board");
 });
 
 it("moves focus from the skip link to the main content", async (t) => {

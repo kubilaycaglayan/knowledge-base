@@ -350,7 +350,10 @@ the extension has its own scope in OTOTEST-04.
 - [x] The running timer visibly advances while active. Evidence:
   `FloatingTimeTracker.test.ts` / `visibly advances the running timer once per
   second` verifies the visible timer value increments after two seconds.
-- [ ] The timer remains running after route navigation and page refresh.
+- [x] The timer remains running after route navigation and page refresh.
+  Evidence: `keeps a running timer active after route navigation and browser
+  reload` in `frontend/scripts/nav-shell.acceptance.test.mjs` starts a timer on
+  Sessions, navigates to Board, reloads, and verifies the Stop action remains.
 - [ ] Starting a second timer resolves to the account's already-running timer.
 - [ ] Stopping a timer under the accidental-start threshold does not leave a
   completed session.
