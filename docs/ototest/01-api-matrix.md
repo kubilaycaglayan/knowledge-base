@@ -1,6 +1,6 @@
 # OTOTEST-01 — Backend API operation inventory
 
-**Source revision:** `7799158e1b83906ba185e3cb5a3b48dd95bd6d79` (`origin/main` at review)
+**Source revision:** `77470a41c9f77581a67b5ea22c191adb2f087eea` (`origin/main` at review)
 **Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-10; 107 composed method/path rows reconciled against 105 mapping annotations, including multi-path mappings
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Evidence candidates:** [controller/API tests](../../backend/src/test/java/com/know/api/), [integration tests](../../backend/src/test/java/com/know/integration/), and [service tests](../../backend/src/test/java/com/know/service/)
