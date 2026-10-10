@@ -269,8 +269,9 @@ browser interaction evidence remains a separate layer.
   validation and missing/blank/over-limit inputs return 400
   (`LogApiTest.logBodyAndTimestampRespectRequiredAndMaximumLengthBoundaries`).
 - [x] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
-  owned labels with LOG scope; missing/null lists and 101 IDs return 400 before
-  service execution, while exactly 100 IDs pass request validation
+  owned labels with LOG scope; missing/null lists, non-array values, malformed
+  UUID items, and 101 IDs return 400 before service execution, while exactly
+  100 IDs pass request validation
   (`LogApiTest.logLabelAssignmentRequiresACollectionOfAtMostOneHundredIds`).
 - [x] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
