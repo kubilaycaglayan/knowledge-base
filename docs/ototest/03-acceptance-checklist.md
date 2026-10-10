@@ -1226,7 +1226,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] Reordering notes changes their visible order after reload. Evidence: `NotesView.test.ts` / `pins notes and persists card ordering` checks the new order on the list and after remount from the API fixture.
 - [ ] Keyboard/touch alternatives are available where drag reordering is
   supported.
-- [ ] A failed reorder restores the saved order or provides a clear retry.
+- [x] A failed reorder restores the saved order or provides a clear retry. Evidence: `NotesView.test.ts` / `keeps note order after a failed reorder and allows a retry` verifies the saved order remains visible, the error is announced, and a second drag succeeds.
 
 ### Flow: Recover unsaved note changes
 
