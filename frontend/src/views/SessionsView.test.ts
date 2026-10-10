@@ -101,6 +101,24 @@ describe("SessionsView", () => {
     );
   });
 
+  it("shows a loading state instead of the empty state until session history resolves", async () => {
+    let finishHistory: (value: unknown) => void = () => undefined;
+    vi.mocked(api).mockImplementation((path: string) => {
+      if (path.startsWith("/time-entries?"))
+        return new Promise((resolve) => { finishHistory = resolve; });
+      return Promise.resolve([]);
+    });
+    const wrapper = mount(SessionsView);
+
+    expect(wrapper.get('[role="status"]').text()).toBe("Loading sessions…");
+    expect(wrapper.text()).not.toContain("No sessions recorded yet.");
+
+    finishHistory({ page: 0, totalPages: 1, totalSessions: 0, sessions: [] });
+    await flushPromises();
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain("No sessions recorded yet.");
+  });
+
   it("refreshes the sessions list when the tracker completes a session", async () => {
     let historyLoads = 0;
     vi.mocked(api).mockImplementation(async (path: string) => {
