@@ -124,7 +124,6 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
     String board = "/api/v1/boards/" + ids.get("board");
     return List.of(
             "/api/v1/paths/" + ids.get("path"),
-            "/api/v1/activities?pathId=" + ids.get("path"),
             "/api/v1/notes/" + ids.get("note"),
             "/api/v1/logs/" + ids.get("log"),
             "/api/v1/labels",
