@@ -136,6 +136,11 @@ and body, verifies a fresh API read, archives and restores it, then checks the
 active note after reload. The runner generates local credentials and removes
 only its own Compose project and volumes.
 
+`./scripts/run-paths-e2e.sh` runs a desktop Chromium Paths journey in a separate
+disposable Compose project. It creates a Path through the UI, edits it, removes
+it with the supported undo window, and confirms each saved state through fresh
+API reads and reloads.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and

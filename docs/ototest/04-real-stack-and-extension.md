@@ -91,8 +91,13 @@ permissions, or unavailable API recovery.
   Clockify content-script to service-worker journey in
   `frontend/scripts/extension.real-browser.acceptance.test.mjs`, run with
   `./scripts/run-extension-browser-e2e.sh`.
+- **Paths, desktop Chromium:** `creates, edits, removes, restores, and reloads
+  a Path with persisted API state` in
+  `frontend/scripts/paths.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-paths-e2e.sh`. It verifies the removal confirmation and undo,
+  then checks the restored description after reload.
 
-Paths, Logs, Labels, Calendar, Reports, Settings, both transfer formats, and
+Logs, Labels, Calendar, Reports, Settings, both transfer formats, and
 the remaining signed-in timer/notes and service-worker recovery journeys remain
 open for this milestone.
 
