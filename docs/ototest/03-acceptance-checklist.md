@@ -1019,69 +1019,66 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Select one board
 
-- [ ] Selecting a board tab displays that board's columns and cards.
-- [ ] Selecting All boards displays the available boards together and identifies
-  each card's owning board.
+- [x] Selecting a board tab displays that board's columns and cards. Evidence: `BoardView.test.ts` / `shows board selection as tabs` and `clicking an unselected board tab switches boards instead of renaming` verify the selected tab and board change.
+- [x] Selecting All boards displays the available boards together and identifies each card's owning board. Evidence: `BoardView.test.ts` / `shows merged columns with a one-line board badge` and `labels each merged column region by its own heading`.
 
 ### Flow: Open the board manager
 
-- [ ] Opening Manage boards lists the available boards.
+- [x] Opening Manage boards lists the available boards. Evidence: `BoardView.test.ts` / `opens the boards dialog from the single gear and each name opens its settings`.
 
 ### Flow: Pin one board
 
-- [ ] Pinning a board updates its visible pinned state after reload.
+- [x] Pinning a board updates its visible pinned state after reload. Evidence: `boards.test.ts` / `pins a custom board and reloads the server tab order` verifies persisted pin and order response; `BoardView.test.ts` / `pins and unpins any board from the boards dialog` verifies the control state.
 
 ### Flow: Reorder boards
 
-- [ ] Reordering boards updates their visible tab order after reload.
+- [x] Reordering boards updates their visible tab order after reload. Evidence: `boards.test.ts` / `reorderBoards interleaves path and custom boards within a group and persists it` and `pins a custom board and reloads the server tab order`.
 
 ### Flow: Create one board
 
-- [ ] Creating a board adds a selectable board tab with its chosen title.
+- [x] Creating a board adds a selectable board tab with its chosen title. Evidence: `BoardView.test.ts` / `creates the board from the dialog and closes it`.
 
 ### Flow: Rename one board
 
-- [ ] Renaming a board updates the selected board tab and title.
+- [x] Renaming a board updates the selected board tab and title. Evidence: `BoardView.test.ts` / `renames the board on blur and ignores an unchanged or blank name`.
 
 ### Flow: Archive one board
 
-- [ ] Archiving a board requires confirmation and removes it from active tabs.
+- [x] Archiving a board requires confirmation and removes it from active tabs. Evidence: `BoardView.test.ts` / `confirms before archiving a status or the board` checks the confirmation dialog; `boards.test.ts` covers the archive action and active board selection.
 - [ ] A missing selected board falls back to a valid board and explains the
   unavailable selection where appropriate.
 
 ### Flow: Manage one board's statuses
 
-- [ ] Creating a status adds one column to the selected board.
-- [ ] Renaming a status updates its column heading.
-- [ ] Reordering statuses updates their displayed order after reload.
+- [x] Creating a status adds one column to the selected board. Evidence: `BoardView.test.ts` / `renames, reorders, and adds statuses` checks the created status request.
+- [x] Renaming a status updates its column heading. Evidence: the same test verifies the selected status update request.
+- [x] Reordering statuses updates their displayed order after reload. Evidence: the same test exercises keyboard reordering and verifies the persisted order; `boards.test.ts` / `persists status order and replaces the local order from the server` checks server reconciliation.
 - [ ] Archiving a status handles its cards and disallowed last-active-status
   case with visible feedback.
-- [ ] Restoring an archived status returns it to the board.
-- [ ] A failed status update leaves the board in a recoverable state.
+- [x] Restoring an archived status returns it to the board. Evidence: `BoardArchiveView.test.ts` / `restores an archived status through an icon button`.
+- [x] A failed status update leaves the board in a recoverable state. Evidence: `boards.test.ts` / `keeps a status active when archive fails` retains the status after the rejected update.
 
 ### Flow: Create one board card
 
-- [ ] Creating a card in a selected column places it in that column.
+- [x] Creating a card in a selected column places it in that column. Evidence: `BoardView.test.ts` / `adds a blank card to the clicked column from its header and opens it`.
 
 ### Flow: Open one board card
 
-- [ ] Opening a card displays the card-specific URL and editor.
+- [x] Opening a card displays the card-specific URL and editor. Evidence: `BoardView.test.ts` / `sets the selected card in the URL and clears it when the editor closes` verifies the query and editor.
 
 ### Flow: Edit one board card
 
 - [ ] Saving title and body updates the selected card.
-- [ ] Saving path, priority, status, and date fields updates the selected
-  card's displayed metadata.
-- [ ] Adding/removing BOARD labels updates the selected card's label chips.
-- [ ] Closing the editor clears its selected card from the URL.
+- [x] Saving path, priority, status, and date fields updates the selected card's displayed metadata. Evidence: `BoardView.test.ts` / `sets and clears the card path from the header picker`, `puts dates, priority, status, labels, and an icon-only archive button in the editor footer`, `saves a single confirmed day as both start and due date`, and `flushes pending edits when closed and moves the card from the status select`.
+- [x] Adding/removing BOARD labels updates the selected card's label chips. Evidence: `BoardView.test.ts` / `picks card labels from a searchable chip selector in the editor footer` and `shows each selected label's name on its chip and removes it from the chip`.
+- [x] Closing the editor clears its selected card from the URL. Evidence: the same test verifies only the selected board remains in the route query after close.
 - [ ] A failed card save preserves the draft and identifies the recovery
   action.
-- [ ] A stale card edit reports a conflict without silently replacing the
-  current saved version.
+- [x] A stale card edit reports a conflict without silently replacing the current saved version. Evidence: `BoardView.test.ts` / `shows the newer card's times after a conflict and the retried save's times after Retry`; `boards.test.ts` / `keeps the current card intact when an edit times out`.
 
 ### Flow: Move one card between statuses
 
-- [ ] Moving a card to another status places it once in the destination.
+- [x] Moving a card to another status places it once in the destination. Evidence: `boards.test.ts` / `reconciles a moved card in both Kanban and Gantt collections` and `reorders neighboring cards when moving within the same status`; `BoardView.test.ts` / `flushes pending edits when closed and moves the card from the status select`.
 
 ### Flow: Reorder cards in an unsorted column
 
@@ -1090,55 +1087,50 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Sort cards by priority
 
-- [ ] Priority sorting shows cards in the selected priority order.
-- [ ] Sorted columns do not expose a misleading manual order result.
+- [x] Priority sorting shows cards in the selected priority order. Evidence: `BoardView.test.ts` / `shows a priority-sorted column in priority order`.
+- [x] Sorted columns do not expose a misleading manual order result. Evidence: `BoardView.test.ts` / `does not reorder within a priority-sorted column` and `cycles a column's sort through three states`.
 - [ ] A failed reorder restores the prior order or offers a clear retry.
-- [ ] Keyboard/tap controls provide an alternative for supported drag actions.
+- [x] Keyboard/tap controls provide an alternative for supported drag actions. Evidence: `BoardView.test.ts` / `renames, reorders, and adds statuses` verifies keyboard ordering from the drag-handle control; card status can also be changed through the editor status select.
 
 ### Flow: Page through board cards
 
-- [ ] Loading more cards appends the next page without repeating prior cards.
+- [x] Loading more cards appends the next page without repeating prior cards. Evidence: `boards.test.ts` / `coalesces duplicate lazy-page requests at the same cursor` verifies one page request and one appended record.
 - [ ] Page order remains stable when card priorities are tied.
-- [ ] A page request failure exposes a retry action.
-- [ ] Retrying a failed page does not duplicate cards.
+- [x] A page request failure exposes a retry action. Evidence: `boards.test.ts` / `keeps a failed lazy page retryable and exposes a recoverable error` checks error state and retry success.
+- [x] Retrying a failed page does not duplicate cards. Evidence: the same test verifies the recovered card is appended once after retry.
 
 ### Flow: Use the Gantt view
 
-- [ ] Switching to Gantt shows the selected board's active cards.
-- [ ] Changing the visible date range updates the timeline window.
-- [ ] Undated cards remain discoverable in the card name gutter.
-- [ ] Cards outside the visible interval remain discoverable in the gutter.
-- [ ] A card's inclusive start/end dates occupy the intended timeline days.
+- [x] Switching to Gantt shows the selected board's active cards. Evidence: `BoardView.test.ts` / `toggles between Kanban and Gantt views` and `keeps all active cards in the Gantt gutter while limiting bars to the visible dates`.
+- [x] Changing the visible date range updates the timeline window. Evidence: `BoardView.test.ts` / `moves the timeline start to the card's start date from its edge arrow` and `moves the timeline end to the card's end date from its right edge arrow`.
+- [x] Undated cards remain discoverable in the card name gutter. Evidence: `BoardView.test.ts` / `keeps all active cards in the Gantt gutter while limiting bars to the visible dates`.
+- [x] Cards outside the visible interval remain discoverable in the gutter. Evidence: the same test and `shows edge arrows for dated cards outside the visible timeline`.
+- [x] A card's inclusive start/end dates occupy the intended timeline days. Evidence: `BoardView.test.ts` / `selects and saves an inclusive date range when dragging across an undated row` and `previews a one-day bar on an undated card's row and saves the hovered date on click`.
 - [ ] Dragging a card bar changes its dates by whole days and shows save
   feedback.
 - [ ] Resizing either edge changes the matching endpoint date.
 - [ ] Cancelling a drag leaves the saved date range unchanged.
-- [ ] Offscreen date arrows move the visible window to include that card.
-- [ ] Hiding and restoring the card list preserves the user's selected view.
+- [x] Offscreen date arrows move the visible window to include that card. Evidence: `BoardView.test.ts` / `moves the timeline start to the card's start date from its edge arrow` and `moves the timeline end to the card's end date from its right edge arrow`.
+- [x] Hiding and restoring the card list preserves the user's selected view. Evidence: `BoardView.test.ts` / `hides and shows the Gantt card list from the timeline's top-left toggle` and `remembers the hidden Gantt card list in this browser`.
 - [ ] Gantt controls remain visible and operable at phone width where Gantt is
   offered.
 
 ### Flow: Start a timer from a card
 
-- [ ] A card with an eligible path exposes its start-timer action when no timer
-  is running.
-- [ ] Starting from the card creates a timer for that path with the card title
-  as its description.
-- [ ] A running timer hides or disables duplicate card start actions without
-  shifting card layout unexpectedly.
+- [x] A card with an eligible path exposes its start-timer action when no timer is running. Evidence: `BoardView.test.ts` / `shows a card play button only for path cards while no timer runs`.
+- [x] Starting from the card creates a timer for that path with the card title as its description. Evidence: `BoardView.test.ts` / `starts a session from a card without opening it`.
+- [x] A running timer hides or disables duplicate card start actions without shifting card layout unexpectedly. Evidence: `BoardView.test.ts` / `keeps an invisible play slot on In Progress cards while a timer runs`.
 
 ### Flow: Archive one card
 
-- [ ] Archiving a card removes it from the active board and places it in the
-  archive.
-- [ ] The archive deep link selects the requested board/card context.
+- [x] Archiving a card removes it from the active board and places it in the archive. Evidence: `board.real-stack.acceptance.test.mjs` / `archives a card from the board and restores it on the archive page`; `boards.test.ts` / `removes an archived card from the active Gantt window`.
+- [x] The archive deep link selects the requested board/card context. Evidence: `BoardArchiveView.test.ts` / `marks an archived board named by the link, whether as archivedBoard or board` and `scrolls to and marks the archived card a search result links to`.
 
 ### Flow: Restore one card
 
-- [ ] Restoring a card returns it to an active board and valid status.
-- [ ] A card whose former status is archived is restored to a valid active
-  status with visible feedback.
-- [ ] Returning from archive restores the relevant board context.
+- [x] Restoring a card returns it to an active board and valid status. Evidence: `BoardArchiveView.test.ts` / `restores an archived card and names untitled cards accessibly` and `boards.test.ts` / `re-adds a restored dated card only when it overlaps the Gantt window`.
+- [x] A card whose former status is archived is restored to a valid active status with visible feedback. Evidence: `BoardControllerApiTest.restoringCardFallsBackWhenItsStatusWasArchived` and `BoardArchiveView.test.ts` / `restores an archived card and names untitled cards accessibly`.
+- [x] Returning from archive restores the relevant board context. Evidence: `BoardArchiveView.test.ts` / `links back to the board it was opened from` and `scrolls to and marks the archived card a search result links to`.
 
 ### Flow: Use Kanban on mobile Chrome
 
