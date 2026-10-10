@@ -509,16 +509,14 @@ describe("PathsView", () => {
     expect(JSON.parse(String(updateCall?.[1]?.body)).textColor).toBeNull();
   });
 
-  it("pins paths and persists keyboard-accessible ordering", async () => {
+  it("updates the visible pin state when pinning and unpinning a path", async () => {
     let pinned = false;
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/paths")
-        return [
-          { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned },
-          { id: "path-2", name: "Writing", status: "ACTIVE", pinned: false },
-        ];
+        return [{ id: "path-1", name: "Algorithms", status: "ACTIVE", pinned }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
       if (path === "/paths/path-1/pin") {
-        pinned = true;
+        pinned = JSON.parse(String(options?.body)).pinned;
         return { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned };
       }
       return undefined;
@@ -526,7 +524,12 @@ describe("PathsView", () => {
     const wrapper = mount(PathsView);
     await flushPromises();
 
-    await wrapper.get(".path-pin-button").trigger("click");
+    const pinButton = wrapper.get(".path-pin-button");
+    expect(pinButton.attributes("aria-pressed")).toBe("false");
+    expect(pinButton.attributes("aria-label")).toBe("Pin Algorithms");
+
+    await pinButton.trigger("click");
+    await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/paths/path-1/pin",
       expect.objectContaining({ body: '{"pinned":true}' }),
@@ -534,6 +537,16 @@ describe("PathsView", () => {
     expect(wrapper.get(".path-pin-button").attributes("aria-label")).toBe(
       "Unpin Algorithms",
     );
+    expect(wrapper.get(".path-pin-button").attributes("aria-pressed")).toBe("true");
+
+    await wrapper.get(".path-pin-button").trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/path-1/pin",
+      expect.objectContaining({ body: '{"pinned":false}' }),
+    );
+    expect(wrapper.get(".path-pin-button").attributes("aria-pressed")).toBe("false");
+    expect(wrapper.get(".path-pin-button").attributes("aria-label")).toBe("Pin Algorithms");
     expect(wrapper.findAll(".path-order-button")).toHaveLength(0);
   });
 

@@ -286,7 +286,10 @@ the extension has its own scope in OTOTEST-04.
   selection and persistence request; `scripts/nav-shell.acceptance.test.mjs`,
   `changes and persists an existing Path color using only the keyboard`
   verifies keyboard activation and the resulting color after reload.
-- [ ] Pinning or unpinning a path updates its visible pinned state.
+- [x] Pinning or unpinning a path updates its visible pinned state. Evidence:
+  `cd frontend && npx vitest run src/views/PathsView.test.ts -t 'visible pin
+  state'` checks both state transitions, the accessible action name, and
+  `aria-pressed` (mocked API).
 - [ ] Reordering paths updates the visible order after reload.
 - [ ] Hiding a path's board asks for confirmation before removing its board tab.
 - [ ] Showing a hidden path board restores its tab.
