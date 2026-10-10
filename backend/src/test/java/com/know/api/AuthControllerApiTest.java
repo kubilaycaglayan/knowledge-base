@@ -77,6 +77,23 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength() throws Exception {
+    mvc.perform(
+            post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-email\",\"password\":\"correct-horse-battery\"}"))
+        .andExpect(status().isBadRequest());
+
+    String oversizedPassword = "p".repeat(201);
+    mvc.perform(
+            post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"person@example.com\",\"password\":\"" + oversizedPassword + "\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(users, encoder);
+  }
+
+  @Test
   void duplicateRegistrationIsRejected() throws Exception {
     User existing = new User("person@example.com", "hash", "person");
     when(users.findByEmailIgnoreCase("person@example.com")).thenReturn(Optional.of(existing));

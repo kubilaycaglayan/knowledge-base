@@ -90,8 +90,10 @@ browser interaction evidence remains a separate layer.
   unconfigured response behavior.
 - [ ] `POST /api/v1/auth/register` has a successful account-creation and token
   response assertion.
-- [ ] `POST /api/v1/auth/register` has invalid email and password boundary
-  assertions.
+- [x] `POST /api/v1/auth/register` rejects malformed email, password below
+  nine characters, and password over 200 characters before user lookup
+  (`AuthControllerApiTest.registrationRejectsShortPasswords` and
+  `registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength`).
 - [ ] `POST /api/v1/auth/register` has duplicate-account conflict behavior
   evidence.
 - [ ] `POST /api/v1/auth/login` has a successful credential and token response
