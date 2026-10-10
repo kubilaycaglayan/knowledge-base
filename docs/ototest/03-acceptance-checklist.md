@@ -502,23 +502,38 @@ the extension has its own scope in OTOTEST-04.
 
 - [x] A valid `?date=YYYY-MM-DD` URL selects and displays that date. Evidence:
   `frontend/src/views/DeepLinks.test.ts`, `opens the month of the linked day
-  with that day selected`.
+  with its saved note and label selected`.
 - [x] An invalid date query does not select an impossible calendar date.
   Evidence: `frontend/src/views/DeepLinks.test.ts`, `follows a new date while
   open, and ignores impossible dates` checks leap day and rejects February 30.
 
 ### Flow: Edit one calendar day
 
-- [ ] Selecting a day loads its saved note and label assignments.
-- [ ] Saving a note updates only the selected day.
-- [ ] Saving label assignments updates only the selected day.
-- [ ] An existing label hidden from the Calendar list can still be found in the
-  assignment picker.
-- [ ] Creating a label from the picker creates and assigns the intended label.
-- [ ] Removing an assignment does not delete the label itself.
-- [ ] “No marker” removes the assigned label's report marker contribution
-  while leaving the assignment visible.
-- [ ] A failed save keeps the draft and identifies the save failure.
+- [x] Selecting a day loads its saved note and label assignments. Evidence:
+  `frontend/src/views/DeepLinks.test.ts`, `opens the month of the linked day
+  with its saved note and label selected` checks note, label, and portion.
+- [x] Saving a note updates only the selected day. Evidence:
+  `frontend/src/views/CalendarView.test.ts`, `loads labels and a month range,
+  then saves a selected day with a full-day label` checks the exact date URL
+  and note payload.
+- [x] Saving label assignments updates only the selected day. Evidence: the
+  same test checks the exact date URL and label portion in the save payload.
+- [x] An existing label hidden from the Calendar list can still be found in
+  the assignment picker. Evidence: `frontend/src/views/CalendarView.test.ts`,
+  `CP-05: picks labels hidden from Calendar as chips without changing them`.
+- [x] Creating a label from the picker creates and assigns the intended label.
+  Evidence: `frontend/src/views/CalendarView.test.ts`, `CP-06: keeps Calendar
+  labels in the list and the dropdown in sync`.
+- [x] Removing an assignment does not delete the label itself. Evidence:
+  `frontend/src/views/CalendarView.test.ts`, `CP-07: removes a picked label
+  from its chip` verifies the saved day has no labels and no DELETE is sent.
+- [x] “No marker” removes the assigned label's report marker contribution
+  while leaving the assignment visible. Evidence:
+  `frontend/src/views/CalendarView.test.ts`, `defaults to Marker and saves No
+  marker with a zero portion` verifies portion `0` and the checked assignment.
+- [x] A failed save keeps the draft and identifies the save failure. Evidence:
+  `frontend/src/views/CalendarView.test.ts`, `shows actionable errors when
+  calendar mutations fail` checks the error and retained note text.
 
 ### Flow: Apply a calendar range edit
 

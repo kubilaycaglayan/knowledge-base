@@ -177,6 +177,12 @@ describe("CalendarView", () => {
   });
 
   it("defaults to Marker and saves No marker with a zero portion", async () => {
+    const today = new Date();
+    const selectedDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
     const wrapper = mountView();
     await flushPromises();
     await wrapper.get('input[type="checkbox"]').setValue(true);
@@ -184,16 +190,39 @@ describe("CalendarView", () => {
     expect((select.element as HTMLSelectElement).value).toBe("");
     expect(select.get('option[value=""]').text()).toBe("Marker");
     await select.setValue("0");
+    vi.mocked(api).mockResolvedValueOnce({
+      date: selectedDate,
+      note: null,
+      labels: [
+        {
+          labelId: "leave",
+          name: "Sick leave",
+          color: "#2878D5",
+          portion: 0,
+        },
+      ],
+    });
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       expect.stringMatching(/^\/calendar\/days\//),
       expect.objectContaining({ body: expect.stringContaining('"portion":0') }),
     );
+    expect(
+      (wrapper.get('input[type="checkbox"]').element as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    expect((select.element as HTMLSelectElement).value).toBe("0");
     wrapper.unmount();
   });
 
   it("loads labels and a month range, then saves a selected day with a full-day label", async () => {
+    const today = new Date();
+    const selectedDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
     const wrapper = mountView();
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/labels");
@@ -216,6 +245,7 @@ describe("CalendarView", () => {
           path.startsWith("/calendar/days/") && options?.method === "PUT",
       );
     expect(saveCall).toBeDefined();
+    expect(saveCall![0]).toBe(`/calendar/days/${selectedDate}`);
     expect(saveCall![1]).toEqual(
       expect.objectContaining({ body: expect.stringContaining('"portion":1') }),
     );
@@ -453,6 +483,9 @@ describe("CalendarView", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe(
       "Unable to save this day.",
     );
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "A note",
+    );
   });
 
   it("selects the new-label color and offers no create item for an empty search", async () => {
@@ -665,6 +698,11 @@ describe("CalendarView", () => {
     await wrapper.get("button.primary").trigger("click");
     await flushPromises();
     expect(daySave().labels).toEqual([]);
+    expect(
+      vi.mocked(api).mock.calls.some(
+        ([, options]) => options?.method === "DELETE",
+      ),
+    ).toBe(false);
   });
 
   it("CP-08: creates a label visible everywhere from the picker", async () => {

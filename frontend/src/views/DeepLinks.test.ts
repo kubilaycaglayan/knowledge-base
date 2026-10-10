@@ -353,11 +353,35 @@ describe("/labels/:id", () => {
 describe("/calendar?date=", () => {
   beforeEach(() => respond("/labels", []));
 
-  it("opens the month of the linked day with that day selected", async () => {
-    respond(/^\/calendar\/days\?/, [{ date: "2025-03-14", note: "Pi day walk", labels: [] }]);
+  it("opens the month of the linked day with its saved note and label selected", async () => {
+    respond("/labels", [
+      { id: "leave", name: "Sick leave", color: "#2878D5", scopes: ["CALENDAR"] },
+    ]);
+    respond(/^\/calendar\/days\?/, [
+      {
+        date: "2025-03-14",
+        note: "Pi day walk",
+        labels: [
+          {
+            labelId: "leave",
+            name: "Sick leave",
+            color: "#2878D5",
+            portion: 0.5,
+          },
+        ],
+      },
+    ]);
     await open(CalendarView, "/calendar?date=2025-03-14", ["/calendar"]);
     expect(vi.mocked(api).mock.calls.some(([path]) => String(path).includes("startDate=2025-02-24"))).toBe(true);
     expect(document.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Pi day walk");
+    expect(
+      document.querySelector<HTMLInputElement>('#calendar-label-leave')?.checked,
+    ).toBe(true);
+    expect(
+      document.querySelector<HTMLSelectElement>(
+        '[aria-label="Sick leave day portion"]',
+      )?.value,
+    ).toBe("0.5");
     expect(document.body.textContent).toContain("March 14, 2025");
   });
 
