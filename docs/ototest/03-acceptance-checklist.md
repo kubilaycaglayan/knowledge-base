@@ -1315,6 +1315,7 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Archive one note
 
+- [x] Browser acceptance confirms the selected note is archived, leaves its neighbor active, and retains content after switching to Archive and reloading. Evidence: `nav-shell.acceptance.test.mjs` / `archives the selected Note after confirmation and keeps it in the archive after reload`.
 - [x] Archiving a note requires confirmation; cancelling leaves the note unchanged. Evidence: `NotesView.test.ts` / `archives a note after confirmation` and `leaves a note unchanged when archive confirmation is cancelled`.
 - [x] Confirming archive removes only the selected note from the active list. Evidence: `NotesView.test.ts` / `archives a note after confirmation` verifies the other note remains and receives no delete request.
 - [x] The archived note remains available in the archived list with its content intact. Evidence: `NotesView.test.ts` / `archives a note after confirmation` switches to Archive and verifies the archived title and body excerpt.

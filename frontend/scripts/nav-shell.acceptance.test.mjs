@@ -205,6 +205,15 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       if (index >= 0) notes[index] = { ...notes[index], ...route.request().postDataJSON(), updatedAt: new Date().toISOString(), version: notes[index].version + 1 };
       body = notes[index] || null;
     }
+    else if (path.startsWith("/notes/") && method === "DELETE") {
+      const id = path.split("/").at(-1);
+      const note = notes.find((item) => item.id === id);
+      if (note) {
+        note.archived = true;
+        note.deletedAt = new Date().toISOString();
+      }
+      body = {};
+    }
     else if (path === "/notes") {
       const archived = url.searchParams.get("archived") === "true";
       const query = (url.searchParams.get("q") || "").trim().toLocaleLowerCase();
@@ -2025,6 +2034,54 @@ it("restores the archived Notes filter from its direct URL after reload", async 
   await page.reload();
   await page.locator(".note-row", { hasText: "Archived browser note" }).waitFor();
   assert.equal(await page.locator(".note-row").count(), 1, "Reload preserves the archived filter and selected record set");
+});
+
+it("archives the selected Note after confirmation and keeps it in the archive after reload", async (t) => {
+  const note = (id, title, contentText) => ({
+    id,
+    title,
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: contentText }] }] }),
+    contentText,
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-01T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+    archived: false,
+  });
+  const { page, requests } = await fixture(t, 1280, {
+    noteSeeds: [
+      note("archive-target", "Browser archive target", "Keep this content in Archive"),
+      note("archive-other", "Browser archive neighbor", "Leave this note active"),
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}notes`);
+  const target = page.locator(".note-row", { hasText: "Browser archive target" });
+  await target.waitFor();
+  let confirmationMessage = "";
+  page.once("dialog", async (dialog) => {
+    confirmationMessage = dialog.message();
+    await dialog.accept();
+  });
+  const archiveRequest = page.waitForRequest((request) =>
+    request.method() === "DELETE" && new URL(request.url()).pathname.endsWith("/notes/archive-target"),
+  );
+  await target.getByRole("button", { name: "Archive", exact: true }).click();
+  await archiveRequest;
+  await target.waitFor({ state: "detached" });
+  await page.locator(".note-row", { hasText: "Browser archive neighbor" }).waitFor();
+  assert.equal(confirmationMessage, "Move “Browser archive target” to Archive? You can restore it from the archive at any time.");
+  assert.equal(requests.filter((path) => path === "/notes/archive-target").length, 1);
+
+  await page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }).click();
+  const archivedTarget = page.locator(".note-row.archived", { hasText: "Browser archive target" });
+  await archivedTarget.waitFor();
+  assert.match(await archivedTarget.innerText(), /Keep this content in Archive/);
+  assert.equal(await page.locator(".note-row.archived").count(), 1, "Only the confirmed note is archived");
+
+  await page.reload();
+  await page.locator(".note-row.archived", { hasText: "Browser archive target" }).waitFor();
+  assert.match(await page.locator(".note-row.archived", { hasText: "Browser archive target" }).innerText(), /Keep this content in Archive/);
 });
 
 it("restores the Notes search query and filtered result from its direct URL after reload", async (t) => {
