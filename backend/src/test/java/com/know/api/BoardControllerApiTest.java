@@ -481,6 +481,25 @@ class BoardControllerApiTest {
     verifyNoInteractions(cards);
   }
 
+  @Test
+  void boardGanttRequiresValidFromAndToDatesBeforeRepositoryAccess() throws Exception {
+    UUID boardId = UUID.randomUUID();
+    String endpoint = "/api/v1/boards/" + boardId + "/gantt";
+
+    for (String query :
+        List.of(
+            "",
+            "?from=2026-04-01",
+            "?to=2026-04-10",
+            "?from=not-a-date&to=2026-04-10",
+            "?from=2026-04-01&to=2026-02-30")) {
+      mvc.perform(get(endpoint + query).with(authentication(auth())))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(boards, statuses, cards);
+  }
+
   @Test void cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId(), statusId = UUID.randomUUID();

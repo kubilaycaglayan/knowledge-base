@@ -106,6 +106,7 @@ class PathAuthorizationApiTest {
     for (String body :
         List.of(
             "{\"name\":\" \"}",
+            "{\"name\":\"" + "x".repeat(161) + "\"}",
             "{\"name\":\"Path\",\"description\":\"" + "d".repeat(2001) + "\"}",
             "{\"name\":\"Path\",\"color\":\"red\"}")) {
       mvc.perform(

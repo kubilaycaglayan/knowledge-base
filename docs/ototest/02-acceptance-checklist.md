@@ -171,8 +171,8 @@ browser interaction evidence remains a separate layer.
   date range inputs.
 - [x] `PUT /api/v1/paths/{id}` covers successful persisted update and invalid
   color values; stale/conflicting state is not applicable because this request
-  has no optimistic version field. Blank names and over-limit descriptions are
-  also rejected before owner lookup
+  has no optimistic version field. Blank or over-160-character names and
+  over-limit descriptions are also rejected before owner lookup
   (`PathAuthorizationApiTest.pathUpdateValidatesTextAndColorBeforeOwnershipLookup`).
 - [x] `DELETE /api/v1/paths/{id}` covers the documented delete/archive effect
   and subsequent read behavior.
@@ -187,7 +187,8 @@ browser interaction evidence remains a separate layer.
 ## Flow: Cover Labels operations
 
 - [x] `GET /api/v1/labels` covers the unfiltered list, scope filtering, and
-  owner isolation.
+  owner isolation; an unknown scope returns 400 before service execution
+  (`LabelApiTest.unknownLabelScopeIsRejectedBeforeServiceInvocation`).
 - [x] `POST /api/v1/labels` covers creation, defaults, colors, and scopes.
   It also rejects blank/over-limit names and accepts the 80-character
   maximum (`LabelApiTest.invalidLabelPayloadIsRejected` and
@@ -250,11 +251,17 @@ browser interaction evidence remains a separate layer.
   results. The endpoint has no filter or pagination query parameters.
 - [x] `GET /api/v1/logs/{id}` covers owned, missing, and foreign log IDs.
 - [x] `POST /api/v1/logs` covers creation, occurrence timestamp, and persisted
-  body. Log labels are assigned through the separate labels operation.
+  body, plus required/blank timestamp and body validation and the 20,000-
+  character body boundary (`LogApiTest.logBodyAndTimestampRespectRequiredAndMaximumLengthBoundaries`).
+  Log labels are assigned through the separate labels operation.
 - [x] `PUT /api/v1/logs/{id}` covers persisted body/time update and optimistic
-  version conflict behavior.
+  version conflict behavior; exact 20,000-character body passes request
+  validation and missing/blank/over-limit inputs return 400
+  (`LogApiTest.logBodyAndTimestampRespectRequiredAndMaximumLengthBoundaries`).
 - [x] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
-  owned labels with LOG scope.
+  owned labels with LOG scope; missing/null lists and 101 IDs return 400 before
+  service execution, while exactly 100 IDs pass request validation
+  (`LogApiTest.logLabelAssignmentRequiresACollectionOfAtMostOneHundredIds`).
 - [x] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
 - [x] `GET /api/v1/activities` covers each supported `from`, `to`, `pathId`,
@@ -283,6 +290,8 @@ browser interaction evidence remains a separate layer.
   and owner-scoped timer IDs; null label lists and missing start values are
   rejected before service execution
   (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
+  Timer start, running update, and manual entry each accept a 5000-character
+  description (`TimerApiTest.timerAndEntryDescriptionsAcceptTheirMaximumLength`).
 - [x] `POST /api/v1/timers/stop` covers stopping the current timer.
 - [x] `POST /api/v1/timers/{id}/stop` covers the explicit-ID alias and its
   parity with the canonical stop behavior.
@@ -307,8 +316,9 @@ browser interaction evidence remains a separate layer.
   preservation of the paused draft (`TimerPauseIntegrationTest.resumeRequiresAPausedSession`).
 - [x] `POST /api/v1/time-entries` covers manual entry creation, persisted
   duration/time, and missing/reversed interval validation; null label lists,
-  missing end times, and over-limit descriptions return 400
-  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
+  missing end times, and over-limit descriptions return 400; exact maximum
+  description length succeeds (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`
+  and `TimerApiTest.timerAndEntryDescriptionsAcceptTheirMaximumLength`).
 - [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
   optional page/size pagination metadata.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
@@ -442,14 +452,17 @@ browser interaction evidence remains a separate layer.
   `BoardControllerApiTest.cardMoveRequiresStatusAndNonnegativePosition`.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
   or creating the target column, persisted status/position, and foreign board
-  protection; blank names and negative positions return 400 without changing
-  the card or creating a column
+  protection; blank/over-80-character names and negative positions return 400
+  without changing the card or creating a column, while an exact 80-character
+  name moves the card and persists the new status
   (`AllBoardsIntegrationTest.moveToColumnCreatesAMissingColumn`).
 - [x] `POST /api/v1/boards/{id}/cards/in-column` covers card creation in an
   existing or newly created column, response metadata, persisted placement,
-  blank column and over-limit title rejection plus the exact title maximum,
-  and foreign requests
-  (`AllBoardsIntegrationTest.createInColumnCreatesAMissingColumn`).
+  blank and over-80-character column rejection without creating a status,
+  exact 80-character column acceptance, over-limit title rejection plus exact
+  title maximum, and foreign requests
+  (`AllBoardsIntegrationTest.createInColumnCreatesAMissingColumn` and
+  `AllBoardsIntegrationTest.createInColumnEnforcesColumnNameMaximumWithoutCreatingInvalidStatus`).
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/transfer` covers existing/new
   target columns, persisted transfer readback, path-board references, and
   foreign/archived board rejection
@@ -469,14 +482,17 @@ browser interaction evidence remains a separate layer.
   filtering (`KnowIntegrationTest.ganttReturnsDatedCardsWithOpenViewDisabled`,
   `KnowIntegrationTest.ganttExcludesCardsInArchivedStatuses`,
   `BoardControllerApiTest.ganttIncludesUndatedAndOutOfWindowActiveCards`, and
-  `BoardControllerApiTest.ganttRejectsReversedDateWindows`).
+  `BoardControllerApiTest.ganttRejectsReversedDateWindows`); missing, malformed,
+  and impossible `from`/`to` values return 400 before repository access
+  (`BoardControllerApiTest.boardGanttRequiresValidFromAndToDatesBeforeRepositoryAccess`).
 - [x] `GET /api/v1/boards/all/columns` covers merged names/order, user tab
   scope, hidden/archived/foreign exclusions, and empty/authenticated behavior
   (`AllBoardsIntegrationTest.columnsMergeByNameInTabOrder` and
   `AllBoardsIntegrationTest.columnsCoverOnlyTheUsersTabBoards`).
 - [x] `GET /api/v1/boards/all/columns/cards/page` covers cross-board cursors,
-  many-page stability, empty/unknown columns, invalid limits, foreign-user
-  isolation, the first and middle pages, limits at 1 and 100, and sort modes
+  many-page stability, empty/unknown columns, missing names, malformed and
+  out-of-range cursor/limit values, foreign-user isolation, the first and middle
+  pages, limits at 1 and 100, and sort modes
   (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`,
   `AllBoardsIntegrationTest.columnCursorWalkRemainsStableAcrossManyPages`, and
   `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
@@ -487,7 +503,8 @@ browser interaction evidence remains a separate layer.
   and `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `GET /api/v1/boards/all/gantt` covers reversed range validation, returns
   dated and undated cards regardless of the requested window, and excludes
-  archived boards and hidden path boards
+  archived boards and hidden path boards; missing and malformed date query
+  values return 400
   (`AllBoardsIntegrationTest.ganttCoversEveryTabBoard`).
 - [x] Multi-record board mutations cover PostgreSQL transaction rollback for
   board/status ordering, status archive card moves, card moves, and creating a
@@ -596,7 +613,10 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/preferences` covers default and previously saved preference
   values for the signed-in user.
 - [x] `PUT /api/v1/preferences` covers successful round trip and invalid
-  preference values.
+  preference values; board search accepts 200 characters, rejects 201, and
+  Gantt sort state accepts two rules and rejects more than two without
+  overwriting the saved state
+  (`UserPreferencesIntegrationTest.boardStateEnforcesMaximumSearchAndGanttSortCount`).
 - [x] Preferences remain isolated between two disposable users.
 
 ## Flow: Cover imports and exports
@@ -613,6 +633,8 @@ browser interaction evidence remains a separate layer.
   (`KnowIntegrationTest.clockifyImportRejectsMalformedAndUnsupportedPayloadsWithoutPersistingData`
   and PostgreSQL-only
   `KnowIntegrationTest.postgresClockifyImportRollsBackEarlierPathEntryAndBatchOnLaterInvalidInterval`).
+  Missing, null, and empty `timeentries` lists return 400 before invoking the
+  import service (`ImportControllerApiTest.clockifyImportRequiresAtLeastOneEntryBeforeCallingTheService`).
 - [x] `GET /api/v1/imports/clockify/batches` covers owner-scoped batch listing
   and ordering.
 - [x] `DELETE /api/v1/imports/clockify/batches/{id}` covers undo effects,

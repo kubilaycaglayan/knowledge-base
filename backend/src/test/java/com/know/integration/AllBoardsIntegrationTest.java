@@ -204,6 +204,17 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=0", token).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-2&limit=20", token).getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=101", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/columns/cards/page?cursor=-1&limit=20", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=next&limit=20", token)
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=many", token)
+            .getStatusCode());
     assertEquals(0, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=20", token()).getBody().get("items").size(), "Another user sees none of these cards");
   }
 
@@ -542,6 +553,17 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertFalse(titles.contains("archived-board"));
     assertFalse(titles.contains("hidden-path-board"));
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/gantt?from=2026-09-10&to=2026-09-01", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/gantt", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/gantt?from=2026-09-01", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/gantt?to=2026-09-10", token).getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        get("/api/v1/boards/all/gantt?from=not-a-date&to=2026-09-10", token).getStatusCode());
   }
 
   // AB-06
@@ -582,6 +604,31 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(maximumTitle, maximumLengthCard.getBody().get("card").get("title").asText());
   }
 
+  @Test
+  void createInColumnEnforcesColumnNameMaximumWithoutCreatingInvalidStatus() {
+    String token = token();
+    String work = board(token, "Work");
+    List<String> originalStatuses = statusNames(token, work);
+
+    ResponseEntity<JsonNode> tooLong =
+        post(
+            "/api/v1/boards/" + work + "/cards/in-column",
+            token,
+            "{\"columnName\":\"" + "c".repeat(81) + "\",\"title\":\"Card\"}");
+    assertEquals(HttpStatus.BAD_REQUEST, tooLong.getStatusCode());
+    assertEquals(originalStatuses, statusNames(token, work));
+
+    String maximumName = "c".repeat(80);
+    ResponseEntity<JsonNode> atLimit =
+        post(
+            "/api/v1/boards/" + work + "/cards/in-column",
+            token,
+            "{\"columnName\":\"" + maximumName + "\",\"title\":\"Card\"}");
+    assertEquals(HttpStatus.CREATED, atLimit.getStatusCode());
+    assertEquals(maximumName, atLimit.getBody().get("status").get("name").asText());
+    assertTrue(statusNames(token, work).contains(maximumName));
+  }
+
   // AB-07
   @Test
   void moveToColumnCreatesAMissingColumn() {
@@ -613,6 +660,35 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     JsonNode unchanged = get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody();
     assertEquals(statusId(token, work, "Blocked"), unchanged.get("statusId").asText());
     assertFalse(statusNames(token, work).contains("Invalid"));
+
+    String overlongName = "m".repeat(81);
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        post(
+                "/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column",
+                token,
+                "{\"columnName\":\"" + overlongName + "\",\"position\":0}")
+            .getStatusCode());
+    assertEquals(
+        statusId(token, work, "Blocked"),
+        get("/api/v1/boards/" + work + "/cards/" + cardId, token)
+            .getBody()
+            .get("statusId")
+            .asText());
+    assertFalse(statusNames(token, work).contains(overlongName));
+
+    String maximumName = "m".repeat(80);
+    ResponseEntity<JsonNode> atLimit =
+        post(
+            "/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column",
+            token,
+            "{\"columnName\":\"" + maximumName + "\",\"position\":0}");
+    assertEquals(HttpStatus.OK, atLimit.getStatusCode());
+    assertEquals(maximumName, atLimit.getBody().get("status").get("name").asText());
+    List<String> namesAfterMove = statusNames(token, work);
+    assertEquals(maximumName, namesAfterMove.get(namesAfterMove.size() - 1));
+    JsonNode movedAtLimit = get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody();
+    assertEquals(atLimit.getBody().get("status").get("id"), movedAtLimit.get("statusId"));
   }
 
   // AB-08

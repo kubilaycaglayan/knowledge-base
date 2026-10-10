@@ -192,4 +192,35 @@ class UserPreferencesIntegrationTest extends IntegrationTestSupport {
     assertTrue(preferences(other).getBody().get("board").get("ganttSorts").isEmpty());
     assertEquals(HttpStatus.BAD_REQUEST, update(token, "{\"board\":{\"ganttSorts\":[\"PRIORITY_ASC\",\"PRIORITY_DESC\"]}}").getStatusCode());
   }
+
+  @Test
+  void boardStateEnforcesMaximumSearchAndGanttSortCount() {
+    String token = token();
+    String maximumSearch = "x".repeat(200);
+    ResponseEntity<JsonNode> atLimit =
+        update(
+            token,
+            "{\"board\":{\"view\":\"gantt\",\"search\":\""
+                + maximumSearch
+                + "\",\"ganttSorts\":[\"PRIORITY\",\"DATE\"]}}");
+    assertEquals(HttpStatus.OK, atLimit.getStatusCode());
+    assertEquals(maximumSearch, atLimit.getBody().get("board").get("search").asText());
+    assertEquals(2, atLimit.getBody().get("board").get("ganttSorts").size());
+
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        update(token, "{\"board\":{\"search\":\"" + "x".repeat(201) + "\"}}").getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        update(
+                token,
+                "{\"board\":{\"ganttSorts\":[\"PRIORITY\",\"DATE\",\"PRIORITY_DESC\"]}}")
+            .getStatusCode());
+
+    JsonNode persisted = preferences(token).getBody().get("board");
+    assertEquals(maximumSearch, persisted.get("search").asText());
+    assertEquals(2, persisted.get("ganttSorts").size());
+    assertEquals("PRIORITY", persisted.get("ganttSorts").get(0).asText());
+    assertEquals("DATE", persisted.get("ganttSorts").get(1).asText());
+  }
 }
