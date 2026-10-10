@@ -396,8 +396,9 @@ browser interaction evidence remains a separate layer.
   `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`,
   and `BoardControllerApiTest.statusSortRequiresAnExplicitSortMode`).
 - [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
-  missing, and foreign status IDs, with saved order preserved after rejected
-  requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`).
+  missing, and foreign status IDs, missing/null/empty ID lists, with saved order preserved after rejected
+  requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`
+  and `BoardControllerApiTest.statusOrderRequiresANonemptyIdList`).
 - [x] `POST /api/v1/boards/{id}/statuses/{statusId}/archive` covers moving
   active cards after existing destination cards, persisted archive state, and
   preventing removal of the final active status

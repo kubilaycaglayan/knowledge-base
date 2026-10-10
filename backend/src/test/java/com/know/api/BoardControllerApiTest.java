@@ -232,6 +232,20 @@ class BoardControllerApiTest {
     verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
   }
 
+  @Test
+  void statusOrderRequiresANonemptyIdList() throws Exception {
+    String endpoint = "/api/v1/boards/" + UUID.randomUUID() + "/statuses/order";
+    for (String body : List.of("{}", "{\"ids\":null}", "{\"ids\":[]}")) {
+      mvc.perform(
+              put(endpoint)
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
   @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
     Board board = new Board(owner, "Archived");
     board.archive();
