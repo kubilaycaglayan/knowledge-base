@@ -139,6 +139,13 @@ asserted. A field in this catalog is not itself a claim that tests verify it.
 | `KnowledgeService.NoteView` | `id`, `pathId`, `activityId`, `timeEntryId`, `title`, `content`, `createdAt`, `updatedAt`, `deletedAt`, `version`, `contentText`, `tags`, `pinned`, `sortOrder`, `lineEdits` |
 | `KnowledgeService.NotePage` | `items` (`NoteView` list), `page`, `size`, `totalItems`, `totalPages` |
 | `KnowledgeService.TagView` | `id`, `name` |
+| `ReportService.Report` | `period`, `from`, `to`, `totalSeconds`, `days`, `paths`, `sessionLabels`, `calendarLabels`, `sankey`; nested `Day`, `Category`, `CalendarLabel`, `CalendarLabelTotal`, `Sankey`, `SankeyNode`, and `SankeyLink` records expose their declared date, totals, labels, colors, dimensions, and values |
+| `SearchService.Response` | `groups` (`Group`: `type`, `total`, `capped`, `results`), `fuzzy`, `incomplete`; each `Result` record declares its match identity and display fields |
+| `UserPreferencesService.View` | `theme`, `kanbanWide`, `ganttWide`, `recentPathIds`, `lastCardBoardId`, `board` (`BoardState`: board/view/range/search/sort/display fields) |
+| `TimerService.DraftView` | `pathId`, `labelIds`, `description`, `pausedSeconds` |
+| `TimerService.TimeView` | `id`, `pathId`, `labelIds`, `startedAt`, `endedAt`, `durationSeconds`, `description`, `source`, `running`, `carriedSeconds` |
+| `TimerService.HistoryPage` | `sessions` (`TimeView` list), `page`, `pageSize`, `totalSessions`, `totalPages` |
+| `TimerService.Statistics` | `todaySeconds`, `weekSeconds`, `monthSeconds`, `todayByPath`, `todayByLabel`, `weekByPath`, `weekByLabel` |
 
 | Verb + composed path | Controller method / inputs | Candidate evidence / current classification | State and important edges to map |
 | --- | --- | --- | --- |
