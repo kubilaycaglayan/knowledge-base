@@ -1108,8 +1108,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] Cancelling a drag leaves the saved date range unchanged. Evidence: `board.acceptance.test.mjs` / `cancels a Gantt drag and restores dates after a failed save` checks cancellation sends no request and both cancellation and failed save restore the original bar.
 - [x] Offscreen date arrows move the visible window to include that card. Evidence: `BoardView.test.ts` / `moves the timeline start to the card's start date from its edge arrow` and `moves the timeline end to the card's end date from its right edge arrow`.
 - [x] Hiding and restoring the card list preserves the user's selected view. Evidence: `BoardView.test.ts` / `hides and shows the Gantt card list from the timeline's top-left toggle` and `remembers the hidden Gantt card list in this browser`.
-- [ ] Gantt controls remain visible and operable at phone width where Gantt is
-  offered.
+- [x] Gantt date and window controls remain visible and operable at 390px where Gantt is offered. Supplemental evidence: `board.acceptance.test.mjs` / `keeps Gantt date and window controls operable at phone width` checks control visibility and viewport bounds, advances the date window, and returns to Today. This Playwright Chromium viewport check does not replace the separately tracked real mobile Chrome/device pass.
 
 ### Flow: Start a timer from a card
 
