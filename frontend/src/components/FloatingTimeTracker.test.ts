@@ -273,6 +273,34 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("prevents duplicate stop requests while the first stop is pending", async () => {
+    let finishStop!: () => void;
+    const pendingStop = new Promise<void>((resolve) => { finishStop = resolve; });
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return { id: "timer-1", startedAt: new Date().toISOString(), running: true };
+      if (path === "/timers/timer-1/stop" && options.method === "POST") return pendingStop;
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    await flushPromises();
+    const stop = wrapper.get('button[aria-label="Stop timer"]');
+
+    await stop.trigger("click");
+    await flushPromises();
+    expect(stop.attributes("disabled")).toBeDefined();
+    expect(stop.attributes("aria-busy")).toBe("true");
+    await stop.trigger("click");
+    expect(vi.mocked(api).mock.calls.filter(([path, options]) => path === "/timers/timer-1/stop" && options?.method === "POST")).toHaveLength(1);
+
+    finishStop();
+    await flushPromises();
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it("confirms before discarding a running session and preserves it when cancelled", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];

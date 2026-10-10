@@ -400,6 +400,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Finish a running session
 
+- [x] A pending stop disables the action, shows its busy state, and cannot send
+  a duplicate request. Evidence: `FloatingTimeTracker.test.ts` /
+  `prevents duplicate stop requests while the first stop is pending` holds
+  the stop response, submits twice, verifies one request and a disabled busy
+  action, then confirms the tracker clears after success.
 - [x] Finishing a running session records a completed interval and removes the
   running state. Evidence: `KnowIntegrationTest.stoppingARunningTimerSavesItsCompletedIntervalAndClearsCurrentState`
   uses a controlled 75-second interval and verifies it appears in history and
