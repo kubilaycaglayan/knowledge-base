@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -14,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
-import org.springframework.web.util.UriComponentsBuilder;
 
 /** Persistence-backed behavior for the activity query filters. */
 class ActivityIntegrationTest extends IntegrationTestSupport {
@@ -58,13 +59,12 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
 
   JsonNode activitiesAtRange(String token, String from, String to) {
     URI uri =
-        UriComponentsBuilder.fromHttpUrl(base)
-            .path("/api/v1/activities")
-            .queryParam("from", from)
-            .queryParam("to", to)
-            .build()
-            .encode()
-            .toUri();
+        URI.create(
+            base
+                + "/api/v1/activities?from="
+                + URLEncoder.encode(from, StandardCharsets.UTF_8)
+                + "&to="
+                + URLEncoder.encode(to, StandardCharsets.UTF_8));
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(token);
     return rest.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), JsonNode.class).getBody();
