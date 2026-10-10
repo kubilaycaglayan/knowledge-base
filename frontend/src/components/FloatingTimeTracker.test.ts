@@ -195,6 +195,45 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("keeps a running session after a failed stop and clears it after retry succeeds", async () => {
+    let stopAttempts = 0;
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+        if (path === "/timers/current")
+          return {
+            id: "timer-1",
+            startedAt: new Date().toISOString(),
+            running: true,
+          };
+        if (path === "/timers/timer-1/stop" && options.method === "POST") {
+          stopAttempts += 1;
+          if (stopAttempts === 1) throw new Error("Temporary server failure");
+          return undefined;
+        }
+        return undefined;
+      },
+    );
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Stop timer"]').trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".tracker-error").text()).toContain("Could not update the timer.");
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Stop timer"]').trigger("click");
+    await flushPromises();
+    expect(stopAttempts).toBe(2);
+    expect(wrapper.find(".tracker-error").exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("starts the session with the typed description on Cmd+Enter in the description", async () => {
     const wrapper = mount(FloatingTimeTracker, {
       props: { inline: true },

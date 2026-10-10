@@ -200,6 +200,10 @@ the extension has its own scope in OTOTEST-04.
   recovery behavior shown by the application.
 - [ ] A failed stop or cancel keeps the user informed and reconciles the
   displayed state with the next authoritative server update.
+- [x] A failed Stop request reports the error and keeps the active Stop action
+  available; retrying successfully clears the timer. Evidence: `cd frontend &&
+  npx vitest run src/components/FloatingTimeTracker.test.ts -t 'failed stop and
+  clears it after retry succeeds'` (component API mock).
 
 ### Flow: Open one session
 
