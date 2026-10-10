@@ -1797,6 +1797,22 @@ it("moves focus into and back from Log removal confirmation in the detail dialog
   assert.equal(requests.filter((path) => path === "/logs/log-deep-link").length, 1, "Button cancellation sends no delete request");
 });
 
+it("returns focus to Edit after cancelling a Log detail edit", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}logs/log-deep-link`);
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
+  const edit = dialog.getByRole("button", { name: "Edit", exact: true });
+  await edit.click();
+  const editor = dialog.getByRole("textbox", { name: "Text" });
+  await editor.waitFor();
+  assert.equal(await editor.evaluate((field) => field === document.activeElement), true, "Edit opens with focus in the text field");
+
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await edit.waitFor();
+  assert.equal(await edit.evaluate((button) => button === document.activeElement), true, "Cancel returns focus to the Edit action");
+});
+
 it("wraps very long Log text within the phone-width detail layout", async (t) => {
   const longText = `${"UnbrokenText".repeat(80)} ${"A long log entry should wrap around controls and stay readable. ".repeat(30)}`;
   const { page } = await fixture(t, 390, { logBody: longText });
