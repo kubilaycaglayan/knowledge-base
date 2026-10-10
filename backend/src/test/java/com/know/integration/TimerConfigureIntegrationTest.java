@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ class TimerConfigureIntegrationTest extends IntegrationTestSupport {
     String ownerId = ownerTimer.get("id").asText();
     String otherId = otherTimer.get("id").asText();
     String startedAt = Instant.now().minusSeconds(90).truncatedTo(ChronoUnit.MICROS).toString();
+    String startedAtWithOffset = Instant.parse(startedAt).atOffset(ZoneOffset.ofHours(-5)).toString();
 
     ApiClient.Reply forbidden =
         api.put(
@@ -48,14 +50,15 @@ class TimerConfigureIntegrationTest extends IntegrationTestSupport {
     assertEquals(otherId, api.get("/api/v1/timers/current", other).json().get("id").asText());
 
     String endedAt = Instant.now().minusSeconds(5).truncatedTo(ChronoUnit.MICROS).toString();
+    String endedAtWithOffset = Instant.parse(endedAt).atOffset(ZoneOffset.ofHours(3)).toString();
     ApiClient.Reply configured =
         api.put(
             "/api/v1/timers/" + ownerId,
             owner,
             "{\"pathId\":null,\"labelIds\":[],\"startedAt\":\""
-                + startedAt
+                + startedAtWithOffset
                 + "\",\"endedAt\":\""
-                + endedAt
+                + endedAtWithOffset
                 + "\",\"description\":\"Completed by configuration\"}");
     assertEquals(200, configured.status(), configured.body());
     assertFalse(configured.json().get("running").asBoolean());
