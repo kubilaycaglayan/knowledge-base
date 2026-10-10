@@ -28,6 +28,17 @@ per row where verified; otherwise that contract assertion remains a gap. This
 is the source for the per-operation response contract, not a claim that the
 tests assert every response field.
 
+**Query-parameter audit:** every controller `@RequestParam` is listed on its
+operation row with required/optional status and declared defaults. Where a
+controller or service enforces a range or enum, the row records it alongside
+the corresponding boundary evidence. Repeated query values are supported only
+for `/api/v1/reports` `pathId` and `labelId`; `ReportApiTest.repeatedPathAndLabelFiltersReachTheServiceWithoutDroppingValues`
+asserts that each repeated value reaches the service. The other current query
+parameters bind to scalar values; no multi-value behavior is claimed for them.
+Parameters without declared bounds are described as such rather than assigned
+an inferred range. Rows with no query inputs explicitly say so where the
+absence affects the operation's behavior.
+
 **Evidence-layer convention:** qualified `Class.method` references name the
 assertion to inspect; the Java test package identifies its evidence layer:
 `com.know.api` is controller/HTTP, `com.know.service` is service/domain,

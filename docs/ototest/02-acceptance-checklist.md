@@ -93,8 +93,11 @@ browser interaction evidence remains a separate layer.
   `TimerApiTest.canonicalAndExplicitCancelRoutesCancelTheSameTimer`, and
   `TimerStartIntegrationTest.timerStopAndCancelAliasesHaveMatchingStatusShapeAndEffects`
   compare response/status and resulting current-timer state.
-- [ ] Include query parameters, defaults, accepted ranges, and repeated
-  parameters in each applicable row.
+- [x] Include query parameters, defaults, accepted ranges, and repeated
+  parameters in each applicable row. The API matrix records every controller
+  `@RequestParam`, declared default/optional status, enforced range or enum
+  where applicable, and the only supported repeated-value parameters
+  (`pathId` and `labelId` on reports), with named binding evidence.
 - [ ] Include request body fields, validation constraints, and optional fields
   in each applicable row.
 - [ ] Include response code, response fields, and relevant headers/content
