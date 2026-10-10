@@ -69,8 +69,13 @@ browser interaction evidence remains a separate layer.
 - [x] Include every `PATCH` mapping as its own operation row; none are
   currently declared.
 - [x] Include every `DELETE` mapping as its own operation row.
-- [ ] Include each alias route separately and state whether it has the same
-  status, request, response, and side effect as its canonical route.
+- [x] Include each alias route separately and state whether it has the same
+  status, request, response, and side effect as its canonical route. The two
+  controller mapping arrays are timer stop/cancel; each route has its own
+  matrix row, and `TimerApiTest.canonicalAndExplicitStopRoutesUseTheSameTimerAndResponse`,
+  `TimerApiTest.canonicalAndExplicitCancelRoutesCancelTheSameTimer`, and
+  `TimerStartIntegrationTest.timerStopAndCancelAliasesHaveMatchingStatusShapeAndEffects`
+  compare response/status and resulting current-timer state.
 - [ ] Include query parameters, defaults, accepted ranges, and repeated
   parameters in each applicable row.
 - [ ] Include request body fields, validation constraints, and optional fields
