@@ -785,6 +785,10 @@ browser interaction evidence remains a separate layer.
   upper, and out-of-range boundary evidence.
 - [ ] Date and timestamp operations have timezone, leap-day, inclusive-range,
   and reversed-range evidence where applicable.
+  Activity filtering now asserts inclusive lower/upper bounds, equivalent
+  non-UTC offsets, and empty reversed ranges in
+  `ActivityIntegrationTest.activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner`;
+  remaining date-bearing operations still need a complete applicability audit.
 - [x] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
   The all-board column card page has a multi-page persisted walk and rejects
