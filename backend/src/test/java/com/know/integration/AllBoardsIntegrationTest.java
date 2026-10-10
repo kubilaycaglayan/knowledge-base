@@ -484,6 +484,10 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals("MANUAL", columns(other).get(3).get("cardSort").asText());
     assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Done\",\"cardSort\":\"TITLE\"}").getStatusCode());
     assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"  \",\"cardSort\":\"PRIORITY\"}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Done\"}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Done\",\"cardSort\":null}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"" + "x".repeat(81) + "\",\"cardSort\":\"PRIORITY\"}").getStatusCode());
+    assertEquals("PRIORITY_LAST", columns(token).get(3).get("cardSort").asText());
     put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Done\",\"cardSort\":\"MANUAL\"}");
     assertEquals("MANUAL", columns(token).get(3).get("cardSort").asText());
   }
