@@ -880,12 +880,16 @@ browser interaction evidence remains a separate layer.
   entry or a documented exclusion. At the recorded source baseline, 105
   mapping annotations compose to 107 routes; the matrix contains 107 unique
   method/path pairs and no duplicate rows.
-- [ ] Each state-changing operation asserts persisted state or an observable
-  event, not only a successful HTTP response.
-- [ ] Each delete/archive/restore operation asserts the resulting state from a
-  subsequent read or equivalent persistence observation.
-- [ ] Missing positive operation coverage remains visible as a gap even when
-  broad security sweeps pass.
+- [x] Each state-changing operation asserts persisted state or an observable
+  event, not only a successful HTTP response. The operation-by-operation audit
+  and state evidence links are recorded above and in [`01-api-matrix.md`](01-api-matrix.md).
+- [x] Each delete/archive/restore operation asserts the resulting state from a
+  subsequent read or equivalent persistence observation. The operation rows
+  identify active/archived list visibility, detail readback, or guarded
+  persistence evidence as applicable.
+- [x] Missing positive operation coverage remains visible as a gap even when
+  broad security sweeps pass. Unknown board-card priority binding remains a
+  maintainer-owned gap on all three affected operation rows.
 - [ ] Existing HARD-01 through HARD-07 evidence is reused by link when it
   proves the required behavior; duplicate coverage is not added without a
   distinct risk.
