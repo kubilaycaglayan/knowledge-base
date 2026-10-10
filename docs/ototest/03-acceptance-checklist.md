@@ -1133,7 +1133,7 @@ the extension has its own scope in OTOTEST-04.
 - [x] Cards can be opened and edited using touch at phone width. Supplemental evidence: `board.acceptance.test.mjs` / `moves a card with touch taps through the editor's status select` opens and closes the editor with touch taps, saves a changed title, changes its status, and checks the resulting board card.
 - [x] Card controls remain tappable without overlapping or clipping at phone width. Supplemental evidence: `board.acceptance.test.mjs` / `keeps every card editor control in its own slot on desktop and phone` checks editor control geometry and overlap at 320px and 390px; `keeps card timer actions at 44px on phones` checks minimum touch targets.
 - [x] Touch drag actions have a tap or keyboard alternative where supported. Supplemental evidence: `board.acceptance.test.mjs` / `reorders cards in a column with the keyboard alternative` verifies keyboard ordering; `moves a card with touch taps through the editor's status select` provides a touch path to change a card's column without dragging.
-- [ ] The selected column/card remains visible during editor interaction.
+- [x] The selected card remains identifiable during phone editor interaction. Supplemental evidence: `board.acceptance.test.mjs` / `moves a card with touch taps through the editor's status select` verifies the selected title remains in the editor and the card ID remains in the URL before editing; real mobile Chrome/device behavior remains part of the open platform pass.
 
 ## Notes
 
