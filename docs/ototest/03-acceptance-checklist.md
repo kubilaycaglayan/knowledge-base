@@ -574,14 +574,32 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Merge one path into another
 
-- [ ] The merge target picker only offers eligible owned destination paths.
-- [ ] Selecting the source itself is unavailable as a merge target.
-- [ ] Confirming the merge removes the source from the active path list.
-- [ ] The source path's sessions remain accessible under the destination.
-- [ ] Path-board cards retain their data and move to matching destination
-  statuses where supported.
-- [ ] Cancelling the merge leaves both paths unchanged.
-- [ ] A failed merge leaves the visible source and destination recoverable.
+- [x] The merge target picker only offers eligible owned destination paths.
+  Evidence: `PathsView.test.ts` / `searches for a merge target, confirms the
+  destructive merge, and refreshes paths` verifies the chooser uses the paths
+  returned for the signed-in account and offers the destination.
+- [x] Selecting the source itself is unavailable as a merge target. Evidence:
+  the same test verifies the source is excluded from the radio targets; server
+  ownership and self-merge rules are covered by `PathManagementServiceTest`.
+- [x] Confirming the merge removes the source from the active path list.
+  Evidence: `PathsView.test.ts` / `searches for a merge target, confirms the
+  destructive merge, and refreshes paths` verifies only the target remains
+  after the refreshed `/paths` response.
+- [x] The source path's sessions remain accessible under the destination.
+  Evidence: `KnowIntegrationTest.mergingPathsMovesTheSourceSessionsToTheOwnedTargetAndSoftDeletesTheSource`
+  verifies the moved session is listed under the target Path.
+- [x] Path-board cards retain their data and move to matching destination
+  statuses where supported. Evidence:
+  `PathBoardIntegrationTest.mergingPathsMovesCardsByStatusName` checks matched
+  status mapping, fallback status, card data, and archived cards.
+- [x] Cancelling the merge leaves both paths unchanged. Evidence:
+  `PathsView.test.ts` / `closes the merge chooser without changing paths`
+  cancels both the chooser and the destructive confirmation and verifies no
+  merge request is sent.
+- [x] A failed merge leaves the visible source and destination recoverable.
+  Evidence: `PathsView.test.ts` / `keeps both paths recoverable and permits
+  retry after a failed merge` verifies both paths remain after failure and a
+  subsequent retry succeeds.
 
 ### Flow: Remove one path
 
