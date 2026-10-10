@@ -921,6 +921,11 @@ the extension has its own scope in OTOTEST-04.
   and a 44px date cell. Desktop Chromium's `selects a calendar day with the
   keyboard and retains focus` checks keyboard activation and focus retention.
   Real mobile Chrome remains unverified.
+  Supplemental viewport-emulation evidence: `scripts/nav-shell.acceptance.test.mjs`,
+  `edits and saves a Calendar day at phone width without horizontal overflow`
+  selects a day by touch, edits and saves its note, checks Save day reachability
+  and page bounds at 390px, then verifies the saved note after reload. It does
+  not verify behavior with a real mobile keyboard or on a real device.
 
 ## Imports and Settings
 
