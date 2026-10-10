@@ -1277,6 +1277,32 @@ it("opens global search from the header or shortcut and lists matching pages bef
   assert.equal(await pageResult.evaluate((element, record) => Boolean(element.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING), await recordResult.elementHandle()), true);
 });
 
+it("keeps global search usable with touch at phone width", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(server.resolvedUrls.local[0]);
+  const trigger = page.locator(".global-search-trigger");
+  const target = await trigger.boundingBox();
+  assert.ok(target);
+  await page.touchscreen.tap(target.x + target.width / 2, target.y + target.height / 2);
+
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  assert.equal(await input.getAttribute("type"), "search");
+  assert.equal(await input.getAttribute("enterkeyhint"), "go");
+  await input.fill("Reports");
+  const result = page.getByRole("option", { name: /Reports research note/ });
+  await result.waitFor();
+  const dimensions = await dialog.evaluate((element) => ({
+    right: element.getBoundingClientRect().right,
+    left: element.getBoundingClientRect().left,
+    viewport: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+  }));
+  assert.ok(dimensions.left >= 0 && dimensions.right <= dimensions.viewport);
+  assert.ok(dimensions.documentWidth <= dimensions.viewport);
+});
+
 it("groups matching record types, shows note context, and opens the active result with Enter", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(server.resolvedUrls.local[0]);
