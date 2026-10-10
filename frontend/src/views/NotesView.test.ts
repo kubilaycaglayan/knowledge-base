@@ -569,6 +569,46 @@ describe("NotesView", () => {
     wrapper.unmount();
   });
 
+  it("preserves list, checklist, quote, and code blocks after save and reopen", async () => {
+    let persisted = note;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        persisted = { ...note, ...JSON.parse(String(options.body)) };
+        return persisted;
+      }
+      if (path === "/notes/note-1") return persisted;
+      if (path === "/notes/labels") return [];
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const first = mountNotes(r);
+    await flushPromises();
+    const editor = first.findComponent(EditorContent).props("editor");
+    editor.commands.setContent({
+      type: "doc",
+      content: [
+        { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "List item" }] }] }] },
+        { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [{ type: "paragraph", content: [{ type: "text", text: "Checked item" }] }] }] },
+        { type: "blockquote", content: [{ type: "paragraph", content: [{ type: "text", text: "Quoted text" }] }] },
+        { type: "codeBlock", content: [{ type: "text", text: "const answer = 42" }] },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    expect(persisted.content).toContain('"taskList"');
+    first.unmount();
+
+    const reopened = mountNotes(r);
+    await flushPromises();
+    expect(reopened.find(".ProseMirror ul").exists()).toBe(true);
+    expect(reopened.find('.ProseMirror ul[data-type="taskList"]').exists()).toBe(true);
+    expect(reopened.find(".ProseMirror blockquote").text()).toBe("Quoted text");
+    expect(reopened.find(".ProseMirror pre").text()).toBe("const answer = 42");
+    reopened.unmount();
+  });
+
   it("toggles a per-line edit-time gutter that the URL remembers", async () => {
     const stamped = { ...note, lineEdits: ["2026-09-02T10:00:00Z"] };
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => (path === "/notes/note-1" && !options ? stamped : undefined));
