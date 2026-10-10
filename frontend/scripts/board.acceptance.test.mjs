@@ -1981,6 +1981,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t, 390);
     await page.locator(".board-card", { hasText: "Ship timeline" }).tap();
     const title = page.getByRole("textbox", { name: "Title" });
+    assert.equal(await title.inputValue(), "Ship timeline");
+    assert.equal(new URL(page.url()).searchParams.get("card"), "card-1");
     const saved = cardSaved(page);
     await title.fill("Touch edited card");
     await saved;
