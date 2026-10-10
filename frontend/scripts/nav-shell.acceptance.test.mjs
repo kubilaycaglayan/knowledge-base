@@ -136,7 +136,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       notes = noteIds.map((id) => notes.find((item) => item.id === id)).filter(Boolean);
       body = notes;
     }
-    else if (path === "/notes") body = { items: url.searchParams.get("archived") === "true" ? [] : notes, page: 0, size: 20, totalItems: notes.length, totalPages: notes.length ? 1 : 0 };
+    else if (path === "/notes") {
+      const archived = url.searchParams.get("archived") === "true";
+      const selectedNotes = notes.filter((note) => Boolean(note.archived) === archived);
+      body = { items: selectedNotes, page: 0, size: 20, totalItems: selectedNotes.length, totalPages: selectedNotes.length ? 1 : 0 };
+    }
     else if (path === "/notes/n1") body = notes.find((note) => note.id === "n1") || { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
@@ -1596,6 +1600,24 @@ it("loads a note editor when the browser opens its deep link directly", async (t
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Browser deep link");
   await page.getByRole("textbox", { name: "Note content" }).waitFor();
   assert.match(await page.getByRole("textbox", { name: "Note content" }).innerText(), /Loaded directly/);
+});
+
+it("restores the archived Notes filter from its direct URL after reload", async (t) => {
+  const { page } = await fixture(t, 1280, {
+    noteSeeds: [
+      { id: "active-note", title: "Active browser note", content: "{}", contentText: "Active", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, tags: [], pinned: false, archived: false },
+      { id: "archived-note", title: "Archived browser note", content: "{}", contentText: "Archived", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", deletedAt: "2026-10-03T10:00:00Z", version: 1, tags: [], pinned: false, archived: true },
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}notes?archived=1`);
+  await page.locator(".note-row", { hasText: "Archived browser note" }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("archived"), "1");
+  assert.equal(await page.locator(".note-row").count(), 1);
+  assert.equal(await page.getByRole("button", { name: "Active notes" }).count(), 1);
+
+  await page.reload();
+  await page.locator(".note-row", { hasText: "Archived browser note" }).waitFor();
+  assert.equal(await page.locator(".note-row").count(), 1, "Reload preserves the archived filter and selected record set");
 });
 
 it("opens and uses the Notes editor with touch-sized controls on mobile", async (t) => {
