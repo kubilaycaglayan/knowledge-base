@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import PathsView from "./PathsView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
+import { useLabelsStore } from "../stores/labels";
 import { usePathsStore } from "../stores/paths";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
@@ -11,6 +12,7 @@ describe("PathsView", () => {
     vi.clearAllMocks();
     setActivePinia(createPinia());
     usePathsStore().reset();
+    useLabelsStore().reset();
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")
         return [
@@ -288,6 +290,74 @@ describe("PathsView", () => {
 
     expect(wrapper.findAll(".path-history-dialog")).toHaveLength(1);
     expect(wrapper.get(".path-history-dialog").text()).toContain("Writing");
+  });
+
+  it("shows only the selected path sessions grouped with timestamps and labels", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths")
+        return [
+          { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          { id: "path-2", name: "Writing", status: "ACTIVE" },
+        ];
+      if (path === "/labels?scope=TIME_ENTRY")
+        return [{ id: "label-draft", name: "Draft", scopes: ["TIME_ENTRY"] }];
+      if (path === "/paths/path-1/summary")
+        return {
+          path: { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+          trackedSeconds: 60,
+          recentActivity: [
+            {
+              id: "private-session",
+              timeEntryId: "entry-private",
+              title: "Private algorithm session",
+              occurredAt: "2020-08-29T10:00:00Z",
+            },
+          ],
+        };
+      if (path === "/paths/path-2/summary")
+        return {
+          path: { id: "path-2", name: "Writing", status: "ACTIVE" },
+          trackedSeconds: 180,
+          recentActivity: [
+            {
+              id: "writing-session-newer",
+              timeEntryId: "entry-newer",
+              title: "Draft introduction",
+              occurredAt: "2020-08-28T10:00:00Z",
+              labelIds: ["label-draft"],
+            },
+            {
+              id: "writing-session-older",
+              timeEntryId: "entry-older",
+              title: "Review outline",
+              occurredAt: "2020-07-28T10:00:00Z",
+            },
+          ],
+        };
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const writingHistory = wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "History" && button.element.parentElement?.parentElement?.textContent?.includes("Writing"));
+    expect(writingHistory).toBeDefined();
+    await writingHistory!.trigger("click");
+    await flushPromises();
+
+    const dialog = wrapper.get(".path-history-dialog");
+    expect(dialog.text()).toContain("Writing");
+    expect(dialog.text()).toContain("Draft introduction");
+    expect(dialog.text()).toContain("Review outline");
+    expect(dialog.text()).toContain("Draft");
+    expect(dialog.text()).not.toContain("Private algorithm session");
+    expect(dialog.findAll(".path-history-group-heading").map((heading) => heading.text())).toEqual([
+      "August 2020",
+      "July 2020",
+    ]);
+    expect(dialog.get('time[datetime="2020-08-28T10:00:00Z"]').exists()).toBe(true);
+    expect(dialog.get('time[datetime="2020-07-28T10:00:00Z"]').exists()).toBe(true);
   });
 
   it("merges a completed timer into one activity with its details", async () => {

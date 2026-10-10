@@ -303,9 +303,14 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open a path history
 
-- [ ] Opening History shows activity belonging to the selected path.
-- [ ] Path history groups activity chronologically with date headings.
-- [ ] Session rows show their timestamps and labels.
+- [x] Opening History shows activity belonging to the selected path. Evidence:
+  `cd frontend && npx vitest run src/views/PathsView.test.ts -t 'selected path
+  sessions grouped'` opens Writing history and asserts that its sessions are
+  shown while Algorithms activity is absent (mocked API).
+- [x] Path history groups activity chronologically with date headings.
+  Evidence: the same test verifies the August 2020 then July 2020 headings.
+- [x] Session rows show their timestamps and labels. Evidence: the same test
+  verifies each session's `time[datetime]` and the Draft label chip.
 - [ ] Opening an activity record navigates to that record's supported detail.
 - [x] An empty path history has an explicit empty state. Evidence: `cd
   frontend && npx vitest run src/views/PathsView.test.ts -t 'empty state for a
