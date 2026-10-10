@@ -1376,8 +1376,13 @@ so the warning and discard criteria remain open.
   animation or transition when Chromium emulates `prefers-reduced-motion:
   reduce`; `frontend/src/style.css` applies the same reduced-motion rule across
   the application.
-- [ ] Status and selection are communicated with text, shape, or accessible
-  labels as well as color.
+- [x] Status and selection are communicated with text, shape, or accessible
+  labels as well as color. Evidence: `CalendarView.test.ts` / `announces when
+  the Calendar Today action selects the current date` checks the polite
+  selection message; `ColorPalette.test.ts` / `announces the currently selected
+  color through pressed state` checks accessible selected state; `BoardView.test.ts`
+  / `keeps the column heading as the accessible name for its section` checks
+  status names remain available to assistive technology.
 
 ## OTOTEST-03 inventory acceptance
 
