@@ -299,6 +299,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open and dismiss a dialog
 
+- [x] Generic confirmation dialogs expose a modal role and an accessible name.
+  Evidence: `PromptDialog.test.ts` / `supports confirmation prompts without a
+  text field` verifies `role="dialog"`, `aria-modal="true"`, and the message
+  referenced by `aria-labelledby`; `PathsView.test.ts` checks the same
+  semantics on a Path merge confirmation.
 - [x] Opening a dialog places focus within the dialog. Evidence:
   `opens a new-board dialog from the Boards dialog and returns there on Escape`
   in `frontend/scripts/board.acceptance.test.mjs` asserts focus enters the
