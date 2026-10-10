@@ -160,6 +160,32 @@ class TimerServiceEdgeTest {
   }
 
   @Test
+  void unpagedHistoryRequestsAtMostOneHundredEntries() {
+    UUID user = UUID.randomUUID();
+    List<TimeEntry> entriesForUser =
+        java.util.stream.IntStream.range(0, 101)
+            .mapToObj(
+                index ->
+                    new TimeEntry(
+                        user,
+                        null,
+                        Instant.parse("2026-09-01T00:00:00Z").plusSeconds(index),
+                        "entry " + index,
+                        TimeSource.MANUAL))
+            .toList();
+    when(entries.findAllByUserIdOrderByCompletionTimeDesc(eq(user), any(Pageable.class)))
+        .thenReturn(entriesForUser.subList(0, 100));
+    when(entryLabels.findAllByIdTimeEntryIdIn(anyCollection())).thenReturn(List.of());
+
+    List<TimerService.TimeView> history = service().history(user);
+
+    assertEquals(100, history.size());
+    verify(entries)
+        .findAllByUserIdOrderByCompletionTimeDesc(
+            eq(user), argThat(page -> page.getPageNumber() == 0 && page.getPageSize() == 100));
+  }
+
+  @Test
   void editingOrRemovingRunningEntriesIsRejectedWithoutSaving() {
     UUID user = UUID.randomUUID();
     UUID id = UUID.randomUUID();
