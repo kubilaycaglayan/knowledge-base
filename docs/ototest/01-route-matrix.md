@@ -24,7 +24,7 @@ Source reconciliation at the recorded baseline found 19 registered Vue route ent
 | `/imports` | `views/ImportsView.vue` | `views/ImportsView.test.ts` | Component | Import history/undo through browser and API not established |
 | `/settings` | `views/SettingsView.vue` | `views/SettingsView.test.ts` | Component | Preference persistence across real reload needs assertion |
 | `/labels` | `views/LabelsView.vue` | `views/LabelsView.test.ts` | Component | Browser history and persisted CRUD journey not established |
-| `/labels/:id` | `views/LabelsView.vue` | `views/DeepLinks.test.ts` | Component | Unknown/foreign ID and related-record browser navigation need assertion |
+| `/labels/:id` | `views/LabelsView.vue` | [`DeepLinks.test.ts`](../../frontend/src/views/DeepLinks.test.ts); [`nav-shell.acceptance.test.mjs`](../../frontend/scripts/nav-shell.acceptance.test.mjs): `shows an unavailable history state for a missing label deep link` | Component; mocked browser acceptance | Missing label history is covered; valid/foreign label history and related-record browser navigation remain gaps |
 | `/board` and query selection | `views/BoardView.vue` | `views/BoardView.test.ts`, `scripts/board.acceptance.test.mjs`, `scripts/board.real-stack.acceptance.test.mjs` | Component; browser; real stack | All boards/Gantt and direct-load fallback evidence should be mapped per behavior in later milestones |
 | `/board/archive` and query focus | `views/BoardArchiveView.vue` | `views/BoardArchiveView.test.ts` | Component | Browser restore and query deep-link behavior need assertion |
 | `/notes` with `archived`, `q` | `views/NotesView.vue` | `views/NotesView.test.ts` | Component | URL/history restoration and persisted browser flow need assertion |

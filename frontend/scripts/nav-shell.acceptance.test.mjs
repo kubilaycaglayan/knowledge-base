@@ -37,7 +37,7 @@ async function fixture(t, width, { warmup = false } = {}) {
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path.startsWith("/reports")) body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
     else if (path === "/timers/draft" || path === "/preferences") body = {};
-    const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone";
+    const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone" || path.startsWith("/labels/gone/history");
     await route.fulfill({ status: missingRecord ? 404 : 200, json: missingRecord ? { message: "Not found" } : body });
   });
   const page = await context.newPage();
@@ -161,6 +161,13 @@ it("shows an unavailable state for a missing path opened by browser deep link", 
   await page.goto(`${server.resolvedUrls.local[0]}paths/gone`);
   await page.getByText("That path doesn’t exist any more").waitFor();
   assert.equal(new URL(page.url()).pathname, "/paths/gone");
+});
+
+it("shows an unavailable history state for a missing label deep link", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}labels/gone`);
+  await page.getByRole("alert").filter({ hasText: "Could not load this label’s history." }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/labels/gone");
 });
 
 it("loads a note editor when the browser opens its deep link directly", async (t) => {
