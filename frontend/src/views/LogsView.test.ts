@@ -364,6 +364,7 @@ describe("LogsView", () => {
     await flushPromises();
     vi.mocked(api).mockResolvedValueOnce(undefined);
     await wrapper.get('button[aria-label^="Remove log"]').trigger("click");
+    expect(wrapper.get(".prompt-dialog").text()).toContain("cannot be undone");
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
     expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
@@ -371,6 +372,7 @@ describe("LogsView", () => {
       method: "DELETE",
     });
     expect(wrapper.text()).not.toContain("Recent thought");
+    expect(wrapper.text()).toContain("Another thought");
   });
 
   it("leaves a log unchanged when deletion is cancelled", async () => {

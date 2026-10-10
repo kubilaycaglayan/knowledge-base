@@ -684,24 +684,23 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Page through log history
 
-- [ ] Loading another page adds older/newer logs in stable chronological order.
-- [ ] A failed page request offers retry without duplicating current rows.
-- [ ] Date-group headings remain attached to the correct log rows at page
-  boundaries.
+- [x] Loading another page adds older/newer logs in stable chronological order. Evidence: `LogsView.test.ts` / `shows 100 logs per page and places pagination after the log list` verifies the next page contains the oldest record and Previous restores the first 100 without duplication.
+- [x] Changing pages uses the loaded history without a duplicate API request or duplicate visible rows. Evidence: the same test verifies only one `/logs` request is made while paging, and checks each page size.
+- [x] Date-group headings remain attached to the correct log rows at page boundaries. Evidence: the same test places a month boundary between pages and verifies the last page has the January 2026 heading.
 
 ### Flow: Open one log
 
-- [ ] Opening a log detail URL selects the intended log over the list.
-- [ ] Closing a log detail returns to the previous list context.
+- [x] Opening a log detail URL selects the intended log over the list. Evidence: `DeepLinks.test.ts` / `opens a loaded log and shows it in its place in the full list` verifies the requested record is selected and returns to its page in the list; `fetches a log the list doesn't hold and explains a missing one` covers an individually fetched record.
+- [x] Closing a log detail returns to the previous list context. Evidence: `DeepLinks.test.ts` / `closes with Escape back to the list` verifies the route returns to `/logs`.
 
 ### Flow: Delete one log
 
-- [ ] Deleting a log requires confirmation or offers a visible undo action.
+- [x] Deleting a log requires confirmation or offers a visible undo action. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` uses the confirmation dialog before issuing DELETE.
 - [x] Cancelling deletion leaves the log unchanged and sends no DELETE request.
   Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
   'leaves a log unchanged when deletion is cancelled'` (component test;
   mocked API).
-- [ ] Confirming deletion removes only the selected log.
+- [x] Confirming deletion removes only the selected log. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` verifies the selected log is removed and other loaded log records remain.
 - [x] A failed delete keeps the log visible and permits a successful retry.
   Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
   'keeps a log after delete fails'` (component test; mocked API).
