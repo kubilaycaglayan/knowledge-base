@@ -42,7 +42,7 @@ browser interaction evidence remains a separate layer.
   OTOTEST-01; layer conventions and source-based contract reading are recorded
   in the API matrix).
 - [x] Use exact test names or named assertions as evidence; a test filename
-  without a relevant assertion does not prove coverage. All 352 qualified
+  without a relevant assertion does not prove coverage. All 354 qualified
   references in the current operation matrix resolve to a test method; the
   evidence description beside each reference names the behavior asserted.
 - [x] Distinguish unit/domain, controller/API, service, persistence
