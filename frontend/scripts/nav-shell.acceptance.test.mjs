@@ -1240,6 +1240,33 @@ it("wraps very long Log text within the phone-width detail layout", async (t) =>
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 });
 
+it("keeps a long Path description inside its phone-width card", async (t) => {
+  const description = `${"UnbrokenDescription".repeat(40)} ${"A long path description should stay inside its card. ".repeat(20)}`;
+  const { page } = await fixture(t, 390, {
+    pathSeeds: [{ id: "long-description", name: "Reading", description, status: "ACTIVE" }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  const paragraph = page.locator(".path-body > p");
+  await paragraph.waitFor();
+  assert.ok((await paragraph.textContent()).includes(description.slice(0, 80)));
+  const layout = await page.locator("article.path").evaluate((article) => {
+    const paragraph = article.querySelector(".path-body > p");
+    const rect = article.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+      clientWidth: article.clientWidth,
+      scrollWidth: article.scrollWidth,
+      lineClamp: paragraph && getComputedStyle(paragraph).webkitLineClamp,
+    };
+  });
+  assert.equal(layout.lineClamp, "2");
+  assert.ok(layout.left >= 0 && layout.right <= 390, JSON.stringify(layout));
+  assert.ok(layout.scrollWidth <= layout.clientWidth, JSON.stringify(layout));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
 it("shows an unavailable state for a missing path opened by browser deep link", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}paths/gone`);
