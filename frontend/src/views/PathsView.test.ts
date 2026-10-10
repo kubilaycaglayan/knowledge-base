@@ -348,6 +348,42 @@ describe("PathsView", () => {
     expect(JSON.parse(String(createCall?.[1]?.body)).textColor).toBeNull();
   });
 
+  it("creates a path, shows it in the list, and reloads it from the API", async () => {
+    const savedPaths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: false },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths" && options?.method === "POST") {
+        const created = {
+          ...JSON.parse(String(options.body)),
+          id: "path-2",
+          status: "ACTIVE",
+          pinned: false,
+        };
+        savedPaths.push(created);
+        return created;
+      }
+      if (path === "/paths") return savedPaths;
+      return undefined;
+    });
+
+    const first = mount(PathsView);
+    await flushPromises();
+    await first.get('button[aria-label="Add path"]').trigger("click");
+    await first.get('input[aria-label="New path name"]').setValue("Reading");
+    await first.get("form.path-create-form").trigger("submit");
+    await flushPromises();
+    expect(first.findAll(".path-title").map((title) => title.text())).toContain("Reading");
+    first.unmount();
+
+    setActivePinia(createPinia());
+    const reloaded = mount(PathsView);
+    await flushPromises();
+    expect(reloaded.findAll(".path-title").map((title) => title.text())).toContain("Reading");
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/paths", expect.objectContaining({ method: "POST" }));
+    reloaded.unmount();
+  });
+
   it("saves a custom path text color", async () => {
     const wrapper = mount(PathsView);
     await flushPromises();

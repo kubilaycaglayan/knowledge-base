@@ -250,7 +250,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Create one path
 
-- [ ] Creating a path with a valid name adds it to the active list.
+- [x] Creating a path with a valid name adds it to the active list and remains
+  visible after remount from the API fixture. Evidence: `cd frontend && npx
+  vitest run src/views/PathsView.test.ts -t 'creates a path, shows it in the
+  list'` (component test; mocked API).
 - [ ] Submitting an empty or whitespace-only name identifies the validation
   issue without creating a path.
 - [ ] A failed create preserves entered values and offers a retry.
