@@ -42,6 +42,16 @@ class BoardControllerApiTest {
     mvc.perform(get("/api/v1/boards")).andExpect(status().isUnauthorized());
   }
 
+  @Test
+  void boardListRejectsInvalidBooleanFiltersBeforeRepositoryAccess() throws Exception {
+    mvc.perform(get("/api/v1/boards?archived=sometimes").with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+    mvc.perform(get("/api/v1/boards?includeHidden=maybe").with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
   @Test void createBoardSeedsTheFourOrderedStatuses() throws Exception {
     when(boards.save(any(Board.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(statuses.save(any(BoardStatus.class))).thenAnswer(invocation -> invocation.getArgument(0));
