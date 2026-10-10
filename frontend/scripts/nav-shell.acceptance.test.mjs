@@ -20,6 +20,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   const requests = [];
   const reportQueries = [];
   const pathOrderWrites = [];
+  const pathMergeWrites = [];
   const paths = [...pathSeeds];
   let notes = [...noteSeeds];
   const logs = [...logSeeds];
@@ -82,6 +83,13 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       const index = paths.findIndex((item) => item.id === id);
       if (index >= 0) paths[index].pinned = route.request().postDataJSON().pinned;
       body = paths[index];
+    }
+    else if (path.startsWith("/paths/") && path.endsWith("/merge") && method === "POST") {
+      pathMergeWrites.push({ sourceId: path.split("/")[2], ...route.request().postDataJSON() });
+      const sourceId = path.split("/")[2];
+      const sourceIndex = paths.findIndex((item) => item.id === sourceId);
+      if (sourceIndex >= 0) paths.splice(sourceIndex, 1);
+      body = {};
     }
     else if (path === "/paths/order" && method === "PUT") {
       const { pathIds } = route.request().postDataJSON();
@@ -231,7 +239,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   await page.goto(server.resolvedUrls.local[0]);
   if (authenticated) await page.locator(".dashboard-shell > header nav").waitFor();
   else await page.locator(".auth").waitFor();
-  return { page, requests, reportQueries, calendarLabels, paths, pathOrderWrites };
+  return { page, requests, reportQueries, calendarLabels, paths, pathOrderWrites, pathMergeWrites };
 }
 
 async function until(condition) {
@@ -944,6 +952,37 @@ it("changes and persists an existing Path color using only the keyboard", async 
     await page.locator(".path .dot").evaluate((element) => getComputedStyle(element).backgroundColor),
     "rgb(59, 130, 246)",
   );
+});
+
+it("merges Paths into the selected target after destructive confirmation", async (t) => {
+  const { page, paths, pathMergeWrites } = await fixture(t, 1440, {
+    pathSeeds: [
+      { id: "merge-source", name: "Algorithms", description: "Problem solving", status: "ACTIVE", pinned: false },
+      { id: "merge-target", name: "Writing", description: "Drafting", status: "ACTIVE", pinned: false },
+    ],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}paths`);
+  await page.locator(".paths-page").waitFor();
+  await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+  await page.locator("form.path-edit").getByRole("button", { name: "Merge", exact: true }).click();
+
+  const chooser = page.getByRole("dialog", { name: "Merge “Algorithms” into…" });
+  await chooser.waitFor();
+  const search = chooser.getByRole("searchbox", { name: "Find a target path" });
+  await search.fill("Drafting");
+  const target = chooser.getByRole("radio", { name: /Writing/ });
+  await target.check();
+  await chooser.getByRole("button", { name: "OK" }).click();
+
+  const confirmation = page.getByRole("dialog", { name: "Merge Algorithms into Writing? All sessions will move and Algorithms will be removed." });
+  await confirmation.waitFor();
+  assert.equal(await confirmation.getAttribute("aria-modal"), "true");
+  await confirmation.getByRole("button", { name: "Confirm" }).click();
+
+  await page.locator(".path-title", { hasText: "Writing" }).waitFor();
+  assert.equal(await page.locator(".path-title", { hasText: "Algorithms" }).count(), 0);
+  assert.deepEqual(pathMergeWrites, [{ sourceId: "merge-source", targetPathId: "merge-target" }]);
+  assert.deepEqual(paths.map(({ id }) => id), ["merge-target"]);
 });
 
 it("restores a hidden Path board tab after showing it from Paths", async (t) => {
