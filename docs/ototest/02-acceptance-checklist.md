@@ -558,7 +558,9 @@ browser interaction evidence remains a separate layer.
   (`KnowIntegrationTest.calendarLabelDeleteRemovesUnusedLabelsAndPreservesLabelsReferencedByDays`).
 - [x] `GET /api/v1/calendar/days` covers inclusive start/end records, invalid
   date text, reversed and over-year ranges, and the accepted one-year boundary
-  (`KnowIntegrationTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges`).
+  (`KnowIntegrationTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges`);
+  missing, malformed, and impossible date query values return 400 before
+  service access (`CalendarApiTest.calendarDaysRequireValidDateQueryValuesBeforeServiceAccess`).
 - [x] `PUT /api/v1/calendar/days/{date}` covers replacing one day's note and
   label assignments, including persisted readback and omitted marker portions;
   missing assignment IDs and duplicate labels are rejected before changing the

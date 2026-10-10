@@ -81,4 +81,19 @@ class CalendarApiTest {
 
     verifyNoInteractions(service);
   }
+
+  @Test
+  void calendarDaysRequireValidDateQueryValuesBeforeServiceAccess() throws Exception {
+    for (String query :
+        List.of(
+            "startDate=2026-10-01",
+            "startDate=not-a-date&endDate=2026-10-02",
+            "startDate=2026-02-30&endDate=2026-03-01",
+            "startDate=2026-10-01&endDate=not-a-date")) {
+      mvc.perform(get("/api/v1/calendar/days?" + query).with(authentication(auth)))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
+  }
 }
