@@ -668,6 +668,10 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
   'preserves log text and timestamp after a failed create'` (component test;
   mocked API).
+- [x] A pending create disables duplicate submission and communicates progress.
+  Evidence: `LogsView.test.ts` / `prevents duplicate log creates and reports
+  progress while saving` holds the create request open, submits twice, and
+  checks one POST, a disabled button retaining its Save label, and a spinner.
 - [x] The timestamp reset action uses the current browser time as labeled. Evidence: `LogsView.test.ts` / `keeps the new-log timestamp current until it is manually changed` advances the fake browser clock, confirms manual changes stop following it, and activates the accessible `Use browser time` reset.
 
 ### Flow: Edit one log

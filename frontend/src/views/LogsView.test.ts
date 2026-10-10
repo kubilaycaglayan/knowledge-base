@@ -228,6 +228,38 @@ describe("LogsView", () => {
     wrapper.unmount();
   });
 
+  it("prevents duplicate log creates and reports progress while saving", async () => {
+    let finishCreate!: (value: ReturnType<typeof log>) => void;
+    const pendingCreate = new Promise<ReturnType<typeof log>>((resolve) => {
+      finishCreate = resolve;
+    });
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/labels?scope=LOG") return [];
+      if (path === "/logs" && options?.method === "POST") return pendingCreate;
+      if (path === "/logs") return [];
+      return undefined;
+    });
+    const wrapper = mount(LogsView);
+    await flushPromises();
+    const body = wrapper.get("#new-log-body");
+    await body.setValue("One in-flight log");
+    const form = wrapper.get("form.log-composer");
+    await form.trigger("submit");
+    await form.trigger("submit");
+
+    const submit = wrapper.get('form.log-composer button[type="submit"]');
+    expect(submit.attributes("disabled")).toBeDefined();
+    expect(submit.text()).toBe("Save");
+    expect(submit.find(".spinner").exists()).toBe(true);
+    expect(
+      vi.mocked(api).mock.calls.filter(([path, options]) => path === "/logs" && options?.method === "POST"),
+    ).toHaveLength(1);
+
+    finishCreate(log("created", "One in-flight log", new Date().toISOString(), 0));
+    await flushPromises();
+    await wrapper.unmount();
+  });
+
   for (const text of ["", "   "]) {
     it(`shows validation and does not create a log for ${text ? "whitespace" : "blank"} text`, async () => {
       const wrapper = mount(LogsView);
