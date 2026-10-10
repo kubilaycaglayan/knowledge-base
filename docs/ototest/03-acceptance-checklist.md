@@ -567,8 +567,9 @@ the extension has its own scope in OTOTEST-04.
   reachable with the on-screen keyboard open.
 - [ ] The calendar grid and editor do not cause unintended page overflow.
   Supplemental evidence only: the same browser test checks selected-day state
-  after touch taps at 390px in desktop Chromium; real mobile Chrome remains
-  unverified.
+  after touch taps at 390px in desktop Chromium; `selects a calendar day with
+  touch and updates its details panel` additionally checks single-day selection
+  and a 44px date cell. Real mobile Chrome remains unverified.
 
 ## Imports and Settings
 

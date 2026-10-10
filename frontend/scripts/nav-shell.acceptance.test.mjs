@@ -347,6 +347,28 @@ it("returns the Calendar to today with a touch-sized navigation control", async 
   assert.ok(await page.locator("button.calendar-day").count() >= 35);
 });
 
+it("selects a calendar day with touch and updates its details panel", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const target = page.locator("button.calendar-day:not(.muted)").nth(2);
+  const targetDay = await target.locator("time").textContent();
+  const targetBounds = await target.boundingBox();
+  assert.ok(targetBounds && targetBounds.height >= 44);
+
+  await target.tap();
+
+  assert.equal(await target.getAttribute("aria-pressed"), "true");
+  assert.equal(
+    await page.locator('button.calendar-day[aria-pressed="true"]').count(),
+    1,
+  );
+  assert.match(
+    await page.locator(".day-editor-heading h2").textContent(),
+    new RegExp(`\\b${targetDay}\\b`),
+  );
+});
+
 it("opens a session detail when the browser loads its deep link directly", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);
