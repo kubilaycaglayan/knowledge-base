@@ -897,6 +897,29 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.locator(".timeline-bar", { hasText: "Never disappears" }).count() >= 1, true);
   });
 
+  it("persists card path, priority, dates, and labels after reload", async (t) => {
+    const { page } = await fixture(t, 1280);
+    await page.locator(".board-card").first().click();
+    await pickCardPath(page, "Research");
+    await page.getByRole("combobox", { name: "Priority" }).selectOption("LOW");
+    await pickCardDates(page, dateOnly(4), dateOnly(6));
+    const picker = page.locator(".card-labels-picker-wrap");
+    await picker.getByRole("button", { name: "Open label picker" }).click();
+    const bug = page.locator(".label-picker-menu [role=option]").filter({ has: page.locator(".option-name", { hasText: "Bug" }) });
+    await bug.click();
+    await page.keyboard.press("Escape");
+    await closeCard(page);
+
+    await page.reload();
+    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
+    assert.equal(await cardPathText(page), "Research");
+    assert.equal(await page.getByRole("combobox", { name: "Priority" }).inputValue(), "LOW");
+    const shownDate = (offset) => new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }).format(new Date(`${dateOnly(offset)}T12:00:00Z`));
+    assert.equal(await page.getByRole("textbox", { name: "Card dates" }).inputValue(), `${shownDate(4)} – ${shownDate(6)}`);
+    await closeCard(page);
+    await page.locator(".board-card .board-card-label", { hasText: "Bug" }).waitFor();
+  });
+
   for (const width of [320, 390]) it(`keeps Kanban usable on mobile and passes axe checks (${width}px)`, async (t) => {
     const { page } = await fixture(t, width);
     await page.locator(".kanban-column").first().waitFor();
