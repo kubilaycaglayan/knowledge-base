@@ -307,6 +307,53 @@ describe("TimelineView", () => {
     ).toHaveLength(activityRequestCount + 1);
   });
 
+  it("clears all timeline filters back to the default state", async () => {
+    const activities = [
+      {
+        id: "activity-1",
+        type: "TIMER_STOPPED",
+        title: "Learning session",
+        occurredAt: "2026-08-15T12:00:00Z",
+        pathId: "path-1",
+      },
+      {
+        id: "activity-2",
+        type: "NOTE_CREATED",
+        title: "General note",
+        occurredAt: "2026-08-20T12:00:00Z",
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [{ id: "path-1", name: "Learning" }];
+      if (requestPath.startsWith("/activities?")) {
+        const params = new URLSearchParams(requestPath.slice(requestPath.indexOf("?") + 1));
+        return params.has("type") || params.has("pathId") || params.has("from") || params.has("to")
+          ? activities.slice(0, 1)
+          : activities;
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    await wrapper.get('select[aria-label="Activity type"]').setValue("TIMER_STOPPED");
+    await wrapper.get('select[aria-label="Path"]').setValue("path-1");
+    await wrapper.get('input[aria-label="From date"]').setValue("2026-08-01");
+    await wrapper.get('input[aria-label="To date"]').setValue("2026-08-31");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+    expect(wrapper.text()).not.toContain("General note");
+
+    await wrapper.get("button.clear-timeline-filters").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('select[aria-label="Activity type"]').element.value).toBe("");
+    expect(wrapper.get('select[aria-label="Path"]').element.value).toBe("");
+    expect(wrapper.get('input[aria-label="From date"]').element.value).toBe("");
+    expect(wrapper.get('input[aria-label="To date"]').element.value).toBe("");
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith("/activities?");
+    expect(wrapper.text()).toContain("General note");
+  });
+
   it("reports initial-load and note-save failures and ignores incomplete notes", async () => {
     vi.mocked(api).mockRejectedValueOnce(new Error("paths failed"));
     const failedLoad = mount(TimelineView);
