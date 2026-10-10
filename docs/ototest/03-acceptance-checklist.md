@@ -742,7 +742,7 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Delete one log
 
-- [x] Deleting a log requires confirmation or offers a visible undo action. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` uses the confirmation dialog before issuing DELETE.
+- [x] Deleting a log requires confirmation or offers a visible undo action. Evidence: `LogsView.test.ts` / `confirms removal and removes the record after the API succeeds` verifies a modal dialog with an accessible name and destructive warning before issuing DELETE.
 - [x] Cancelling deletion leaves the log unchanged and sends no DELETE request.
   Evidence: `cd frontend && npx vitest run src/views/LogsView.test.ts -t
   'leaves a log unchanged when deletion is cancelled'` (component test;

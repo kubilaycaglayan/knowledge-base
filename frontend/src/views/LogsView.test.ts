@@ -408,7 +408,10 @@ describe("LogsView", () => {
     await flushPromises();
     vi.mocked(api).mockResolvedValueOnce(undefined);
     await wrapper.get('button[aria-label^="Remove log"]').trigger("click");
-    expect(wrapper.get(".prompt-dialog").text()).toContain("cannot be undone");
+    const confirmation = wrapper.get('[role="dialog"]');
+    expect(confirmation.attributes("aria-modal")).toBe("true");
+    expect(confirmation.attributes("aria-labelledby")).toBe("prompt-dialog-message");
+    expect(wrapper.get("#prompt-dialog-message").text()).toContain("cannot be undone");
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
     await flushPromises();
     expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
