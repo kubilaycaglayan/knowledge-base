@@ -212,6 +212,9 @@ browser interaction evidence remains a separate layer.
   path/activity/time-entry association.
 - [x] `POST /api/v1/notes` covers rich-text content and server-derived
   `contentText` behavior.
+- [x] `POST /api/v1/notes` rejects missing or blank required content and text
+  over field limits, and accepts the exact title maximum
+  (`NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits`).
 - [x] `PUT /api/v1/notes/{id}` covers successful update and persisted document
   fields.
 - [x] `PUT /api/v1/notes/{id}` covers optimistic version success and stale

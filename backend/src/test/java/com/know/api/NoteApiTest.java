@@ -4,6 +4,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.know.service.KnowledgeService;
 import java.util.List;
@@ -46,6 +47,37 @@ class NoteApiTest {
                 .with(authentication(auth))
                 .contentType("application/json")
                 .content("{\"title\":\" \",\"content\":\"Useful\"}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void noteCreateValidatesRequiredContentAndTextLimits() throws Exception {
+    UUID user = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+
+    for (String body :
+        List.of(
+            "{\"title\":\"Missing content\"}",
+            "{\"title\":\"Empty content\",\"content\":\" \"}",
+            "{\"title\":\"" + "t".repeat(241) + "\",\"content\":\"Useful\"}",
+            "{\"title\":\"Useful\",\"content\":\"" + "c".repeat(200001) + "\"}",
+            "{\"title\":\"Useful\",\"content\":\"Body\",\"contentText\":\""
+                + "c".repeat(200001)
+                + "\"}")) {
+      mvc.perform(
+              post("/api/v1/notes")
+                  .with(authentication(auth))
+                  .contentType("application/json")
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(service);
+
+    mvc.perform(
+            post("/api/v1/notes")
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{\"title\":\"" + "t".repeat(240) + "\",\"content\":\"Useful\"}"))
         .andExpect(status().isOk());
   }
 
