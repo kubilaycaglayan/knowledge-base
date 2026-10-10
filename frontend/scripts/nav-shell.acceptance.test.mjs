@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -31,6 +31,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let rejectNextReportsRequest = rejectReportsAuth;
   let searchFailurePending = failSearchOnce;
   let importFailurePending = failImportOnce;
+  let logDeleteFailurePending = failLogDeleteOnce;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
       localStorage.setItem("know_token", "nav-test-token");
@@ -54,6 +55,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     if (importFailurePending && path === "/imports/knowledge-base" && method === "POST") {
       importFailurePending = false;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary import failure" }) });
+      return;
+    }
+    if (logDeleteFailurePending && path.startsWith("/logs/") && method === "DELETE") {
+      logDeleteFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary log delete failure" }) });
       return;
     }
     let body = [];
@@ -602,8 +608,9 @@ it("restores the Log search query from a direct URL after reload", async (t) => 
   assert.equal(await page.locator(".log-entry").count(), 1, "Reload preserves the filtered result from the URL");
 });
 
-it("confirms Log removal and keeps the entry when confirmation is cancelled", async (t) => {
+it("confirms Log removal, preserves it on cancel or failure, then retries successfully", async (t) => {
   const { page, requests } = await fixture(t, 1280, {
+    failLogDeleteOnce: true,
     logSeeds: [
       { id: "remove-log", body: "Keep or remove this browser log", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] },
       { id: "other-log", body: "Untouched browser log", occurredAt: "2026-10-02T10:00:00Z", createdAt: "2026-10-02T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, labelIds: [] },
@@ -623,9 +630,15 @@ it("confirms Log removal and keeps the entry when confirmation is cancelled", as
 
   await remove.click();
   await page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }).click();
+  await page.getByRole("alert").filter({ hasText: "Unable to remove this log. Please try again." }).waitFor();
+  await entry.waitFor();
+  assert.equal(requests.filter((path) => path === "/logs/remove-log").length, 1, "The failed attempt leaves the record in the list");
+
+  await remove.click();
+  await page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }).click();
   await entry.waitFor({ state: "detached" });
   await page.locator(".log-entry", { hasText: "Untouched browser log" }).waitFor();
-  assert.equal(requests.filter((path) => path === "/logs/remove-log").length, 1);
+  assert.equal(requests.filter((path) => path === "/logs/remove-log").length, 2);
 });
 
 it("downloads the Knowledge Base export from Settings in the browser", async (t) => {
