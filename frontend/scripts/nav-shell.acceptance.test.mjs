@@ -88,6 +88,16 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
+    else if (path === "/search") body = {
+      groups: url.searchParams.get("q") ? [{
+        type: "NOTE",
+        total: 1,
+        capped: false,
+        results: [{ id: "search-note", type: "NOTE", title: "Reports research note", snippet: "Notes about reports", at: "2026-10-01T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null }],
+      }] : [],
+      fuzzy: false,
+      incomplete: false,
+    };
     else if (path.startsWith("/reports")) {
       reportQueries.push(url.searchParams.toString());
       const chartPath = { id: "theme-path", label: "Theme path", seconds: 3600, color: "#3b82f6" };
@@ -1175,6 +1185,29 @@ it("keeps dialogs, menus, native selects, date picker, and report chart readable
     assert.match(dateColors.themeClass, new RegExp(`dp__theme_${themeName}`));
     assertReadable(dateColors.foreground, dateColors.background, `${themeName} date picker`);
   }
+});
+
+it("opens global search from the header or shortcut and lists matching pages before records", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  const trigger = page.locator(".global-search-trigger");
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  assert.equal(await input.evaluate((element) => element === document.activeElement), true);
+  await dialog.locator(".global-search-close").click();
+  await page.keyboard.press("Control+k");
+  await dialog.waitFor();
+  await input.fill("Reports");
+
+  const pageResult = page.getByRole("option", { name: "Reports, page" });
+  const recordResult = page.getByRole("option", { name: /Reports research note/ });
+  await pageResult.waitFor();
+  await recordResult.waitFor();
+  assert.equal(await page.getByRole("heading", { name: "Pages" }).count(), 1);
+  assert.equal(await page.getByRole("heading", { name: /Notes/ }).count(), 1);
+  assert.equal(await pageResult.evaluate((element, record) => Boolean(element.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING), await recordResult.elementHandle()), true);
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {

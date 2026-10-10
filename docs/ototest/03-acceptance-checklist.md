@@ -229,11 +229,16 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Search for a product page
 
-- [ ] Opening global search from the header exposes the search input.
-- [ ] The documented keyboard shortcut opens global search from a supported
+- [x] Opening global search from the header exposes the search input.
+- [x] The documented keyboard shortcut opens global search from a supported
   page.
-- [ ] Searching a page name lists the matching page in the Pages group above
+- [x] Searching a page name lists the matching page in the Pages group above
   record results.
+  Evidence for these actions: `opens global search from the header or shortcut
+  and lists matching pages before records` in
+  `frontend/scripts/nav-shell.acceptance.test.mjs` opens from the header,
+  verifies input focus, opens with Control+K, and checks the Reports page result
+  precedes the mocked Notes record result.
 
 ### Flow: Search for an owned record
 
