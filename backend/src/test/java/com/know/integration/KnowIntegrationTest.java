@@ -2144,8 +2144,8 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             + "\"projectName\":\""
             + uniqueProject
             + "\","
-            + "\"timeInterval\":{\"start\":\"2024-07-01T10:00:00Z\","
-            + "\"end\":\"2024-07-01T11:30:00Z\",\"duration\":5400}"
+            + "\"timeInterval\":{\"start\":\"2024-07-01T05:00:00-05:00\","
+            + "\"end\":\"2024-07-01T14:30:00+03:00\",\"duration\":5400}"
             + "}]}";
 
     ResponseEntity<JsonNode> imported = post("/api/v1/imports/clockify", token, payload);
@@ -2170,6 +2170,9 @@ class KnowIntegrationTest extends IntegrationTestSupport {
     JsonNode entries = get("/api/v1/time-entries", token).getBody();
     assertEquals(1, entries.size());
     assertEquals("Reading session", entries.get(0).get("description").asText());
+    assertEquals("2024-07-01T10:00:00Z", entries.get(0).get("startedAt").asText());
+    assertEquals("2024-07-01T11:30:00Z", entries.get(0).get("endedAt").asText());
+    assertEquals(5400, entries.get(0).get("durationSeconds").asLong());
     assertEquals(pathId, entries.get(0).get("pathId").asText());
 
     JsonNode batches = get("/api/v1/imports/clockify/batches", token).getBody();
