@@ -161,8 +161,10 @@ class SecurityHardeningIntegrationTest extends IntegrationTestSupport {
 
   // TH-02
   @Test
-  void publicRoutesDoNotRequireAToken() {
-    assertEquals(200, send("GET", "/api/v1/auth/google/config", (String) null, null).status());
+  void publicRoutesDoNotRequireAToken() throws Exception {
+    Reply googleConfig = send("GET", "/api/v1/auth/google/config", (String) null, null);
+    assertEquals(200, googleConfig.status());
+    assertEquals("", json.readTree(googleConfig.body()).get("clientId").asText());
     assertEquals(200, send("GET", "/actuator/health", (String) null, null).status());
     assertEquals(200, send("GET", "/v3/api-docs", (String) null, null).status());
     for (String path : List.of("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google")) {

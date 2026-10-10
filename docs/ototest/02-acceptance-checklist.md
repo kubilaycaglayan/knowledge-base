@@ -86,8 +86,10 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Cover authentication and account operations
 
-- [ ] `GET /api/v1/auth/google/config` has an assertion for configured and
-  unconfigured response behavior.
+- [x] `GET /api/v1/auth/google/config` returns the configured client ID or an
+  empty client ID when provider login is unconfigured
+  (`AuthControllerApiTest.googleConfigReturnsThePublicClientId` and
+  `SecurityHardeningIntegrationTest.publicRoutesDoNotRequireAToken`).
 - [x] `POST /api/v1/auth/register` creates an account and returns its user ID
   and bearer token (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
 - [x] `POST /api/v1/auth/register` rejects malformed email, password below
