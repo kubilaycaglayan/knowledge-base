@@ -87,13 +87,19 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/labels") body = calendarLabels;
     else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
+    else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
     else if (path === "/search") body = {
       groups: url.searchParams.get("q") ? [{
         type: "NOTE",
         total: 1,
         capped: false,
-        results: [{ id: "search-note", type: "NOTE", title: "Reports research note", snippet: "Notes about reports", at: "2026-10-01T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null }],
+        results: [{ id: "search-note", type: "NOTE", title: "Reports research note", snippet: "Found report draft", at: "2026-10-01T10:00:00Z", date: null, archived: false, via: "LABEL", viaName: "Reports label", color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null }],
+      }, {
+        type: "LOG",
+        total: 1,
+        capped: false,
+        results: [{ id: "search-log", type: "LOG", title: "Report export log", snippet: "Export completed", at: "2026-10-02T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null }],
       }] : [],
       fuzzy: false,
       incomplete: false,
@@ -1208,6 +1214,32 @@ it("opens global search from the header or shortcut and lists matching pages bef
   assert.equal(await page.getByRole("heading", { name: "Pages" }).count(), 1);
   assert.equal(await page.getByRole("heading", { name: /Notes/ }).count(), 1);
   assert.equal(await pageResult.evaluate((element, record) => Boolean(element.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING), await recordResult.elementHandle()), true);
+});
+
+it("groups matching record types, shows note context, and opens the active result with Enter", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Reports");
+
+  const note = page.getByRole("option", { name: /Reports research note/ });
+  const log = page.getByRole("option", { name: /Report export log/ });
+  await note.waitFor();
+  await log.waitFor();
+  assert.equal(await page.getByRole("heading", { name: /Notes/ }).count(), 1);
+  assert.equal(await page.getByRole("heading", { name: /Logs/ }).count(), 1);
+  assert.match(await note.innerText(), /Found report draft/);
+  assert.match(await note.innerText(), /Label: Reports label/);
+
+  await input.press("ArrowDown");
+  assert.equal(await note.getAttribute("aria-selected"), "true");
+  await input.press("Enter");
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/search-note");
+  assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Reports research note");
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {

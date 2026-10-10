@@ -242,10 +242,15 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Search for an owned record
 
-- [ ] Searching a record name groups matching results by record type.
-- [ ] A result shows its matching text and relevant path, label, or archive
+- [x] Searching a record name groups matching results by record type.
+- [x] A result shows its matching text and relevant path, label, or archive
   context where available.
-- [ ] Arrow keys move the active result and Enter opens that result.
+- [x] Arrow keys move the active result and Enter opens that result.
+  Evidence for these actions: `groups matching record types, shows note context,
+  and opens the active result with Enter` in
+  `frontend/scripts/nav-shell.acceptance.test.mjs` asserts separate Notes and
+  Logs groups, matching note text and Label context, then opens the selected
+  note with ArrowDown and Enter.
 - [ ] The open-in-new-tab shortcut opens the active result in a new browser
   tab.
 - [ ] Every result supports standard link behavior, including opening a new
