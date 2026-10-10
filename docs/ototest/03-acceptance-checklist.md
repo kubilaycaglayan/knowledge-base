@@ -378,6 +378,10 @@ the extension has its own scope in OTOTEST-04.
   session as paused. Evidence: `FloatingTimeTracker.test.ts` / `shows pause
   while running and resume while paused` advances fake time five seconds after
   pausing and verifies the displayed elapsed value remains frozen.
+- [x] A failed pause keeps the session running and allows a successful retry.
+  Evidence: `FloatingTimeTracker.test.ts` / `keeps a running session after
+  pause fails and pauses it after retry` checks the visible error, retained
+  Pause session action, and paused state after the second request.
 
 ### Flow: Resume a paused session
 

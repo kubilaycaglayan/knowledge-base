@@ -499,6 +499,44 @@ describe("FloatingTimeTracker", () => {
     }
   });
 
+  it("keeps a running session after pause fails and pauses it after retry", async () => {
+    let pauseAttempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return { id: "timer-1", pathId: "path-1", labelIds: [], startedAt: new Date(Date.now() - 65_000).toISOString(), carriedSeconds: 0, running: true };
+      if (path === "/timers/pause" && options.method === "POST") {
+        pauseAttempts += 1;
+        if (pauseAttempts === 1) throw new Error("offline");
+        return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: 65 };
+      }
+      if (path === "/timers/draft") return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: null };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
+    try {
+      await flushPromises();
+      await wrapper.get('button[aria-label="Pause session"]').trigger("click");
+      await flushPromises();
+
+      expect(pauseAttempts).toBe(1);
+      expect(useTimerStore().error).toBe("Could not pause the session.");
+      expect(wrapper.get(".tracker-error").text()).toContain("Could not pause the session.");
+      expect(wrapper.get('button[aria-label="Pause session"]').exists()).toBe(true);
+      expect(wrapper.get(".floating-tracker-clock").classes()).not.toContain("is-paused");
+
+      await wrapper.get('button[aria-label="Pause session"]').trigger("click");
+      await flushPromises();
+
+      expect(pauseAttempts).toBe(2);
+      expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
+      expect(wrapper.get('button[aria-label="Resume session"]').exists()).toBe(true);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   // SP-07
   it("hides the pause button while idle", async () => {
     const wrapper = mount(FloatingTimeTracker, { props: { inline: true }, global: { plugins: [vuetify] } });
