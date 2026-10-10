@@ -1294,7 +1294,19 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.ok(kanbanBox.y + kanbanBox.height <= 390, `Kanban stays within the short landscape viewport (${kanbanBox.y + kanbanBox.height}px)`);
     const boardTargets = await page.locator(".board-tabs button, .column-tools button").evaluateAll((buttons) => buttons.filter((button) => button.getClientRects().length).map((button) => ({ label: button.getAttribute("aria-label") || button.textContent.trim(), width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height) })));
     assert.ok(boardTargets.length > 0 && boardTargets.every((target) => target.width >= 44 && target.height >= 44), `Landscape board buttons keep 44px targets (${JSON.stringify(boardTargets)})`);
-    await page.locator(".board-card").first().click();
+    const firstColumn = page.locator(".kanban-column").first();
+    const columnHeader = await firstColumn.locator(":scope > header").boundingBox();
+    const firstCard = firstColumn.locator(".board-card").first();
+    const firstCardBounds = await firstCard.boundingBox();
+    assert.ok(columnHeader && firstCardBounds);
+    assert.ok(firstCardBounds.y >= columnHeader.y + columnHeader.height - 1, `The first landscape card is not covered by its sticky header (${JSON.stringify({ columnHeader, firstCardBounds })})`);
+    const centerHit = await page.evaluate(({ x, y }) => {
+      const card = document.querySelector(".kanban-column .board-card");
+      const hit = document.elementFromPoint(x, y);
+      return { card: card?.outerHTML.slice(0, 180), hit: hit?.outerHTML.slice(0, 180), insideCard: Boolean(card && hit && card.contains(hit)) };
+    }, { x: firstCardBounds.x + firstCardBounds.width / 2, y: firstCardBounds.y + firstCardBounds.height / 2 });
+    assert.ok(centerHit.insideCard, `Card center should receive the click (${JSON.stringify(centerHit)})`);
+    await firstCard.click();
     const editor = page.locator(".card-editor");
     const editorBox = await editor.boundingBox();
     assert.ok(Math.abs(editorBox.height - 390) < 2, `The landscape card editor fills the visible height (${editorBox.height}px)`);
