@@ -32,8 +32,11 @@ and recovery states.
 - [x] Classify `DevelopmentView.vue` as temporary direct-only tooling and
   exclude its demo behavior from product coverage. Remove the authenticated
   navbar link and keep the shell navigation assertion free of `/development`.
-- [ ] Keep responsive/accessibility checks distinct from behavior coverage;
-  link existing checks where they prove the criterion.
+- [x] Keep responsive/accessibility checks distinct from behavior coverage;
+  link existing checks where they prove the criterion. Evidence layers and
+  gaps are separated in [`01-control-matrix.md`](01-control-matrix.md), with
+  desktop Chromium viewport emulation explicitly distinguished from real
+  mobile Chrome in [`03-acceptance-checklist.md`](03-acceptance-checklist.md).
 
 ## Task workflow by route subtree
 
