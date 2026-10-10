@@ -42,7 +42,7 @@ browser interaction evidence remains a separate layer.
   OTOTEST-01; layer conventions and source-based contract reading are recorded
   in the API matrix).
 - [x] Use exact test names or named assertions as evidence; a test filename
-  without a relevant assertion does not prove coverage. All 357 qualified
+  without a relevant assertion does not prove coverage. All 377 qualified
   references in the current operation matrix resolve to a test method; the
   evidence description beside each reference names the behavior asserted.
 - [x] Distinguish unit/domain, controller/API, service, persistence
@@ -601,7 +601,7 @@ browser interaction evidence remains a separate layer.
   persisted palette color, and malformed or unsupported colors without creating
   records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`);
   blank/over-limit names are rejected and the 80-character maximum is accepted
-  (`CalendarLabelPickerIntegrationTest.calendarLabelNamesEnforceTheBlankAndMaximumLengthRules`).
+  (`CalendarLabelPickerIntegrationTest.calendarLabelNamesEnforceTheBlankAndMaximumLengthRulesOnCreateAndUpdate`).
 - [x] `PUT /api/v1/calendar/labels/{id}` covers owner-only updates, response
   and list readback, day-assignment propagation, and invalid palette colors
   (`KnowIntegrationTest.calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords`).
@@ -821,6 +821,12 @@ browser interaction evidence remains a separate layer.
   boundary and reject the first value above it
   (`NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits` and
   `NoteApiTest.noteUpdateValidatesRequiredContentAndTextLimits`).
+  The shared `CardRequest.title` upper-bound rejection is also asserted on
+  both create and update in
+  `BoardControllerApiTest.cardTitleLimitRejectsOverlongAndAcceptsMaximumLength`.
+  Card creation accepts and reads back every declared `BoardPriority` value
+  (`BoardCardUpdateIntegrationTest.cardCreateAndInColumnAcceptEveryDeclaredPriority`);
+  only the expected contract for unknown values remains unresolved.
   The DTO annotation and service-range audit found named evidence for the
   declared constraints across auth, note/log, calendar, timer, import, and
   board request types. The criterion remains open because `CardRequest.priority`
@@ -955,8 +961,18 @@ browser interaction evidence remains a separate layer.
   and `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`;
   guarded failure/readback assertions are enumerated in the transaction
   rollback evidence section of [`01-api-matrix.md`](01-api-matrix.md#multi-record-transaction-rollback-evidence).
-- [ ] PostgreSQL constraints, SQL semantics, and migration behavior link to
-  guarded PostgreSQL evidence.
+- [x] PostgreSQL constraints, SQL semantics, and migration behavior link to
+  guarded PostgreSQL evidence. Direct database constraints and referential
+  actions are asserted by
+  `PostgresDatabaseConstraintIntegrationTest.postgresEnforcesTimeEntryChecksAndPathReferentialActions`
+  and `PostgresDatabaseConstraintIntegrationTest.postgresEnforcesDomainBoardCalendarAndLogChecksOnDirectWrites`;
+  PostgreSQL-specific search SQL is exercised by the inherited
+  `SearchIntegrationTest.nearMissSpellingsMatchLongerTermsWhenNothingMatchesLiterally`
+  in `SearchPostgresIntegrationTest`. The `backend-postgres` job applies
+  Flyway to its guarded disposable database, runs these assertions, and
+  validates startup against a separately migrated disposable database;
+  transformed-row fixtures remain individually named under the migration
+  criterion above.
 - [x] Browser E2E evidence is required only where client interaction or
   cross-layer behavior is the risk, and is not used as a substitute for API
   contract evidence. This milestone's scope explicitly covers supported web
@@ -965,8 +981,12 @@ browser interaction evidence remains a separate layer.
   a separate evidence layer and explicitly says mocked client tests do not
   establish browser or API evidence. Controller/API, service, integration,
   and guarded PostgreSQL assertions are linked from the backend operation rows.
-- [ ] Each API matrix row links the exact named assertion for each evidence
-  layer it claims.
+- [x] Each API matrix row links the exact named assertion for each evidence
+  layer it claims. A source cross-check of all 377 qualified row references
+  against test classes and method declarations found no unresolved references;
+  the adjacent evidence descriptions state the behavior asserted. Current
+  contract gaps remain labeled as gaps rather than covered by neighboring
+  evidence.
 - [x] Existing `SecurityHardeningIntegrationTest`,
   `CrossUserIsolationIntegrationTest`, and
   `InputValidationIntegrationTest` are linked only to the specific behavior
@@ -975,15 +995,23 @@ browser interaction evidence remains a separate layer.
   referenced IDs, and generic malformed-body coverage only alongside focused
   endpoint assertions; it does not use any of them to claim unrelated positive
   or persistence behavior.
-- [ ] Relevant CI job or local command is recorded beside each executable
-  evidence link.
-- [ ] Unavailable, manual, or environment-guarded evidence is labeled with an
-  owner and a runbook/command rather than marked complete.
+- [x] Relevant CI job or local command is recorded beside each executable
+  evidence link. The matrix's evidence-command map names `verify`'s `backend`
+  job and the Docker Gradle local command for Java/API/service suites,
+  `backend-postgres` for guarded database assertions, `web-and-extension` for
+  client suites, and the named real-browser/E2E jobs for browser coverage.
+- [x] Unavailable, manual, or environment-guarded evidence is labeled with an
+  owner and a runbook/command rather than marked complete. The unresolved
+  board-priority contract and seven no-supported-client operations identify
+  Knowledge Base maintainers as decision owners; PostgreSQL-only cases name
+  the guarded `backend-postgres` workflow and disposable-database setup. No
+  unavailable or manual evidence is presented as a passing test.
 
 ## Flow: Maintain the API contract and report completion
 
-- [ ] Every behavior change updates `docs/api.md` and its API matrix row in the
-  same review.
+- [x] Every behavior change updates `docs/api.md` and its API matrix row in the
+  same review. This batch changes test coverage and audit evidence only; it
+  changes no product behavior or public API contract.
 - [x] Every controller mapping, overload, and alias has exactly one inventory
   entry or a documented exclusion. At the recorded source baseline, 105
   mapping annotations compose to 107 routes; the matrix contains 107 unique
@@ -998,11 +1026,29 @@ browser interaction evidence remains a separate layer.
 - [x] Missing positive operation coverage remains visible as a gap even when
   broad security sweeps pass. Unknown board-card priority binding remains a
   maintainer-owned gap on all three affected operation rows.
-- [ ] Existing HARD-01 through HARD-07 evidence is reused by link when it
+- [x] Existing HARD-01 through HARD-07 evidence is reused by link when it
   proves the required behavior; duplicate coverage is not added without a
-  distinct risk.
-- [ ] Acceptance evidence records the exact source revision, command or CI job,
-  result, and report link.
+  distinct risk. OTOTEST-02 reuses the search operation assertions from
+  [HARD-01's acceptance checklist](../../harden-tests/milestones/01-acceptance-checklist.md),
+  PostgreSQL/time/volume and rollback evidence from
+  [HARD-03](../../harden-tests/milestones/03-acceptance-checklist.md),
+  authentication and rate-limit evidence from
+  [HARD-04](../../harden-tests/milestones/04-acceptance-checklist.md), and
+  durable command/run conventions from
+  [HARD-07](../../harden-tests/milestones/07-acceptance-checklist.md). HARD-02
+  browser journeys, HARD-05 performance measurements, and closed HARD-06 iOS
+  validation do not prove backend API behavior and are not duplicated here.
+- [x] Acceptance evidence records the exact source revision, command or CI job,
+  result, and report link. Batch 14 revision
+  `6943ebf9d574e4f8814b57976f2ba2b7a99b7444` passed the local full backend
+  command from the matrix evidence section: 598 tests, 0 failures, 89 skipped;
+  the generated report is
+  [`backend/build/reports/tests/test/index.html`](../../backend/build/reports/tests/test/index.html).
+  The same revision passed hosted `backend` and `backend-postgres` in both
+  [PR #150 run 38019735005](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019735005)
+  and [run 38019738515](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38019738515);
+  both disposable PostgreSQL jobs also completed migrated-database startup
+  verification.
 - [ ] OTOTEST-02 is not marked complete until every operation and alias is
   covered or explicitly excluded, the API docs and matrix agree, and the
   required backend/PostgreSQL evidence is recorded.

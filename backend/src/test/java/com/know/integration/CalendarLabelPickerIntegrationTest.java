@@ -125,7 +125,7 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
-  void calendarLabelNamesEnforceTheBlankAndMaximumLengthRules() {
+  void calendarLabelNamesEnforceTheBlankAndMaximumLengthRulesOnCreateAndUpdate() {
     String token = token();
     for (String body :
         List.of(
@@ -148,6 +148,32 @@ class CalendarLabelPickerIntegrationTest extends IntegrationTestSupport {
     assertEquals(
         List.of(maximumName),
         ok(HttpMethod.GET, "/api/v1/calendar/labels", token, null).findValuesAsText("name"));
+
+    String labelId = maximum.getBody().get("id").asText();
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        exchange(
+                HttpMethod.PUT,
+                "/api/v1/calendar/labels/" + labelId,
+                token,
+                "{\"name\":\" \"}")
+            .getStatusCode());
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        exchange(
+                HttpMethod.PUT,
+                "/api/v1/calendar/labels/" + labelId,
+                token,
+                "{\"name\":\"" + "u".repeat(81) + "\"}")
+            .getStatusCode());
+    ResponseEntity<JsonNode> updatedMaximum =
+        exchange(
+            HttpMethod.PUT,
+            "/api/v1/calendar/labels/" + labelId,
+            token,
+            "{\"name\":\"" + maximumName + "\"}");
+    assertEquals(HttpStatus.OK, updatedMaximum.getStatusCode());
+    assertEquals(maximumName, updatedMaximum.getBody().get("name").asText());
   }
 
   /** A label hidden from Calendar, as created outside the Calendar page. */

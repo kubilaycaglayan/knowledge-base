@@ -408,6 +408,15 @@ class BoardControllerApiTest {
   }
 
   @Test void cardTitleLimitRejectsOverlongAndAcceptsMaximumLength() throws Exception {
+    UUID missingBoardId = UUID.randomUUID();
+    UUID missingCardId = UUID.randomUUID();
+    mvc.perform(
+            put("/api/v1/boards/" + missingBoardId + "/cards/" + missingCardId)
+                .with(authentication(auth()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"" + "x".repeat(241) + "\"}"))
+        .andExpect(status().isBadRequest());
+
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
     BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
