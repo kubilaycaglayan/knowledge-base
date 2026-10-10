@@ -254,7 +254,9 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/logs/{id}` covers persisted body/time update and optimistic
   version conflict behavior.
 - [x] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
-  owned labels with LOG scope.
+  owned labels with LOG scope; missing/null lists and 101 IDs return 400 before
+  service execution, while exactly 100 IDs pass request validation
+  (`LogApiTest.logLabelAssignmentRequiresACollectionOfAtMostOneHundredIds`).
 - [x] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
 - [x] `GET /api/v1/activities` covers each supported `from`, `to`, `pathId`,
