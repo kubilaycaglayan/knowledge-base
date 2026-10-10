@@ -623,6 +623,12 @@ it("confirms Log removal, preserves it on cancel or failure, then retries succes
   const dialog = page.getByRole("dialog", { name: "Remove this log? This cannot be undone." });
   await dialog.waitFor();
   assert.equal(await dialog.getAttribute("aria-modal"), "true");
+  await page.keyboard.press("Escape");
+  await entry.waitFor();
+  assert.equal(requests.includes("/logs/remove-log"), false, "Escape cancels without sending a delete request");
+
+  await remove.click();
+  await dialog.waitFor();
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await entry.waitFor();
   assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Cancel returns focus to the Remove log control");
