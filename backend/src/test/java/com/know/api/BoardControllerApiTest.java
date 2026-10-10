@@ -353,6 +353,22 @@ class BoardControllerApiTest {
     verifyNoInteractions(cards);
   }
 
+  @Test void cardCreateRejectsInvalidEnumAndDateFormatsBeforeRepositoryAccess() throws Exception {
+    UUID boardId = UUID.randomUUID();
+    for (String body :
+        List.of(
+            "{\"title\":\"bad priority\",\"priority\":\"URGENT\"}",
+            "{\"title\":\"bad date\",\"startDate\":\"2026-02-30\"}")) {
+      mvc.perform(
+              post("/api/v1/boards/" + boardId + "/cards")
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards);
+  }
+
   @Test void cardIsCreatedInTheRequestedStatusAtItsEnd() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
