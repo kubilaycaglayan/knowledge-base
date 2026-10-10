@@ -96,6 +96,41 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void registrationAndPasswordSetupAcceptMaximumLengthPasswords() throws Exception {
+    String maximumPassword = "p".repeat(200);
+    when(users.findByEmailIgnoreCase("maximum@example.com")).thenReturn(Optional.empty());
+    when(encoder.encode(maximumPassword)).thenReturn("maximum-password-hash");
+    when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    mvc.perform(
+            post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"email\":\"maximum@example.com\",\"password\":\""
+                        + maximumPassword
+                        + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("maximum@example.com"));
+
+    UUID googleOnlyId = UUID.randomUUID();
+    User googleOnly = new User("google@example.com", "random-hash", "Google", false);
+    googleOnly.linkGoogleSubject("google-subject");
+    when(users.findById(googleOnlyId)).thenReturn(Optional.of(googleOnly));
+    var auth =
+        new UsernamePasswordAuthenticationToken(googleOnlyId.toString(), null, List.of());
+    mvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                    "/api/v1/auth/password")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPassword\":\"" + maximumPassword + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.hasPassword").value(true));
+
+    verify(encoder, times(2)).encode(maximumPassword);
+  }
+
+  @Test
   void credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin() throws Exception {
     for (String path : List.of("/api/v1/auth/register", "/api/v1/auth/login")) {
       for (String request :

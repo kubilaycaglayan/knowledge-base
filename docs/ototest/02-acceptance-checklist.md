@@ -99,7 +99,9 @@ browser interaction evidence remains a separate layer.
   (`AuthControllerApiTest.registrationRejectsShortPasswords` and
   `registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength`);
   blank email/password inputs are rejected for both register and login by
-  `credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin`.
+  `credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin`; exactly
+  200 characters succeeds in registration
+  (`AuthControllerApiTest.registrationAndPasswordSetupAcceptMaximumLengthPasswords`).
 - [x] `POST /api/v1/auth/register` returns conflict for duplicate normalized
   email (`AuthControllerApiTest.duplicateRegistrationIsRejected` and
   `KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
@@ -145,7 +147,9 @@ browser interaction evidence remains a separate layer.
   `passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured`,
   `passwordChangeRequiresCurrentPasswordEvenWhenGoogleIsAlsoLinked`, and
   `passwordSetupRejectsNewPasswordsOutsideTheSupportedLength` covers blank,
-  eight-character, and over-200-character new passwords.
+  eight-character, and over-200-character new passwords; exact 200-character
+  password setup succeeds
+  (`AuthControllerApiTest.registrationAndPasswordSetupAcceptMaximumLengthPasswords`).
 - [x] Registration, password login, and Google login responses do not expose
   password hashes or the linked Google subject
   (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt` and
