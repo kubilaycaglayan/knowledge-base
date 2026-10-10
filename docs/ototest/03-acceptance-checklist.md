@@ -669,10 +669,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Edit one log
 
-- [ ] Editing a log's text updates only that log.
-- [ ] Editing a log's timestamp moves it to the matching chronological group.
-- [ ] Assigning or removing a LOG label updates the saved label chips.
-- [ ] A failed update preserves the user's draft and indicates recovery.
+- [x] Editing a log's text updates only that log. Evidence: `LogsView.test.ts` / `edits text and timestamp in place without dropping the draft` edits the older of two logs and verifies the untouched record remains unchanged.
+- [x] Editing a log's timestamp moves it to the matching chronological group. Evidence: the same test verifies the edited older record moves into today's group and the list remains timestamp ordered.
+- [x] Assigning or removing a LOG label updates the saved label chips. Evidence: `LogsView.test.ts` / `opens log labels and toggles a selected label` verifies both the selected label request and the empty label request on removal, and checks the selected-state indicator updates.
+- [x] A failed update preserves the user's draft and indicates recovery. Evidence: `LogsView.test.ts` / `preserves an edited log draft after a failed update and allows retry` checks the alert, retained text, and successful retry.
 
 ### Flow: Search the log list
 
