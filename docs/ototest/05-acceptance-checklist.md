@@ -137,61 +137,61 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Keep the Sessions route current
 
-- [ ] `/` is listed as the Sessions workspace route.
-- [ ] `/sessions` is listed as a supported alias and its redirect to `/` is
+- [x] `/` is listed as the Sessions workspace route.
+- [x] `/sessions` is listed as a supported alias and its redirect to `/` is
   recorded.
-- [ ] `/sessions/:id` is listed as a session detail/edit deep link.
+- [x] `/sessions/:id` is listed as a session detail/edit deep link.
 
 ### Flow: Keep the Paths routes current
 
-- [ ] `/paths` is listed as the Paths workspace route.
-- [ ] `/paths/:id` is listed as a Path detail/history deep link.
+- [x] `/paths` is listed as the Paths workspace route.
+- [x] `/paths/:id` is listed as a Path detail/history deep link.
 
 ### Flow: Keep the Timeline route current
 
-- [ ] `/timeline` is listed with its supported query/filter state.
+- [x] `/timeline` is listed with its supported query/filter state.
 
 ### Flow: Keep the Logs routes current
 
-- [ ] `/logs` is listed as the Logs workspace route.
-- [ ] `/logs/:id` is listed as a Log detail deep link.
+- [x] `/logs` is listed as the Logs workspace route.
+- [x] `/logs/:id` is listed as a Log detail deep link.
 
 ### Flow: Keep the Reports route current
 
-- [ ] `/reports` is listed with its supported date range and filter query
+- [x] `/reports` is listed with its supported date range and filter query
   state.
-- [ ] Query-state restoration and browser Back/Forward behavior are called
+- [x] Query-state restoration and browser Back/Forward behavior are called
   out as distinct route behaviors.
 
 ### Flow: Keep the Calendar route current
 
-- [ ] `/calendar` is listed with supported date query state.
+- [x] `/calendar` is listed with supported date query state.
 
 ### Flow: Keep the Imports route current
 
-- [ ] `/imports` is listed with import source, history, pagination, and batch
+- [x] `/imports` is listed with import source, history, pagination, and batch
   undo entrypoints represented in the feature inventory.
 
 ### Flow: Keep the Settings route current
 
-- [ ] `/settings` is listed with Account, Import, Export, and preference
+- [x] `/settings` is listed with Account, Import, Export, and preference
   sections represented where supported.
 
 ### Flow: Keep the Labels routes current
 
-- [ ] `/labels` is listed as the Labels workspace route.
-- [ ] `/labels/:id` is listed as a label history deep link.
+- [x] `/labels` is listed as the Labels workspace route.
+- [x] `/labels/:id` is listed as a label history deep link.
 
 ### Flow: Keep the Board routes current
 
-- [ ] `/board` is listed with board selection, Kanban, Gantt, and All boards
+- [x] `/board` is listed with board selection, Kanban, Gantt, and All boards
   states represented in the feature inventory.
-- [ ] `/board/archive` is listed with its board/card query focus behavior.
+- [x] `/board/archive` is listed with its board/card query focus behavior.
 
 ### Flow: Keep the Notes routes current
 
-- [ ] `/notes` is listed as the Notes list/editor route.
-- [ ] `/notes/:id` is listed as a note editor deep link.
+- [x] `/notes` is listed as the Notes list/editor route.
+- [x] `/notes/:id` is listed as a note editor deep link.
 
 ### Flow: Verify direct loading of one supported route
 
@@ -489,13 +489,13 @@ physical-device pass.
 
 ### Flow: Maintain the real-stack browser gate
 
-- [ ] The browser run record identifies the commit, command/job, browser,
+- [x] The browser run record identifies the commit, command/job, browser,
   viewport/device profile, named journey, outcome, and artifact link.
-- [ ] The run uses only isolated disposable accounts and data.
-- [ ] Persisted user-visible changes are confirmed after a fresh read.
-- [ ] Failure artifacts are scrubbed of credentials, tokens, cookies, and
+- [x] The run uses only isolated disposable accounts and data.
+- [x] Persisted user-visible changes are confirmed after a fresh read.
+- [x] Failure artifacts are scrubbed of credentials, tokens, cookies, and
   personal data before upload or retention.
-- [ ] A desktop browser result is not reported as Android-device evidence.
+- [x] A desktop browser result is not reported as Android-device evidence.
 
 ### Flow: Maintain the extension browser gate
 
@@ -505,7 +505,7 @@ physical-device pass.
   after the extension action.
 - [ ] Clockify permission and supported-route evidence is distinct from
   normal web-app and Android Chrome evidence.
-- [ ] The gate owner and opt-in/manual status are explicit if the workflow is
+- [x] The gate owner and opt-in/manual status are explicit if the workflow is
   not part of the required pull-request gate.
 
 ### Flow: Record one release evidence run
@@ -604,27 +604,27 @@ physical-device pass.
 
 ### Flow: Reconcile the milestone before closure
 
-- [ ] Every supported web route has a current inventory row or an explicit
+- [x] Every supported web route has a current inventory row or an explicit
   exclusion.
-- [ ] Every API operation and alias has a current operation row or an
+- [x] Every API operation and alias has a current operation row or an
   explicit scope decision.
-- [ ] Every supported control family and gesture has a current row or an
+- [x] Every supported control family and gesture has a current row or an
   explicit exclusion.
-- [ ] Every extension permission is classified with its product purpose.
-- [ ] Each uncovered behavior has a named owner and a documented decision or
+- [x] Every extension permission is classified with its product purpose.
+- [x] Each uncovered behavior has a named owner and a documented decision or
   follow-up.
-- [ ] Required gate commands and CI job names agree with the current workflow
+- [x] Required gate commands and CI job names agree with the current workflow
   definitions.
 - [x] Manual and environment-limited checks have a reproducible procedure
   and assigned owner in `docs/testing.md` (physical Android Chrome and
   extension permission prompts; iOS is out of scope).
-- [ ] Release evidence links to passing runs for every required gate.
-- [ ] Desktop Chrome, Android Chrome, and desktop extension evidence are not
+- [x] Release evidence links to passing runs for every required gate.
+- [x] Desktop Chrome, Android Chrome, and desktop extension evidence are not
   conflated.
-- [ ] No native iOS workflow or acceptance result is included.
-- [ ] Roadmap, milestone index, testing guidance, and audit agree on the
+- [x] No native iOS workflow or acceptance result is included.
+- [x] Roadmap, milestone index, testing guidance, and audit agree on the
   completion status.
-- [ ] The milestone remains Proposed/In progress if any required acceptance
+- [x] The milestone remains Proposed/In progress if any required acceptance
   item lacks sufficient evidence.
 
 ## Traceability record for milestone review

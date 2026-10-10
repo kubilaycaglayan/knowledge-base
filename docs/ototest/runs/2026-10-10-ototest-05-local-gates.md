@@ -6,7 +6,7 @@
 | Reviewed source revision | `a488663c` (`Bug fix step 2: Exclude Node suites from Vitest`); docs and inventory edits were in the worktree during the run |
 | Date (UTC) | 2026-10-10 |
 | Owner | Knowledge Base maintainers |
-| Browser and profile | Playwright desktop Chromium; packaged extension used a fresh disposable profile; Orca 46 in its disposable container |
+| Browser and profile | Hosted browser evidence is detailed below. Local Playwright runs used desktop Chromium; the packaged extension used a fresh disposable Chrome profile; Orca 46 ran in its disposable container. Phone viewports are browser emulation and are not physical Android evidence. |
 | Result | Listed automated checks passed locally unless a limitation is stated below |
 | CI run/artifact URL | [Hosted `verify` run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246), passed for commit `f7a9b6ba6aabc6819835a67f0fda0c8452272898` |
 
@@ -29,6 +29,20 @@
 | Hosted `verify` | [GitHub Actions run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246) | Pass for commit `f7a9b6ba6aabc6819835a67f0fda0c8452272898`: backend, PostgreSQL/Flyway, web and extension build/integrity, deployed-shaped smoke, timer WebSocket, line history, and Orca jobs passed; historical iOS jobs skipped as configured |
 | Hosted `verify` on updated evidence record | [GitHub Actions run 38095089167](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095089167) | Pass for commit `b484034e3ba51cd045dda33c2af0247d0a8a04b1`; all active jobs passed, including OTOTEST integrity; iOS jobs skipped as configured |
 | Hosted `verify` with matrix-owner enforcement | [GitHub Actions run 38095487142](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095487142) | Pass for commit `ad3534efb457221ec68da95551cf6572cfcbeea2`; all active jobs passed, including owner metadata validation; iOS jobs skipped as configured |
+| Hosted `verify` with route and browser evidence | [GitHub Actions run 38095729135](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095729135) | Pass for commit `de2f1aaead21547ef1b731232333190776ffe050`; all active jobs passed, including browser jobs linked below |
+
+## Hosted real-browser evidence
+
+| Journey | Command and CI job | Browser/profile and viewport | Named assertions and result |
+| --- | --- | --- | --- |
+| Timer synchronization and auth rate-limit recovery | `./scripts/run-timer-websocket-e2e.sh`; [`verify / timer-websocket-e2e`](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095729135/job/114341105047) | Headless Chromium; timer app 1280 × 800; auth rate-limit desktop 1440 × 900 and mobile-size emulation 390 × 844 | 5 passed: authenticated rate-limit recovery in desktop and mobile-size profiles; timer socket sync without polling, HTTP polling fallback, and failed-save draft retry |
+| Note and board-card line history | `./scripts/run-line-history-e2e.sh`; [`verify / line-history-e2e`](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095729135/job/114341105094) | Headless Chromium; desktop 1280 × 900 and phone emulation 390 × 844 with touch; dark-mode phone layout | 13 passed across Notes, line history assistive behavior, cross-client conversion compatibility, and board-card line history; includes fresh API readback, reload, conflict/retry, and Axe assertions |
+
+These successful jobs expose their test logs through the linked job pages and
+do not upload passing screenshots. On failure, the workflow uploads scrubbed
+traces, screenshots, and diagnostics for 14 days; traces redact credentials,
+tokens, cookies, and account email, and run metadata uses generated disposable
+accounts. No physical Android device is represented by the emulated viewport.
 
 ## Failed-gate repair record
 
