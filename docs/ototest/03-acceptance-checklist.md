@@ -153,8 +153,12 @@ the extension has its own scope in OTOTEST-04.
   browser loads its route directly' scripts/nav-shell.acceptance.test.mjs`
   verifies the archive page and its empty board state on a direct route load
   (mocked API browser test).
-- [ ] A missing or inaccessible record ID produces a clear not-found or
-  unavailable state without exposing another user's record.
+- [x] A missing or inaccessible record ID produces a clear not-found or
+  unavailable state without exposing another user's record. Evidence:
+  `nav-shell.acceptance.test.mjs` / `shows an unavailable state for a missing
+  session opened by browser deep link` verifies the user-facing unavailable
+  state; `CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`
+  verifies foreign session IDs return the same 404 response as missing IDs.
 - [x] `/development` remains outside supported product navigation and has no
   authenticated navbar link. Evidence: `cd frontend && node --test
   --test-name-pattern='keeps every supported primary destination reachable'
