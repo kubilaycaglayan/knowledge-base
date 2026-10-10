@@ -68,7 +68,10 @@ the extension has its own scope in OTOTEST-04.
   restores the prior route and Forward returns to Sessions. Evidence:
   `cd frontend && npm run test:nav` — `redirects /sessions to the Sessions
   home and restores history with Back and Forward` (mocked API browser test).
-- [ ] Direct loading `/sessions/:id` opens the selected session detail.
+- [x] Direct loading `/sessions/:id` opens the selected session detail in
+  desktop Chromium. Evidence: `cd frontend && node --test
+  --test-name-pattern='session detail when the browser loads its deep link
+  directly' scripts/nav-shell.acceptance.test.mjs` (mocked API).
 - [ ] Direct loading `/paths/:id` opens the selected path history context.
 - [ ] Direct loading `/logs/:id` opens the selected log detail.
 - [ ] Direct loading `/labels/:id` opens the selected label history.

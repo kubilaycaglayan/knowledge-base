@@ -26,6 +26,7 @@ async function fixture(t, width, { warmup = false } = {}) {
     requests.push(path);
     let body = [];
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
+    else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
     else if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : [{ id: "board-1", name: "Product", archived: false }];
     else if (path === "/boards/board-1/statuses") body = statuses;
     else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [card] : [], nextCursor: null };
@@ -129,6 +130,14 @@ it("redirects /sessions to the Sessions home and restores history with Back and 
   await page.goForward();
   await page.waitForFunction(() => location.pathname === "/");
   await page.getByRole("region", { name: "Sessions" }).waitFor();
+});
+
+it("opens a session detail when the browser loads its deep link directly", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);
+  const dialog = page.getByRole("dialog");
+  await dialog.filter({ hasText: "Browser direct session" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/sessions/s1");
 });
 
 it("loads a note editor when the browser opens its deep link directly", async (t) => {
