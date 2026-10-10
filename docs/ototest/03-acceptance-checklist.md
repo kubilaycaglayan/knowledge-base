@@ -1234,7 +1234,7 @@ the extension has its own scope in OTOTEST-04.
 - [ ] Navigating away with unsaved edits warns before discarding them.
 - [ ] Choosing to stay returns the user to the unsaved editor.
 - [ ] Choosing to discard leaves the last saved version intact.
-- [ ] A failed save preserves the draft and offers recovery.
+- [x] A failed save preserves the draft and offers recovery. Evidence: `NotesView.test.ts` / `keeps a failed note draft and retries the save from an explicit action` verifies the retained draft and successful retry.
 - [ ] A conflicting newer version presents a recovery choice and does not
   silently overwrite the winning content.
 
