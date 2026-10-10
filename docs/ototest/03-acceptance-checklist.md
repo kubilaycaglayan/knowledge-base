@@ -1378,8 +1378,10 @@ so the warning and discard criteria remain open.
   checks the message, absence of rows/error, and Create new note action, while
   `renders an empty rich-text body as italic Empty note` checks an empty
   user-entered body; Labels, Imports, and a loaded empty Board list are also
-  covered by named component tests. Other supported collections and blank
-  fields still need explicit coverage.
+  covered by named component tests; `nav-shell.acceptance.test.mjs` / `shows
+  an add-card action for a loaded empty Board column` checks a loaded empty
+  card column and its action. Other supported collections and blank fields
+  still need explicit coverage.
 
 ### Flow: Honor reduced-motion preferences
 

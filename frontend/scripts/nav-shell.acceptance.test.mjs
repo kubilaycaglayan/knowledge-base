@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card] } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -78,9 +78,9 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       }
     }
     else if (path === "/boards/board-1/statuses") body = statuses;
-    else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [{ ...card, title: boardCardTitle }] : [], nextCursor: null };
-    else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [{ ...card, title: boardCardTitle }];
-    else if (path === "/boards/board-1/gantt") body = [{ ...card, title: boardCardTitle }];
+    else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? boardCards.map((item) => ({ ...item, title: boardCardTitle })) : [], nextCursor: null };
+    else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : boardCards.map((item) => ({ ...item, title: boardCardTitle }));
+    else if (path === "/boards/board-1/gantt") body = boardCards.map((item) => ({ ...item, title: boardCardTitle }));
     else if (path === "/timers" && method === "POST") {
       currentTimer = { id: "browser-timer", ...route.request().postDataJSON(), startedAt: new Date().toISOString(), running: true };
       body = currentTimer;
@@ -1347,6 +1347,16 @@ it("wraps a long Board card title inside its phone-width card", async (t) => {
   assert.ok(layout.left >= 0 && layout.right <= 390, JSON.stringify(layout));
   assert.ok(layout.scrollWidth <= layout.clientWidth, JSON.stringify(layout));
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+it("shows an add-card action for a loaded empty Board column", async (t) => {
+  const { page } = await fixture(t, 390, { boardCards: [] });
+  await page.goto(`${server.resolvedUrls.local[0]}board?board=board-1`);
+  const empty = page.locator(".kanban-column .column-empty").first();
+  await empty.waitFor();
+  assert.equal(await empty.innerText(), "No cards yet");
+  assert.equal(await page.locator(".board-card").count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Add card to Backlog" }).isVisible(), true);
 });
 
 it("shows an unavailable state for a missing path opened by browser deep link", async (t) => {
