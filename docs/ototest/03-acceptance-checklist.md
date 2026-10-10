@@ -251,9 +251,11 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Create one path
 
 - [x] Creating a path with a valid name adds it to the active list and remains
-  visible after remount from the API fixture. Evidence: `cd frontend && npx
-  vitest run src/views/PathsView.test.ts -t 'creates a path, shows it in the
-  list'` (component test; mocked API).
+  visible after component remount and desktop browser reload from the API
+  fixture. Evidence: `cd frontend && npx vitest run src/views/PathsView.test.ts
+  -t 'creates a path, shows it in the list'`; `cd frontend && node --test
+  --test-name-pattern='creates a Path in the browser' scripts/nav-
+  shell.acceptance.test.mjs` (mocked API; no real database persistence claim).
 - [ ] Submitting an empty or whitespace-only name identifies the validation
   issue without creating a path.
 - [ ] A failed create preserves entered values and offers a retry.

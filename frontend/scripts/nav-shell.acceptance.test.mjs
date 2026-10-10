@@ -17,16 +17,24 @@ async function fixture(t, width, { warmup = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
+  const paths = [];
   await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
   // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
   if (warmup) await context.addInitScript(() => localStorage.setItem("know_warmup", "force"));
   await context.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");
+    const method = route.request().method();
     requests.push(path);
     let body = [];
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
     else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
+    else if (path === "/paths" && method === "POST") {
+      body = { ...route.request().postDataJSON(), id: "path-1", status: "ACTIVE", pinned: false };
+      paths.push(body);
+    }
+    else if (path === "/paths") body = paths;
+    else if (path === "/paths/path-1/summary") body = { path: paths[0], trackedSeconds: 0, recentActivity: [] };
     else if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : [{ id: "board-1", name: "Product", archived: false }];
     else if (path === "/boards/board-1/statuses") body = statuses;
     else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [card] : [], nextCursor: null };
@@ -131,6 +139,21 @@ it("redirects /sessions to the Sessions home and restores history with Back and 
   await page.goForward();
   await page.waitForFunction(() => location.pathname === "/");
   await page.getByRole("region", { name: "Sessions" }).waitFor();
+});
+
+it("creates a Path in the browser and reloads it from the API fixture", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await visit(page, "/paths");
+  await page.locator(".paths-page").waitFor();
+  await page.getByRole("button", { name: "Add path" }).click();
+  await page.getByRole("textbox", { name: "New path name" }).fill("Reading");
+  await page.locator("form.path-create-form button[type=submit]").click();
+  await page.locator(".path-title", { hasText: "Reading" }).waitFor();
+  assert.ok(requests.includes("/paths"));
+
+  await page.reload();
+  await page.locator(".path-title", { hasText: "Reading" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths");
 });
 
 it("opens a session detail when the browser loads its deep link directly", async (t) => {
