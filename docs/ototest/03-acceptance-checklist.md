@@ -1086,7 +1086,7 @@ the extension has its own scope in OTOTEST-04.
 
 - [x] Priority sorting shows cards in the selected priority order. Evidence: `BoardView.test.ts` / `shows a priority-sorted column in priority order`.
 - [x] Sorted columns do not expose a misleading manual order result. Evidence: `BoardView.test.ts` / `does not reorder within a priority-sorted column` and `cycles a column's sort through three states`.
-- [ ] A failed reorder restores the prior order or offers a clear retry.
+- [x] A failed reorder restores the prior order or offers a clear retry. Evidence: `boards.test.ts` / `restores the saved card order when a move request fails` verifies the original sibling order and positions are restored in Kanban and Gantt state after the move request rejects.
 - [x] Keyboard/tap controls provide an alternative for supported drag actions. Evidence: `BoardView.test.ts` / `renames, reorders, and adds statuses` verifies keyboard ordering from the drag-handle control; card status can also be changed through the editor status select.
 
 ### Flow: Page through board cards
