@@ -1374,8 +1374,11 @@ so the warning and discard criteria remain open.
 - [ ] Empty strings and empty collections render intentional empty states.
   Partial evidence: `LogsView.test.ts` / `shows the intentional empty state
   when no logs exist` checks the empty message without rows or an error;
-  `NotesView.test.ts` / `renders an empty rich-text body as italic Empty note`
-  checks an empty user-entered body. Other supported collections and blank
+  `NotesView.test.ts` / `shows an actionable empty state when no notes exist`
+  checks the message, absence of rows/error, and Create new note action, while
+  `renders an empty rich-text body as italic Empty note` checks an empty
+  user-entered body; Labels, Imports, and a loaded empty Board list are also
+  covered by named component tests. Other supported collections and blank
   fields still need explicit coverage.
 
 ### Flow: Honor reduced-motion preferences

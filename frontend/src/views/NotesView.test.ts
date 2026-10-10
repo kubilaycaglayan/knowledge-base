@@ -101,6 +101,26 @@ describe("NotesView", () => {
     ).toBe(true);
   });
 
+  it("shows an actionable empty state when no notes exist", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/notes" || path.startsWith("/notes?")) return page([]);
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    try {
+      await flushPromises();
+      expect(wrapper.get(".notes-empty").text()).toBe("Your notes will appear here.");
+      expect(wrapper.findAll(".note-row")).toHaveLength(0);
+      expect(wrapper.get('button[aria-label="Create new note"]').exists()).toBe(true);
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it("starts note tags at the beginning of the metadata line", async () => {
     const r = router();
     await r.push("/notes");
