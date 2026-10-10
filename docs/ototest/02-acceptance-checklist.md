@@ -97,7 +97,9 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/auth/register` rejects malformed email, password below
   nine characters, and password over 200 characters before user lookup
   (`AuthControllerApiTest.registrationRejectsShortPasswords` and
-  `registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength`).
+  `registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength`);
+  blank email/password inputs are rejected for both register and login by
+  `credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin`.
 - [x] `POST /api/v1/auth/register` returns conflict for duplicate normalized
   email (`AuthControllerApiTest.duplicateRegistrationIsRejected` and
   `KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
@@ -106,9 +108,9 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/auth/login` rejects incorrect credentials and returns the
   same unauthorized response for an unknown email and a wrong password
   (`AuthControllerApiTest.invalidLoginDoesNotRevealWhetherAccountExists` and
-  `loginUsesTheSameFailureForUnknownEmailAndWrongPassword`). Input field
-  boundaries are validated by the shared credentials DTO and registration
-  boundary assertions.
+  `loginUsesTheSameFailureForUnknownEmailAndWrongPassword`). Blank input is
+  rejected at request binding by
+  `AuthControllerApiTest.credentialsRejectBlankEmailAndPasswordForRegistrationAndLogin`.
 - [x] `POST /api/v1/auth/google` links a verified identity to an existing
   account or creates a new account when verification is isolated
   (`AuthControllerApiTest.verifiedGoogleIdentityLinksAnExistingEmail` and
@@ -137,7 +139,8 @@ browser interaction evidence remains a separate layer.
   (`AuthControllerApiTest.passwordChangeRejectsMissingCurrentPasswordWhenAlreadyConfigured`,
   `passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured`,
   `passwordChangeRequiresCurrentPasswordEvenWhenGoogleIsAlsoLinked`, and
-  `passwordSetupRejectsNewPasswordsOutsideTheSupportedLength`).
+  `passwordSetupRejectsNewPasswordsOutsideTheSupportedLength` covers blank,
+  eight-character, and over-200-character new passwords.
 - [x] Registration, password login, and Google login responses do not expose
   password hashes or the linked Google subject
   (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt` and
