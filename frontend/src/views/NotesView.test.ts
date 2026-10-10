@@ -1092,7 +1092,7 @@ describe("NotesView", () => {
     await r.isReady();
     const wrapper = mountNotes(r);
     await flushPromises();
-    await wrapper.get(".note-row button").trigger("click");
+    await wrapper.get(".note-row button.danger").trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/notes/note-1", {
       method: "DELETE",
