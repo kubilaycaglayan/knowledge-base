@@ -408,7 +408,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Edit one session
 
-- [ ] Editing the description changes only the selected session.
+- [x] Editing the description changes only the selected session. Evidence:
+  `DeepLinks.test.ts` / `edits the session, refusing an end before the start`
+  verifies the single PUT targets `/time-entries/s1` and carries the edited
+  description.
 - [ ] Editing the path changes only the selected session's path.
 - [ ] Editing the start time and end time updates the selected session's
   displayed interval and duration.

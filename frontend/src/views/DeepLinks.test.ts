@@ -131,7 +131,16 @@ describe("/sessions/:id", () => {
     description.dispatchEvent(new Event("input"));
     document.querySelector<HTMLFormElement>('[role="dialog"] form')!.requestSubmit();
     await flushPromises();
-    expect(putCalls("/time-entries/s1")).toHaveLength(1);
+    const updates = putCalls("/time-entries/s1");
+    expect(updates).toHaveLength(1);
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, init]) => String(path).startsWith("/time-entries/") && init?.method === "PUT",
+      ),
+    ).toHaveLength(1);
+    expect(JSON.parse(String(updates[0][1]?.body))).toMatchObject({
+      description: "Edited and exported",
+    });
     expect(dialog()!.textContent).toContain("Edited and exported");
     expect(document.querySelector('[role="dialog"] form')).toBeNull();
   });
