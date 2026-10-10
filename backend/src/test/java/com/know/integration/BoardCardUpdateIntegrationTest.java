@@ -227,4 +227,46 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
             .get("priority")
             .asText());
   }
+
+  @Test
+  void cardWriteRoutesRejectUnknownPrioritiesWithoutPersistingChanges() {
+    String owner = api.register();
+    String boardId =
+        api.created("POST", "/api/v1/boards", owner, "{\"name\":\"Invalid priority\"}")
+            .get("id")
+            .asText();
+    String cardId =
+        api.created(
+                "POST", "/api/v1/boards/" + boardId + "/cards", owner,
+                "{\"title\":\"Existing\",\"priority\":\"HIGH\"}")
+            .get("id")
+            .asText();
+
+    ApiClient.Reply create =
+        api.post(
+            "/api/v1/boards/" + boardId + "/cards",
+            owner,
+            "{\"title\":\"Invalid\",\"priority\":\"CRITICAL\"}");
+    assertEquals(400, create.status());
+
+    ApiClient.Reply update =
+        api.put(
+            "/api/v1/boards/" + boardId + "/cards/" + cardId,
+            owner,
+            "{\"title\":\"Changed\",\"priority\":\"CRITICAL\"}");
+    assertEquals(400, update.status());
+
+    ApiClient.Reply inColumn =
+        api.post(
+            "/api/v1/boards/" + boardId + "/cards/in-column",
+            owner,
+            "{\"columnName\":\"Invalid column\",\"priority\":\"CRITICAL\"}");
+    assertEquals(400, inColumn.status());
+
+    JsonNode unchanged = api.get("/api/v1/boards/" + boardId + "/cards/" + cardId, owner).json();
+    assertEquals("Existing", unchanged.get("title").asText());
+    assertEquals("HIGH", unchanged.get("priority").asText());
+    assertEquals(4, api.get("/api/v1/boards/" + boardId + "/statuses", owner).json().size());
+    assertEquals(1, api.get("/api/v1/boards/" + boardId + "/cards", owner).json().size());
+  }
 }

@@ -811,7 +811,7 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Verify validation, boundaries, and concurrency
 
-- [ ] Every request DTO's required, length, format, and range validations have
+- [x] Every request DTO's required, length, format, and range validations have
   an assertion at the layer that owns the contract.
   Path merge's required target and UUID format are covered at the controller
   boundary by `PathAuthorizationApiTest.pathMergeRequiresAValidTargetId`.
@@ -829,15 +829,14 @@ browser interaction evidence remains a separate layer.
   omitted and explicit-null priorities default to MEDIUM, including update
   reset and create-in-column, with persisted readback in
   `BoardCardUpdateIntegrationTest.cardPriorityDefaultsToMediumWhenOmittedOrNullAcrossWriteRoutes`;
-  only the expected contract for unknown values remains unresolved.
+  unknown priorities return 400 on create, update, and create-in-column without
+  persisting a card, changing an existing card, or creating a status in
+  `BoardCardUpdateIntegrationTest.cardWriteRoutesRejectUnknownPrioritiesWithoutPersistingChanges`.
   The DTO annotation and service-range audit found named evidence for the
   declared constraints across auth, note/log, calendar, timer, import, and
-  board request types. The criterion remains open because `CardRequest.priority`
-  has an unresolved enum-binding contract: unknown values currently become
-  null and use the MEDIUM default. The matrix marks this as a maintainer-owned
-  gap; do not assert rejection until the Knowledge Base maintainers settle the
-  intended contract. Unknown `TimeSource` values for manual entry create/edit
-  now return 400 before service access in
+  board request types. Unknown `BoardPriority` values return 400 on all card
+  write routes. Unknown `TimeSource` values for manual entry create/edit now
+  return 400 before service access in
   `TimerApiTest.timerAndManualEntryRequestsRejectUnknownSourcesBeforeServiceAccess`.
 - [x] Every path/query parameter with a documented allowed range has lower,
   upper, and out-of-range boundary evidence. Search page bounds are asserted
@@ -1027,8 +1026,9 @@ browser interaction evidence remains a separate layer.
   identify active/archived list visibility, detail readback, or guarded
   persistence evidence as applicable.
 - [x] Missing positive operation coverage remains visible as a gap even when
-  broad security sweeps pass. Unknown board-card priority binding remains a
-  maintainer-owned gap on all three affected operation rows.
+  broad security sweeps pass. Unknown board-card priority binding returns 400
+  on all three affected operation rows and is covered by the integration test
+  above.
 - [x] Existing HARD-01 through HARD-07 evidence is reused by link when it
   proves the required behavior; duplicate coverage is not added without a
   distinct risk. OTOTEST-02 reuses the search operation assertions from
