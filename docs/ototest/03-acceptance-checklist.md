@@ -926,8 +926,12 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `scripts/nav-shell.acceptance.test.mjs`, `selects a calendar
   range with touch taps and keyboard input` checks a full keyboard path in
   desktop Chromium and a phone-sized touch-emulated path.
-- [ ] The selected-day editor, label picker, and Save day action remain
-  reachable with the on-screen keyboard open.
+- [x] The selected-day editor, label picker, and Save day action remain
+  reachable with the on-screen keyboard open. Supplemental Chromium evidence:
+  `scripts/nav-shell.acceptance.test.mjs` / `keeps Calendar editing controls
+  reachable after a keyboard-like viewport resize` checks label picker and Save
+  day bounds at 320px height and retains the note draft after restoring the
+  viewport. Real mobile keyboard behavior still needs verification.
 - [x] The calendar grid and editor do not cause unintended page overflow.
   Supplemental evidence: `scripts/nav-shell.acceptance.test.mjs` /
   `edits and saves a Calendar day at phone width without horizontal overflow`

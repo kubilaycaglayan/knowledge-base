@@ -1054,6 +1054,37 @@ it("edits and saves a Calendar day at phone width without horizontal overflow", 
   assert.equal(await page.locator(".day-editor textarea").inputValue(), "Phone width calendar note");
 });
 
+it("keeps Calendar editing controls reachable after a keyboard-like viewport resize", async (t) => {
+  const { page } = await fixture(t, 390, {
+    calendarLabels: [{ id: "mobile-label", name: "Vacation", color: "#3B82F6", scopes: ["CALENDAR"] }],
+  });
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  await page.locator("button.calendar-day:not(.muted)").nth(2).tap();
+  const note = page.locator(".day-editor textarea");
+  await note.tap();
+  await note.fill("Keep this mobile draft");
+
+  // A reduced viewport models the visible area above a software keyboard.
+  await page.setViewportSize({ width: 390, height: 320 });
+  await note.scrollIntoViewIfNeeded();
+  const labelTrigger = page.locator(".new-calendar-label .picker-chevron");
+  await labelTrigger.scrollIntoViewIfNeeded();
+  const labelBounds = await labelTrigger.boundingBox();
+  assert.ok(labelBounds && labelBounds.y < 320 && labelBounds.y + labelBounds.height > 0);
+  await labelTrigger.tap();
+  await page.getByRole("combobox", { name: "Add or create calendar label" }).waitFor();
+  const save = page.getByRole("button", { name: "Save day" });
+  await save.scrollIntoViewIfNeeded();
+  const saveBounds = await save.boundingBox();
+  assert.ok(saveBounds && saveBounds.y < 320 && saveBounds.y + saveBounds.height > 0);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  assert.equal(await note.inputValue(), "Keep this mobile draft");
+});
+
 it("selects a calendar day with the keyboard and retains focus", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);
