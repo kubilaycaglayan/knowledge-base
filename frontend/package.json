@@ -15,7 +15,7 @@
     "test:auth:rate-limit:e2e": "node --test --test-concurrency=1 scripts/auth-rate-limit.real-stack.acceptance.test.mjs",
     "test:timer:e2e": "node --test scripts/timer-websocket.real-stack.acceptance.test.mjs",
     "test:search:e2e": "node --test scripts/search.real-stack.acceptance.test.mjs",
-    "test:extension:e2e": "node --test scripts/extension.real-browser.acceptance.test.mjs",
+    "test:extension:e2e": "node --test --test-concurrency=1 scripts/extension.real-browser.acceptance.test.mjs",
     "test:notes:e2e": "node --test scripts/notes.real-stack.acceptance.test.mjs",
     "test:paths:e2e": "node --test scripts/paths.real-stack.acceptance.test.mjs",
     "test:logs:e2e": "node --test scripts/logs.real-stack.acceptance.test.mjs",
