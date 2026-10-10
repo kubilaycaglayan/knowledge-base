@@ -641,6 +641,8 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{\"boardId\":\"" + foreign + "\"}").getStatusCode());
     assertEquals(HttpStatus.CONFLICT, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{\"boardId\":\"" + old + "\"}").getStatusCode());
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", other, "{\"boardId\":\"" + foreign + "\"}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/" + cardId + "/transfer", token, "{\"boardId\":null}").getStatusCode());
     assertEquals(work, get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody().get("boardId").asText());
   }
 }

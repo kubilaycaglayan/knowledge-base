@@ -443,7 +443,8 @@ browser interaction evidence remains a separate layer.
   target columns, persisted transfer readback, path-board references, and
   foreign/archived board rejection
   (`AllBoardsIntegrationTest.transferMovesACardToAnotherBoard` and
-  `transferRejectsForeignAndArchivedBoards`).
+  `AllBoardsIntegrationTest.transferRejectsForeignAndArchivedBoards`);
+  missing and null destination IDs return 400 without moving the card.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/archive` covers response/detail
   state, archived vs active list visibility, and preserved relationships
   (`KnowIntegrationTest.archivingAndRestoringACardReturnsItsRelationships`).
