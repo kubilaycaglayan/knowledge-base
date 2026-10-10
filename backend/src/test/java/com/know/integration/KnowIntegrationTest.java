@@ -2804,6 +2804,13 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             "{\"note\":\"missing labels\",\"labels\":null}");
     assertEquals(HttpStatus.BAD_REQUEST, nullLabels.getStatusCode());
 
+    ResponseEntity<JsonNode> missingLabelId =
+        put(
+            "/api/v1/calendar/days/2026-09-15",
+            token,
+            "{\"labels\":[{\"labelId\":null}]}");
+    assertEquals(HttpStatus.BAD_REQUEST, missingLabelId.getStatusCode());
+
     ResponseEntity<JsonNode> duplicateLabels =
         put(
             "/api/v1/calendar/days/2026-09-15",
@@ -2824,6 +2831,20 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             token,
             "{\"startDate\":\"2026-01-01\",\"endDate\":\"2027-01-02\",\"labels\":[]}");
     assertEquals(HttpStatus.BAD_REQUEST, oversizedRange.getStatusCode());
+
+    ResponseEntity<JsonNode> missingRangeStart =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"endDate\":\"2026-01-02\",\"labels\":[]}");
+    assertEquals(HttpStatus.BAD_REQUEST, missingRangeStart.getStatusCode());
+
+    ResponseEntity<JsonNode> missingRangeEnd =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-01-01\",\"labels\":[]}");
+    assertEquals(HttpStatus.BAD_REQUEST, missingRangeEnd.getStatusCode());
 
     ResponseEntity<JsonNode> reversedRange =
         put(

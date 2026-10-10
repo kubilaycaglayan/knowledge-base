@@ -486,8 +486,10 @@ browser interaction evidence remains a separate layer.
   date text, reversed and over-year ranges, and the accepted one-year boundary
   (`KnowIntegrationTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges`).
 - [x] `PUT /api/v1/calendar/days/{date}` covers replacing one day's note and
-  label assignments, including persisted readback and omitted marker portions
-  (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`).
+  label assignments, including persisted readback and omitted marker portions;
+  missing assignment IDs and duplicate labels are rejected before changing the
+  saved day (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`
+  and `KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`).
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
   subsequent absence, foreign-user isolation, and repeated deletion.
 - [x] `PUT /api/v1/calendar/days/range` covers inclusive start/end mutation,
@@ -501,7 +503,8 @@ browser interaction evidence remains a separate layer.
   `KnowIntegrationTest.calendarDayWritesPersistEverySupportedPortionAndMarkerValue`,
   and `KnowIntegrationTest.noMarkerCalendarLabelsPersistButDoNotAppearInReports`).
 - [x] Calendar range operations cover malformed dates, reversed and over-year
-  ranges, and acceptance of the one-year maximum span
+  ranges, missing required start/end values, and acceptance of the one-year
+  maximum span
   (`KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`).
 
 ## Flow: Cover Reports, Search, and Preferences
