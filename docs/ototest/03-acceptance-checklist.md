@@ -942,6 +942,7 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Import Clockify data
 
+- [x] `/imports` opens directly and the source tabs switch to their matching panels. Evidence: `nav-shell.acceptance.test.mjs` / `opens the Imports route directly and switches import sources` checks direct load, title, selected tab state, and both history requests.
 - [x] The Clockify import view accepts its supported pasted JSON data. Evidence: `ImportsView.test.ts` / `imports Clockify JSON and reloads the batch list` submits JSON and reloads batch history.
 - [x] Invalid Clockify data identifies the problem without creating records. Evidence: `ImportsView.test.ts` / `reports malformed and structurally invalid Clockify input` checks actionable messages and confirms neither payload is submitted; `KnowIntegrationTest.clockifyImportRejectsMalformedAndUnsupportedPayloadsWithoutPersistingData` verifies no records persist.
 - [x] A valid import shows its outcome and creates session records. Evidence: `ImportsView.test.ts` / `imports Clockify JSON and reloads the batch list` checks the visible summary; `KnowIntegrationTest.clockifyImportCreatesEntriesAndPaths` verifies imported entries and Paths.
