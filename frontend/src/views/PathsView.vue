@@ -61,6 +61,7 @@ const summaries = ref<Record<string, Summary>>({}),
   selectedColor = ref(colors[0]),
   selectedTextColor = ref<string | null>(null),
   error = ref(""),
+  creatingPath = ref(false),
   addDialogOpen = ref(false);
 const editingId = ref(""),
   editName = ref(""),
@@ -189,10 +190,12 @@ async function load(force = false) {
   }
 }
 async function add() {
+  if (creatingPath.value) return;
   if (!name.value.trim()) {
     error.value = "Enter a path name.";
     return;
   }
+  creatingPath.value = true;
   try {
     const created = await api<Path>("/paths", {
       method: "POST",
@@ -214,6 +217,8 @@ async function add() {
     await load();
   } catch {
     error.value = "Could not create path.";
+  } finally {
+    creatingPath.value = false;
   }
 }
 async function togglePinned(path: Path) {
@@ -789,7 +794,11 @@ onBeforeUnmount(() => {
             <button type="button" class="text-button" @click="closeAddDialog">
               Cancel
             </button>
-            <button class="primary" type="submit">Add path</button>
+            <button class="primary" type="submit" :disabled="creatingPath">
+              <span v-if="creatingPath" class="path-create-spinner" aria-hidden="true"></span>
+              Add path
+            </button>
+            <span v-if="creatingPath" role="status" aria-live="polite">Adding path…</span>
           </div>
         </form>
       </section>
@@ -1101,6 +1110,23 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(5, 28px);
   gap: 2px;
   width: max-content;
+}
+.path-create-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: path-create-spin 0.8s linear infinite;
+}
+@keyframes path-create-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .path-create-spinner { animation: none; }
 }
 @media (max-width: 560px) {
   .paths-heading {

@@ -583,6 +583,8 @@ describe("PathsView", () => {
     await form.trigger("submit");
 
     expect(wrapper.get('form.path-create-form button[type="submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.get('form.path-create-form button[type="submit"]').text()).toBe("Add path");
+    expect(wrapper.get('form.path-create-form [role="status"]').text()).toBe("Adding path…");
     expect(
       vi.mocked(api).mock.calls.filter(([path, options]) => path === "/paths" && options?.method === "POST"),
     ).toHaveLength(1);

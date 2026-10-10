@@ -1271,10 +1271,17 @@ so the warning and discard criteria remain open.
 
 ### Flow: Recover from a failed mutation
 
-- [ ] A failed mutation preserves user-entered values where retry is possible.
-- [ ] Retrying a failed mutation does not create duplicate records.
-- [ ] A loading action communicates progress and prevents accidental duplicate
-  submission.
+- [x] A failed mutation preserves user-entered values where retry is possible.
+  Evidence: `PathsView.test.ts` / `preserves a failed path create and lets the
+  user retry` checks the entered name survives failure and can be submitted
+  successfully.
+- [x] Retrying a failed mutation does not create duplicate records.
+  Evidence: `PathsView.test.ts` / `prevents duplicate path creation while the
+  first request is pending` submits twice during one pending request and checks
+  the API receives only one create.
+- [x] A loading action communicates progress and prevents accidental duplicate
+  submission. Evidence: the same test checks the submit button is disabled,
+  retains its “Add path” label, and exposes “Adding path…” as a live status.
 
 ### Flow: Protect user-owned records
 
