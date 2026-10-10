@@ -100,6 +100,36 @@ describe("LogsView", () => {
     await wrapper.unmount();
   });
 
+  it("filters logs, shows no matches, clears search, and restores URL query state", async () => {
+    const wrapper = mount(LogsView, { attachTo: document.body });
+    await flushPromises();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "/" }));
+    await wrapper.vm.$nextTick();
+    const search = wrapper.get<HTMLInputElement>("#logs-search-input");
+
+    await search.setValue("Recent");
+    expect(wrapper.findAll(".log-body").map((node) => node.text())).toEqual([
+      "Recent thought",
+    ]);
+    expect(new URLSearchParams(window.location.search).get("q")).toBe("Recent");
+
+    await search.setValue("no such log");
+    expect(wrapper.get(".empty").text()).toBe("No logs match this search.");
+
+    await search.setValue("");
+    expect(wrapper.findAll(".log-body")).toHaveLength(3);
+    expect(new URLSearchParams(window.location.search).has("q")).toBe(false);
+
+    window.history.pushState({}, "", "/logs?q=Older");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wrapper.vm.$nextTick();
+    expect(search.element.value).toBe("Older");
+    expect(wrapper.findAll(".log-body").map((node) => node.text())).toEqual([
+      "Older thought",
+    ]);
+    await wrapper.unmount();
+  });
+
   it("shows 100 logs per page and places pagination after the log list", async () => {
     const manyLogs = Array.from({ length: 101 }, (_, index) => {
       const occurredAt = new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString();
