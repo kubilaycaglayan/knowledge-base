@@ -490,6 +490,16 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals("PRIORITY_LAST", columns(token).get(3).get("cardSort").asText());
     put("/api/v1/boards/all/columns/sort", token, "{\"name\":\"Done\",\"cardSort\":\"MANUAL\"}");
     assertEquals("MANUAL", columns(token).get(3).get("cardSort").asText());
+
+    String maximumName = "c".repeat(80);
+    ResponseEntity<JsonNode> maximumNameSort =
+        put(
+            "/api/v1/boards/all/columns/sort",
+            token,
+            "{\"name\":\"" + maximumName + "\",\"cardSort\":\"PRIORITY\"}");
+    assertEquals(HttpStatus.OK, maximumNameSort.getStatusCode());
+    assertEquals(maximumName, maximumNameSort.getBody().get("name").asText());
+    assertEquals("PRIORITY", maximumNameSort.getBody().get("cardSort").asText());
   }
 
   // AB-05

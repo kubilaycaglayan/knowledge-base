@@ -475,8 +475,9 @@ browser interaction evidence remains a separate layer.
   `AllBoardsIntegrationTest.columnCursorWalkRemainsStableAcrossManyPages`, and
   `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `PUT /api/v1/boards/all/columns/sort` covers per-user sort persistence,
-  priority order across boards, isolation from board-local modes, reset, and
-  invalid values (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
+  priority order across boards, isolation from board-local modes, reset, invalid
+  body/name/sort values, and the exact 80-character name maximum
+  (`AllBoardsIntegrationTest.mergedColumnSortIsStoredPerUserWithoutTouchingBoards`
   and `AllBoardsIntegrationTest.columnPagesFollowTheColumnSort`).
 - [x] `GET /api/v1/boards/all/gantt` covers reversed range validation, returns
   dated and undated cards regardless of the requested window, and excludes
