@@ -195,10 +195,11 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Verify direct loading of one supported route
 
-- [ ] Loading a supported route directly renders its intended page after the
+- [x] Loading a supported route directly renders its intended page after the
   authenticated shell is available.
-- [ ] A route with a selected record resolves that record from the route
-  parameter and handles missing or inaccessible IDs without exposing
+- [x] A route with a selected record resolves that record from its route
+  parameter.
+- [ ] Missing or inaccessible IDs produce a safe state without exposing
   protected details.
 - [ ] An unknown URL produces the documented not-found or safe fallback
   behavior and does not render an unrelated protected record.
@@ -231,10 +232,10 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Record evidence for one user-visible mutation
 
-- [ ] The evidence starts from an identified UI control and a known account
+- [x] The evidence starts from an identified UI control and a known account
   state.
-- [ ] The evidence records the visible successful result.
-- [ ] A fresh read proves the changed value remains after navigation or
+- [x] The evidence records the visible successful result.
+- [x] A fresh read proves the changed value remains after navigation or
   reload when the behavior is persisted.
 - [ ] A failed request is distinguishable from a successful save.
 - [ ] A retry does not create duplicate records when the action is expected
@@ -253,19 +254,19 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Record evidence for one restore action
 
-- [ ] The evidence identifies the archived record and destination context.
-- [ ] The visible result shows the record in its restored state.
-- [ ] A fresh read proves the restored state persists.
+- [x] The evidence identifies the archived record and destination context.
+- [x] The visible result shows the record in its restored state.
+- [x] A fresh read proves the restored state persists.
 - [ ] Repeating the restore does not misrepresent the final state.
 
 ### Flow: Record evidence for one ownership boundary
 
-- [ ] The evidence uses two isolated disposable accounts or an equivalent
+- [x] The evidence uses two isolated disposable accounts or an equivalent
   isolated ownership fixture at the appropriate layer.
-- [ ] A foreign record read does not disclose protected content.
+- [x] A foreign record read does not disclose protected content.
 - [ ] A foreign referenced identifier is rejected without changing either
   account's data.
-- [ ] The evidence record contains no account password, token, personal data,
+- [x] The evidence record contains no account password, token, personal data,
   or unredacted authorization header.
 
 ### Flow: Keep one inventory link current

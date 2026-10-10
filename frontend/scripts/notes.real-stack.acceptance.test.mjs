@@ -152,5 +152,6 @@ it("rejects a second browser account reading the first user's note", async () =>
     return { status: response.status, body: await response.text() };
   }, noteId);
   assert.equal(result.status, 404, "foreign note IDs are not readable from a second user's browser session");
+  assert.ok(!result.body.includes(marker), "the foreign response must not disclose the note's title or content marker");
   await otherContext.close();
 });
