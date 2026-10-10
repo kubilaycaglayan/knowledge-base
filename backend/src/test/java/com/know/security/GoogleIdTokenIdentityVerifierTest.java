@@ -37,11 +37,10 @@ class GoogleIdTokenIdentityVerifierTest {
 
   @Test
   void configuredVerifierTrustsOnlyTheTrimmedConfiguredAudience() {
-    GoogleIdTokenVerifier verifier =
-        GoogleIdTokenIdentityVerifier.createVerifier("  web-client-id.apps.googleusercontent.com  ");
-
     assertEquals(
-        List.of("web-client-id.apps.googleusercontent.com"), verifier.getAudience());
+        List.of("web-client-id.apps.googleusercontent.com"),
+        GoogleIdTokenIdentityVerifier.configuredAudience(
+            "  web-client-id.apps.googleusercontent.com  "));
   }
 
   @Test
