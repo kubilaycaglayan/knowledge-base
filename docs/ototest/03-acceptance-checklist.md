@@ -389,7 +389,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Choose a report range
 
-- [ ] Choosing a custom date range includes both selected endpoints.
+- [x] Choosing a custom date range includes both selected endpoints. Evidence:
+  `frontend/src/views/ReportsView.test.ts`, `keeps the selected aggregation
+  when the date interval changes` asserts both ISO endpoints in the report
+  request.
 - [ ] Moving to the previous/next range changes the interval by the selected
   aggregation period.
 - [ ] Changing aggregation preserves the selected date interval.
