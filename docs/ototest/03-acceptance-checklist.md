@@ -305,7 +305,11 @@ the extension has its own scope in OTOTEST-04.
   'board switch off|hide confirmation button|hide confirmation keeps'` checks
   confirmation copy, explicit Hide board action, cancellation, and that no
   visibility request occurs before confirmation (mocked API).
-- [ ] Showing a hidden path board restores its tab.
+- [x] Showing a hidden path board restores its tab. Evidence: `cd frontend &&
+  node --test --test-name-pattern='restores a hidden Path board tab'
+  scripts/nav-shell.acceptance.test.mjs` switches a seeded hidden board on in
+  Paths, navigates to Boards, and verifies the Writing tab is present (mocked
+  API browser test).
 
 ### Flow: Open a path history
 

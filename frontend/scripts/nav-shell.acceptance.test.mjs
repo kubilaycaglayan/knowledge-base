@@ -43,7 +43,21 @@ async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeed
     }
     else if (path === "/paths") body = paths;
     else if (path === "/paths/path-1/summary") body = { path: paths[0], trackedSeconds: 0, recentActivity: [] };
-    else if (path === "/boards") body = url.searchParams.get("archived") === "true" ? [] : [{ id: "board-1", name: "Product", archived: false }];
+    else if (path.startsWith("/boards/") && path.endsWith("/visibility") && method === "POST") {
+      const boardId = path.split("/")[2];
+      const owner = paths.find((item) => item.boardId === boardId);
+      if (owner) owner.boardHidden = route.request().postDataJSON().hidden;
+      body = { id: boardId, name: owner?.name || "Product", pathId: owner?.id || null, archived: false, hidden: owner?.boardHidden || false };
+    }
+    else if (path === "/boards") {
+      if (url.searchParams.get("archived") === "true") body = [];
+      else {
+        const pathBoards = paths
+          .filter((item) => item.boardId && !item.boardHidden)
+          .map((item) => ({ id: item.boardId, name: item.name, pathId: item.id, archived: false, hidden: false }));
+        body = pathBoards.length ? pathBoards : [{ id: "board-1", name: "Product", archived: false }];
+      }
+    }
     else if (path === "/boards/board-1/statuses") body = statuses;
     else if (path === "/boards/board-1/cards/page") body = { items: url.searchParams.get("statusId") === "status-0" ? [card] : [], nextCursor: null };
     else if (path === "/boards/board-1/cards") body = url.searchParams.get("archived") === "true" ? [] : [card];
@@ -233,6 +247,26 @@ it("changes and persists an existing Path color using only the keyboard", async 
     await page.locator(".path .dot").evaluate((element) => getComputedStyle(element).backgroundColor),
     "rgb(59, 130, 246)",
   );
+});
+
+it("restores a hidden Path board tab after showing it from Paths", async (t) => {
+  const { page, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-1", name: "Writing", status: "ACTIVE", boardId: "board-1", boardHidden: true }],
+  });
+  const appUrl = server.resolvedUrls.local[0];
+  await page.goto(`${appUrl}paths`);
+  await page.getByRole("heading", { name: "Paths" }).waitFor();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+
+  const boardSwitch = page.getByRole("switch", { name: "Show on board" });
+  assert.equal(await boardSwitch.isChecked(), false);
+  await boardSwitch.check();
+  await page.getByText("Writing board is shown.", { exact: true }).waitFor();
+  await until(() => requests.includes("/boards/board-1/visibility"));
+
+  await page.goto(`${appUrl}board`);
+  await page.locator(".board-page").waitFor();
+  await page.getByRole("button", { name: "Writing", exact: true }).waitFor();
 });
 
 it("restores report filters after navigation and browser Back/Forward", async (t) => {
