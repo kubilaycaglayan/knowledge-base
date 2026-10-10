@@ -1059,7 +1059,9 @@ browser interaction evidence remains a separate layer.
   passed all active jobs, including backend and guarded PostgreSQL with
   migrated-database startup verification. Batch 16 revision
   `0015f6c` passed the same local command with 600 tests, 0 failures, and 89
-  ignored; the report path is the same.
+  skipped; the report path is the same. Batch 17 revision
+  `d720c643cf53b7706bde4c84d61fd3c84cd9cf94` passed the same local command
+  with 601 tests, 0 failures, and 89 skipped; the report path is the same.
 - [ ] OTOTEST-02 is not marked complete until every operation and alias is
   covered or explicitly excluded, the API docs and matrix agree, and the
   required backend/PostgreSQL evidence is recorded.
