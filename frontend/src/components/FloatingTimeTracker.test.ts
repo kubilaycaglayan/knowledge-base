@@ -1225,6 +1225,75 @@ describe("FloatingTimeTracker", () => {
     globalThis.WebSocket = originalWebSocket;
   });
 
+  it("recovers by polling during socket loss and refreshes again after reconnect", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-10T10:00:00Z"));
+    const originalWebSocket = globalThis.WebSocket;
+    const sockets: MockSocket[] = [];
+    class MockSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        sockets.push(this);
+      }
+      send() {}
+      close() {}
+    }
+    globalThis.WebSocket = MockSocket as unknown as typeof WebSocket;
+    localStorage.setItem("know_token", "test-token");
+    const timer = (description: string) => ({
+      id: "timer-live",
+      labelIds: [],
+      description,
+      startedAt: "2026-10-10T09:59:00Z",
+      running: true,
+    });
+    let currentReads = 0;
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") {
+        currentReads += 1;
+        if (currentReads === 1) return null;
+        return currentReads === 2 ? timer("Recovered by polling") : timer("Refreshed after reconnect");
+      }
+      if (path === "/timers/draft") return {};
+      return undefined;
+    });
+
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    try {
+      await flushPromises();
+      expect(sockets).toHaveLength(1);
+      sockets[0].onclose?.();
+      await flushPromises();
+      expect(wrapper.get('button[aria-label="Stop timer"]').exists()).toBe(true);
+      expect(useTimerStore().description).toBe("Recovered by polling");
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(sockets).toHaveLength(2);
+      sockets[1].onopen?.();
+      sockets[1].onmessage?.({ data: '{"type":"READY"}' });
+      await flushPromises();
+      expect(useTimerStore().description).toBe("Refreshed after reconnect");
+      expect(currentReads).toBeGreaterThanOrEqual(3);
+      expect(
+        vi.mocked(api).mock.calls.some(
+          ([path, options]) => path === "/timers" && options?.method === "POST",
+        ),
+      ).toBe(false);
+    } finally {
+      wrapper.unmount();
+      localStorage.removeItem("know_token");
+      globalThis.WebSocket = originalWebSocket;
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps local timer fields when a live snapshot omits unchanged values", async () => {
     const originalWebSocket = globalThis.WebSocket;
     const sockets: MockSocket[] = [];

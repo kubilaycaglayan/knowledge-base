@@ -455,11 +455,19 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Reconcile live timer updates
 
-- [ ] A timer change made in another open app view becomes visible in the
-  current view.
-- [ ] Temporary live-channel loss falls back to the supported refresh/polling
-  behavior without creating a duplicate timer.
-- [ ] Reconnection refreshes the displayed timer state from the server.
+- [x] A timer change made in another open app view becomes visible in the
+  current view. Evidence: `FloatingTimeTracker.test.ts` / `applies an extension
+  description update when the web field is focused but untouched` applies the
+  live timer snapshot to the open tracker.
+- [x] Temporary live-channel loss falls back to the supported refresh/polling
+  behavior without creating a duplicate timer. Evidence:
+  `FloatingTimeTracker.test.ts` / `recovers by polling during socket loss and
+  refreshes again after reconnect` closes the socket, verifies polling adopts
+  the running timer, and confirms no start request was sent.
+- [x] Reconnection refreshes the displayed timer state from the server.
+  Evidence: `FloatingTimeTracker.test.ts` / `recovers by polling during socket
+  loss and refreshes again after reconnect` sends READY on the reconnected
+  socket and verifies the refreshed server description is applied.
 
 ## Paths
 
