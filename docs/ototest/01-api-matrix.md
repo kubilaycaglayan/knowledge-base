@@ -146,6 +146,16 @@ asserted. A field in this catalog is not itself a claim that tests verify it.
 | `TimerService.TimeView` | `id`, `pathId`, `labelIds`, `startedAt`, `endedAt`, `durationSeconds`, `description`, `source`, `running`, `carriedSeconds` |
 | `TimerService.HistoryPage` | `sessions` (`TimeView` list), `page`, `pageSize`, `totalSessions`, `totalPages` |
 | `TimerService.Statistics` | `todaySeconds`, `weekSeconds`, `monthSeconds`, `todayByPath`, `todayByLabel`, `weekByPath`, `weekByLabel` |
+| `CalendarService.LabelView` | `id`, `name`, `color` |
+| `CalendarService.LabelAssignmentView` | `labelId`, `name`, `color`, `portion` |
+| `CalendarService.DayView` | `date`, `note`, `labels` (`LabelAssignmentView` list) |
+| `BoardController.BoardView` | `id`, `name`, `archived`, `pathId`, `hidden`, `pinned`, `createdAt`, `updatedAt` |
+| `BoardController.StatusView` | `id`, `boardId`, `name`, `position`, `archived`, `cardSort` |
+| `BoardController.CardView` | `id`, `boardId`, `statusId`, `title`, `body`, `priority`, `startDate`, `dueDate`, `position`, `archived`, `pathIds`, `labelIds`, `createdAt`, `updatedAt`, `lineEdits` |
+| `BoardController.PlacedCardView` | `card` (`CardView`), `status` (`StatusView`), `statusCreated` |
+| `BoardController.CardPage` | `items` (`CardView` list), `nextCursor` |
+| `AllBoardsController.ColumnView` | `name`, `cardSort`, `statuses` (`StatusView` list) |
+| `AllBoardsController.ColumnSortView` | `name`, `cardSort` |
 
 | Verb + composed path | Controller method / inputs | Candidate evidence / current classification | State and important edges to map |
 | --- | --- | --- | --- |
