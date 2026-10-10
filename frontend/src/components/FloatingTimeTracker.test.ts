@@ -844,6 +844,16 @@ describe("FloatingTimeTracker", () => {
         "value",
         "Changed from extension",
       );
+
+      await description.setValue("Local draft");
+      sockets[0].onmessage?.({
+        data: JSON.stringify({
+          type: "TIMER_STATE",
+          timer: { ...current, description: "Changed again from extension" },
+        }),
+      });
+      await flushPromises();
+      expect(description.element).toHaveProperty("value", "Local draft");
     } finally {
       wrapper.unmount();
       HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
