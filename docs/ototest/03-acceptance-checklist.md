@@ -354,7 +354,10 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `keeps a running timer active after route navigation and browser
   reload` in `frontend/scripts/nav-shell.acceptance.test.mjs` starts a timer on
   Sessions, navigates to Board, reloads, and verifies the Stop action remains.
-- [ ] Starting a second timer resolves to the account's already-running timer.
+- [x] Starting a second timer resolves to the account's already-running timer.
+  Evidence: `FloatingTimeTracker.test.ts` / `resolves a start conflict to the
+  account's already-running timer` verifies the start conflict fetches the
+  authoritative current timer and activates its Path and description.
 - [ ] Stopping a timer under the accidental-start threshold does not leave a
   completed session.
 

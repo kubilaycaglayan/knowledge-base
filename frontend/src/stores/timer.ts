@@ -325,17 +325,29 @@ export const useTimerStore = defineStore("timer", () => {
         const versionAtRequest = ++timerStateVersion;
         const submitted = formState();
         pendingSubmission = submitted;
-        const started = await api<Timer>("/timers", {
-          method: "POST",
-          body: JSON.stringify({
-            pathId: pathId.value || null,
-            labelIds: selectedLabelIds.value,
-            description: description.value || null,
-          }),
-        });
-        if (versionAtRequest === timerStateVersion)
-          applyTimer(started, false, submitted);
-        rememberPath(pathId.value);
+        let started: Timer | null = null;
+        try {
+          started = await api<Timer>("/timers", {
+            method: "POST",
+            body: JSON.stringify({
+              pathId: pathId.value || null,
+              labelIds: selectedLabelIds.value,
+              description: description.value || null,
+            }),
+          });
+        } catch (cause) {
+          // A concurrent start may win between the initial sync and this
+          // request. Reconcile to the account's authoritative running timer.
+          const existing = await api<Timer | null>("/timers/current");
+          if (!existing) throw cause;
+          if (versionAtRequest === timerStateVersion) applyTimer(existing);
+          started = null;
+        }
+        if (started) {
+          if (versionAtRequest === timerStateVersion)
+            applyTimer(started, false, submitted);
+          rememberPath(pathId.value);
+        }
       }
       historyVersion.value++;
     } catch {

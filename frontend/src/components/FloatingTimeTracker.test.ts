@@ -117,7 +117,10 @@ describe("FloatingTimeTracker", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/timers/current");
     expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain("Session started in another tab");
+    const timerStore = useTimerStore();
+    expect(timerStore.current?.id).toBe("timer-existing");
+    expect(timerStore.pathId).toBe("path-existing");
+    expect(timerStore.description).toBe("Session started in another tab");
     expect(wrapper.find(".tracker-error").exists()).toBe(false);
   });
 
