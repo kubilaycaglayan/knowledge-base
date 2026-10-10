@@ -487,6 +487,17 @@ describe("CalendarView", () => {
     ).toBe(String(today.getDate()));
   });
 
+  it("announces when the Calendar Today action selects the current date", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('[aria-label="Today"]').trigger("click");
+
+    expect(wrapper.get('[role="status"][aria-live="polite"]').text()).toBe(
+      "Today is selected.",
+    );
+  });
+
   it("changes the calendar month and year from their selectors", async () => {
     const wrapper = mountView();
     await flushPromises();
