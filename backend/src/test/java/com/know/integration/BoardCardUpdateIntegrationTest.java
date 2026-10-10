@@ -135,6 +135,22 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
             .get("priority")
             .asText());
 
+    JsonNode explicitlyNullCreated =
+        api.created(
+            "POST",
+            "/api/v1/boards/" + boardId + "/cards",
+            owner,
+            "{\"title\":\"Explicit null\",\"priority\":null}");
+    assertEquals("MEDIUM", explicitlyNullCreated.get("priority").asText());
+    assertEquals(
+        "MEDIUM",
+        api.get(
+                "/api/v1/boards/" + boardId + "/cards/" + explicitlyNullCreated.get("id").asText(),
+                owner)
+            .json()
+            .get("priority")
+            .asText());
+
     String updateId =
         api.created(
                 "POST",
@@ -157,6 +173,28 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
             .get("priority")
             .asText());
 
+    String omittedUpdateId =
+        api.created(
+                "POST",
+                "/api/v1/boards/" + boardId + "/cards",
+                owner,
+                "{\"title\":\"Reset from high\",\"priority\":\"HIGH\"}")
+            .get("id")
+            .asText();
+    JsonNode omittedUpdated =
+        api.put(
+                "/api/v1/boards/" + boardId + "/cards/" + omittedUpdateId,
+                owner,
+                "{\"title\":\"Omitted priority\"}")
+            .json();
+    assertEquals("MEDIUM", omittedUpdated.get("priority").asText());
+    assertEquals(
+        "MEDIUM",
+        api.get("/api/v1/boards/" + boardId + "/cards/" + omittedUpdateId, owner)
+            .json()
+            .get("priority")
+            .asText());
+
     JsonNode placed =
         api.created(
             "POST",
@@ -168,6 +206,22 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
         "MEDIUM",
         api.get(
                 "/api/v1/boards/" + boardId + "/cards/" + placed.get("card").get("id").asText(),
+                owner)
+            .json()
+            .get("priority")
+            .asText());
+
+    JsonNode omittedPlaced =
+        api.created(
+            "POST",
+            "/api/v1/boards/" + boardId + "/cards/in-column",
+            owner,
+            "{\"columnName\":\"Review\",\"title\":\"Omitted\"}");
+    assertEquals("MEDIUM", omittedPlaced.get("card").get("priority").asText());
+    assertEquals(
+        "MEDIUM",
+        api.get(
+                "/api/v1/boards/" + boardId + "/cards/" + omittedPlaced.get("card").get("id").asText(),
                 owner)
             .json()
             .get("priority")
