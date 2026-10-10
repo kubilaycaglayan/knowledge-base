@@ -636,8 +636,11 @@ the extension has its own scope in OTOTEST-04.
   filters together` verifies the requested start-of-day and end-of-day
   boundaries; `ActivityIntegrationTest.activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner`
   verifies activities exactly on each bound are included.
-- [ ] Submitting a reversed date interval shows validation and does not display
-  a misleading result set.
+- [x] Submitting a reversed date interval shows validation and does not display
+  a misleading result set. Evidence: `TimelineView.test.ts` / `rejects a
+  reversed date range without replacing current results` verifies the inline
+  error, no filtered request, retained results, and recovery after correcting
+  the dates.
 - [ ] Clearing timeline filters returns the default timeline state.
 - [ ] A filter with no matches displays an explicit empty state.
 - [ ] A stale response from an earlier filter does not replace newer results.

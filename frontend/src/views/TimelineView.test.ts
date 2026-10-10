@@ -294,6 +294,17 @@ describe("TimelineView", () => {
       ),
     ).toHaveLength(activityRequestCount);
     expect(wrapper.text()).toContain("Existing timeline result");
+
+    await wrapper.get('input[aria-label="From date"]').setValue("2026-08-01");
+    await wrapper.get('input[aria-label="To date"]').setValue("2026-08-31");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path]) => typeof path === "string" && path.startsWith("/activities?"),
+      ),
+    ).toHaveLength(activityRequestCount + 1);
   });
 
   it("reports initial-load and note-save failures and ignores incomplete notes", async () => {

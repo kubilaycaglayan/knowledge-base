@@ -28,6 +28,11 @@ const pathName = (id?: string) => {
 };
 const dateValue = (date: Date) => date.toISOString().slice(0, 10);
 async function load() {
+  if (from.value && to.value && from.value > to.value) {
+    error.value = "The end date must be on or after the start date.";
+    return;
+  }
+  error.value = "";
   try {
     const params = new URLSearchParams();
     if (type.value) params.set("type", type.value);
