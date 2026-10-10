@@ -280,6 +280,11 @@ the extension has its own scope in OTOTEST-04.
 - [x] A no-result query displays a clear empty state. Evidence:
   `GlobalSearch.test.ts` / `says when nothing matches` checks the message and
   the empty combobox selection state.
+- [x] A failed global search request can be retried without closing the dialog.
+  Evidence: `GlobalSearch.test.ts` / `reports failures and retries on request`
+  checks component recovery; `nav-shell.acceptance.test.mjs` / `recovers from
+  a failed global search request with the in-dialog retry` verifies the alert
+  clears and a new API request renders results in the browser.
 - [x] Closing search returns focus to the control that opened it. Evidence:
   `GlobalSearch.test.ts` / `closes with Escape and returns focus to where it was`
   verifies focus moves into the dialog and returns to its trigger on close.

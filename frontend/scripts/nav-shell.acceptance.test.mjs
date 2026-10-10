@@ -14,7 +14,7 @@ const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, 
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -28,6 +28,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let currentTimer = null;
   let pausedTimer = {};
   let rejectNextReportsRequest = rejectReportsAuth;
+  let searchFailurePending = failSearchOnce;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
       localStorage.setItem("know_token", "nav-test-token");
@@ -43,6 +44,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     requests.push(path);
     const rejectedSession = rejectNextReportsRequest && path === "/reports";
     if (rejectedSession) rejectNextReportsRequest = false;
+    if (searchFailurePending && path === "/search") {
+      searchFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary search failure" }) });
+      return;
+    }
     let body = [];
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
     else if (path === "/auth/login" && method === "POST") body = { token: "signed-in-nav-test-token" };
@@ -1905,6 +1911,21 @@ it("keeps global search results reachable across a keyboard-like phone viewport 
   await page.setViewportSize({ width: 390, height: 780 });
   assert.equal(await input.inputValue(), "Reports");
   await result.waitFor();
+});
+
+it("recovers from a failed global search request with the in-dialog retry", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { failSearchOnce: true });
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Reports");
+  const alert = dialog.getByRole("alert");
+  await alert.waitFor();
+  await alert.getByRole("button", { name: "Try again" }).click();
+  await page.getByRole("option", { name: /Reports research note/ }).waitFor();
+  assert.equal(await dialog.getByRole("alert").count(), 0);
+  assert.equal(requests.filter((path) => path === "/search").length, 2, "Retry issues one fresh search request");
 });
 
 it("groups matching record types, shows note context, and opens the active result with Enter", async (t) => {
