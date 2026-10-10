@@ -1071,13 +1071,16 @@ describe("PathsView", () => {
       .find((button) => button.text() === "Remove")!
       .trigger("click");
 
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual(["Algorithms"]);
     expect(wrapper.find(".prompt-dialog").text()).toContain(
       "Remove Algorithms? You can undo this for a few seconds.",
     );
     await wrapper.get(".prompt-dialog button.primary").trigger("click");
+    await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1", {
       method: "DELETE",
     });
+    expect(wrapper.findAll(".path-title")).toHaveLength(0);
     expect(wrapper.text()).toContain("Removed “Algorithms”.");
     expect(wrapper.get(".undo-snackbar").attributes("role")).toBe("status");
     expect(wrapper.get(".undo-snackbar").classes()).toContain("snackbar");
