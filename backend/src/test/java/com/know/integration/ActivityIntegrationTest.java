@@ -3,8 +3,12 @@ package com.know.integration;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +57,19 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
     return exchange(HttpMethod.GET, "/api/v1/activities" + query, token, null).getBody();
   }
 
+  JsonNode activitiesAtRange(String token, String from, String to) {
+    URI uri =
+        URI.create(
+            base
+                + "/api/v1/activities?from="
+                + URLEncoder.encode(from, StandardCharsets.UTF_8)
+                + "&to="
+                + URLEncoder.encode(to, StandardCharsets.UTF_8));
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(token);
+    return rest.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), JsonNode.class).getBody();
+  }
+
   @Test
   void activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner() {
     String owner = token();
@@ -95,10 +112,13 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
     JsonNode toBoundary = activities(owner, "?to=" + atBoundary);
     assertTrue(containsActivity(toBoundary, firstActivity.get("id").asText()), "The upper date bound is inclusive");
 
-    String equivalentOffset = occurredAt.atOffset(ZoneOffset.ofHours(-5)).toString();
-    JsonNode offsetRange = activities(owner, "?from=" + equivalentOffset + "&to=" + equivalentOffset);
-    assertEquals(1, offsetRange.size(), "Offset timestamps resolve to the same instant");
-    assertEquals(firstActivity.get("id").asText(), offsetRange.get(0).get("id").asText());
+    for (ZoneOffset offset : List.of(ZoneOffset.ofHours(-5), ZoneOffset.ofHours(3))) {
+      String equivalentOffset = occurredAt.atOffset(offset).toString();
+      JsonNode offsetRange = activitiesAtRange(owner, equivalentOffset, equivalentOffset);
+      assertTrue(offsetRange.isArray(), "Offset filter returns an activity list: " + offsetRange);
+      assertEquals(1, offsetRange.size(), "Offset timestamps resolve to the same instant: " + offset);
+      assertEquals(firstActivity.get("id").asText(), offsetRange.get(0).get("id").asText());
+    }
 
     assertTrue(activities(owner, "?from=" + occurredAt.plusSeconds(60)).isEmpty());
     assertTrue(activities(owner, "?to=" + occurredAt.minusSeconds(60)).isEmpty());

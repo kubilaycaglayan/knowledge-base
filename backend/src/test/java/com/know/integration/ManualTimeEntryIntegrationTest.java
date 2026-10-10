@@ -54,4 +54,25 @@ class ManualTimeEntryIntegrationTest extends IntegrationTestSupport {
             "{\"startedAt\":\"2026-09-01T10:00:00Z\",\"labelIds\":[]}");
     assertEquals(400, missingEnd.status(), missingEnd.body());
   }
+
+  @Test
+  void manualEntryNormalizesPositiveAndNegativeOffsetTimestampsToUtc() {
+    String owner = api.register();
+    ApiClient.Reply created =
+        api.post(
+            "/api/v1/time-entries",
+            owner,
+            "{\"startedAt\":\"2026-09-01T05:00:00-05:00\",\"endedAt\":\"2026-09-01T14:00:00+03:00\",\"labelIds\":[]}");
+
+    assertEquals(200, created.status(), created.body());
+    JsonNode entry = created.json();
+    assertEquals("2026-09-01T10:00:00Z", entry.get("startedAt").asText());
+    assertEquals("2026-09-01T11:00:00Z", entry.get("endedAt").asText());
+    assertEquals(3600, entry.get("durationSeconds").asLong());
+
+    JsonNode persisted = api.get("/api/v1/time-entries/" + entry.get("id").asText(), owner).json();
+    assertEquals("2026-09-01T10:00:00Z", persisted.get("startedAt").asText());
+    assertEquals("2026-09-01T11:00:00Z", persisted.get("endedAt").asText());
+    assertEquals(3600, persisted.get("durationSeconds").asLong());
+  }
 }

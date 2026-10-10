@@ -42,22 +42,35 @@ browser interaction evidence remains a separate layer.
   OTOTEST-01; layer conventions and source-based contract reading are recorded
   in the API matrix).
 - [x] Use exact test names or named assertions as evidence; a test filename
-  without a relevant assertion does not prove coverage. All 342 qualified
+  without a relevant assertion does not prove coverage. All 350 qualified
   references in the current operation matrix resolve to a test method; the
   evidence description beside each reference names the behavior asserted.
 - [x] Distinguish unit/domain, controller/API, service, persistence
   integration, PostgreSQL-guarded, deployed-shaped, browser, and manual
   evidence using test package and guarded-run conventions in the API matrix.
-- [ ] Do not treat an anonymous-rejection sweep as proof of a specific
-  authenticated operation's successful behavior.
-- [ ] Do not treat a UI or mocked-client assertion as proof of backend
-  persistence, authorization, transaction, or database behavior.
-- [ ] For each state mutation, link evidence of the persisted state or another
-  observable effect after the request.
-- [ ] For delete/archive operations, link evidence of absence or archived
-  state; for restore operations, link evidence of the restored state.
-- [ ] Mark an operation `gap` when its contract is unclear or no assertion
+- [x] Do not treat an anonymous-rejection sweep as proof of a specific
+  authenticated operation's successful behavior. The operation matrix pairs
+  authentication sweeps with operation-specific successful assertions; the
+  `/api/v1/auth/me` row, for example, separately names the public-profile
+  assertion and anonymous/malformed-token evidence.
+- [x] Do not treat a UI or mocked-client assertion as proof of backend
+  persistence, authorization, transaction, or database behavior. Operation
+  rows link backend test methods only; browser E2E, frontend tests, and guarded
+  PostgreSQL evidence are classified separately in the matrix conventions.
+- [x] For each state mutation, link evidence of the persisted state or another
+  observable effect after the request. The mutation rows in
+  [`01-api-matrix.md`](01-api-matrix.md) identify response/readback state,
+  reassignment, ordering, emitted activity, or removal outcomes for each
+  operation.
+- [x] For delete/archive operations, link evidence of absence or archived
+  state; for restore operations, link evidence of the restored state. The
+  path, note, label, time-entry, calendar, import-batch, board/status, and card
+  operation rows name the resulting read, list, or persistence observation.
+- [x] Mark an operation `gap` when its contract is unclear or no assertion
   proves the behavior; do not infer coverage from a neighboring operation.
+  Unknown board-card priority binding is explicitly marked as a
+  maintainer-owned contract decision on create, update, and create-in-column
+  rows in [`01-api-matrix.md`](01-api-matrix.md).
 - [ ] Mark unsupported/internal operations with a rationale and owner rather
   than silently omitting them.
 
@@ -783,12 +796,15 @@ browser interaction evidence remains a separate layer.
   `BoardControllerApiTest.statusCreateAndUpdateValidateRequiredNameAndMaximumLength`.
 - [ ] Every path/query parameter with a documented allowed range has lower,
   upper, and out-of-range boundary evidence.
-- [ ] Date and timestamp operations have timezone, leap-day, inclusive-range,
-  and reversed-range evidence where applicable.
-  Activity filtering now asserts inclusive lower/upper bounds, equivalent
-  non-UTC offsets, and empty reversed ranges in
-  `ActivityIntegrationTest.activityListFiltersPersistedEventsByDatesPathAndTypeAndScopesByOwner`;
-  remaining date-bearing operations still need a complete applicability audit.
+- [x] Date and timestamp operations have timezone, leap-day, inclusive-range,
+  and reversed-range evidence where applicable. The API matrix links calendar
+  and report leap-day/inclusive/reversed cases, requested-zone label history,
+  activity's positive/negative offset and range-boundary assertions, manual
+  time-entry and timer-configuration offset normalization, Clockify import
+  offset normalization, and reversed board Gantt ranges. Activity evidence
+  passed backend and guarded PostgreSQL jobs at source
+  `e9c2109e9b7b82dcdfb8b87d6fdf6016e36c1335` in [PR #145 CI](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38016095062);
+  current-batch additions remain subject to the next backend run.
 - [x] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
   The all-board column card page has a multi-page persisted walk and rejects
@@ -806,8 +822,11 @@ browser interaction evidence remains a separate layer.
   `BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`).
 - [ ] Ordered lists have stable tie-break and reorder persistence evidence
   where ordering is part of the contract.
-- [ ] Optimistic version or expected-update-time contracts have both current
-  version success and stale version conflict evidence.
+- [x] Optimistic version or expected-update-time contracts have both current
+  version success and stale version conflict evidence. Note saves, log updates,
+  and board-card updates have successful persisted-update and stale-conflict
+  assertions in their corresponding rows of [`01-api-matrix.md`](01-api-matrix.md);
+  operations without an expected-version field do not claim this behavior.
 - [x] Idempotent operations document and assert repeated-request outcomes
   where idempotency is part of the API contract. Evidence includes repeated
   calendar-day deletion, board archive and restore, Clockify duplicate source
@@ -861,12 +880,16 @@ browser interaction evidence remains a separate layer.
   entry or a documented exclusion. At the recorded source baseline, 105
   mapping annotations compose to 107 routes; the matrix contains 107 unique
   method/path pairs and no duplicate rows.
-- [ ] Each state-changing operation asserts persisted state or an observable
-  event, not only a successful HTTP response.
-- [ ] Each delete/archive/restore operation asserts the resulting state from a
-  subsequent read or equivalent persistence observation.
-- [ ] Missing positive operation coverage remains visible as a gap even when
-  broad security sweeps pass.
+- [x] Each state-changing operation asserts persisted state or an observable
+  event, not only a successful HTTP response. The operation-by-operation audit
+  and state evidence links are recorded above and in [`01-api-matrix.md`](01-api-matrix.md).
+- [x] Each delete/archive/restore operation asserts the resulting state from a
+  subsequent read or equivalent persistence observation. The operation rows
+  identify active/archived list visibility, detail readback, or guarded
+  persistence evidence as applicable.
+- [x] Missing positive operation coverage remains visible as a gap even when
+  broad security sweeps pass. Unknown board-card priority binding remains a
+  maintainer-owned gap on all three affected operation rows.
 - [ ] Existing HARD-01 through HARD-07 evidence is reused by link when it
   proves the required behavior; duplicate coverage is not added without a
   distinct risk.
