@@ -286,8 +286,11 @@ the extension has its own scope in OTOTEST-04.
 - [ ] Global search remains usable with touch and the mobile keyboard at phone
   width. Supplemental automation: `nav-shell.acceptance.test.mjs` /
   `keeps global search usable with touch at phone width` verifies touch opening,
-  search input hints, result visibility, and viewport bounds at 390px. Real
-  Android Chrome and its software keyboard still need verification.
+  search input hints, result visibility, and viewport bounds at 390px;
+  `keeps global search results reachable across a keyboard-like phone viewport
+  resize` checks result reachability and query retention after reducing and
+  restoring viewport height. Real Android Chrome and its software keyboard
+  still need verification.
 
 ### Flow: Open and dismiss a dialog
 

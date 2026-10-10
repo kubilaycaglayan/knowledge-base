@@ -1517,6 +1517,35 @@ it("keeps global search usable with touch at phone width", async (t) => {
   assert.ok(dimensions.documentWidth <= dimensions.viewport);
 });
 
+it("keeps global search results reachable across a keyboard-like phone viewport resize", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.locator(".global-search-trigger").tap();
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await dialog.waitFor();
+  await input.fill("Reports");
+  const result = page.getByRole("option", { name: /Reports research note/ });
+  await result.waitFor();
+
+  await page.setViewportSize({ width: 390, height: 320 });
+  await input.tap();
+  await result.scrollIntoViewIfNeeded();
+  const visibleResult = await result.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < innerHeight;
+  });
+  assert.ok(visibleResult, "a search result should be reachable above the keyboard-like viewport");
+  assert.equal(await input.evaluate((element) => element === document.activeElement), true);
+  assert.equal(await input.inputValue(), "Reports");
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  assert.equal(await input.inputValue(), "Reports");
+  await result.waitFor();
+});
+
 it("groups matching record types, shows note context, and opens the active result with Enter", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(server.resolvedUrls.local[0]);
