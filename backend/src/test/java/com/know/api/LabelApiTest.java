@@ -49,6 +49,26 @@ class LabelApiTest {
   }
 
   @Test
+  void labelNameLimitRejectsOverlongAndAcceptsMaximumLength() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    mvc.perform(
+            post("/api/v1/labels")
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{\"name\":\"" + "l".repeat(81) + "\"}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(service);
+
+    mvc.perform(
+            post("/api/v1/labels")
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{\"name\":\"" + "l".repeat(80) + "\"}"))
+        .andExpect(status().isCreated());
+  }
+
+  @Test
   void invalidLabelUpdatePayloadIsRejectedBeforeServiceInvocation() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
