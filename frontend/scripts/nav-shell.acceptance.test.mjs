@@ -243,6 +243,38 @@ it("loads report filters from a direct query URL and keeps them on reload", asyn
   assert.ok(reportQueries.filter((value) => value.includes("startDate=2026-09-01") && value.includes("endDate=2026-09-07")).length >= 2);
 });
 
+it("switches report aggregation by keyboard and preserves Path and Label filters", async (t) => {
+  const { page } = await fixture(t, 1440);
+  page.setDefaultTimeout(5000);
+  await page.goto(
+    `${server.resolvedUrls.local[0]}reports?startDate=2026-10-04&endDate=2026-10-10&aggregation=DAY&pathId=path-1&labelId=label-1`,
+  );
+  await page.locator(".reports-page").waitFor();
+  const expectedWeek = await page.evaluate(() => {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - 29);
+    const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return { start: iso(start), end: iso(end) };
+  });
+  const aggregation = page.getByRole("combobox", { name: "Report aggregation" });
+  await aggregation.click();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+
+  await page.waitForFunction(() => {
+    const params = new URL(location.href).searchParams;
+    return params.get("aggregation") === "week";
+  }, undefined, { timeout: 5000 });
+  const query = new URL(page.url()).searchParams;
+  assert.equal(await aggregation.inputValue(), "WEEK");
+  assert.equal(query.get("startDate"), expectedWeek.start);
+  assert.equal(query.get("endDate"), expectedWeek.end);
+  assert.equal(query.get("pathId"), "path-1");
+  assert.equal(query.get("labelId"), "label-1");
+  assert.equal(query.get("aggregation"), "week");
+});
+
 it("keeps report date and total controls reachable on a phone viewport", async (t) => {
   const { page, reportQueries } = await fixture(t, 390);
   await page.goto(`${server.resolvedUrls.local[0]}reports`);
