@@ -1204,7 +1204,7 @@ the extension has its own scope in OTOTEST-04.
 
 - [x] Archiving a note requires confirmation; cancelling leaves the note unchanged. Evidence: `NotesView.test.ts` / `archives a note after confirmation` and `leaves a note unchanged when archive confirmation is cancelled`.
 - [x] Confirming archive removes only the selected note from the active list. Evidence: `NotesView.test.ts` / `archives a note after confirmation` verifies the other note remains and receives no delete request.
-- [ ] The archived note remains available in the archived list with its content intact. Existing restore coverage verifies the restore action; archive-list persistence after archive remains a gap.
+- [x] The archived note remains available in the archived list with its content intact. Evidence: `NotesView.test.ts` / `archives a note after confirmation` switches to Archive and verifies the archived title and body excerpt.
 
 ### Flow: Restore one note
 
