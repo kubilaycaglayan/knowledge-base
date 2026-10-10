@@ -638,7 +638,9 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/preferences` covers successful round trip and invalid
   preference values; board search accepts 200 characters, rejects 201, and
   Gantt sort state accepts two rules and rejects more than two without
-  overwriting the saved state
+  overwriting the saved state. Unknown theme, nested view, search over-limit,
+  and invalid sort values are rejected at the HTTP boundary before service
+  access (`PreferencesApiTest.preferenceRequestAndNestedBoardStateConstraintsRejectBeforeServiceAccess`)
   (`UserPreferencesIntegrationTest.boardStateEnforcesMaximumSearchAndGanttSortCount`).
 - [x] Preferences remain isolated between two disposable users.
 
