@@ -824,6 +824,9 @@ browser interaction evidence remains a separate layer.
   The shared `CardRequest.title` upper-bound rejection is also asserted on
   both create and update in
   `BoardControllerApiTest.cardTitleLimitRejectsOverlongAndAcceptsMaximumLength`.
+  Card creation accepts and reads back every declared `BoardPriority` value
+  (`BoardCardUpdateIntegrationTest.cardCreateAcceptsEveryDeclaredPriority`);
+  only the expected contract for unknown values remains unresolved.
   The DTO annotation and service-range audit found named evidence for the
   declared constraints across auth, note/log, calendar, timer, import, and
   board request types. The criterion remains open because `CardRequest.priority`
