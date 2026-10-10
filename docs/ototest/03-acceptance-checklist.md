@@ -1346,6 +1346,11 @@ so the warning and discard criteria remain open.
   on one truncated line`. Very long descriptions in other routes and
   route-specific combinations still need explicit coverage.
 - [ ] Empty strings and empty collections render intentional empty states.
+  Partial evidence: `LogsView.test.ts` / `shows the intentional empty state
+  when no logs exist` checks the empty message without rows or an error;
+  `NotesView.test.ts` / `renders an empty rich-text body as italic Empty note`
+  checks an empty user-entered body. Other supported collections and blank
+  fields still need explicit coverage.
 
 ### Flow: Honor reduced-motion preferences
 

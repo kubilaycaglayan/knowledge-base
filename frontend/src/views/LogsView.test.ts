@@ -39,6 +39,18 @@ describe("LogsView", () => {
           ],
     );
   });
+  it("shows the intentional empty state when no logs exist", async () => {
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === "/labels?scope=LOG" ? [{ id: "important", name: "Important" }] : [],
+    );
+    const wrapper = mount(LogsView);
+    await flushPromises();
+
+    expect(wrapper.get(".empty").text()).toBe("No logs yet. Capture a thought above.");
+    expect(wrapper.findAll(".log-entry")).toHaveLength(0);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
