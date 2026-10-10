@@ -1260,8 +1260,14 @@ so the warning and discard criteria remain open.
 
 ### Flow: Recover from a failed page read
 
-- [ ] A failed page load displays an error distinct from a valid empty state.
-- [ ] A failed list-page request keeps previously loaded records available.
+- [x] A failed page load displays an error distinct from a valid empty state.
+  Evidence: `NotesView.test.ts` / `filters note text, restores the query in the
+  URL, and distinguishes empty from error` checks that no matches show the
+  empty state without an alert, while an offline search shows an alert.
+- [x] A failed list-page request keeps previously loaded records available.
+  Evidence: `NotesView.test.ts` / `keeps the visible notes when a focus refresh
+  fails` asserts the refresh error while the previously loaded note remains in
+  the list and the empty state stays hidden.
 
 ### Flow: Recover from a failed mutation
 

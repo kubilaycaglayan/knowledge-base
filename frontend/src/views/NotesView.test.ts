@@ -359,6 +359,32 @@ describe("NotesView", () => {
     await reloaded.unmount();
   });
 
+  it("keeps the visible notes when a focus refresh fails", async () => {
+    let failRefresh = false;
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path.startsWith("/notes?")) {
+        if (failRefresh) throw new Error("offline");
+        return page();
+      }
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    expect(wrapper.get(".note-row").text()).toContain("Learning");
+
+    failRefresh = true;
+    window.dispatchEvent(new Event("focus"));
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain("Unable to load notes.");
+    expect(wrapper.get(".note-row").text()).toContain("Learning");
+    expect(wrapper.find(".notes-empty").exists()).toBe(false);
+    await wrapper.unmount();
+  });
+
   it("switches between archived and active notes and restores the URL state", async () => {
     const archivedNote = { ...note, id: "archived-note", title: "Archived draft", deletedAt: "2026-09-03T10:00:00Z" };
     vi.mocked(api).mockImplementation(async (path: string) => {
