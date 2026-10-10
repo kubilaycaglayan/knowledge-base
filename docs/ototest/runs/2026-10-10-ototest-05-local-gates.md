@@ -28,6 +28,7 @@
 | Repository checks | `node scripts/check-accessibility.mjs`; `node scripts/check-security.mjs`; `node scripts/check-smoke-cleanup.mjs`; `node scripts/check-hardening-status.mjs`; `node --check chrome-extension/popup.js`; `node --check chrome-extension/options.js`; `bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh`; `./scripts/check-image-prune.sh`; `git diff --check` | Pass: accessibility 38 checks, security 49, cleanup 17; syntax and image-prune checks passed |
 | Hosted `verify` | [GitHub Actions run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246) | Pass for commit `f7a9b6ba6aabc6819835a67f0fda0c8452272898`: backend, PostgreSQL/Flyway, web and extension build/integrity, deployed-shaped smoke, timer WebSocket, line history, and Orca jobs passed; historical iOS jobs skipped as configured |
 | Hosted `verify` on updated evidence record | [GitHub Actions run 38095089167](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095089167) | Pass for commit `b484034e3ba51cd045dda33c2af0247d0a8a04b1`; all active jobs passed, including OTOTEST integrity; iOS jobs skipped as configured |
+| Hosted `verify` with matrix-owner enforcement | [GitHub Actions run 38095487142](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095487142) | Pass for commit `ad3534efb457221ec68da95551cf6572cfcbeea2`; all active jobs passed, including owner metadata validation; iOS jobs skipped as configured |
 
 ## Failed-gate repair record
 
