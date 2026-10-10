@@ -163,11 +163,21 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Recover from an unauthenticated deep link
 
-- [ ] Opening a protected route while signed out displays the sign-in view.
-- [ ] The requested internal route is restored after successful sign-in.
-- [ ] An external or protocol-relative redirect value does not navigate away
-  from Knowledge Base.
-- [ ] Protected page content is not visible before authentication completes.
+- [x] Opening a protected route while signed out displays the sign-in view.
+  Evidence: `cd frontend && node --test --test-name-pattern='protected
+  deep-link content' scripts/nav-shell.acceptance.test.mjs` directly opens a
+  filtered Reports URL with no token and checks the sign-in view.
+- [x] The requested internal route is restored after successful sign-in.
+  Evidence: the same browser test submits the mocked sign-in form and checks
+  the Reports path and date/aggregation query are restored.
+- [x] An external or protocol-relative redirect value does not navigate away
+  from Knowledge Base. Evidence: `cd frontend && node --test
+  --test-name-pattern='external and protocol-relative post-login redirects'
+  scripts/nav-shell.acceptance.test.mjs` verifies both values leave the
+  browser on the local origin (mocked API).
+- [x] Protected page content is not visible before authentication completes.
+  Evidence: the protected deep-link test confirms Reports content and
+  authenticated navigation are absent before sign-in succeeds.
 
 ### Flow: Sign out
 

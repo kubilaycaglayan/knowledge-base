@@ -13,14 +13,14 @@ const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body:
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeeds = [] } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, calendarLabels = [], pathSeeds = [] } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
   const reportQueries = [];
   const paths = [...pathSeeds];
   const calendarDays = [];
-  await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
+  if (authenticated) await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
   // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
   if (warmup) await context.addInitScript(() => localStorage.setItem("know_warmup", "force"));
   await context.route("**/api/**", async (route) => {
@@ -30,6 +30,7 @@ async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeed
     requests.push(path);
     let body = [];
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
+    else if (path === "/auth/login" && method === "POST") body = { token: "signed-in-nav-test-token" };
     else if (path === "/logs/log-deep-link") body = { id: "log-deep-link", body: "Directly loaded log entry", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] };
     else if (path === "/logs") body = [];
     else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
@@ -110,7 +111,8 @@ async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeed
   });
   const page = await context.newPage();
   await page.goto(server.resolvedUrls.local[0]);
-  await page.locator(".dashboard-shell > header nav").waitFor();
+  if (authenticated) await page.locator(".dashboard-shell > header nav").waitFor();
+  else await page.locator(".auth").waitFor();
   return { page, requests, reportQueries, calendarLabels, paths };
 }
 
@@ -262,6 +264,39 @@ it("renders every supported top-level route after a direct browser load", async 
     await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
     await page.locator(selector).waitFor();
     assert.equal(new URL(page.url()).pathname, canonicalPath);
+  }
+});
+
+it("keeps protected deep-link content hidden while signed out and restores it after sign-in", async (t) => {
+  const { page, requests } = await fixture(t, 1440, { authenticated: false });
+  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
+  await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.locator(".reports-page").count(), 0);
+  assert.equal(await page.getByRole("navigation", { name: "Main navigation" }).count(), 0);
+  assert.match(await page.title(), /Knowledge Base.*Sign in/);
+
+  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator(".reports-page").waitFor();
+
+  assert.equal(new URL(page.url()).pathname, "/reports");
+  assert.equal(new URL(page.url()).search, query);
+  assert.ok(requests.includes("/auth/login"));
+});
+
+it("rejects external and protocol-relative post-login redirects", async (t) => {
+  for (const redirect of ["https://outside.example/path", "//outside.example/path"]) {
+    const { page } = await fixture(t, 1440, { authenticated: false });
+    await page.goto(`${server.resolvedUrls.local[0]}reports?redirect=${encodeURIComponent(redirect)}`);
+    await page.getByRole("heading", { name: "Sign in" }).waitFor();
+    await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+    await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForFunction(() => location.pathname === "/");
+    assert.equal(new URL(page.url()).origin, new URL(server.resolvedUrls.local[0]).origin);
+    assert.equal(new URL(page.url()).pathname, "/");
   }
 });
 
