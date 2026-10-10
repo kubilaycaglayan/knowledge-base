@@ -132,9 +132,9 @@ describe("LogsView", () => {
 
   it("shows 100 logs per page and places pagination after the log list", async () => {
     const manyLogs = Array.from({ length: 101 }, (_, index) => {
-      const occurredAt = new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString();
+      const occurredAt = new Date(Date.UTC(2026, 1, 1, 1, 39 - index)).toISOString();
       return log(`log-${index}`, `Thought ${index}`, occurredAt);
-    }).reverse();
+    });
     vi.mocked(api).mockImplementation(async (path) =>
       path === "/labels?scope=LOG" ? [] : manyLogs,
     );
@@ -142,12 +142,18 @@ describe("LogsView", () => {
     await flushPromises();
 
     expect(wrapper.findAll(".log-entry")).toHaveLength(100);
+    expect(wrapper.find(".log-group-heading").text()).toBe("February 2026");
     expect(wrapper.find(".logs-pagination").element).toBe(
       wrapper.find(".logs-page").element.lastElementChild,
     );
     await wrapper.get(".logs-pagination button:last-child").trigger("click");
     expect(wrapper.findAll(".log-entry")).toHaveLength(1);
+    expect(wrapper.get(".log-entry").attributes("id")).toBe("log-log-100");
+    expect(wrapper.find(".log-group-heading").text()).toBe("January 2026");
     expect(wrapper.find(".logs-pagination").text()).toContain("Page 2 of 2");
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/logs")).toHaveLength(1);
+    await wrapper.get(".logs-pagination button:first-child").trigger("click");
+    expect(wrapper.findAll(".log-entry")).toHaveLength(100);
     await wrapper.unmount();
   });
 
