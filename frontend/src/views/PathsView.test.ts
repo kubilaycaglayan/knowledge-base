@@ -550,6 +550,52 @@ describe("PathsView", () => {
     expect(wrapper.findAll(".path-order-button")).toHaveLength(0);
   });
 
+  it("persists a reordered path list and renders the returned order", async () => {
+    let orderedIds = ["path-1", "path-2"];
+    const paths = [
+      { id: "path-1", name: "Algorithms", status: "ACTIVE" },
+      { id: "path-2", name: "Writing", status: "ACTIVE" },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths")
+        return orderedIds.map((id) => paths.find((item) => item.id === id));
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths/order" && options?.method === "PUT") {
+        orderedIds = JSON.parse(String(options.body)).pathIds;
+        return undefined;
+      }
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    const [firstPath, secondPath] = wrapper.findAll("article.path");
+    await firstPath!.trigger("dragstart");
+    await secondPath!.trigger("drop");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/paths/order",
+      expect.objectContaining({
+        method: "PUT",
+        body: '{"pathIds":["path-2","path-1"]}',
+      }),
+    );
+    expect(wrapper.findAll(".path-title").map((title) => title.text())).toEqual([
+      "Writing",
+      "Algorithms",
+    ]);
+
+    wrapper.unmount();
+    usePathsStore().reset();
+    const reloaded = mount(PathsView);
+    await flushPromises();
+    expect(reloaded.findAll(".path-title").map((title) => title.text())).toEqual([
+      "Writing",
+      "Algorithms",
+    ]);
+  });
+
   it("keeps long path titles on one truncated line", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths")

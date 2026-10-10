@@ -290,7 +290,10 @@ the extension has its own scope in OTOTEST-04.
   `cd frontend && npx vitest run src/views/PathsView.test.ts -t 'visible pin
   state'` checks both state transitions, the accessible action name, and
   `aria-pressed` (mocked API).
-- [ ] Reordering paths updates the visible order after reload.
+- [x] Reordering paths updates the visible order after reload. Evidence: `cd
+  frontend && npx vitest run src/views/PathsView.test.ts -t 'reordered path
+  list'` simulates drag and drop, asserts the ordered Path IDs sent to the API,
+  and verifies the order after a fresh component load (mocked API).
 - [ ] Hiding a path's board asks for confirmation before removing its board tab.
 - [ ] Showing a hidden path board restores its tab.
 
