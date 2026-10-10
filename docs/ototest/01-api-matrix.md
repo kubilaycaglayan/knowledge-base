@@ -9,7 +9,7 @@
 **OpenAPI reconciliation:** On 2026-10-10, the generated development
 `/v3/api-docs` document contained 107 method/path pairs, matching the 107
 matrix rows exactly (no missing or extra operations). A source check also
-resolved all 357 qualified test references in the evidence column to an
+resolved all 375 qualified test references in the evidence column to an
 existing test class and method; this validates names, not the relevance of
 every assertion.
 
@@ -381,7 +381,7 @@ Clockify import, and label mutation assertions. Additional related evidence:
   `postgresCreateOperationsRollBackParentsWhenAssociationWritesFail`, and
   `postgresLabelDeleteRollsBackEarlierAssignmentDeletesWhenALaterJoinFails`.
 - Calendar, labels, and imports:
-  `PostgresDatabaseConstraintIntegrationTest.postgresCalendarRangeFailureRollsBackEarlierDayAndAssignments`,
+  `KnowIntegrationTest.postgresCalendarRangeFailureRollsBackEarlierDayAndAssignments`,
   `postgresCalendarDayReplacementRollsBackNoteAndOldLabelsWhenNewAssignmentFails`,
   `postgresCalendarLabelCreateRollsBackLabelWhenScopeInsertFails`,
   `postgresLabelUpdateRollsBackNameAndScopesWhenScopeInsertionFails`,
