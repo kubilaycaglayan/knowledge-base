@@ -235,7 +235,7 @@ class AuthControllerApiTest {
 
     mvc.perform(get("/api/v1/auth/me").with(authentication(auth)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.userId").value(id.toString()))
+        .andExpect(jsonPath("$.userId").value(user.getId().toString()))
         .andExpect(jsonPath("$.email").value("person@example.com"))
         .andExpect(jsonPath("$.displayName").value("Person"))
         .andExpect(jsonPath("$.hasPassword").value(true))

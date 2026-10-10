@@ -48,19 +48,20 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
             .get("id")
             .asText());
     ids.put(
-        "activity",
-        api.get("/api/v1/activities?pathId=" + ids.get("path"), owner)
-            .json()
-            .get(0)
-            .get("id")
-            .asText());
-    ids.put(
         "note",
         api.created(
                 "POST",
                 "/api/v1/notes",
                 owner,
-                "{\"title\":\"" + marker + "\",\"content\":\"<p>" + marker + "</p>\",\"contentText\":\"" + marker + "\"}")
+                "{\"title\":\"" + marker + "\",\"pathId\":\"" + ids.get("path")
+                    + "\",\"content\":\"<p>" + marker + "</p>\",\"contentText\":\"" + marker + "\"}")
+            .get("id")
+            .asText());
+    ids.put(
+        "activity",
+        api.get("/api/v1/activities?pathId=" + ids.get("path"), owner)
+            .json()
+            .get(0)
             .get("id")
             .asText());
     ids.put(
