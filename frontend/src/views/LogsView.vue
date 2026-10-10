@@ -871,6 +871,9 @@ onBeforeUnmount(() => {
   }
 }
 @media (max-width: 700px) {
+  .log-composer textarea {
+    min-height: 44px;
+  }
   .log-composer {
     grid-template-columns: minmax(0, 1fr) auto;
   }
