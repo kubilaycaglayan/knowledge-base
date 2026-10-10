@@ -42,7 +42,7 @@ browser interaction evidence remains a separate layer.
   OTOTEST-01; layer conventions and source-based contract reading are recorded
   in the API matrix).
 - [x] Use exact test names or named assertions as evidence; a test filename
-  without a relevant assertion does not prove coverage. All 377 qualified
+  without a relevant assertion does not prove coverage. All 382 qualified
   references in the current operation matrix resolve to a test method; the
   evidence description beside each reference names the behavior asserted.
 - [x] Distinguish unit/domain, controller/API, service, persistence
@@ -984,7 +984,7 @@ browser interaction evidence remains a separate layer.
   establish browser or API evidence. Controller/API, service, integration,
   and guarded PostgreSQL assertions are linked from the backend operation rows.
 - [x] Each API matrix row links the exact named assertion for each evidence
-  layer it claims. A source cross-check of all 377 qualified row references
+  layer it claims. A source cross-check of all 382 qualified row references
   against test classes and method declarations found no unresolved references;
   the adjacent evidence descriptions state the behavior asserted. Current
   contract gaps remain labeled as gaps rather than covered by neighboring
