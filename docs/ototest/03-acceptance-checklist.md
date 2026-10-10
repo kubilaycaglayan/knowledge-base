@@ -438,14 +438,23 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Read report summaries and charts
 
-- [ ] The summary total agrees with the visible category totals.
-- [ ] Switching between Path and Labels breakdown changes the displayed
-  categories without changing the selected interval.
-- [ ] Changing trendline mode updates or removes the trendline as selected.
+- [x] The summary total agrees with the visible category totals. Evidence:
+  `frontend/src/views/ReportsView.test.ts`, `keeps summary totals equal to
+  the active breakdown when switching categories` compares seconds and the
+  displayed summary duration.
+- [x] Switching between Path and Labels breakdown changes the displayed
+  categories without changing the selected interval. Evidence: the same test
+  checks category props and the URL interval before and after switching.
+- [x] Changing trendline mode updates or removes the trendline as selected.
+  Evidence: `frontend/src/views/ReportsView.test.ts`, `cycles the trendline
+  mode and persists it in the report URL` checks chart props and URL state.
 - [ ] Empty report data produces zero totals and a clear empty state.
 - [ ] Loading and request-error states remain distinct from a valid empty
   report.
-- [ ] Chart values are available in an accessible textual or tabular form.
+- [x] Chart values are available in an accessible textual or tabular form.
+  Evidence: `frontend/src/views/ReportsView.test.ts`, `aggregates chart values
+  at the selected semantic interval` checks the chart's accessible label and
+  its displayed period values.
 - [ ] Clicking a linked report record opens its corresponding record route.
 
 ### Flow: Use report controls in mobile Chrome

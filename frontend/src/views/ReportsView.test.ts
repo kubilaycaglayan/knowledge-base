@@ -128,6 +128,52 @@ describe("ReportsView", () => {
     expect(wrapper.find("button").exists()).toBe(true);
   });
 
+  it("keeps summary totals equal to the active breakdown when switching categories", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/reports?startDate=2026-08-24&endDate=2026-08-30",
+    );
+    vi.mocked(api).mockResolvedValueOnce({
+      period: "WEEK",
+      from: "2026-08-24",
+      to: "2026-08-30",
+      totalSeconds: 3600,
+      days: [
+        {
+          date: "2026-08-25",
+          totalSeconds: 3600,
+          paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+          sessionLabels: [{ id: "label-1", label: "Focus", seconds: 3600 }],
+        },
+      ],
+      paths: [{ id: "path-1", label: "Wander", seconds: 3600 }],
+      sessionLabels: [{ id: "label-1", label: "Focus", seconds: 3600 }],
+      calendarLabels: [],
+    });
+    const wrapper = mount(ReportsView, { global });
+    await flushPromises();
+    const breakdown = wrapper.getComponent({ name: "ProjectDurationTable" });
+    const categoryTotal = () =>
+      (breakdown.props("categories") as Array<{ seconds: number }>).reduce(
+        (sum, category) => sum + category.seconds,
+        0,
+      );
+    const initialSearch = window.location.search;
+
+    expect(breakdown.props("categoryLabel")).toBe("Path");
+    expect(categoryTotal()).toBe(3600);
+    expect(wrapper.get(".total-display").text()).toBe("01:00:00");
+
+    await wrapper.get('[aria-label="Group by"]').setValue("Labels");
+    await flushPromises();
+    expect(breakdown.props("categoryLabel")).toBe("Label");
+    expect(categoryTotal()).toBe(3600);
+    expect(breakdown.text()).toContain("Focus");
+    expect(wrapper.get(".total-display").text()).toBe("01:00:00");
+    expect(window.location.search).toBe(initialSearch);
+  });
+
   it("keeps the current report visible behind a refresh state while parameters load", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
