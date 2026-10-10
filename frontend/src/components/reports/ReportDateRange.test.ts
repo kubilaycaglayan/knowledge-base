@@ -1,5 +1,21 @@
 import { mount } from "@vue/test-utils";
 import ReportDateRange from "./ReportDateRange.vue";
+import {
+  endOfMonth,
+  endOfQuarter,
+  endOfWeek,
+  endOfYear,
+  format,
+  startOfMonth,
+  startOfQuarter,
+  startOfWeek,
+  startOfYear,
+  subDays,
+  subMonths,
+  subQuarters,
+  subWeeks,
+  subYears,
+} from "date-fns";
 
 vi.mock("@vuepic/vue-datepicker", () => ({
   VueDatePicker: {
@@ -45,6 +61,38 @@ describe("ReportDateRange", () => {
     expect(wrapper.emitted("update:modelValue")?.at(-1)).toEqual([
       { startDate: "2026-08-10", endDate: "2026-08-20" },
     ]);
+  });
+
+  it("uses complete inclusive boundaries for all named range presets", () => {
+    const wrapper = mount(ReportDateRange, {
+      props: { modelValue: { startDate: "2026-08-24", endDate: "2026-08-30" } },
+    });
+    const presets = wrapper
+      .findComponent({ name: "VueDatePicker" })
+      .props("presetDates") as Array<{ label: string; value: Date[] }>;
+    const today = new Date();
+    const currentWeek = startOfWeek(today, { weekStartsOn: 1 });
+    const previousWeek = subWeeks(today, 1);
+    const previousMonth = subMonths(today, 1);
+    const previousQuarter = subQuarters(today, 1);
+    const previousYear = subYears(today, 1);
+    const expected = [
+      [today, today],
+      [subDays(today, 1), subDays(today, 1)],
+      [currentWeek, endOfWeek(today, { weekStartsOn: 1 })],
+      [startOfWeek(previousWeek, { weekStartsOn: 1 }), endOfWeek(previousWeek, { weekStartsOn: 1 })],
+      [subDays(today, 13), today],
+      [startOfMonth(today), endOfMonth(today)],
+      [startOfMonth(previousMonth), endOfMonth(previousMonth)],
+      [startOfQuarter(today), endOfQuarter(today)],
+      [startOfQuarter(previousQuarter), endOfQuarter(previousQuarter)],
+      [startOfYear(today), endOfYear(today)],
+      [startOfYear(previousYear), endOfYear(previousYear)],
+    ];
+
+    expect(presets.map(({ value }) => value.map((date) => format(date, "yyyy-MM-dd")))).toEqual(
+      expected.map((range) => range.map((date) => format(date, "yyyy-MM-dd"))),
+    );
   });
 
   it("emits navigation events for adjacent ranges", async () => {
