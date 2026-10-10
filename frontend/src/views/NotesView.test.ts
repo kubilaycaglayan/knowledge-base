@@ -1117,7 +1117,7 @@ describe("NotesView", () => {
 
   it("archives a note after confirmation", async () => {
     const second = { ...note, id: "note-2", title: "Writing" };
-    let listLoads = 0;
+    let activeLoads = 0;
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -1126,8 +1126,12 @@ describe("NotesView", () => {
       async (path: string, options?: RequestInit) => {
         if (path === "/notes/note-1" && options?.method === "DELETE")
           return undefined;
-        if (path.startsWith("/notes?"))
-          return page(listLoads++ === 0 ? [note, second] : [second]);
+        if (path.startsWith("/notes?")) {
+          const archived = new URLSearchParams(path.split("?")[1]).get("archived");
+          return archived === "true"
+            ? page([{ ...note, deletedAt: "2026-09-03T10:00:00Z" }])
+            : page(activeLoads++ === 0 ? [note, second] : [second]);
+        }
         return undefined;
       },
     );
@@ -1146,6 +1150,10 @@ describe("NotesView", () => {
     expect(vi.mocked(api).mock.calls.some(([path, options]) =>
       path === "/notes/note-2" && options?.method === "DELETE",
     )).toBe(false);
+    await wrapper.get(".notes-pagination-summary button").trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".note-row").text()).toContain("Learning");
+    expect(wrapper.get(".note-row").text()).toContain("Graph theory");
     vi.unstubAllGlobals();
   });
 
