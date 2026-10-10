@@ -244,6 +244,12 @@ describe("NotesView", () => {
       (reloaded.get('input[aria-label="Search notes"]').element as HTMLInputElement).value,
     ).toBe("graph");
     expect(reloaded.findAll(".note-row")).toHaveLength(1);
+    await reloadedRouter.push("/notes");
+    await reloadedRouter.back();
+    await flushPromises();
+    expect(
+      (reloaded.get('input[aria-label="Search notes"]').element as HTMLInputElement).value,
+    ).toBe("graph");
     await reloaded.unmount();
   });
 
