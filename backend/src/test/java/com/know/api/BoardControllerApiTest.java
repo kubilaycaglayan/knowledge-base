@@ -625,4 +625,16 @@ class BoardControllerApiTest {
 
     verifyNoInteractions(boards, statuses, cards);
   }
+
+  @Test
+  void cardListRejectsInvalidArchivedFilterBeforeResourceLookup() throws Exception {
+    UUID boardId = UUID.randomUUID();
+
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards?archived=maybe")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards);
+  }
 }
