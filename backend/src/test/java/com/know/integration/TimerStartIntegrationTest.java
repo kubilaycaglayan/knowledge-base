@@ -74,7 +74,7 @@ class TimerStartIntegrationTest extends IntegrationTestSupport {
     JsonNode stoppedByCanonical = canonicalStop.json();
     assertEquals(first.get("id").asText(), stoppedByCanonical.get("id").asText());
     assertFalse(stoppedByCanonical.get("running").asBoolean());
-    assertTrue(api.get("/api/v1/timers/current", owner).json().isNull());
+    assertCurrentIsEmpty(owner);
 
     JsonNode second = startTimer(owner);
     ApiClient.Reply idStop =
@@ -83,18 +83,24 @@ class TimerStartIntegrationTest extends IntegrationTestSupport {
     JsonNode stoppedById = idStop.json();
     assertEquals(stoppedByCanonical.get("id").asText(), stoppedById.get("id").asText());
     assertEquals(stoppedByCanonical.get("running"), stoppedById.get("running"));
-    assertTrue(api.get("/api/v1/timers/current", owner).json().isNull());
+    assertCurrentIsEmpty(owner);
 
     startTimer(owner);
     ApiClient.Reply canonicalCancel = api.post("/api/v1/timers/cancel", owner, null);
     assertEquals(204, canonicalCancel.status(), canonicalCancel.body());
-    assertTrue(api.get("/api/v1/timers/current", owner).json().isNull());
+    assertCurrentIsEmpty(owner);
 
     JsonNode fourth = startTimer(owner);
     ApiClient.Reply idCancel =
         api.post("/api/v1/timers/" + fourth.get("id").asText() + "/cancel", owner, null);
     assertEquals(canonicalCancel.status(), idCancel.status(), idCancel.body());
-    assertTrue(api.get("/api/v1/timers/current", owner).json().isNull());
+    assertCurrentIsEmpty(owner);
+  }
+
+  private void assertCurrentIsEmpty(String owner) {
+    ApiClient.Reply current = api.get("/api/v1/timers/current", owner);
+    assertEquals(200, current.status(), current.body());
+    assertTrue(current.body().isBlank() || current.json().isNull(), current.body());
   }
 
   private JsonNode startTimer(String owner) {
