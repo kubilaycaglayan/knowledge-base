@@ -239,7 +239,12 @@ class PathAuthorizationApiTest {
     var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
 
     for (String body :
-        List.of("{\"pathIds\":null}", "{}", "null", "{\"pathIds\":\"not-an-array\"}")) {
+        List.of(
+            "{\"pathIds\":null}",
+            "{}",
+            "null",
+            "{\"pathIds\":\"not-an-array\"}",
+            "{\"pathIds\":[\"not-a-uuid\"]}")) {
       mvc.perform(
               put("/api/v1/paths/order")
                   .with(authentication(auth))

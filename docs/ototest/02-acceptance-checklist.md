@@ -188,7 +188,7 @@ browser interaction evidence remains a separate layer.
   read of the active state.
 - [x] `POST /api/v1/paths/{id}/pin` covers pin and unpin outcomes.
 - [x] `PUT /api/v1/paths/order` covers complete ordering, invalid/missing IDs,
-  malformed body and list-shape rejection before repository access, and
+  malformed body, list shape, and UUID item rejection before repository access, and
   persisted order (`PathAuthorizationApiTest.pathOrderingRejectsInvalidRequestBodiesBeforeRepositoryAccess`).
 
 ## Flow: Cover Labels operations
@@ -250,7 +250,7 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/notes/{id}/pin` covers pin/unpin state, version, and pinned
   ordering.
 - [x] `PUT /api/v1/notes/order` covers complete owned-note ordering and
-  malformed body and list-shape rejection before service access, and invalid or
+  malformed body, list shape, and UUID item rejection before service access, and invalid or
   foreign note IDs (`NoteApiTest.noteOrderingRejectsInvalidRequestBodiesBeforeServiceAccess`).
 - [x] Note line-history behavior covers unchanged lines, changed lines,
   first-edit migration behavior, and the documented large-document limit.

@@ -45,7 +45,12 @@ class NoteApiTest {
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
 
     for (String body :
-        List.of("{\"noteIds\":null}", "{}", "null", "{\"noteIds\":\"not-an-array\"}")) {
+        List.of(
+            "{\"noteIds\":null}",
+            "{}",
+            "null",
+            "{\"noteIds\":\"not-an-array\"}",
+            "{\"noteIds\":[\"not-a-uuid\"]}")) {
       mvc.perform(
               put("/api/v1/notes/order")
                   .with(authentication(auth))
