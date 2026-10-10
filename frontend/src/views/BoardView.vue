@@ -118,9 +118,16 @@ function measureKanbanHeight() {
   const trackerBounds = tracker?.getBoundingClientRect();
   const trackerVisible = trackerBounds && trackerBounds.height > 0;
   const viewport = window.visualViewport?.height || window.innerHeight;
+  const footer = document.querySelector<HTMLElement>(".board-footer");
+  const footerStyle = footer ? getComputedStyle(footer) : null;
+  const footerReserve = footer
+    ? footer.getBoundingClientRect().height +
+      parseFloat(footerStyle?.marginTop || "0") +
+      parseFloat(footerStyle?.marginBottom || "0")
+    : 0;
   const available = trackerVisible
-    ? trackerBounds.top - bounds.top - KANBAN_TRACKER_GAP
-    : viewport - bounds.top - (phone.value ? 40 : KANBAN_BOTTOM_RESERVE);
+    ? trackerBounds.top - bounds.top - footerReserve - KANBAN_TRACKER_GAP
+    : viewport - bounds.top - footerReserve - (phone.value ? 40 : KANBAN_BOTTOM_RESERVE);
   kanbanMaxHeight.value = Math.max(0, Math.floor(available));
 }
 const kanbanResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measureKanbanHeight());
