@@ -731,6 +731,7 @@ describe("NotesView", () => {
     expect(wrapper.get(".save-state").text()).toBe("Not saved");
     expect(title.element.value).toBe("Draft after offline save");
     await wrapper.get('button[aria-label="Retry save"]').trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
 
     expect(writes).toBe(2);

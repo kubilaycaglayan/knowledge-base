@@ -337,6 +337,9 @@ async function flushPendingSave() {
   await save();
   return status.value !== "error";
 }
+function retrySave() {
+  if (status.value === "error") scheduleSave();
+}
 onBeforeRouteLeave(flushPendingSave);
 onBeforeRouteUpdate(async (to, from) => {
   if (from.params.id && from.params.id !== to.params.id)
@@ -634,6 +637,15 @@ onBeforeUnmount(() => {
               ? "Not saved"
               : "Saved"
         }}</span>
+        <button
+          v-if="status === 'error'"
+          class="flat-button"
+          type="button"
+          aria-label="Retry save"
+          @click="retrySave"
+        >
+          Retry save
+        </button>
         <span class="toolbar-spacer"></span>
         <button
           class="flat-button"
