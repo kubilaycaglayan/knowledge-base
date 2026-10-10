@@ -1201,6 +1201,7 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Assign labels to a note
 
 - [x] Searching and selecting a NOTE label assigns it to the current note. Evidence: `NotesView.test.ts` / `suggests matching existing labels while typing and applies a selected label`.
+- [x] Removing an assigned label removes only that association. Evidence: `NotesView.test.ts` / `removes only the selected note label and saves the remaining associations` verifies the other selected label remains in the save payload.
 - [x] Creating a label from the picker assigns the intended new label. Evidence: `NotesView.test.ts` / `adds a new label from the note label picker` and `creates a note label with Enter in the picker`.
 
 ### Flow: Archive one note
