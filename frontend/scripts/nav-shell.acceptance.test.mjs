@@ -339,6 +339,11 @@ it("returns the Calendar to today with a touch-sized navigation control", async 
     year: String(new Date().getFullYear()),
     month: String(new Date().getMonth()),
     day: String(new Date().getDate()),
+    date: [
+      new Date().getFullYear(),
+      String(new Date().getMonth() + 1).padStart(2, "0"),
+      String(new Date().getDate()).padStart(2, "0"),
+    ].join("-"),
   }));
 
   await page.getByRole("button", { name: "Previous month" }).tap();
@@ -358,6 +363,10 @@ it("returns the Calendar to today with a touch-sized navigation control", async 
   assert.equal(await page.getByRole("combobox", { name: "Calendar month" }).inputValue(), current.month);
   assert.equal(await page.locator('button.calendar-day[aria-pressed="true"] time').textContent(), current.day);
   assert.ok(await page.locator("button.calendar-day").count() >= 35);
+  await page.waitForFunction(
+    (expected) => new URL(location.href).searchParams.get("date") === expected,
+    current.date,
+  );
 });
 
 it("selects a calendar day with touch and updates its details panel", async (t) => {
