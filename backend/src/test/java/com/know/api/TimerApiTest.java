@@ -104,6 +104,27 @@ class TimerApiTest {
   }
 
   @Test
+  void timerStartAndResumeRejectUnknownSourcesBeforeServiceAccess() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+
+    mvc.perform(
+            post("/api/v1/timers")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"labelIds\":[],\"source\":\"UNKNOWN\"}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            post("/api/v1/timers/resume")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"source\":\"UNKNOWN\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
   void oversizedTimerDescriptionIsRejectedBeforeServiceCall() throws Exception {
     var auth =
         new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
