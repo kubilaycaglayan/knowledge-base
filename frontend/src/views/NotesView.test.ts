@@ -1328,7 +1328,7 @@ describe("NotesView", () => {
       method: "POST",
     });
     expect(wrapper.findAll(".note-row")).toHaveLength(0);
-    expect(wrapper.text()).toContain("Your notes will appear here.");
+    expect(wrapper.text()).toContain("No archived notes.");
     expect(wrapper.get("button").text()).toBe("Active notes");
 
     await wrapper.get(".notes-pagination-summary button").trigger("click");
