@@ -55,6 +55,19 @@ class TimerApiTest {
   }
 
   @Test
+  void timeEntryHistoryRejectsNonIntegerPaginationBeforeServiceAccess() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/time-entries?page=first").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+    mvc.perform(get("/api/v1/time-entries?page=0&size=large").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
   void timerStartPassesExplicitSourceAndTargetsToService() throws Exception {
     UUID user = UUID.randomUUID(), path = UUID.randomUUID(), label = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());

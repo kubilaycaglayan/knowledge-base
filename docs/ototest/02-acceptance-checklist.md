@@ -332,7 +332,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
   optional page/size pagination metadata, including routing unpaged requests
   to the unpaged service operation and paged requests with their query values
-  (`TimerApiTest.timeEntryHistoryRoutesUnpagedAndExplicitlyPagedRequestsToService`).
+  (`TimerApiTest.timeEntryHistoryRoutesUnpagedAndExplicitlyPagedRequestsToService`);
+  non-integer page/size values return 400 before service execution
+  (`TimerApiTest.timeEntryHistoryRejectsNonIntegerPaginationBeforeServiceAccess`).
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
   persisted targets/duration, foreign ownership, and invalid interval boundaries;
