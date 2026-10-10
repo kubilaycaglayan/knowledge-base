@@ -804,10 +804,11 @@ the extension has its own scope in OTOTEST-04.
 - [ ] Chart and filter controls remain reachable without unintended page
   horizontal overflow.
   Supplemental evidence only: `scripts/nav-shell.acceptance.test.mjs`,
-  `keeps report date and total controls reachable on a phone viewport` checks
-  Today/Yesterday presets and the exact previous-day range by touch at 390px in
-  desktop Chromium. It does not satisfy the real mobile Chrome acceptance
-  setup above.
+  `keeps report date and total controls reachable on a phone viewport` opens
+  the range picker, chooses a custom date interval by touch, exercises
+  Today/Yesterday and previous-range controls, and checks control bounds and
+  overflow at 390px in desktop Chromium. It does not satisfy the real mobile
+  Chrome acceptance setup above.
 
 ## Calendar
 
