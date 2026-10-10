@@ -129,8 +129,10 @@ loopback host permission.
   reimports it, recovers from invalid Clockify JSON, and checks the imported
   batch through the API.
 
-Extension Notes and signed-in timer flows are now covered. Extension worker
-restart and denied-permission behavior remain open.
+Extension Notes and signed-in timer flows are now covered. Worker restart and
+reconnect are covered by reopening the persistent Chromium profile. Denied
+host-permission behavior remains open because the test installation grants
+the declared loopback host permission.
 
 ## Acceptance
 
