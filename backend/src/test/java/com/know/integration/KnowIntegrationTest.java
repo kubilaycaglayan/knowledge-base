@@ -2811,6 +2811,21 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             "{\"labels\":[{\"labelId\":null}]}");
     assertEquals(HttpStatus.BAD_REQUEST, missingLabelId.getStatusCode());
 
+    ResponseEntity<JsonNode> oversizedDayNote =
+        put(
+            "/api/v1/calendar/days/2026-09-15",
+            token,
+            "{\"note\":\"" + "n".repeat(20001) + "\",\"labels\":[]}");
+    assertEquals(HttpStatus.BAD_REQUEST, oversizedDayNote.getStatusCode());
+    String maximumDayNote = "n".repeat(20000);
+    ResponseEntity<JsonNode> dayAtLimit =
+        put(
+            "/api/v1/calendar/days/2026-09-15",
+            token,
+            "{\"note\":\"" + maximumDayNote + "\",\"labels\":[]}");
+    assertEquals(HttpStatus.OK, dayAtLimit.getStatusCode());
+    assertEquals(maximumDayNote, dayAtLimit.getBody().get("note").asText());
+
     ResponseEntity<JsonNode> duplicateLabels =
         put(
             "/api/v1/calendar/days/2026-09-15",
@@ -2845,6 +2860,24 @@ class KnowIntegrationTest extends IntegrationTestSupport {
             token,
             "{\"startDate\":\"2026-01-01\",\"labels\":[]}");
     assertEquals(HttpStatus.BAD_REQUEST, missingRangeEnd.getStatusCode());
+
+    ResponseEntity<JsonNode> oversizedRangeNote =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-01-02\",\"endDate\":\"2026-01-02\",\"note\":\""
+                + "n".repeat(20001)
+                + "\",\"labels\":[]}");
+    assertEquals(HttpStatus.BAD_REQUEST, oversizedRangeNote.getStatusCode());
+    ResponseEntity<JsonNode> rangeNoteAtLimit =
+        put(
+            "/api/v1/calendar/days/range",
+            token,
+            "{\"startDate\":\"2026-01-02\",\"endDate\":\"2026-01-02\",\"note\":\""
+                + maximumDayNote
+                + "\",\"labels\":[]}");
+    assertEquals(HttpStatus.OK, rangeNoteAtLimit.getStatusCode());
+    assertEquals(maximumDayNote, rangeNoteAtLimit.getBody().get(0).get("note").asText());
 
     ResponseEntity<JsonNode> reversedRange =
         put(
