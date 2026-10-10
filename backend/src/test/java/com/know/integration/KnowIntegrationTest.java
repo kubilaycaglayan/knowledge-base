@@ -682,6 +682,30 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void knowledgeBaseCsvImportRejectsMalformedAndUnsupportedRowsWithoutPartialState() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> malformed =
+        importCsv(token, "entity,id,payload\npath,not-a-uuid,{\"name\":\"Malformed\"}\n");
+    assertEquals(HttpStatus.BAD_REQUEST, malformed.getStatusCode());
+    assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/imports/knowledge-base/batches", token).getBody().isEmpty());
+
+    String validId = UUID.randomUUID().toString();
+    String invalidId = UUID.randomUUID().toString();
+    String csv =
+        "entity,id,payload\n"
+            + csvRow("path", UUID.fromString(validId), "{\"name\":\"Valid earlier row\"}")
+            + csvRow(
+                "path", UUID.fromString(invalidId),
+                "{\"name\":\"Unsupported later row\",\"status\":\"UNSUPPORTED\"}");
+    ResponseEntity<JsonNode> unsupported = importCsv(token, csv);
+    assertEquals(HttpStatus.BAD_REQUEST, unsupported.getStatusCode());
+    assertTrue(get("/api/v1/paths", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/boards?includeHidden=true", token).getBody().isEmpty());
+    assertTrue(get("/api/v1/imports/knowledge-base/batches", token).getBody().isEmpty());
+  }
+
+  @Test
   void knowledgeBaseCsvExportHasDownloadHeadersIsOwnerScopedAndRoundTripsEscapedText() {
     String owner = freshToken();
     String importer = freshToken();
