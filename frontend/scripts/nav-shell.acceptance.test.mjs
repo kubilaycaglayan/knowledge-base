@@ -1008,6 +1008,38 @@ it("selects a calendar day with touch and updates its details panel", async (t) 
   );
 });
 
+it("edits and saves a Calendar day at phone width without horizontal overflow", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const target = page.locator("button.calendar-day:not(.muted)").nth(2);
+  await target.tap();
+
+  const editor = page.locator(".day-editor");
+  await editor.locator("textarea").fill("Phone width calendar note");
+  const save = page.getByRole("button", { name: "Save day" });
+  await save.scrollIntoViewIfNeeded();
+  const saveBounds = await save.boundingBox();
+  const viewport = page.viewportSize();
+  assert.ok(saveBounds && viewport);
+  assert.ok(saveBounds.x >= 0 && saveBounds.x + saveBounds.width <= viewport.width);
+  assert.ok(saveBounds.y + saveBounds.height <= viewport.height);
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    true,
+  );
+
+  const saved = page.waitForResponse((response) =>
+    response.url().includes("/calendar/days/") &&
+    response.request().method() === "PUT",
+  );
+  await save.tap();
+  await saved;
+  await page.reload();
+  await page.locator(".calendar-page").waitFor();
+  assert.equal(await page.locator(".day-editor textarea").inputValue(), "Phone width calendar note");
+});
+
 it("selects a calendar day with the keyboard and retains focus", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);
