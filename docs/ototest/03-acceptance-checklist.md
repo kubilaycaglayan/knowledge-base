@@ -945,13 +945,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Export Knowledge Base data
 
-- [ ] The export action downloads the selected supported format.
-- [ ] The export includes the signed-in user's supported records and
-  relationships.
-- [ ] Text containing commas, quotes, Unicode, and line breaks remains
-  readable in the exported file.
-- [ ] An export failure is reported without presenting a partial file as
-  complete.
+- [x] The export action downloads the selected supported format. Evidence: `SettingsView.test.ts` / `downloads a Knowledge Base CSV from the Export tab` checks the action; `nav-shell.acceptance.test.mjs` / `downloads the Knowledge Base export from Settings in the browser` verifies the browser download filename and completion status.
+- [x] The export includes the signed-in user's supported records and relationships. Evidence: `KnowIntegrationTest.knowledgeBaseCsvExportHasDownloadHeadersIsOwnerScopedAndRoundTripsEscapedText` checks owner scoping and exported records.
+- [x] Text containing commas, quotes, Unicode, and line breaks remains readable in the exported file. Evidence: the same integration test checks escaped text survives export and re-import.
+- [x] An export failure is reported without presenting a partial file as complete. Evidence: `SettingsView.test.ts` / `reports an export failure without claiming a file was downloaded` verifies a failed download shows the failure status.
 
 ### Flow: Navigate Settings sections
 

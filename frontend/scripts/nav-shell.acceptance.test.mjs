@@ -491,6 +491,18 @@ it("opens each primary navigation route and updates the active link and title", 
   await page.waitForFunction(() => document.title === "Knowledge Base · Logs");
 });
 
+it("downloads the Knowledge Base export from Settings in the browser", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await visit(page, "/settings");
+  await page.getByRole("tab", { name: "Export" }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download Knowledge Base CSV" }).click();
+  const file = await download;
+  assert.equal(file.suggestedFilename(), "knowledge-base-export.csv");
+  await page.getByRole("status").filter({ hasText: "Your Knowledge Base export is ready." }).waitFor();
+  assert.ok(requests.includes("/imports/knowledge-base/export"));
+});
+
 it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });

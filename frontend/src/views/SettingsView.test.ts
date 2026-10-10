@@ -65,6 +65,17 @@ describe("SettingsView", () => {
     expect(wrapper.text()).toContain("Your Knowledge Base export is ready.");
   });
 
+  it("reports an export failure without claiming a file was downloaded", async () => {
+    vi.mocked(download).mockRejectedValue(new Error("offline"));
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get('[role="tab"][aria-controls="settings-panel-export"]').trigger("click");
+    await wrapper.get("button.primary").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="status"]').text()).toBe("Could not export your data. Try again.");
+  });
+
   it("requires the current password for accounts that also use Google sign-in", async () => {
     vi.mocked(api).mockResolvedValue({
       email: "person@example.com",
