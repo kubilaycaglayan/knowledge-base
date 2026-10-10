@@ -520,12 +520,15 @@ describe("SessionsView", () => {
     });
     const wrapper = mount(SessionsView);
     await flushPromises();
-    await wrapper
-      .get('nav[aria-label="Session pages"]')
-      .findAll("button")[1]
-      .trigger("click");
+    const pages = wrapper.get('nav[aria-label="Session pages"]').findAll("button");
+    expect(pages.map((button) => button.text())).toEqual(["1", "2"]);
+    expect(pages[0].attributes("aria-current")).toBe("page");
+    expect(pages[1].attributes("aria-current")).toBeUndefined();
+    await pages[1].trigger("click");
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith("/time-entries?page=1&size=50");
+    expect(pages[0].attributes("aria-current")).toBeUndefined();
+    expect(pages[1].attributes("aria-current")).toBe("page");
   });
 
   it("rejects an edit when either time field is missing", async () => {

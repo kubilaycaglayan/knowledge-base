@@ -332,8 +332,10 @@ the extension has its own scope in OTOTEST-04.
   completion time with path and label context` checks the rendered timestamp,
   description, Path, and label; the fixture contains an available session
   label.
-- [ ] Session history pagination exposes the current page and available
-  previous/next actions.
+- [x] Session history pagination exposes the current page and available
+  previous/next actions. Evidence: `SessionsView.test.ts` / `loads the selected
+  pagination page` verifies page 1 is marked current, page 2 is available, and
+  the current-page marker follows the selected page after loading it.
 - [ ] Loading another page preserves stable chronological order without
   repeating rows.
 
