@@ -199,6 +199,40 @@ describe("NotesView", () => {
     reopened.unmount();
   });
 
+  it("keeps note order after a failed reorder and allows a retry", async () => {
+    const second = { ...note, id: "note-2", title: "Writing" };
+    let orderedNotes = [note, second];
+    let attempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path.startsWith("/notes?")) return page(orderedNotes);
+      if (path === "/notes/order" && options?.method === "PUT") {
+        attempts += 1;
+        if (attempts === 1) throw new Error("offline");
+        const ids = JSON.parse(String(options.body)).noteIds;
+        orderedNotes = ids.map((id: string) => [note, second].find((item) => item.id === id)!);
+      }
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const dragFirstOntoSecond = async () => {
+      await wrapper.findAll(".note-row")[0].trigger("dragstart");
+      await wrapper.findAll(".note-row")[1].trigger("drop");
+      await flushPromises();
+    };
+
+    await dragFirstOntoSecond();
+    expect(wrapper.findAll(".note-row strong").map((title) => title.text())).toEqual(["Learning", "Writing"]);
+    expect(wrapper.get('[role="alert"]').text()).toContain("Could not reorder notes.");
+    await dragFirstOntoSecond();
+    expect(attempts).toBe(2);
+    expect(wrapper.findAll(".note-row strong").map((title) => title.text())).toEqual(["Writing", "Learning"]);
+    wrapper.unmount();
+  });
+
   it("reuses the cached notes page when returning to the list", async () => {
     const firstRouter = router();
     await firstRouter.push("/notes");
