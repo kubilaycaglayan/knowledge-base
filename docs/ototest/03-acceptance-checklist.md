@@ -396,10 +396,13 @@ the extension has its own scope in OTOTEST-04.
   --test-name-pattern='restores report filters after navigation'
   scripts/nav-shell.acceptance.test.mjs` (desktop Chromium; mocked API).
 - [x] Reloading a report URL restores its date range and aggregation.
-- [x] Malformed report dates and unsupported aggregation values fall back to the current week and Daily aggregation. Evidence: `frontend/src/views/ReportsView.test.ts`, `falls back to the default range when the URL contains malformed report filters`.
   Evidence: `cd frontend && node --test --test-name-pattern='loads report
   filters from a direct query URL' scripts/nav-shell.acceptance.test.mjs`
   (desktop Chromium; mocked API).
+- [x] Malformed report dates and unsupported aggregation values fall back to
+  the current week and Daily aggregation. Evidence:
+  `frontend/src/views/ReportsView.test.ts`, `falls back to the default range
+  when the URL contains malformed report filters`.
 
 ### Flow: Filter report totals by path
 
