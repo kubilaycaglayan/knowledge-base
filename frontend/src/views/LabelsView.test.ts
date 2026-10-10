@@ -246,6 +246,34 @@ describe("LabelsView", () => {
     );
   });
 
+  it("rejects blank and duplicate label names without losing the draft", async () => {
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/labels" && !options)
+        return [{ id: "one", name: "Study", color: "#2878D5", scopes: ["NOTE"] }];
+      if (path === "/labels" && options?.method === "POST")
+        throw new Error("duplicate");
+      return undefined;
+    });
+    const wrapper = mount(LabelsView, { global: { stubs: { PromptDialog: true } } });
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add label"]').trigger("click");
+    const form = wrapper.get(".label-create-form");
+    const name = wrapper.get('input[name="label-name"]');
+
+    await name.setValue("   ");
+    await form.trigger("submit");
+    expect(wrapper.get('[role="alert"]').text()).toBe("Enter a name.");
+    expect(vi.mocked(api).mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
+
+    await name.setValue("Study");
+    await form.trigger("submit");
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "Could not create this label. Names must be unique.",
+    );
+    expect((name.element as HTMLInputElement).value).toBe("Study");
+  });
+
   it("shows Logs as an editable label scope", async () => {
     vi.mocked(api).mockResolvedValue([
       {
