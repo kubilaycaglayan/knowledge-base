@@ -522,8 +522,13 @@ browser interaction evidence remains a separate layer.
   list behavior.
 - [x] `DELETE /api/v1/imports/knowledge-base/batches/{id}` covers undo,
   imported-log removal, foreign-batch rejection, and repeat behavior.
-- [ ] Import and export coverage verifies labels/scopes and linked path,
-  session, note, calendar, and log data according to the format contract.
+- [x] Import and export coverage verifies label scopes and assignments plus
+  linked path, session, note, calendar, activity, and log data according to the
+  CSV contract
+  (`KnowIntegrationTest.knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo`,
+  `KnowIntegrationTest.knowledgeBaseCsvExportHasDownloadHeadersIsOwnerScopedAndRoundTripsEscapedText`,
+  `KnowledgeBaseTransferServiceTest.exportContainsActiveDomainRecordsAndNestedAssignments`,
+  and `KnowledgeBaseTransferServiceTest.exportContainsLogsAndTheirLabelAssignments`).
 
 ## Flow: Verify ownership and authentication boundaries
 
