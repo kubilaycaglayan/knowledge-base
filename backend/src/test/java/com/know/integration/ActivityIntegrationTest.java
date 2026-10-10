@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,10 +96,12 @@ class ActivityIntegrationTest extends IntegrationTestSupport {
     JsonNode toBoundary = activities(owner, "?to=" + atBoundary);
     assertTrue(containsActivity(toBoundary, firstActivity.get("id").asText()), "The upper date bound is inclusive");
 
-    String equivalentOffset = occurredAt.atOffset(ZoneOffset.ofHours(-5)).toString();
-    JsonNode offsetRange = activities(owner, "?from=" + equivalentOffset + "&to=" + equivalentOffset);
-    assertEquals(1, offsetRange.size(), "Offset timestamps resolve to the same instant");
-    assertEquals(firstActivity.get("id").asText(), offsetRange.get(0).get("id").asText());
+    for (ZoneOffset offset : List.of(ZoneOffset.ofHours(-5), ZoneOffset.ofHours(3))) {
+      String equivalentOffset = occurredAt.atOffset(offset).toString();
+      JsonNode offsetRange = activities(owner, "?from=" + equivalentOffset + "&to=" + equivalentOffset);
+      assertEquals(1, offsetRange.size(), "Offset timestamps resolve to the same instant: " + offset);
+      assertEquals(firstActivity.get("id").asText(), offsetRange.get(0).get("id").asText());
+    }
 
     assertTrue(activities(owner, "?from=" + occurredAt.plusSeconds(60)).isEmpty());
     assertTrue(activities(owner, "?to=" + occurredAt.minusSeconds(60)).isEmpty());
