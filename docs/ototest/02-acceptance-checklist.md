@@ -188,7 +188,8 @@ browser interaction evidence remains a separate layer.
   read of the active state.
 - [x] `POST /api/v1/paths/{id}/pin` covers pin and unpin outcomes.
 - [x] `PUT /api/v1/paths/order` covers complete ordering, invalid/missing IDs,
-  and persisted order.
+  null-list rejection before repository access, and persisted order
+  (`PathAuthorizationApiTest.pathOrderingRejectsNullIdListBeforeRepositoryAccess`).
 
 ## Flow: Cover Labels operations
 

@@ -92,7 +92,7 @@ public class PathController {
 
   record PinRequest(boolean pinned) {}
 
-  record OrderRequest(List<UUID> pathIds) {}
+  record OrderRequest(@NotNull List<UUID> pathIds) {}
 
   private UUID user(Authentication a) {
     return UUID.fromString(a.getName());
@@ -211,7 +211,7 @@ public class PathController {
   @PutMapping("/order")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @Transactional
-  public void order(Authentication a, @RequestBody OrderRequest request) {
+  public void order(Authentication a, @Valid @RequestBody OrderRequest request) {
     UUID owner = user(a);
     List<Path> owned = paths.findByUserIdAndIdIn(owner, request.pathIds());
     if (owned.size() != request.pathIds().stream().distinct().count())
