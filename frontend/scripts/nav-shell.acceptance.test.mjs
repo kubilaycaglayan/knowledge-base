@@ -318,6 +318,35 @@ it("selects a calendar range with touch taps and keyboard input", async (t) => {
   );
 });
 
+it("returns the Calendar to today with a touch-sized navigation control", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await page.locator(".calendar-page").waitFor();
+  const current = await page.evaluate(() => ({
+    year: String(new Date().getFullYear()),
+    month: String(new Date().getMonth()),
+    day: String(new Date().getDate()),
+  }));
+
+  await page.getByRole("button", { name: "Previous month" }).tap();
+  const todayButton = page.getByRole("button", { name: "Today" });
+  const bounds = await todayButton.boundingBox();
+  assert.ok(bounds && bounds.height >= 44);
+  const navigationCenters = await page.locator(".calendar-navigation > *").evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    }),
+  );
+  assert.ok(Math.max(...navigationCenters) - Math.min(...navigationCenters) < 1);
+  await todayButton.tap();
+
+  assert.equal(await page.getByRole("combobox", { name: "Calendar year" }).inputValue(), current.year);
+  assert.equal(await page.getByRole("combobox", { name: "Calendar month" }).inputValue(), current.month);
+  assert.equal(await page.locator('button.calendar-day[aria-pressed="true"] time').textContent(), current.day);
+  assert.ok(await page.locator("button.calendar-day").count() >= 35);
+});
+
 it("opens a session detail when the browser loads its deep link directly", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);

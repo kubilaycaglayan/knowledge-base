@@ -818,6 +818,9 @@
   padding: 4px 8px;
   font-size: 12px;
 }
+.calendar-today {
+  min-height: 44px;
+}
 .reports-actions {
   min-width: 0;
   max-width: 100%;
@@ -1890,6 +1893,13 @@
   }
 }
 @media (max-width: 800px) {
+  .calendar-navigation {
+    gap: 4px;
+  }
+  .calendar-navigation > .ghost {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
   .reports-actions {
     width: 100%;
   }

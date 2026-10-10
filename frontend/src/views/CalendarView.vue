@@ -274,6 +274,18 @@ function nextMonth() {
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
+function goToToday() {
+  const today = new Date();
+  pointerRangeStart.value = null;
+  suppressDayClick.value = false;
+  selectingRange.value = false;
+  tapRangeMode.value = false;
+  rangeStart.value = null;
+  rangeEnd.value = null;
+  month.value = startOfMonth(today);
+  selected.value = format(today, "yyyy-MM-dd");
+  void load();
+}
 function changeMonth(monthIndex: number) {
   month.value = new Date(month.value.getFullYear(), monthIndex, 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
@@ -412,6 +424,14 @@ watch(
             </option>
           </select>
         </div>
+        <button
+          class="ghost calendar-today"
+          type="button"
+          aria-label="Today"
+          @click="goToToday"
+        >
+          Today
+        </button>
         <button class="ghost" aria-label="Next month" @click="nextMonth">
           →
         </button>

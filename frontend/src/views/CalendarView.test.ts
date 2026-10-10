@@ -415,6 +415,12 @@ describe("CalendarView", () => {
     expect(
       wrapper.get('button.calendar-day[aria-pressed="true"] time').text(),
     ).toBe(String(today.getDate()));
+
+    await wrapper.get('[aria-label="Today"]').trigger("click");
+    await flushPromises();
+    expect(
+      wrapper.get('button.calendar-day[aria-pressed="true"] time').text(),
+    ).toBe(String(today.getDate()));
   });
 
   it("changes the calendar month and year from their selectors", async () => {
