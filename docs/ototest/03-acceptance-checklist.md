@@ -487,6 +487,10 @@ the extension has its own scope in OTOTEST-04.
 - [x] Confirming deletion removes only the selected session from history.
   Evidence: `SessionsView.test.ts` / `confirms and soft-deletes a completed
   session` removes the selected row and verifies the other row remains.
+- [x] A failed deletion leaves the record available for a confirmed retry.
+  Evidence: `SessionsView.test.ts` / `keeps a completed session after delete
+  fails and removes it on retry` checks the visible error, retained card, and
+  removal after the second request.
 
 ### Flow: Reconcile live timer updates
 

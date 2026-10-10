@@ -635,6 +635,50 @@ describe("SessionsView", () => {
     expect(wrapper.text()).not.toContain("Selected for removal");
   });
 
+  it("keeps a completed session after delete fails and removes it on retry", async () => {
+    let deleteAttempts = 0;
+    let sessions = [{
+      id: "retry-session",
+      startedAt: "2026-08-28T11:00:00Z",
+      endedAt: "2026-08-28T12:00:00Z",
+      durationSeconds: 3600,
+      description: "Retry this removal",
+      source: "WEB",
+      pathId: "path-1",
+      labelIds: [],
+    }];
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.startsWith("/time-entries?"))
+        return { page: 0, totalPages: 1, totalSessions: sessions.length, sessions };
+      if (path === "/paths") return [{ id: "path-1", name: "Learning", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/time-entries/retry-session" && init?.method === "DELETE") {
+        deleteAttempts += 1;
+        if (deleteAttempts === 1) throw new Error("offline");
+        sessions = [];
+        return undefined;
+      }
+      return undefined;
+    });
+    const wrapper = mount(SessionsView);
+    await flushPromises();
+    const removeSelected = async () => {
+      await wrapper.get("article.session-card button.danger").trigger("click");
+      await wrapper.get(".prompt-dialog button.primary").trigger("click");
+      await flushPromises();
+    };
+
+    await removeSelected();
+    expect(wrapper.get('[role="alert"]').text()).toContain("Could not remove this session.");
+    expect(wrapper.get("article.session-card").text()).toContain("Retry this removal");
+
+    await removeSelected();
+    expect(deleteAttempts).toBe(2);
+    expect(wrapper.findAll("article.session-card")).toHaveLength(0);
+    expect(wrapper.text()).not.toContain("Retry this removal");
+    wrapper.unmount();
+  });
+
   it("loads the selected pagination page", async () => {
     const pageRecords = [
       [
