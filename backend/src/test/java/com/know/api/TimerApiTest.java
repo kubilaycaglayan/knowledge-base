@@ -204,6 +204,58 @@ class TimerApiTest {
   }
 
   @Test
+  void timerAndEntryDescriptionsAcceptTheirMaximumLength() throws Exception {
+    UUID user = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());
+    UUID timer = UUID.randomUUID();
+    String description = "d".repeat(5000);
+    String start = "2026-10-09T10:00:00Z";
+    String end = "2026-10-09T11:00:00Z";
+
+    mvc.perform(
+            post("/api/v1/timers")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"labelIds\":[],\"description\":\"" + description + "\"}"))
+        .andExpect(status().isCreated());
+    mvc.perform(
+            put("/api/v1/timers/" + timer)
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"labelIds\":[],\"startedAt\":\""
+                        + start
+                        + "\",\"description\":\""
+                        + description
+                        + "\"}"))
+        .andExpect(status().isOk());
+    mvc.perform(
+            post("/api/v1/time-entries")
+                .with(authentication(auth))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"labelIds\":[],\"startedAt\":\""
+                        + start
+                        + "\",\"endedAt\":\""
+                        + end
+                        + "\",\"description\":\""
+                        + description
+                        + "\"}"))
+        .andExpect(status().isOk());
+
+    verify(service).start(user, null, List.of(), description, null);
+    verify(service).configure(
+        user, timer, null, List.of(), java.time.Instant.parse(start), null, description);
+    verify(service).manual(
+        user,
+        null,
+        List.of(),
+        java.time.Instant.parse(start),
+        java.time.Instant.parse(end),
+        description);
+  }
+
+  @Test
   void canonicalAndExplicitStopRoutesUseTheSameTimerAndResponse() throws Exception {
     UUID user = UUID.randomUUID(), timer = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(user.toString(), null, List.of());

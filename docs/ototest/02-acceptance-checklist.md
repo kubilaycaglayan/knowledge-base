@@ -283,6 +283,8 @@ browser interaction evidence remains a separate layer.
   and owner-scoped timer IDs; null label lists and missing start values are
   rejected before service execution
   (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
+  Timer start, running update, and manual entry each accept a 5000-character
+  description (`TimerApiTest.timerAndEntryDescriptionsAcceptTheirMaximumLength`).
 - [x] `POST /api/v1/timers/stop` covers stopping the current timer.
 - [x] `POST /api/v1/timers/{id}/stop` covers the explicit-ID alias and its
   parity with the canonical stop behavior.
@@ -307,8 +309,9 @@ browser interaction evidence remains a separate layer.
   preservation of the paused draft (`TimerPauseIntegrationTest.resumeRequiresAPausedSession`).
 - [x] `POST /api/v1/time-entries` covers manual entry creation, persisted
   duration/time, and missing/reversed interval validation; null label lists,
-  missing end times, and over-limit descriptions return 400
-  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
+  missing end times, and over-limit descriptions return 400; exact maximum
+  description length succeeds (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`
+  and `TimerApiTest.timerAndEntryDescriptionsAcceptTheirMaximumLength`).
 - [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
   optional page/size pagination metadata.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
