@@ -114,6 +114,27 @@ class BoardControllerApiTest {
     verifyNoInteractions(statuses, cards, paths, labels, scopes);
   }
 
+  @Test
+  void statusCreateAndUpdateValidateRequiredNameAndMaximumLength() throws Exception {
+    String board = "/api/v1/boards/" + UUID.randomUUID();
+    String status = board + "/statuses/" + UUID.randomUUID();
+    String[][] requests = {
+      {"POST", board + "/statuses", " "},
+      {"POST", board + "/statuses", "s".repeat(81)},
+      {"PUT", status, " "},
+      {"PUT", status, "s".repeat(81)}
+    };
+    for (String[] request : requests) {
+      mvc.perform(
+              (request[0].equals("POST") ? post(request[1]) : put(request[1]))
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"name\":\"" + request[2] + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
   @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
     Board board = new Board(owner, "Archived");
     board.archive();
