@@ -400,6 +400,37 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+@media (orientation: landscape) and (max-height: 500px) {
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) {
+    inset-inline: auto;
+    right: 8px;
+    width: max-content;
+    padding: 0;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker {
+    width: auto;
+    max-width: calc(100vw - 16px);
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-bar {
+    gap: 4px;
+    padding: 0;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-summary,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-path,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-context {
+    display: none;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-action,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-pause,
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .floating-tracker-host:not(:has(.floating-tracker-panel)) .floating-tracker-toggle {
+    width: 44px;
+    height: 44px;
+  }
+}
 .tracker-prompt-host {
   display: contents;
 }

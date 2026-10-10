@@ -125,8 +125,11 @@ function measureKanbanHeight() {
       parseFloat(footerStyle?.marginTop || "0") +
       parseFloat(footerStyle?.marginBottom || "0")
     : 0;
+  const trackerGap = window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches
+    ? 4
+    : KANBAN_TRACKER_GAP;
   const available = trackerVisible
-    ? trackerBounds.top - bounds.top - footerReserve - KANBAN_TRACKER_GAP
+    ? trackerBounds.top - bounds.top - footerReserve - trackerGap
     : viewport - bounds.top - footerReserve - (phone.value ? 40 : KANBAN_BOTTOM_RESERVE);
   kanbanMaxHeight.value = Math.max(0, Math.floor(available));
 }
