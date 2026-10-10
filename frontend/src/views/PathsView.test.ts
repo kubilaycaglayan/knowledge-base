@@ -1014,9 +1014,25 @@ describe("PathsView", () => {
       color: "#E8754E",
       status: "ACTIVE",
       pinned: false,
+      boardId: "board-1",
+      boardHidden: false,
     };
     vi.mocked(api).mockImplementation(async (requestPath: string) => {
       if (requestPath === "/paths") return [path];
+      if (requestPath === "/labels?scope=TIME_ENTRY") return [];
+      if (requestPath === "/paths/path-1/summary")
+        return {
+          path,
+          trackedSeconds: 3600,
+          recentActivity: [
+            {
+              id: "restored-activity",
+              timeEntryId: "restored-session",
+              title: "Restored session",
+              occurredAt: "2026-08-28T10:00:00Z",
+            },
+          ],
+        };
       return undefined;
     });
     const wrapper = mount(PathsView);
@@ -1038,6 +1054,23 @@ describe("PathsView", () => {
     expect(vi.mocked(api)).toHaveBeenCalledWith("/paths/path-1/restore", {
       method: "POST",
     });
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "Edit")!
+      .trigger("click");
+    expect(
+      wrapper.get<HTMLInputElement>('input[role="switch"][name="boardVisible"]').element.checked,
+    ).toBe(true);
+    await wrapper
+      .findAll("form.path-edit button")
+      .find((button) => button.text().trim() === "Cancel")!
+      .trigger("click");
+    await wrapper
+      .findAll("button.text-button")
+      .find((button) => button.text() === "History")!
+      .trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".path-history-dialog").text()).toContain("Restored session");
   });
 
   it("reports an undo failure after removing a path", async () => {

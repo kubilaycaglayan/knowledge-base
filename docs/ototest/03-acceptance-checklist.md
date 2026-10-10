@@ -613,8 +613,11 @@ the extension has its own scope in OTOTEST-04.
 - [x] The removed path can be restored using the offered recovery action.
   Evidence: `frontend/src/views/PathsView.test.ts`, `restores a removed path
   to the active list after undo` checks the visible Path returns after restore.
-- [ ] Restoring the path makes its history and associated board available
-  again.
+- [x] Restoring the path makes its history and associated board available
+  again. Evidence: `PathsView.test.ts` / `restores a removed path to the active
+  list after undo` verifies its history can be reopened and the board visibility
+  switch is available; `PathBoardIntegrationTest.deletingAPathHidesItsBoardUntilRestored`
+  verifies the same board returns to the owned board list.
 
 ## Timeline and Logs
 
