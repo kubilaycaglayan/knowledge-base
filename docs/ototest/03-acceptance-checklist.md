@@ -4,7 +4,8 @@
 
 **Product map:** [#ototest product test tree](product-test-tree.md)
 
-**Status:** Draft acceptance checklist; no flows are marked passed.
+**Status:** In progress; checked criteria have linked evidence. Unchecked
+criteria remain open. Mobile emulation evidence is identified as supplemental.
 
 This checklist translates OTOTEST-03 into independently reviewable product
 flows. Each flow has one user-visible responsibility. It covers the current
