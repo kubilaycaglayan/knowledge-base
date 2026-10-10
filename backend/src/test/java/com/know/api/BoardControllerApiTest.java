@@ -603,4 +603,16 @@ class BoardControllerApiTest {
 
     verifyNoInteractions(boards, statuses, cards);
   }
+
+  @Test
+  void cardListRejectsMalformedStatusIdBeforeResourceLookup() throws Exception {
+    UUID boardId = UUID.randomUUID();
+
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards?statusId=not-a-uuid")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards);
+  }
 }
