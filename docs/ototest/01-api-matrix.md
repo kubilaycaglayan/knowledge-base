@@ -57,6 +57,16 @@ no body, and CSV export explicitly records its media type, charset, and
 attachment disposition in the operation evidence. No unverified response
 field is described as asserted.
 
+**ID and ownership audit:** authenticated user-data IDs resolve within the
+authenticated owner's scope. Route placeholders (`{id}`, `{cardId}`,
+`{statusId}`, and `{date}`) identify direct resources; body/query reference
+fields (`pathId`, `pathIds`, `activityId`, `timeEntryId`, `labelId`,
+`labelIds`, `targetPathId`, `boardId`, `statusId`, and related collections)
+are listed on their operation
+rows. The evidence column names the ownership or wrong-parent assertion where
+verified, including whether the API hides a foreign resource or rejects a
+foreign reference at the documented boundary.
+
 **Evidence-layer convention:** qualified `Class.method` references name the
 assertion to inspect; the Java test package identifies its evidence layer:
 `com.know.api` is controller/HTTP, `com.know.service` is service/domain,

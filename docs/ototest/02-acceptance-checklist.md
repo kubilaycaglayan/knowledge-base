@@ -113,8 +113,11 @@ browser interaction evidence remains a separate layer.
   scope as the default and marks the Google config, registration, password
   login, and Google login operations public. Protected operation rows map to
   the anonymous-rejection sweep plus operation-specific successful evidence.
-- [ ] Include direct resource IDs and referenced resource IDs that require
-  owner-scoped resolution.
+- [x] Include direct resource IDs and referenced resource IDs that require
+  owner-scoped resolution. Direct route identifiers and request reference
+  fields are listed in the API matrix; the owner-scope rule is explicit and
+  operation evidence names foreign-owner or wrong-parent assertions where
+  verified.
 - [ ] Include each operation's read, create, update, archive, delete, ordering,
   import, or other observable effect.
 - [x] Compare the resulting operation rows with the generated `/v3/api-docs`
