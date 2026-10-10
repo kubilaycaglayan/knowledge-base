@@ -589,7 +589,7 @@ describe("FloatingTimeTracker", () => {
     // jsdom has no visualViewport, which Vuetify menus position against.
     vi.stubGlobal("visualViewport", Object.assign(new EventTarget(), { width: 1024, height: 768, offsetLeft: 0, offsetTop: 0, scale: 1 }));
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
-    vi.mocked(api).mockImplementation(async (path: string) => {
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths")
         return Array.from({ length: 15 }, (_, index) => ({
           id: `path-${index + 1}`,
@@ -598,6 +598,8 @@ describe("FloatingTimeTracker", () => {
         }));
       if (path === "/labels?scope=TIME_ENTRY") return [];
       if (path === "/timers/current") return null;
+      if (path === "/timers" && options.method === "POST")
+        return { id: "timer-1", pathId: "path-2", labelIds: [], description: "Write tests", startedAt: new Date().toISOString(), running: true };
       return undefined;
     });
     const wrapper = mount(FloatingTimeTracker, {
@@ -640,6 +642,28 @@ describe("FloatingTimeTracker", () => {
 
     expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
     expect(wrapper.get(".floating-tracker-path").text()).toBe("Path 2");
+    wrapper.unmount();
+  });
+
+  it("starts a running session with the selected Path and description", async () => {
+    const { wrapper, menu } = await openFloatingPathMenu();
+    const pathOption = [...menu.querySelectorAll<HTMLElement>(".v-list-item")].find(
+      (element) => element.textContent?.includes("Path 2"),
+    )!;
+    pathOption.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await nextTick();
+    pathOption.click();
+    await flushPromises();
+    await wrapper.get('textarea[aria-label="Timer description"]').setValue("Write tests");
+    await wrapper.get('button[aria-label="Start timer"]').trigger("click");
+    await flushPromises();
+
+    const start = vi.mocked(api).mock.calls.find(([path, init]) => path === "/timers" && init?.method === "POST");
+    expect(JSON.parse(start?.[1]?.body as string)).toMatchObject({
+      pathId: "path-2",
+      description: "Write tests",
+    });
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
     wrapper.unmount();
   });
 

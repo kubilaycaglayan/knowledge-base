@@ -343,8 +343,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Start a session from the tracker
 
-- [ ] Selecting a path and description then starting creates a running
-  session for those values.
+- [x] Selecting a path and description then starting creates a running
+  session for those values. Evidence: `FloatingTimeTracker.test.ts` / `starts a
+  running session with the selected Path and description` asserts the start
+  request includes the selected Path and description and transitions to Stop.
 - [ ] The running timer visibly advances while active.
 - [ ] The timer remains running after route navigation and page refresh.
 - [ ] Starting a second timer resolves to the account's already-running timer.
