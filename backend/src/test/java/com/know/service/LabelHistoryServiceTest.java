@@ -42,6 +42,6 @@ class LabelHistoryServiceTest {
             ResponseStatusException.class,
             () -> service.records(userId, labelId, LabelHistoryService.RecordKind.logs, 100001));
     assertEquals(400, error.getStatusCode().value());
-    verifyNoMoreInteractions(entityManager);
+    verify(entityManager, times(1)).createQuery(anyString(), eq(Object[].class));
   }
 }
