@@ -325,8 +325,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Create a log
 
-- [ ] Submitting log text with a valid timestamp creates one log.
-- [ ] The new log appears in the chronological group for its timestamp.
+- [x] Submitting log text with a valid timestamp creates one log. Evidence:
+  `cd frontend && npx vitest run src/views/LogsView.test.ts -t 'saves the
+  browser timestamp and adds a new log'` (component test; mocked API).
+- [x] The new log appears in the chronological group for its timestamp and
+  remains after remount when fetched from the API fixture (same test).
 - [ ] Submitting blank log text shows validation and creates no log.
 - [ ] A failed create preserves the entered text and timestamp for retry.
 - [ ] The timestamp reset action uses the current browser time as labeled.

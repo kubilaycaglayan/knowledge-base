@@ -122,10 +122,19 @@ describe("LogsView", () => {
   });
 
   it("saves the browser timestamp and adds a new log to the store", async () => {
+    const savedLogs: ReturnType<typeof log>[] = [];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/labels?scope=LOG") return [];
+      if (path === "/logs" && options?.method === "POST") {
+        const created = log("created", JSON.parse(String(options.body)).body, "2026-09-11T12:00:00Z", 0);
+        savedLogs.unshift(created);
+        return created;
+      }
+      if (path === "/logs") return savedLogs;
+      return undefined;
+    });
     const wrapper = mount(LogsView);
     await flushPromises();
-    const created = log("created", "New capture", "2026-09-11T12:00:00Z", 0);
-    vi.mocked(api).mockResolvedValueOnce(created);
     await wrapper.get("#new-log-body").setValue("New capture");
     await wrapper.get("#new-log-body").trigger("keydown.enter");
     await flushPromises();
@@ -137,6 +146,14 @@ describe("LogsView", () => {
       }),
     );
     expect(wrapper.text()).toContain("New capture");
+    wrapper.unmount();
+
+    setActivePinia(createPinia());
+    const reloaded = mount(LogsView);
+    await flushPromises();
+    expect(reloaded.text()).toContain("New capture");
+    expect(reloaded.findAll(".log-entry")).toHaveLength(1);
+    reloaded.unmount();
   });
 
   it("resets the composer height after saving a multiline log", async () => {
