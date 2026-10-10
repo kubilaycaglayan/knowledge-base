@@ -12,7 +12,7 @@ Source reconciliation at the recorded baseline found 19 registered Vue route ent
 | Route / state | Source | Existing evidence | Evidence class | Gap / next evidence |
 | --- | --- | --- | --- | --- |
 | `/` Sessions | `frontend/src/main.ts`, `views/SessionsView.vue` | `views/SessionsView.test.ts` (`SessionsView`); `scripts/session-tracker.acceptance.test.mjs` | Component; browser | Direct-load, auth recovery, and real persisted journey not established by component test |
-| `/sessions` redirect | `frontend/src/main.ts` | No route assertion located | Gap | Assert final URL and Back/Forward behavior |
+| `/sessions` redirect | `frontend/src/main.ts` | [`nav-shell.acceptance.test.mjs`](../../frontend/scripts/nav-shell.acceptance.test.mjs): `redirects /sessions to the Sessions home and restores history with Back and Forward` | Mocked browser acceptance | Direct navigation from another route resolves to `/`; Back restores the prior route and Forward returns home |
 | `/sessions/:id` | `frontend/src/main.ts`, `views/SessionsView.vue` | `views/DeepLinks.test.ts` | Component | Unknown/foreign ID and browser direct-load behavior need explicit assertions |
 | `/paths` | `views/PathsView.vue` | `views/PathsView.test.ts` | Component | Real persistence and keyboard reorder behavior not established |
 | `/paths/:id` | `frontend/src/main.ts`, `views/PathsView.vue` | `views/DeepLinks.test.ts` | Component | Unknown/foreign ID direct-load behavior needs explicit assertion |

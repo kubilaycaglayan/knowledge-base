@@ -1,7 +1,7 @@
 # OTOTEST-03 — Web routes and interactive controls
 
 **Priority:** High  
-**Status:** Proposed  
+**Status:** In progress
 **Dependencies:** OTOTEST-01
 
 Product flow criteria: see the [OTOTEST-03 acceptance checklist](03-acceptance-checklist.md).

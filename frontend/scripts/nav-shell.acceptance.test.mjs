@@ -112,6 +112,24 @@ it("navigates home from the logo without a page reload and reuses cached session
   assert.equal(requests.filter((path) => homeData.includes(path)).length, before, "Returning home must reuse cached sessions, paths, and labels");
 });
 
+it("redirects /sessions to the Sessions home and restores history with Back and Forward", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await visit(page, "/logs");
+  await page.locator(".logs-page").waitFor();
+
+  await page.evaluate(() => { history.pushState({}, "", "/sessions"); dispatchEvent(new PopStateEvent("popstate")); });
+  await page.waitForFunction(() => location.pathname === "/");
+  await page.getByRole("region", { name: "Sessions" }).waitFor();
+
+  await page.goBack();
+  await page.waitForFunction(() => location.pathname === "/logs");
+  await page.locator(".logs-page").waitFor();
+
+  await page.goForward();
+  await page.waitForFunction(() => location.pathname === "/");
+  await page.getByRole("region", { name: "Sessions" }).waitFor();
+});
+
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
   const { page, requests } = await fixture(t, 1440, { warmup: true });
   const warmed = ["/notes", "/calendar/days", "/reports", "/logs"];

@@ -64,8 +64,10 @@ the extension has its own scope in OTOTEST-04.
 - [ ] Directly loading each supported route renders its matching page.
 - [ ] Refreshing a supported route preserves the route and its valid query
   state.
-- [ ] Opening `/sessions` resolves to `/` and browser history reflects the
-  redirect correctly.
+- [x] Opening `/sessions` from another supported route resolves to `/`; Back
+  restores the prior route and Forward returns to Sessions. Evidence:
+  `cd frontend && npm run test:nav` — `redirects /sessions to the Sessions
+  home and restores history with Back and Forward` (mocked API browser test).
 - [ ] Direct loading `/sessions/:id` opens the selected session detail.
 - [ ] Direct loading `/paths/:id` opens the selected path history context.
 - [ ] Direct loading `/logs/:id` opens the selected log detail.
