@@ -649,6 +649,23 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   assert.equal(new URL(page.url()).pathname, "/paths");
 });
 
+it("moves focus into and returns focus from the Path create dialog", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await visit(page, "/paths");
+  const trigger = page.getByRole("button", { name: "Add path" });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.locator(".path-create-dialog");
+  await dialog.waitFor();
+  const name = dialog.getByRole("textbox", { name: "New path name" });
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "New path name");
+  assert.equal(await name.evaluate((element) => element === document.activeElement), true);
+
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
+});
+
 it("opens path history when the browser loads its deep link directly", async (t) => {
   const { page, requests } = await fixture(t, 1440, {
     pathSeeds: [{ id: "path-deep-link", name: "Writing", status: "ACTIVE" }],

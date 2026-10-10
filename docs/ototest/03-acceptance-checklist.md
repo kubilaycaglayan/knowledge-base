@@ -1323,6 +1323,10 @@ so the warning and discard criteria remain open.
   center point. Other controls and scrolled/sticky states still need coverage.
 - [ ] Dialogs, menus, pickers, and forms have predictable focus entry and
   return behavior.
+  Partial evidence: `nav-shell.acceptance.test.mjs` / `moves focus into and
+  returns focus from the Path create dialog` checks initial focus on the name
+  field and focus restoration after Escape. Other dialog/menu/picker patterns
+  remain to be checked.
 - [ ] Drag, date-range, and reorder actions have a keyboard alternative where
   those actions are not inherently pointer-only.
 
