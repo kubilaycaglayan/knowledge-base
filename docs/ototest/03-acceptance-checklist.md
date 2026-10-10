@@ -795,7 +795,7 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `frontend/src/views/ReportsView.test.ts`, `aggregates chart values
   at the selected semantic interval` checks the chart's accessible label and
   its displayed period values.
-- [ ] Clicking a linked report record opens its corresponding record route.
+- [x] Clicking a report calendar date opens its corresponding Calendar day. Evidence: `ReportsView.test.ts` / `opens a report calendar record on its matching calendar date` verifies the date link targets `/calendar?date=2026-08-25`.
 
 ### Flow: Use report controls in mobile Chrome
 

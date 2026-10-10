@@ -131,7 +131,6 @@ describe("ReportsView", () => {
   it("opens a report calendar record on its matching calendar date", async () => {
     const wrapper = mount(ReportsView, { global });
     await flushPromises();
-    await wrapper.get(".calendar-input-toggle").trigger("click");
 
     expect(wrapper.get('a[href="/calendar?date=2026-08-25"]').text()).toContain(
       "Aug 25",

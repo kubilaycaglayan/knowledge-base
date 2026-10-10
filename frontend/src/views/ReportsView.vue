@@ -777,9 +777,11 @@ onBeforeUnmount(() =>
         </div>
         <ol v-if="calendarLogs.length" class="calendar-report-log">
           <li v-for="day in calendarLogs" :key="day.date">
-            <time :datetime="day.date">{{
-              format(parseISO(day.date), "EEE, MMM d")
-            }}</time>
+            <a :href="`/calendar?date=${day.date}`" class="report-calendar-date">
+              <time :datetime="day.date">{{
+                format(parseISO(day.date), "EEE, MMM d")
+              }}</time>
+            </a>
             <div>
               <p v-if="day.calendarNote">{{ day.calendarNote }}</p>
               <span
