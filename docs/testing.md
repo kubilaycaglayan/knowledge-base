@@ -160,6 +160,11 @@ theme-preference journeys in its own disposable Compose project. It checks the
 report range through the API and URL after reload, and the selected theme in
 local storage, the rendered document, and the Settings control after reload.
 
+`./scripts/run-transfers-e2e.sh` runs desktop Chromium export/import journeys
+in a separate disposable stack. It downloads and reimports Knowledge Base CSV,
+recovers from invalid Clockify JSON, and confirms the imported Clockify batch
+through a fresh API read.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and

@@ -21,7 +21,7 @@ persistence boundaries.
   Paths, Logs, Labels, and Calendar against isolated disposable data.
 - [x] Add report filter/range and settings/preferences persistence journeys
   where persistence affects user-visible behavior.
-- [ ] Add import/export journeys for supported Clockify and Knowledge Base
+- [x] Add import/export journeys for supported Clockify and Knowledge Base
   transfer flows, including validation and failure recovery.
 - [ ] Assert server persistence after navigation or reload for selected
   mutation workflows.
@@ -116,9 +116,14 @@ permissions, or unavailable API recovery.
   `./scripts/run-reports-settings-e2e.sh`. It checks report range values via
   the API and URL, and theme preference via local storage, document theme, and
   the Settings control.
+- **Transfers, desktop Chromium:** `exports and reimports Knowledge Base CSV,
+  validates input, and imports Clockify sessions` in
+  `frontend/scripts/transfers.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-transfers-e2e.sh`. It verifies the downloaded CSV header,
+  reimports it, recovers from invalid Clockify JSON, and checks the imported
+  batch through the API.
 
-Both transfer formats and
-the remaining signed-in timer/notes and service-worker recovery journeys remain
+The remaining signed-in timer/notes and service-worker recovery journeys remain
 open for this milestone.
 
 ## Acceptance
