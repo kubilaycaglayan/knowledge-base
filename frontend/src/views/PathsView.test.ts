@@ -79,10 +79,40 @@ describe("PathsView", () => {
     expect(wrapper.find(".empty").text()).toBe(
       "Your first path is waiting to be named.",
     );
-    expect(wrapper.get('button[aria-label="Add path"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Add path"]').exists()).toBe(true);
 
     await wrapper.get('button[aria-label="Add path"]').trigger("click");
     expect(wrapper.get('[role="dialog"] h2').text()).toBe("Add a path");
+  });
+
+  it("announces path loading and then shows the valid empty state", async () => {
+    let resolvePaths!: (paths: never[]) => void;
+    const pendingPaths = new Promise<never[]>((resolve) => {
+      resolvePaths = resolve;
+    });
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return pendingPaths;
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      return undefined;
+    });
+
+    const wrapper = mount(PathsView);
+    await flushPromises();
+
+    expect(wrapper.get(".path-list").attributes("aria-busy")).toBe("true");
+    expect(wrapper.get('.path-loading[role="status"]').text()).toBe(
+      "Loading paths…",
+    );
+    expect(wrapper.find(".empty").exists()).toBe(false);
+
+    resolvePaths([]);
+    await flushPromises();
+
+    expect(wrapper.get(".path-list").attributes("aria-busy")).toBe("false");
+    expect(wrapper.find('.path-loading[role="status"]').exists()).toBe(false);
+    expect(wrapper.get(".empty").text()).toBe(
+      "Your first path is waiting to be named.",
+    );
   });
 
   it("shows an explicit empty state for a path history without activity", async () => {
@@ -356,8 +386,8 @@ describe("PathsView", () => {
       "August 2020",
       "July 2020",
     ]);
-    expect(dialog.get('time[datetime="2020-08-28T10:00:00Z"]').exists()).toBe(true);
-    expect(dialog.get('time[datetime="2020-07-28T10:00:00Z"]').exists()).toBe(true);
+    expect(dialog.find('time[datetime="2020-08-28T10:00:00Z"]').exists()).toBe(true);
+    expect(dialog.find('time[datetime="2020-07-28T10:00:00Z"]').exists()).toBe(true);
   });
 
   it("merges a completed timer into one activity with its details", async () => {

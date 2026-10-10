@@ -249,7 +249,13 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Load the Paths list
 
-- [ ] The Paths page distinguishes loading, empty, loaded, and failed states.
+- [x] The Paths page distinguishes loading, empty, loaded, and failed states.
+  Evidence: `frontend/src/views/PathsView.test.ts`, `announces path loading
+  and then shows the valid empty state` checks `aria-busy`, a polite loading
+  status, and transition to empty; `shows an empty paths state with a path
+  creation action` verifies valid empty data; `shows tracked time and recent
+  activity for a path` verifies loaded data; `reports initial load, path
+  creation, and history failures` verifies a distinct load error (mocked API).
 - [x] The empty state offers a clear path-creation action. Evidence: `cd
   frontend && npx vitest run src/views/PathsView.test.ts -t 'shows an empty
   paths state with a path creation action'` checks the empty-list message and

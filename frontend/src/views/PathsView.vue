@@ -53,7 +53,7 @@ const colors = paletteColors;
 const pathsStore = usePathsStore();
 const labelsStore = useLabelsStore();
 const reportsStore = useReportsStore();
-const { paths } = storeToRefs(pathsStore);
+const { paths, loading } = storeToRefs(pathsStore);
 const sessionLabels = computed(() => labelsStore.forScope("TIME_ENTRY"));
 const summaries = ref<Record<string, Summary>>({}),
   name = ref(""),
@@ -582,7 +582,10 @@ onBeforeUnmount(() => {
         Undo
       </button>
     </p>
-    <div class="path-list">
+    <div class="path-list" :aria-busy="loading">
+      <p v-if="loading && !paths.length" class="muted path-loading" role="status">
+        Loading paths…
+      </p>
       <article
         v-for="path in paths"
         :key="path.id"
@@ -721,7 +724,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </article>
-      <p v-if="!paths.length && !error" class="empty">
+      <p v-if="!loading && !paths.length && !error" class="empty">
         Your first path is waiting to be named.
       </p>
     </div>
