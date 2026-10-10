@@ -1053,16 +1053,16 @@ describe("NotesView", () => {
   });
 
   it("replays a draft when another window saved first", async () => {
-    let writes = 0;
+    const writes: string[] = [];
     const latest = { ...note, version: 1, title: "Remote title" };
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
         if (path === "/notes/note-1" && options?.method === "PUT") {
-          writes += 1;
-          if (writes === 1) throw new Error("Note changed in another window");
+          writes.push(String(options.body));
+          if (writes.length === 1) throw new Error("Note changed in another window");
           return { ...latest, title: "Updated", version: 2 };
         }
-        if (path === "/notes/note-1") return writes ? latest : note;
+        if (path === "/notes/note-1") return writes.length ? latest : note;
         return undefined;
       },
     );
@@ -1075,10 +1075,8 @@ describe("NotesView", () => {
     await new Promise((resolve) => setTimeout(resolve, 700));
     await flushPromises();
 
-    expect(writes).toBe(2);
-    expect(vi.mocked(api).mock.calls.at(-1)?.[1]?.body).toContain(
-      '"version":1',
-    );
+    expect(writes).toHaveLength(2);
+    expect(writes[1]).toContain('"version":1');
     expect(wrapper.get(".save-state").text()).toBe("Saved");
   });
 
