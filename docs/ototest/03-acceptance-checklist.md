@@ -76,7 +76,11 @@ the extension has its own scope in OTOTEST-04.
   desktop Chromium. Evidence: `cd frontend && node --test
   --test-name-pattern='session detail when the browser loads its deep link
   directly' scripts/nav-shell.acceptance.test.mjs` (mocked API).
-- [ ] Direct loading `/paths/:id` opens the selected path history context.
+- [x] Direct loading `/paths/:id` opens the selected path history context.
+  Evidence: `cd frontend && node --test --test-name-pattern='opens path
+  history when the browser loads its deep link directly'
+  scripts/nav-shell.acceptance.test.mjs` directly loads a seeded Path URL and
+  verifies its history dialog and empty state (mocked API browser test).
 - [ ] Direct loading `/logs/:id` opens the selected log detail.
 - [ ] Direct loading `/labels/:id` opens the selected label history.
 - [ ] Direct loading `/notes/:id` opens the selected note editor.

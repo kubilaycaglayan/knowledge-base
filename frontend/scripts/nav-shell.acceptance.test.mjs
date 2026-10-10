@@ -42,7 +42,10 @@ async function fixture(t, width, { warmup = false, calendarLabels = [], pathSeed
       if (index >= 0) paths[index] = body;
     }
     else if (path === "/paths") body = paths;
-    else if (path === "/paths/path-1/summary") body = { path: paths[0], trackedSeconds: 0, recentActivity: [] };
+    else if (path.startsWith("/paths/") && path.endsWith("/summary")) {
+      const pathId = path.split("/")[2];
+      body = { path: paths.find((item) => item.id === pathId), trackedSeconds: 0, recentActivity: [] };
+    }
     else if (path.startsWith("/boards/") && path.endsWith("/visibility") && method === "POST") {
       const boardId = path.split("/")[2];
       const owner = paths.find((item) => item.boardId === boardId);
@@ -215,6 +218,21 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   await page.reload();
   await page.locator(".path-title", { hasText: "Reading" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/paths");
+});
+
+it("opens path history when the browser loads its deep link directly", async (t) => {
+  const { page, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-deep-link", name: "Writing", status: "ACTIVE" }],
+  });
+  const appUrl = server.resolvedUrls.local[0];
+  await page.goto(`${appUrl}paths/path-deep-link`);
+
+  const history = page.locator(".path-history-dialog");
+  await history.waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths/path-deep-link");
+  await history.getByRole("heading", { name: "Writing" }).waitFor();
+  await history.getByText("No recent activity yet.", { exact: true }).waitFor();
+  assert.ok(requests.includes("/paths/path-deep-link/summary"));
 });
 
 it("changes and persists an existing Path color using only the keyboard", async (t) => {
