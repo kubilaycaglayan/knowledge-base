@@ -1092,7 +1092,7 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Page through board cards
 
 - [x] Loading more cards appends the next page without repeating prior cards. Evidence: `boards.test.ts` / `coalesces duplicate lazy-page requests at the same cursor` verifies one page request and one appended record.
-- [ ] Page order remains stable when card priorities are tied.
+- [x] Page order remains stable when card priorities are tied. Evidence: `board.acceptance.test.mjs` / `keeps page order stable when priority-sorted cards have ties` enables priority sorting for 20 equal-priority cards, loads the next page, and verifies all 21 retain their position order.
 - [x] A page request failure exposes a retry action. Evidence: `boards.test.ts` / `keeps a failed lazy page retryable and exposes a recoverable error` checks error state and retry success.
 - [x] Retrying a failed page does not duplicate cards. Evidence: the same test verifies the recovered card is appended once after retry.
 
