@@ -39,6 +39,7 @@ const {
 const {
   toggleRun,
   updateTimer,
+  cancelSession,
   rememberPath,
   pauseSession,
   resumeSession,
@@ -194,6 +195,15 @@ async function editStartedAt() {
   }
   timerStartedAt.value = value;
   await updateTimer();
+}
+async function discardRunningSession() {
+  const confirmation = await promptDialog.value?.open(
+    "Discard this running session?",
+    "",
+    { confirmation: true, confirmLabel: "Discard" },
+  );
+  if (confirmation === null || confirmation === undefined) return;
+  await cancelSession();
 }
 onMounted(() => {
   timerStore.acquire();
@@ -369,6 +379,17 @@ onUnmounted(() => {
             @change="updateTimer"
             @keydown.enter="runFromDescription"
           ></textarea>
+        </div>
+        <div v-if="timer" class="tracker-field tracker-field-wide tracker-session-actions">
+          <button
+            type="button"
+            class="text-button danger"
+            aria-label="Discard session"
+            :disabled="actionBusy"
+            @click="discardRunningSession"
+          >
+            Discard session…
+          </button>
         </div>
         <p v-if="error" class="tracker-error" role="alert" aria-live="polite">
           {{ error }}

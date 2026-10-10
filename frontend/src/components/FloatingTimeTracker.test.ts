@@ -314,6 +314,82 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("keeps a running session after failed discard and clears it after retry", async () => {
+    let attempts = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return {
+          id: "timer-1",
+          labelIds: [],
+          description: "Discard retry",
+          startedAt: new Date().toISOString(),
+          running: true,
+        };
+      if (path === "/timers/timer-1/cancel" && options.method === "POST") {
+        attempts += 1;
+        if (attempts === 1) throw new Error("Temporary server failure");
+        return undefined;
+      }
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(wrapper.get(".tracker-error").text()).toContain("Could not discard the session.");
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(attempts).toBe(2);
+    expect(wrapper.find(".tracker-error").exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("reconciles a failed discard when the server later reports no current timer", async () => {
+    let currentTimer: Record<string, unknown> | null = {
+      id: "timer-1",
+      labelIds: [],
+      description: "Remote discard",
+      startedAt: new Date().toISOString(),
+      running: true,
+    };
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current") return currentTimer;
+      if (path === "/timers/timer-1/cancel") throw new Error("Response lost");
+      if (path === "/timers/draft") return {};
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(wrapper.get('button[aria-label="Stop timer"]').exists()).toBe(true);
+    expect(wrapper.get(".tracker-error").text()).toContain("Could not discard the session.");
+
+    currentTimer = null;
+    await useTimerStore().sync();
+    await flushPromises();
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it("starts the session with the typed description on Cmd+Enter in the description", async () => {
     const wrapper = mount(FloatingTimeTracker, {
       props: { inline: true },

@@ -396,10 +396,17 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Cancel a running session
 
-- [ ] Cancelling/discarding a running session follows the confirmation and
-  recovery behavior shown by the application.
-- [ ] A failed stop or cancel keeps the user informed and reconciles the
-  displayed state with the next authoritative server update.
+- [x] Cancelling/discarding a running session follows the confirmation and
+  recovery behavior shown by the application. Evidence: `FloatingTimeTracker.test.ts`
+  / `confirms before discarding a running session and preserves it when
+  cancelled` verifies the confirmation, cancel path, server cancel request, and
+  transition out of the running state.
+- [x] A failed stop or cancel keeps the user informed and reconciles the
+  displayed state with the next authoritative server update. Evidence:
+  `FloatingTimeTracker.test.ts` / `keeps a running session after failed discard
+  and clears it after retry` checks actionable error and retry; `reconciles a
+  failed discard when the server later reports no current timer` checks the
+  next current-timer refresh updates the visible controls.
 - [x] A failed Stop request reports the error and keeps the active Stop action
   available; retrying successfully clears the timer. Evidence: `cd frontend &&
   npx vitest run src/components/FloatingTimeTracker.test.ts -t 'failed stop and

@@ -363,6 +363,28 @@ export const useTimerStore = defineStore("timer", () => {
       }
     }
   }
+  async function cancelSession() {
+    if (actionBusy.value || busy.value || !timer.value) return;
+    actionBusy.value = true;
+    busy.value = true;
+    error.value = "";
+    try {
+      const versionAtRequest = ++timerStateVersion;
+      await api(`/timers/${timer.value.id}/cancel`, {
+        method: "POST",
+        body: "{}",
+      });
+      reportsStore.clear();
+      sessionsStore.clearPages();
+      if (versionAtRequest === timerStateVersion) applyTimer(null);
+      historyVersion.value++;
+    } catch {
+      error.value = "Could not discard the session. Try again.";
+    } finally {
+      busy.value = false;
+      actionBusy.value = false;
+    }
+  }
   async function updateTimer(alreadyBusy = false) {
     // Vue event handlers can pass an Event; only the explicit internal flag
     // may reuse createLabel's busy state.
@@ -734,6 +756,7 @@ export const useTimerStore = defineStore("timer", () => {
     setCurrent,
     clear,
     toggleRun,
+    cancelSession,
     pauseSession,
     resumeSession,
     startSession,
