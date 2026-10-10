@@ -48,10 +48,15 @@ browser interaction evidence remains a separate layer.
 - [x] Distinguish unit/domain, controller/API, service, persistence
   integration, PostgreSQL-guarded, deployed-shaped, browser, and manual
   evidence using test package and guarded-run conventions in the API matrix.
-- [ ] Do not treat an anonymous-rejection sweep as proof of a specific
-  authenticated operation's successful behavior.
-- [ ] Do not treat a UI or mocked-client assertion as proof of backend
-  persistence, authorization, transaction, or database behavior.
+- [x] Do not treat an anonymous-rejection sweep as proof of a specific
+  authenticated operation's successful behavior. The operation matrix pairs
+  authentication sweeps with operation-specific successful assertions; the
+  `/api/v1/auth/me` row, for example, separately names the public-profile
+  assertion and anonymous/malformed-token evidence.
+- [x] Do not treat a UI or mocked-client assertion as proof of backend
+  persistence, authorization, transaction, or database behavior. Operation
+  rows link backend test methods only; browser E2E, frontend tests, and guarded
+  PostgreSQL evidence are classified separately in the matrix conventions.
 - [ ] For each state mutation, link evidence of the persisted state or another
   observable effect after the request.
 - [ ] For delete/archive operations, link evidence of absence or archived
