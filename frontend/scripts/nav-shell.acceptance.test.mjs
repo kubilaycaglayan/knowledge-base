@@ -503,6 +503,20 @@ it("downloads the Knowledge Base export from Settings in the browser", async (t)
   assert.ok(requests.includes("/imports/knowledge-base/export"));
 });
 
+it("opens the Imports route directly and switches import sources", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}imports`);
+  await page.locator("#imports-panel-knowledge-base").waitFor();
+  assert.match(await page.title(), /Knowledge Base.*Import/);
+  assert.equal(await page.getByRole("tab", { name: "Knowledge Base" }).getAttribute("aria-selected"), "true");
+
+  await page.getByRole("tab", { name: "Clockify" }).click();
+  await page.locator("#imports-panel-clockify").waitFor();
+  assert.equal(await page.getByRole("tab", { name: "Clockify" }).getAttribute("aria-selected"), "true");
+  assert.ok(requests.includes("/imports/knowledge-base/batches"));
+  assert.ok(requests.includes("/imports/clockify/batches"));
+});
+
 it("supports keyboard navigation and opening a primary link in a new tab", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
