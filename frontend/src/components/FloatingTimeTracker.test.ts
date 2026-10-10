@@ -273,6 +273,47 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("confirms before discarding a running session and preserves it when cancelled", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/timers/current")
+        return {
+          id: "timer-1",
+          labelIds: [],
+          description: "Discardable work",
+          startedAt: new Date().toISOString(),
+          running: true,
+        };
+      return undefined;
+    });
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    const confirmation = wrapper.get('[role="dialog"]');
+    expect(confirmation.text()).toContain("Discard this running session?");
+    await confirmation.get("button.text-button").trigger("click");
+    await flushPromises();
+    expect(
+      vi.mocked(api).mock.calls.some(([path]) => path === "/timers/timer-1/cancel"),
+    ).toBe(false);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Discard session"]').trigger("click");
+    await wrapper.get('[role="dialog"] button.primary').trigger("click");
+    await flushPromises();
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/timers/timer-1/cancel",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("starts the session with the typed description on Cmd+Enter in the description", async () => {
     const wrapper = mount(FloatingTimeTracker, {
       props: { inline: true },
