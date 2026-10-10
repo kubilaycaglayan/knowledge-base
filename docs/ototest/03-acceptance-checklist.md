@@ -695,7 +695,10 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Open one note
 
 - [ ] Opening a note row sets the note-specific URL.
-- [ ] Directly loading a valid `/notes/:id` URL opens that note.
+- [x] Directly loading a valid `/notes/:id` URL opens that note in the
+  component route test. Evidence: `cd frontend && npx vitest run
+  src/views/DeepLinks.test.ts` — `loads the selected note when its editor URL
+  is opened directly` (mocked API).
 - [ ] Closing a note returns to its list context and clears its selected URL.
 - [x] Opening a missing or inaccessible note shows a recoverable unavailable
   state in the component route test. Evidence: `cd frontend && npx vitest run

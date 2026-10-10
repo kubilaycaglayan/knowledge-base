@@ -383,6 +383,27 @@ describe("/calendar?date=", () => {
 });
 
 describe("/notes?archived=1&q=", () => {
+  it("loads the selected note when its editor URL is opened directly", async () => {
+    respond(/^\/notes\?/, { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 });
+    respond("/notes/labels", []);
+    respond("/notes/n1", {
+      id: "n1",
+      title: "Direct note",
+      content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded from its URL" }] }] }),
+      contentText: "Loaded from its URL",
+      createdAt: "2026-10-01T10:00:00Z",
+      updatedAt: "2026-10-02T10:00:00Z",
+      version: 1,
+      tags: [],
+      pinned: false,
+    });
+    await open(NotesView, "/notes/n1", [["/notes", "notes"], ["/notes/:id", "note-editor"]]);
+
+    expect(router.currentRoute.value.fullPath).toBe("/notes/n1");
+    expect(document.querySelector<HTMLInputElement>('[aria-label="Note title"]')?.value).toBe("Direct note");
+    expect(document.querySelector('[aria-label="Note content"]')?.textContent).toContain("Loaded from its URL");
+  });
+
   it("opens the archive filtered by the linked note", async () => {
     respond(/^\/notes\?/, { items: [{ id: "n1", title: "Old gear", content: "{}", contentText: "Camera", tags: [], updatedAt: "2026-01-01T00:00:00Z", deletedAt: "2026-02-01T00:00:00Z", pinned: false }], page: 0, size: 20, totalItems: 1, totalPages: 1 });
     respond("/notes/labels", []);
