@@ -873,8 +873,21 @@ browser interaction evidence remains a separate layer.
   `SearchIntegrationTest.groupsAreLimitedAndPagedWithATotal`, and
   `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
   `BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`).
-- [ ] Ordered lists have stable tie-break and reorder persistence evidence
-  where ordering is part of the contract.
+- [x] Ordered lists have stable tie-break and reorder persistence evidence
+  where ordering is part of the contract. Equal occurrence times use the
+  descending ID tie-break for logs
+  (`LogListIntegrationTest.logsWithTheSameOccurrenceTimeUseDescendingIdAsAStableTieBreak`),
+  and equal completion times use descending start time for time-entry history
+  (`TimeEntryHistoryIntegrationTest.equalCompletionTimesUseStartedAtAsTheHistoryTieBreak`).
+  Persistent user reorders are read back for boards and notes
+  (`PinOrderIntegrationTest.boardOrderPersistsCompleteOwnedOrderAndRejectsDuplicateOrForeignIds`,
+  `PinOrderIntegrationTest.noteOrderEndpointPersistsCompleteOrderAndRejectsDuplicateOrForeignIds`),
+  paths and boards (`PathBoardIntegrationTest.boardListFollowsTabOrder`,
+  `PathBoardIntegrationTest.customBoardsCanSitBetweenPathBoards`, and
+  `PathBoardIntegrationTest.reorderingBoards`), and board statuses/cards
+  (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds` and
+  `BoardCardMoveIntegrationTest.cardMovePersistsDestinationPositionAndRejectsForeignOrArchivedStatuses`). The
+  API matrix links the operation-specific order/readback assertions.
 - [x] Optimistic version or expected-update-time contracts have both current
   version success and stale version conflict evidence. Note saves, log updates,
   and board-card updates have successful persisted-update and stale-conflict
