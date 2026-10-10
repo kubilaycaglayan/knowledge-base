@@ -42,7 +42,7 @@ browser interaction evidence remains a separate layer.
   OTOTEST-01; layer conventions and source-based contract reading are recorded
   in the API matrix).
 - [x] Use exact test names or named assertions as evidence; a test filename
-  without a relevant assertion does not prove coverage. All 350 qualified
+  without a relevant assertion does not prove coverage. All 357 qualified
   references in the current operation matrix resolve to a test method; the
   evidence description beside each reference names the behavior asserted.
 - [x] Distinguish unit/domain, controller/API, service, persistence
@@ -71,8 +71,10 @@ browser interaction evidence remains a separate layer.
   Unknown board-card priority binding is explicitly marked as a
   maintainer-owned contract decision on create, update, and create-in-column
   rows in [`01-api-matrix.md`](01-api-matrix.md).
-- [ ] Mark unsupported/internal operations with a rationale and owner rather
-  than silently omitting them.
+- [x] Mark unsupported/internal operations with a rationale and owner rather
+  than silently omitting them. Both documented timer-cancel route aliases are
+  explicitly marked as having no current supported web/extension caller; the
+  Knowledge Base maintainers own the client-support or deprecation decision.
 
 ## Flow: Inventory every API operation
 

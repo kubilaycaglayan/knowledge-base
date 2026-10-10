@@ -42,6 +42,16 @@ class BoardControllerApiTest {
     mvc.perform(get("/api/v1/boards")).andExpect(status().isUnauthorized());
   }
 
+  @Test
+  void boardListRejectsInvalidBooleanFiltersBeforeRepositoryAccess() throws Exception {
+    mvc.perform(get("/api/v1/boards?archived=sometimes").with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+    mvc.perform(get("/api/v1/boards?includeHidden=maybe").with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
   @Test void createBoardSeedsTheFourOrderedStatuses() throws Exception {
     when(boards.save(any(Board.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(statuses.save(any(BoardStatus.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -590,5 +600,45 @@ class BoardControllerApiTest {
         .findAllByBoardIdAndStatusIdAndArchivedAtIsNullAndPositionGreaterThanOrderByPositionAsc(
             eq(boardId), eq(statusId), eq(-1), argThat(page -> page.getPageSize() == 101));
     verifyNoMoreInteractions(cards);
+  }
+
+  @Test
+  void cardPageRejectsMalformedStatusIdBeforeResourceLookup() throws Exception {
+    UUID boardId = UUID.randomUUID();
+
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards/page?statusId=not-a-uuid")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards/page")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards);
+  }
+
+  @Test
+  void cardListRejectsMalformedStatusIdBeforeResourceLookup() throws Exception {
+    UUID boardId = UUID.randomUUID();
+
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards?statusId=not-a-uuid")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards);
+  }
+
+  @Test
+  void cardListRejectsInvalidArchivedFilterBeforeResourceLookup() throws Exception {
+    UUID boardId = UUID.randomUUID();
+
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards?archived=maybe")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(boards, statuses, cards);
   }
 }

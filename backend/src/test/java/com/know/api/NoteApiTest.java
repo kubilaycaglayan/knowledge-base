@@ -2,6 +2,7 @@ package com.know.api;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -58,6 +59,19 @@ class NoteApiTest {
                   .content(body))
           .andExpect(status().isBadRequest());
     }
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void noteListRejectsNonIntegerPaginationBeforeServiceAccess() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+
+    mvc.perform(get("/api/v1/notes?page=first").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
+    mvc.perform(get("/api/v1/notes?page=0&size=many").with(authentication(auth)))
+        .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
   }
