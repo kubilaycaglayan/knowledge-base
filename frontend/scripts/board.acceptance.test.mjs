@@ -1980,9 +1980,13 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("moves a card with touch taps through the editor's status select", async (t) => {
     const { page } = await fixture(t, 390);
     await page.locator(".board-card", { hasText: "Ship timeline" }).tap();
+    const title = page.getByRole("textbox", { name: "Title" });
+    const saved = cardSaved(page);
+    await title.fill("Touch edited card");
+    await saved;
     await page.getByRole("combobox", { name: "Status" }).selectOption({ label: "Pending" });
     await page.getByRole("button", { name: "Close card" }).tap();
-    await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Ship timeline" }).waitFor();
+    await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Touch edited card" }).waitFor();
   });
 
   it("reorders cards in a column with the keyboard alternative", async (t) => {
