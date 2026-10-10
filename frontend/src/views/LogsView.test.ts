@@ -293,6 +293,20 @@ describe("LogsView", () => {
     expect(wrapper.text()).not.toContain("Recent thought");
   });
 
+  it("leaves a log unchanged when deletion is cancelled", async () => {
+    const wrapper = mount(LogsView);
+    await flushPromises();
+
+    await wrapper.get('button[aria-label^="Remove log"]').trigger("click");
+    await wrapper.get(".prompt-dialog button.text-button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".prompt-dialog").exists()).toBe(false);
+    expect(wrapper.text()).toContain("Recent thought");
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/logs/new" && options?.method === "DELETE")).toBe(false);
+    wrapper.unmount();
+  });
+
   it("keeps a log after delete fails and removes it when the user retries", async () => {
     let deleteAttempts = 0;
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
