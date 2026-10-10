@@ -13,13 +13,14 @@ const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body:
 before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); await server?.close(); });
 
-async function fixture(t, width, { warmup = false, authenticated = true, calendarLabels = [], pathSeeds = [] } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, calendarLabels = [], pathSeeds = [] } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
   const reportQueries = [];
   const paths = [...pathSeeds];
   const calendarDays = [];
+  let rejectNextReportsRequest = rejectReportsAuth;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
       localStorage.setItem("know_token", "nav-test-token");
@@ -33,6 +34,8 @@ async function fixture(t, width, { warmup = false, authenticated = true, calenda
     const path = url.pathname.replace("/api/v1", "");
     const method = route.request().method();
     requests.push(path);
+    const rejectedSession = rejectNextReportsRequest && path === "/reports";
+    if (rejectedSession) rejectNextReportsRequest = false;
     let body = [];
     if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
     else if (path === "/auth/login" && method === "POST") body = { token: "signed-in-nav-test-token" };
@@ -112,7 +115,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, calenda
       body = record;
     }
     const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone" || path.startsWith("/labels/gone/history");
-    await route.fulfill({ status: missingRecord ? 404 : 200, json: missingRecord ? { message: "Not found" } : body });
+    await route.fulfill({ status: rejectedSession ? 401 : missingRecord ? 404 : 200, json: rejectedSession ? { message: "Session expired" } : missingRecord ? { message: "Not found" } : body });
   });
   const page = await context.newPage();
   await page.goto(server.resolvedUrls.local[0]);
@@ -321,6 +324,20 @@ it("clears authentication on sign-out and keeps protected routes gated on Back a
   await page.goto(`${server.resolvedUrls.local[0]}reports`);
   await page.getByRole("heading", { name: "Sign in" }).waitFor();
   assert.equal(await page.locator(".reports-page").count(), 0);
+});
+
+it("returns to sign-in after a saved session is rejected and permits authentication again", async (t) => {
+  const { page } = await fixture(t, 1440, { rejectReportsAuth: true });
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
+  assert.equal(await page.locator(".reports-page").count(), 0);
+
+  await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator(".reports-page").waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), "signed-in-nav-test-token");
 });
 
 it("opens each primary navigation route and updates the active link and title", async (t) => {

@@ -195,11 +195,18 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Recover from a rejected saved session
 
-- [ ] When the current saved session is rejected by the application, the user
-  is returned to the signed-out experience.
-- [ ] A stale response for a replaced token does not sign out the current
-  authenticated session.
-- [ ] The user can authenticate again after the rejected-session state.
+- [x] When the current saved session is rejected by the application, the user
+  is returned to the signed-out experience. Evidence: `cd frontend && node
+  --test --test-name-pattern='saved session is rejected'
+  scripts/nav-shell.acceptance.test.mjs` rejects the mocked Reports request
+  with a 401 and verifies sign-in replaces protected content.
+- [x] A stale response for a replaced token does not sign out the current
+  authenticated session. Evidence: `cd frontend && npx vitest run
+  src/lib/api.test.ts -t 'does not erase a newer sign-in'` verifies the new
+  token remains stored and no reload occurs.
+- [x] The user can authenticate again after the rejected-session state.
+  Evidence: the browser test signs in after the mocked 401 and verifies the
+  Reports page returns with the new token.
 
 ### Flow: Change the appearance preference
 
