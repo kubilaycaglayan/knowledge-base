@@ -804,8 +804,12 @@ browser interaction evidence remains a separate layer.
   where ordering is part of the contract.
 - [ ] Optimistic version or expected-update-time contracts have both current
   version success and stale version conflict evidence.
-- [ ] Idempotent operations document and assert repeated-request outcomes
-  where idempotency is part of the API contract.
+- [x] Idempotent operations document and assert repeated-request outcomes
+  where idempotency is part of the API contract. Evidence includes repeated
+  calendar-day deletion, board archive and restore, Clockify duplicate source
+  imports, and both import-batch undo routes; each corresponding operation row
+  in [`01-api-matrix.md`](01-api-matrix.md) names the exact assertion and
+  resulting state/count.
 - [x] Concurrent timer-start behavior verifies the one-running-timer invariant
   through service behavior, concurrent HTTP starts, and the PostgreSQL
   uniqueness safeguard (tests linked in the timer operation row above).
