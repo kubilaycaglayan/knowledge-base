@@ -284,9 +284,16 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open and dismiss a dialog
 
-- [ ] Opening a dialog places focus within the dialog.
-- [ ] Closing a dialog returns focus to the control that opened it.
-- [ ] Escape closes dialogs where Escape is an advertised dismissal action.
+- [x] Opening a dialog places focus within the dialog. Evidence:
+  `opens a new-board dialog from the Boards dialog and returns there on Escape`
+  in `frontend/scripts/board.acceptance.test.mjs` asserts focus enters the
+  New board dialog.
+- [x] Closing a dialog returns focus to the control that opened it. Evidence:
+  the same browser test verifies Escape returns focus to Add board in the
+  Boards dialog.
+- [x] Escape closes dialogs where Escape is an advertised dismissal action.
+  Evidence: the same browser test sends Escape and verifies New board closes
+  and the Boards dialog is restored.
 - [ ] Clicking a dialog backdrop closes only dialogs that support backdrop
   dismissal.
 
