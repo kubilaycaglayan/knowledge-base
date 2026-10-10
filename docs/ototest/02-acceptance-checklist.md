@@ -240,7 +240,9 @@ browser interaction evidence remains a separate layer.
 - [x] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
 - [x] `GET /api/v1/activities` covers each supported `from`, `to`, `pathId`,
-  and `type` filter independently.
+  and `type` filter independently; malformed timestamps, path IDs, and type
+  names return 400 before service execution
+  (`ActivityApiTest.malformedActivityFilterValuesAreRejectedBeforeTheServiceCall`).
 - [x] Activity filtering covers inclusive/exclusive boundary behavior as
   documented for each supported date/time input.
 - [x] Activity results do not reveal another user's records through direct or
