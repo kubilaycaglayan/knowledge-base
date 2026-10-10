@@ -1299,6 +1299,27 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void stoppingAnAccidentalTimerDoesNotSaveACompletedSession() {
+    String token = freshToken();
+    ResponseEntity<JsonNode> started =
+        post(
+            "/api/v1/timers",
+            token,
+            "{\"labelIds\":[],\"description\":\"Accidental start\",\"source\":\"WEB\"}");
+    assertEquals(HttpStatus.CREATED, started.getStatusCode());
+    String timerId = started.getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> stopped =
+        post("/api/v1/timers/" + timerId + "/stop", token, "{}");
+    assertEquals(HttpStatus.OK, stopped.getStatusCode());
+    assertFalse(stopped.getBody().get("running").asBoolean());
+    assertTrue(stopped.getBody().get("durationSeconds").asLong() < 2);
+    assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
+    ResponseEntity<JsonNode> noCurrent = get("/api/v1/timers/current", token);
+    assertTrue(noCurrent.getBody() == null || noCurrent.getBody().isNull());
+  }
+
+  @Test
   void timerCanBeCancelled() {
     String token = freshToken();
     ResponseEntity<JsonNode> started =

@@ -358,8 +358,9 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `FloatingTimeTracker.test.ts` / `resolves a start conflict to the
   account's already-running timer` verifies the start conflict fetches the
   authoritative current timer and activates its Path and description.
-- [ ] Stopping a timer under the accidental-start threshold does not leave a
-  completed session.
+- [x] Stopping a timer under the accidental-start threshold does not leave a
+  completed session. Evidence: `KnowIntegrationTest.stoppingAnAccidentalTimerDoesNotSaveACompletedSession`
+  stops a zero-duration timer and verifies history and current timer are empty.
 
 ### Flow: Pause a running session
 
