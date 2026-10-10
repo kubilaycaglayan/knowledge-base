@@ -1381,9 +1381,11 @@ so the warning and discard criteria remain open.
 
 ## OTOTEST-03 inventory acceptance
 
-- [ ] Every supported route in the [product test tree](product-test-tree.md)
+- [x] Every supported route in the [product test tree](product-test-tree.md)
   has an inventory row for direct load, page identity, and applicable query
-  state.
+  state. Evidence: [`01-route-matrix.md`](01-route-matrix.md) reconciles all 19
+  registered route entries from `frontend/src/main.ts` and records route,
+  evidence, and remaining gaps.
 - [ ] Every meaningful visible control on each supported route has its own
   action row; a page render does not count as coverage for its controls.
 - [ ] Each action row names the control, starting state, input method, visible
@@ -1397,15 +1399,23 @@ so the warning and discard criteria remain open.
 - [ ] Each row links exact evidence identifiers only when the assertion
   establishes that behavior; otherwise mark the row as a gap, manual check,
   unsupported behavior, or decision needed.
-- [ ] Fixture/mock, API/service, real-browser, and manual evidence remain
-  clearly distinguished.
+- [x] Fixture/mock, API/service, real-browser, and manual evidence remain
+  clearly distinguished. Evidence: [`01-route-matrix.md`](01-route-matrix.md)
+  and [`01-control-matrix.md`](01-control-matrix.md) label component, mocked
+  browser, real-stack, API/service, and manual evidence separately.
 - [ ] Dialog and menu action rows cover the applicable open, submit, cancel,
   validation, confirmation, focus, failed-request, and retry outcomes as
   separate responsibilities.
-- [ ] `/development` is explicitly excluded from supported route completeness
-  and absent from authenticated product navigation.
-- [ ] Native iOS and Chrome extension flows are excluded from this milestone;
-  extension coverage is tracked by OTOTEST-04.
+- [x] `/development` is explicitly excluded from supported route completeness
+  and absent from authenticated product navigation. Evidence:
+  [`01-route-matrix.md`](01-route-matrix.md) marks the route excluded;
+  `nav-shell.acceptance.test.mjs` / `keeps every supported primary destination
+  reachable at phone width` asserts the complete primary-link href list without
+  `/development`.
+- [x] Native iOS and Chrome extension flows are excluded from this milestone;
+  extension coverage is tracked by OTOTEST-04. Evidence:
+  [`README.md`](README.md) defines iOS as out of scope and tracks extension
+  coverage under OTOTEST-04.
 - [ ] The checklist is reviewed against the current router, page templates,
   shared components, and product test tree before OTOTEST-03 is marked
   complete.
