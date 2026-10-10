@@ -1317,6 +1317,10 @@ so the warning and discard criteria remain open.
 - [ ] Every state change can be triggered from a semantic button or form
   control.
 - [ ] Focus remains visible and is not covered by fixed or sticky UI.
+  Partial evidence: `nav-shell.acceptance.test.mjs` / `shows a visible keyboard
+  focus ring that is not covered by the shell` checks the first Tab target has
+  a 2px focus ring, is inside the phone viewport, and is not covered at its
+  center point. Other controls and scrolled/sticky states still need coverage.
 - [ ] Dialogs, menus, pickers, and forms have predictable focus entry and
   return behavior.
 - [ ] Drag, date-range, and reorder actions have a keyboard alternative where

@@ -348,6 +348,30 @@ it("moves focus from the skip link to the main content", async (t) => {
   assert.equal(new URL(page.url()).hash, "#main-content");
 });
 
+it("shows a visible keyboard focus ring that is not covered by the shell", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.keyboard.press("Tab");
+  const focus = await page.evaluate(() => {
+    const element = document.activeElement;
+    if (!(element instanceof HTMLElement)) return null;
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const center = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      name: element.getAttribute("aria-label") || element.textContent?.trim(),
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      visible: rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight,
+      covered: center !== element && !element.contains(center),
+    };
+  });
+  assert.ok(focus, "Tab should move focus to a visible control");
+  assert.equal(focus.outlineStyle, "solid");
+  assert.equal(focus.outlineWidth, "2px");
+  assert.equal(focus.visible, true, JSON.stringify(focus));
+  assert.equal(focus.covered, false, JSON.stringify(focus));
+});
+
 it("keeps every supported primary destination reachable at phone width", async (t) => {
   const { page } = await fixture(t, 390);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
