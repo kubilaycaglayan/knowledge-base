@@ -545,8 +545,22 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
     if (method === "POST" && cardRoute?.[2] === "move" && routedCard) {
       cardMoveRequests += 1;
       const requestBody = request.postDataJSON();
+      const previousStatusId = routedCard.statusId;
+      const previousPosition = routedCard.position;
+      const nextStatusId = requestBody.statusId;
+      const nextPosition = requestBody.position;
+      for (const sibling of fixtureCards) {
+        if (sibling.id === routedCard.id || sibling.archived) continue;
+        if (previousStatusId === nextStatusId && sibling.statusId === previousStatusId) {
+          if (previousPosition < nextPosition && sibling.position > previousPosition && sibling.position <= nextPosition) sibling.position -= 1;
+          else if (nextPosition < previousPosition && sibling.position >= nextPosition && sibling.position < previousPosition) sibling.position += 1;
+        } else if (previousStatusId !== nextStatusId) {
+          if (sibling.statusId === previousStatusId && sibling.position > previousPosition) sibling.position -= 1;
+          else if (sibling.statusId === nextStatusId && sibling.position >= nextPosition) sibling.position += 1;
+        }
+      }
       routedCard.statusId = requestBody.statusId;
-      routedCard.position = requestBody.position;
+      routedCard.position = nextPosition;
       body = routedCard;
     }
     if (method === "PUT" && cardRoute && !cardRoute[2] && routedCard) {
