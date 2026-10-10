@@ -98,8 +98,11 @@ browser interaction evidence remains a separate layer.
   `@RequestParam`, declared default/optional status, enforced range or enum
   where applicable, and the only supported repeated-value parameters
   (`pathId` and `labelId` on reports), with named binding evidence.
-- [ ] Include request body fields, validation constraints, and optional fields
-  in each applicable row.
+- [x] Include request body fields, validation constraints, and optional fields
+  in each applicable row. The API matrix records request DTO fields and
+  constraints for JSON operations, raw CSV import shape, service-level
+  reference/set rules, and states that methods without a declared body have
+  no request body; unproven field behavior remains a gap.
 - [ ] Include response code, response fields, and relevant headers/content
   types in each applicable row.
 - [ ] Include authentication requirements and any intentionally public

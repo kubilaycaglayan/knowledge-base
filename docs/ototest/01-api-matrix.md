@@ -39,6 +39,15 @@ Parameters without declared bounds are described as such rather than assigned
 an inferred range. Rows with no query inputs explicitly say so where the
 absence affects the operation's behavior.
 
+**Request-body audit:** JSON body rows identify their request type, fields,
+required/optional status, and declared validation constraints. Where domain
+validation adds a constraint (such as an owned reference or a complete reorder
+set), the row identifies the service rule and named evidence. Operations whose
+controller method declares no `@RequestBody` have no request body; the two
+import operations are recorded with their raw CSV body or parsed Clockify
+entry shape. Missing field-level assertions remain gaps rather than being
+inferred from a DTO annotation alone.
+
 **Evidence-layer convention:** qualified `Class.method` references name the
 assertion to inspect; the Java test package identifies its evidence layer:
 `com.know.api` is controller/HTTP, `com.know.service` is service/domain,
