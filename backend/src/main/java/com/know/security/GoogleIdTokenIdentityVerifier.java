@@ -15,6 +15,10 @@ import org.springframework.stereotype.Component;
 public final class GoogleIdTokenIdentityVerifier implements GoogleIdentityVerifier {
   private final GoogleIdTokenVerifier verifier;
 
+  GoogleIdTokenIdentityVerifier(GoogleIdTokenVerifier verifier) {
+    this.verifier = verifier;
+  }
+
   public GoogleIdTokenIdentityVerifier(@Value("${app.google-client-id:}") String clientId) {
     if (clientId == null || clientId.isBlank()) {
       verifier = null;

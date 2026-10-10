@@ -117,6 +117,9 @@ browser interaction evidence remains a separate layer.
   `AuthControllerApiTest.googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary`;
   verifier-level malformed tokens are covered by
   `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
+  Claim-level unverified email, missing email/subject, and normalized identity
+  behavior are covered by `GoogleIdTokenIdentityVerifierTest`; wrong-audience
+  behavior remains to be verified against the configured verifier.
 - [x] `GET /api/v1/auth/me` returns the authenticated account's public profile
   without its password hash (`AuthControllerApiTest.currentAccountReturnsOnlyTheAuthenticatedUsersPublicProfile`).
 - [x] `GET /api/v1/auth/me` rejects missing, malformed, expired, and invalid
