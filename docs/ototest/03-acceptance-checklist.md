@@ -514,7 +514,9 @@ the extension has its own scope in OTOTEST-04.
   selected month/day and the page title before and after reload.
 - [x] An invalid date query does not select an impossible calendar date.
   Evidence: `frontend/src/views/DeepLinks.test.ts`, `follows a new date while
-  open, and ignores impossible dates` checks leap day and rejects February 30.
+  open, and ignores impossible dates` checks leap day and rejects February 30;
+  `scripts/nav-shell.acceptance.test.mjs`, `clears an impossible Calendar date
+  query and falls back to today` checks query cleanup and today's selected day.
 
 ### Flow: Edit one calendar day
 

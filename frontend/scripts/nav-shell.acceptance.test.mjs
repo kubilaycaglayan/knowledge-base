@@ -437,6 +437,22 @@ it("loads a Calendar date deep link and retains it after browser reload", async 
   assert.match(await page.title(), /Knowledge Base.*Calendar/);
 });
 
+it("clears an impossible Calendar date query and falls back to today", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(`${server.resolvedUrls.local[0]}calendar?date=2026-02-30`);
+  await page.locator(".calendar-page").waitFor();
+  await page.waitForFunction(() => !new URL(location.href).searchParams.has("date"));
+
+  const current = await page.evaluate(() => ({
+    year: String(new Date().getFullYear()),
+    month: String(new Date().getMonth()),
+    day: String(new Date().getDate()),
+  }));
+  assert.equal(await page.getByRole("combobox", { name: "Calendar year" }).inputValue(), current.year);
+  assert.equal(await page.getByRole("combobox", { name: "Calendar month" }).inputValue(), current.month);
+  assert.equal(await page.locator('button.calendar-day[aria-pressed="true"] time').textContent(), current.day);
+});
+
 it("selects a calendar day with touch and updates its details panel", async (t) => {
   const { page } = await fixture(t, 390);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);
