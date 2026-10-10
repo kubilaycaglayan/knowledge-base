@@ -258,6 +258,15 @@ it("uses at least 16px text controls on phone-width routes", async (t) => {
   }
 });
 
+it("does not disable browser zoom in the viewport configuration", async (t) => {
+  const { page } = await fixture(t, 390);
+  await page.goto(server.resolvedUrls.local[0]);
+  const content = await page.locator('meta[name="viewport"]').getAttribute("content");
+  assert.ok(content);
+  assert.doesNotMatch(content, /user-scalable\s*=\s*no/i);
+  assert.doesNotMatch(content, /maximum-scale\s*=\s*1(?:\.0+)?(?:\s|,|$)/i);
+});
+
 it("keeps the Gantt timeline full width while the nav bar stays standard", async (t) => {
   const { page, requests } = await fixture(t, 1600);
   await visit(page, "/board");

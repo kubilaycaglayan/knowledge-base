@@ -1332,6 +1332,10 @@ so the warning and discard criteria remain open.
   content on Sessions, Logs, Notes, Calendar, and Settings at 390px. A real
   mobile browser zoom interaction still needs verification.
 - [ ] The page remains zoomable using browser controls.
+  Partial evidence: `nav-shell.acceptance.test.mjs` / `does not disable browser
+  zoom in the viewport configuration` checks the viewport metadata omits
+  `user-scalable=no` and a 1.0 maximum scale. Actual browser zoom interaction
+  still needs verification.
 - [ ] The on-screen keyboard does not permanently obscure the active control
   or its save/recovery action.
 - [ ] Modals and drawers keep their content scroll contained and provide a
