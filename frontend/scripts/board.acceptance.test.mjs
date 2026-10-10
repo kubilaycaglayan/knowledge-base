@@ -807,6 +807,28 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await page.getByRole("textbox", { name: "Timeline end date" }).inputValue(), initialTo);
   });
 
+  it("keeps Gantt date and window controls operable at phone width", async (t) => {
+    const { page } = await fixture(t, 390);
+    await boardAction(page, "Gantt");
+    const controls = page.locator(".board-gantt-controls");
+    await controls.waitFor();
+    const names = ["Previous timeline window", "Timeline start date", "Today", "Timeline end date", "Next timeline window"];
+    for (const name of names) {
+      const control = page.getByRole(name.includes("date") ? "textbox" : "button", { name });
+      await control.waitFor();
+      assert.equal(await control.isVisible(), true, `${name} is visible at phone width`);
+      const box = await control.boundingBox();
+      const width = await page.evaluate(() => window.innerWidth);
+      assert.ok(box.x >= 0 && box.x + box.width <= width, `${name} stays within the viewport`);
+    }
+    const before = new URL(page.url()).searchParams.get("from");
+    await page.getByRole("button", { name: "Next timeline window" }).click();
+    await page.waitForFunction((previousFrom) => new URL(location.href).searchParams.get("from") !== previousFrom, before);
+    await page.getByRole("button", { name: "Today", exact: true }).click();
+    const today = await page.evaluate(() => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; });
+    assert.equal(await page.getByRole("textbox", { name: "Timeline start date" }).inputValue(), today);
+  });
+
   it("removes an edited out-of-window card from Gantt but keeps it in Kanban", async (t) => {
     const { page } = await fixture(t);
     await boardAction(page, "Gantt");
