@@ -236,6 +236,21 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void googleIdTokenAtMaximumLengthReachesTheVerifier() throws Exception {
+    String maximumToken = "x".repeat(10000);
+    when(google.verify(maximumToken)).thenReturn(Optional.empty());
+
+    mvc.perform(
+            post("/api/v1/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\"" + maximumToken + "\"}"))
+        .andExpect(status().isUnauthorized());
+
+    verify(google).verify(maximumToken);
+    verifyNoInteractions(users);
+  }
+
+  @Test
   void verifiedGoogleIdentityLinksAnExistingEmail() throws Exception {
     User existing = new User("person@example.com", "hash", "person");
     when(google.verify("good-token"))

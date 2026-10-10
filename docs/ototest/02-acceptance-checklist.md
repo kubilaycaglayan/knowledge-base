@@ -121,6 +121,8 @@ browser interaction evidence remains a separate layer.
   malformed provider-token behavior evidence as applicable.
   HTTP missing/null/blank/oversized token binding is covered by
   `AuthControllerApiTest.googleLoginRejectsBlankAndOverlongIdTokensAtTheRequestBoundary`;
+  an exact 10,000-character token reaches the verifier
+  (`AuthControllerApiTest.googleIdTokenAtMaximumLengthReachesTheVerifier`);
   verifier-level malformed tokens are covered by
   `GoogleIdTokenIdentityVerifierTest.configuredVerifierRejectsMalformedTokenWithoutThrowing`.
   Claim-level unverified email, missing email/subject, and normalized identity
