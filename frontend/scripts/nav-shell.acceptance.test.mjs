@@ -17,6 +17,7 @@ async function fixture(t, width, { warmup = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
+  const reportQueries = [];
   const paths = [];
   await context.addInitScript(() => localStorage.setItem("know_token", "nav-test-token"));
   // Playwright sets navigator.webdriver, which turns the navigation warm-up off unless forced.
@@ -43,7 +44,10 @@ async function fixture(t, width, { warmup = false } = {}) {
     else if (path === "/timers/current") body = null;
     else if (path === "/notes") body = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 };
     else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
-    else if (path.startsWith("/reports")) body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
+    else if (path.startsWith("/reports")) {
+      reportQueries.push(url.searchParams.toString());
+      body = { period: "WEEK", from: url.searchParams.get("startDate"), to: url.searchParams.get("endDate"), totalSeconds: 0, days: [], paths: [], sessionLabels: [], calendarLabels: [] };
+    }
     else if (path === "/timers/draft" || path === "/preferences") body = {};
     const missingRecord = path === "/notes/gone" || path === "/time-entries/gone" || path === "/logs/gone" || path === "/paths/gone" || path.startsWith("/labels/gone/history");
     await route.fulfill({ status: missingRecord ? 404 : 200, json: missingRecord ? { message: "Not found" } : body });
@@ -51,7 +55,7 @@ async function fixture(t, width, { warmup = false } = {}) {
   const page = await context.newPage();
   await page.goto(server.resolvedUrls.local[0]);
   await page.locator(".dashboard-shell > header nav").waitFor();
-  return { page, requests };
+  return { page, requests, reportQueries };
 }
 
 async function until(condition) {
@@ -194,6 +198,21 @@ it("restores report filters after navigation and browser Back/Forward", async (t
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.goForward();
   await assertReportQuery();
+});
+
+it("loads report filters from a direct query URL and keeps them on reload", async (t) => {
+  const { page, reportQueries } = await fixture(t, 1440);
+  const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
+  await page.goto(`${server.resolvedUrls.local[0]}reports${query}`);
+  await page.locator(".reports-page").waitFor();
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
+  assert.equal(new URL(page.url()).search, query);
+
+  await page.reload();
+  await page.locator(".reports-page").waitFor();
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Report aggregation"]')?.value === "MONTH");
+  assert.equal(new URL(page.url()).search, query);
+  assert.ok(reportQueries.filter((value) => value.includes("startDate=2026-09-01") && value.includes("endDate=2026-09-07")).length >= 2);
 });
 
 it("opens a session detail when the browser loads its deep link directly", async (t) => {

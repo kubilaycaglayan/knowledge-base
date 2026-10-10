@@ -395,7 +395,10 @@ the extension has its own scope in OTOTEST-04.
   after navigating to another route. Evidence: `cd frontend && node --test
   --test-name-pattern='restores report filters after navigation'
   scripts/nav-shell.acceptance.test.mjs` (desktop Chromium; mocked API).
-- [ ] Reloading a report URL restores its supported range and filter state.
+- [x] Reloading a report URL restores its date range and aggregation.
+  Evidence: `cd frontend && node --test --test-name-pattern='loads report
+  filters from a direct query URL' scripts/nav-shell.acceptance.test.mjs`
+  (desktop Chromium; mocked API).
 
 ### Flow: Filter report totals by path
 
