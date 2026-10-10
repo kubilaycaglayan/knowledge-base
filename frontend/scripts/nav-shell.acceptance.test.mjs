@@ -83,7 +83,7 @@ async function fixture(t, width, { warmup = false, calendarLabels = [] } = {}) {
   const page = await context.newPage();
   await page.goto(server.resolvedUrls.local[0]);
   await page.locator(".dashboard-shell > header nav").waitFor();
-  return { page, requests, reportQueries, calendarLabels };
+  return { page, requests, reportQueries, calendarLabels, paths };
 }
 
 async function until(condition) {
@@ -195,6 +195,21 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   await page.reload();
   await page.locator(".path-title", { hasText: "Reading" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/paths");
+});
+
+it("selects and saves a Path color using only the keyboard", async (t) => {
+  const { page, paths } = await fixture(t, 1440);
+  page.setDefaultTimeout(4000);
+  await visit(page, "/paths");
+  await page.getByRole("button", { name: "Add path" }).click();
+  await page.getByRole("textbox", { name: "New path name" }).fill("Keyboard path");
+  const blue = page.getByRole("button", { name: "Choose path color: Blue (#3B82F6)" });
+  await blue.focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await blue.getAttribute("aria-pressed"), "true");
+  await page.locator("form.path-create-form button[type=submit]").click();
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.equal(paths[0]?.color, "#3B82F6");
 });
 
 it("restores report filters after navigation and browser Back/Forward", async (t) => {
