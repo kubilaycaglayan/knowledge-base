@@ -299,9 +299,15 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Receive operation feedback
 
-- [ ] Success and error notices are announced politely to assistive technology.
-- [ ] Destructive actions require confirmation or provide a visible recovery
-  action.
+- [x] Success and error notices are announced politely to assistive technology.
+  Evidence: `AppSnackbar.test.ts` / `shows a notice politely and dismisses it`
+  checks both the default error notice and the success/info notice in the
+  snackbar status region.
+- [x] Destructive actions require confirmation or provide a visible recovery
+  action. Evidence: `confirms board archival before sending the destructive
+  request` in `frontend/scripts/board.acceptance.test.mjs` verifies that the
+  alert dialog appears before the archive request, Cancel sends no request, and
+  confirmation archives the board.
 
 ## Sessions and timer
 

@@ -22,6 +22,12 @@ describe("AppSnackbar", () => {
     (document.querySelector('.app-snackbar button[aria-label="Dismiss message"]') as HTMLButtonElement).click();
     await flushPromises();
     expect(notices.current).toBeNull();
+
+    notices.notify("Path saved.", "info");
+    await flushPromises();
+    expect(document.querySelector(".app-snackbar")?.textContent).toContain("Path saved.");
+    expect(document.querySelector('.app-snackbar [role="status"]')).not.toBeNull();
+    expect(document.querySelector(".app-snackbar")?.classList.contains("tone-info")).toBe(true);
     wrapper.unmount();
   });
 });
