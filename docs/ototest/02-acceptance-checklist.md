@@ -821,6 +821,9 @@ browser interaction evidence remains a separate layer.
   boundary and reject the first value above it
   (`NoteApiTest.noteCreateValidatesRequiredContentAndTextLimits` and
   `NoteApiTest.noteUpdateValidatesRequiredContentAndTextLimits`).
+  The shared `CardRequest.title` upper-bound rejection is also asserted on
+  both create and update in
+  `BoardControllerApiTest.cardTitleLimitRejectsOverlongAndAcceptsMaximumLength`.
   The DTO annotation and service-range audit found named evidence for the
   declared constraints across auth, note/log, calendar, timer, import, and
   board request types. The criterion remains open because `CardRequest.priority`
