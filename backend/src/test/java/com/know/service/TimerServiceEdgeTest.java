@@ -45,6 +45,24 @@ class TimerServiceEdgeTest {
   }
 
   @Test
+  void startingWhileAnotherTimerRunsConflictsBeforeTargetValidationOrMutation() {
+    UUID user = UUID.randomUUID();
+    TimeEntry running =
+        new TimeEntry(user, null, Instant.now(), "Already running", TimeSource.WEB);
+    when(entries.findByUserIdAndEndedAtIsNull(user)).thenReturn(Optional.of(running));
+
+    ResponseStatusException conflict =
+        assertThrows(
+            ResponseStatusException.class,
+            () -> service().start(user, UUID.randomUUID(), List.of(UUID.randomUUID()), "Next", null));
+
+    assertEquals(org.springframework.http.HttpStatus.CONFLICT, conflict.getStatusCode());
+    verify(entries).findByUserIdAndEndedAtIsNull(user);
+    verify(entries, never()).save(any());
+    verifyNoInteractions(paths, labels, scopes, entryLabels);
+  }
+
+  @Test
   void manualAndRunningConfigurationRejectInvalidTimeWindowsBeforeMutation() {
     UUID user = UUID.randomUUID();
     Instant now = Instant.now();

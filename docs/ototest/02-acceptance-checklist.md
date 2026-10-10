@@ -299,7 +299,11 @@ browser interaction evidence remains a separate layer.
 - [x] `POST /api/v1/timers` covers server-owned start time, selected context,
   and one-running-timer behavior.
 - [x] Concurrent `POST /api/v1/timers` requests preserve the one-running-timer
-  invariant (`TimerPauseIntegrationTest.concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant`).
+  invariant (`TimerPauseIntegrationTest.concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant`);
+  service behavior rejects a second start before target validation or mutation
+  (`TimerServiceEdgeTest.startingWhileAnotherTimerRunsConflictsBeforeTargetValidationOrMutation`),
+  and guarded PostgreSQL evidence directly exercises the partial unique index
+  (`PostgresDatabaseConstraintIntegrationTest.postgresEnforcesTimeEntryChecksAndPathReferentialActions`).
 - [x] `PUT /api/v1/timers/{id}` covers update, optional stop/end-time behavior,
   and owner-scoped timer IDs; null label lists and missing start values are
   rejected before service execution
@@ -793,8 +797,9 @@ browser interaction evidence remains a separate layer.
   version success and stale version conflict evidence.
 - [ ] Idempotent operations document and assert repeated-request outcomes
   where idempotency is part of the API contract.
-- [ ] Concurrent timer-start behavior verifies the one-running-timer invariant
-  through both service behavior and the PostgreSQL uniqueness safeguard.
+- [x] Concurrent timer-start behavior verifies the one-running-timer invariant
+  through service behavior, concurrent HTTP starts, and the PostgreSQL
+  uniqueness safeguard (tests linked in the timer operation row above).
 - [ ] Multi-record mutation failures verify transaction rollback where
   persistence must remain atomic.
 - [ ] PostgreSQL-specific constraints and migration behavior run only under
