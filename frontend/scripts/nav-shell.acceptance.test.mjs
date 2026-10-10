@@ -1242,6 +1242,28 @@ it("groups matching record types, shows note context, and opens the active resul
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Reports research note");
 });
 
+it("opens the active global search result in a new tab with Control+Enter", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  await dialog.waitFor();
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Reports");
+  const note = page.getByRole("option", { name: /Reports research note/ });
+  await note.waitFor();
+  await input.press("ArrowDown");
+  assert.equal(await note.getAttribute("aria-selected"), "true");
+
+  const opened = page.context().waitForEvent("page");
+  await input.press("Control+Enter");
+  const newTab = await opened;
+  await newTab.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(newTab.url()).pathname, "/notes/search-note");
+  assert.equal(await dialog.isVisible(), true);
+  assert.equal(new URL(page.url()).pathname, "/");
+});
+
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
   const { page, requests } = await fixture(t, 1440, { warmup: true });
   const warmed = ["/notes", "/calendar/days", "/reports", "/logs"];

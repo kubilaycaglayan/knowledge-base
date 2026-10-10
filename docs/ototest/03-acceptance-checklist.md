@@ -251,8 +251,11 @@ the extension has its own scope in OTOTEST-04.
   `frontend/scripts/nav-shell.acceptance.test.mjs` asserts separate Notes and
   Logs groups, matching note text and Label context, then opens the selected
   note with ArrowDown and Enter.
-- [ ] The open-in-new-tab shortcut opens the active result in a new browser
-  tab.
+- [x] The open-in-new-tab shortcut opens the active result in a new browser
+  tab. Evidence: `opens the active global search result in a new tab with
+  Control+Enter` in `frontend/scripts/nav-shell.acceptance.test.mjs` verifies
+  the selected Note opens in a separate browser tab while the original search
+  remains open.
 - [ ] Every result supports standard link behavior, including opening a new
   tab from the browser context menu.
 - [ ] Show more reveals additional results only for the selected result type.
