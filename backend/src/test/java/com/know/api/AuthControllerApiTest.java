@@ -269,6 +269,21 @@ class AuthControllerApiTest {
   }
 
   @Test
+  void passwordSetupRejectsNewPasswordsOutsideTheSupportedLength() throws Exception {
+    var auth = new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+    for (String password : List.of("short", "p".repeat(201))) {
+      mvc.perform(
+              org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                      "/api/v1/auth/password")
+                  .with(authentication(auth))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"newPassword\":\"" + password + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(users, encoder);
+  }
+
+  @Test
   void passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured() throws Exception {
     UUID id = UUID.randomUUID();
     User user = new User("person@example.com", "hash", "Person");

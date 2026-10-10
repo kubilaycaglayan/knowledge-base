@@ -88,24 +88,27 @@ browser interaction evidence remains a separate layer.
 
 - [ ] `GET /api/v1/auth/google/config` has an assertion for configured and
   unconfigured response behavior.
-- [ ] `POST /api/v1/auth/register` has a successful account-creation and token
-  response assertion.
+- [x] `POST /api/v1/auth/register` creates an account and returns its user ID
+  and bearer token (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
 - [x] `POST /api/v1/auth/register` rejects malformed email, password below
   nine characters, and password over 200 characters before user lookup
   (`AuthControllerApiTest.registrationRejectsShortPasswords` and
   `registrationRejectsMalformedEmailsAndPasswordsOverTheMaximumLength`).
-- [ ] `POST /api/v1/auth/register` has duplicate-account conflict behavior
-  evidence.
-- [ ] `POST /api/v1/auth/login` has a successful credential and token response
-  assertion.
+- [x] `POST /api/v1/auth/register` returns conflict for duplicate normalized
+  email (`AuthControllerApiTest.duplicateRegistrationIsRejected` and
+  `KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
+- [x] `POST /api/v1/auth/login` accepts valid credentials and returns a bearer
+  token (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`).
 - [x] `POST /api/v1/auth/login` rejects incorrect credentials and returns the
   same unauthorized response for an unknown email and a wrong password
   (`AuthControllerApiTest.invalidLoginDoesNotRevealWhetherAccountExists` and
   `loginUsesTheSameFailureForUnknownEmailAndWrongPassword`). Input field
   boundaries are validated by the shared credentials DTO and registration
   boundary assertions.
-- [ ] `POST /api/v1/auth/google` has a successful verified-token exchange
-  assertion where provider verification can be isolated.
+- [x] `POST /api/v1/auth/google` links a verified identity to an existing
+  account or creates a new account when verification is isolated
+  (`AuthControllerApiTest.verifiedGoogleIdentityLinksAnExistingEmail` and
+  `verifiedGoogleIdentityCreatesAnAccountWithRandomUnusablePassword`).
 - [ ] `POST /api/v1/auth/google` has invalid, unverified, wrong-audience, and
   malformed provider-token behavior evidence as applicable.
   HTTP blank/oversized token binding is covered by
@@ -117,10 +120,17 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/auth/me` rejects missing, malformed, expired, and invalid
   bearer tokens (`SecurityHardeningIntegrationTest.everyProtectedRouteRejectsAnonymousRequests`
   and `malformedTokensAreRejectedWithoutServerErrors`).
-- [ ] `PUT /api/v1/auth/password` has first-password setup and existing-password
-  change behavior evidence.
-- [ ] `PUT /api/v1/auth/password` has current-password, new-password
-  validation, and Google-linked-account boundary evidence as applicable.
+- [x] `PUT /api/v1/auth/password` supports first-password setup for Google-only
+  accounts and changing an existing password
+  (`AuthControllerApiTest.googleOnlyUserCanSetPasswordAfterAuthentication`
+  and `passwordChangeWithCorrectCurrentPasswordPersistsTheReplacement`).
+- [x] `PUT /api/v1/auth/password` requires the current password for existing
+  passwords and enforces new-password length boundaries; Google-linked accounts
+  with an existing password follow that same rule
+  (`AuthControllerApiTest.passwordChangeRejectsMissingCurrentPasswordWhenAlreadyConfigured`,
+  `passwordChangeRequiresTheCurrentPasswordWhenAlreadyConfigured`,
+  `passwordChangeRequiresCurrentPasswordEvenWhenGoogleIsAlsoLinked`, and
+  `passwordSetupRejectsNewPasswordsOutsideTheSupportedLength`).
 - [x] Registration and login responses do not expose password hashes or the
   linked Google subject (`KnowIntegrationTest.registrationCreatesUserAndLoginReturnsJwt`);
   the account endpoint likewise omits the stored hash
