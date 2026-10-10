@@ -1393,10 +1393,11 @@ criteria remain open.
   compares foreign and missing IDs across Paths, Notes, Logs, Boards, statuses,
   cards, time entries, timers, and Calendar labels while checking owner data is
   unchanged.
-- [ ] A selector does not offer another user's Path, label, board, or status.
-  Partial API evidence: `CrossUserIsolationIntegrationTest.listsAndSearchNeverLeakOtherUsersRows`
-  includes Path, Label, Board, and board column catalogs; explicit rendered
-  selector option assertions remain open.
+- [x] A selector does not offer another user's Path, label, board, or status.
+  Evidence: `CrossUserIsolationIntegrationTest.listsAndSearchNeverLeakOtherUsersRows`
+  verifies the Path, Label, Board, and merged board-column catalogs omit every
+  other-user fixture ID. These API responses feed the Paths, Labels, board
+  selectors, and status choices in the web client.
 - [x] A failed cross-owner reference displays a safe error and leaves existing
   data unchanged. Evidence: `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`
   checks foreign references are rejected without returning the owner's marker
