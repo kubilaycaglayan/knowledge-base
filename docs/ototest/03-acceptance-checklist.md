@@ -696,9 +696,11 @@ the extension has its own scope in OTOTEST-04.
 
 - [ ] Opening a note row sets the note-specific URL.
 - [x] Directly loading a valid `/notes/:id` URL opens that note in the
-  component route test. Evidence: `cd frontend && npx vitest run
-  src/views/DeepLinks.test.ts` — `loads the selected note when its editor URL
-  is opened directly` (mocked API).
+  component route test and a desktop Chromium browser test. Evidence:
+  `cd frontend && npx vitest run src/views/DeepLinks.test.ts` — `loads the
+  selected note when its editor URL is opened directly`; `cd frontend && node
+  --test --test-name-pattern='loads a note editor when the browser opens its
+  deep link directly' scripts/nav-shell.acceptance.test.mjs` (mocked API).
 - [ ] Closing a note returns to its list context and clears its selected URL.
 - [x] Opening a missing or inaccessible note shows a recoverable unavailable
   state in the component route test. Evidence: `cd frontend && npx vitest run
