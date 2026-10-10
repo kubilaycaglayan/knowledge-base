@@ -1003,8 +1003,9 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Maintain the API contract and report completion
 
-- [ ] Every behavior change updates `docs/api.md` and its API matrix row in the
-  same review.
+- [x] Every behavior change updates `docs/api.md` and its API matrix row in the
+  same review. This batch changes test coverage and audit evidence only; it
+  changes no product behavior or public API contract.
 - [x] Every controller mapping, overload, and alias has exactly one inventory
   entry or a documented exclusion. At the recorded source baseline, 105
   mapping annotations compose to 107 routes; the matrix contains 107 unique
