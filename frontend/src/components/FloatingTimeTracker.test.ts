@@ -331,41 +331,55 @@ describe("FloatingTimeTracker", () => {
 
   // SP-07
   it("shows pause while running and resume while paused", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T10:01:05Z"));
+    let paused = false;
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
       if (path === "/paths") return [{ id: "path-1", name: "Knowledge Base", status: "ACTIVE" }];
       if (path === "/labels?scope=TIME_ENTRY") return [];
       if (path === "/timers/current")
-        return { id: "timer-1", pathId: "path-1", labelIds: [], startedAt: new Date(Date.now() - 65_000).toISOString(), carriedSeconds: 3600, running: true };
-      if (path === "/timers/pause" && options.method === "POST")
+        return paused ? null : { id: "timer-1", pathId: "path-1", labelIds: [], startedAt: new Date(Date.now() - 65_000).toISOString(), carriedSeconds: 3600, running: true };
+      if (path === "/timers/pause" && options.method === "POST") {
+        paused = true;
         return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: 3665 };
+      }
       if (path === "/timers/resume" && options.method === "POST")
         return { id: "timer-2", pathId: "path-1", labelIds: [], startedAt: new Date().toISOString(), carriedSeconds: 3665, running: true };
+      if (path === "/timers/draft") return { pathId: "path-1", labelIds: [], description: null, pausedSeconds: paused ? 3665 : null };
       return undefined;
     });
     const wrapper = mount(FloatingTimeTracker, { global: { plugins: [vuetify] } });
-    await flushPromises();
+    try {
+      await flushPromises();
 
-    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
-    const pause = wrapper.get("button.floating-tracker-pause");
-    expect(pause.attributes("aria-label")).toBe("Pause session");
-    expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
-    await pause.trigger("click");
-    await flushPromises();
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+      const pause = wrapper.get("button.floating-tracker-pause");
+      expect(pause.attributes("aria-label")).toBe("Pause session");
+      expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
+      await pause.trigger("click");
+      await flushPromises();
 
-    expect(api).toHaveBeenCalledWith("/timers/pause", expect.objectContaining({ method: "POST" }));
-    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
-    expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
-    expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
-    expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
-    expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Resume session");
-    expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
+      expect(api).toHaveBeenCalledWith("/timers/pause", expect.objectContaining({ method: "POST" }));
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+      expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
+      expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
+      expect(wrapper.get(".floating-tracker-path").text()).toBe("Knowledge Base");
+      expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Resume session");
+      expect(wrapper.get("button.floating-tracker-action").attributes("aria-label")).toBe("Stop timer");
 
-    await wrapper.get("button.floating-tracker-pause").trigger("click");
-    await flushPromises();
-    expect(api).toHaveBeenCalledWith("/timers/resume", expect.objectContaining({ method: "POST" }));
-    expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
-    expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Pause session");
-    wrapper.unmount();
+      await vi.advanceTimersByTimeAsync(5_000);
+      await flushPromises();
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+
+      await wrapper.get("button.floating-tracker-pause").trigger("click");
+      await flushPromises();
+      expect(api).toHaveBeenCalledWith("/timers/resume", expect.objectContaining({ method: "POST" }));
+      expect(wrapper.get(".floating-tracker-clock").text()).toBe("01:01:05");
+      expect(wrapper.get("button.floating-tracker-pause").attributes("aria-label")).toBe("Pause session");
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
   });
 
   // SP-07

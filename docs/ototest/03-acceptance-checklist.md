@@ -364,8 +364,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Pause a running session
 
-- [ ] Pausing a running session stops the elapsed clock and identifies the
-  session as paused.
+- [x] Pausing a running session stops the elapsed clock and identifies the
+  session as paused. Evidence: `FloatingTimeTracker.test.ts` / `shows pause
+  while running and resume while paused` advances fake time five seconds after
+  pausing and verifies the displayed elapsed value remains frozen.
 
 ### Flow: Resume a paused session
 
