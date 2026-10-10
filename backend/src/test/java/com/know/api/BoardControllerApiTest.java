@@ -204,6 +204,21 @@ class BoardControllerApiTest {
     verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
   }
 
+  @Test
+  void statusSortRequiresAnExplicitSortMode() throws Exception {
+    String endpoint =
+        "/api/v1/boards/" + UUID.randomUUID() + "/statuses/" + UUID.randomUUID() + "/sort";
+    for (String body : List.of("{}", "{\"cardSort\":null}")) {
+      mvc.perform(
+              put(endpoint)
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
   @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
     Board board = new Board(owner, "Archived");
     board.archive();

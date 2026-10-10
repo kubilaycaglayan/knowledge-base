@@ -392,7 +392,8 @@ browser interaction evidence remains a separate layer.
   restrictions (`BoardColumnSortIntegrationTest.statusesDefaultToManualSort`,
   `BoardColumnSortIntegrationTest.statusSortCanBeSetAndCleared`,
   `BoardColumnSortIntegrationTest.priorityPagesOrderByPriorityThenPosition`,
-  and `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`).
+  `BoardColumnSortIntegrationTest.statusSortRejectsUnknownValuesAndForeignBoards`,
+  and `BoardControllerApiTest.statusSortRequiresAnExplicitSortMode`).
 - [x] `PUT /api/v1/boards/{id}/statuses/order` covers full reorder, duplicate,
   missing, and foreign status IDs, with saved order preserved after rejected
   requests (`BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`).
