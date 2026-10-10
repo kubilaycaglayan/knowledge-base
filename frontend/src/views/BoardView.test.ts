@@ -100,6 +100,9 @@ describe("BoardView", () => {
       await flushPromises();
       expect(wrapper.text()).toContain("Create your first board");
       expect(wrapper.findAll(".kanban-column")).toHaveLength(0);
+      await wrapper.get(".board-empty button").trigger("click");
+      expect(wrapper.find('[role="dialog"][aria-labelledby="new-board-title"]').exists()).toBe(true);
+      expect(wrapper.find('input[name="boardName"]').exists()).toBe(true);
     } finally {
       await wrapper.unmount();
     }
