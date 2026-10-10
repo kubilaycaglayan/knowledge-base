@@ -192,6 +192,33 @@ it("opens the Sessions workspace directly with its empty state and inline tracke
   await page.locator(".floating-tracker-host.inline").waitFor();
 });
 
+it("moves focus from the skip link to the main content", async (t) => {
+  const { page } = await fixture(t, 1440);
+  const skipLink = page.getByRole("link", { name: "Skip to content" });
+  await skipLink.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.activeElement?.id === "main-content");
+  assert.equal(new URL(page.url()).hash, "#main-content");
+});
+
+it("keeps every supported primary destination reachable at phone width", async (t) => {
+  const { page } = await fixture(t, 390);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const links = nav.getByRole("link");
+  const destinations = await links.evaluateAll((elements) => elements.map((element) => ({
+    text: element.textContent?.trim().replace(/\s+/g, " "),
+    href: element.getAttribute("href"),
+    rect: element.getBoundingClientRect().toJSON(),
+  })));
+  assert.deepEqual(destinations.map(({ href }) => href), [
+    "/board", "/logs", "/notes", "/calendar", "/reports", "/paths", "/labels",
+  ]);
+  for (const destination of destinations) {
+    assert.ok(destination.rect.width > 0 && destination.rect.height >= 44, `${destination.text} has a phone-sized target`);
+    assert.ok(destination.rect.left >= 0 && destination.rect.right <= 390, `${destination.text} stays within the phone viewport`);
+  }
+});
+
 it("renders every supported top-level route after a direct browser load", async (t) => {
   const { page } = await fixture(t, 1440);
   const routes = [

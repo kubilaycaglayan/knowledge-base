@@ -43,12 +43,25 @@ the extension has its own scope in OTOTEST-04.
   title, empty state and inline tracker in desktop Chromium. Evidence: `cd
   frontend && node --test --test-name-pattern='opens the Sessions workspace
   directly' scripts/nav-shell.acceptance.test.mjs` (mocked API).
-- [ ] The document title identifies Knowledge Base and the current page.
-- [ ] The skip-to-content link moves focus to the main content region.
-- [ ] The brand link navigates home without a full page reload.
-- [ ] The authenticated navigation exposes only supported product destinations.
-- [ ] The responsive navigation keeps every supported destination reachable
-  at phone width.
+- [x] The document title identifies Knowledge Base and the current page.
+  Evidence: the primary navigation browser test verifies the title for each
+  destination; `opens the Sessions workspace directly` checks the home title.
+- [x] The skip-to-content link moves focus to the main content region.
+  Evidence: `cd frontend && node --test --test-name-pattern='moves focus from
+  the skip link' scripts/nav-shell.acceptance.test.mjs` activates the link and
+  checks focus on `#main-content`.
+- [x] The brand link navigates home without a full page reload. Evidence:
+  `cd frontend && node --test --test-name-pattern='navigates home from the
+  logo without a page reload' scripts/nav-shell.acceptance.test.mjs` checks
+  client-side navigation and cached home data.
+- [x] The authenticated navigation exposes only supported product
+  destinations. Evidence: `cd frontend && node --test
+  --test-name-pattern='keeps every supported primary destination reachable'
+  scripts/nav-shell.acceptance.test.mjs` asserts the exact supported route
+  links and excludes tooling routes.
+- [x] The responsive navigation keeps every supported destination reachable
+  at phone width. Evidence: the same 390px browser test checks each link is
+  visible, stays within the viewport, and has a target at least 44px high.
 - [ ] The page has one visible level-one heading that identifies its content.
 
 ### Flow: Navigate with the primary navigation
