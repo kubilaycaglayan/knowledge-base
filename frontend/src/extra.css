@@ -1988,6 +1988,15 @@
   }
   .reports-period-controls {
     width: 100%;
+    flex-wrap: wrap;
+  }
+  .report-date-range {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .report-date-range .dp__main {
+    width: auto;
+    flex: 1 1 0;
   }
   .report-type-note {
     padding-bottom: 8px;
