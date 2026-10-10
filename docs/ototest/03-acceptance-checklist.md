@@ -424,7 +424,8 @@ the extension has its own scope in OTOTEST-04.
 - [x] A failed stop or cancel keeps the user informed and reconciles the
   displayed state with the next authoritative server update. Evidence:
   `FloatingTimeTracker.test.ts` / `keeps a running session after failed discard
-  and clears it after retry` checks actionable error and retry; `reconciles a
+  and preserves its draft context after retry` checks actionable error, retry,
+  and retained Path, label, and description; `reconciles a
   failed discard when the server later reports no current timer` checks the
   next current-timer refresh updates the visible controls.
 - [x] A failed Stop request reports the error and keeps the active Stop action

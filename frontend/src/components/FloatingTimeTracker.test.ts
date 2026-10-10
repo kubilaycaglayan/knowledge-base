@@ -342,14 +342,16 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("keeps a running session after failed discard and clears it after retry", async () => {
+  it("keeps a running session after failed discard and preserves its draft context after retry", async () => {
     let attempts = 0;
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
-      if (path === "/paths" || path === "/labels?scope=TIME_ENTRY") return [];
+      if (path === "/paths") return [{ id: "path-1", name: "Research", status: "ACTIVE" }];
+      if (path === "/labels?scope=TIME_ENTRY") return [{ id: "label-1", name: "Focus", scopes: ["TIME_ENTRY"] }];
       if (path === "/timers/current")
         return {
           id: "timer-1",
-          labelIds: [],
+          pathId: "path-1",
+          labelIds: ["label-1"],
           description: "Discard retry",
           startedAt: new Date().toISOString(),
           running: true,
@@ -372,6 +374,9 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     expect(wrapper.get(".tracker-error").text()).toContain("Could not discard the session.");
     expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(true);
+    expect(useTimerStore().pathId).toBe("path-1");
+    expect(useTimerStore().selectedLabelIds).toEqual(["label-1"]);
+    expect(useTimerStore().description).toBe("Discard retry");
 
     await wrapper.get('button[aria-label="Discard session"]').trigger("click");
     await wrapper.get('[role="dialog"] button.primary').trigger("click");
@@ -380,6 +385,9 @@ describe("FloatingTimeTracker", () => {
     expect(wrapper.find(".tracker-error").exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
     expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+    expect(useTimerStore().pathId).toBe("path-1");
+    expect(useTimerStore().selectedLabelIds).toEqual(["label-1"]);
+    expect(useTimerStore().description).toBe("Discard retry");
     wrapper.unmount();
   });
 
