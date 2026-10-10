@@ -108,7 +108,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       body = notes;
     }
     else if (path === "/notes") body = { items: url.searchParams.get("archived") === "true" ? [] : notes, page: 0, size: 20, totalItems: notes.length, totalPages: notes.length ? 1 : 0 };
-    else if (path === "/notes/n1") body = { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
+    else if (path === "/notes/n1") body = notes.find((note) => note.id === "n1") || { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
     else if (path === "/search") {
@@ -1206,6 +1206,36 @@ it("opens and uses the Notes editor with touch-sized controls on mobile", async 
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.getByRole("button", { name: "Back to notes" }).tap();
   await page.waitForFunction(() => location.pathname === "/notes");
+});
+
+it("keeps long note titles and paragraphs within a phone-width editor", async (t) => {
+  const longTitle = `Planning ${"weekly priorities ".repeat(10)}`.trim();
+  const longBody = `${"A".repeat(400)} ${"Long body paragraph with readable words. ".repeat(40)}`;
+  const note = {
+    id: "n1",
+    title: longTitle,
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longBody }] }] }),
+    contentText: longBody,
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
+  const title = page.getByRole("textbox", { name: "Note title" });
+  const body = page.getByRole("textbox", { name: "Note content" });
+  await title.waitFor();
+  assert.equal(await title.inputValue(), longTitle);
+  assert.equal(await body.innerText(), longBody);
+  const widths = await page.evaluate(() => [
+    document.documentElement,
+    document.querySelector(".rich-editor"),
+    document.querySelector(".ProseMirror"),
+  ].map((element) => ({ client: element.clientWidth, scroll: element.scrollWidth })));
+  assert.ok(widths.every(({ client, scroll }) => scroll <= client), JSON.stringify(widths));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 });
 
 it("shows an unavailable state for a missing note opened by browser deep link", async (t) => {
