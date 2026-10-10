@@ -22,19 +22,24 @@ public final class GoogleIdTokenIdentityVerifier implements GoogleIdentityVerifi
 
   @Autowired
   public GoogleIdTokenIdentityVerifier(@Value("${app.google-client-id:}") String clientId) {
-    if (clientId == null || clientId.isBlank()) {
-      verifier = null;
-      return;
-    }
+    verifier = createVerifier(clientId);
+  }
+
+  static GoogleIdTokenVerifier createVerifier(String clientId) {
+    if (clientId == null || clientId.isBlank()) return null;
     try {
-      verifier =
+      return
           new GoogleIdTokenVerifier.Builder(
                   GoogleNetHttpTransport.newTrustedTransport(), GsonFactory.getDefaultInstance())
-              .setAudience(List.of(clientId.trim()))
+              .setAudience(configuredAudience(clientId))
               .build();
     } catch (GeneralSecurityException | java.io.IOException e) {
       throw new IllegalStateException("Could not initialize Google identity verification", e);
     }
+  }
+
+  static List<String> configuredAudience(String clientId) {
+    return List.of(clientId.trim());
   }
 
   @Override

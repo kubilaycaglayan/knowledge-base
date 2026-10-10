@@ -64,13 +64,37 @@ class PathAuthorizationApiTest {
   void pathNamesAreValidatedBeforePersistence() throws Exception {
     UUID owner = UUID.randomUUID();
     var auth = new UsernamePasswordAuthenticationToken(owner.toString(), null, List.of());
+    for (String body :
+        List.of(
+            "{\"name\":\" \"}",
+            "{\"name\":\"" + "x".repeat(161) + "\"}",
+            "{\"name\":\"Path\",\"description\":\"" + "d".repeat(2001) + "\"}")) {
+      mvc.perform(
+              post("/api/v1/paths")
+                  .with(authentication(auth))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(paths, boardService);
+
+    when(paths.save(any(Path.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(boardService.createForPath(any(Path.class))).thenReturn(null);
+    String maximumName = "x".repeat(160);
+    String maximumDescription = "d".repeat(2000);
     mvc.perform(
             post("/api/v1/paths")
                 .with(authentication(auth))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"" + "x".repeat(161) + "\"}"))
-        .andExpect(status().isBadRequest());
-    verifyNoInteractions(paths);
+                .content(
+                    "{\"name\":\""
+                        + maximumName
+                        + "\",\"description\":\""
+                        + maximumDescription
+                        + "\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value(maximumName))
+        .andExpect(jsonPath("$.description").value(maximumDescription));
   }
 
   @Test

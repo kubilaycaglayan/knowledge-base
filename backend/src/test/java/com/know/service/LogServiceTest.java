@@ -22,6 +22,7 @@ class LogServiceTest {
 
   LogServiceTest() {
     when(logs.save(any(Log.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(logs.saveAndFlush(any(Log.class))).thenAnswer(invocation -> invocation.getArgument(0));
   }
 
   private static HttpStatus status(Runnable action) {
@@ -70,6 +71,7 @@ class LogServiceTest {
   @Test
   void staleVersionIsAConflictAndLeavesTheLogUnchanged() {
     Log log = stored();
+    when(logLabels.findAllByIdLogId(log.getId())).thenReturn(List.of());
     assertEquals(
         HttpStatus.CONFLICT,
         status(() -> service.update(user, log.getId(), "Changed", at, log.getVersion() + 1)));

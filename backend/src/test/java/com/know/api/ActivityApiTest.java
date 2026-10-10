@@ -3,6 +3,7 @@ package com.know.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,5 +47,19 @@ class ActivityApiTest {
         .andExpect(status().isOk());
 
     verify(service).filteredActivities(eq(userId), any(), any(), eq(null), eq(null));
+  }
+
+  @Test
+  void malformedActivityFilterValuesAreRejectedBeforeTheServiceCall() throws Exception {
+    UUID userId = UUID.randomUUID();
+    var auth = new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of());
+
+    for (String query :
+        List.of("from=not-a-timestamp", "pathId=not-a-uuid", "type=not-an-activity-type")) {
+      mvc.perform(get("/api/v1/activities?" + query).with(authentication(auth)))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(service);
   }
 }
