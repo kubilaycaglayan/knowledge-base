@@ -30,6 +30,7 @@ const removing = ref(false);
 const bodyInput = ref<HTMLTextAreaElement | null>(null);
 const removeTrigger = ref<HTMLButtonElement | null>(null);
 const keepLogButton = ref<HTMLButtonElement | null>(null);
+const editTrigger = ref<HTMLButtonElement | null>(null);
 
 // The list keeps the freshest copy once it has loaded.
 const log = computed(() => logsStore.logs.find((value) => value.id === props.logId) || fetched.value);
@@ -79,6 +80,7 @@ function startEdit() {
 function cancelEdit() {
   editing.value = false;
   confirming.value = "";
+  void nextTick(() => editTrigger.value?.focus());
 }
 async function save() {
   const current = log.value;
@@ -267,7 +269,7 @@ function onEscape() {
         <button ref="removeTrigger" type="button" class="text-button danger" @click="openRemoveConfirmation">Remove…</button>
         <span class="log-dialog-spacer"></span>
         <button type="button" class="text-button" @click="emit('show-in-list', log)">Show in list</button>
-        <button type="button" class="primary" @click="startEdit">Edit</button>
+        <button ref="editTrigger" type="button" class="primary" @click="startEdit">Edit</button>
       </footer>
     </section>
   </div>
