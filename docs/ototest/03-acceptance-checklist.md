@@ -623,7 +623,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Filter the activity timeline
 
-- [ ] Choosing an activity type limits results to that type.
+- [x] Choosing an activity type limits results to that type. Evidence:
+  `TimelineView.test.ts` / `limits timeline results to the selected activity
+  type` starts with mixed activities and verifies only matching activity is
+  visible after filtering.
 - [ ] Choosing a path limits results to activity associated with that path.
 - [ ] Choosing a valid date interval limits results to its intended inclusive
   dates.

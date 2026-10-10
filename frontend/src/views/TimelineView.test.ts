@@ -169,6 +169,49 @@ describe("TimelineView", () => {
     );
   });
 
+  it("limits timeline results to the selected activity type", async () => {
+    const allActivities = [
+      {
+        id: "note-activity",
+        type: "NOTE_CREATED",
+        title: "Created research note",
+        occurredAt: "2026-08-25T12:00:00Z",
+      },
+      {
+        id: "timer-activity",
+        type: "TIMER_STOPPED",
+        title: "Completed focus session",
+        occurredAt: "2026-08-25T13:00:00Z",
+      },
+    ];
+    vi.mocked(api).mockImplementation(async (requestPath: string) => {
+      if (requestPath === "/paths") return [];
+      if (requestPath.startsWith("/activities?")) {
+        const params = new URLSearchParams(requestPath.slice(requestPath.indexOf("?") + 1));
+        return params.has("type")
+          ? allActivities.filter((activity) => activity.type === params.get("type"))
+          : allActivities;
+      }
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Created research note");
+    expect(wrapper.text()).toContain("Completed focus session");
+
+    await wrapper
+      .get('select[aria-label="Activity type"]')
+      .setValue("TIMER_STOPPED");
+    await wrapper.get("form.filters").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Completed focus session");
+    expect(wrapper.text()).not.toContain("Created research note");
+    expect(vi.mocked(api)).toHaveBeenLastCalledWith(
+      "/activities?type=TIMER_STOPPED",
+    );
+  });
+
   it("reports initial-load and note-save failures and ignores incomplete notes", async () => {
     vi.mocked(api).mockRejectedValueOnce(new Error("paths failed"));
     const failedLoad = mount(TimelineView);
