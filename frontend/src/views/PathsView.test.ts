@@ -563,6 +563,35 @@ describe("PathsView", () => {
     ).toHaveLength(2);
   });
 
+  it("prevents duplicate path creation while the first request is pending", async () => {
+    let finishCreate!: (path: { id: string; name: string; color: string; status: string }) => void;
+    const pendingCreate = new Promise<{ id: string; name: string; color: string; status: string }>((resolve) => {
+      finishCreate = resolve;
+    });
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/paths" && options?.method === "POST") return pendingCreate;
+      if (path === "/paths") return [];
+      if (path === "/labels?scope=TIME_ENTRY") return [];
+      return undefined;
+    });
+    const wrapper = mount(PathsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Add path"]').trigger("click");
+    await wrapper.get('input[aria-label="New path name"]').setValue("Reading");
+    const form = wrapper.get("form.path-create-form");
+    await form.trigger("submit");
+    await form.trigger("submit");
+
+    expect(wrapper.get('form.path-create-form button[type="submit"]').attributes("disabled")).toBeDefined();
+    expect(
+      vi.mocked(api).mock.calls.filter(([path, options]) => path === "/paths" && options?.method === "POST"),
+    ).toHaveLength(1);
+
+    finishCreate({ id: "path-reading", name: "Reading", color: "#E8754E", status: "ACTIVE" });
+    await flushPromises();
+    await wrapper.unmount();
+  });
+
   it("creates a path, shows it in the list, and reloads it from the API", async () => {
     const savedPaths = [
       { id: "path-1", name: "Algorithms", status: "ACTIVE", pinned: false },
