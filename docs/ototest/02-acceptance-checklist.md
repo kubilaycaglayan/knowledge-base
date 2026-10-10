@@ -215,7 +215,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/labels/{id}/history` covers owner scope, timezone
   validation, totals, timeline, hourly values, and related labels.
 - [x] `GET /api/v1/labels/{id}/history/records` covers every supported record
-  kind, pagination, ordering, preview limits, and empty pages.
+  kind, pagination, ordering, preview limits, and empty pages. Missing/unknown
+  kind and non-integer page values return 400 before service access
+  (`LabelApiTest.labelHistoryRequiresValidKindAndIntegerPageBeforeServiceInvocation`).
 - [x] Label history excludes deleted or archived record types according to the
   documented contract.
 
