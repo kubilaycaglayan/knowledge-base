@@ -552,7 +552,9 @@ the extension has its own scope in OTOTEST-04.
 - [x] Pinning or unpinning a path updates its visible pinned state. Evidence:
   `cd frontend && npx vitest run src/views/PathsView.test.ts -t 'visible pin
   state'` checks both state transitions, the accessible action name, and
-  `aria-pressed` (mocked API).
+  `aria-pressed` (mocked API); `nav-shell.acceptance.test.mjs` / `pins a Path
+  and keeps the saved state after browser reload` verifies its request and
+  pressed state after reload from the updated fixture.
 - [x] Reordering paths updates the visible order after reload. Evidence: `cd
   frontend && npx vitest run src/views/PathsView.test.ts -t 'reordered path
   list'` simulates drag and drop, asserts the ordered Path IDs sent to the API,

@@ -52,6 +52,12 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       body = { ...route.request().postDataJSON(), id: "path-1", status: "ACTIVE", pinned: false };
       paths.push(body);
     }
+    else if (path.startsWith("/paths/") && path.endsWith("/pin") && method === "POST") {
+      const id = path.split("/")[2];
+      const index = paths.findIndex((item) => item.id === id);
+      if (index >= 0) paths[index].pinned = route.request().postDataJSON().pinned;
+      body = paths[index];
+    }
     else if (path === "/paths/order" && method === "PUT") {
       const { pathIds } = route.request().postDataJSON();
       pathOrderWrites.push(pathIds);
@@ -656,6 +662,25 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   await page.reload();
   await page.locator(".path-title", { hasText: "Reading" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/paths");
+});
+
+it("pins a Path and keeps the saved state after browser reload", async (t) => {
+  const { page, requests } = await fixture(t, 1440, {
+    pathSeeds: [{ id: "path-reading", name: "Reading", status: "ACTIVE", pinned: false }],
+  });
+  await visit(page, "/paths");
+  const pin = page.getByRole("button", { name: "Pin Reading" });
+  await pin.waitFor();
+  await pin.click();
+  const unpin = page.getByRole("button", { name: "Unpin Reading" });
+  await unpin.waitFor();
+  assert.equal(await unpin.getAttribute("aria-pressed"), "true");
+  assert.ok(requests.includes("/paths/path-reading/pin"));
+
+  await page.reload();
+  const reloaded = page.getByRole("button", { name: "Unpin Reading" });
+  await reloaded.waitFor();
+  assert.equal(await reloaded.getAttribute("aria-pressed"), "true");
 });
 
 it("updates the board tab name when its Path is renamed", async (t) => {
