@@ -739,6 +739,35 @@ describe("NotesView", () => {
     await flushPromises();
   });
 
+  it("removes only the selected note label and saves the remaining associations", async () => {
+    const labeledNote = { ...note, tags: ["study", "Work"] };
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT")
+        return { ...labeledNote, tags: ["study"] };
+      if (path === "/notes/note-1") return labeledNote;
+      if (path === "/notes/labels")
+        return [{ id: "study", name: "study" }, { id: "work", name: "Work" }];
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const input = await openNoteLabels(wrapper);
+    await input.trigger("keydown", { key: "Backspace" });
+    const chips = wrapper.findAll(".tag-editor .selected-chip");
+    expect(chips).toHaveLength(1);
+    expect(chips[0].text()).toContain("study");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    const writes = vi.mocked(api).mock.calls.filter(([path, options]) =>
+      path === "/notes/note-1" && options?.method === "PUT",
+    );
+    expect(writes).toHaveLength(1);
+    expect(JSON.parse(String(writes[0][1]?.body)).tags).toEqual(["study"]);
+  });
+
   it("adds a new label from the note label picker", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
