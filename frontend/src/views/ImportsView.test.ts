@@ -207,6 +207,63 @@ describe("ImportsView", () => {
     expect(wrapper.text()).toContain("Page 2 of 2");
   });
 
+  it("keeps Knowledge Base batch history in stable order across pages", async () => {
+    const batches = Array.from({ length: 6 }, (_, index) => ({
+      id: `kb-batch-${index}`,
+      source: "KNOWLEDGE_BASE",
+      imported: index + 1,
+      skipped: 0,
+      createdPaths: 0,
+      createdAt: `2026-08-${String(26 - index).padStart(2, "0")}T10:00:00Z`,
+      undoneAt: null,
+    }));
+    vi.mocked(api).mockImplementation(async (path: string) =>
+      path === "/imports/knowledge-base/batches" ? batches : undefined,
+    );
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    await flushPromises();
+
+    expect(wrapper.findAll(".history-row")).toHaveLength(5);
+    expect(wrapper.findAll(".history-row").map((row) => row.text().match(/\d+ imported/)?.[0])).toEqual(
+      ["1 imported", "2 imported", "3 imported", "4 imported", "5 imported"],
+    );
+    await wrapper.get('[aria-label="Import history pagination"] button:last-child').trigger("click");
+    expect(wrapper.findAll(".history-row")).toHaveLength(1);
+    expect(wrapper.get(".history-row").text()).toContain("6 imported");
+    await wrapper.get('[aria-label="Import history pagination"] button:first-child').trigger("click");
+    expect(wrapper.findAll(".history-row").map((row) => row.text().match(/\d+ imported/)?.[0])).toEqual(
+      ["1 imported", "2 imported", "3 imported", "4 imported", "5 imported"],
+    );
+  });
+
+  it("undoes only the selected Knowledge Base batch and refreshes its status", async () => {
+    const batches = [
+      { id: "kb-batch-1", source: "KNOWLEDGE_BASE", imported: 2, skipped: 1, createdPaths: 1, createdAt: "2026-08-26T10:00:00Z", undoneAt: null as string | null },
+      { id: "kb-batch-2", source: "KNOWLEDGE_BASE", imported: 4, skipped: 0, createdPaths: 0, createdAt: "2026-08-25T10:00:00Z", undoneAt: null as string | null },
+    ];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/imports/knowledge-base/batches") return batches;
+      if (path === "/imports/knowledge-base/batches/kb-batch-1" && options?.method === "DELETE") {
+        batches[0].undoneAt = "2026-08-27T10:00:00Z";
+        return { deletedEntries: 2, deletedActivities: 2, deletedPaths: 1 };
+      }
+      return undefined;
+    });
+    const wrapper = mount(ImportsView, { props: { knowledgeBaseOnly: true } });
+    await flushPromises();
+    await wrapper.findAll("button.text-button.danger")[0].trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/imports/knowledge-base/batches/kb-batch-1",
+      { method: "DELETE" },
+    );
+    expect(wrapper.findAll(".history-row")).toHaveLength(2);
+    expect(wrapper.findAll(".history-row")[0].text()).toContain("undone");
+    expect(wrapper.findAll(".history-row")[1].find("button").exists()).toBe(true);
+    expect(wrapper.get('[role="status"]').text()).toContain("Removed 2 imported sessions");
+  });
+
   it("reports malformed and structurally invalid Clockify input", async () => {
     const wrapper = mount(ImportsView);
     await flushPromises();
