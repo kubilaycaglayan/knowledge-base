@@ -1,7 +1,7 @@
 # OTOTEST-01 — Backend API operation inventory
 
-**Source revision:** `ce71ce50af11d9b7e8853e65e1a6f9c8cec45245` (`origin/main` baseline)
-**Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-09
+**Source revision:** `7799158e1b83906ba185e3cb5a3b48dd95bd6d79` (`origin/main` at review)
+**Source review:** `backend/src/main/java/com/know/api/*Controller.java` on 2026-10-10; 107 composed method/path rows reconciled against 105 mapping annotations, including multi-path mappings
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Evidence candidates:** [controller/API tests](../../backend/src/test/java/com/know/api/), [integration tests](../../backend/src/test/java/com/know/integration/), and [service tests](../../backend/src/test/java/com/know/service/)
 **Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. Tests were not run in OTOTEST-01.

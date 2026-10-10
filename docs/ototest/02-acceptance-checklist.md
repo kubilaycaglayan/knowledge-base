@@ -24,16 +24,18 @@ browser interaction evidence remains a separate layer.
 
 ## Review setup and evidence rules
 
-- [ ] Confirm OTOTEST-01's source-backed endpoint inventory is available and
-  reconciled before claiming OTOTEST-02 completion; record unresolved inventory
-  rows as prerequisites/gaps rather than assuming the endpoint set is final.
-- [ ] Record the source revision and review date for the API behavior map.
-- [ ] Use only test and run evidence produced against an isolated disposable
-  local/CI database or another explicitly approved non-production environment.
-- [ ] Record each controller mapping as an HTTP method plus its fully composed
-  `/api/v1` path.
-- [ ] Record route aliases as separate operation rows, even when they delegate
-  to one service method.
+- [x] Confirm the OTOTEST-01 source-backed endpoint inventory is available and
+  reconciled before claiming OTOTEST-02 completion; unresolved operation rows
+  remain explicit gaps in [`01-api-matrix.md`](01-api-matrix.md).
+- [x] Record the source revision and review date for the API behavior map in
+  [`01-api-matrix.md`](01-api-matrix.md).
+- [x] Test and run evidence is restricted to isolated disposable test databases
+  or guarded disposable PostgreSQL jobs; no production data is used.
+- [x] Record each controller mapping as an HTTP method plus its fully composed
+  `/api/v1` path in the API matrix (107 composed rows reconciled against 105
+  controller mapping annotations at the recorded revision).
+- [x] Record route aliases as separate operation rows in the API matrix, even
+  when they delegate to one service method.
 - [ ] For each operation row, record controller and method, auth requirement,
   path/query/body inputs, response status and shape, ownership-scoped IDs,
   state effect, evidence link, evidence layer, and current gap.
