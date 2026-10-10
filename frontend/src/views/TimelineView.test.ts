@@ -290,6 +290,55 @@ describe("TimelineView", () => {
     expect(wrapper.text()).not.toContain("Completed focus session");
   });
 
+  it("does not let an earlier filter response replace newer results", async () => {
+    let resolveInitial!: (activities: unknown[]) => void;
+    let resolveFiltered!: (activities: unknown[]) => void;
+    vi.mocked(api).mockImplementation((requestPath: string) => {
+      if (requestPath === "/paths") return Promise.resolve([]);
+      if (requestPath.startsWith("/activities?")) {
+        return new Promise((resolve) => {
+          if (requestPath.includes("type=NOTE_CREATED"))
+            resolveFiltered = resolve;
+          else resolveInitial = resolve;
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    await vi.waitFor(() => expect(resolveInitial).toBeTypeOf("function"));
+
+    await wrapper
+      .get('select[aria-label="Activity type"]')
+      .setValue("NOTE_CREATED");
+    await wrapper.get("form.filters").trigger("submit");
+    await vi.waitFor(() => expect(resolveFiltered).toBeTypeOf("function"));
+
+    resolveFiltered([
+      {
+        id: "newer-activity",
+        type: "NOTE_CREATED",
+        title: "Current filtered result",
+        occurredAt: "2026-08-25T13:00:00Z",
+      },
+    ]);
+    await flushPromises();
+    expect(wrapper.text()).toContain("Current filtered result");
+
+    resolveInitial([
+      {
+        id: "older-activity",
+        type: "TIMER_STOPPED",
+        title: "Stale unfiltered result",
+        occurredAt: "2026-08-25T12:00:00Z",
+      },
+    ]);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Current filtered result");
+    expect(wrapper.text()).not.toContain("Stale unfiltered result");
+  });
+
   it("rejects a reversed date range without replacing current results", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
