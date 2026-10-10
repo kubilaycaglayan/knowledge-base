@@ -77,6 +77,38 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
+  it("shows a conflict message and stays idle when the server rejects a timer start", async () => {
+    vi.mocked(api).mockImplementation(
+      async (path: string, options: RequestInit = {}) => {
+        if (
+          path === "/paths" ||
+          path === "/labels?scope=TIME_ENTRY" ||
+          path === "/calendar/labels"
+        )
+          return [];
+        if (path === "/timers/current") return null;
+        if (path === "/timers" && options.method === "POST")
+          throw new Error("A timer is already running");
+        return undefined;
+      },
+    );
+    const wrapper = mount(FloatingTimeTracker, {
+      props: { inline: true },
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Start timer"]').trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(api).mock.calls.some(([path, options]) => path === "/timers" && options?.method === "POST")).toBe(true);
+    expect(wrapper.get(".tracker-error").text()).toContain(
+      "Could not update the timer. Only one timer can run at a time.",
+    );
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Stop timer"]').exists()).toBe(false);
+  });
+
   it("starts immediately when the description is edited before clicking start", async () => {
     let resolveDraft: (() => void) | undefined;
     vi.mocked(api).mockImplementation(async (path: string, options: RequestInit = {}) => {
