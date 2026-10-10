@@ -1013,9 +1013,15 @@ it("merges Paths into the selected target after destructive confirmation", async
   await page.goto(`${server.resolvedUrls.local[0]}paths`);
   await page.locator(".paths-page").waitFor();
   await page.getByRole("button", { name: "Edit", exact: true }).first().click();
-  await page.locator("form.path-edit").getByRole("button", { name: "Merge", exact: true }).click();
+  const mergeTrigger = page.locator("form.path-edit").getByRole("button", { name: "Merge", exact: true });
+  await mergeTrigger.click();
 
   const chooser = page.getByRole("dialog", { name: "Merge “Algorithms” into…" });
+  await chooser.waitFor();
+  await page.keyboard.press("Escape");
+  await chooser.waitFor({ state: "detached" });
+  assert.equal(await mergeTrigger.evaluate((button) => button === document.activeElement), true, "Escape returns focus to the Merge control");
+  await mergeTrigger.click();
   await chooser.waitFor();
   const search = chooser.getByRole("searchbox", { name: "Find a target path" });
   await search.fill("Drafting");
