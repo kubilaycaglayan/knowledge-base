@@ -684,7 +684,9 @@ browser interaction evidence remains a separate layer.
   stable-ID duplicate handling, and supported legacy rows without color fields
   or log entities (`KnowIntegrationTest.knowledgeBaseImportRoundTripsAllEntitiesPropertiesRelationshipsAndUndo`,
   `KnowIntegrationTest.knowledgeBaseCsvImportAcceptsLegacyRowsWithoutColorOrLogEntities`,
-  and `KnowledgeBaseTransferServiceTest.importingTheSameStableIdsSkipsExistingRecords`).
+  and `KnowledgeBaseTransferServiceTest.importingTheSameStableIdsSkipsExistingRecords`);
+  missing body and non-CSV content type return 400/415 before service execution
+  (`KnowledgeBaseTransferControllerApiTest.importRequiresCsvContentAndRejectsOtherMediaTypesBeforeServiceAccess`).
 - [x] `POST /api/v1/imports/knowledge-base` covers malformed CSV, unsupported
   values, and rollback after an earlier valid row was processed
   (`KnowIntegrationTest.knowledgeBaseCsvImportRejectsMalformedAndUnsupportedRowsWithoutPartialState`

@@ -55,4 +55,25 @@ class KnowledgeBaseTransferControllerApiTest {
     verify(service).exportCsv(user);
     verify(service).importCsv(eq(user), anyString());
   }
+
+  @Test
+  void importRequiresCsvContentAndRejectsOtherMediaTypesBeforeServiceAccess() throws Exception {
+    var auth =
+        new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of());
+
+    mvc.perform(
+            post("/api/v1/imports/knowledge-base")
+                .with(authentication(auth))
+                .contentType("text/csv")
+                .content(""))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            post("/api/v1/imports/knowledge-base")
+                .with(authentication(auth))
+                .contentType("application/json")
+                .content("{}"))
+        .andExpect(status().isUnsupportedMediaType());
+
+    verifyNoInteractions(service);
+  }
 }
