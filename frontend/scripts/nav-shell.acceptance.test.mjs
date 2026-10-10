@@ -77,6 +77,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       if (index >= 0) logs.splice(index, 1);
       body = {};
     }
+    else if (path.startsWith("/logs/") && method === "PUT") {
+      const index = logs.findIndex((log) => `/logs/${log.id}` === path);
+      if (index >= 0) logs[index] = { ...logs[index], ...route.request().postDataJSON(), updatedAt: new Date().toISOString(), version: (logs[index].version || 0) + 1 };
+      body = logs[index] || null;
+    }
     else if (path === "/logs/log-deep-link") body = { id: "log-deep-link", body: logBody, occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] };
     else if (path === "/logs") body = logs;
     else if (path === "/time-entries/s1") body = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: "Browser direct session", source: "MANUAL" };
@@ -626,6 +631,24 @@ it("restores the Log search query from a direct URL after reload", async (t) => 
   await page.reload();
   await page.locator(".log-entry", { hasText: "A distinctive browser query" }).waitFor();
   assert.equal(await page.locator(".log-entry").count(), 1, "Reload preserves the filtered result from the URL");
+});
+
+it("edits a Log in the browser and reloads the saved text", async (t) => {
+  const { page } = await fixture(t, 1280, {
+    logSeeds: [{ id: "edit-log", body: "Original browser log text", occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] }],
+  });
+  await page.goto(`${server.resolvedUrls.local[0]}logs`);
+  const entry = page.locator("#log-edit-log");
+  await entry.getByText("Original browser log text", { exact: true }).waitFor();
+  await entry.getByRole("button", { name: /^Edit log from / }).click();
+  const editor = entry.getByRole("textbox", { name: /^Edit log text from / });
+  await editor.fill("Saved browser log edit");
+  await entry.getByRole("button", { name: "Save", exact: true }).click();
+  await page.locator(".log-entry", { hasText: "Saved browser log edit" }).waitFor();
+
+  await page.reload();
+  await page.locator(".log-entry", { hasText: "Saved browser log edit" }).waitFor();
+  assert.equal(await page.locator(".log-entry", { hasText: "Original browser log text" }).count(), 0);
 });
 
 it("confirms Log removal, preserves it on cancel or failure, then retries successfully", async (t) => {
