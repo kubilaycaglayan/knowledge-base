@@ -115,4 +115,62 @@ class BoardCardUpdateIntegrationTest extends IntegrationTestSupport {
       assertEquals(priority, placedReadback.get("priority").asText());
     }
   }
+
+  @Test
+  void cardPriorityDefaultsToMediumWhenOmittedOrNullAcrossWriteRoutes() {
+    String owner = api.register();
+    String boardId =
+        api.created("POST", "/api/v1/boards", owner, "{\"name\":\"Priority defaults\"}")
+            .get("id")
+            .asText();
+
+    JsonNode created =
+        api.created(
+            "POST", "/api/v1/boards/" + boardId + "/cards", owner, "{\"title\":\"Omitted\"}");
+    assertEquals("MEDIUM", created.get("priority").asText());
+    assertEquals(
+        "MEDIUM",
+        api.get("/api/v1/boards/" + boardId + "/cards/" + created.get("id").asText(), owner)
+            .json()
+            .get("priority")
+            .asText());
+
+    String updateId =
+        api.created(
+                "POST",
+                "/api/v1/boards/" + boardId + "/cards",
+                owner,
+                "{\"title\":\"Reset from high\",\"priority\":\"HIGH\"}")
+            .get("id")
+            .asText();
+    JsonNode updated =
+        api.put(
+                "/api/v1/boards/" + boardId + "/cards/" + updateId,
+                owner,
+                "{\"title\":\"Explicit null\",\"priority\":null}")
+            .json();
+    assertEquals("MEDIUM", updated.get("priority").asText());
+    assertEquals(
+        "MEDIUM",
+        api.get("/api/v1/boards/" + boardId + "/cards/" + updateId, owner)
+            .json()
+            .get("priority")
+            .asText());
+
+    JsonNode placed =
+        api.created(
+            "POST",
+            "/api/v1/boards/" + boardId + "/cards/in-column",
+            owner,
+            "{\"columnName\":\"Review\",\"title\":\"Explicit null\",\"priority\":null}");
+    assertEquals("MEDIUM", placed.get("card").get("priority").asText());
+    assertEquals(
+        "MEDIUM",
+        api.get(
+                "/api/v1/boards/" + boardId + "/cards/" + placed.get("card").get("id").asText(),
+                owner)
+            .json()
+            .get("priority")
+            .asText());
+  }
 }
