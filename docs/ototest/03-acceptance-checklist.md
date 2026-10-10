@@ -91,7 +91,10 @@ the extension has its own scope in OTOTEST-04.
   the browser loads its deep link directly' scripts/nav-shell.acceptance.test.mjs`
   verifies the selected label, history response, and route (mocked API browser
   test).
-- [ ] Direct loading `/notes/:id` opens the selected note editor.
+- [x] Direct loading `/notes/:id` opens the selected note editor. Evidence:
+  `cd frontend && node --test --test-name-pattern='loads a note editor when
+  the browser opens its deep link directly' scripts/nav-shell.acceptance.test.mjs`
+  verifies the editor, selected title, and route (mocked API browser test).
 - [ ] Direct loading `/board/archive` opens the board archive.
 - [ ] A missing or inaccessible record ID produces a clear not-found or
   unavailable state without exposing another user's record.
