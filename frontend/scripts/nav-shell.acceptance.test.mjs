@@ -215,6 +215,60 @@ it("loads report filters from a direct query URL and keeps them on reload", asyn
   assert.ok(reportQueries.filter((value) => value.includes("startDate=2026-09-01") && value.includes("endDate=2026-09-07")).length >= 2);
 });
 
+it("keeps report date and total controls reachable on a phone viewport", async (t) => {
+  const { page, reportQueries } = await fixture(t, 390);
+  await page.goto(`${server.resolvedUrls.local[0]}reports`);
+  await page.locator(".reports-page").waitFor();
+  const dateRange = page.getByLabel("Report date range");
+  await dateRange.waitFor();
+  await dateRange.tap();
+  const todayPreset = page.getByText("Today", { exact: true });
+  await todayPreset.waitFor();
+  await todayPreset.tap();
+  await page.waitForFunction(() => {
+    const params = new URL(location.href).searchParams;
+    const today = new Date().toISOString().slice(0, 10);
+    return params.get("startDate") === today && params.get("endDate") === today;
+  });
+  await page.getByRole("button", { name: "Previous date range" }).click();
+  await page.waitForFunction(() =>
+    new URL(location.href).searchParams.has("startDate"),
+  );
+
+  const dimensions = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth,
+  }));
+  assert.ok(
+    dimensions.document <= dimensions.viewport,
+    `Reports must not create horizontal page overflow: ${JSON.stringify(dimensions)}`,
+  );
+  const bounds = await Promise.all(
+    [dateRange, page.locator(".total-display"), page.locator(".chart-frame")].map((locator) =>
+      locator.boundingBox(),
+    ),
+  );
+  assert.ok(
+    bounds.every((box) => box && box.x >= 0 && box.x + box.width <= 390),
+  );
+  for (const name of ["Filter by paths", "Group by"]) {
+    assert.equal(await page.getByRole("combobox", { name }).isVisible(), true);
+  }
+  const textBounds = await Promise.all(
+    [dateRange, page.locator(".total-display")].map((locator) =>
+      locator.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      })),
+    ),
+  );
+  assert.ok(textBounds.every(({ clientWidth, scrollWidth }) => scrollWidth <= clientWidth));
+  assert.ok(
+    reportQueries.length >= 2,
+    "the previous-range control must reload the report",
+  );
+});
+
 it("opens a session detail when the browser loads its deep link directly", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);
