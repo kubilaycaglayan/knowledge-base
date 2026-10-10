@@ -710,7 +710,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t);
     await boardAction(page, "Gantt");
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "Ship timeline", exact: true }).count(), 1);
+    const card = page.getByRole("button", { name: "Ship timeline", exact: true });
+    await card.waitFor();
+    assert.equal(await card.count(), 1);
     assert.match(await page.locator(".timeline-bar").innerText(), /Ship timeline/);
     assert.equal(new URL(page.url()).searchParams.get("view"), "gantt");
   });
