@@ -2504,6 +2504,15 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   @Test
   void calendarDaysUseInclusiveBoundsAndRejectInvalidRanges() {
     String token = freshToken();
+    assertEquals(
+        HttpStatus.OK,
+        put("/api/v1/calendar/days/2024-02-29", token, "{\"note\":\"Leap day\",\"labels\":[]}")
+            .getStatusCode());
+    assertEquals(
+        List.of("2024-02-29"),
+        get("/api/v1/calendar/days?startDate=2024-02-29&endDate=2024-02-29", token)
+            .getBody()
+            .findValuesAsText("date"));
     for (String date :
         List.of("2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"))
       assertEquals(
