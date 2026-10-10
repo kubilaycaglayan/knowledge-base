@@ -567,6 +567,10 @@ browser interaction evidence remains a separate layer.
   and reversed-range evidence where applicable.
 - [ ] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
+  The all-board column card page has a multi-page persisted walk and rejects
+  cursors below `-1` and limits outside `1..100`
+  (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition` and
+  `columnCursorWalkRemainsStableAcrossManyPages`).
 - [ ] Ordered lists have stable tie-break and reorder persistence evidence
   where ordering is part of the contract.
 - [ ] Optimistic version or expected-update-time contracts have both current

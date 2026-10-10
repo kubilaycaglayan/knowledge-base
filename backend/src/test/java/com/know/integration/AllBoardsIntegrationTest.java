@@ -187,6 +187,8 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(0, empty.get("items").size());
     assertTrue(empty.get("nextCursor").isNull());
     assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=0", token).getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-2&limit=20", token).getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=101", token).getStatusCode());
     assertEquals(0, get("/api/v1/boards/all/columns/cards/page?name=Backlog&cursor=-1&limit=20", token()).getBody().get("items").size(), "Another user sees none of these cards");
   }
 
