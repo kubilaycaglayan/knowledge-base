@@ -366,7 +366,9 @@ browser interaction evidence remains a separate layer.
 - [x] `GET /api/v1/boards/{id}` covers owned, missing, and foreign board IDs
   (`BoardDetailIntegrationTest.boardDetailReturnsOwnedBoardAndHidesMissingAndForeignBoards`).
 - [x] `PUT /api/v1/boards/{id}` covers persisted custom-board rename and the
-  path-board conflict (`BoardRenameIntegrationTest.customBoardRenamePersistsAndPathBoardRenameConflicts`).
+  path-board conflict (`BoardRenameIntegrationTest.customBoardRenamePersistsAndPathBoardRenameConflicts`);
+  blank and over-limit names are rejected and the 120-character maximum is
+  accepted (`BoardControllerApiTest.boardUpdateValidatesNameAndAcceptsTheMaximumLength`).
 - [x] `POST /api/v1/boards/{id}/archive` covers response/detail state, archived
   and active list visibility, repeated archive idempotence, and mutation
   restrictions (`KnowIntegrationTest.archivedBoardsAreRetainedReadOnlyAndArchiveRestoreIsIdempotent`).

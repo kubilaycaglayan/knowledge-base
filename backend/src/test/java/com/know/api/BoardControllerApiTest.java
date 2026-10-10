@@ -111,6 +111,32 @@ class BoardControllerApiTest {
         .andExpect(jsonPath("$.name").value("After"));
   }
 
+  @Test
+  void boardUpdateValidatesNameAndAcceptsTheMaximumLength() throws Exception {
+    String invalidEndpoint = "/api/v1/boards/" + UUID.randomUUID();
+    for (String name : List.of(" ", "b".repeat(121))) {
+      mvc.perform(
+              put(invalidEndpoint)
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"name\":\"" + name + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+
+    Board board = new Board(owner, "Before");
+    String maximumName = "b".repeat(120);
+    when(boards.findByIdAndUserId(board.getId(), owner)).thenReturn(Optional.of(board));
+    when(boards.save(board)).thenReturn(board);
+    mvc.perform(
+            put("/api/v1/boards/" + board.getId())
+                .with(authentication(auth()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"" + maximumName + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value(maximumName));
+  }
+
   @Test void everyBoardMutationRejectsAForeignBoard() throws Exception {
     UUID boardId = UUID.randomUUID();
     when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.empty());
