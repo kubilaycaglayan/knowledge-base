@@ -1,6 +1,6 @@
 import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import vuetify from "../plugins/vuetify";
-import { createMemoryHistory, createRouter } from "vue-router";
+import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import NotesView from "./NotesView.vue";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
@@ -50,9 +50,12 @@ function page(items = [note]) {
   return { items, page: 0, size: 20, totalItems: items.length, totalPages: 1 };
 }
 function mountNotes(r: ReturnType<typeof router>) {
-  return mount(NotesView, {
-    global: { plugins: [r, vuetify] },
-  });
+  return mount(
+    { components: { RouterView }, template: "<RouterView />" },
+    {
+      global: { plugins: [r, vuetify] },
+    },
+  );
 }
 async function openNoteLabels(wrapper: ReturnType<typeof mount>) {
   await wrapper.get(".picker-chevron").trigger("click");
@@ -427,7 +430,7 @@ describe("NotesView", () => {
       await r.isReady();
       const wrapper = mountNotes(r);
       await flushPromises();
-      const editor = (wrapper.vm as unknown as { editor: import("@tiptap/core").Editor }).editor;
+      const editor = (wrapper.getComponent(NotesView).vm as unknown as { editor: import("@tiptap/core").Editor }).editor;
       return { wrapper, editor };
     }
 
@@ -494,6 +497,35 @@ describe("NotesView", () => {
 
     expect(writes).toHaveLength(1);
     expect(JSON.parse(writes[0].body).title).toBe("Unsaved before leaving");
+    wrapper.unmount();
+  });
+
+  it("keeps the note editor open when flushing edits before navigation fails", async () => {
+    const writes: string[] = [];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        writes.push(String(options.body));
+        throw new Error("offline");
+      }
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      if (path === "/notes" || path.startsWith("/notes?")) return page();
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get('input[aria-label="Note title"]').setValue("Keep this draft");
+
+    await r.push("/notes");
+    await flushPromises();
+
+    expect(writes).toHaveLength(1);
+    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
+    expect(wrapper.get('input[aria-label="Note title"]').element.value).toBe("Keep this draft");
+    expect(wrapper.get(".save-state").text()).toBe("Not saved");
     wrapper.unmount();
   });
 

@@ -8,7 +8,12 @@ import {
   shallowRef,
   watch,
 } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  useRoute,
+  useRouter,
+} from "vue-router";
 import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
 import LabelPicker from "../components/LabelPicker.vue";
@@ -325,6 +330,19 @@ async function save() {
     }
   }
 }
+async function flushPendingSave() {
+  if (!saveTimer) return status.value !== "error";
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  await save();
+  return status.value !== "error";
+}
+onBeforeRouteLeave(flushPendingSave);
+onBeforeRouteUpdate(async (to, from) => {
+  if (from.params.id && from.params.id !== to.params.id)
+    return flushPendingSave();
+  return true;
+});
 function keepEditorVisible() {
   void nextTick(() => {
     const active = document.activeElement;

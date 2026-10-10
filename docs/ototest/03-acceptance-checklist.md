@@ -784,6 +784,10 @@ the extension has its own scope in OTOTEST-04.
 - [ ] A conflicting newer version presents a recovery choice and does not
   silently overwrite the winning content.
 
+Coverage note: component route tests now flush a pending autosave before
+navigation and cancel navigation while showing the draft if that save fails.
+The explicit warning/discard interaction above remains uncovered.
+
 ### Flow: Use the Notes editor in mobile Chrome
 
 - [ ] The note list and editor can be reached with touch at phone width.
