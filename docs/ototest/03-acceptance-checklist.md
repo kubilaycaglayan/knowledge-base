@@ -267,8 +267,12 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Edit one path
 
 - [ ] Editing a path name and description updates only that path.
-- [ ] Editing a path color exposes an accessible color name and visible
-  selection state.
+- [x] Editing a path color exposes an accessible color name and visible
+  selection state. Evidence: `frontend/src/components/ColorPalette.test.ts`,
+  `announces the currently selected color through pressed state` verifies the
+  named option and selected `aria-pressed` state; `frontend/src/views/PathsView.test.ts`,
+  `submits a selected path color from the shared palette` verifies path color
+  selection and persistence request.
 - [ ] Pinning or unpinning a path updates its visible pinned state.
 - [ ] Reordering paths updates the visible order after reload.
 - [ ] Hiding a path's board asks for confirmation before removing its board tab.
