@@ -489,9 +489,10 @@ the extension has its own scope in OTOTEST-04.
   first-day selection.
 - [x] The Today action returns to the current date while retaining the expected
   visible grid. Evidence: `CalendarView.test.ts`, `returns to today and selects
-  today's calendar date`; `nav-shell.acceptance.test.mjs`, `returns the Calendar
-  to today with a touch-sized navigation control` verifies month/day selection,
-  the 44px target, single-row navigation, and visible calendar days at 390px.
+  today's calendar date` and `announces when the Calendar Today action selects
+  the current date`; `nav-shell.acceptance.test.mjs`, `returns the Calendar to
+  today with a touch-sized navigation control` verifies the phone-width date,
+  URL, 44px target, single-row navigation, and visible calendar days.
 - [x] Weekday headings and dates remain aligned when the month starts or ends
   midweek. Evidence: `frontend/src/views/DeepLinks.test.ts`, `aligns dates
   with Monday-first weekdays when the month starts and ends midweek` checks

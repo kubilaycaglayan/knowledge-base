@@ -70,6 +70,7 @@ const newLabelColor = ref(labelColors[0]);
 const newLabelColorOpen = ref(false);
 const editingColor = ref<string | null>(null);
 const error = ref("");
+const todayAnnouncement = ref("");
 const saving = ref(false);
 const selectingRange = ref(false);
 const tapRangeMode = ref(false);
@@ -265,11 +266,13 @@ async function changeColor(label: Label, color: string) {
   }
 }
 function previousMonth() {
+  todayAnnouncement.value = "";
   month.value = subMonths(month.value, 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
 function nextMonth() {
+  todayAnnouncement.value = "";
   month.value = addMonths(month.value, 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
@@ -284,19 +287,23 @@ function goToToday() {
   rangeEnd.value = null;
   month.value = startOfMonth(today);
   selected.value = format(today, "yyyy-MM-dd");
+  todayAnnouncement.value = "Today is selected.";
   void load();
 }
 function changeMonth(monthIndex: number) {
+  todayAnnouncement.value = "";
   month.value = new Date(month.value.getFullYear(), monthIndex, 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
 function changeYear(year: number) {
+  todayAnnouncement.value = "";
   month.value = new Date(year, month.value.getMonth(), 1);
   selected.value = format(startOfMonth(month.value), "yyyy-MM-dd");
   void load();
 }
 function startPointerRange(day: Date) {
+  todayAnnouncement.value = "";
   const value = format(day, "yyyy-MM-dd");
   tapRangeMode.value = false;
   pointerRangeStart.value = value;
@@ -327,6 +334,7 @@ function finishPointerRange(day: Date) {
   selected.value = end;
 }
 function handleDayClick(day: Date) {
+  todayAnnouncement.value = "";
   if (suppressDayClick.value) {
     suppressDayClick.value = false;
     return;
@@ -334,6 +342,7 @@ function handleDayClick(day: Date) {
   selectDay(day);
 }
 function cancelRange() {
+  todayAnnouncement.value = "";
   pointerRangeStart.value = null;
   selectingRange.value = false;
   tapRangeMode.value = false;
@@ -342,6 +351,7 @@ function cancelRange() {
   selectDay(parseISO(selected.value));
 }
 function beginRangeSelection() {
+  todayAnnouncement.value = "";
   pointerRangeStart.value = null;
   selectingRange.value = true;
   tapRangeMode.value = true;
@@ -437,6 +447,9 @@ watch(
         </button>
       </div>
     </header>
+    <p class="visually-hidden" role="status" aria-live="polite">
+      {{ todayAnnouncement }}
+    </p>
     <p v-if="error" class="notice" role="alert">{{ error }}</p>
     <div class="calendar-layout">
       <section class="calendar-grid" aria-label="Calendar">
