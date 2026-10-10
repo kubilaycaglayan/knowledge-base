@@ -269,6 +269,55 @@ it("keeps report date and total controls reachable on a phone viewport", async (
   );
 });
 
+it("selects a calendar range with touch taps and keyboard input", async (t) => {
+  const phone = await fixture(t, 390);
+  await phone.page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await phone.page.locator(".calendar-page").waitFor();
+  const touchRangeButton = phone.page.getByRole("button", {
+    name: "Start date range selection",
+  });
+  const touchRangeBounds = await touchRangeButton.boundingBox();
+  assert.ok(touchRangeBounds && touchRangeBounds.height >= 44);
+  await touchRangeButton.tap();
+  await phone.page
+    .getByRole("status")
+    .filter({ hasText: "Choose a start date" })
+    .waitFor();
+  const phoneDays = phone.page.locator("button.calendar-day");
+  await phoneDays.nth(8).tap();
+  assert.equal(await phone.page.locator('button.calendar-day[aria-pressed="true"]').count(), 1);
+  await phone.page
+    .getByRole("status")
+    .filter({ hasText: "Choose an end date" })
+    .waitFor();
+  await phoneDays.nth(10).tap();
+  assert.equal(await phone.page.locator('button.calendar-day[aria-pressed="true"]').count(), 1);
+  await phone.page.locator(".day-editor-heading h2").filter({ hasText: "–" }).waitFor();
+  assert.equal(
+    await phone.page.getByRole("button", { name: "Apply to range" }).isEnabled(),
+    true,
+  );
+
+  const desktop = await fixture(t, 1440);
+  await desktop.page.goto(`${server.resolvedUrls.local[0]}calendar`);
+  await desktop.page.locator(".calendar-page").waitFor();
+  const startRange = desktop.page.getByRole("button", {
+    name: "Start date range selection",
+  });
+  await startRange.focus();
+  await desktop.page.keyboard.press("Enter");
+  const desktopDays = desktop.page.locator("button.calendar-day");
+  await desktopDays.nth(8).focus();
+  await desktop.page.keyboard.press("Enter");
+  await desktopDays.nth(10).focus();
+  await desktop.page.keyboard.press("Space");
+  await desktop.page.locator(".day-editor-heading h2").filter({ hasText: "–" }).waitFor();
+  assert.equal(
+    await desktop.page.getByRole("button", { name: "Apply to range" }).isEnabled(),
+    true,
+  );
+});
+
 it("opens a session detail when the browser loads its deep link directly", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);

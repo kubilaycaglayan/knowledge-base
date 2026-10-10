@@ -1606,6 +1606,9 @@
   align-items: start;
   gap: 8px;
 }
+.calendar-range-start {
+  min-height: 44px;
+}
 .day-editor h2 {
   font-size: 16px;
   margin: 0;

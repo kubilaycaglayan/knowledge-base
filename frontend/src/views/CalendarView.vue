@@ -72,6 +72,7 @@ const editingColor = ref<string | null>(null);
 const error = ref("");
 const saving = ref(false);
 const selectingRange = ref(false);
+const tapRangeMode = ref(false);
 const rangeStart = ref<string | null>(null);
 const rangeEnd = ref<string | null>(null);
 const pointerRangeStart = ref<string | null>(null);
@@ -139,12 +140,14 @@ function selectDay(date: Date) {
     if (!rangeStart.value || rangeEnd.value) {
       rangeStart.value = value;
       rangeEnd.value = null;
+      selected.value = value;
       note.value = "";
       chosen.value = {};
       return;
     }
     rangeEnd.value = value;
     selectingRange.value = false;
+    tapRangeMode.value = false;
     selected.value = value;
     return;
   }
@@ -283,6 +286,7 @@ function changeYear(year: number) {
 }
 function startPointerRange(day: Date) {
   const value = format(day, "yyyy-MM-dd");
+  tapRangeMode.value = false;
   pointerRangeStart.value = value;
   selectingRange.value = true;
   rangeStart.value = value;
@@ -320,9 +324,17 @@ function handleDayClick(day: Date) {
 function cancelRange() {
   pointerRangeStart.value = null;
   selectingRange.value = false;
+  tapRangeMode.value = false;
   rangeStart.value = null;
   rangeEnd.value = null;
   selectDay(parseISO(selected.value));
+}
+function beginRangeSelection() {
+  pointerRangeStart.value = null;
+  selectingRange.value = true;
+  tapRangeMode.value = true;
+  rangeStart.value = null;
+  rangeEnd.value = null;
 }
 onMounted(load);
 // The selected day lives in the URL, so a day can be linked to and Back returns to it.
@@ -426,9 +438,9 @@ watch(
               format(day, 'yyyy-MM-dd') <= selectedRange.end,
           }"
           :aria-pressed="format(day, 'yyyy-MM-dd') === selected"
-          @mousedown.left.prevent="startPointerRange(day)"
+          @mousedown.left.prevent="tapRangeMode ? undefined : startPointerRange(day)"
           @mouseenter="previewPointerRange(day)"
-          @mouseup.left="finishPointerRange(day)"
+          @mouseup.left="tapRangeMode ? undefined : finishPointerRange(day)"
           @click="handleDayClick(day)"
         >
           <time>{{ format(day, "d") }}</time
@@ -462,15 +474,29 @@ watch(
         <div class="day-editor-heading">
           <h2>{{ selectedRange ? rangeTitle : selectedTitle }}</h2>
           <button
+            v-if="!selectingRange && !selectedRange"
+            class="ghost calendar-range-start"
+            type="button"
+            aria-label="Start date range selection"
+            @click="beginRangeSelection"
+          >
+            Select range
+          </button>
+          <button
             v-if="selectingRange || selectedRange"
+            type="button"
             class="ghost"
             @click="cancelRange"
           >
             Cancel range
           </button>
         </div>
-        <p v-if="selectingRange" class="muted">
-          Release on another day to select a range.
+        <p v-if="selectingRange" class="muted" role="status" aria-live="polite">
+          {{
+            rangeStart
+              ? "Choose an end date to complete the range."
+              : "Choose a start date, then choose an end date."
+          }}
         </p>
         <label
           >Note<textarea

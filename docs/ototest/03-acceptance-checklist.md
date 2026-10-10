@@ -556,10 +556,16 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Use the calendar in mobile Chrome
 
 - [ ] Each date cell can be selected by touch with a clear selected-day state.
-- [ ] Range selection has a tap or keyboard alternative to pointer dragging.
+- [x] Range selection has a tap or keyboard alternative to pointer dragging.
+  Evidence: `scripts/nav-shell.acceptance.test.mjs`, `selects a calendar
+  range with touch taps and keyboard input` checks a full keyboard path in
+  desktop Chromium and a phone-sized touch-emulated path.
 - [ ] The selected-day editor, label picker, and Save day action remain
   reachable with the on-screen keyboard open.
 - [ ] The calendar grid and editor do not cause unintended page overflow.
+  Supplemental evidence only: the same browser test checks selected-day state
+  after touch taps at 390px in desktop Chromium; real mobile Chrome remains
+  unverified.
 
 ## Imports and Settings
 
