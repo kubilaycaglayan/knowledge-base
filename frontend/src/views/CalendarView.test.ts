@@ -394,6 +394,29 @@ describe("CalendarView", () => {
     ).toBe(false);
   });
 
+  it("returns to today and selects today's calendar date", async () => {
+    const today = new Date();
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get('[aria-label="Previous month"]').trigger("click");
+    await flushPromises();
+
+    await wrapper.get('[aria-label="Today"]').trigger("click");
+    await flushPromises();
+
+    expect(
+      (wrapper.get('select[aria-label="Calendar month"]').element as HTMLSelectElement)
+        .value,
+    ).toBe(String(today.getMonth()));
+    expect(
+      (wrapper.get('select[aria-label="Calendar year"]').element as HTMLSelectElement)
+        .value,
+    ).toBe(String(today.getFullYear()));
+    expect(
+      wrapper.get('button.calendar-day[aria-pressed="true"] time').text(),
+    ).toBe(String(today.getDate()));
+  });
+
   it("changes the calendar month and year from their selectors", async () => {
     const wrapper = mountView();
     await flushPromises();
