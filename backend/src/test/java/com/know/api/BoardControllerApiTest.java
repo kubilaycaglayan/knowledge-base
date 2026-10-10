@@ -610,6 +610,10 @@ class BoardControllerApiTest {
             get("/api/v1/boards/" + boardId + "/cards/page?statusId=not-a-uuid")
                 .with(authentication(auth())))
         .andExpect(status().isBadRequest());
+    mvc.perform(
+            get("/api/v1/boards/" + boardId + "/cards/page")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
 
     verifyNoInteractions(boards, statuses, cards);
   }
