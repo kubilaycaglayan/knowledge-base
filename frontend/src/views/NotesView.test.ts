@@ -154,11 +154,17 @@ describe("NotesView", () => {
   it("pins notes and persists card ordering", async () => {
     const second = { ...note, id: "note-2", title: "Writing" };
     let pinned = false;
+    let orderedNotes = [note, second];
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path.startsWith("/notes?") || path === "/notes")
-        return page(pinned ? [{ ...note, pinned: true }, second] : [note, second]);
+        return page(pinned ? orderedNotes.map((item) => item.id === note.id ? { ...item, pinned: true } : item) : orderedNotes);
       if (path === "/notes/note-1/pin")
         return { ...note, pinned: (pinned = true) };
+      if (path === "/notes/order" && options?.method === "PUT") {
+        const ids = JSON.parse(String(options.body)).noteIds;
+        orderedNotes = ids.map((id: string) => [note, second].find((item) => item.id === id)!);
+        return undefined;
+      }
       return undefined;
     });
     const r = router();
@@ -181,6 +187,16 @@ describe("NotesView", () => {
       "/notes/order",
       expect.objectContaining({ method: "PUT" }),
     );
+    expect(wrapper.findAll(".note-row strong").map((title) => title.text())).toEqual(["Writing", "Learning"]);
+    wrapper.unmount();
+
+    const reopenedRouter = router();
+    await reopenedRouter.push("/notes");
+    await reopenedRouter.isReady();
+    const reopened = mountNotes(reopenedRouter);
+    await flushPromises();
+    expect(reopened.findAll(".note-row strong").map((title) => title.text())).toEqual(["Writing", "Learning"]);
+    reopened.unmount();
   });
 
   it("reuses the cached notes page when returning to the list", async () => {
