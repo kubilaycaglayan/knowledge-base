@@ -1242,7 +1242,7 @@ it("groups matching record types, shows note context, and opens the active resul
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Reports research note");
 });
 
-it("opens the active global search result in a new tab with Control+Enter", async (t) => {
+it("opens the active global search result in a new tab with Control+Enter and native link behavior", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(server.resolvedUrls.local[0]);
   await page.keyboard.press("Control+k");
@@ -1262,6 +1262,15 @@ it("opens the active global search result in a new tab with Control+Enter", asyn
   assert.equal(new URL(newTab.url()).pathname, "/notes/search-note");
   assert.equal(await dialog.isVisible(), true);
   assert.equal(new URL(page.url()).pathname, "/");
+
+  assert.equal(await note.evaluate((element) => element.tagName), "A");
+  assert.equal(await note.getAttribute("href"), "/notes/search-note");
+  const modifiedClickTab = page.context().waitForEvent("page");
+  await note.click({ modifiers: ["Control"] });
+  const linkTab = await modifiedClickTab;
+  await linkTab.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(linkTab.url()).pathname, "/notes/search-note");
+  assert.equal(await dialog.isVisible(), true);
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {

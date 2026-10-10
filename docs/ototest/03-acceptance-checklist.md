@@ -253,9 +253,9 @@ the extension has its own scope in OTOTEST-04.
   note with ArrowDown and Enter.
 - [x] The open-in-new-tab shortcut opens the active result in a new browser
   tab. Evidence: `opens the active global search result in a new tab with
-  Control+Enter` in `frontend/scripts/nav-shell.acceptance.test.mjs` verifies
-  the selected Note opens in a separate browser tab while the original search
-  remains open.
+  Control+Enter and native link behavior` in
+  `frontend/scripts/nav-shell.acceptance.test.mjs` verifies the selected Note
+  opens in a separate browser tab while the original search remains open.
 - [ ] Every result supports standard link behavior, including opening a new
   tab from the browser context menu.
 - [ ] Show more reveals additional results only for the selected result type.
