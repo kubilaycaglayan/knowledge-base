@@ -125,7 +125,7 @@ function measureKanbanHeight() {
       parseFloat(footerStyle?.marginTop || "0") +
       parseFloat(footerStyle?.marginBottom || "0")
     : 0;
-  const trackerGap = window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches
+  const trackerGap = window.matchMedia?.("(orientation: landscape) and (max-height: 500px)")?.matches
     ? 4
     : KANBAN_TRACKER_GAP;
   const available = trackerVisible
