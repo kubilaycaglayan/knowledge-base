@@ -331,9 +331,14 @@ describe("SessionsView", () => {
       "/time-entries/new",
       expect.objectContaining({
         method: "PUT",
-        body: expect.stringContaining('"source":"IOS"'),
+        body: expect.stringContaining('"pathId":"path-1"'),
       }),
     );
+    expect(
+      vi.mocked(api).mock.calls.filter(
+        ([path, init]) => String(path).startsWith("/time-entries/") && init?.method === "PUT",
+      ),
+    ).toHaveLength(1);
   });
 
   it("creates a typed new label from the session label picker", async () => {

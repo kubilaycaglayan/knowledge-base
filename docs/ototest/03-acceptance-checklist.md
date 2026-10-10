@@ -412,7 +412,9 @@ the extension has its own scope in OTOTEST-04.
   `DeepLinks.test.ts` / `edits the session, refusing an end before the start`
   verifies the single PUT targets `/time-entries/s1` and carries the edited
   description.
-- [ ] Editing the path changes only the selected session's path.
+- [x] Editing the path changes only the selected session's path. Evidence:
+  `SessionsView.test.ts` / `updates every editable session property` verifies
+  the single update request targets the selected record with the chosen Path.
 - [ ] Editing the start time and end time updates the selected session's
   displayed interval and duration.
 - [ ] Submitting an incomplete or reversed interval identifies the invalid
