@@ -310,7 +310,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Remove one path
 
-- [ ] Removing a path requires confirmation and explains the visible impact.
+- [x] Removing a path requires confirmation and explains the visible impact.
+  Evidence: `frontend/src/views/PathsView.test.ts`, `confirms removal and
+  offers a timed undo` asserts the confirmation copy and DELETE request;
+  `does not remove a path when the confirmation is cancelled` verifies cancel.
 
 ### Flow: Restore one path
 
