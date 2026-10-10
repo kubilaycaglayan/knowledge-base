@@ -1223,7 +1223,7 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Reorder notes
 
-- [ ] Reordering notes changes their visible order after reload.
+- [x] Reordering notes changes their visible order after reload. Evidence: `NotesView.test.ts` / `pins notes and persists card ordering` checks the new order on the list and after remount from the API fixture.
 - [ ] Keyboard/touch alternatives are available where drag reordering is
   supported.
 - [ ] A failed reorder restores the saved order or provides a clear retry.
