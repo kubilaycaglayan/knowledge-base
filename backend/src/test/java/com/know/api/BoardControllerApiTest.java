@@ -548,4 +548,22 @@ class BoardControllerApiTest {
     mvc.perform(get("/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId).with(authentication(auth())))
         .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(20)).andExpect(jsonPath("$.nextCursor").value(19));
   }
+
+  @Test
+  void cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup() throws Exception {
+    Board board = new Board(owner, "Board");
+    UUID boardId = board.getId(), statusId = UUID.randomUUID();
+    BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
+    when(boards.findByIdAndUserId(boardId, owner)).thenReturn(Optional.of(board));
+    when(statuses.findByIdAndBoardId(statusId, boardId)).thenReturn(Optional.of(status));
+    String endpoint = "/api/v1/boards/" + boardId + "/cards/page?statusId=" + statusId;
+
+    for (String query :
+        List.of("&cursor=-2", "&limit=0", "&limit=101", "&cursor=next", "&limit=many")) {
+      mvc.perform(get(endpoint + query).with(authentication(auth())))
+          .andExpect(status().isBadRequest());
+    }
+
+    verifyNoInteractions(cards);
+  }
 }

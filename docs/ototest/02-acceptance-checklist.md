@@ -445,7 +445,9 @@ browser interaction evidence remains a separate layer.
   (`BoardCardListIntegrationTest.cardListDefaultsFiltersStatusesAndListsArchivedCardsForOwner`).
 - [x] `GET /api/v1/boards/{id}/cards/page` covers empty/small/exact/overflow
   boundaries, safe default page size, stable cursor, PRIORITY and PRIORITY_LAST
-  page walks (`BoardControllerApiTest.cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor`,
+  page walks, malformed/out-of-range cursor and limit rejection
+  (`BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`,
+  `BoardControllerApiTest.cardPagesUseTwentyAsTheSafeDefaultAndReturnAStableCursor`,
   `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
   `BoardColumnSortIntegrationTest.priorityPagesWalkEveryCardOnce`, and
   `BoardColumnSortIntegrationTest.priorityLastPagesOrderLowFirst`).
@@ -770,12 +772,21 @@ browser interaction evidence remains a separate layer.
   upper, and out-of-range boundary evidence.
 - [ ] Date and timestamp operations have timezone, leap-day, inclusive-range,
   and reversed-range evidence where applicable.
-- [ ] Pagination has first-page, middle-page, final-page, invalid-cursor, and
+- [x] Pagination has first-page, middle-page, final-page, invalid-cursor, and
   invalid-limit evidence where applicable.
   The all-board column card page has a multi-page persisted walk and rejects
   cursors below `-1` and limits outside `1..100`
   (`AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition` and
-  `columnCursorWalkRemainsStableAcrossManyPages`).
+  `columnCursorWalkRemainsStableAcrossManyPages`). Note and time-entry history
+  assert first/middle/final/beyond-final pages; label history walks six
+  PostgreSQL-backed pages without gaps; search walks first, middle, final, and
+  empty offsets; board cursor paging covers empty, exact, overflow, and invalid
+  limits (`NoteListIntegrationTest.notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage`,
+  `TimeEntryHistoryIntegrationTest.historyIsOwnerScopedNewestFirstAndPaginatesWithMetadata`,
+  `LabelHistoryIntegrationTest.postgresHighVolumeRecordPagesHaveStableOrderWithoutGaps`,
+  `SearchIntegrationTest.groupsAreLimitedAndPagedWithATotal`, and
+  `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
+  `BoardControllerApiTest.cardPageRejectsOutOfRangeAndMalformedCursorOrLimitBeforeCardLookup`).
 - [ ] Ordered lists have stable tie-break and reorder persistence evidence
   where ordering is part of the contract.
 - [ ] Optimistic version or expected-update-time contracts have both current
