@@ -956,12 +956,12 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Navigate Settings sections
 
-- [ ] Each Settings tab opens the matching settings section.
+- [x] Each Settings tab opens the matching settings section. Evidence: `SettingsView.test.ts` / `shows only the selected settings section` checks Account, Import, and Export panels.
 
 ### Flow: Save appearance preferences
 
-- [ ] Changing a supported preference and saving updates its visible state.
-- [ ] A saved preference remains selected after route change and reload.
+- [x] Changing a supported preference immediately updates its visible state and persists it. Evidence: `SettingsView.test.ts` / `updates and persists the appearance preference immediately` checks the selector, document theme, and local storage.
+- [x] A saved preference remains selected after route change and reload. Evidence: `theme.test.ts` / `boots saved preference` verifies startup reads persisted preference; `nav-shell.acceptance.test.mjs` / `applies light and dark appearance changes across routes and reloads` checks route and reload behavior.
 
 ### Flow: Update account credentials
 
