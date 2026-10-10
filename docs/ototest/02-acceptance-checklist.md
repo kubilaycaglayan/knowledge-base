@@ -222,6 +222,9 @@ browser interaction evidence remains a separate layer.
   fields.
 - [x] `PUT /api/v1/notes/{id}` covers optimistic version success and stale
   version conflict behavior.
+- [x] `PUT /api/v1/notes/{id}` rejects missing/blank content and title or
+  contentText values over field limits, and accepts the maximum title
+  (`NoteApiTest.noteUpdateValidatesRequiredContentAndTextLimits`).
 - [x] `PUT /api/v1/notes/{id}` covers ownership for its supported references:
   the update body has no path, activity, time-entry, or label ID fields; tags
   are names and a same-name foreign label is not reused or exposed.
