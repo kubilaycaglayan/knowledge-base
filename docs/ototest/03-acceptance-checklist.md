@@ -477,8 +477,8 @@ the extension has its own scope in OTOTEST-04.
   horizontal overflow.
   Supplemental evidence only: `scripts/nav-shell.acceptance.test.mjs`,
   `keeps report date and total controls reachable on a phone viewport` checks
-  touch emulation at 390px in desktop Chromium. It does not satisfy the real
-  mobile Chrome acceptance setup above.
+  Today and Yesterday presets by touch at 390px in desktop Chromium. It does
+  not satisfy the real mobile Chrome acceptance setup above.
 
 ## Calendar
 

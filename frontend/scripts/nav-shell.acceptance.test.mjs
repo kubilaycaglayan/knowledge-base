@@ -292,6 +292,15 @@ it("keeps report date and total controls reachable on a phone viewport", async (
     const today = new Date().toISOString().slice(0, 10);
     return params.get("startDate") === today && params.get("endDate") === today;
   });
+  await dateRange.tap();
+  await page.getByText("Yesterday", { exact: true }).tap();
+  await page.waitForFunction(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const expected = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === expected && params.get("endDate") === expected;
+  });
   await page.getByRole("button", { name: "Previous date range" }).click();
   await page.waitForFunction(() =>
     new URL(location.href).searchParams.has("startDate"),
