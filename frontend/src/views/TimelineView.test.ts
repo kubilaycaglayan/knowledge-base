@@ -89,6 +89,40 @@ describe("TimelineView", () => {
     );
   });
 
+  it("submits an activity note with Control or Meta+Enter", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === "/paths") return [];
+      if (path.startsWith("/activities?"))
+        return [{
+          id: "activity-keyboard",
+          type: "NOTE_CREATED",
+          title: "Keyboard activity",
+          occurredAt: "2026-08-25T12:00:00Z",
+        }];
+      return undefined;
+    });
+    const wrapper = mount(TimelineView);
+    await flushPromises();
+    await wrapper.get("article.timeline-entry button.text-button").trigger("click");
+    await wrapper.get('input[aria-label="Activity note title"]').setValue("Keyboard note");
+    const content = wrapper.get('textarea[aria-label="Activity note content"]');
+    await content.setValue("Saved from the keyboard.");
+    await content.trigger("keydown", { key: "Enter", ctrlKey: true });
+    await flushPromises();
+
+    expect(vi.mocked(api)).toHaveBeenCalledWith(
+      "/notes",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          activityId: "activity-keyboard",
+          title: "Keyboard note",
+          content: "Saved from the keyboard.",
+        }),
+      }),
+    );
+  });
+
   it("supports the thirty-day and clear date presets", async () => {
     const wrapper = mount(TimelineView);
     await flushPromises();
