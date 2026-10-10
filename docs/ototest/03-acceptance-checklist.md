@@ -1252,7 +1252,12 @@ so the warning and discard criteria remain open.
   `keeps the Notes draft and editor controls reachable across a keyboard-like
   viewport resize` checks the formatting control intersects the reduced
   viewport. A real mobile keyboard still needs verification.
-- [ ] The editor scrolls as intended without trapping the page or hiding Save.
+- [x] Long editor content scrolls without trapping the page or obscuring the
+  formatting toolbar. Supplemental Chromium evidence:
+  `nav-shell.acceptance.test.mjs` / `scrolls long Notes content without
+  trapping the page or hiding formatting controls` checks page scroll, toolbar
+  reachability, and horizontal overflow at 390px. Real mobile Chrome still
+  needs verification. Notes saves automatically and has no manual Save button.
 - [x] Rich-text controls have touch targets suitable for repeated editing. Evidence: the same mobile browser test checks every toolbar button is at least 44×44px.
 - [x] Closing the keyboard preserves the caret and entered content.
   Supplemental Chromium evidence: the same viewport-resize test asserts the

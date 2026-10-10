@@ -1346,6 +1346,32 @@ it("keeps long note titles and paragraphs within a phone-width editor", async (t
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 });
 
+it("scrolls long Notes content without trapping the page or hiding formatting controls", async (t) => {
+  const longBody = `Long note content. ${"A paragraph that continues through the editor and needs page scrolling. ".repeat(60)}`;
+  const note = {
+    id: "n1",
+    title: "Long mobile note",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longBody }] }] }),
+    contentText: longBody,
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-02T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 390, { noteSeeds: [note] });
+  await page.setViewportSize({ width: 390, height: 560 });
+  await page.goto(`${server.resolvedUrls.local[0]}notes/n1`);
+  await page.getByRole("textbox", { name: "Note content" }).waitFor();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForFunction(() => window.scrollY > 0);
+  const toolbarButton = page.locator(".note-toolbar button").first();
+  await toolbarButton.scrollIntoViewIfNeeded();
+  const bounds = await toolbarButton.boundingBox();
+  assert.ok(bounds && bounds.y < 560 && bounds.y + bounds.height > 0, "formatting controls remain reachable while reading long content");
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
 it("shows an unavailable state for a missing note opened by browser deep link", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}notes/gone`);
