@@ -3,6 +3,7 @@ import SessionsView from "./SessionsView.vue";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 import { createPinia, setActivePinia } from "pinia";
+import { useTimerStore } from "../stores/timer";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -497,6 +498,31 @@ describe("SessionsView", () => {
   });
 
   it("starts a new server timer from a completed session", async () => {
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) =>
+      path === "/timers" && init?.method === "POST"
+        ? { id: "timer-from-session", startedAt: "2026-10-10T10:00:00Z", running: true }
+        : path.startsWith("/time-entries?")
+          ? {
+              page: 0,
+              totalPages: 1,
+              totalSessions: 1,
+              sessions: [{
+                id: "source-session",
+                startedAt: "2026-08-27T11:00:00Z",
+                endedAt: "2026-08-28T12:00:00Z",
+                durationSeconds: 3600,
+                description: "Most recent",
+                source: "WEB",
+                pathId: "path-1",
+                labelIds: ["label-1"],
+              }],
+            }
+          : path === "/paths"
+            ? [{ id: "path-1", name: "Learning", status: "ACTIVE" }]
+            : path === "/labels?scope=TIME_ENTRY"
+              ? [{ id: "label-1", name: "Vue", color: "#2878D5", scopes: ["TIME_ENTRY"] }]
+              : undefined,
+    );
     const wrapper = mount(SessionsView);
     await flushPromises();
 
@@ -506,6 +532,7 @@ describe("SessionsView", () => {
     expect(startAgain.attributes("title")).toBe("Start again");
     expect(startAgain.find("svg").exists()).toBe(true);
     await startAgain.trigger("click");
+    await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/timers",
       expect.objectContaining({
@@ -517,6 +544,10 @@ describe("SessionsView", () => {
         }),
       }),
     );
+    expect(useTimerStore().current).toMatchObject({
+      id: "timer-from-session",
+      running: true,
+    });
   });
 
   it("hides restart for sessions without a path or labels", async () => {

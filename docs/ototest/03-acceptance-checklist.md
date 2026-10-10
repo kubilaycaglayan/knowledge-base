@@ -435,8 +435,11 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Start a new session from a completed session
 
-- [ ] Starting again from a completed session creates a new running session
-  with the supported copied context.
+- [x] Starting again from a completed session creates a new running session
+  with the supported copied context. Evidence: `SessionsView.test.ts` /
+  `starts a new server timer from a completed session` verifies a new running
+  timer is adopted and receives the selected session's Path, labels, and
+  description.
 
 ### Flow: Delete one completed session
 
