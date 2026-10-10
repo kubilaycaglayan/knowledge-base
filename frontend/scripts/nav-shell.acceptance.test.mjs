@@ -267,6 +267,40 @@ it("supports keyboard navigation and opening a primary link in a new tab", async
   assert.equal(new URL(opened.url()).pathname, "/calendar");
 });
 
+it("shows the floating tracker on eligible routes but not Sessions or focused phone inputs", async (t) => {
+  const { page } = await fixture(t, 390);
+  const floatingTracker = page.locator(".floating-tracker-host:not(.inline)");
+  const eligibleRoutes = [
+    "/board",
+    "/logs",
+    "/notes",
+    "/calendar",
+    "/reports",
+    "/paths",
+    "/labels",
+  ];
+  for (const path of eligibleRoutes) {
+    await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
+    await floatingTracker.waitFor();
+    assert.equal(await floatingTracker.isVisible(), true, `${path} should show the floating tracker`);
+  }
+
+  await page.goto(server.resolvedUrls.local[0]);
+  await page.locator(".session-list").waitFor();
+  assert.equal(await floatingTracker.count(), 0, "Sessions home uses its inline tracker only");
+  await page.goto(`${server.resolvedUrls.local[0]}sessions/s1`);
+  await page.getByRole("dialog").filter({ hasText: "Browser direct session" }).waitFor();
+  assert.equal(await floatingTracker.count(), 0, "Session detail must not show the floating tracker");
+
+  await page.goto(`${server.resolvedUrls.local[0]}logs`);
+  await floatingTracker.waitFor();
+  const logInput = page.getByRole("textbox", { name: "Log text" });
+  await logInput.focus();
+  await floatingTracker.waitFor({ state: "detached" });
+  assert.equal(await logInput.evaluate((element) => document.activeElement === element), true);
+  assert.equal(await logInput.evaluate((element) => element.getBoundingClientRect().bottom <= innerHeight), true);
+});
+
 it("redirects /sessions to the Sessions home and restores history with Back and Forward", async (t) => {
   const { page } = await fixture(t, 1440);
   await visit(page, "/logs");

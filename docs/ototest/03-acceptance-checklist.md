@@ -72,9 +72,16 @@ the extension has its own scope in OTOTEST-04.
 - [x] The document title updates after each route change. Evidence: the
   primary navigation route test checks all seven route titles and their Back /
   Forward transitions.
-- [ ] The floating tracker is available on eligible routes.
-- [ ] The floating tracker is hidden on Sessions routes.
-- [ ] The floating tracker does not cover the focused mobile text input.
+- [x] The floating tracker is available on eligible routes. Evidence: `cd
+  frontend && node --test --test-name-pattern='shows the floating tracker on
+  eligible routes' scripts/nav-shell.acceptance.test.mjs` checks visibility
+  on Board, Logs, Notes, Calendar, Reports, Paths, and Labels (390px browser).
+- [x] The floating tracker is hidden on Sessions routes. Evidence: the same
+  test verifies no floating tracker on Sessions home or session detail while
+  the inline home tracker remains available.
+- [x] The floating tracker does not cover the focused mobile text input.
+  Evidence: the same 390px test focuses the Log text field and verifies the
+  fixed tracker is removed while the field retains focus within the viewport.
 
 ### Flow: Open a supported route directly
 
