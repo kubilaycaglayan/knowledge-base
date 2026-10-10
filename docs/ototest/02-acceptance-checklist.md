@@ -486,7 +486,9 @@ browser interaction evidence remains a separate layer.
   (`CalendarLabelPickerIntegrationTest.calendarLabelListIncludesOnlyOwnedCalendarScopedLabelsInNameOrder`).
 - [x] `POST /api/v1/calendar/labels` covers trimmed creation, optional color,
   persisted palette color, and malformed or unsupported colors without creating
-  records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`).
+  records (`CalendarLabelPickerIntegrationTest.calendarLabelCreationPersistsOptionalPaletteColorAndRejectsOtherColors`);
+  blank/over-limit names are rejected and the 80-character maximum is accepted
+  (`CalendarLabelPickerIntegrationTest.calendarLabelNamesEnforceTheBlankAndMaximumLengthRules`).
 - [x] `PUT /api/v1/calendar/labels/{id}` covers owner-only updates, response
   and list readback, day-assignment propagation, and invalid palette colors
   (`KnowIntegrationTest.calendarLabelColorCanBeChangedOnlyByItsOwnerAndFlowsToDayRecords`).
