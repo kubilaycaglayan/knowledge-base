@@ -426,6 +426,22 @@ describe("NotesView", () => {
     expect(wrapper.findAll(".note-row")).toHaveLength(1);
     expect(wrapper.get(".note-row").text()).toContain("Restore");
 
+    // Simulate an external route change to the archive URL state.
+    await r.push({ path: "/notes", query: { archived: "1" } });
+    await flushPromises();
+    expect(wrapper.get(".note-row").text()).toContain("Archived draft");
+
+    await r.push("/notes");
+    await flushPromises();
+    expect(r.currentRoute.value.query.archived).toBeUndefined();
+    expect(wrapper.get(".note-row").text()).toContain("Learning");
+    expect(wrapper.get(".note-row").text()).not.toContain("Archived draft");
+
+    await r.push({ path: "/notes", query: { archived: "1" } });
+    await flushPromises();
+    expect(r.currentRoute.value.query.archived).toBe("1");
+    expect(wrapper.get(".note-row").text()).toContain("Archived draft");
+
     await wrapper.get(".notes-pagination-summary button").trigger("click");
     await flushPromises();
     expect(r.currentRoute.value.query.archived).toBeUndefined();
