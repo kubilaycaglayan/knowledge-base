@@ -801,6 +801,19 @@ it("keeps report date and total controls reachable on a phone viewport", async (
     return params.get("startDate") === expected && params.get("endDate") === expected;
   }, expectedPrevious);
 
+  await dateRange.tap();
+  const monthLabel = await page.locator(".dp__month_year_wrap").first().textContent();
+  const displayedMonth = new Date(monthLabel.replace(/([A-Za-z]+)(\d{4})/, "$1 $2"));
+  const customStart = `${displayedMonth.getFullYear()}-${String(displayedMonth.getMonth() + 1).padStart(2, "0")}-01`;
+  const customEnd = `${displayedMonth.getFullYear()}-${String(displayedMonth.getMonth() + 1).padStart(2, "0")}-03`;
+  await page.locator(".dp__cell_inner:not(.dp__cell_offset)").filter({ hasText: /^1$/ }).first().tap();
+  assert.equal(await page.locator(".dp__menu").isVisible(), true, "the custom range stays open after choosing its start");
+  await page.locator(".dp__cell_inner:not(.dp__cell_offset)").filter({ hasText: /^3$/ }).first().tap();
+  await page.waitForFunction(({ start, end }) => {
+    const params = new URL(location.href).searchParams;
+    return params.get("startDate") === start && params.get("endDate") === end;
+  }, { start: customStart, end: customEnd });
+
   const dimensions = await page.evaluate(() => ({
     viewport: window.innerWidth,
     document: document.documentElement.scrollWidth,
@@ -828,7 +841,7 @@ it("keeps report date and total controls reachable on a phone viewport", async (
       })),
     ),
   );
-  assert.ok(textBounds.every(({ clientWidth, scrollWidth }) => scrollWidth <= clientWidth));
+  assert.ok(textBounds.every(({ clientWidth, scrollWidth }) => scrollWidth <= clientWidth), JSON.stringify(textBounds));
   assert.ok(
     reportQueries.length >= 2,
     "the previous-range control must reload the report",
