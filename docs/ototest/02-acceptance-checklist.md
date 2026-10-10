@@ -847,8 +847,10 @@ browser interaction evidence remains a separate layer.
 
 - [ ] Every behavior change updates `docs/api.md` and its API matrix row in the
   same review.
-- [ ] Every controller mapping, overload, and alias has exactly one inventory
-  entry or a documented exclusion.
+- [x] Every controller mapping, overload, and alias has exactly one inventory
+  entry or a documented exclusion. At the recorded source baseline, 105
+  mapping annotations compose to 107 routes; the matrix contains 107 unique
+  method/path pairs and no duplicate rows.
 - [ ] Each state-changing operation asserts persisted state or an observable
   event, not only a successful HTTP response.
 - [ ] Each delete/archive/restore operation asserts the resulting state from a
