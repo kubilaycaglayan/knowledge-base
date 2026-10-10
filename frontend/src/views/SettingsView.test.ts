@@ -1,17 +1,20 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import SettingsView from "./SettingsView.vue";
 import { api, download } from "../lib/api";
+import { setThemePreference, themePreference } from "../lib/theme";
+import { createPinia, setActivePinia } from "pinia";
 
 vi.mock("../lib/api", () => ({ api: vi.fn(), download: vi.fn() }));
 
 describe("SettingsView", () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.clearAllMocks();
-    vi.mocked(api).mockResolvedValue({
-      email: "person@example.com",
-      hasPassword: false,
-      hasGoogle: true,
-    });
+    vi.mocked(api).mockImplementation(async (path: string) =>
+      path === "/auth/me"
+        ? { email: "person@example.com", hasPassword: false, hasGoogle: true }
+        : [],
+    );
   });
 
   afterEach(() => {
@@ -27,9 +30,25 @@ describe("SettingsView", () => {
       (wrapper.get(".theme-select").element as HTMLSelectElement).value,
     ).toBe("auto");
     expect(wrapper.text()).not.toContain("Download Knowledge Base CSV");
+    await wrapper.get('[role="tab"]:nth-child(2)').trigger("click");
+    expect(wrapper.get('[role="tabpanel"]').text()).toContain("Import Knowledge Base CSV files");
     await wrapper.get('[role="tab"]:nth-child(3)').trigger("click");
     expect(wrapper.text()).toContain("Download Knowledge Base CSV");
     expect(wrapper.text()).not.toContain("Sign-in methods");
+  });
+
+  it("updates and persists the appearance preference immediately", async () => {
+    const wrapper = mount(SettingsView);
+    await flushPromises();
+    await wrapper.get(".theme-select").setValue("dark");
+
+    expect(themePreference.value).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("knowledge-base-theme")).toBe("dark");
+    expect((wrapper.get(".theme-select").element as HTMLSelectElement).value).toBe("dark");
+
+    setThemePreference("auto");
+    await wrapper.unmount();
   });
 
   it("downloads a Knowledge Base CSV from the Export tab", async () => {
