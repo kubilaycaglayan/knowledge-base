@@ -1333,6 +1333,24 @@ describe("BoardView", () => {
     }
     afterEach(() => vi.useRealTimers());
 
+    it("sets the selected card in the URL and clears it when the editor closes", async () => {
+      const store = seedBoard(["Backlog"]);
+      store.cards = [{ ...baseCard }];
+      mockRouter.push = vi.fn(async ({ query }) => { mockRoute.query = query; });
+      mockRouter.replace = vi.fn(async ({ query }) => { mockRoute.query = query; });
+      const wrapper = mountBoard();
+      await flushPromises();
+      await wrapper.find(".board-card").trigger("click");
+      expect(mockRoute.query).toMatchObject({ board: "test-id", card: "card-1" });
+      expect(wrapper.find(".card-editor").exists()).toBe(true);
+
+      await wrapper.find('button[aria-label="Close card"]').trigger("click");
+      await flushPromises();
+      expect(wrapper.find(".card-editor").exists()).toBe(false);
+      expect(mockRoute.query).toEqual({ board: "test-id" });
+      await wrapper.unmount();
+    });
+
     it("has no save or cancel buttons and debounces edits into one save", async () => {
       vi.useFakeTimers();
       const { store, wrapper } = await openCard();
