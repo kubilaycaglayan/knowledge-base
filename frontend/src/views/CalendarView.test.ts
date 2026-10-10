@@ -217,6 +217,29 @@ describe("CalendarView", () => {
     wrapper.unmount();
   });
 
+  it.each(["0", "0.25", "0.5", "0.75", "1"])(
+    "saves the selected Sick leave portion exactly (%s)",
+    async (portion) => {
+      const wrapper = mountView();
+      await flushPromises();
+      await wrapper.get('input[type="checkbox"]').setValue(true);
+      await wrapper
+        .get('select[aria-label="Sick leave day portion"]')
+        .setValue(portion);
+      await wrapper.get("button.primary").trigger("click");
+      await flushPromises();
+
+      const saveCall = vi.mocked(api).mock.calls.find(
+        ([path, options]) =>
+          path.startsWith("/calendar/days/") && options?.method === "PUT",
+      );
+      expect(saveCall).toBeDefined();
+      expect(JSON.parse(String(saveCall![1]?.body)).labels).toEqual([
+        { labelId: "leave", portion: Number(portion) },
+      ]);
+    },
+  );
+
   it("loads labels and a month range, then saves a selected day with a full-day label", async () => {
     const today = new Date();
     const selectedDate = [
