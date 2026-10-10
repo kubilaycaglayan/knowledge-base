@@ -1383,11 +1383,24 @@ criteria remain open.
 
 ### Flow: Protect user-owned records
 
-- [ ] A user sees only their own records in every supported list and search.
-- [ ] A direct link to another user's record does not reveal record contents.
+- [x] A user sees only their own records in every supported list and search.
+  Evidence: `CrossUserIsolationIntegrationTest.listsAndSearchNeverLeakOtherUsersRows`
+  checks owner-created records against lists, filters, search, activity, reports,
+  exports, and preferences for a second account, then verifies the owner can
+  find their own rows in search.
+- [x] A direct link to another user's record does not reveal record contents.
+  Evidence: `CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`
+  compares foreign and missing IDs across Paths, Notes, Logs, Boards, statuses,
+  cards, time entries, timers, and Calendar labels while checking owner data is
+  unchanged.
 - [ ] A selector does not offer another user's Path, label, board, or status.
-- [ ] A failed cross-owner reference displays a safe error and leaves existing
-  data unchanged.
+  Partial API evidence: `CrossUserIsolationIntegrationTest.listsAndSearchNeverLeakOtherUsersRows`
+  includes Path, Label, Board, and board column catalogs; explicit rendered
+  selector option assertions remain open.
+- [x] A failed cross-owner reference displays a safe error and leaves existing
+  data unchanged. Evidence: `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData`
+  checks foreign references are rejected without returning the owner's marker
+  and that the owner's records remain unchanged afterward.
 
 ### Flow: Operate the application with a keyboard
 
