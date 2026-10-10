@@ -984,6 +984,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.getByRole("heading", { name: "Boards" }).waitFor();
     await page.waitForURL((url) => url.searchParams.get("board") === "all");
     assert.equal(await page.getByRole("button", { name: "All boards" }).getAttribute("aria-current"), "true");
+    await page.getByRole("alert").filter({ hasText: "The requested board is unavailable. Showing All boards." }).waitFor();
   });
 
   it("shows an explicit empty state for an archived board query with no active boards", async (t) => {
