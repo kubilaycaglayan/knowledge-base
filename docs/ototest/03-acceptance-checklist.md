@@ -1234,9 +1234,12 @@ saved first` verifies automatic retry with the freshly loaded version and a
 visible Saved state. It does not offer a recovery choice, so this criterion
 remains open.
 
-Coverage note: component route tests now flush a pending autosave before
-navigation and cancel navigation while showing the draft if that save fails.
-The explicit warning/discard interaction above remains uncovered.
+Coverage note: `NotesView.test.ts` / `flushes a pending autosave before
+navigating back to the note list` verifies navigation waits for the autosave;
+`keeps a failed draft in the editor, retries it, then permits navigation`
+verifies failed saves keep the user on the editor with the draft, then allow
+navigation after Retry succeeds. No explicit stay/discard warning is offered,
+so the warning and discard criteria remain open.
 
 ### Flow: Use the Notes editor in mobile Chrome
 
