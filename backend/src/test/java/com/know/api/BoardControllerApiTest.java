@@ -374,7 +374,7 @@ class BoardControllerApiTest {
     verify(cards, never()).save(any(BoardCard.class));
   }
 
-  @Test void oversizedCardTitleIsRejectedBeforePersistence() throws Exception {
+  @Test void cardTitleLimitRejectsOverlongAndAcceptsMaximumLength() throws Exception {
     Board board = new Board(owner, "Board");
     UUID boardId = board.getId();
     BoardStatus status = new BoardStatus(boardId, "Backlog", 0);
@@ -385,6 +385,18 @@ class BoardControllerApiTest {
         .content("{\"title\":\"" + "x".repeat(241) + "\"}"))
         .andExpect(status().isBadRequest());
     verifyNoInteractions(cards);
+
+    when(cards.findAllByBoardIdAndStatusIdAndArchivedAtIsNullOrderByPositionAsc(boardId, status.getId()))
+        .thenReturn(List.of());
+    when(cards.save(any(BoardCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    String maximumTitle = "x".repeat(240);
+    mvc.perform(
+            post("/api/v1/boards/" + boardId + "/cards")
+                .with(authentication(auth()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"" + maximumTitle + "\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.title").value(maximumTitle));
   }
 
   @Test void staleCardUpdateReturnsConflictWithoutOverwritingTheNewerCard() throws Exception {

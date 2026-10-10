@@ -423,7 +423,9 @@ browser interaction evidence remains a separate layer.
   `invalidCardDateRangeIsRejectedBeforePersistence`,
   `cardCreateRejectsAForeignOrArchivedStatus`,
   `cardCanReferenceMultipleOwnedPaths`, and
-  `cardRejectsForeignPathAndLabelReferences`).
+  `cardRejectsForeignPathAndLabelReferences`); titles over 240 characters
+  return 400 and the exact maximum succeeds
+  (`BoardControllerApiTest.cardTitleLimitRejectsOverlongAndAcceptsMaximumLength`).
 - [x] `GET /api/v1/boards/{id}/cards/{cardId}` covers owned detail plus missing,
   foreign, and wrong-board card IDs
   (`BoardCardDetailIntegrationTest.cardDetailReturnsOwnedCardAndHidesMissingOrMisnestedCards`).
