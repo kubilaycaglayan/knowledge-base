@@ -416,7 +416,9 @@ browser interaction evidence remains a separate layer.
   `BoardControllerApiTest.cardMoveRequiresStatusAndNonnegativePosition`.
 - [x] `POST /api/v1/boards/{id}/cards/{cardId}/move-to-column` covers finding
   or creating the target column, persisted status/position, and foreign board
-  protection (`AllBoardsIntegrationTest.moveToColumnCreatesAMissingColumn`).
+  protection; blank names and negative positions return 400 without changing
+  the card or creating a column
+  (`AllBoardsIntegrationTest.moveToColumnCreatesAMissingColumn`).
 - [x] `POST /api/v1/boards/{id}/cards/in-column` covers card creation in an
   existing or newly created column, response metadata, persisted placement,
   and invalid/foreign requests

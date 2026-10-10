@@ -574,6 +574,11 @@ class AllBoardsIntegrationTest extends IntegrationTestSupport {
     assertEquals(statusId(token, work, "Blocked"), createdReadback.get("statusId").asText());
     assertEquals(0, createdReadback.get("position").asInt());
     assertEquals(HttpStatus.NOT_FOUND, post("/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column", token(), "{\"columnName\":\"Done\",\"position\":0}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column", token, "{\"columnName\":\"Invalid\",\"position\":-1}").getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, post("/api/v1/boards/" + work + "/cards/" + cardId + "/move-to-column", token, "{\"columnName\":\" \",\"position\":0}").getStatusCode());
+    JsonNode unchanged = get("/api/v1/boards/" + work + "/cards/" + cardId, token).getBody();
+    assertEquals(statusId(token, work, "Blocked"), unchanged.get("statusId").asText());
+    assertFalse(statusNames(token, work).contains("Invalid"));
   }
 
   // AB-08
