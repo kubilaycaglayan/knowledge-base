@@ -265,11 +265,20 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `loads more global search results only for the selected record
   type` in `frontend/scripts/nav-shell.acceptance.test.mjs` expands Notes while
   Logs remain unchanged, then expands Logs without replacing the Notes results.
-- [ ] A literal match is preferred over a fuzzy near-match.
-- [ ] A near-match suggestion is available when there is no literal result and
-  suggestions are supported.
-- [ ] A no-result query displays a clear empty state.
-- [ ] Closing search returns focus to the control that opened it.
+- [x] A literal match is preferred over a fuzzy near-match. Evidence:
+  `SearchIntegrationTest.literalMatchesAnywhereKeepNearMissesOut` confirms a
+  literal match excludes the misspelled candidate and does not switch into
+  fuzzy mode.
+- [x] A near-match suggestion is available when there is no literal result and
+  suggestions are supported. Evidence: `SearchIntegrationTest.nearMissSpellingsMatchLongerTermsWhenNothingMatchesLiterally`
+  verifies the fallback, and `GlobalSearch.test.ts` / `explains near-miss and
+  incomplete results` verifies the user-facing near-match notice.
+- [x] A no-result query displays a clear empty state. Evidence:
+  `GlobalSearch.test.ts` / `says when nothing matches` checks the message and
+  the empty combobox selection state.
+- [x] Closing search returns focus to the control that opened it. Evidence:
+  `GlobalSearch.test.ts` / `closes with Escape and returns focus to where it was`
+  verifies focus moves into the dialog and returns to its trigger on close.
 - [ ] Global search remains usable with touch and the mobile keyboard at phone
   width.
 
