@@ -276,7 +276,9 @@ browser interaction evidence remains a separate layer.
 - [x] Concurrent `POST /api/v1/timers` requests preserve the one-running-timer
   invariant (`TimerPauseIntegrationTest.concurrentTimerStartsKeepThePostgresOneRunningTimerInvariant`).
 - [x] `PUT /api/v1/timers/{id}` covers update, optional stop/end-time behavior,
-  and owner-scoped timer IDs.
+  and owner-scoped timer IDs; null label lists and missing start values are
+  rejected before service execution
+  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
 - [x] `POST /api/v1/timers/stop` covers stopping the current timer.
 - [x] `POST /api/v1/timers/{id}/stop` covers the explicit-ID alias and its
   parity with the canonical stop behavior.
@@ -300,12 +302,16 @@ browser interaction evidence remains a separate layer.
 - [x] Resume after a selected path becomes inactive covers validation and
   preservation of the paused draft (`TimerPauseIntegrationTest.resumeRequiresAPausedSession`).
 - [x] `POST /api/v1/time-entries` covers manual entry creation, persisted
-  duration/time, and missing/reversed interval validation.
+  duration/time, and missing/reversed interval validation; null label lists,
+  missing end times, and over-limit descriptions return 400
+  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
 - [x] `GET /api/v1/time-entries` covers owner-scoped newest-first ordering and
   optional page/size pagination metadata.
 - [x] `GET /api/v1/time-entries/{id}` covers owned, missing, and foreign IDs.
 - [x] `PUT /api/v1/time-entries/{id}` covers completed-entry editing,
-  persisted targets/duration, foreign ownership, and invalid interval boundaries.
+  persisted targets/duration, foreign ownership, and invalid interval boundaries;
+  null label lists return 400 before service execution
+  (`TimerApiTest.runningAndManualEntryRequestsRequireTheirLabelAndTimeFields`).
 - [x] `DELETE /api/v1/time-entries/{id}` covers soft-delete behavior, owner
   isolation, and subsequent detail/history visibility.
 - [x] `GET /api/v1/statistics` covers tracked-seconds and date/path/label
