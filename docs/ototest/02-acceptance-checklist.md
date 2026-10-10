@@ -250,9 +250,13 @@ browser interaction evidence remains a separate layer.
   results. The endpoint has no filter or pagination query parameters.
 - [x] `GET /api/v1/logs/{id}` covers owned, missing, and foreign log IDs.
 - [x] `POST /api/v1/logs` covers creation, occurrence timestamp, and persisted
-  body. Log labels are assigned through the separate labels operation.
+  body, plus required/blank timestamp and body validation and the 20,000-
+  character body boundary (`LogApiTest.logBodyAndTimestampRespectRequiredAndMaximumLengthBoundaries`).
+  Log labels are assigned through the separate labels operation.
 - [x] `PUT /api/v1/logs/{id}` covers persisted body/time update and optimistic
-  version conflict behavior.
+  version conflict behavior; exact 20,000-character body passes request
+  validation and missing/blank/over-limit inputs return 400
+  (`LogApiTest.logBodyAndTimestampRespectRequiredAndMaximumLengthBoundaries`).
 - [x] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
   owned labels with LOG scope; missing/null lists and 101 IDs return 400 before
   service execution, while exactly 100 IDs pass request validation
