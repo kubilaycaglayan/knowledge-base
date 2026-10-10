@@ -706,6 +706,39 @@ describe("NotesView", () => {
     wrapper.unmount();
   });
 
+  it("keeps a failed note draft and retries the save from an explicit action", async () => {
+    let writes = 0;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        writes += 1;
+        if (writes === 1) throw new Error("offline");
+        return { ...note, ...JSON.parse(String(options.body)) };
+      }
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const title = wrapper.get<HTMLInputElement>('input[aria-label="Note title"]');
+    await title.setValue("Draft after offline save");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+
+    expect(wrapper.get(".save-state").text()).toBe("Not saved");
+    expect(title.element.value).toBe("Draft after offline save");
+    await wrapper.get('button[aria-label="Retry save"]').trigger("click");
+    await flushPromises();
+
+    expect(writes).toBe(2);
+    expect(wrapper.get(".save-state").text()).toBe("Saved");
+    expect(title.element.value).toBe("Draft after offline save");
+    wrapper.unmount();
+  });
+
   it("suggests matching existing labels while typing and applies a selected label", async () => {
     vi.mocked(api).mockImplementation(
       async (path: string, options?: RequestInit) => {
