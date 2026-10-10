@@ -826,8 +826,25 @@ browser interaction evidence remains a separate layer.
   intended contract. Unknown `TimeSource` values for manual entry create/edit
   now return 400 before service access in
   `TimerApiTest.timerAndManualEntryRequestsRejectUnknownSourcesBeforeServiceAccess`.
-- [ ] Every path/query parameter with a documented allowed range has lower,
-  upper, and out-of-range boundary evidence.
+- [x] Every path/query parameter with a documented allowed range has lower,
+  upper, and out-of-range boundary evidence. Search page bounds are asserted
+  by `SearchApiTest.searchAcceptsInclusiveQueryAndPageBoundaries` and
+  `searchRejectsOutOfRangePagesAndUnknownTypes`; calendar one-year limits by
+  `CalendarApiTest.calendarDaysUseInclusiveBoundsAndRejectInvalidRanges` and
+  `CalendarLabelPickerIntegrationTest.rangeRejectsReversedAndOverYearRequestsWithoutWritingDays`;
+  report two-year endpoints by
+  `KnowIntegrationTest.customReportAcceptsTheTwoYearMaximumWindowIncludingBothEndpoints`
+  and `ReportApiTest.customRangeAllowsTwoYearsButRejectsAnythingLonger`; board
+  page limits by `BoardControllerApiTest.cardPagesHandleEmptySmallExactAndOverflowBoundaries`,
+  `cardPageValidatesCursorAndLimitBoundariesBeforeCardLookup`, and
+  `AllBoardsIntegrationTest.columnPagesInterleaveBoardsByPosition`; timer and
+  note pagination clamp behavior by
+  `TimerServiceEdgeTest.historyPageClampsNegativePagesAndOversizedPageSizes`
+  and `NoteListIntegrationTest.notePaginationClampsPageAndSizeAndReturnsAnEmptyFinalPage`;
+  label-history page range 0–100000 by
+  `LabelHistoryServiceTest.recordPageAcceptsMaximumAndRejectsTheFirstValueAboveIt`
+  and existing negative-page evidence. Parameters without a declared upper
+  bound, such as board-page cursors, are not assigned an invented maximum.
 - [x] Date and timestamp operations have timezone, leap-day, inclusive-range,
   and reversed-range evidence where applicable. The API matrix links calendar
   and report leap-day/inclusive/reversed cases, requested-zone label history,
