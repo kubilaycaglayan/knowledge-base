@@ -219,6 +219,19 @@ class BoardControllerApiTest {
     verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
   }
 
+  @Test
+  void boardOrderRequiresANonemptyIdList() throws Exception {
+    for (String body : List.of("{}", "{\"ids\":null}", "{\"ids\":[]}")) {
+      mvc.perform(
+              put("/api/v1/boards/order")
+                  .with(authentication(auth()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(boards, statuses, cards, paths, labels, scopes);
+  }
+
   @Test void archivedBoardRejectsMutationsButRemainsReadable() throws Exception {
     Board board = new Board(owner, "Archived");
     board.archive();
