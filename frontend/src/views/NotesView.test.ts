@@ -914,6 +914,55 @@ describe("NotesView", () => {
     wrapper.unmount();
   });
 
+  it("waits for an in-flight save and flushes a newer draft before leaving", async () => {
+    let resolveFirst!: (saved: typeof note) => void;
+    let resolveSecond!: (saved: typeof note) => void;
+    const writes: Record<string, unknown>[] = [];
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+        writes.push(body);
+        if (writes.length === 1) return new Promise((resolve) => { resolveFirst = resolve; });
+        if (writes.length === 2) return new Promise((resolve) => { resolveSecond = resolve; });
+        return { ...note, ...body, version: writes.length };
+      }
+      if (path === "/notes/note-1") return note;
+      if (path === "/notes/labels") return [];
+      if (path === "/notes" || path.startsWith("/notes?")) return page();
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes/note-1");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    const title = wrapper.get('input[aria-label="Note title"]');
+    await title.setValue("First saved draft");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    expect(writes).toHaveLength(1);
+
+    await title.setValue("Newer draft");
+    const navigation = r.push("/notes");
+    await flushPromises();
+    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
+
+    resolveFirst({ ...note, title: String(writes[0].title), version: 1 });
+    await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await flushPromises();
+    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
+    expect(writes).toHaveLength(2);
+    expect(writes[1].title).toBe("Newer draft");
+    expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
+
+    resolveSecond({ ...note, title: String(writes[1].title), version: 2 });
+    await navigation;
+    await flushPromises();
+    expect(r.currentRoute.value.fullPath).toBe("/notes");
+    wrapper.unmount();
+  });
+
   it("keeps a failed draft in the editor, retries it, then permits navigation", async () => {
     const writes: string[] = [];
     let savedNote = note;
