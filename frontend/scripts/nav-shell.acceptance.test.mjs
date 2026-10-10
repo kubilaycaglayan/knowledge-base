@@ -143,6 +143,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     }
     else if (path === "/notes/n1") body = notes.find((note) => note.id === "n1") || { id: "n1", title: "Browser deep link", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Loaded directly" }] }] }), contentText: "Loaded directly", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
     else if (path === "/notes/search-note") body = { id: "search-note", title: "Reports research note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Opened from global search" }] }] }), contentText: "Opened from global search", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-02T10:00:00Z", version: 1, tags: [], pinned: false };
+    else if (path.startsWith("/notes/")) body = notes.find((note) => `/notes/${note.id}` === path) || null;
     else if (path === "/auth/me") body = { email: "nav-test@example.test", hasPassword: true, hasGoogle: false };
     else if (path === "/imports/knowledge-base/batches") body = importBatches;
     else if (path === "/imports/clockify/batches") body = [];
@@ -1600,6 +1601,34 @@ it("loads a note editor when the browser opens its deep link directly", async (t
   assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "Browser deep link");
   await page.getByRole("textbox", { name: "Note content" }).waitFor();
   assert.match(await page.getByRole("textbox", { name: "Note content" }).innerText(), /Loaded directly/);
+});
+
+it("restores the Notes list and editor through browser Back and Forward", async (t) => {
+  const note = {
+    id: "history-note",
+    title: "History browser note",
+    content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "History body" }] }] }),
+    contentText: "History body",
+    createdAt: "2026-10-01T10:00:00Z",
+    updatedAt: "2026-10-01T10:00:00Z",
+    version: 1,
+    tags: [],
+    pinned: false,
+  };
+  const { page } = await fixture(t, 1440, { noteSeeds: [note] });
+  await visit(page, "/notes");
+  await page.getByRole("link", { name: "Open History browser note" }).click();
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/history-note");
+
+  await page.goBack();
+  await page.getByRole("link", { name: "Open History browser note" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes");
+
+  await page.goForward();
+  await page.getByRole("textbox", { name: "Note title" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/notes/history-note");
+  assert.equal(await page.getByRole("textbox", { name: "Note title" }).inputValue(), "History browser note");
 });
 
 it("restores the archived Notes filter from its direct URL after reload", async (t) => {
