@@ -105,8 +105,13 @@ permissions, or unavailable API recovery.
   `frontend/scripts/labels.real-stack.acceptance.test.mjs`, run with
   `./scripts/run-labels-e2e.sh`. It covers confirmation for removing an
   unassigned label and verifies it stays absent after reload.
+- **Calendar, desktop Chromium:** `creates, edits, clears, and reloads a
+  Calendar day note with persisted API state` in
+  `frontend/scripts/calendar.real-stack.acceptance.test.mjs`, run with
+  `./scripts/run-calendar-e2e.sh`. It follows a query-selected date and checks
+  each state with a fresh range API read.
 
-Calendar, Reports, Settings, both transfer formats, and
+Reports, Settings, both transfer formats, and
 the remaining signed-in timer/notes and service-worker recovery journeys remain
 open for this milestone.
 

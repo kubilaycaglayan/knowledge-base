@@ -150,6 +150,11 @@ and verifies the deleted entry stays absent.
 separate disposable stack. It creates, edits, and removes an unassigned label,
 checking the API state and the rendered row after reload.
 
+`./scripts/run-calendar-e2e.sh` runs a desktop Chromium Calendar day journey
+against a separate disposable stack. It creates and edits a day note through
+the date-linked route, verifies each value through a fresh API range read, then
+clears the note and confirms the day disappears after reload.
+
 `./scripts/run-line-history-orca.sh` runs the Orca 46 screen reader against
 line history, using its own disposable Compose project and a disposable Orca
 container (`scripts/orca/`). The container provides Xvfb, the AT-SPI bus and
