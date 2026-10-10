@@ -817,6 +817,15 @@ browser interaction evidence remains a separate layer.
   boundary by `PathAuthorizationApiTest.pathMergeRequiresAValidTargetId`.
   Board status create/update's blank and maximum-length rules are covered by
   `BoardControllerApiTest.statusCreateAndUpdateValidateRequiredNameAndMaximumLength`.
+  The DTO annotation and service-range audit found named evidence for the
+  declared constraints across auth, note/log, calendar, timer, import, and
+  board request types. The criterion remains open because `CardRequest.priority`
+  has an unresolved enum-binding contract: unknown values currently become
+  null and use the MEDIUM default. The matrix marks this as a maintainer-owned
+  gap; do not assert rejection until the Knowledge Base maintainers settle the
+  intended contract. Unknown `TimeSource` values for manual entry create/edit
+  now return 400 before service access in
+  `TimerApiTest.timerAndManualEntryRequestsRejectUnknownSourcesBeforeServiceAccess`.
 - [ ] Every path/query parameter with a documented allowed range has lower,
   upper, and out-of-range boundary evidence.
 - [x] Date and timestamp operations have timezone, leap-day, inclusive-range,
