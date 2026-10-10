@@ -194,6 +194,24 @@ describe("boards store concurrency", () => {
     expect(first.position).toBe(1);
   });
 
+  it("restores the saved card order when a move request fails", async () => {
+    apiMock.mockRejectedValue(new Error("offline"));
+    const { useBoardsStore } = await import("./boards");
+    const store = useBoardsStore();
+    store.selectedId = "board";
+    store.statuses = [{ id: "backlog", name: "Backlog", position: 0, archived: false }];
+    const first = { id: "first", statusId: "backlog", title: "First", body: "{}", priority: "MEDIUM" as const, position: 0, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    const second = { id: "second", statusId: "backlog", title: "Second", body: "{}", priority: "MEDIUM" as const, position: 1, archived: false, pathIds: [], labelIds: [], createdAt: "", updatedAt: "" };
+    store.cards = [first, second];
+    store.ganttCards = [{ ...first }, { ...second }];
+
+    await expect(store.moveCard(first, "backlog", 1)).rejects.toThrow("offline");
+
+    expect(store.cards.slice().sort((a, b) => a.position - b.position).map((card) => card.id)).toEqual(["first", "second"]);
+    expect(store.ganttCards.slice().sort((a, b) => a.position - b.position).map((card) => card.id)).toEqual(["first", "second"]);
+    expect([first.position, second.position]).toEqual([0, 1]);
+  });
+
   it("persists status order and replaces the local order from the server", async () => {
     apiMock.mockResolvedValue([
       { id: "done", name: "Done", position: 0, archived: false },
