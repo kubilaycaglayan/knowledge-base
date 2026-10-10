@@ -994,8 +994,12 @@ browser interaction evidence remains a separate layer.
   job and the Docker Gradle local command for Java/API/service suites,
   `backend-postgres` for guarded database assertions, `web-and-extension` for
   client suites, and the named real-browser/E2E jobs for browser coverage.
-- [ ] Unavailable, manual, or environment-guarded evidence is labeled with an
-  owner and a runbook/command rather than marked complete.
+- [x] Unavailable, manual, or environment-guarded evidence is labeled with an
+  owner and a runbook/command rather than marked complete. The unresolved
+  board-priority contract and seven no-supported-client operations identify
+  Knowledge Base maintainers as decision owners; PostgreSQL-only cases name
+  the guarded `backend-postgres` workflow and disposable-database setup. No
+  unavailable or manual evidence is presented as a passing test.
 
 ## Flow: Maintain the API contract and report completion
 
