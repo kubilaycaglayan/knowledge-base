@@ -2016,6 +2016,18 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await cardsInColumn.count(), 20);
   });
 
+  it("keeps page order stable when priority-sorted cards have ties", async (t) => {
+    const { page } = await fixture(t, 800, true);
+    const column = page.locator(".kanban-column").first();
+    await page.getByRole("heading", { name: "Dense card 20", exact: true }).waitFor();
+    await column.getByRole("button", { name: "Sort Backlog: unsorted" }).click();
+    await column.getByRole("button", { name: "Sort Backlog: priority first" }).waitFor();
+    await column.locator(".load-more-sentinel").evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await page.getByRole("heading", { name: "Dense card 21", exact: true }).waitFor();
+
+    assert.deepEqual(await column.locator(".board-card h3").allTextContents(), Array.from({ length: 21 }, (_, index) => `Dense card ${index + 1}`));
+  });
+
   it("retries a failed lazy page without losing the existing cards", async (t) => {
     const { page } = await fixture(t, 800, true, false, false, false, false, 409, true);
     await page.getByRole("heading", { name: "Dense card 20", exact: true }).waitFor();
