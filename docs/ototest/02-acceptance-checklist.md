@@ -557,13 +557,17 @@ browser interaction evidence remains a separate layer.
   missing assignment IDs and duplicate labels are rejected before changing the
   saved day (`KnowIntegrationTest.calendarDayLifecycleSupportsNotesMarkersAndPortionedLeave`
   and `KnowIntegrationTest.calendarRejectsMalformedAssignmentsAndOutOfRangeChangesEndToEnd`);
-  the 20000-character note limit is accepted and 20001 is rejected.
+  the 20000-character note limit is accepted and 20001 is rejected. Required
+  assignment lists and nested label IDs also return 400 before service access
+  (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`).
 - [x] `DELETE /api/v1/calendar/days/{date}` covers single-day deletion,
   subsequent absence, foreign-user isolation, and repeated deletion.
 - [x] `PUT /api/v1/calendar/days/range` covers inclusive start/end mutation,
   preserves an existing note and label assignment, and confirms all changes
   through a subsequent range read
-  (`KnowIntegrationTest.calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels`).
+  (`KnowIntegrationTest.calendarRangeAppliesLeaveAcrossEveryDayWithoutReplacingExistingLabels`);
+  required dates, assignment list, and nested label IDs return 400 before service
+  access (`CalendarApiTest.calendarWritesRequireAssignmentListsAndOwnedLabelIdsBeforeServiceAccess`).
 - [x] Calendar day writes cover owned-label validation without mutating label
   scopes, foreign-label rejection, and each supported marker/portion value
   (`CalendarLabelPickerIntegrationTest.dayAcceptsAnOwnedLabelHiddenFromCalendar`,
