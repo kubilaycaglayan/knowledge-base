@@ -544,6 +544,15 @@ describe("ReportsView", () => {
     expect(
       (wrapper.get('[aria-label="Report aggregation"]').element as HTMLSelectElement).value,
     ).toBe("DAY");
+    expect(new URL(window.location.href).searchParams.get("startDate")).toBe(
+      format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(new URL(window.location.href).searchParams.get("endDate")).toBe(
+      format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    );
+    expect(new URL(window.location.href).searchParams.get("aggregation")).toBe(
+      "day",
+    );
   });
 
   it("filters daily paths to the report categories and supports an empty report", async () => {

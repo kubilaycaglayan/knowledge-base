@@ -382,7 +382,10 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Open the default report range
 
-- [ ] Opening `/reports` directly displays the documented default date range.
+- [x] Opening `/reports` directly displays the documented default date range.
+  Evidence: `frontend/src/views/ReportsView.test.ts`, `shows the report
+  dashboard with project breakdown and charts` verifies the default week in
+  the first report request at `/reports`.
 
 ### Flow: Choose a report range
 
