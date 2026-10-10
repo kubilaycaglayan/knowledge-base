@@ -523,7 +523,7 @@ describe("FloatingTimeTracker", () => {
       expect(pauseAttempts).toBe(1);
       expect(useTimerStore().error).toBe("Could not pause the session.");
       expect(wrapper.get(".tracker-error").text()).toContain("Could not pause the session.");
-      expect(wrapper.get('button[aria-label="Pause session"]').exists()).toBe(true);
+      expect(wrapper.find('button[aria-label="Pause session"]').exists()).toBe(true);
       expect(wrapper.get(".floating-tracker-clock").classes()).not.toContain("is-paused");
 
       await wrapper.get('button[aria-label="Pause session"]').trigger("click");
@@ -531,7 +531,7 @@ describe("FloatingTimeTracker", () => {
 
       expect(pauseAttempts).toBe(2);
       expect(wrapper.get(".floating-tracker-clock").classes()).toContain("is-paused");
-      expect(wrapper.get('button[aria-label="Resume session"]').exists()).toBe(true);
+      expect(wrapper.find('button[aria-label="Resume session"]').exists()).toBe(true);
     } finally {
       wrapper.unmount();
     }
@@ -565,7 +565,7 @@ describe("FloatingTimeTracker", () => {
       method: "PUT",
       body: JSON.stringify({ pathId: null, labelIds: [], description: null }),
     });
-    expect(wrapper.get('button[aria-label="Start timer"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Start timer"]').exists()).toBe(true);
     expect(wrapper.find('button[aria-label="Resume session"]').exists()).toBe(false);
     expect(useTimerStore().description).toBe("");
     expect(useTimerStore().selectedLabelIds).toEqual([]);
@@ -596,7 +596,7 @@ describe("FloatingTimeTracker", () => {
 
       expect(useTimerStore().error).toContain("Could not resume the session.");
       expect(wrapper.get(".tracker-error").text()).toContain("Could not resume the session.");
-      expect(wrapper.get('button[aria-label="Resume session"]').exists()).toBe(true);
+      expect(wrapper.find('button[aria-label="Resume session"]').exists()).toBe(true);
       expect(wrapper.get(".floating-tracker-summary").text()).toBe("Paused");
       expect(useTimerStore().description).toBe("Paused work");
 
@@ -604,7 +604,7 @@ describe("FloatingTimeTracker", () => {
       await flushPromises();
 
       expect(resumeAttempts).toBe(2);
-      expect(wrapper.get('button[aria-label="Pause session"]').exists()).toBe(true);
+      expect(wrapper.find('button[aria-label="Pause session"]').exists()).toBe(true);
       expect(useTimerStore().current?.carriedSeconds).toBe(120);
       expect(useTimerStore().selectedLabelIds).toEqual(["label-1"]);
       expect(useTimerStore().description).toBe("Paused work");
