@@ -1242,11 +1242,11 @@ The explicit warning/discard interaction above remains uncovered.
 
 ### Flow: Use the Notes editor in mobile Chrome
 
-- [ ] The note list and editor can be reached with touch at phone width.
+- [x] The note list and editor can be reached with touch at phone width. Evidence: `nav-shell.acceptance.test.mjs` / `opens and uses the Notes editor with touch-sized controls on mobile` opens a note from the mobile list and returns to it from the editor.
 - [ ] Editing controls remain visible or reachable while the mobile keyboard
   is open.
 - [ ] The editor scrolls as intended without trapping the page or hiding Save.
-- [ ] Rich-text controls have touch targets suitable for repeated editing.
+- [x] Rich-text controls have touch targets suitable for repeated editing. Evidence: the same mobile browser test checks every toolbar button is at least 44×44px.
 - [ ] Closing the keyboard preserves the caret and entered content.
 
 ## Cross-cutting behavior
