@@ -133,7 +133,7 @@ asserted. A field in this catalog is not itself a claim that tests verify it.
 | `PathResponse` | `id`, `name`, `description`, `color`, `textColor`, `status`, `pinned`, `sortOrder`, `activityLabel`, `boardId`, `boardHidden`, `createdAt`, `updatedAt` |
 | `PathSummary` | `path` (`PathResponse`), `trackedSeconds`, `recentActivity` |
 | `LabelManagementService.View` | `id`, `name`, `color`, `scopes`, `system` |
-| `LabelHistoryService.History` | `labelId`, `name`, `color`, `firstUsedAt`, `lastUsedAt`, `totalUses`, `trackedSeconds`, `uses`, `timeline`, `hours`, `related` |
+| `LabelHistoryService.History` | `labelId`, `name`, `color`, `firstUsedAt`, `lastUsedAt`, `totalUses`, `trackedSeconds`, `uses` (`Uses`: `sessions`, `logs`, `notes`, `calendarDays`, `cards`), `timeline` (`Month`: `month`, `uses`, `trackedSeconds`), `hours` (`Hour`: `hour`, `uses`, `trackedSeconds`), `related` (`Related`: `id`, `name`, `color`, `together`, `trackedSeconds`) |
 | `LabelHistoryService.Records` | `items` (`RecordView`: `id`, `date`, `title`, `preview`), `hasMore` |
 | `LogService.LogView` | `id`, `body`, `occurredAt`, `labelIds`, `createdAt`, `updatedAt`, `version` |
 | `KnowledgeService.NoteView` | `id`, `pathId`, `activityId`, `timeEntryId`, `title`, `content`, `createdAt`, `updatedAt`, `deletedAt`, `version`, `contentText`, `tags`, `pinned`, `sortOrder`, `lineEdits` |
