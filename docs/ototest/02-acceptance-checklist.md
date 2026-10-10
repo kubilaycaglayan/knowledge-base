@@ -532,8 +532,10 @@ browser interaction evidence remains a separate layer.
 
 ## Flow: Verify ownership and authentication boundaries
 
-- [ ] Each protected operation has evidence that an unauthenticated request
-  receives the documented unauthorized response.
+- [x] Every protected API route rejects an unauthenticated request with 401
+  (`SecurityHardeningIntegrationTest.everyProtectedRouteRejectsAnonymousRequests`);
+  the dynamic sweep discovers routes from Spring MVC mappings rather than
+  duplicating a static path list.
 - [ ] Each directly addressed resource family has owned, missing, and foreign
   ID evidence where that operation accepts a resource ID.
 - [ ] Each mutation that accepts referenced IDs verifies those IDs belong to
