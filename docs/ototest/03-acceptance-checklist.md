@@ -62,7 +62,10 @@ the extension has its own scope in OTOTEST-04.
 - [x] The responsive navigation keeps every supported destination reachable
   at phone width. Evidence: the same 390px browser test checks each link is
   visible, stays within the viewport, and has a target at least 44px high.
-- [ ] The page has one visible level-one heading that identifies its content.
+- [x] The page has one visible level-one heading that identifies its content.
+  Evidence: `cd frontend && node --test --test-name-pattern='opens the
+  Sessions workspace directly' scripts/nav-shell.acceptance.test.mjs` checks
+  one visible `h1` with the text Sessions.
 
 ### Flow: Navigate with the primary navigation
 

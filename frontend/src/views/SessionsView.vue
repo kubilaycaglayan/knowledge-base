@@ -247,6 +247,7 @@ onMounted(load);
     @changed="sessionChanged"
   />
   <section>
+    <h1>Sessions</h1>
     <p v-if="error" class="notice" role="alert" aria-live="polite">
       {{ error }}
     </p>
