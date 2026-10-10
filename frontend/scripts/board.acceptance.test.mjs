@@ -1514,9 +1514,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       for (const row of [".card-editor-header", ".card-editor-footer"]) {
         const boxes = await editor.locator(row).evaluate((element) => {
           const outer = element.getBoundingClientRect();
-          return { outer: { left: outer.left, right: outer.right }, overflow: element.scrollWidth - element.clientWidth, children: [...element.children].filter((child) => child.getClientRects().length).map((child) => { const box = child.getBoundingClientRect(); return { name: child.getAttribute("aria-label") || child.getAttribute("name") || child.className.split(" ")[0], left: box.left, right: box.right, top: box.top, bottom: box.bottom }; }) };
+          return { outer: { left: outer.left, right: outer.right }, clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, overflow: element.scrollWidth - element.clientWidth, children: [...element.children].filter((child) => child.getClientRects().length).map((child) => { const box = child.getBoundingClientRect(); return { name: child.getAttribute("aria-label") || child.getAttribute("name") || child.className.split(" ")[0], clientWidth: child.clientWidth, scrollWidth: child.scrollWidth, left: box.left, right: box.right, top: box.top, bottom: box.bottom }; }) };
         });
-        assert.ok(boxes.overflow <= 0, `${width}px: ${row} does not overflow (${boxes.overflow}px)`);
+        assert.ok(boxes.overflow <= 0, `${width}px: ${row} does not overflow (${JSON.stringify(boxes)})`);
         for (const child of boxes.children) assert.ok(child.left >= boxes.outer.left - 1 && child.right <= boxes.outer.right + 1, `${width}px: ${child.name} stays inside ${row}`);
         for (let i = 0; i < boxes.children.length; i += 1) for (let j = i + 1; j < boxes.children.length; j += 1) {
           const [a, b] = [boxes.children[i], boxes.children[j]];
