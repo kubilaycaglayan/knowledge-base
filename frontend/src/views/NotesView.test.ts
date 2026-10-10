@@ -201,6 +201,40 @@ describe("NotesView", () => {
     ).toBe(true);
   });
 
+  it("filters note text, restores the query in the URL, and distinguishes empty from error", async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path.startsWith("/notes?")) {
+        const params = new URLSearchParams(path.split("?")[1]);
+        if (params.get("q") === "offline") throw new Error("offline");
+        return params.get("q") === "graph" ? page([note]) : page([]);
+      }
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+
+    const search = wrapper.get<HTMLInputElement>('input[aria-label="Search notes"]');
+    await search.setValue("graph");
+    await new Promise((resolve) => setTimeout(resolve, 280));
+    await flushPromises();
+    expect(wrapper.findAll(".note-row")).toHaveLength(1);
+    expect(r.currentRoute.value.query.q).toBe("graph");
+
+    await search.setValue("missing");
+    await new Promise((resolve) => setTimeout(resolve, 280));
+    await flushPromises();
+    expect(wrapper.get(".notes-empty").text()).toBe("No notes match your search.");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+
+    await search.setValue("offline");
+    await new Promise((resolve) => setTimeout(resolve, 280));
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain("Unable to load notes.");
+  });
+
   it("creates a note from the icon action and opens the editor", async () => {
     const created = {
       ...note,
