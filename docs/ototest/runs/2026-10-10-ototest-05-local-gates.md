@@ -42,6 +42,7 @@ occurred. The archived-note label-preservation acceptance remains open.
 | --- | --- | --- |
 | Packaged extension browser acceptance | `./scripts/run-extension-browser-e2e.sh` at source revision `2e0e4450` | Pass: 3/3 Chromium tests against the built Manifest V3 package and isolated loopback API fixture; checks popup/options and manifest host permissions, Clockify content-script to service-worker delivery, timer and Notes fixture state, unavailable API recovery, and worker restart in the temporary persistent profile |
 | CI registration and reconciled inventory | `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: inventory integrity across 18 docs, 107 API rows, and 307 qualified API references; `verify / web-and-extension` now runs the packaged extension browser suite as a pull-request gate |
+| Hosted `verify` | [`verify` run 38100516626](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38100516626) | Pass for commit `fa7029cccaaed28febca35a176b0a3d56098af2e`; the new packaged extension browser step passed along with all active jobs, including smoke, timer WebSocket, line history, Orca, backend, and PostgreSQL/Flyway; historical iOS jobs skipped as configured |
 
 ## 2026-10-11 supplement — unknown URL fallback
 
