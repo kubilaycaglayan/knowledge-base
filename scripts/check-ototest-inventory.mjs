@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
-import { unresolvedNavAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryRoot = path.join(repositoryRoot, "docs/ototest");
@@ -88,13 +88,15 @@ for (const reference of apiEvidenceReferences) {
   }
 }
 
-const navAcceptanceFile = path.join(repositoryRoot, "frontend/scripts/nav-shell.acceptance.test.mjs");
-const navAcceptanceSource = fs.readFileSync(navAcceptanceFile, "utf8");
-for (const { row, reference } of unresolvedNavAcceptanceReferences(
+const acceptanceSources = Object.fromEntries(
+  findFiles(path.join(repositoryRoot, "frontend/scripts"), (file) => file.endsWith(".acceptance.test.mjs"))
+    .map((file) => [path.basename(file), fs.readFileSync(file, "utf8")]),
+);
+for (const { row, file, reference } of unresolvedAcceptanceReferences(
   readTable("01-control-matrix.md", "| Checklist IDs |"),
-  navAcceptanceSource,
+  acceptanceSources,
 )) {
-  problems.push(`01-control-matrix.md:row ${row}: nav-shell assertion ${JSON.stringify(reference)} does not resolve`);
+  problems.push(`01-control-matrix.md:row ${row}: ${file} assertion ${JSON.stringify(reference)} does not resolve`);
 }
 
 const milestoneIndex = fs.readFileSync(path.join(inventoryRoot, "README.md"), "utf8");

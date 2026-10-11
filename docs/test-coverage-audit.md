@@ -104,7 +104,7 @@ extension browser journey. See the [OTOTEST-04 acceptance checklist](ototest/04-
 for its recorded evidence and boundaries. OTOTEST-05 adds a CI check for
 stale local inventory links, duplicate route/API keys, missing row
 classifications or matrix owners, milestone-status drift, unresolved Java API
-test names, and stale named navigation-browser assertion references. These
+test names, and stale named browser acceptance references. These
 checks establish reference freshness, not assertion quality. It also adds a
 same-review inventory update rule, explicit evidence-layer gate guidance, and
 a reusable run-record template. This does not close the remaining

@@ -20,9 +20,10 @@ an unresolved gap. Run `node scripts/check-ototest-inventory.mjs` to catch stale
 local Markdown links, unclassified rows, ownerless matrices, duplicate
 route/API keys, milestone status drift, missing source/evidence locations, and
 API evidence references that no longer resolve to Java test methods. It also
-resolves named `nav-shell.acceptance.test.mjs` references in the control
-matrix to current browser test declarations. These are name checks, not
-assertion-quality checks. The command rejects marking OTOTEST-05 Complete while its acceptance checklist has
+resolves named browser acceptance references in the control matrix to
+declarations in their corresponding scripts. These are name checks, not
+assertion-quality checks. The command rejects marking OTOTEST-05 Complete
+while its acceptance checklist has
 unchecked items or its evidence record lacks a passing hosted run link. It
 checks inventory and completion consistency, not behavioral coverage. The
 guard's open-checklist, missing-run, in-progress, and valid-completion cases

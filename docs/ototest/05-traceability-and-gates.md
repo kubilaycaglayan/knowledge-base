@@ -23,8 +23,8 @@ make the required test layers visible in local guidance and CI.
   matrices, duplicate route
   and API row identities, stale local Markdown links, status drift, and API
   evidence references that no longer resolve to Java test methods. It also
-  resolves named `nav-shell.acceptance.test.mjs` references in the control
-  matrix to current browser test declarations; this is a name check, not an
+  resolves named browser acceptance references in the control matrix to
+  declarations in their corresponding scripts; this is a name check, not an
   assertion-quality review.
   Control-matrix IDs are cross-references shared with the feature checklist,
   so those references are checked for presence/classification but are not
