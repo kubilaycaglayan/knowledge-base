@@ -1479,8 +1479,9 @@ it("supports keyboard navigation and opening a primary link in a new tab", async
   await page.locator(".reports-page").waitFor();
 
   const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
+  await calendarLink.focus();
   const newTab = page.context().waitForEvent("page");
-  await activate(calendarLink, { modifiers: ["Control"] });
+  await page.keyboard.press("Control+Enter");
   const opened = await newTab;
   await opened.locator(".calendar-page").waitFor();
   assert.equal(new URL(opened.url()).pathname, "/calendar");
@@ -2152,11 +2153,14 @@ it("filters Timeline activity with phone-width controls and sends the selected v
     timelineSeeds: [{ id: "phone-timeline-activity", type: "TIME_TRACKED", title: "Phone filter activity", detail: "A filtered activity", occurredAt: "2026-10-01T10:00:00Z", pathId: "timeline-path", timeEntryId: "phone-timeline-session" }],
   });
   await page.goto(`${server.resolvedUrls.local[0]}timeline`);
+  await page.getByRole("heading", { name: "Timeline", exact: true }).waitFor();
 
   const activityType = page.getByRole("combobox", { name: "Activity type" });
   const path = page.getByRole("combobox", { name: "Path" });
   const from = page.getByRole("textbox", { name: "From date" });
   const to = page.getByRole("textbox", { name: "To date" });
+  await activityType.locator("option").filter({ hasText: "TIME_TRACKED" }).waitFor({ state: "attached" });
+  await path.locator("option").filter({ hasText: "Timeline Path" }).waitFor({ state: "attached" });
   await chooseNativeOption(activityType, "TIME_TRACKED");
   await chooseNativeOption(path, "timeline-path");
   await from.fill("2026-09-30");
