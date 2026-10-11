@@ -55,12 +55,17 @@ commands and outcomes.
 
 - **Physical Android Chrome:** Knowledge Base maintainers use a disposable
   account and local isolated environment, open the app from Android Chrome,
-  and perform the mobile route/control cases selected from the OTOTEST
-  acceptance checklist. Record device, Android/Chrome versions, viewport,
-  input method, route/action, outcome, and redacted evidence with the
-  [execution template](ototest/evidence-template.md). Verify saved mutations
-  after reload or a fresh API read. Desktop viewport emulation is supplemental
-  and must not be recorded as a device run.
+  and execute the relevant **MOBILE-01 through MOBILE-33** criteria in the
+  [OTOTEST-04 acceptance checklist](ototest/04-acceptance-checklist.md),
+  alongside the matching route/control flow where those criteria depend on
+  it. Record each criterion separately as pass, fail, blocked, or not run; a
+  partial sweep must list the unrun IDs and cannot be reported as complete.
+  For each result, use the
+  [execution template](ototest/evidence-template.md) to record device,
+  Android/Chrome versions, viewport/orientation, input method, route/action,
+  outcome, and redacted evidence. Verify saved mutations after reload or a
+  fresh API read. Desktop viewport emulation is supplemental and must not be
+  recorded as a device run.
 - **Extension permission prompt:** Knowledge Base maintainers build the
   packaged extension with `npm run build --prefix chrome-extension`, load
   `chrome-extension/.output/chrome-mv3` in a fresh desktop Chrome profile,
