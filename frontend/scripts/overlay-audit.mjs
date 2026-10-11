@@ -5,12 +5,18 @@
 const focusSnapshot = (scopeSelector) => {
   const element = document.activeElement;
   if (!(element instanceof HTMLElement) || element === document.body || element === document.documentElement) return { body: true };
-  const visualTarget = element.closest(".v-field") || element;
+  // Field wrappers (Vuetify fields, the date picker input) own the visible box.
+  const visualTarget = element.closest(".v-field, .dp__input_wrap") || element;
   const rect = visualTarget.getBoundingClientRect();
   const center = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  const hasRing = [getComputedStyle(element), getComputedStyle(visualTarget)].some((style) =>
-    style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) >= 2,
-  );
+  // A focus indicator is a 2px+ outline on the control, its field, or a nearby
+  // :focus-within wrapper, or a box-shadow ring/underline on the control.
+  const ringHosts = [element, visualTarget];
+  for (let node = element.parentElement, depth = 0; node && depth < 3; node = node.parentElement, depth += 1) ringHosts.push(node);
+  const hasRing = ringHosts.some((node) => {
+    const style = getComputedStyle(node);
+    return style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) >= 2 && (node === element || node === visualTarget || node.matches(":focus-within"));
+  }) || getComputedStyle(element).boxShadow !== "none";
   const id = element.getAttribute("data-focus-audit-id") || crypto.randomUUID();
   element.setAttribute("data-focus-audit-id", id);
   const scope = scopeSelector ? document.querySelector(scopeSelector) : null;

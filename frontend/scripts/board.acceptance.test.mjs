@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { createServer } from "vite";
 import { chromium, devices, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import { auditCloseAction, auditContainment, auditFocusCycle } from "./overlay-audit.mjs";
 
 let server, browser;
 const browserEngine = process.env.BOARD_BROWSER === "webkit" ? webkit : chromium;
@@ -2927,3 +2928,116 @@ describe("All boards view", { concurrency: 4 }, () => {
     await page.locator(".kanban-column").nth(1).locator(".board-card").first().waitFor();
   });
 });
+
+// Every Board dialog and menu: keyboard focus stays visible and unobscured,
+// overscroll stays contained, and the dismiss action is reachable.
+const tapOrClick = (locator, touch) => (touch ? locator.tap() : locator.click());
+async function openManager(page, touch) {
+  const gear = page.getByRole("button", { name: "Manage boards", exact: true });
+  if (await gear.isVisible().catch(() => false)) await tapOrClick(gear, touch);
+  else {
+    await tapOrClick(page.locator("button.board-tab-more"), touch);
+    await tapOrClick(page.locator('.board-more-menu [role^="menuitem"]', { hasText: /^Manage boards/ }), touch);
+  }
+  return page.getByRole("dialog", { name: "Boards" });
+}
+async function openSettings(page, touch) {
+  const name = (await page.locator(".board-tab.selected").innerText()).trim();
+  await tapOrClick((await openManager(page, touch)).getByRole("button", { name, exact: true }), touch);
+  return page.getByRole("dialog", { name: "Board settings" });
+}
+async function openCardEditor(page, touch) {
+  await tapOrClick(page.locator(".board-card", { hasText: "Ship timeline" }), touch);
+  return page.getByRole("dialog", { name: "Edit card" });
+}
+const boardOverlays = [
+  { name: "Boards manager", open: async (page, touch) => {
+    const overlay = await openManager(page, touch);
+    return { overlay, close: overlay.getByRole("button", { name: "Done", exact: true }) };
+  } },
+  { name: "New board dialog", open: async (page, touch) => {
+    await tapOrClick((await openManager(page, touch)).getByRole("button", { name: "Add board" }), touch);
+    const overlay = page.getByRole("dialog", { name: "New board" });
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Board settings dialog", open: async (page, touch) => {
+    const overlay = await openSettings(page, touch);
+    return { overlay, close: overlay.getByRole("button", { name: "Done", exact: true }) };
+  } },
+  { name: "Archive board confirmation", open: async (page, touch) => {
+    await tapOrClick((await openSettings(page, touch)).getByRole("button", { name: "Archive board" }), touch);
+    const overlay = page.getByRole("alertdialog", { name: "Archive board?" });
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Archive status confirmation", open: async (page, touch) => {
+    await tapOrClick((await openSettings(page, touch)).getByRole("button", { name: "Archive Backlog status" }), touch);
+    const overlay = page.getByRole("alertdialog", { name: "Archive status?" });
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Card editor", open: async (page, touch) => {
+    const overlay = await openCardEditor(page, touch);
+    return { overlay, close: overlay.getByRole("button", { name: "Close card" }) };
+  } },
+  { name: "Archive card confirmation", open: async (page, touch) => {
+    await tapOrClick((await openCardEditor(page, touch)).getByRole("button", { name: "Archive card" }), touch);
+    const overlay = page.getByRole("alertdialog", { name: "Archive card?" });
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Board menu", phoneOnly: true, menu: async (page) => {
+    await page.locator("button.board-tab-more").focus();
+    await page.keyboard.press("ArrowDown");
+    return page.locator(".board-more-menu");
+  }, open: async (page, touch) => {
+    await tapOrClick(page.locator("button.board-tab-more"), touch);
+    return { overlay: page.locator(".board-more-menu"), close: "Escape" };
+  } },
+  { name: "Gantt board chooser menu", menu: async (page) => {
+    await boardAction(page, "Gantt");
+    await page.locator(".board-gantt-selector button.board-all-menu").focus();
+    await page.keyboard.press("ArrowDown");
+    return page.getByRole("menu", { name: "Choose board" });
+  }, open: async (page, touch) => {
+    await tapOrClick(page.locator(".board-gantt-selector button.board-all-menu"), touch);
+    return { overlay: page.getByRole("menu", { name: "Choose board" }), close: "Escape" };
+  } },
+];
+
+for (const { name, open, menu, phoneOnly } of boardOverlays) {
+  for (const [width, height] of [[390, 320], [1440, 900]]) {
+    if (phoneOnly && width > 390) continue;
+    it(`keeps the Board ${name} focus visible, scroll contained, and closable at ${width}×${height}`, async (t) => {
+      const touch = width <= 390;
+      const { page } = await fixture(t, width);
+      await page.setViewportSize({ width, height });
+      const label = `Board ${name} at ${width}×${height}`;
+      const problems = [];
+      const markScope = (overlay) => overlay.evaluate((element) => {
+        document.querySelectorAll("[data-audit-scope]").forEach((node) => delete node.dataset.auditScope);
+        element.dataset.auditScope = "true";
+      });
+      // Menus use roving focus: open from the keyboard and cycle with ArrowDown.
+      if (menu) {
+        const overlay = await menu(page);
+        await overlay.waitFor();
+        await page.waitForTimeout(300);
+        await markScope(overlay);
+        problems.push(...await auditFocusCycle(page, label, { key: "ArrowDown", scope: '[data-audit-scope="true"]' }));
+        await page.keyboard.press("Escape");
+        await overlay.waitFor({ state: "hidden", timeout: 3000 }).catch(() => problems.push(`${label}: Escape did not close the menu`));
+      }
+      const { overlay, close } = await open(page, touch);
+      await overlay.waitFor();
+      await page.waitForTimeout(300);
+      await markScope(overlay);
+      if (!menu) problems.push(...await auditFocusCycle(page, label, { scope: '[data-audit-scope="true"]' }));
+      problems.push(...await auditContainment(page, overlay, label));
+      if (close === "Escape") {
+        await page.keyboard.press("Escape");
+        await overlay.waitFor({ state: "hidden", timeout: 3000 }).catch(() => problems.push(`${label}: Escape did not close the overlay`));
+      } else {
+        problems.push(...await auditCloseAction(page, overlay, close, label, { touch }));
+      }
+      assert.deepEqual(problems, [], `${label} problems`);
+    });
+  }
+}
