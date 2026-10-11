@@ -33,8 +33,15 @@ inventory integrity, not behavioral coverage.
 | iOS | Out of scope while the app is inactive; historical jobs remain disabled | Manual macOS workflow only if the supported-client decision changes | No current gate/runtime |
 
 Browser suites that need a local application or installed extension remain
-opt-in until their CI runtime, isolation, and artifact handling are established. A
-release evidence record should use the
+opt-in unless they are listed in the CI gates above. The timer WebSocket and
+line-history jobs upload artifacts only on failure. Artifact names include the
+workflow run ID and attempt, runner evidence records the source commit, and the
+workflow summary links the run. Uploads expire after 14 days. Browser traces
+retain DOM snapshots but disable screenshot capture; trace JSON is scrubbed for
+credentials, tokens, cookies, and email addresses before upload. If scrubbing
+fails, the trace is deleted. Diagnostics contain request paths and status codes,
+and browser tests use generated disposable accounts. A release evidence record
+should use the
 [#ototest execution template](ototest/evidence-template.md); never commit
 tokens, personal data, or secret-bearing artifacts.
 The runtimes above are approximate observations from the 2026-10-10 local

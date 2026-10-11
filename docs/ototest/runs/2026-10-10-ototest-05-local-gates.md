@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Milestone / acceptance IDs | OTOTEST-05; gate policy, consistency check, evidence record |
-| Reviewed source revision | `a488663c` (`Bug fix step 2: Exclude Node suites from Vitest`); docs and inventory edits were in the worktree during the run |
+| Reviewed source revision | Baseline: `a488663c` (`Bug fix step 2: Exclude Node suites from Vitest`); later supplements identify their exact source revisions |
 | Date (UTC) | 2026-10-10 |
 | Owner | Knowledge Base maintainers |
 | Browser and profile | Hosted browser evidence is detailed below. Local Playwright runs used desktop Chromium; the packaged extension used a fresh disposable Chrome profile; Orca 46 ran in its disposable container. Phone viewports are browser emulation and are not physical Android evidence. |
@@ -28,6 +28,13 @@ occurred. The archived-note label-preservation acceptance remains open.
 | Evidence layer | Exact command(s) | Result |
 | --- | --- | --- |
 | Foreign Label reference rejection and unchanged owner state | `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --tests com.know.integration.LogLabelsIntegrationTest --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"` at source revision `91e97d13` | Pass: the two-account integration test rejects the foreign Label ID with 400, then rereads the owner's Log to confirm its prior Label remains and confirms the foreign owner's Label remains in its own catalog |
+
+## 2026-10-11 supplement — browser failure artifact safety
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Trace redaction and failure capture | `cd frontend && node --test scripts/browser-failure-artifacts.test.mjs` at source revision `4f2c8ec8` | Pass: 2/2 tests redact authorization/bearer/basic values, cookies, passwords, access tokens, and email addresses; failure capture disables screenshot recording and deletes an unsanitizable trace |
+| Artifact policy and OTOTEST inventory | `node scripts/check-browser-artifact-policy.mjs`; `node scripts/check-ototest-inventory.mjs`; `git diff --check`; `bash -n scripts/run-line-history-e2e.sh scripts/run-timer-websocket-e2e.sh` | Pass: workflow run/attempt and commit linkage, failure-only upload, 14-day retention, trace redaction, inventory integrity (18 docs, 107 API rows, 307 qualified API references), whitespace, and shell syntax |
 
 ## 2026-10-11 supplement — unknown URL fallback
 
@@ -73,10 +80,11 @@ occurred. The archived-note label-preservation acceptance remains open.
 | Note and board-card line history | `./scripts/run-line-history-e2e.sh`; [`verify / line-history-e2e`](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095729135/job/114341105094) | Headless Chromium; desktop 1280 × 900 and phone emulation 390 × 844 with touch; dark-mode phone layout | 13 passed across Notes, line history assistive behavior, cross-client conversion compatibility, and board-card line history; includes fresh API readback, reload, conflict/retry, and Axe assertions |
 
 These successful jobs expose their test logs through the linked job pages and
-do not upload passing screenshots. On failure, the workflow uploads scrubbed
-traces, screenshots, and diagnostics for 14 days; traces redact credentials,
-tokens, cookies, and account email, and run metadata uses generated disposable
-accounts. No physical Android device is represented by the emulated viewport.
+do not upload passing artifacts. On failure, the workflow uploads scrubbed
+traces and diagnostics for 14 days. Trace screenshot capture is disabled;
+traces redact credentials, tokens, cookies, and account email, and run metadata
+uses generated disposable accounts. No physical Android device is represented
+by the emulated viewport.
 
 ## Failed-gate repair record
 

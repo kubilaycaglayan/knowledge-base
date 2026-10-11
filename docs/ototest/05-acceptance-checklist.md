@@ -605,13 +605,19 @@ physical-device pass.
 
 ### Flow: Publish one browser artifact
 
-- [ ] The artifact is linked to its workflow run and commit.
-- [ ] The artifact contains only the minimum evidence needed to review the
-  result.
-- [ ] The artifact does not contain account credentials, bearer tokens,
-  cookies, authorization headers, or personal data.
-- [ ] The retention period and failure-only behavior are documented where
-  configured by CI.
+- [x] The artifact is linked to its workflow run and commit. Timer and
+  line-history upload names include workflow run ID and attempt; the summary
+  links the workflow run, and runner failure/metadata files record the commit.
+- [x] The artifact contains only the minimum evidence needed to review the
+  result: scrubbed trace DOM snapshots, diagnostics, and runner logs; trace
+  screenshot capture is disabled. Passing runs upload no artifact.
+- [x] Trace redaction covers credentials, bearer/basic authorization values,
+  cookies, and email addresses. The committed redaction test exercises these
+  values and verifies an unsanitizable trace is removed. Browser tests use
+  generated disposable accounts; no live personal account data is used.
+- [x] The workflow configures failure-only uploads with 14-day retention, and
+  `node scripts/check-browser-artifact-policy.mjs` enforces linkage, retention,
+  and redaction setup.
 
 ## Completion review
 
