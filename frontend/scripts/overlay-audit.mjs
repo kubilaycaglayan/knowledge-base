@@ -1,0 +1,120 @@
+// Shared browser checks for keyboard focus visibility and modal/drawer
+// containment. Each helper returns a list of problems so a sweep can report
+// every failing state at once instead of stopping at the first.
+
+const focusSnapshot = (scopeSelector) => {
+  const element = document.activeElement;
+  if (!(element instanceof HTMLElement) || element === document.body || element === document.documentElement) return { body: true };
+  const visualTarget = element.closest(".v-field") || element;
+  const rect = visualTarget.getBoundingClientRect();
+  const center = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  const hasRing = [getComputedStyle(element), getComputedStyle(visualTarget)].some((style) =>
+    style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) >= 2,
+  );
+  const id = element.getAttribute("data-focus-audit-id") || crypto.randomUUID();
+  element.setAttribute("data-focus-audit-id", id);
+  const scope = scopeSelector ? document.querySelector(scopeSelector) : null;
+  return {
+    id,
+    name: element.getAttribute("aria-label") || element.textContent?.trim().replace(/\s+/g, " ").slice(0, 60) || element.tagName,
+    inScope: !scope || scope.contains(element),
+    visible: rect.width > 0 && rect.height > 0 && rect.top >= -1 && rect.bottom <= innerHeight + 1 && rect.left >= -1 && rect.right <= innerWidth + 1,
+    ring: element.matches(":focus-visible") && hasRing,
+    covered: Boolean(center) && center !== visualTarget && !visualTarget.contains(center),
+    coveredBy: center instanceof Element ? `${center.tagName.toLowerCase()}.${[...center.classList].join(".")}` : String(center),
+  };
+};
+
+// Walks a full keyboard focus cycle and checks that every focused control is
+// inside the viewport, shows a 2px focus indicator, and is not covered by
+// fixed or sticky UI at its center point.
+export async function auditFocusCycle(page, label, { key = "Tab", scope = null, limit = 120, stopOutside = false } = {}) {
+  const problems = [];
+  const seen = new Set();
+  let completed = false;
+  for (let index = 0; index < limit; index += 1) {
+    await page.keyboard.press(key);
+    const focus = await page.evaluate(focusSnapshot, scope);
+    if (focus.body) {
+      completed = seen.size > 0;
+      break;
+    }
+    if (seen.has(focus.id)) {
+      completed = true;
+      break;
+    }
+    // Non-modal overlays (menus, disclosure panels) hand focus back to the page.
+    if (stopOutside && !focus.inScope) {
+      completed = seen.size > 0;
+      break;
+    }
+    seen.add(focus.id);
+    const where = `${label} ${key} ${index + 1} (${focus.name})`;
+    if (!focus.inScope) problems.push(`${where}: focus left the open overlay`);
+    if (!focus.visible) problems.push(`${where}: focused control is outside the viewport`);
+    if (!focus.ring) problems.push(`${where}: no visible focus indicator`);
+    if (focus.covered) problems.push(`${where}: covered by ${focus.coveredBy}`);
+  }
+  if (!completed) problems.push(`${label}: ${key} did not complete a focus cycle within ${limit} stops (saw ${seen.size})`);
+  return problems;
+}
+
+// Checks that an open overlay fits the viewport or scrolls inside itself with
+// contained overscroll, so scrolling it never moves the page behind it.
+export async function auditContainment(page, overlay, label) {
+  const problems = [];
+  const layout = await overlay.evaluate((element) => {
+    const scrollers = [element, ...element.querySelectorAll("*")].filter((node) => {
+      const style = getComputedStyle(node);
+      return /(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1;
+    });
+    const rect = element.getBoundingClientRect();
+    const fits = rect.top >= -1 && rect.bottom <= innerHeight + 1 && rect.left >= -1 && rect.right <= innerWidth + 1;
+    const clipped = !fits && scrollers.length === 0;
+    const uncontained = scrollers.filter((node) => !/(contain|none)/.test(getComputedStyle(node).overscrollBehaviorY))
+      .map((node) => `${node.tagName.toLowerCase()}.${[...node.classList].join(".")}`);
+    const marker = scrollers[0] ? (scrollers[0].dataset.overlayScroller = "true", true) : false;
+    return { fits, clipped, uncontained, hasScroller: marker, pageScroll: scrollY };
+  });
+  if (layout.clipped) problems.push(`${label}: overlay is larger than the viewport and has no internal scroller`);
+  if (layout.uncontained.length) problems.push(`${label}: scrollers without contained overscroll: ${layout.uncontained.join(", ")}`);
+  if (layout.hasScroller) {
+    const scroller = overlay.page().locator('[data-overlay-scroller="true"]');
+    await scroller.evaluate((node) => { node.scrollTop = node.scrollHeight; });
+    const box = await scroller.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, Math.max(box.y, 0) + Math.min(box.height, 40) / 2);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(100);
+    const after = await page.evaluate(() => scrollY);
+    if (after !== layout.pageScroll) problems.push(`${label}: scrolling past the overlay end moved the page from ${layout.pageScroll} to ${after}`);
+    await scroller.evaluate((node) => { node.scrollTop = 0; delete node.dataset.overlayScroller; });
+  }
+  return problems;
+}
+
+// Brings the close/cancel action into view, checks it is unobscured, and
+// activates it with touch (phone) or a click (desktop).
+export async function auditCloseAction(page, overlay, close, label, { touch }) {
+  const problems = [];
+  await close.scrollIntoViewIfNeeded();
+  const state = await close.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const center = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      visible: rect.width > 0 && rect.top >= -1 && rect.bottom <= innerHeight + 1 && rect.left >= -1 && rect.right <= innerWidth + 1,
+      covered: Boolean(center) && center !== element && !element.contains(center),
+      size: Math.min(rect.width, rect.height),
+    };
+  });
+  if (!state.visible) problems.push(`${label}: close action is not reachable inside the viewport`);
+  if (state.covered) problems.push(`${label}: close action is covered`);
+  if (touch && state.size < 24) problems.push(`${label}: close action is only ${state.size}px`);
+  if (touch) await close.tap();
+  else await close.click();
+  try {
+    await overlay.waitFor({ state: "hidden", timeout: 3000 });
+  } catch {
+    problems.push(`${label}: overlay stayed open after its close action`);
+  }
+  return problems;
+}

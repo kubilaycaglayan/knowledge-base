@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { after, before, it } from "node:test";
 import { createServer } from "vite";
 import { chromium } from "playwright";
+import { auditCloseAction, auditContainment, auditFocusCycle } from "./overlay-audit.mjs";
 
 // Mocked API only: no real credentials, backend writes, or personal data.
 let server, browser, viteCacheDir;
@@ -61,7 +62,7 @@ it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", as
   }
 });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false, sessionSeeds = [], pathActivity = [], noteConflictOnce = null } = {}) {
   const contextOptions = { viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" };
   const context = browserZoom ? await zoomableContext(t, contextOptions) : await browser.newContext(contextOptions);
   context.routeWebSocket("**/ws/timers", (webSocket) => webSocket.close());
@@ -87,6 +88,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let logUpdateFailurePending = failLogUpdateOnce;
   let noteUpdateFailurePending = failNoteUpdateOnce;
   let timelineNoteFailurePending = failTimelineNoteOnce;
+  let noteConflictPending = noteConflictOnce;
   if (authenticated) await context.addInitScript(() => {
     if (sessionStorage.getItem("nav_auth_seeded") !== "true") {
       localStorage.setItem("know_token", "nav-test-token");
@@ -132,13 +134,22 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary note update failure" }) });
       return;
     }
+    if (noteConflictPending && path.startsWith("/notes/") && method === "PUT") {
+      // Another window saved first: store its version, then reject this save.
+      const id = path.split("/").at(-1);
+      const index = notes.findIndex((note) => note.id === id);
+      notes[index] = { ...notes[index], ...noteConflictPending, version: notes[index].version + 1, updatedAt: new Date().toISOString() };
+      noteConflictPending = null;
+      await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "Note changed in another window" }) });
+      return;
+    }
     if (timelineNoteFailurePending && path === "/notes" && method === "POST") {
       timelineNoteFailurePending = false;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary activity note failure" }) });
       return;
     }
     let body = [];
-    if (path === "/time-entries") body = { sessions: [], page: 0, totalPages: 1, totalSessions: 0 };
+    if (path === "/time-entries") body = { sessions: sessionSeeds, page: 0, totalPages: 1, totalSessions: sessionSeeds.length };
     else if (path === "/auth/login" && method === "POST") body = { token: "signed-in-nav-test-token" };
     else if (path.startsWith("/logs/") && method === "DELETE") {
       const index = logs.findIndex((log) => `/logs/${log.id}` === path);
@@ -205,7 +216,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     else if (path === "/paths") body = paths;
     else if (path.startsWith("/paths/") && path.endsWith("/summary")) {
       const pathId = path.split("/")[2];
-      body = { path: paths.find((item) => item.id === pathId), trackedSeconds: 0, recentActivity: [] };
+      body = { path: paths.find((item) => item.id === pathId), trackedSeconds: 0, recentActivity: pathActivity };
     }
     else if (path.startsWith("/boards/") && path.endsWith("/visibility") && method === "POST") {
       const boardId = path.split("/")[2];
@@ -608,6 +619,211 @@ it("reflows every supported route at 320px and 390px phone widths without hiding
   }
   assert.deepEqual(problems, [], "Phone-width reflow problems");
 });
+
+// Every dialog, menu, and drawer pattern outside the Board workspace
+// (board.acceptance.test.mjs covers the Board overlays). Each entry opens one
+// overlay state and names the action that dismisses it.
+const longText = "Long overlay content keeps scrolling inside the dialog. ".repeat(40).trim();
+const overlayPaths = [
+  { id: "merge-source", name: "Algorithms", description: longText, status: "ACTIVE", pinned: false },
+  { id: "merge-target", name: "Writing", description: "Drafting", status: "ACTIVE", pinned: false },
+];
+const overlayLabel = { id: "overlay-label", name: "Overlay label", color: "#3B82F6", scopes: ["NOTE", "LOG", "CALENDAR", "SESSION"] };
+const overlaySession = { id: "s1", pathId: null, labelIds: [], startedAt: "2026-10-01T09:00:00Z", endedAt: "2026-10-01T10:00:00Z", durationSeconds: 3600, description: longText, source: "MANUAL", running: false };
+const overlayFixture = {
+  logBody: longText,
+  logSeeds: [{ id: "overlay-log", body: longText, occurredAt: "2026-10-01T10:00:00Z", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, labelIds: [] }],
+  pathSeeds: overlayPaths,
+  pathActivity: [{ id: "activity-1", timeEntryId: "s1", type: "SESSION", title: "Tracked session", detail: longText, occurredAt: "2026-10-01T10:00:00Z" }],
+  calendarLabels: [overlayLabel],
+  sessionSeeds: [overlaySession],
+  noteSeeds: [{ id: "conflict-note", title: "Conflict note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Original" }] }] }), contentText: "Original", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, tags: [], pinned: false }],
+  noteConflictOnce: { title: "Saved elsewhere", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longText }] }] }), contentText: longText },
+};
+const press = (locator, touch) => (touch ? locator.tap() : locator.click());
+const dialogNamed = (page, name) => page.getByRole("dialog", { name });
+const overlays = [
+  { name: "Global search dialog", path: "/", open: async (page) => {
+    await page.keyboard.press("Control+k");
+    const overlay = dialogNamed(page, "Search everything");
+    await overlay.getByRole("combobox").fill("Reports");
+    await page.getByRole("option", { name: "Reports, page" }).waitFor();
+    return { overlay, close: overlay.getByRole("button", { name: "Close search" }) };
+  } },
+  { name: "Session detail dialog", path: "/sessions/s1", open: async (page) => {
+    const overlay = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Close session" }) });
+    return { overlay, close: overlay.getByRole("button", { name: "Close session" }) };
+  } },
+  { name: "Session removal confirmation", path: "/sessions/s1", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Remove…", exact: true }), touch);
+    const overlay = page.getByRole("alertdialog");
+    return { overlay, close: overlay.getByRole("button", { name: "Keep session" }) };
+  } },
+  { name: "Session list removal prompt", path: "/", open: async (page, touch) => {
+    await press(page.locator(".session-card-actions").getByRole("button", { name: "Remove", exact: true }), touch);
+    const overlay = dialogNamed(page, "Remove this session? This cannot be undone.");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Log detail dialog", path: "/logs/log-deep-link", open: async (page) => {
+    const overlay = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Close log" }) });
+    return { overlay, close: overlay.getByRole("button", { name: "Close log" }) };
+  } },
+  { name: "Log removal confirmation", path: "/logs/log-deep-link", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Remove…", exact: true }), touch);
+    const overlay = page.getByRole("alertdialog");
+    return { overlay, close: overlay.getByRole("button", { name: "Keep log" }) };
+  } },
+  { name: "Log list removal prompt", path: "/logs", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: /^Remove log from / }).first(), touch);
+    const overlay = dialogNamed(page, "Remove this log? This cannot be undone.");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Log label picker menu", path: "/logs", modal: false, keyboard: async (page) => {
+    await page.getByRole("button", { name: /^Choose labels for log from / }).first().focus();
+    await page.keyboard.press("Enter");
+    return page.locator(".label-picker-menu");
+  }, open: async (page, touch) => {
+    await press(page.getByRole("button", { name: /^Choose labels for log from / }).first(), touch);
+    const overlay = page.locator(".label-picker-menu");
+    return { overlay, close: "Escape" };
+  } },
+  { name: "Path create dialog", path: "/paths", open: async (page, touch) => {
+    await press(page.locator(".paths-page button[aria-label='Add path']"), touch);
+    const overlay = dialogNamed(page, "Add a path");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Path history dialog", path: "/paths/merge-source", open: async (page) => {
+    const overlay = page.locator(".path-history-dialog");
+    await overlay.getByText("Tracked session").waitFor();
+    return { overlay, close: overlay.getByRole("button", { name: "Close", exact: true }) };
+  } },
+  { name: "Path session edit dialog", path: "/paths/merge-source", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Edit session" }), touch);
+    const overlay = page.locator(".session-edit-dialog");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Path merge dialog", path: "/paths", open: async (page, touch) => {
+    await press(page.locator(".path", { hasText: "Algorithms" }).getByRole("button", { name: "Edit", exact: true }), touch);
+    await press(page.locator("form.path-edit").getByRole("button", { name: "Merge", exact: true }), touch);
+    const overlay = dialogNamed(page, "Merge “Algorithms” into…");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Path removal prompt", path: "/paths", open: async (page, touch) => {
+    await press(page.locator(".path", { hasText: "Writing" }).getByRole("button", { name: "Remove", exact: true }), touch);
+    const overlay = dialogNamed(page, "Remove Writing? You can undo this for a few seconds.");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Label create dialog", path: "/labels", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Add label" }), touch);
+    const overlay = dialogNamed(page, "Add a label");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Label edit dialog", path: "/labels", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Edit Overlay label" }), touch);
+    const overlay = dialogNamed(page, "Edit Overlay label");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Label history dialog", path: "/labels", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Show history of Overlay label" }), touch);
+    const overlay = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Close history" }) });
+    return { overlay, close: overlay.getByRole("button", { name: "Close history" }) };
+  } },
+  { name: "Label removal prompt", path: "/labels", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Remove Overlay label" }), touch);
+    const overlay = dialogNamed(page, "Remove “Overlay label”?");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+  { name: "Note conflict dialog", path: "/notes/conflict-note", open: async (page) => {
+    const editor = page.getByRole("textbox", { name: "Note content" });
+    await editor.click();
+    await page.keyboard.type(" changed here");
+    const overlay = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Keep my draft" }) });
+    await overlay.waitFor({ timeout: 10000 });
+    return { overlay, close: overlay.getByRole("button", { name: "Keep my draft" }) };
+  } },
+  { name: "Note text style menu", path: "/notes/conflict-note", modal: false, keyboard: async (page) => {
+    await page.getByRole("button", { name: /^Text style:/ }).focus();
+    await page.keyboard.press("Enter");
+    const menu = page.getByRole("menu", { name: "Text style" });
+    await menu.waitFor();
+    // APG menu pattern: ArrowDown moves focus from the button into the menu.
+    await page.keyboard.press("ArrowDown");
+    return menu;
+  }, open: async (page, touch) => {
+    await press(page.getByRole("button", { name: /^Text style:/ }), touch);
+    const overlay = page.getByRole("menu", { name: "Text style" });
+    return { overlay, close: "Escape" };
+  } },
+  { name: "Floating tracker panel", path: "/logs", modal: false, keyboard: async (page) => {
+    await page.getByRole("button", { name: "Expand tracker" }).focus();
+    await page.keyboard.press("Enter");
+    return page.locator("#floating-tracker-panel");
+  }, keyboardClose: (page) => page.getByRole("button", { name: "Collapse tracker" }).click(), open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Expand tracker" }), touch);
+    const overlay = page.locator("#floating-tracker-panel");
+    return { overlay, close: page.getByRole("button", { name: "Collapse tracker" }) };
+  } },
+  { name: "Floating tracker start time prompt", path: "/logs", open: async (page, touch) => {
+    await press(page.getByRole("button", { name: "Start timer" }), touch);
+    await press(page.getByRole("button", { name: /^Edit timer start time/ }), touch);
+    const overlay = dialogNamed(page, "Started at");
+    return { overlay, close: overlay.getByRole("button", { name: "Cancel", exact: true }) };
+  } },
+];
+
+for (const { name, path, open, keyboard, keyboardClose, modal = true } of overlays) {
+  for (const [width, height] of [[390, 320], [1440, 900]]) {
+    it(`keeps the ${name} focus visible, scroll contained, and closable at ${width}×${height}`, async (t) => {
+      const touch = width <= 390;
+      const { page } = await fixture(t, width, overlayFixture);
+      await page.setViewportSize({ width, height });
+      await visit(page, path);
+      const label = `${name} at ${width}×${height}`;
+      const problems = [];
+      const markScope = (overlay) => overlay.evaluate((element) => {
+        document.querySelectorAll("[data-audit-scope]").forEach((node) => delete node.dataset.auditScope);
+        element.dataset.auditScope = "true";
+      });
+      const auditFocus = async (overlay) => {
+        await markScope(overlay);
+        problems.push(...await auditFocusCycle(page, label, { scope: '[data-audit-scope="true"]', stopOutside: !modal }));
+        // Moving focus within an open overlay must not dismiss it.
+        if (!modal && !await overlay.isVisible()) problems.push(`${label}: the overlay closed while keyboard focus moved through it`);
+      };
+      // Non-modal menus and panels are opened from the keyboard for the focus
+      // audit, then reopened by touch or pointer for containment and closing.
+      if (keyboard) {
+        const overlay = await keyboard(page);
+        await overlay.waitFor();
+        // Let menu enter transitions finish; they disable hit-testing.
+        await page.waitForTimeout(300);
+        await auditFocus(overlay);
+        if (await overlay.isVisible()) {
+          if (keyboardClose) await keyboardClose(page);
+          else {
+            // The cycle may end with focus back on the page; Escape belongs to the overlay.
+            await overlay.locator("input, button, [tabindex]").first().focus();
+            await page.keyboard.press("Escape");
+          }
+          await overlay.waitFor({ state: "hidden", timeout: 3000 }).catch(() => problems.push(`${label}: the overlay did not close from the keyboard`));
+        }
+      }
+      const { overlay, close } = await open(page, touch);
+      await overlay.waitFor();
+      await page.waitForTimeout(300);
+      if (!keyboard) await auditFocus(overlay);
+      await markScope(overlay);
+      problems.push(...await auditContainment(page, overlay, label));
+      if (close === "Escape") {
+        await page.keyboard.press("Escape");
+        await overlay.waitFor({ state: "hidden", timeout: 3000 }).catch(() => problems.push(`${label}: Escape did not close the overlay`));
+      } else {
+        problems.push(...await auditCloseAction(page, overlay, close, label, { touch }));
+      }
+      assert.deepEqual(problems, [], `${label} problems`);
+    });
+  }
+}
 
 it("keeps core mobile routes readable without horizontal page overflow at enlarged text", async (t) => {
   const { page } = await fixture(t, 390);
