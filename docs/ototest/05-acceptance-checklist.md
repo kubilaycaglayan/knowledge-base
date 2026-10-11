@@ -684,6 +684,8 @@ Chrome versions, viewport/orientation, and input method.
 - [x] The CI check resolves named component and browser assertions in the
   route/control matrices to declarations in their cited frontend test files
   and has regression coverage for a renamed assertion reference.
+- [x] Covered API mutations whose request DTOs carry another record’s ID
+  must state an ownership outcome; a regression test protects the rule.
 - [x] The consistency review identifies a row with no source, matrix owner, or
   evidence classification.
 - [x] A source scan is treated only as drift detection, never as behavioral

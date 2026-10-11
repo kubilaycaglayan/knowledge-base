@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { apiRowsMissingNamedEvidence, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, coveredMutationReferenceClaimsMissingOwnership, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const declaration = 'it("creates a Path using the keyboard", async () => {});';
 const sources = { "nav-shell.acceptance.test.mjs": declaration };
@@ -170,5 +170,17 @@ test("requires persisted and ownership claims to cite an integration evidence la
     ["gap", "ItemView.test.ts", "persisted item unavailable", "gap"],
   ], 1, 2, 3), [
     { row: 1, identity: "UI-only persistence claim" },
+  ]);
+});
+
+test("requires covered mutations with request reference IDs to state ownership outcomes", () => {
+  assert.deepEqual(coveredMutationReferenceClaimsMissingOwnership([
+    ["POST `/api/v1/timers`", "`StartRequest.pathId` optional UUID", "TimerIntegrationTest.startsTimer", "Timer starts with selected path", "covered"],
+    ["POST `/api/v1/notes`", "`NoteRequest.pathId` optional UUID", "NoteIntegrationTest.rejectsForeignPath", "Foreign path is refused without changing owner data", "covered"],
+    ["GET `/api/v1/reports`", "`ReportRequest.pathId` optional UUID", "ReportIntegrationTest.filtersOwnedPaths", "Results stay owner scoped", "covered"],
+    ["POST `/api/v1/logs`", "`LogRequest.body` required", "LogIntegrationTest.createsLog", "Log persists", "covered"],
+    ["POST `/api/v1/timers`", "`StartRequest.pathId` optional UUID", "TimerIntegrationTest.startsTimer", "Foreign path rejected", "gap"],
+  ], 0, 1, 3, 4), [
+    { row: 1, identity: "POST `/api/v1/timers`" },
   ]);
 });

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
-import { apiRowsMissingNamedEvidence, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, coveredMutationReferenceClaimsMissingOwnership, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 import { missingInventoryMetadata } from "./ototest-inventory-metadata.mjs";
 import { qualifiedJavaEvidenceReferences } from "./ototest-java-evidence.mjs";
 import { manualRowsMissingProcedureLink } from "./ototest-manual-evidence.mjs";
@@ -220,6 +220,10 @@ for (const { row, cells, evidenceIndex, statusIndex } of readControlStatusRows()
   for (const missingAssertion of rowsMissingNamedAssertions([cells], evidenceIndex, statusIndex)) {
     problems.push(`01-control-matrix.md:action row ${row} ${missingAssertion.identity}: covered evidence must name a test assertion`);
   }
+}
+
+for (const { row, identity } of coveredMutationReferenceClaimsMissingOwnership(apiRows, 0, 1, 3, 4)) {
+  problems.push(`01-api-matrix.md:row ${row} ${identity}: covered mutations with referenced record IDs must state their ownership outcome`);
 }
 
 for (const [filename, rows, evidenceIndex, claimIndex, statusIndex] of [

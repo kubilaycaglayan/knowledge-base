@@ -65,6 +65,19 @@ export function coveredStateClaimsMissingLayer(rows, evidenceIndex, claimIndex, 
   });
 }
 
+export function coveredMutationReferenceClaimsMissingOwnership(rows, identityIndex, requestIndex, claimIndex, statusIndex) {
+  const mutation = /^`?(?:POST|PUT|PATCH|DELETE)\b/i;
+  const referenceField = /(?:[A-Za-z]+Request|Request)\.(?:path|label|board|status|note|activity|timeEntry|card|calendarLabel|log)(?:Ids|Id)\b/i;
+  const ownershipClaim = /\b(?:foreign|another user|another board|owned|ownership|owner|belong(?:s|ing)? to (?:the )?user)\b/i;
+  return rows.flatMap((cells, index) => {
+    if (cells[statusIndex] !== "covered"
+        || !mutation.test(cells[identityIndex] ?? "")
+        || !referenceField.test(cells[requestIndex] ?? "")
+        || ownershipClaim.test(cells[claimIndex] ?? "")) return [];
+    return [{ row: index + 1, identity: cells[identityIndex] ?? "" }];
+  });
+}
+
 export function invalidEvidenceStatuses(rows, statusIndex) {
   return rows.flatMap((cells, index) => {
     const status = cells[statusIndex] ?? "";

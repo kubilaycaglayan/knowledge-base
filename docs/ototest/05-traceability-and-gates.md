@@ -25,7 +25,9 @@ make the required test layers visible in local guidance and CI.
   evidence references that no longer resolve to Java test methods. It also
   resolves named component/browser references in the route/control matrices to
   declarations in their corresponding frontend test files; this is a name
-  check, not an assertion-quality review. Route, API, detailed control,
+  check, not an assertion-quality review. Covered API mutations whose request
+  DTOs contain another record’s ID must state the ownership outcome; persisted
+  and ownership claims must cite an integration evidence layer. Route, API, detailed control,
   extension/feature, and cross-client journey rows each have one recognized
   evidence status; CI rejects missing, combined, or unknown status values and
   malformed detailed control table rows.
