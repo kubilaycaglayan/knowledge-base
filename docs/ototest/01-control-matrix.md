@@ -1,6 +1,6 @@
 # OTOTEST-01 — Visible control and action inventory
 
-**Source revision:** `11a887ce` (unknown URL fallback added).
+**Source revision:** `150dcfb6` (route title regression fixed).
 **Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-11.
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; keep action evidence current and assign behavior gaps.

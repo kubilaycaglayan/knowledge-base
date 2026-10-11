@@ -17,6 +17,7 @@
 | Unknown URL browser acceptance | `cd frontend && node --test --test-concurrency=1 --test-name-pattern='shows a safe not-found page' scripts/nav-shell.acceptance.test.mjs` at source revision `11a887ce` | Pass: 1/1 Chromium assertion at 1440px desktop and 390px phone-width emulation; page title and identity are explicit, unrelated protected views are absent, Sessions recovery works, and its target is at least 44px high |
 | Navigation and route browser suite | `cd frontend && npm run test:nav` at source revision `11a887ce` | Pass: 102/102 sequential Chromium tests. Two prior suite runs exposed an immediate Notes archive excerpt assertion before asynchronous rendering completed; the assertion now waits for the excerpt, and the full suite passed after that change. |
 | Frontend production build | `cd frontend && npm run build` at source revision `11a887ce` | Pass: TypeScript and Vite build; existing large Reports chunk warning remains |
+| App shell route-title regression | `cd frontend && npx vitest run src/App.test.ts src/App.warmup.test.ts`; `cd frontend && npm run build` at source revision `150dcfb6` | Pass: 15 tests across both files and production build. The not-found page title now reads the injected route location, which also supports the router stub used by the warm-up tests. |
 | Accessibility and inventory | `node scripts/check-accessibility.mjs`; `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: 38 accessibility checks; inventory integrity across 18 docs, 107 API rows, and 307 qualified API references |
 
 ## Gate results
@@ -57,6 +58,8 @@ accounts. No physical Android device is represented by the emulated viewport.
 ## Failed-gate repair record
 
 The first hosted run, [38094630686](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094630686/job/114337903037), failed at **Check OTOTEST inventory integrity**. The checker correctly found a Markdown link to `backend/build/reports/tests/test/index.html`; that report is generated locally and is not committed, so the link appeared valid only in the developer worktree. This was a documentation/inventory integrity failure, not a product behavior failure. The checklist now describes the generated report as a local path while preserving links to hosted test runs as reviewable evidence. The repaired inventory check passed in [run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246) and again in [run 38095089167](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38095089167).
+
+The hosted run [38097371137](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38097371137) failed in `web-and-extension` while running `App.warmup.test.ts`: the new title check accessed `router.currentRoute`, which that test's injected router stub does not provide. Revision `150dcfb6` reads the route name from the already-injected route location instead and adds a title regression test. Both App test files then passed locally (15 tests); hosted verification of the fix is recorded when the follow-up run completes.
 
 ## Source reconciliation
 
