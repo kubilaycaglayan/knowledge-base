@@ -1127,6 +1127,7 @@ onBeforeUnmount(() => {
   gap: 4px;
   max-height: 96px;
   overflow: auto;
+  overscroll-behavior: contain;
   overflow-wrap: anywhere;
 }
 .note-conflict-actions {
