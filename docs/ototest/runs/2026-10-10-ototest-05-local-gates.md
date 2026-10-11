@@ -44,6 +44,13 @@ occurred. The archived-note label-preservation acceptance remains open.
 | CI registration and reconciled inventory | `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: inventory integrity across 18 docs, 107 API rows, and 307 qualified API references; `verify / web-and-extension` now runs the packaged extension browser suite as a pull-request gate |
 | Hosted `verify` | [`verify` run 38100516626](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38100516626) | Pass for commit `fa7029cccaaed28febca35a176b0a3d56098af2e`; the new packaged extension browser step passed along with all active jobs, including smoke, timer WebSocket, line history, Orca, backend, and PostgreSQL/Flyway; historical iOS jobs skipped as configured |
 
+## 2026-10-11 supplement — authenticated route and shell browser gate
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Web route and control browser acceptance | `cd frontend && npm run test:nav` at source revision `f500ae47` | Pass: 103/103 sequential Chromium tests in about 117 seconds; covers primary-route navigation/title/active state, level-one headings (including the added Labels heading), focus and mobile shell controls, browser history, keyboard/touch interactions, global search, theme persistence, and representative page controls against mocked API fixtures |
+| Artifact/gate policy and OTOTEST inventory | `node scripts/check-browser-artifact-policy.mjs`; `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: required route browser command and evidence policy are checked; inventory integrity across 18 documents, 107 API rows, and 307 qualified API references |
+
 ## 2026-10-11 supplement — unknown URL fallback
 
 | Evidence layer | Exact command(s) | Result |

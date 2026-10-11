@@ -222,10 +222,15 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Navigate one supported route from the application shell
 
-- [ ] The authenticated navigation exposes each supported destination.
-- [ ] Selecting a destination updates the route and page identity together.
-- [ ] Browser-native link actions remain available for navigation links.
-- [ ] The temporary `/development` route is not linked from authenticated
+- [x] The authenticated navigation exposes each supported destination. The
+  phone-width browser assertion checks the complete destination list and
+  minimum target size.
+- [x] Selecting a destination updates the route, active link, title, and
+  level-one page heading together in the named navigation browser assertion.
+- [x] Browser-native link actions remain available for navigation links. The
+  browser test opens the Board route in a new tab with Control-click while
+  retaining the current page.
+- [x] The temporary `/development` route is not linked from authenticated
   product navigation.
 
 ## Cross-layer evidence and change guidance
@@ -314,15 +319,16 @@ current and link evidence at the layer that proves its behavior.
 
 ### Flow: Use the authenticated application shell
 
-- [ ] The shell identifies the current page with a meaningful document title
-  and page heading.
-- [ ] The skip-to-content link moves focus to the main content region.
-- [ ] The authenticated navigation exposes supported product routes and
-  indicates the active destination.
-- [ ] The theme control changes the visible theme and persists the selected
-  preference according to product behavior.
-- [ ] Signing out hides protected application content and returns to the
-  signed-out state.
+- [x] The shell identifies the current page with a meaningful document title
+  and level-one page heading; navigation acceptance checks each primary route.
+- [x] The skip-to-content link moves focus to the main content region; the
+  keyboard browser assertion verifies focus and the URL fragment.
+- [x] The authenticated navigation exposes supported product routes and
+  indicates the active destination for each selected route.
+- [x] The theme control changes the visible theme and persists the selected
+  preference across route changes and reload.
+- [x] Signing out clears authentication, hides protected content, and keeps
+  protected routes gated through Back and reload.
 
 ### Flow: Use global search
 
