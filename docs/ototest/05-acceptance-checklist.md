@@ -427,7 +427,11 @@ current and link evidence at the layer that proves its behavior.
 
 - [ ] Each state-changing action can be reached and activated with a
   keyboard-operable semantic control.
-- [ ] Focus remains visibly indicated during navigation and form entry.
+- [x] Focus remains visibly indicated during navigation and form entry. The
+  `shows a visible keyboard focus ring that is not covered by the shell`
+  browser assertion checks the first Tab target; `creates and reloads a Path
+  using only the keyboard` asserts a visible 2px ring remains on the focused
+  Path name input before keyboard entry and submission.
 - [ ] Focus is not covered by sticky, floating, or fixed application chrome.
 - [ ] Any essential drag or pointer interaction has a keyboard alternative or
   a documented exception.

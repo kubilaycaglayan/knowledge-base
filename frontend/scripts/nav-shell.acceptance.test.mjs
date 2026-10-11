@@ -1022,6 +1022,19 @@ it("creates and reloads a Path using only the keyboard", async (t) => {
 
   const name = page.getByRole("textbox", { name: "New path name" });
   await name.waitFor();
+  await page.waitForFunction(() => document.activeElement === document.querySelector('input[aria-label="New path name"]'));
+  const nameFocus = await name.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      visible: rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight,
+    };
+  });
+  assert.equal(nameFocus.outlineStyle, "solid", "keyboard-focused Path name input shows a visible focus ring");
+  assert.equal(nameFocus.outlineWidth, "2px");
+  assert.equal(nameFocus.visible, true, JSON.stringify(nameFocus));
   await page.keyboard.insertText("Keyboard path");
   await page.keyboard.press("Enter");
   await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
