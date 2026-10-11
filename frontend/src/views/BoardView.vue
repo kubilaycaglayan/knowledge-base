@@ -318,7 +318,10 @@ const boardMenuLabel = computed(() => (moreBoards.value.length ? `More boards ($
 function pickView(next: string) { closeMore(); setView(next); }
 function pickManageBoards() { closeMore(true); openManager(); }
 const moreItems = () => [...(moreMenu.value?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])];
-function openMore() { moreOpen.value = true; void nextTick(() => moreItems()[0]?.focus()); }
+// The board shell does not scroll, so keep the menu above the viewport bottom
+// and the floating tracker; it scrolls internally when that space is short.
+function fitMoreMenu() { const menu = moreMenu.value; if (!menu) return; const trackerTop = document.querySelector(".floating-tracker-host:not(.inline)")?.getBoundingClientRect().top ?? Infinity; const bottom = Math.min(window.visualViewport?.height ?? window.innerHeight, trackerTop); menu.style.maxHeight = `min(60vh, 24rem, ${Math.max(96, Math.floor(bottom - menu.getBoundingClientRect().top - 8))}px)`; }
+function openMore() { moreOpen.value = true; void nextTick(() => { fitMoreMenu(); moreItems()[0]?.focus(); }); }
 function closeMore(returnFocus = false) { moreOpen.value = false; if (returnFocus) moreButton.value?.focus(); }
 function toggleMore() { if (moreOpen.value) closeMore(); else openMore(); }
 function pickMoreBoard(id: string) { closeMore(); activateBoardTab(id); }
