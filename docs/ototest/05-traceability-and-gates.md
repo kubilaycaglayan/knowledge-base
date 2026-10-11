@@ -36,6 +36,10 @@ make the required test layers visible in local guidance and CI.
   Control-matrix IDs are cross-references shared with the feature checklist,
   so those references are checked for presence/classification but are not
   treated as unique row definitions.
+- [x] Compare the live OpenAPI method/path set and registered frontend route
+  patterns against their matrices during the deployed-shaped smoke run. The
+  parser regressions cover missing/extra entries and intentionally excluded
+  retired routes; see `scripts/check-ototest-source-drift.mjs`.
 - [x] Define required CI suites by evidence layer: unit/component, backend
   integration, PostgreSQL, browser real-stack, and extension browser.
 - [x] Keep slower or environment-limited suites clearly marked as scheduled,

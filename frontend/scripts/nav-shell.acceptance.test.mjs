@@ -1930,16 +1930,21 @@ it("reloads a saved Calendar label assignment on its selected day", async (t) =>
 });
 
 it("creates a Calendar label with default scopes and reloads its assignment", async (t) => {
-  const { page, calendarLabels } = await fixture(t, 1440);
+  const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);
   await page.locator(".calendar-page").waitFor();
   await page.getByRole("button", { name: "Open label picker" }).click();
   const input = page.locator('.label-picker-menu input[aria-label="Add or create calendar label"]');
   await input.fill("Vacation");
+  const createdLabelResponse = page.waitForResponse((response) =>
+    response.url().includes("/labels") && response.request().method() === "POST",
+  );
   await page.getByRole("option", { name: "Create Vacation" }).click();
+  const createdLabel = await createdLabelResponse;
+  assert.equal(createdLabel.ok(), true, "Calendar label creation completes before checking its defaults");
 
   assert.deepEqual(
-    { color: calendarLabels[0]?.color, scopes: calendarLabels[0]?.scopes },
+    await createdLabel.json().then(({ color, scopes }) => ({ color, scopes })),
     { color: "#F8FAFC", scopes: ["NOTE", "CALENDAR", "TIME_ENTRY", "LOG", "BOARD"] },
   );
   const checkbox = page.getByRole("checkbox", { name: "Vacation" });

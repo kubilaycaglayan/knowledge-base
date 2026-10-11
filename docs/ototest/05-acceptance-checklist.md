@@ -83,11 +83,17 @@ gate below, the maintained inventory or release record must identify:
 
 ### Flow: Classify one changed web route
 
-- [ ] A newly registered route receives its own stable inventory row.
+- [x] A newly registered route receives its own stable inventory row. The
+  smoke source-drift check compares every static route pattern from
+  `frontend/src/main.ts` with the route matrix; the matrix identity check
+  rejects duplicate and missing route rows.
 - [ ] A changed route path, alias, guard, redirect, or route parameter updates
   the existing row or adds a separate row when behavior is distinct.
-- [ ] A retired route is marked unsupported or intentionally excluded with a
-  reason and owner instead of disappearing from the inventory.
+- [x] A retired route is marked unsupported or intentionally excluded with a
+  reason and owner instead of disappearing from the inventory. Route source
+  drift is reported unless the retained matrix row is explicitly classified
+  `unsupported/excluded`; the inventory also requires source, ownership, and
+  review-trigger metadata.
 - [ ] The route row describes direct loading, page identity, authentication
   behavior, query state, and invalid or unavailable resource behavior as
   applicable.
@@ -109,17 +115,22 @@ gate below, the maintained inventory or release record must identify:
 
 ### Flow: Classify one changed API operation
 
-- [ ] Every new or changed controller mapping is recorded as an HTTP method
-  and fully composed `/api/v1` path.
-- [ ] Each method/path alias is recorded as its own operation row.
+- [x] Every new or changed controller mapping is recorded as an HTTP method
+  and fully composed `/api/v1` path. The smoke source-drift check compares the
+  generated OpenAPI operations with the API matrix.
+- [x] Each method/path alias is recorded as its own operation row. OpenAPI
+  method/path pairs are compared individually, including aliases, and drift
+  fails the smoke run.
 - [ ] The operation row states authentication, request inputs, response
   contract, owner-scoped identifiers, and observable state effect.
 - [ ] The row links evidence for its successful behavior and each applicable
   validation, ownership, or conflict outcome.
 - [ ] A server operation with no supported web-client call site is explicitly
   classified with a scope decision and owner.
-- [ ] A UI mock or route-level assertion is not used as evidence of backend
-  persistence or ownership enforcement.
+- [x] A UI mock or route-level assertion is not used as evidence of backend
+  persistence or ownership enforcement. The evidence policy requires an
+  integration layer for persistence and ownership claims, with regression
+  tests guarding the rule.
 
 ### Flow: Classify one changed browser gesture
 
