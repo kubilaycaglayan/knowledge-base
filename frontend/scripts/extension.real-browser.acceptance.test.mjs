@@ -142,9 +142,10 @@ it("loads packaged popup and options pages and persists the local API setting", 
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await popup.getByRole("heading", { name: "Sign In" }).waitFor();
   await popup.getByRole("button", { name: "Open settings menu" }).click();
+  const optionsOpened = context.waitForEvent("page");
   await popup.getByRole("menuitem", { name: "API Settings…" }).click();
 
-  const options = await context.waitForEvent("page");
+  const options = await optionsOpened;
   await options.waitForURL(`chrome-extension://${extensionId}/options.html`);
   await options.getByRole("heading", { name: "API Settings" }).waitFor();
   await options.getByLabel("API base URL").fill("http://127.0.0.1:26580/api/v1");
