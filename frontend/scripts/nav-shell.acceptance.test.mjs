@@ -1201,6 +1201,7 @@ it("merges Paths into the selected target after destructive confirmation", async
   await confirmation.getByRole("button", { name: "Confirm" }).click();
 
   await page.locator(".path-title", { hasText: "Writing" }).waitFor();
+  await page.locator(".path-title", { hasText: "Algorithms" }).waitFor({ state: "detached" });
   assert.equal(await page.locator(".path-title", { hasText: "Algorithms" }).count(), 0);
   assert.deepEqual(pathMergeWrites, [{ sourceId: "merge-source", targetPathId: "merge-target" }]);
   assert.deepEqual(paths.map(({ id }) => id), ["merge-target"]);
