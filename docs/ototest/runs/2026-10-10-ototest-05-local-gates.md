@@ -173,3 +173,10 @@ The documentation-only hosted run [38104869153](https://github.com/kubilaycaglay
 | --- | --- | --- |
 | Completion policy tests | `node --test scripts/ototest-completion-guard.test.mjs` at source revision `97d9882f` | Pass: 4/4 cases cover in-progress milestones, unchecked acceptance items, missing hosted evidence, and valid completion evidence |
 | Hosted `verify` | [`verify` run 38107861789](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38107861789) | Pass for commit `97d9882f7c2209d1514d4f8e2cd8a6d79ae7212d`; all active jobs passed, including inventory integrity and the new completion-guard test; historical iOS jobs skipped as configured |
+
+## 2026-10-11 supplement — accessible notices and Path Undo window
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Accessible success/failure notification | `cd frontend && npx vitest run src/components/AppSnackbar.test.ts` at source revision `b324104b` | Pass: 1/1 test asserts failure text and error tone in `role="status"`, excludes the success message from the failure announcement, then asserts the saved message in the success status region |
+| Named Undo recovery window | `cd frontend && npm run test:nav` at source revision `b324104b` | Pass: 105/105 sequential Chromium tests; `confirms Path removal and restores it through the Undo action` waits seven seconds, asserts the Path-specific status remains visible, activates Undo, and verifies restoration |

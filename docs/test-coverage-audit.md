@@ -1,6 +1,6 @@
 # Test coverage audit
 
-**Reviewed:** 2026-10-11 (`27707465` route, global-search, Path merge, and timer browser acceptance review)
+**Reviewed:** 2026-10-11 (`b324104b` route, global-search, Path merge, timer, and accessible notice/Undo browser acceptance review)
 **Scope:** Current `main` source and test files in `backend/`, `frontend/`,
 `chrome-extension/`, `ios/`, CI workflows, and the existing test documentation.
 
@@ -18,6 +18,11 @@ in-memory fixtures; only selected flows run through a real browser and service.
 The gaps below are the concrete areas where the current test map shows missing
 or limited automated evidence. The iOS row records historical inventory only:
 the app is inactive, and iOS testing is explicitly out of scope for `#ototest`.
+
+The latest browser review also verifies success and failure snackbar messages
+through an accessible status region and keeps a named Path Undo action visible
+for at least seven seconds. These assertions do not replace the remaining
+physical Android or broader manual acceptance flows.
 
 ## Coverage map
 
