@@ -21,7 +21,7 @@ export function browserFailureArtifacts({ directory, engine, profile }) {
   async function addContext(context) {
     if (!active || active.contexts.has(context)) return;
     active.contexts.add(context);
-    await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+    await context.tracing.start({ screenshots: false, snapshots: true, sources: true });
     context.on("page", (page) => attachPage(page));
     for (const page of context.pages()) attachPage(page);
   }
@@ -48,15 +48,10 @@ export function browserFailureArtifacts({ directory, engine, profile }) {
       if (!active) return;
       const current = active;
       active = null;
-      let sequence = 0;
       if (error) mkdirSync(outputDirectory, { recursive: true });
       for (const context of current.contexts) {
         if (error) {
-          for (const page of context.pages()) {
-            sequence += 1;
-            try { await page.screenshot({ path: join(outputDirectory, `${sequence}-${Date.now()}-failure.png`), fullPage: true }); } catch { /* retain trace if a page closed */ }
-          }
-          const tracePath = join(outputDirectory, `${sequence || 1}-${Date.now()}-failure.zip`);
+          const tracePath = join(outputDirectory, `${Date.now()}-failure.zip`);
           try {
             await context.tracing.stop({ path: tracePath });
             try {

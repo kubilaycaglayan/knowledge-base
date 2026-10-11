@@ -8,6 +8,7 @@ set -euo pipefail
 # generated Compose project's containers and volumes on exit.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 project="knowledge-base-timer-ws-smoke-${BASHPID:-$$}-$(date +%s%N)"
+commit="$(git rev-parse HEAD)"
 # Uncommon, unassigned host port, distinct from the smoke (26080/26090) and
 # board E2E (26180) stacks so they can run at the same time.
 port="${TIMER_E2E_PROXY_PORT:-26290}"
@@ -19,7 +20,7 @@ cleanup() {
   trap - EXIT
   if (( exit_status != 0 )); then
     mkdir -p "$artifact_dir"
-    printf 'Runner exit status: %s\nCompose project: %s\n' "$exit_status" "$project" > "$artifact_dir/runner-failure.txt"
+    printf 'Runner exit status: %s\nCompose project: %s\nCommit: %s\n' "$exit_status" "$project" "$commit" > "$artifact_dir/runner-failure.txt"
     "${compose[@]}" ps --all > "$artifact_dir/compose-ps.txt" 2>&1 || true
     "${compose[@]}" logs --no-color > "$artifact_dir/stack.log" 2>&1 || true
   fi
@@ -50,7 +51,7 @@ AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium 
 AUTH_RATE_LIMIT_E2E_BASE_URL="http://localhost:${port}" BROWSER_ENGINE=chromium BROWSER_PROFILE=iphone npm run test:auth:rate-limit:e2e --prefix frontend
 node scripts/check-timer-websocket.mjs "http://localhost:${port}" --round-trip
 mkdir -p "$artifact_dir"
-printf 'Commit: %s\nBrowser engine: %s\nBrowser profile: %s\n' "$(git rev-parse HEAD)" "${BROWSER_ENGINE:-chromium}" "${BROWSER_PROFILE:-default}" > "$artifact_dir/run-metadata.txt"
+printf 'Commit: %s\nBrowser engine: %s\nBrowser profile: %s\n' "$commit" "${BROWSER_ENGINE:-chromium}" "${BROWSER_PROFILE:-default}" > "$artifact_dir/run-metadata.txt"
 test_log="$(mktemp)"
 set +e
 TIMER_E2E_BASE_URL="http://localhost:${port}" TIMER_E2E_ARTIFACT_DIR="$artifact_dir" npm run test:timer:e2e --prefix frontend > "$test_log" 2>&1
