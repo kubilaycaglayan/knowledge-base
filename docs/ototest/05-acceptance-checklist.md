@@ -352,13 +352,27 @@ current and link evidence at the layer that proves its behavior.
 
 ### Flow: Use the shared timer outside Sessions
 
-- [ ] The floating timer appears on supported non-session routes when the
-  account has a running timer.
-- [ ] Timer state remains server-owned and agrees across route navigation.
-- [ ] A timer action that changes server state has a distinct evidence row
-  from timer display or elapsed-time presentation.
-- [ ] Timer placement does not cover the current focused control or required
-  page action.
+- [x] The floating timer appears on supported non-session routes when the
+  account has a running timer. `shows the floating tracker on eligible routes
+  but not Sessions or focused phone inputs` starts a timer, directly loads each
+  supported route, and checks the floating tracker exposes Stop timer.
+- [x] Timer state remains server-owned and agrees across route navigation.
+  `keeps a running timer active after route navigation and browser reload`
+  confirms `/timers/current` is reread after direct navigation and reload;
+  `TimerServiceEdgeTest.currentReadsOnlyTheAuthenticatedUsersRunningTimer`
+  verifies the owner-scoped service read and
+  `TimerApiTest.currentTimerReadUsesAuthenticatedUserAndReturnsRunningState`
+  verifies the authenticated API response.
+- [x] A timer action that changes server state has a distinct evidence row
+  from timer display or elapsed-time presentation. `FLOW-01.01–01.19` maps
+  state-changing timer actions, separately from the shared-shell floating
+  timer display and placement row.
+- [x] Timer placement does not cover the current focused control or required
+  page action. The 390px Chromium viewport assertion in `shows the floating
+  tracker on eligible routes but not Sessions or focused phone inputs` verifies
+  the tracker closes when the Log text input receives focus and the input
+  remains inside the viewport. This is viewport emulation, not physical
+  Android Chrome evidence.
 
 ### Flow: Receive one application notification
 

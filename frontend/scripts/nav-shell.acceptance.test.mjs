@@ -490,17 +490,22 @@ it("opens the Sessions workspace directly with its empty state and inline tracke
 });
 
 it("keeps a running timer active after route navigation and browser reload", async (t) => {
-  const { page } = await fixture(t, 1440);
+  const { page, requests } = await fixture(t, 1440);
   await page.getByRole("textbox", { name: "Timer description" }).fill("Persist across views");
   await page.getByRole("button", { name: "Start timer" }).click();
   await page.getByRole("button", { name: "Stop timer" }).waitFor();
 
   await visit(page, "/board");
   await page.locator(".board-page").waitFor();
-  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  const floatingTracker = page.locator(".floating-tracker-host:not(.inline)");
+  await floatingTracker.waitFor();
+  assert.equal(await floatingTracker.isVisible(), true, "a running session is shown by the floating tracker outside Sessions");
+  await floatingTracker.getByRole("button", { name: "Stop timer" }).waitFor();
   await page.reload();
   await page.locator(".board-page").waitFor();
-  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  await floatingTracker.waitFor();
+  await floatingTracker.getByRole("button", { name: "Stop timer" }).waitFor();
+  assert.ok(requests.filter((path) => path === "/timers/current").length >= 3, "route and reload re-read server-owned timer state");
   assert.equal(new URL(page.url()).pathname, "/board");
 });
 
@@ -948,18 +953,14 @@ it("supports keyboard navigation and opening a primary link in a new tab", async
 it("shows the floating tracker on eligible routes but not Sessions or focused phone inputs", async (t) => {
   const { page } = await fixture(t, 390);
   const floatingTracker = page.locator(".floating-tracker-host:not(.inline)");
-  const eligibleRoutes = [
-    "/board",
-    "/logs",
-    "/notes",
-    "/calendar",
-    "/reports",
-    "/paths",
-    "/labels",
-  ];
+  await page.getByRole("textbox", { name: "Timer description" }).fill("Visible floating session");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.getByRole("button", { name: "Stop timer" }).waitFor();
+  const eligibleRoutes = [...pages.filter((path) => path !== "/"), "/timeline", "/imports", "/board/archive"];
   for (const path of eligibleRoutes) {
     await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
     await floatingTracker.waitFor();
+    await floatingTracker.getByRole("button", { name: "Stop timer" }).waitFor();
     assert.equal(await floatingTracker.isVisible(), true, `${path} should show the floating tracker`);
   }
 

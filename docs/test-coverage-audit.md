@@ -111,6 +111,13 @@ shown as current after the next request fails. It also verifies the retry
 feedback and successful retry path. This is fixture-backed browser evidence;
 it does not claim backend search persistence or physical Android behavior.
 
+The shared timer evidence now verifies the running tracker on supported
+non-Session routes, rereads the current timer after route navigation and
+reload, and hides the floating control while a phone-width Log input is
+focused. Named service/API assertions establish that the current timer read
+uses the authenticated user. These Chromium viewport checks do not claim
+physical Android keyboard behavior.
+
 The Notes archive/restore evidence now also covers a simulated archive failure
 with fresh active-state confirmation and retry, archived/active persisted
 membership, and duplicate Restore activation prevention. The route/control
