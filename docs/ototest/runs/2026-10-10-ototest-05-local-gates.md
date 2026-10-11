@@ -308,3 +308,13 @@ The checklist item rejecting rendering-only evidence for mutation, persistence, 
 | Evidence layer | Exact command(s) | Result |
 | --- | --- | --- |
 | Hosted `verify` after inventory/run-record updates | [`verify` run 38118548925](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38118548925) | Pass for commit `ede119cfd5bbd03da22160c2977c37a1318c3e24`; all active jobs passed, including the expanded inventory gates, route/control and packaged extension browser suites, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. The first smoke attempt failed during Docker Gradle dependency setup; the failed job was retried and passed. |
+
+## 2026-10-11 supplement — foreign-reference ownership evidence
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Stateful cross-user regression | `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"` | Pass: 607 tests, 89 skipped. `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData` now covers foreign path and label references on card updates in addition to its timer, manual-entry, card-create, status-move, board-transfer, and other reference attempts; rejected requests leave the owner’s data unchanged. |
+| Inventory integrity | `node scripts/check-ototest-inventory.mjs` | Pass: 18 documents, 107 API rows, and 308 qualified Java test references; API rows resolve to named integration assertions for timer start, manual entries, card creation, and card updates. |
+| Hosted `verify` for foreign-reference evidence | [`verify` run 38119978826](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38119978826) | Pass for commit `e6c4e61d`; all active jobs passed, including inventory gates, route/control and packaged extension browser suites, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+
+The security checklist now records the reference-ownership boundary and its integration evidence layer. The API matrix links the test to each covered mutation operation.
