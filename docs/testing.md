@@ -22,7 +22,9 @@ route/API keys, milestone status drift, missing source/evidence locations, and
 API evidence references that no longer resolve to Java test methods. It also
 rejects marking OTOTEST-05 Complete while its acceptance checklist has
 unchecked items or its evidence record lacks a passing hosted run link. It
-checks inventory and completion consistency, not behavioral coverage.
+checks inventory and completion consistency, not behavioral coverage. The
+guard's open-checklist, missing-run, in-progress, and valid-completion cases
+run with `node --test scripts/ototest-completion-guard.test.mjs`.
 
 | Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
 | --- | --- | --- | --- |

@@ -604,7 +604,7 @@ physical-device pass.
 - [x] A milestone is marked Complete only after its acceptance and passing
   run evidence are linked. `check-ototest-inventory.mjs` rejects completing
   OTOTEST-05 while acceptance items remain unchecked or the evidence record
-  lacks a passing hosted run link.
+  lacks a passing hosted run link; four focused tests exercise these outcomes.
 - [x] A closed decision names the affected scope, decision owner, and
   remaining coverage gap. The project owner's desktop-only extension support
   decision and the separate physical Android web-acceptance gap are recorded

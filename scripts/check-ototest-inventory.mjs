@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { completionGuardProblems } from "./ototest-completion-guard.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryRoot = path.join(repositoryRoot, "docs/ototest");
@@ -112,17 +113,8 @@ const roadmap05Status = roadmap.match(/^\| OTOTEST-05\s*\|.*\|\s*(Proposed|In pr
 if (!checklist05Status || checklist05Status !== roadmap05Status) {
   problems.push("OTOTEST-05: acceptance checklist status differs or is missing compared with roadmap");
 }
-if (checklist05Status === "Complete") {
-  const openAcceptanceItems = [...checklist05.matchAll(/^\s*-\s*\[ \]\s+(.+)$/gm)].map(([, item]) => item.trim());
-  if (openAcceptanceItems.length > 0) {
-    problems.push(`OTOTEST-05: cannot be Complete with ${openAcceptanceItems.length} unchecked acceptance item(s)`);
-  }
-
-  const runRecord = fs.readFileSync(path.join(inventoryRoot, "runs/2026-10-10-ototest-05-local-gates.md"), "utf8");
-  if (!/https:\/\/github\.com\/[^\s)]+\/actions\/runs\/\d+/.test(runRecord) || !/\bPass\b/.test(runRecord)) {
-    problems.push("OTOTEST-05: Complete requires a passing hosted run linked from the milestone evidence record");
-  }
-}
+const runRecord = fs.readFileSync(path.join(inventoryRoot, "runs/2026-10-10-ototest-05-local-gates.md"), "utf8");
+problems.push(...completionGuardProblems({ status: checklist05Status, checklist: checklist05, runRecord }));
 
 for (const filename of inventoryFiles) {
   const sourcePath = path.join(inventoryRoot, filename);
