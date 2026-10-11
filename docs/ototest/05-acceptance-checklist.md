@@ -201,7 +201,7 @@ load, and route-state evidence must remain individually identifiable.
   parameter.
 - [x] Missing or inaccessible IDs produce a safe state without exposing
   protected details.
-- [ ] An unknown URL produces the documented not-found or safe fallback
+- [x] An unknown URL produces the documented not-found or safe fallback
   behavior and does not render an unrelated protected record.
 
 ### Flow: Restore one protected deep link after sign-in

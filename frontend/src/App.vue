@@ -79,6 +79,8 @@ watchEffect(() => {
   const [section, id] = path.slice(1).split("/");
   const page = !auth.isAuthenticated
     ? "Sign in"
+    : router?.currentRoute.value.name === "not-found"
+      ? "Page not found"
     : id && detail[section]
       ? detail[section]
       : path === "/" || path === "/sessions"

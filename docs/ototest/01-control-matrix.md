@@ -222,6 +222,7 @@ The rows below expand the checklist's 19 session actions into evidence-backed in
 | FLOW-10.10 | Content surfaces and long/blank behavior are itemized in action rows for Notes, Logs, cards, imports and account forms | Unicode, pasted content, trailing-space expansion and very long values are not exhaustively asserted; retain individual gaps |
 | FLOW-10.11 | Cross-client candidates are mapped in the cross-client matrix; Notes version integration and timer real-stack evidence are linked where applicable | No browser-to-installed-extension run record is identified; sync latency, conflict choice and ownership boundary need real-stack evidence |
 | FLOW-10.12 | Desktop/mobile classifications appear in WEB-17–19 and per-flow rows; [`check-accessibility.mjs`](../../scripts/check-accessibility.mjs) is repository-wide static evidence | Static accessibility checks do not prove browser focus, touch, zoom, reduced motion, labels or responsive behavior; viewport-specific gaps remain explicit |
+| FLOW-10.13 | Unknown URL fallback and recovery: `frontend/src/main.ts`, `views/NotFoundView.vue` | [`nav-shell.acceptance.test.mjs`](../../frontend/scripts/nav-shell.acceptance.test.mjs): `shows a safe not-found page for unknown URLs` verifies the page identity/title, absence of unrelated protected views, and working Sessions recovery link in Chromium; signed-out unknown URL behavior uses the existing sign-in shell |
 
 ## Desktop/mobile and accessibility evidence
 

@@ -564,6 +564,24 @@ it("renders every supported top-level route after a direct browser load", async 
   }
 });
 
+it("shows a safe not-found page for unknown URLs", async (t) => {
+  const { page } = await fixture(t, 1440);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${server.resolvedUrls.local[0]}unknown-ototest-route`);
+
+    await page.getByRole("heading", { name: "Page not found" }).waitFor();
+    assert.equal(await page.locator(".session-list, .notes-page, .logs-page").count(), 0);
+    assert.equal(await page.title(), "Knowledge Base · Page not found");
+    const sessionsLink = page.getByRole("link", { name: "Go to Sessions" });
+    const bounds = await sessionsLink.boundingBox();
+    assert.ok(bounds && bounds.height >= 44, `Sessions recovery link is at least 44px tall at ${width}px`);
+    await sessionsLink.click();
+    await page.locator(".session-list").waitFor();
+    assert.equal(new URL(page.url()).pathname, "/");
+  }
+});
+
 it("keeps protected deep-link content hidden while signed out and restores it after sign-in", async (t) => {
   const { page, requests } = await fixture(t, 1440, { authenticated: false });
   const query = "?startDate=2026-09-01&endDate=2026-09-07&aggregation=month";
@@ -2076,6 +2094,9 @@ it("archives the selected Note after confirmation and keeps it in the archive af
   await page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }).click();
   const archivedTarget = page.locator(".note-row.archived", { hasText: "Browser archive target" });
   await archivedTarget.waitFor();
+  await page.waitForFunction(() =>
+    document.querySelector(".note-row.archived")?.textContent?.includes("Keep this content in Archive"),
+  );
   assert.match(await archivedTarget.innerText(), /Keep this content in Archive/);
   assert.equal(await page.locator(".note-row.archived").count(), 1, "Only the confirmed note is archived");
 
