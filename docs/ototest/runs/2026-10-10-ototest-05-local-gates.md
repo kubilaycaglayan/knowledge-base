@@ -259,3 +259,14 @@ The OTOTEST-05 focus visibility item now links this form-entry evidence and the 
 | Hosted `verify` with explicit inventory review triggers | [`verify` run 38115749393](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38115749393) | Pass for commit `b9179c0d53fde076691e7b8e0ddeedd292824275`; all active jobs passed, including the inventory metadata policy tests and route/control browser suite; historical iOS jobs skipped. |
 
 The owner and exact-command acceptance items are checked in OTOTEST-05. This validates traceability metadata and source-row integrity; it does not establish assertion relevance or close the remaining behavioral gaps.
+
+## 2026-10-11 supplement — Java and manual evidence link validation
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Java and manual evidence parser tests | `node --test scripts/ototest-java-evidence.test.mjs scripts/ototest-manual-evidence.test.mjs scripts/ototest-inventory-metadata.test.mjs scripts/ototest-browser-evidence.test.mjs scripts/ototest-completion-guard.test.mjs` at source revision `02d7164d` | Pass: 21/21. Java references must resolve to a unique test class and declared method; manual-status rows must link to a procedure with a resolvable local target. |
+| Full inventory integrity | `node scripts/check-ototest-inventory.mjs` at source revision `02d7164d` | Pass: 18 documents, 107 API rows, and 307 qualified Java test references; frontend and Java references, manual procedure links, statuses, and local targets validate. |
+| Hosted `verify` with Java and manual evidence gates | [`verify` run 38116150134](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38116150134) | Pass for commit `02d7164da96465cbf513f2f6e4d57355d4d53438`; all active jobs passed, including the five inventory/evidence policy tests, route/control browser acceptance, packaged extension acceptance, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+| Extension matrix assertion audit | `docs/ototest/01-extension-and-feature-map.md` at source revision `4c4abae7` | Worker and storage rows now name the specific browser and module assertions. The worker row is `gap` because sender validation and timeout behavior have no explicit assertion mapping; storage remains `covered` for the named persistence assertions. |
+
+The remaining general criterion that a test filename alone is not proof stays open until assertion references are enforced and reviewed across all evidence tables. The extension map update is documentation traceability, not a claim that its full behaviors are covered.
