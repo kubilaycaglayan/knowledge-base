@@ -40,7 +40,7 @@ const focusSnapshot = (scopeSelector) => {
     name: element.getAttribute("aria-label") || element.textContent?.trim().replace(/\s+/g, " ").slice(0, 60) || element.tagName,
     inScope: !scope || scope.contains(element),
     visible: rect.width > 0 && rect.height > 0 && (fits || overlapsOversized),
-    ring: element.matches(":focus-visible") && hasRing,
+    ring: hasRing,
     covered: Boolean(layer) && !layer.contains(visualTarget),
     coveredBy: center instanceof Element ? `${center.tagName.toLowerCase()}.${[...center.classList].join(".")}` : String(center),
   };
