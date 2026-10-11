@@ -80,3 +80,9 @@ Rank is risk-based from the roadmap criteria; this is backlog input, not a claim
 ## Exclusions and source update rule
 
 Native iOS is excluded because the repository roadmap says the app is inactive and there are no current iOS release gates; revisit only when it becomes supported. `/development` is temporary label-picker tooling, remains directly addressable, and is excluded from authenticated navigation and supported-route completeness. The project owner confirmed that the Chrome extension is supported on desktop Chrome only and unsupported on mobile Chrome. The responsive web app is the supported mobile Chrome surface. When a manifest entrypoint, permission, route, API operation or workflow changes, update the corresponding matrix in the same change.
+
+### Closed support decision
+
+| Affected scope | Decision and owner | Remaining gap | Review trigger |
+| --- | --- | --- | --- |
+| Chrome extension on Android Chrome | Excluded from supported platforms; the project owner confirmed desktop Chrome-only support on 2026-10-09. The responsive Knowledge Base web app is the supported mobile Chrome client. | Physical Android Chrome acceptance for the web app remains open and is tracked by MOBILE-01–33 in the OTOTEST-04 acceptance checklist. No Android extension result is claimed. | Revisit if the project owner changes the supported-client decision or Android gains supported extension hosting. |

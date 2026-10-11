@@ -603,8 +603,10 @@ physical-device pass.
 - [x] The OTOTEST roadmap and milestone index agree on the milestone status.
 - [ ] A milestone is marked Complete only after its acceptance and passing
   run evidence are linked.
-- [ ] A closed decision names the affected scope, decision owner, and
-  remaining coverage gap.
+- [x] A closed decision names the affected scope, decision owner, and
+  remaining coverage gap. The project owner's desktop-only extension support
+  decision and the separate physical Android web-acceptance gap are recorded
+  in the [extension and feature map](01-extension-and-feature-map.md#closed-support-decision).
 
 ## Consistency validation
 
