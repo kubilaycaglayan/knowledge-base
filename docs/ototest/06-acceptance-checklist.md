@@ -9,20 +9,20 @@ Keep raw reports out of the repository.
 
 | Field | Baseline | After milestone |
 | --- | --- | --- |
-| Commit | | |
-| Date | | |
-| Host / CI runner | | |
-| CPU threads | | |
-| Node.js / npm | | |
-| Docker / Compose | | |
-| Gradle image | | |
-| Cache state (cold/warm) | | |
+| Commit | 4ff6b07895d50063536360ff7e85980179f4a9bf | |
+| Date | 2026-10-11 | |
+| Host / CI runner | art (Linux x86_64) | |
+| CPU threads | 32 | |
+| Node.js / npm | v22.23.3 / 10.9.9 | |
+| Docker / Compose | 29.8.2 / v5.6.0 | |
+| Gradle image | gradle:8.13-jdk21 (image present) | |
+| Cache state (cold/warm) | Warm frontend dependencies and OS caches | |
 
 ## Suite baseline (OTOTEST-06-T0)
 
 | Suite / command | Files | Tests | Wall median (s) | CPU % | Slowest file/class (s) | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Frontend `npm test` | | | | | | |
+| Frontend `npm test` | 70 | 866 | 23.54 | 653 | NotesView.test.ts 18.5 | Three warm runs on art |
 | Frontend `npm run build` | — | — | | | — | |
 | `npm run test:tracker` | | | | | | |
 | `npm run test:board` | | | | | | |
@@ -51,7 +51,7 @@ value is an improvement.
 
 | Task | Change (commit) | Suite measured | Tests before → after | Baseline (s) | After (s) | Δ (s) | Δ % | 5× green | Kept? |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T1 | | Frontend `npm test` | | | | | | | |
+| T1 | Fake NotesView timers (pending commit) | Frontend `npm test` | 866 → 866 | 23.54 | 11.25 | -12.29 | -52.2% | Yes; focused suite 5/5 | Yes |
 | T2 | | Frontend `npm test` | | | | | | | |
 | T3 | | `test:board`, `test:nav` | | | | | | | |
 | T4 | | `test:board`, `test:nav` | | | | | | | |

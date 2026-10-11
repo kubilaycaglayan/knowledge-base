@@ -2,6 +2,7 @@ import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import vuetify from "../plugins/vuetify";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import NotesView from "./NotesView.vue";
+import { NOTE_SAVE_DEBOUNCE_MS, NOTE_SEARCH_DEBOUNCE_MS } from "./notes-timings";
 import { EditorContent } from "@tiptap/vue-3";
 import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
@@ -71,8 +72,8 @@ function noteLabelOption(name: string) {
 }
 
 describe("NotesView", () => {
-  beforeEach(() => setActivePinia(createPinia()));
-  afterEach(() => document.querySelectorAll(".label-picker-menu").forEach((menu) => menu.remove()));
+  beforeEach(() => { setActivePinia(createPinia()); vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); document.querySelectorAll(".label-picker-menu").forEach((menu) => menu.remove()); });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api).mockImplementation(async (path: string) => {
@@ -92,7 +93,7 @@ describe("NotesView", () => {
     expect(wrapper.get(".note-row").text()).toContain("Graph theory");
     expect(wrapper.text()).toContain("study");
     await wrapper.get('input[aria-label="Search notes"]').setValue("graph");
-    await new Promise((resolve) => setTimeout(resolve, 280));
+    await vi.advanceTimersByTimeAsync(NOTE_SEARCH_DEBOUNCE_MS);
     await flushPromises();
     expect(
       vi
@@ -165,7 +166,8 @@ describe("NotesView", () => {
 
     await wrapper.get('button[aria-label="Back to notes"]').trigger("click");
     await flushPromises();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
     expect(r.currentRoute.value.path).toBe("/notes");
     expect(r.currentRoute.value.query.q).toBe("graph");
     expect(wrapper.find(".note-editor").exists()).toBe(false);
@@ -318,7 +320,7 @@ describe("NotesView", () => {
     const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('input[aria-label="Search notes"]').setValue("study");
-    await new Promise((resolve) => setTimeout(resolve, 280));
+    await vi.advanceTimersByTimeAsync(NOTE_SEARCH_DEBOUNCE_MS);
     await flushPromises();
     expect(
       vi
@@ -344,19 +346,19 @@ describe("NotesView", () => {
 
     const search = wrapper.get<HTMLInputElement>('input[aria-label="Search notes"]');
     await search.setValue("graph");
-    await new Promise((resolve) => setTimeout(resolve, 280));
+    await vi.advanceTimersByTimeAsync(NOTE_SEARCH_DEBOUNCE_MS);
     await flushPromises();
     expect(wrapper.findAll(".note-row")).toHaveLength(1);
     expect(r.currentRoute.value.query.q).toBe("graph");
 
     await search.setValue("missing");
-    await new Promise((resolve) => setTimeout(resolve, 280));
+    await vi.advanceTimersByTimeAsync(NOTE_SEARCH_DEBOUNCE_MS);
     await flushPromises();
     expect(wrapper.get(".notes-empty").text()).toBe("No notes match your search.");
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 
     await search.setValue("offline");
-    await new Promise((resolve) => setTimeout(resolve, 280));
+    await vi.advanceTimersByTimeAsync(NOTE_SEARCH_DEBOUNCE_MS);
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toContain("Unable to load notes.");
     await wrapper.unmount();
@@ -497,6 +499,8 @@ describe("NotesView", () => {
   });
 
   it("creates a note from the icon action and opens the editor", async () => {
+    // Creating a note exercises router transitions that use the real clock.
+    vi.useRealTimers();
     const created = {
       ...note,
       id: "new-note",
@@ -564,7 +568,7 @@ describe("NotesView", () => {
       "Graph theory",
     );
     expect(wrapper.get(".rich-editor").classes()).toContain("rich-text");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
     expect(vi.mocked(api)).toHaveBeenCalledWith(
       "/notes/note-1",
@@ -623,6 +627,9 @@ describe("NotesView", () => {
   });
 
   it("waits for one Note save before switching and scopes later edits to the next Note", async () => {
+    // This test holds API writes open across navigation; real timers preserve
+    // the router's timeout scheduling while the controlled promises resolve.
+    vi.useRealTimers();
     const second = { ...note, id: "note-2", title: "Writing" };
     let releaseFirstSave: () => void = () => {};
     vi.mocked(api).mockImplementation(
@@ -645,7 +652,7 @@ describe("NotesView", () => {
     const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Learning 2");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, NOTE_SAVE_DEBOUNCE_MS + 50));
     await flushPromises();
 
     const leaveToList = r.push("/notes");
@@ -657,7 +664,7 @@ describe("NotesView", () => {
     await r.push("/notes/note-2");
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Writing 2");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, NOTE_SAVE_DEBOUNCE_MS + 50));
     await flushPromises();
 
     const puts = vi
@@ -708,7 +715,7 @@ describe("NotesView", () => {
     await wrapper.get('button[aria-label="Bold"]').trigger("click");
     expect(wrapper.get(".ProseMirror strong").text()).toBe("Graph theory");
 
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
     const persisted = JSON.parse(savedBody);
     expect(persisted.content[0].content[0].marks).toContainEqual({ type: "bold" });
@@ -741,7 +748,7 @@ describe("NotesView", () => {
         { type: "codeBlock", content: [{ type: "text", text: "const answer = 42" }] },
       ],
     });
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
     expect(persisted.content).toContain('"taskList"');
     first.unmount();
@@ -789,7 +796,7 @@ describe("NotesView", () => {
 
     expect(wrapper.get(".ProseMirror strong").text()).toBe("formatting");
     expect(wrapper.find(".ProseMirror script").exists()).toBe(false);
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
     expect(savedContent).not.toContain("<script");
     expect(savedContent).toContain('"bold"');
@@ -831,7 +838,7 @@ describe("NotesView", () => {
     const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Changed");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
     const put = vi.mocked(api).mock.calls.find(([, options]) => options?.method === "PUT");
     expect(JSON.parse(String(put?.[1]?.body)).contentText).toBe("Intro\nItem\nDone\nEnd");
@@ -872,7 +879,7 @@ describe("NotesView", () => {
       await flushPromises();
       expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "Unsaved"]);
 
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
       await flushPromises();
       expect(wrapper.get(".save-state").text()).toBe("Saved");
       expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "2026-09-03T12:30:00.000Z"]);
@@ -886,7 +893,7 @@ describe("NotesView", () => {
         return { ...note, content: body.content, version: body.version + 1, lineEdits: [OLD, NEW] };
       });
       editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Fresh idea" }] });
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
       await flushPromises();
       expect(writes).toBe(1);
       expect(wrapper.text()).toContain("This note changed elsewhere");
@@ -900,7 +907,7 @@ describe("NotesView", () => {
     it("keeps unsaved lines marked when a save fails", async () => {
       const { wrapper, editor } = await openStamped(() => { throw new Error("offline"); });
       editor.commands.insertContentAt(editor.state.doc.content.size, { type: "paragraph", content: [{ type: "text", text: "Fresh idea" }] });
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
       await flushPromises();
       expect(wrapper.get(".save-state").text()).toBe("Not saved");
       expect(stampTexts(wrapper)).toEqual(["2026-09-02T10:00:00.000Z", "Unsaved"]);
@@ -908,6 +915,8 @@ describe("NotesView", () => {
   });
 
   it("warns before discarding a pending edit and keeps autosaving when the user stays", async () => {
+    // Keep real timers while the route guard and autosave race on navigation.
+    vi.useRealTimers();
     const writes: { path: string; body: string }[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/notes/note-1" && options?.method === "PUT") {
@@ -931,7 +940,7 @@ describe("NotesView", () => {
     await flushPromises();
     expect(confirm).toHaveBeenCalledWith("This note has unsaved changes. Leave and discard them?");
     expect(r.currentRoute.value.fullPath).toBe("/notes/note-1");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, NOTE_SAVE_DEBOUNCE_MS + 50));
     await flushPromises();
 
     expect(writes).toHaveLength(1);
@@ -944,6 +953,8 @@ describe("NotesView", () => {
   });
 
   it("discards an unsaved Note draft only after the user confirms navigation", async () => {
+    // The guard test exercises router navigation scheduling alongside edits.
+    vi.useRealTimers();
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
       if (path === "/notes/note-1" && options?.method === "PUT") return { ...note, ...JSON.parse(String(options.body)) };
       if (path === "/notes/note-1") return note;
@@ -973,6 +984,8 @@ describe("NotesView", () => {
   });
 
   it("waits for an in-flight save and asks before discarding its newer draft", async () => {
+    // The test deliberately suspends one save while route guards run.
+    vi.useRealTimers();
     let resolveFirst!: (saved: typeof note) => void;
     const writes: Record<string, unknown>[] = [];
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
@@ -994,7 +1007,7 @@ describe("NotesView", () => {
     await flushPromises();
     const title = wrapper.get('input[aria-label="Note title"]');
     await title.setValue("First saved draft");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, NOTE_SAVE_DEBOUNCE_MS + 50));
     await flushPromises();
     expect(writes).toHaveLength(1);
 
@@ -1016,6 +1029,8 @@ describe("NotesView", () => {
   });
 
   it("keeps a failed draft in the editor, retries it, then permits navigation", async () => {
+    // The retry and route guard are intentionally interleaved using real time.
+    vi.useRealTimers();
     const writes: string[] = [];
     let savedNote = note;
     vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
@@ -1040,7 +1055,7 @@ describe("NotesView", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     await r.push("/notes");
     await flushPromises();
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, NOTE_SAVE_DEBOUNCE_MS + 50));
     await flushPromises();
 
     expect(writes).toHaveLength(1);
@@ -1051,7 +1066,7 @@ describe("NotesView", () => {
     ).toBe("Keep this draft");
     expect(wrapper.get(".save-state").text()).toBe("Not saved");
     await wrapper.get('button[aria-label="Retry save"]').trigger("click");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, NOTE_SAVE_DEBOUNCE_MS + 50));
     await flushPromises();
     expect(writes).toHaveLength(2);
     expect(wrapper.get(".save-state").text()).toBe("Saved");
@@ -1082,13 +1097,13 @@ describe("NotesView", () => {
     await flushPromises();
     const title = wrapper.get<HTMLInputElement>('input[aria-label="Note title"]');
     await title.setValue("Draft after offline save");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
 
     expect(wrapper.get(".save-state").text()).toBe("Not saved");
     expect(title.element.value).toBe("Draft after offline save");
     await wrapper.get('button[aria-label="Retry save"]').trigger("click");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
 
     expect(writes).toBe(2);
@@ -1126,7 +1141,7 @@ describe("NotesView", () => {
     noteLabelOption("Travel")?.click();
     await flushPromises();
     expect(wrapper.get(".tag-editor .measure-row").text()).toContain("Travel");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
   });
 
@@ -1150,7 +1165,7 @@ describe("NotesView", () => {
     const chips = wrapper.findAll(".tag-editor .selected-chip");
     expect(chips).toHaveLength(1);
     expect(chips[0].text()).toContain("study");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
     const writes = vi.mocked(api).mock.calls.filter(([path, options]) =>
       path === "/notes/note-1" && options?.method === "PUT",
@@ -1183,7 +1198,7 @@ describe("NotesView", () => {
     await flushPromises();
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST" }));
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
   });
 
@@ -1211,7 +1226,7 @@ describe("NotesView", () => {
     await input.trigger("keydown", { key: "Enter" });
 
     expect(vi.mocked(api)).toHaveBeenCalledWith("/labels", expect.objectContaining({ method: "POST" }));
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
   });
 
@@ -1235,7 +1250,7 @@ describe("NotesView", () => {
     const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Updated");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
 
     expect(writes).toHaveLength(1);
@@ -1272,7 +1287,7 @@ describe("NotesView", () => {
     const wrapper = mountNotes(r);
     await flushPromises();
     await wrapper.get('input[aria-label="Note title"]').setValue("Local draft");
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await vi.advanceTimersByTimeAsync(NOTE_SAVE_DEBOUNCE_MS);
     await flushPromises();
 
     expect(writes).toHaveLength(1);

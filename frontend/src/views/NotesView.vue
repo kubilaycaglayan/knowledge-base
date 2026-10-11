@@ -18,6 +18,7 @@ import { EditorContent } from "@tiptap/vue-3";
 import RichTextToolbar from "../components/RichTextToolbar.vue";
 import LabelPicker from "../components/LabelPicker.vue";
 import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib/rich-text";
+import { NOTE_SAVE_DEBOUNCE_MS, NOTE_SEARCH_DEBOUNCE_MS } from "./notes-timings";
 import { plainText, setLineHistory } from "../lib/line-history";
 import { Editor } from "@tiptap/core";
 import { api } from "../lib/api";
@@ -278,7 +279,7 @@ function searchLater() {
   searchTimer = setTimeout(() => {
     page.value = 0;
     loadNotes();
-  }, 250);
+  }, NOTE_SEARCH_DEBOUNCE_MS);
 }
 async function newNote() {
   if (creating) return;
@@ -316,7 +317,7 @@ function scheduleSave() {
   saveTimer = setTimeout(() => {
     saveTimer = null;
     void save();
-  }, 650);
+  }, NOTE_SAVE_DEBOUNCE_MS);
 }
 function save(): Promise<void> {
   if (!selected.value || !editor.value) return Promise.resolve();
