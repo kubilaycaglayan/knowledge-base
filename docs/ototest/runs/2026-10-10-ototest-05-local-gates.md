@@ -302,3 +302,9 @@ The four inventory matrices now link this latest hosted evidence run. The next s
 | Hosted `verify` with stateful evidence policy | [`verify` run 38118196679](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38118196679) | Pass for commit `f7efa6fd7d9f4b605283ebe0a276cd1e445f4bc8`; all active jobs passed, including inventory/evidence policy checks, route/control browser acceptance, packaged extension, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
 
 The checklist item rejecting rendering-only evidence for mutation, persistence, or ownership is now checked. Evidence-layer policy improves traceability; the product behavior gaps remain individually classified in the matrices.
+
+## 2026-10-11 supplement — hosted verification after stateful-evidence record
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Hosted `verify` after inventory/run-record updates | [`verify` run 38118548925](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38118548925) | Pass for commit `ede119cfd5bbd03da22160c2977c37a1318c3e24`; all active jobs passed, including the expanded inventory gates, route/control and packaged extension browser suites, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. The first smoke attempt failed during Docker Gradle dependency setup; the failed job was retried and passed. |
