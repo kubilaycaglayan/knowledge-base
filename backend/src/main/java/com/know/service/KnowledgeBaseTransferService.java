@@ -18,6 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class KnowledgeBaseTransferService {
   private static final String HEADER = "entity,id,payload\n";
+  private static final Set<String> SUPPORTED_ENTITIES =
+      Set.of("path", "label", "session", "timeline", "calendar", "note", "log");
   private final ObjectMapper json;
   private final PathRepository paths;
   private final TimeEntryRepository entries;
@@ -583,6 +585,8 @@ public class KnowledgeBaseTransferService {
         if (lines[i].isBlank()) continue;
         List<String> c = columns(lines[i]);
         if (c.size() != 3) bad("Invalid Knowledge Base CSV row " + (i + 1));
+        if (!SUPPORTED_ENTITIES.contains(c.get(0)))
+          bad("Unsupported Knowledge Base CSV entity on row " + (i + 1));
         out.add(new Row(c.get(0), UUID.fromString(c.get(1)), json.readTree(c.get(2))));
       }
       return out;

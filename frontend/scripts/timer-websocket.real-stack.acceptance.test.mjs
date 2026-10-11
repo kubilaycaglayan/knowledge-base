@@ -116,6 +116,41 @@ const waitFor = async (predicate, description, ms = 10_000) => {
 };
 
 describe("timer WebSocket in the web app", () => {
+  it("reconciles a browser tab that loses a real server timer-start race", async () => {
+    const token = await register();
+    const first = await openApp(token);
+    const second = await openApp(token, { blockSocket: true });
+    let started = false;
+    try {
+      await waitFor(() => first.frames.some((frame) => frame.type === "READY"), "the first tab's socket READY");
+      await first.tracker.getByRole("button", { name: "Expand tracker" }).click();
+      await second.tracker.getByRole("button", { name: "Expand tracker" }).click();
+      let allowCurrentRefresh = false;
+      await second.page.route("**/api/v1/timers/current", (route) =>
+        allowCurrentRefresh ? route.continue() : route.fulfill({ json: null }),
+      );
+
+      await first.tracker.getByRole("textbox", { name: "Timer description" }).fill("Started in the first tab");
+      const firstStart = first.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/timers");
+      await first.tracker.getByRole("button", { name: "Start timer" }).click();
+      assert.equal((await firstStart).status(), 201);
+      started = true;
+      await first.tracker.getByRole("button", { name: "Stop timer" }).waitFor();
+
+      allowCurrentRefresh = true;
+      const losingStart = second.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/timers");
+      await second.tracker.getByRole("button", { name: "Start timer" }).click();
+      assert.equal((await losingStart).status(), 409, "The database rejects the second start while the first session is running");
+      await second.tracker.getByRole("button", { name: "Stop timer" }).waitFor();
+      assert.equal(await second.tracker.getByRole("textbox", { name: "Timer description" }).inputValue(), "Started in the first tab");
+      assert.equal(await second.tracker.getByRole("button", { name: "Start timer" }).count(), 0);
+    } finally {
+      if (started) await api("/timers/stop", { method: "POST", body: "{}" }, token);
+      await first.context.close();
+      await second.context.close();
+    }
+  });
+
   it("syncs over the socket and makes no timer HTTP requests while connected", async () => {
     const token = await register();
     const { context, page, tracker, timerRequests, frames } = await openApp(token);

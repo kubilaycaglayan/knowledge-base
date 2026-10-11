@@ -275,6 +275,8 @@ describe("note line history", () => {
 
     await placeCaret(page, page.locator(".rich-editor p", { hasText: "Third" }));
     await page.keyboard.type(" here");
+    await page.getByRole("button", { name: "Keep my draft" }).waitFor();
+    await page.getByRole("button", { name: "Keep my draft" }).click();
     await saved(page);
     await page.waitForFunction(() => ![...document.querySelectorAll(".rich-editor .line-history-stamp")].some((stamp) => stamp.textContent === "Unsaved"));
     const server = await api(page, "GET", `/notes/${note.id}`);
@@ -322,6 +324,8 @@ describe("note line history", () => {
       await title.press("End");
       await title.type(" ");
       await title.press("Backspace");
+      await page.getByRole("button", { name: "Keep my draft" }).waitFor();
+      await page.getByRole("button", { name: "Keep my draft" }).click();
       await page.locator(".save-state").filter({ hasText: /^Saved$/ }).waitFor();
       assert.deepEqual(writeStatuses, [503, 409, 200], "autosave must retry after refreshing the server version");
       const savedNote = await api(otherPage, "GET", `/notes/${note.id}`);

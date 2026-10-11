@@ -116,6 +116,7 @@ public class PathController {
   @Transactional
   public ResponseEntity<PathResponse> create(Authentication a, @Valid @RequestBody PathRequest r) {
     UUID owner = user(a);
+    pathManagement.ensureNameAvailable(owner, r.name(), null);
     Path path = paths.save(new Path(owner, r.name(), r.description(), r.color(), r.textColor()));
     Board board = boardService.createForPath(path);
     return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.of(path, null, board));
@@ -172,6 +173,7 @@ public class PathController {
   public PathResponse update(
       Authentication a, @PathVariable UUID id, @Valid @RequestBody PathRequest r) {
     Path p = find(a, id);
+    pathManagement.ensureNameAvailable(user(a), r.name(), id);
     p.update(r.name(), r.description(), r.color(), r.textColor());
     paths.save(p);
     boardService.renameForPath(p);

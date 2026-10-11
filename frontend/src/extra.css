@@ -1893,12 +1893,31 @@
   }
 }
 @media (max-width: 800px) {
+  .session-date-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+  .page-number {
+    min-width: 44px;
+    min-height: 44px;
+  }
   .calendar-navigation {
     gap: 4px;
   }
   .calendar-navigation > .ghost {
+    min-width: 44px;
     padding-right: 8px;
     padding-left: 8px;
+  }
+  .calendar-picker select {
+    min-height: 44px;
+  }
+  .calendar-picker select:first-child {
+    width: 96px;
+  }
+  .calendar-picker select:last-child {
+    width: 80px;
   }
   .reports-actions {
     width: 100%;

@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
@@ -384,18 +386,19 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
-  void postgresConcurrentIdenticalLabelCreationsReturnOneScopedLabel() throws Exception {
+  void postgresConcurrentIdenticalLabelCreationsRejectOneWithoutChangingScopes() throws Exception {
     org.junit.jupiter.api.Assumptions.assumeTrue(
         System.getenv("KB_TEST_POSTGRES_URL") != null,
         "This concurrent label scope case runs against PostgreSQL");
     String owner = token();
     CyclicBarrier startTogether = new CyclicBarrier(2);
     try (ExecutorService requests = Executors.newFixedThreadPool(2)) {
-      Future<JsonNode> first = requests.submit(() -> createLabelTogether(owner, startTogether));
-      Future<JsonNode> second = requests.submit(() -> createLabelTogether(owner, startTogether));
-      JsonNode firstLabel = first.get(10, TimeUnit.SECONDS);
-      JsonNode secondLabel = second.get(10, TimeUnit.SECONDS);
-      assertEquals(firstLabel.get("id").asText(), secondLabel.get("id").asText());
+      Future<Integer> first = requests.submit(() -> createLabelTogether(owner, startTogether));
+      Future<Integer> second = requests.submit(() -> createLabelTogether(owner, startTogether));
+      List<Integer> statuses =
+          new ArrayList<>(List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)));
+      Collections.sort(statuses);
+      assertEquals(List.of(201, 409), statuses);
     }
     assertEquals(
         1,
@@ -492,7 +495,7 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
         .value();
   }
 
-  private JsonNode createLabelTogether(String token, CyclicBarrier startTogether) throws Exception {
+  private int createLabelTogether(String token, CyclicBarrier startTogether) throws Exception {
     startTogether.await(5, TimeUnit.SECONDS);
     ResponseEntity<JsonNode> response =
         exchange(
@@ -500,8 +503,7 @@ class LabelHistoryIntegrationTest extends IntegrationTestSupport {
             "/api/v1/labels",
             token,
             "{\"name\":\"Concurrent named label\",\"scopes\":[\"CALENDAR\"]}");
-    assertEquals(HttpStatus.CREATED, response.getStatusCode(), String.valueOf(response.getBody()));
-    return response.getBody();
+    return response.getStatusCode().value();
   }
 
   // LH-03

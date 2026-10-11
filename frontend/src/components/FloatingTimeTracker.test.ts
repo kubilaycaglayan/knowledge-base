@@ -1015,11 +1015,11 @@ describe("FloatingTimeTracker", () => {
   });
 
   it.each([
-    { viewport: "desktop", isDesktop: true, expands: true },
-    { viewport: "mobile", isDesktop: false, expands: false },
+    { viewport: "desktop", isDesktop: true },
+    { viewport: "mobile", isDesktop: false },
   ])(
-    "expands from the bar background only in the $viewport view",
-    async ({ isDesktop, expands }) => {
+    "does not expand from the non-interactive bar background in the $viewport view",
+    async ({ isDesktop }) => {
       stubViewport(isDesktop);
       const wrapper = mount(FloatingTimeTracker, {
         attachTo: document.body,
@@ -1029,10 +1029,24 @@ describe("FloatingTimeTracker", () => {
 
       await wrapper.get(".floating-tracker-bar").trigger("click");
 
-      expect(wrapper.find("#floating-tracker-panel").exists()).toBe(expands);
+      expect(wrapper.find("#floating-tracker-panel").exists()).toBe(false);
       wrapper.unmount();
     },
   );
+
+  it("expands from the semantic tracker toggle button", async () => {
+    const wrapper = mount(FloatingTimeTracker, {
+      attachTo: document.body,
+      global: { plugins: [vuetify] },
+    });
+    await flushPromises();
+
+    const expand = wrapper.get(".floating-tracker-toggle");
+    expect(expand.element.tagName).toBe("BUTTON");
+    await expand.trigger("click");
+    expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
+    wrapper.unmount();
+  });
 
   it("does not expand from clicks on floating tracker controls", async () => {
     const wrapper = mount(FloatingTimeTracker, {
@@ -1047,14 +1061,12 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("keeps the inline Sessions tracker expanded when its bar is clicked", async () => {
+  it("keeps the inline Sessions tracker expanded without a separate toggle", async () => {
     const wrapper = mount(FloatingTimeTracker, {
       props: { inline: true },
       global: { plugins: [vuetify] },
     });
     await flushPromises();
-
-    await wrapper.get(".floating-tracker-bar").trigger("click");
 
     expect(wrapper.find("#floating-tracker-panel").exists()).toBe(true);
     wrapper.unmount();
@@ -1236,7 +1248,7 @@ describe("FloatingTimeTracker", () => {
     wrapper.unmount();
   });
 
-  it("opens labels when the empty area inside the picker is clicked", async () => {
+  it("opens labels from the picker’s semantic trigger", async () => {
     vi.mocked(api).mockImplementation(async (path: string) => {
       if (path === "/paths") return [];
       if (path === "/labels?scope=TIME_ENTRY")
@@ -1251,7 +1263,7 @@ describe("FloatingTimeTracker", () => {
     await flushPromises();
     const picker = wrapper.get(".label-picker");
     expect(picker.classes()).not.toContain("is-open");
-    await wrapper.get(".label-picker-control").trigger("click");
+    await wrapper.get('button[aria-label="Open label picker"]').trigger("click");
     expect(picker.classes()).toContain("is-open");
     wrapper.unmount();
   });

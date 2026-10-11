@@ -1,5 +1,6 @@
 export const resolveApiBase = (configured: string | undefined) =>
   configured || "/api/v1";
+export const EXPIRED_SESSION_NOTICE_KEY = "know_expired_session_notice";
 const base = resolveApiBase(import.meta.env.VITE_API_URL);
 
 export class ApiError extends Error {
@@ -73,6 +74,7 @@ export async function api<T>(
     token &&
     localStorage.getItem("know_token") === token
   ) {
+    sessionStorage.setItem(EXPIRED_SESSION_NOTICE_KEY, "1");
     localStorage.removeItem("know_token");
     if (typeof window !== "undefined") window.location.reload();
   }

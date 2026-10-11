@@ -22,6 +22,14 @@ public class PathManagementService {
     this.timeEntries = timeEntries;
   }
 
+  public void ensureNameAvailable(UUID userId, String name, UUID exceptPathId) {
+    String normalizedName = name.trim();
+    boolean alreadyUsed = paths.findByUserIdAndNameIgnoreCase(userId, normalizedName).stream()
+        .anyMatch(path -> !path.getId().equals(exceptPathId));
+    if (alreadyUsed)
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "A path with this name already exists");
+  }
+
   @Transactional
   public void merge(UUID userId, UUID sourcePathId, UUID targetPathId) {
     if (sourcePathId.equals(targetPathId))

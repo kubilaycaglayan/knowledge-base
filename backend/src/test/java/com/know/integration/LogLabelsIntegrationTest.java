@@ -73,5 +73,12 @@ class LogLabelsIntegrationTest extends IntegrationTestSupport {
                 owner,
                 "{\"labelIds\":[\"" + foreign + "\"]}")
             .status());
+
+    JsonNode ownerStateAfterRejections =
+        api.get("/api/v1/logs/" + logId, owner).json().get("labelIds");
+    assertEquals(1, ownerStateAfterRejections.size());
+    assertEquals(keep, ownerStateAfterRejections.get(0).asText());
+    JsonNode foreignOwnerCatalog = api.get("/api/v1/labels?scope=LOG", other).json();
+    assertTrue(foreignOwnerCatalog.findValuesAsText("id").contains(foreign));
   }
 }

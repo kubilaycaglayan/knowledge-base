@@ -51,14 +51,9 @@ public class LabelManagementService {
       UUID userId, String name, String color, Collection<LabelScopeType> requestedScopes) {
     users.findForUpdateById(userId);
     String normalized = normalize(name);
-    Label label =
-        labels
-            .findByUserIdAndNameIgnoreCase(userId, normalized)
-            .orElseGet(() -> labels.save(new Label(userId, normalized, color)));
-    if (label.getColor() == null && color != null) {
-      label.update(label.getName(), color);
-      labels.save(label);
-    }
+    if (labels.findByUserIdAndNameIgnoreCase(userId, normalized).isPresent())
+      throw conflict("A label with this name already exists");
+    Label label = labels.save(new Label(userId, normalized, color));
     replaceScopes(label, requestedScopes);
     return view(label);
   }

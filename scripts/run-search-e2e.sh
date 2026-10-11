@@ -6,6 +6,7 @@ set -euo pipefail
 # project's containers and volumes.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 project="knowledge-base-search-smoke-${BASHPID:-$$}-$(date +%s%N)"
+email="search-e2e-$(date +%s%N)@example.com"
 password="Search-e2e-$(date +%s%N)"
 port="${SEARCH_E2E_PROXY_PORT:-26480}"
 artifact_dir="${SEARCH_E2E_ARTIFACT_DIR:-$PWD/harden-tests/local-artifacts/search-$(date +%s%N)}"
@@ -34,7 +35,7 @@ mkdir -p "$artifact_dir"
 printf 'Commit: %s\nBrowser engine: %s\nBrowser profile: %s\n' "$(git rev-parse HEAD)" "${BROWSER_ENGINE:-chromium}" "${BROWSER_PROFILE:-default}" > "$artifact_dir/run-metadata.txt"
 test_log="$(mktemp)"
 set +e
-SEARCH_E2E_BASE_URL="http://localhost:${port}" SEARCH_E2E_ARTIFACT_DIR="$artifact_dir" npm run test:search:e2e --prefix frontend > "$test_log" 2>&1
+SEARCH_E2E_BASE_URL="http://localhost:${port}" SEARCH_E2E_EMAIL="$email" SEARCH_E2E_PASSWORD="$password" SEARCH_E2E_ARTIFACT_DIR="$artifact_dir" npm run test:search:e2e --prefix frontend > "$test_log" 2>&1
 test_status=$?
 set -e
 cat "$test_log"

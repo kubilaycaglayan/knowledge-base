@@ -116,6 +116,7 @@ async function seed() {
   });
   assert.equal(foreignAuthResponse.status, 200, "second disposable account registration succeeds");
   const foreignToken = (await foreignAuthResponse.json()).token;
+  fixtures.foreignToken = foreignToken;
   fixtures.foreignPath = await api("/paths", "POST", { name: `${text} Foreign Path`, description: "Foreign private path detail", color: "#2878D5", textColor: "#FFFFFF" }, foreignToken);
   fixtures.foreignNote = await api("/notes", "POST", { title: `${text} Foreign Note`, content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Foreign private note body" }] }] }), contentText: "Foreign private note body", tags: [] }, foreignToken);
   fixtures.foreignLog = await api("/logs", "POST", { body: "Foreign private log body", occurredAt: new Date().toISOString() }, foreignToken);
@@ -192,7 +193,10 @@ async function activate(query, type, id, expectedPath, expectedVisible) {
 
 before(async () => {
   await seed();
-  browser = await browserType.launch({ executablePath: process.env.BROWSER_PATH || undefined, headless: true });
+  browser = await browserType.launch({
+    executablePath: process.env.BROWSER_PATH || undefined,
+    headless: process.env.BROWSER_HEADLESS !== "false",
+  });
   context = await browser.newContext({
     viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
     ...(phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {}),
@@ -241,7 +245,7 @@ describe("search and direct routes against disposable real stack", () => {
       ["Notes", "notes", "/notes"], ["Calendar", "calendar", "/calendar"],
       ["Reports", "reports", "/reports"], ["Timeline", "timeline", "/timeline"],
       ["Paths", "paths", "/paths"], ["Labels", "labels", "/labels"],
-      ["Imports", "imports", "/imports"], ["Development", "development", "/development"],
+      ["Imports", "imports", "/imports"],
       ["Settings", "settings", "/settings"],
     ];
     for (const [label, id, path] of shortcuts) {
@@ -357,8 +361,13 @@ describe("search and direct routes against disposable real stack", () => {
     await noteSearch.goto(`${baseUrl}/notes?q=${noteQuery}`);
     assert.equal(await noteSearch.getByRole("textbox", { name: "Search notes" }).inputValue(), `${text} Note`);
     await noteSearch.getByText(`${text} Note`, { exact: false }).first().waitFor();
+    const matchingNotes = noteSearch.locator(".note-row");
+    assert.equal(await matchingNotes.count(), 1, "a distinctive Notes query excludes non-matching titles");
+    assert.equal(await matchingNotes.first().locator("strong").innerText(), `${text} Note`);
     await noteSearch.reload();
     assert.equal(await noteSearch.getByRole("textbox", { name: "Search notes" }).inputValue(), `${text} Note`);
+    await matchingNotes.first().waitFor();
+    assert.equal(await matchingNotes.count(), 1, "reload restores the same filtered Notes result");
     await noteSearch.close();
 
     const archivedNotes = await context.newPage();
@@ -752,6 +761,33 @@ describe("search and direct routes against disposable real stack", () => {
     assert.ok(!foreignBoardText.includes(`${text} Foreign Card`));
     assert.ok(!foreignBoardText.includes("Foreign private card body"));
     await foreignBoardContext.close();
+  });
+
+  it("rejects foreign Path and Label references in an owned Session without changing either account", async () => {
+    const description = `${text} rejected foreign references`;
+    const startedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const endedAt = new Date(Date.now() - 1_800_000).toISOString();
+    const beforeOwned = await api("/time-entries?page=0&size=100");
+    const beforeForeign = await api("/time-entries?page=0&size=100", "GET", undefined, fixtures.foreignToken);
+    const createAttempt = async (pathId, labelIds) => fetch(`${baseUrl}/api/v1/time-entries`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ pathId, labelIds, startedAt, endedAt, description }),
+    });
+    const foreignPathAttempt = await createAttempt(fixtures.foreignPath.id, []);
+    const foreignLabelAttempt = await createAttempt(fixtures.path.id, [fixtures.foreignLabel.id]);
+    assert.ok(foreignPathAttempt.status >= 400 && foreignPathAttempt.status < 500);
+    assert.ok(foreignLabelAttempt.status >= 400 && foreignLabelAttempt.status < 500);
+
+    const afterOwned = await api("/time-entries?page=0&size=100");
+    const afterForeign = await api("/time-entries?page=0&size=100", "GET", undefined, fixtures.foreignToken);
+    assert.equal(afterOwned.totalSessions, beforeOwned.totalSessions);
+    assert.equal(afterOwned.sessions.some((session) => session.description === description), false);
+    assert.equal(afterForeign.totalSessions, beforeForeign.totalSessions);
+    const foreignPathAfter = await api(`/paths/${fixtures.foreignPath.id}`, "GET", undefined, fixtures.foreignToken);
+    assert.equal(foreignPathAfter.name, `${text} Foreign Path`);
+    const foreignLabelsAfter = await api("/labels?scope=TIME_ENTRY", "GET", undefined, fixtures.foreignToken);
+    assert.ok(foreignLabelsAfter.some((label) => label.id === fixtures.foreignLabel.id));
   });
 
   it("shows an empty search state and retries a request error against the real API", async () => {

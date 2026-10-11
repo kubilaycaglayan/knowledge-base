@@ -771,6 +771,22 @@ function markdownNoteDocument(markdown) {
       blocks.push({ type: "codeBlock", ...(codeLines.length ? { content: [{ type: "text", text: codeLines.join("\n") }] } : {}) });
       continue;
     }
+    const task = lines[index].match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/);
+    if (task) {
+      const items = [];
+      while (index < lines.length) {
+        const match = lines[index].match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/);
+        if (!match) break;
+        items.push({
+          type: "taskItem",
+          attrs: { checked: match[1].toLocaleLowerCase() === "x" },
+          content: [paragraph(match[2])],
+        });
+        index += 1;
+      }
+      blocks.push({ type: "taskList", content: items });
+      continue;
+    }
     const bullet = lines[index].match(/^\s*[-*+]\s+(.*)$/);
     const ordered = lines[index].match(/^\s*\d+[.)]\s+(.*)$/);
     if (bullet || ordered) {

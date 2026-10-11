@@ -2,7 +2,7 @@
 import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { routerKey, routeLocationKey } from "vue-router";
 import { storeToRefs } from "pinia";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { labelColors } from "../lib/label-colors";
 import PromptDialog from "../components/PromptDialog.vue";
 import ColorPalette from "../components/ColorPalette.vue";
@@ -188,22 +188,10 @@ async function remove(label: Label) {
     await api(`/labels/${label.id}`, { method: "DELETE" });
     labelStore.remove(label.id);
     reportsStore.clear();
-  } catch {
-    const assigned = await promptDialog.value!.open(
-      `“${label.name}” has assignments. Remove the label and its assignments?`,
-      "This keeps the assigned notes, sessions, and calendar days.",
-      { confirmation: true },
-    );
-    if (assigned === null) return;
-    try {
-      await api(`/labels/${label.id}?removeAssignments=true`, {
-        method: "DELETE",
-      });
-      labelStore.remove(label.id);
-      reportsStore.clear();
-    } catch {
-      error.value = "Could not remove this label.";
-    }
+  } catch (cause) {
+    error.value = cause instanceof ApiError && cause.status === 409
+      ? "Remove assignments before removing this label."
+      : "Could not remove this label.";
   }
 }
 onMounted(() => {
@@ -216,6 +204,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", searchKeydown));
 <template>
   <PromptDialog ref="promptDialog" />
   <section class="labels-view">
+    <h1 class="sr-only">Labels</h1>
     <header class="labels-heading">
       <input ref="searchInput" v-model="search" class="label-search" type="search"
         name="label-search" aria-label="Search labels" aria-keyshortcuts="/"

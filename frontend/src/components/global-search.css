@@ -120,10 +120,6 @@ kbd {
 .global-search-input:hover {
   border: 0;
 }
-.global-search-input:focus,
-.global-search-input:focus-visible {
-  outline: none;
-}
 .global-search-input::-webkit-search-cancel-button {
   cursor: pointer;
 }
@@ -161,6 +157,10 @@ kbd {
   overscroll-behavior: contain;
   padding: 6px 0 8px;
   scroll-padding-block: 36px 8px;
+}
+.global-search-body:focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: -2px;
 }
 .global-search-hint,
 .global-search-empty,

@@ -190,6 +190,13 @@ label,%s,"{""name"":""Focus"",""color"":""#ABCDEF"",""scopes"":[""TIME_ENTRY"","
             () -> service.importCsv(UUID.randomUUID(), "entity,id,payload\npath,not-a-uuid,{}\n"))
         .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
         .hasMessageContaining("Invalid Knowledge Base CSV");
+    assertThatThrownBy(
+            () ->
+                service.importCsv(
+                    UUID.randomUUID(),
+                    "entity,id,payload\nunsupported,not-a-uuid,not-json\n"))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .hasMessageContaining("Unsupported Knowledge Base CSV entity");
     verifyNoInteractions(batches);
   }
 }

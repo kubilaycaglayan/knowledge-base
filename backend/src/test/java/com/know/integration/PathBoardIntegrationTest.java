@@ -106,6 +106,33 @@ class PathBoardIntegrationTest extends IntegrationTestSupport {
     assertTrue(boards(token, "").stream().anyMatch(b -> b.get("id").equals(board.get("id"))));
   }
 
+  @Test
+  void duplicatePathNameReturnsConflictWithoutChangingTheExistingPath() {
+    String token = token();
+    String name = "Unique path " + UUID.randomUUID();
+    ResponseEntity<JsonNode> original = post("/api/v1/paths", token,
+        "{\"name\":\"" + name + "\",\"description\":\"original\",\"color\":\"#123456\"}");
+    assertEquals(HttpStatus.CREATED, original.getStatusCode());
+    String pathId = original.getBody().get("id").asText();
+
+    ResponseEntity<JsonNode> duplicate = post("/api/v1/paths", token,
+        "{\"name\":\"" + name.toUpperCase() + "\",\"description\":\"replacement\",\"color\":\"#654321\"}");
+
+    assertEquals(HttpStatus.CONFLICT, duplicate.getStatusCode());
+    JsonNode persisted = get("/api/v1/paths/" + pathId, token).getBody();
+    assertEquals(name, persisted.get("name").asText());
+    assertEquals("original", persisted.get("description").asText());
+    assertEquals("#123456", persisted.get("color").asText());
+    assertEquals(1, get("/api/v1/paths", token).getBody().findValuesAsText("name").stream()
+        .filter(name::equals).count());
+
+    String otherPathId = createPath(token, "Other path " + UUID.randomUUID());
+    ResponseEntity<JsonNode> duplicateRename = put("/api/v1/paths/" + otherPathId, token,
+        "{\"name\":\"" + name + "\",\"description\":\"replacement\"}");
+    assertEquals(HttpStatus.CONFLICT, duplicateRename.getStatusCode());
+    assertNotEquals(name, get("/api/v1/paths/" + otherPathId, token).getBody().get("name").asText());
+  }
+
   // PB-02
   @Test
   void restoringAPathReusesItsBoard() {

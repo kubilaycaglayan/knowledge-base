@@ -34,4 +34,14 @@ describe("ProjectDurationTable", () => {
     expect(wrapper.text()).toContain("No tracked time in this period.");
     expect(wrapper.findAll("tbody tr")).toHaveLength(1);
   });
+
+  it("identifies an empty Label breakdown without implying the report has no time", () => {
+    const wrapper = mount(ProjectDurationTable, {
+      global,
+      props: { categories: [], categoryLabel: "Label" },
+    });
+
+    expect(wrapper.text()).toContain("No labels assigned in this period.");
+    expect(wrapper.text()).not.toContain("No tracked time in this period.");
+  });
 });

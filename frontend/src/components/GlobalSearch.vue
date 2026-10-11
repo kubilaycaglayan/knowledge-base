@@ -483,7 +483,7 @@ const status = computed(() => {
           </button>
         </div>
         <p id="global-search-status" class="sr-only" aria-live="polite">{{ status }}</p>
-        <div ref="listbox" class="global-search-body">
+        <div ref="listbox" class="global-search-body" tabindex="0" aria-label="Search results">
           <p v-if="tooLong" class="global-search-message" role="alert">
             Searches are limited to {{ SEARCH_MAX_LENGTH }} characters. Shorten your search to see results.
           </p>
@@ -530,6 +530,15 @@ const status = computed(() => {
               <p>No results for “<span class="global-search-empty-query">{{ searchedFor }}</span>”.</p>
               <p class="muted">Try fewer words, or check the spelling.</p>
             </div>
+            <h2 v-if="pages.length" class="sr-only">Pages</h2>
+            <h2
+              v-for="group in orderedGroups"
+              :key="`heading-${group.type}`"
+              class="sr-only"
+            >
+              {{ searchGroupLabels[group.type] }}
+              <span>{{ totalText(group) }}</span>
+            </h2>
             <div
               v-show="groups.length || pages.length"
               id="global-search-listbox"
@@ -537,9 +546,9 @@ const status = computed(() => {
               aria-label="Search results"
               :aria-busy="loading || undefined"
             >
-              <div v-if="pages.length" role="group" class="global-search-group" aria-labelledby="global-search-heading-pages">
-                <div class="global-search-group-heading" role="presentation">
-                  <h2 id="global-search-heading-pages">Pages</h2>
+              <div v-if="pages.length" role="group" class="global-search-group" aria-label="Pages">
+                <div class="global-search-group-heading" role="presentation" aria-hidden="true">
+                  <h2>Pages</h2>
                 </div>
                 <RouterLink
                   v-for="option in pageOptions"
@@ -569,10 +578,10 @@ const status = computed(() => {
                 role="group"
                 class="global-search-group"
                 :class="{ stale: loading }"
-                :aria-labelledby="`global-search-heading-${group.type}`"
+                :aria-label="searchGroupLabels[group.type]"
               >
-                <div class="global-search-group-heading" role="presentation">
-                  <h2 :id="`global-search-heading-${group.type}`">
+                <div class="global-search-group-heading" role="presentation" aria-hidden="true">
+                  <h2>
                     {{ searchGroupLabels[group.type] }}
                     <span class="global-search-count">{{ totalText(group) }}</span>
                   </h2>

@@ -1,7 +1,7 @@
 # OTOTEST-05 — Traceability and ongoing gates acceptance checklist
 
 **Priority:** High
-**Status:** Proposed
+**Status:** In progress
 **Depends on:** OTOTEST-01 through OTOTEST-04
 **Product surfaces reviewed:** Knowledge Base web application in desktop Chrome
 and the same web application in Android Chrome
@@ -19,103 +19,205 @@ maintained and evidenced; checking a box does not claim a test or gate has run.
 
 ## Evidence record
 
+Use the [execution evidence template](evidence-template.md) for each run that
+is cited as completion evidence. The automated inventory check is
+`node scripts/check-ototest-inventory.mjs`; it verifies local Markdown links,
+unique route/API row keys, nonempty source/evidence and classification fields,
+matrix ownership, and milestone status consistency. It resolves qualified API
+evidence names to existing Java test methods and named frontend test
+references in the route/control matrices to declarations in their corresponding
+`frontend/src` or `frontend/scripts` test files. It deliberately makes no
+claims about assertion quality. It also rejects any API operation row that
+does not name at least one qualified Java test assertion reference.
+
+The release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
+It documents passed local gates and the passing hosted `verify` run. Physical
+Android acceptance remains outstanding.
+
 For every accepted route, operation, control family, gesture, permission, or
 gate below, the maintained inventory or release record must identify:
 
-- [ ] A stable row ID and one clearly stated behavior.
-- [ ] The product source: route, component/control, controller operation,
-  permission declaration, or workflow/job.
-- [ ] The responsible owner for keeping the row current.
-- [ ] The expected user-visible result and URL or persisted state when
-  applicable.
-- [ ] Applicable failure, ownership, validation, empty, loading, and recovery
-  behavior.
-- [ ] Evidence layer: unit/component, service/API, persistence/PostgreSQL,
-  real browser, or manual review.
-- [ ] Exact assertion/test or manual procedure and its current status.
-- [ ] Exact local command or CI workflow/job that runs the evidence.
-- [ ] The last-reviewed source revision and a link to a run/artifact when
-  evidence has been executed.
-- [ ] A limitation, explicit exclusion, or unresolved gap with an owner and
-  review trigger where evidence is unavailable.
+- [x] A stable row ID and one clearly stated behavior. Route/API/feature rows
+  have unique nonempty identities and behavior/source fields; each detailed
+  control action has a unique checklist ID and nonempty source/expected
+  behavior cell. CI rejects missing or duplicate row identities.
+- [x] The product source: route, component/control, controller operation,
+  permission declaration, or workflow/job. The inventory check requires a
+  nonempty source field on each row and checks the source/evidence cell on
+  every detailed control action.
+- [x] The responsible owner for keeping the row current. Each route, API,
+  control, and extension/feature matrix declares its Knowledge Base
+  maintainer owner; `check-ototest-inventory.mjs` rejects a missing owner.
+- [x] The expected user-visible result and URL or persisted state when
+  applicable. Route, API, and action rows record the expected behavior and
+  resulting route or state; feature rows identify the product outcome and
+  remaining risk.
+- [x] Applicable failure, ownership, validation, empty, loading, and recovery
+  behavior. Each matrix row describes the relevant failure outcomes or records
+  them in its gap column; the API matrix additionally gates owner-scoped read
+  and referenced-ID mutation claims on integration evidence.
+- [x] Evidence layer: unit/component, service/API, persistence/PostgreSQL,
+  real browser, or manual review. Route/control/API rows classify their
+  evidence layer; extension and cross-client rows distinguish unit, packaged
+  browser, real-stack, and manual evidence, with unsupported or unproven
+  layers retained as gaps.
+- [x] Exact assertion/test or manual procedure and its current status. The
+  inventory gate resolves named frontend and Java assertions, rejects stale
+  references, requires manual-status rows to link procedures, and validates
+  each row’s evidence classification. Gaps remain classified instead of being
+  counted as covered.
+- [x] Exact local command or CI workflow/job that runs the evidence. Each
+  inventory matrix declares its local command; the extension matrix also
+  identifies the required packaged-browser CI job. The consistency check
+  rejects a matrix without an exact command.
+- [x] The last-reviewed source revision and a link to a run/artifact when
+  evidence has been executed. Each maintained inventory has a source revision
+  and latest hosted evidence-run link; CI rejects missing revision or run
+  metadata.
+- [x] A limitation, explicit exclusion, or unresolved gap with an owner and
+  review trigger where evidence is unavailable. Matrix-level owners and
+  review triggers apply to their rows; the metadata gate rejects a missing
+  review trigger.
 
 ## Inventory freshness and product-change flows
 
 ### Flow: Classify one changed web route
 
-- [ ] A newly registered route receives its own stable inventory row.
-- [ ] A changed route path, alias, guard, redirect, or route parameter updates
-  the existing row or adds a separate row when behavior is distinct.
-- [ ] A retired route is marked unsupported or intentionally excluded with a
-  reason and owner instead of disappearing from the inventory.
-- [ ] The route row describes direct loading, page identity, authentication
+- [x] A newly registered route receives its own stable inventory row. The
+  smoke source-drift check compares every static route pattern from
+  `frontend/src/main.ts` with the route matrix; the matrix identity check
+  rejects duplicate and missing route rows.
+- [x] A changed route path, alias, guard, redirect, or route parameter updates
+  the existing row or adds a separate row when behavior is distinct. The
+  [PR template](../../.github/pull_request_template.md) and
+  [testing guidance](../testing.md) require same-review route inventory
+  updates for these changes; smoke source-drift validation detects route-path
+  additions and removals.
+- [x] A retired route is marked unsupported or intentionally excluded with a
+  reason and owner instead of disappearing from the inventory. Route source
+  drift is reported unless the retained matrix row is explicitly classified
+  `unsupported/excluded`; the inventory also requires source, ownership, and
+  review-trigger metadata.
+- [x] The route row describes direct loading, page identity, authentication
   behavior, query state, and invalid or unavailable resource behavior as
-  applicable.
-- [ ] `/development` remains explicitly classified as temporary tooling and
+  applicable. The [route matrix](01-route-matrix.md) records each route/state,
+  its source and named direct-load/navigation evidence, plus the remaining
+  unavailable-resource or query-state gaps per route; the shared authenticated
+  shell row names the signed-out and post-sign-in outcomes.
+- [x] `/development` remains explicitly classified as temporary tooling and
   excluded from supported route completeness and authenticated navigation.
+  The route matrix retains its `unsupported/excluded` row, and the component
+  and browser assertions verify that no navbar or global-search shortcut
+  exposes the route.
 
 ### Flow: Classify one changed web control
 
-- [ ] A new or behaviorally changed visible control receives a distinct row
-  for its action and expected result.
-- [ ] The row names the control, starting state, input method, visible result,
-  and persistence or URL effect when applicable.
-- [ ] A dialog action has separate rows for opening, successful submission,
-  cancellation, applicable validation, and recoverable request failure.
-- [ ] A destructive action has a row for confirmation or its offered undo
-  path.
-- [ ] A control that only appears decorative or unavailable is explicitly
-  labeled non-interactive with its reason.
+- [x] A new or behaviorally changed visible control receives a distinct row
+  for its action and expected result. The [PR template](../../.github/pull_request_template.md)
+  requires a distinct inventory action ID; the control matrix assigns stable
+  IDs and the inventory check rejects malformed or duplicate detailed rows.
+- [x] The row names the control, starting state, input method, visible result,
+  and persistence or URL effect when applicable. These row fields are required
+  by the [testing guidance](../testing.md) and PR template for changed
+  controls; the control matrix records source/action/result and explicit
+  evidence gaps.
+- [x] A dialog action has separate rows for opening, successful submission,
+  cancellation, applicable validation, and recoverable request failure. The
+  [testing guidance](../testing.md) and PR template require these as separately
+  reviewable actions when the dialog changes.
+- [x] A destructive action has a row for confirmation or its offered undo
+  path. The [testing guidance](../testing.md) and PR template require the
+  confirmation or undo path to be recorded for changed destructive actions.
+- [x] A control that only appears decorative or unavailable is explicitly
+  labeled non-interactive with its reason. The control matrix records
+  unsupported/excluded actions with their rationale and revisit trigger, and
+  the change guidance requires the same classification for unavailable
+  controls.
 
 ### Flow: Classify one changed API operation
 
-- [ ] Every new or changed controller mapping is recorded as an HTTP method
-  and fully composed `/api/v1` path.
-- [ ] Each method/path alias is recorded as its own operation row.
-- [ ] The operation row states authentication, request inputs, response
-  contract, owner-scoped identifiers, and observable state effect.
-- [ ] The row links evidence for its successful behavior and each applicable
-  validation, ownership, or conflict outcome.
-- [ ] A server operation with no supported web-client call site is explicitly
-  classified with a scope decision and owner.
-- [ ] A UI mock or route-level assertion is not used as evidence of backend
-  persistence or ownership enforcement.
+- [x] Every new or changed controller mapping is recorded as an HTTP method
+  and fully composed `/api/v1` path. The smoke source-drift check compares the
+  generated OpenAPI operations with the API matrix.
+- [x] Each method/path alias is recorded as its own operation row. OpenAPI
+  method/path pairs are compared individually, including aliases, and drift
+  fails the smoke run.
+- [x] The operation row states authentication, request inputs, response
+  contract, owner-scoped identifiers, and observable state effect. The [API
+  matrix](01-api-matrix.md) states the default authentication and owner-scope
+  rules, records each method/path with controller inputs and state/edge
+  behavior, and defines how response contracts are derived from controller
+  signatures and verified per operation.
+- [x] The row links evidence for its successful behavior and each applicable
+  validation, ownership, or conflict outcome. All 107 operation rows name
+  Java test methods; the inventory gate resolves those references, while
+  operation-specific unproven outcomes remain explicit gaps in the matrix.
+- [x] A server operation with no supported web-client call site is explicitly
+  classified with a scope decision and owner. The [API matrix](01-api-matrix.md)
+  identifies all seven operations, records the OTOTEST-05 decision to retain
+  the existing API contract without adding client surfaces, and assigns future
+  support/deprecation review to Knowledge Base maintainers before deprecation.
+- [x] A UI mock or route-level assertion is not used as evidence of backend
+  persistence or ownership enforcement. The evidence policy requires an
+  integration layer for persistence and ownership claims, with regression
+  tests guarding the rule.
 
 ### Flow: Classify one changed browser gesture
 
-- [ ] A new or changed pointer, drag, keyboard, or touch gesture receives its
-  own behavior row.
-- [ ] The row identifies the supported desktop Chrome input method.
-- [ ] The row identifies the supported Android Chrome input method when the
-  gesture is offered on a phone.
-- [ ] A drag-dependent action records its tap/click or keyboard alternative
-  where that action is not inherently pointer-only.
-- [ ] Pointer cancellation, lost capture, or interrupted input has a recovery
-  result when applicable.
+- [x] A new or changed pointer, drag, keyboard, or touch gesture receives its
+  own behavior row. The [PR template](../../.github/pull_request_template.md)
+  requires a distinct inventory action ID for each changed gesture.
+- [x] The row identifies the supported desktop Chrome input method. The
+  [testing guidance](../testing.md) and PR template require desktop Chrome
+  input to be recorded for changed gestures.
+- [x] The row identifies the supported Android Chrome input method when the
+  gesture is offered on a phone. The [testing guidance](../testing.md) and PR
+  template require Android Chrome input to be recorded separately where
+  offered; physical-device execution remains open in the mobile flows below.
+- [x] A drag-dependent action records its tap/click or keyboard alternative
+  where that action is not inherently pointer-only. The [testing guidance](../testing.md)
+  and PR template require applicable alternatives for changed gestures.
+- [x] Pointer cancellation, lost capture, or interrupted input has a recovery
+  result when applicable. The [testing guidance](../testing.md) and PR
+  template require recovery to be documented for interrupted pointer input.
 
 ### Flow: Classify one changed security boundary
 
-- [ ] A new or changed route guard records signed-out and authenticated
-  outcomes separately.
-- [ ] A record read records owned, missing, and foreign-ID outcomes where the
-  route accepts a record identifier.
-- [ ] A mutation that references another record records ownership checks for
+- [x] A new or changed route guard records signed-out and authenticated
+  outcomes separately. The [route matrix](01-route-matrix.md) links the
+  shared-shell row to browser assertions for protected content while signed
+  out, restoration after sign-in, and rejection of unsafe return URLs.
+- [x] A record read records owned, missing, and foreign-ID outcomes where the
+  route accepts a record identifier. Covered ID-addressed GET rows state the
+  three outcomes, and `CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`
+  compares foreign and missing responses for paths, label histories, boards,
+  card lists/pages, and Gantt reads; resource-specific integration tests prove
+  owned results.
+- [x] A mutation that references another record records ownership checks for
   each referenced Path, Label, board, status, note, or activity identifier
-  used by that behavior.
-- [ ] A new public API route records its deliberate public status and the
-  reason for bypassing authentication.
-- [ ] Security evidence identifies the layer proving the boundary rather
+  used by that behavior. `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData` exercises foreign Path, Label, status, and board references across time entries, timers, notes, logs, cards, and calendar assignments; the API matrix records the integration layer and unchanged-owner-state assertion.
+- [x] A new public API route records its deliberate public status and the
+  reason for bypassing authentication. Each current public operation names its
+  unauthenticated purpose; the inventory check and public-status regression
+  reject public rows without a rationale.
+- [x] Security evidence identifies the layer proving the boundary rather
   than inferring it from a UI-hidden control.
 
 ### Flow: Classify one changed extension permission
 
-- [ ] A changed Manifest V3 permission or host permission receives a stable
+- [x] A changed Manifest V3 permission or host permission receives a stable
   extension inventory row and product purpose.
-- [ ] The row states the feature affected when permission is absent or denied.
-- [ ] The row records the review owner and the extension build/job that
-  validates the resulting permission declaration.
-- [ ] An extension permission row is not mislabeled as Android Chrome web-app
-  evidence; mobile Chrome extension hosting is not part of this checklist.
+- [x] The row states the feature affected when permission is absent or denied.
+  `check-ototest-extension-permissions.mjs` reconciles the built manifest with
+  the matrix and requires a denied/absent outcome for each declaration.
+- [x] The row records the review owner and the extension build/job that
+  validates the resulting permission declaration. Matrix metadata supplies the
+  maintainer owner and `verify / web-and-extension` builds and checks the
+  generated manifest before running this reconciliation gate.
+- [x] An extension permission row is not mislabeled as Android Chrome web-app
+  evidence; mobile Chrome extension hosting is not part of this checklist. The
+  feature map keeps desktop extension permissions separate from the explicitly
+  `unsupported/excluded` Android extension surface.
 
 ## Supported route inventory freshness
 
@@ -125,160 +227,207 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Keep the Sessions route current
 
-- [ ] `/` is listed as the Sessions workspace route.
-- [ ] `/sessions` is listed as a supported alias and its redirect to `/` is
+- [x] `/` is listed as the Sessions workspace route.
+- [x] `/sessions` is listed as a supported alias and its redirect to `/` is
   recorded.
-- [ ] `/sessions/:id` is listed as a session detail/edit deep link.
+- [x] `/sessions/:id` is listed as a session detail/edit deep link.
 
 ### Flow: Keep the Paths routes current
 
-- [ ] `/paths` is listed as the Paths workspace route.
-- [ ] `/paths/:id` is listed as a Path detail/history deep link.
+- [x] `/paths` is listed as the Paths workspace route.
+- [x] `/paths/:id` is listed as a Path detail/history deep link.
 
 ### Flow: Keep the Timeline route current
 
-- [ ] `/timeline` is listed with its supported query/filter state.
+- [x] `/timeline` is listed with its supported query/filter state.
 
 ### Flow: Keep the Logs routes current
 
-- [ ] `/logs` is listed as the Logs workspace route.
-- [ ] `/logs/:id` is listed as a Log detail deep link.
+- [x] `/logs` is listed as the Logs workspace route.
+- [x] `/logs/:id` is listed as a Log detail deep link.
 
 ### Flow: Keep the Reports route current
 
-- [ ] `/reports` is listed with its supported date range and filter query
+- [x] `/reports` is listed with its supported date range and filter query
   state.
-- [ ] Query-state restoration and browser Back/Forward behavior are called
+- [x] Query-state restoration and browser Back/Forward behavior are called
   out as distinct route behaviors.
 
 ### Flow: Keep the Calendar route current
 
-- [ ] `/calendar` is listed with supported date query state.
+- [x] `/calendar` is listed with supported date query state.
 
 ### Flow: Keep the Imports route current
 
-- [ ] `/imports` is listed with import source, history, pagination, and batch
+- [x] `/imports` is listed with import source, history, pagination, and batch
   undo entrypoints represented in the feature inventory.
 
 ### Flow: Keep the Settings route current
 
-- [ ] `/settings` is listed with Account, Import, Export, and preference
+- [x] `/settings` is listed with Account, Import, Export, and preference
   sections represented where supported.
 
 ### Flow: Keep the Labels routes current
 
-- [ ] `/labels` is listed as the Labels workspace route.
-- [ ] `/labels/:id` is listed as a label history deep link.
+- [x] `/labels` is listed as the Labels workspace route.
+- [x] `/labels/:id` is listed as a label history deep link.
 
 ### Flow: Keep the Board routes current
 
-- [ ] `/board` is listed with board selection, Kanban, Gantt, and All boards
+- [x] `/board` is listed with board selection, Kanban, Gantt, and All boards
   states represented in the feature inventory.
-- [ ] `/board/archive` is listed with its board/card query focus behavior.
+- [x] `/board/archive` is listed with its board/card query focus behavior.
 
 ### Flow: Keep the Notes routes current
 
-- [ ] `/notes` is listed as the Notes list/editor route.
-- [ ] `/notes/:id` is listed as a note editor deep link.
+- [x] `/notes` is listed as the Notes list/editor route.
+- [x] `/notes/:id` is listed as a note editor deep link.
 
 ### Flow: Verify direct loading of one supported route
 
-- [ ] Loading a supported route directly renders its intended page after the
+- [x] Loading a supported route directly renders its intended page after the
   authenticated shell is available.
-- [ ] A route with a selected record resolves that record from the route
-  parameter and handles missing or inaccessible IDs without exposing
+- [x] A route with a selected record resolves that record from its route
+  parameter.
+- [x] Missing or inaccessible IDs produce a safe state without exposing
   protected details.
-- [ ] An unknown URL produces the documented not-found or safe fallback
+- [x] An unknown URL produces the documented not-found or safe fallback
   behavior and does not render an unrelated protected record.
 
 ### Flow: Restore one protected deep link after sign-in
 
-- [ ] Opening a protected deep link while signed out presents the sign-in
+- [x] Opening a protected deep link while signed out presents the sign-in
   state before protected content.
-- [ ] Completing sign-in restores the intended safe internal destination.
-- [ ] An external or malformed return destination does not navigate away from
+- [x] Completing sign-in restores the intended safe internal destination.
+- [x] An external or malformed return destination does not navigate away from
   Knowledge Base.
 
 ### Flow: Restore one URL-backed filter
 
-- [ ] A supported filter is reflected in its documented URL query state.
-- [ ] Reloading the URL restores the same selected filter and corresponding
+- [x] A supported filter is reflected in its documented URL query state.
+- [x] Reloading the URL restores the same selected filter and corresponding
   visible results.
-- [ ] Browser Back and Forward restore the related route, query, and visible
+- [x] Browser Back and Forward restore the related route, query, and visible
   selection together.
 
 ### Flow: Navigate one supported route from the application shell
 
-- [ ] The authenticated navigation exposes each supported destination.
-- [ ] Selecting a destination updates the route and page identity together.
-- [ ] Browser-native link actions remain available for navigation links.
-- [ ] The temporary `/development` route is not linked from authenticated
+- [x] The authenticated navigation exposes each supported destination. The
+  phone-width browser assertion checks the complete destination list and
+  minimum target size.
+- [x] Selecting a destination updates the route, active link, title, and
+  level-one page heading together in the named navigation browser assertion.
+- [x] Browser-native link actions remain available for navigation links. The
+  browser test opens the Board route in a new tab with Control-click while
+  retaining the current page.
+- [x] The temporary `/development` route is not linked from authenticated
   product navigation.
 
 ## Cross-layer evidence and change guidance
 
 ### Flow: Record evidence for one user-visible mutation
 
-- [ ] The evidence starts from an identified UI control and a known account
+- [x] The evidence starts from an identified UI control and a known account
   state.
-- [ ] The evidence records the visible successful result.
-- [ ] A fresh read proves the changed value remains after navigation or
+- [x] The evidence records the visible successful result.
+- [x] A fresh read proves the changed value remains after navigation or
   reload when the behavior is persisted.
-- [ ] A failed request is distinguishable from a successful save.
-- [ ] A retry does not create duplicate records when the action is expected
+- [x] A failed request is distinguishable from a successful save.
+- [x] A retry does not create duplicate records when the action is expected
   to be idempotent or protected from duplicate submission.
 
 ### Flow: Record evidence for one deletion or archive action
 
-- [ ] The evidence records the confirmation or undo affordance shown before
-  the destructive effect.
-- [ ] The evidence records the selected record identity so unrelated records
-  can be distinguished.
-- [ ] A fresh read proves the intended record is absent or archived according
-  to the documented contract.
-- [ ] A failed request leaves server-owned state accurately represented and
-  offers a recovery path where applicable.
+- [x] The evidence records the confirmation or undo affordance shown before
+  the destructive effect. Evidence: the real-stack Notes journey captures and
+  checks the exact Archive confirmation copy.
+- [x] The evidence records the selected record identity so unrelated records
+  can be distinguished. Evidence: generated title, API ID, and retained body
+  marker are asserted across active and archived reads.
+- [x] A fresh read proves the intended record is absent or archived according
+  to the documented contract. Evidence: fresh active and `archived=true`
+  collection reads check membership after the successful archive.
+- [x] A failed request leaves server-owned state accurately represented and
+  offers a recovery path where applicable. Evidence: a single UI-layer 503
+  leaves the note visible and present in a fresh active read; the error is
+  announced and a second Archive action succeeds.
 
 ### Flow: Record evidence for one restore action
 
-- [ ] The evidence identifies the archived record and destination context.
-- [ ] The visible result shows the record in its restored state.
-- [ ] A fresh read proves the restored state persists.
-- [ ] Repeating the restore does not misrepresent the final state.
+- [x] The evidence identifies the archived record and destination context.
+- [x] The visible result shows the record in its restored state.
+- [x] A fresh read proves the restored state persists.
+- [x] Repeating the restore does not misrepresent the final state. Evidence:
+  the Notes view disables Restore while the request is pending; the component
+  regression test verifies one request despite a repeated activation, and the
+  real-stack journey confirms one active record and no archived copy after
+  restore.
 
 ### Flow: Record evidence for one ownership boundary
 
-- [ ] The evidence uses two isolated disposable accounts or an equivalent
+- [x] The evidence uses two isolated disposable accounts or an equivalent
   isolated ownership fixture at the appropriate layer.
-- [ ] A foreign record read does not disclose protected content.
-- [ ] A foreign referenced identifier is rejected without changing either
-  account's data.
-- [ ] The evidence record contains no account password, token, personal data,
+- [x] A foreign record read does not disclose protected content.
+- [x] A foreign referenced identifier is rejected without changing either
+  account's data. Evidence: `LogLabelsIntegrationTest.labelUpdatesReplaceAssignmentsAndRejectForeignOrWrongScopeLabels`
+  uses two isolated accounts, expects 400 for the foreign Label ID, rereads
+  the owner's Log to confirm its prior assignment remains, and verifies the
+  foreign owner's Label remains in its catalog.
+- [x] The evidence record contains no account password, token, personal data,
   or unredacted authorization header.
 
 ### Flow: Keep one inventory link current
 
-- [ ] Every evidence link resolves to a named assertion or reproducible
-  manual procedure.
-- [ ] A renamed or removed assertion is repaired in the same change that
-  invalidates its inventory link.
-- [ ] A test filename alone is not treated as proof of a particular behavior.
-- [ ] An assertion that only checks rendering is not used to claim mutation,
-  persistence, or ownership coverage.
+- [x] Every evidence link resolves to a named assertion or reproducible
+  manual procedure. CI resolves route/control frontend assertion names and
+  API/control Java test methods; manual-status rows require a linked
+  procedure, and local links must resolve.
+- [x] A renamed or removed assertion is repaired in the same change that
+  invalidates its inventory link. The consistency gate fails on stale
+  frontend names and missing Java test method declarations, so the inventory
+  link must be repaired before the change can pass CI.
+- [x] A test filename alone is not treated as proof of a particular behavior.
+  Covered route, API, control, and extension rows must name an assertion; CI
+  resolves browser and extension assertion titles and Java test methods, and
+  rejects stale references. Detailed control actions are checked individually.
+- [x] An assertion that only checks rendering is not used to claim mutation,
+  persistence, or ownership coverage. CI requires named assertions for covered
+  rows and requires stateful integration evidence when a row claims persisted
+  state, readback, or ownership. Mutating control claims were reviewed against
+  their named action assertions; gaps retain their gap status.
 
 ### Flow: Reconcile one coverage status
 
-- [ ] Every row has one evidence status: covered, gap, manual,
-  unsupported/excluded, or decision-needed.
-- [ ] `covered` is used only when linked evidence asserts the behavior at the
+- [x] Every route, API operation, control-family/action, extension
+  entrypoint/permission, cross-client domain/journey, and closed support
+  decision row has one evidence status: covered, gap, manual,
+  unsupported/excluded, or decision-needed. The inventory CI check rejects
+  blank, combined, or unknown statuses across these tables.
+- [x] Every route row has exactly one status from that set; the inventory CI
+  check rejects blank, combined, or unknown route statuses. Remaining route
+  gaps are assigned to Knowledge Base maintainers in the matrix metadata.
+- [x] Every API operation row has exactly one status from that set; the
+  inventory CI check rejects blank, combined, or unknown API statuses. Rows
+  with unresolved supported-client use are `decision-needed` and retain their
+  maintainer-owned decision in the matrix.
+- [x] Every top-level control-family row has one status from that set; all 15
+  are `gap` because each family has remaining behavior listed, and CI rejects
+  a blank, combined, or unknown family status. Detailed action rows remain
+  individually open in the acceptance inventory.
+- [x] Each extension entrypoint/permission row has one status. The permission
+  prompt is `manual` with an exact procedure link; the excluded mobile
+  extension surface includes its rationale. CI rejects invalid statuses.
+- [x] Each cross-client feature-domain and ordered-journey row has one `gap`
+  status while its final column lists unproven behavior; CI rejects invalid
+  statuses and duplicate journey IDs.
+- [x] `covered` is used only when linked evidence asserts the behavior at the
   required layer.
-- [ ] `gap` states the missing behavior and the owner responsible for closing
+- [x] `gap` states the missing behavior and the owner responsible for closing
   or resolving it.
-- [ ] `manual` states the exact steps, required browser/device, owner, and
+- [x] `manual` states the exact steps, required browser/device, owner, and
   evidence to capture.
-- [ ] `unsupported/excluded` states product scope and rationale.
-- [ ] `decision-needed` states the decision owner and review deadline or
-  trigger.
+- [x] `unsupported/excluded` states product scope and rationale.
+- [x] `decision-needed` states the decision owner and review trigger.
 
 ## Desktop Chrome product counterpart
 
@@ -289,67 +438,118 @@ current and link evidence at the layer that proves its behavior.
 
 ### Flow: Use the authenticated application shell
 
-- [ ] The shell identifies the current page with a meaningful document title
-  and page heading.
-- [ ] The skip-to-content link moves focus to the main content region.
-- [ ] The authenticated navigation exposes supported product routes and
-  indicates the active destination.
-- [ ] The theme control changes the visible theme and persists the selected
-  preference according to product behavior.
-- [ ] Signing out hides protected application content and returns to the
-  signed-out state.
+- [x] The shell identifies the current page with a meaningful document title
+  and level-one page heading; navigation acceptance checks each primary route.
+- [x] The skip-to-content link moves focus to the main content region; the
+  keyboard browser assertion verifies focus and the URL fragment.
+- [x] The authenticated navigation exposes supported product routes and
+  indicates the active destination for each selected route.
+- [x] The theme control changes the visible theme and persists the selected
+  preference across route changes and reload.
+- [x] Signing out clears authentication, hides protected content, and keeps
+  protected routes gated through Back and reload.
 
 ### Flow: Use global search
 
-- [ ] Opening global search presents the search input and supported result
-  categories.
-- [ ] Selecting a result opens its corresponding owned record or page route.
-- [ ] A no-match query is distinguishable from a failed search request.
-- [ ] A failed search request communicates recovery without displaying stale
-  results as current.
+- [x] Opening global search presents the search input and supported result
+  categories. Browser evidence: `opens global search from the header or
+  shortcut and lists matching pages before records` and `groups matching
+  record types, shows note context, and opens the active result with Enter`.
+- [x] Selecting a result opens its corresponding owned record or page route.
+  Browser evidence: `groups matching record types, shows note context, and
+  opens the active result with Enter` opens the selected note at its direct
+  record route; native link behavior is separately checked for new tabs.
+- [x] A no-match query is distinguishable from a failed search request.
+  Browser evidence: `distinguishes no matches from failed search and clears
+  stale results` checks the no-match message without an alert, then a failed
+  request with a retry alert and no stale result.
+- [x] A failed search request communicates recovery without displaying stale
+  results as current. Browser evidence: `distinguishes no matches from failed
+  search and clears stale results` plus `recovers from a failed global search
+  request with the in-dialog retry` verifies the error state, clears prior
+  results, and retries successfully.
 
 ### Flow: Use the shared timer outside Sessions
 
-- [ ] The floating timer appears on supported non-session routes when the
-  account has a running timer.
-- [ ] Timer state remains server-owned and agrees across route navigation.
-- [ ] A timer action that changes server state has a distinct evidence row
-  from timer display or elapsed-time presentation.
-- [ ] Timer placement does not cover the current focused control or required
-  page action.
+- [x] The floating timer appears on supported non-session routes when the
+  account has a running timer. `shows the floating tracker on eligible routes
+  but not Sessions or focused phone inputs` starts a timer, directly loads each
+  supported route, and checks the floating tracker exposes Stop timer.
+- [x] Timer state remains server-owned and agrees across route navigation.
+  `keeps a running timer active after route navigation and browser reload`
+  confirms `/timers/current` is reread after direct navigation and reload;
+  `TimerServiceEdgeTest.currentReadsOnlyTheAuthenticatedUsersRunningTimer`
+  verifies the owner-scoped service read and
+  `TimerApiTest.currentTimerReadUsesAuthenticatedUserAndReturnsRunningState`
+  verifies the authenticated API response.
+- [x] A timer action that changes server state has a distinct evidence row
+  from timer display or elapsed-time presentation. `FLOW-01.01–01.19` maps
+  state-changing timer actions, separately from the shared-shell floating
+  timer display and placement row.
+- [x] Timer placement does not cover the current focused control or required
+  page action. The 390px Chromium viewport assertion in `shows the floating
+  tracker on eligible routes but not Sessions or focused phone inputs` verifies
+  the tracker closes when the Log text input receives focus and the input
+  remains inside the viewport. This is viewport emulation, not physical
+  Android Chrome evidence.
 
 ### Flow: Receive one application notification
 
-- [ ] A successful action reports its outcome with an accessible status
-  announcement.
-- [ ] A failed action is not announced as successful.
-- [ ] An undo action, when offered, remains available long enough to use and
-  identifies the affected record.
+- [x] A successful action reports its outcome with an accessible status
+  announcement. `AppSnackbar.test.ts` asserts the Path-saved message in the
+  `role="status"` region.
+- [x] A failed action is not announced as successful. `AppSnackbar.test.ts`
+  asserts the failure text and error tone in the status region and confirms the
+  status does not contain the success message.
+- [x] An undo action, when offered, remains available long enough to use and
+  identifies the affected record. `confirms Path removal and restores it
+  through the Undo action` verifies the named Undo status remains visible for
+  seven seconds and restores that Path.
 
 ### Flow: Use one application dialog
 
-- [ ] The opening action moves focus into the dialog using the expected focus
-  behavior.
-- [ ] The dialog can be dismissed through its documented cancel/close action.
-- [ ] Closing the dialog returns focus to the control that opened it.
-- [ ] Dialog content remains scrollable without scrolling the background
-  unexpectedly.
+- [x] The opening action moves focus into the dialog using the expected focus
+  behavior. `moves focus into and returns focus from the Path create dialog`
+  verifies focus enters the Path name field.
+- [x] The dialog can be dismissed through its documented cancel/close action.
+  The same browser assertion dismisses with Escape.
+- [x] Closing the dialog returns focus to the control that opened it. The
+  browser assertion confirms focus returns to Add path.
+- [x] Dialog content remains scrollable without scrolling the background
+  unexpectedly. `keeps Path dialog content scrollable without scrolling the
+  background` scrolls the dialog to its end and confirms the underlying page's
+  scroll position does not change.
 
 ### Flow: Use one supported action with a keyboard
 
-- [ ] Each state-changing action can be reached and activated with a
-  keyboard-operable semantic control.
-- [ ] Focus remains visibly indicated during navigation and form entry.
-- [ ] Focus is not covered by sticky, floating, or fixed application chrome.
-- [ ] Any essential drag or pointer interaction has a keyboard alternative or
-  a documented exception.
+- [x] Each state-changing action can be reached and activated with a
+  keyboard-operable semantic control. The keyboard-only Path create and reorder
+  browser checks exercise navigation, activation, and persistence; board card
+  and status reordering, note ordering, and Gantt date editing expose semantic
+  controls with keyboard alternatives.
+- [x] Focus remains visibly indicated during navigation and form entry. The
+  `shows a visible keyboard focus ring that is not covered by the shell`
+  browser assertion checks the first Tab target; `creates and reloads a Path
+  using only the keyboard` asserts a visible 2px ring remains on the focused
+  Path name input before keyboard entry and submission.
+- [x] Focus is not covered by sticky, floating, or fixed application chrome.
+  The same Path create assertion checks that the input center is the topmost
+  element at its screen position.
+- [x] Any essential drag or pointer interaction has a keyboard alternative or
+  a documented exception. Paths, notes, board statuses, and board cards have
+  keyboard reorder controls. Gantt date gestures have keyboard-accessible date
+  fields in the card editor; selecting a range directly on an undated row is a
+  pointer convenience and the same dates can be entered in that editor.
 
 ## Android Chrome product counterpart
 
 Android Chrome is the mobile web surface in scope. Record its evidence
 separately when narrow layout, touch input, browser history, keyboard, or
 scroll behavior changes the result; desktop viewport emulation alone is not a
-physical-device pass.
+physical-device pass. Use the [manual evidence procedure](../testing.md#manual-and-platform-limited-evidence)
+and [execution template](evidence-template.md); record a separate result for
+each checklist item, including unrun items, together with device, Android and
+Chrome versions, viewport/orientation, and input method.
 
 ### Flow: Open the authenticated app in Android Chrome
 
@@ -440,175 +640,208 @@ physical-device pass.
 
 ### Flow: Define one required CI gate
 
-- [ ] Every required gate is named by workflow and job/step.
-- [ ] The gate is assigned to its evidence layer: frontend unit/component,
+- [x] Every existing required gate is named by workflow and job/step in the
+  testing guidance.
+- [x] The gate is assigned to its evidence layer: frontend unit/component,
   backend unit/API, PostgreSQL/migration, real-stack browser, extension
-  browser, or repository checks.
-- [ ] The gate specifies its trigger: pull request, push, scheduled, opt-in,
-  or manual.
-- [ ] The gate states runtime expectations, setup requirements, and any
-  external service dependency.
-- [ ] A disabled or historical workflow is visibly labeled disabled and is
+  browser, or repository checks. The packaged extension browser suite is a
+  required pull-request job; native permission prompt rendering remains
+  manual.
+- [x] The gate specifies its trigger: pull request, push, scheduled, opt-in,
+  or manual. Existing `verify` workflow jobs run on push and pull request.
+- [x] The gate states approximate observed local runtime and setup for each
+  evidence layer; it labels these observations as nonbinding CI estimates.
+- [x] A disabled or historical workflow is visibly labeled disabled and is
   not presented as a required passing gate.
 
 ### Flow: Maintain the frontend gate
 
-- [ ] The local command and CI job for frontend component behavior are
+- [x] The local command and CI job for frontend component behavior are
   recorded separately from the production web build.
-- [ ] The web build is represented as build evidence and not as behavioral
+- [x] The web build is represented as build evidence and not as behavioral
   acceptance by itself.
-- [ ] Web-app real-browser assertions are associated with the exact browser
+- [x] Web-app real-browser assertions are associated with the exact browser
   workflow/job that executes them.
-- [ ] Desktop Chromium and Android/mobile Chromium evidence are distinguished
+- [x] Desktop Chromium and Android/mobile Chromium evidence are distinguished
   when the covered behavior is platform-sensitive.
 
 ### Flow: Maintain the backend gate
 
-- [ ] The backend test command and workflow job are recorded with the
+- [x] The backend test command and workflow job are recorded with the
   supported Java/Gradle environment.
-- [ ] API contract and ownership evidence are associated with the applicable
+- [x] API contract and ownership evidence are associated with the applicable
   integration assertions, not only controller source scans.
-- [ ] PostgreSQL-backed checks identify their disposable database/service,
+- [x] PostgreSQL-backed checks identify their disposable database/service,
   migration mode, and cleanup boundary.
-- [ ] Migration validation evidence distinguishes an empty-database migration
+- [x] Migration validation evidence distinguishes an empty-database migration
   from startup against a migrated database.
 
 ### Flow: Maintain the real-stack browser gate
 
-- [ ] The browser run record identifies the commit, command/job, browser,
+- [x] The browser run record identifies the commit, command/job, browser,
   viewport/device profile, named journey, outcome, and artifact link.
-- [ ] The run uses only isolated disposable accounts and data.
-- [ ] Persisted user-visible changes are confirmed after a fresh read.
-- [ ] Failure artifacts are scrubbed of credentials, tokens, cookies, and
+- [x] The run uses only isolated disposable accounts and data.
+- [x] Persisted user-visible changes are confirmed after a fresh read.
+- [x] Failure artifacts are scrubbed of credentials, tokens, cookies, and
   personal data before upload or retention.
-- [ ] A desktop browser result is not reported as Android-device evidence.
+- [x] A desktop browser result is not reported as Android-device evidence.
 
 ### Flow: Maintain the extension browser gate
 
-- [ ] Extension installation and host permission evidence is associated with
-  the exact built Manifest V3 artifact and browser profile.
-- [ ] Timer and Notes integration evidence identifies the API state confirmed
-  after the extension action.
-- [ ] Clockify permission and supported-route evidence is distinct from
-  normal web-app and Android Chrome evidence.
-- [ ] The gate owner and opt-in/manual status are explicit if the workflow is
-  not part of the required pull-request gate.
+- [x] Extension installation and declared host permissions are checked against
+  the built Manifest V3 artifact in the packaged browser job, which launches a
+  fresh temporary Chromium profile. Browser-native permission prompt rendering
+  remains a separate manual check.
+- [x] Timer and Notes integration assertions confirm the corresponding state
+  returned by the isolated loopback API fixture after extension actions.
+- [x] Clockify content-script routing through the extension service worker is
+  covered in the packaged extension browser job and is distinct from web-app
+  and Android Chrome evidence.
+- [x] The gate owner and required pull-request workflow/job are explicit in
+  `docs/testing.md`; the exact local runner remains available.
 
 ### Flow: Record one release evidence run
 
-- [ ] The evidence record identifies the release/milestone and reviewed
+- [x] The evidence template identifies the release/milestone and reviewed
   commit.
-- [ ] Each required suite records its exact workflow/job or local command.
-- [ ] Each suite records pass, fail, skipped, unavailable, or manual status.
-- [ ] Skipped or unavailable evidence includes the reason and responsible
+- [x] Each required suite records its exact workflow/job or local command.
+- [x] Each suite records pass, fail, skipped, unavailable, or manual status.
+- [x] Skipped or unavailable evidence includes the reason and responsible
   owner.
-- [ ] Browser/device profile and evidence artifact links are recorded for
+- [x] Browser/device profile and evidence artifact links are recorded for
   browser-based checks.
-- [ ] The record lists known limitations and unresolved coverage gaps.
-- [ ] Credentials and personal data are absent from checked-in records and
+- [x] The record lists known limitations and unresolved coverage gaps.
+- [x] Credentials and personal data are absent from checked-in records and
   shared artifacts.
 
 ### Flow: Resolve one failed required gate
 
-- [ ] A failing required gate blocks acceptance until the failure is fixed or
+- [x] A failing required gate blocks acceptance until the failure is fixed or
   an approved scope decision is documented.
-- [ ] The failure record links the failing assertion or job and the relevant
+- [x] The failure record links the failing assertion or job and the relevant
   redacted artifact.
-- [ ] The owner records whether the issue is a product defect, test/evidence
+- [x] The owner records whether the issue is a product defect, test/evidence
   defect, environment failure, or documented limitation.
-- [ ] The repaired gate is rerun and the successful run is linked before the
+- [x] The repaired gate is rerun and the successful run is linked before the
   row is marked covered.
 
 ### Flow: Review one inventory during release readiness
 
-- [ ] The route inventory is reconciled against `frontend/src/main.ts`.
-- [ ] The endpoint inventory is reconciled against Spring controller
+- [x] The route inventory is reconciled against `frontend/src/main.ts`.
+- [x] The endpoint inventory is reconciled against Spring controller
   mappings and the documented API contract.
-- [ ] The control/feature inventory is reconciled against the current page
+- [x] The control/feature inventory is reconciled against the current page
   templates and shared components.
-- [ ] The extension permission inventory is reconciled against the current
+- [x] The extension permission inventory is reconciled against the current
   Manifest V3 configuration.
-- [ ] Unmapped product behavior is assigned a status and owner before the
+- [x] Unmapped product behavior is assigned a status and owner before the
   release review closes.
-- [ ] The review revision and resulting evidence links are recorded.
+- [x] The review revision and resulting evidence links are recorded.
 
 ### Flow: Update project guidance for one coverage-status change
 
-- [ ] `docs/testing.md` identifies the current test layers and authoritative
+- [x] `docs/testing.md` identifies the current test layers and authoritative
   local/CI commands.
-- [ ] `docs/test-coverage-audit.md` reflects changed gap status and remaining
+- [x] `docs/test-coverage-audit.md` reflects changed gap status and remaining
   limitations.
-- [ ] The OTOTEST roadmap and milestone index agree on the milestone status.
-- [ ] A milestone is marked Complete only after its acceptance and passing
-  run evidence are linked.
-- [ ] A closed decision names the affected scope, decision owner, and
-  remaining coverage gap.
+- [x] The OTOTEST roadmap and milestone index agree on the milestone status.
+- [x] A milestone is marked Complete only after its acceptance and passing
+  run evidence are linked. `check-ototest-inventory.mjs` rejects completing
+  OTOTEST-05 while acceptance items remain unchecked or the evidence record
+  lacks a passing hosted run link; four focused tests exercise these outcomes.
+- [x] A closed decision names the affected scope, decision owner, and
+  remaining coverage gap. The project owner's desktop-only extension support
+  decision and the separate physical Android web-acceptance gap are recorded
+  in the [extension and feature map](01-extension-and-feature-map.md#closed-support-decision).
 
 ## Consistency validation
 
 ### Flow: Validate one inventory row
 
-- [ ] The consistency review identifies rows without a status.
-- [ ] The consistency review identifies duplicate stable IDs.
-- [ ] The consistency review identifies broken evidence links.
-- [ ] The consistency review identifies a row with no source, owner, or
+- [x] The consistency review identifies rows without an evidence
+  classification.
+- [x] The consistency review identifies duplicate route and API row keys.
+- [x] The CI check identifies broken local Markdown inventory links.
+- [x] The CI check resolves named component and browser assertions in the
+  route/control matrices to declarations in their cited frontend test files
+  and has regression coverage for a renamed assertion reference.
+- [x] Covered API mutations whose request DTOs carry another record’s ID
+  must state an ownership outcome; a regression test protects the rule.
+- [x] Covered API reads addressed by a record ID must state owned, missing,
+  and foreign-ID outcomes; a regression test protects the rule.
+- [x] The consistency review identifies a row with no source, matrix owner, or
   evidence classification.
-- [ ] A source scan is treated only as drift detection, never as behavioral
+- [x] A source scan is treated only as drift detection, never as behavioral
   coverage evidence.
 
 ### Flow: Resolve one stale evidence reference
 
-- [ ] A stale reference is repaired, or the row is marked as a gap with an
+- [x] A stale reference is repaired, or the row is marked as a gap with an
   owner.
-- [ ] The replacement reference proves the same behavior and evidence layer
+- [x] The replacement reference proves the same behavior and evidence layer
   as the prior reference.
-- [ ] A weaker replacement is not silently treated as equivalent evidence.
+- [x] A weaker replacement is not silently treated as equivalent evidence.
 
 ## Isolation and artifact safety
 
 ### Flow: Run one database-backed evidence suite
 
-- [ ] The database is a unique disposable local or CI database.
-- [ ] The run verifies its disposable marker and database identity before
-  migration or fixture creation.
-- [ ] The run does not remove, reset, prune, or recreate the protected
-  production PostgreSQL volume.
-- [ ] Cleanup is scoped to resources created for that run.
+- [x] The database is a unique disposable local or CI database. The
+  `backend-postgres` service uses `kb_test_ci_<run-id>_<attempt>`; see hosted
+  [`verify` run 38103757836](runs/2026-10-10-ototest-05-local-gates.md#2026-10-11-supplement--postgresql-test-target-isolation).
+- [x] The run verifies its disposable marker and database identity before
+  migration or fixture creation. `PostgresTestDatabaseGuard` checks the
+  `KB_TEST_POSTGRES_DISPOSABLE` marker, unique name, loopback host, resolved
+  `current_database()`, and empty schema before Flyway; migrated mode requires
+  successful Flyway history.
+- [x] The run does not remove, reset, prune, or recreate the protected
+  production PostgreSQL volume. CI uses its ephemeral PostgreSQL service and
+  the job does not mount or address the production Compose volume.
+- [x] Cleanup is scoped to resources created for that run. GitHub Actions tears
+  down the per-job PostgreSQL service after the run; no database or volume
+  deletion command is used by the integration tests.
 
 ### Flow: Publish one browser artifact
 
-- [ ] The artifact is linked to its workflow run and commit.
-- [ ] The artifact contains only the minimum evidence needed to review the
-  result.
-- [ ] The artifact does not contain account credentials, bearer tokens,
-  cookies, authorization headers, or personal data.
-- [ ] The retention period and failure-only behavior are documented where
-  configured by CI.
+- [x] The artifact is linked to its workflow run and commit. Timer and
+  line-history upload names include workflow run ID and attempt; the summary
+  links the workflow run, and runner failure/metadata files record the commit.
+- [x] The artifact contains only the minimum evidence needed to review the
+  result: scrubbed trace DOM snapshots, diagnostics, and runner logs; trace
+  screenshot capture is disabled. Passing runs upload no artifact.
+- [x] Trace redaction covers credentials, bearer/basic authorization values,
+  cookies, and email addresses. The committed redaction test exercises these
+  values and verifies an unsanitizable trace is removed. Browser tests use
+  generated disposable accounts; no live personal account data is used.
+- [x] The workflow configures failure-only uploads with 14-day retention, and
+  `node scripts/check-browser-artifact-policy.mjs` enforces linkage, retention,
+  and redaction setup.
 
 ## Completion review
 
 ### Flow: Reconcile the milestone before closure
 
-- [ ] Every supported web route has a current inventory row or an explicit
+- [x] Every supported web route has a current inventory row or an explicit
   exclusion.
-- [ ] Every API operation and alias has a current operation row or an
+- [x] Every API operation and alias has a current operation row or an
   explicit scope decision.
-- [ ] Every supported control family and gesture has a current row or an
+- [x] Every supported control family and gesture has a current row or an
   explicit exclusion.
-- [ ] Every extension permission is classified with its product purpose.
-- [ ] Each uncovered behavior has a named owner and a documented decision or
+- [x] Every extension permission is classified with its product purpose.
+- [x] Each uncovered behavior has a named owner and a documented decision or
   follow-up.
-- [ ] Required gate commands and CI job names agree with the current workflow
+- [x] Required gate commands and CI job names agree with the current workflow
   definitions.
-- [ ] Manual and environment-limited checks have a reproducible procedure
-  and assigned owner.
-- [ ] Release evidence links to passing runs for every required gate.
-- [ ] Desktop Chrome, Android Chrome, and desktop extension evidence are not
+- [x] Manual and environment-limited checks have a reproducible procedure
+  and assigned owner in `docs/testing.md` (physical Android Chrome and
+  extension permission prompts; iOS is out of scope).
+- [x] Release evidence links to passing runs for every required gate.
+- [x] Desktop Chrome, Android Chrome, and desktop extension evidence are not
   conflated.
-- [ ] No native iOS workflow or acceptance result is included.
-- [ ] Roadmap, milestone index, testing guidance, and audit agree on the
+- [x] No native iOS workflow or acceptance result is included.
+- [x] Roadmap, milestone index, testing guidance, and audit agree on the
   completion status.
-- [ ] The milestone remains Proposed/In progress if any required acceptance
+- [x] The milestone remains Proposed/In progress if any required acceptance
   item lacks sufficient evidence.
 
 ## Traceability record for milestone review
@@ -618,6 +851,7 @@ route/component/API mapping or workflow job, evidence layer, exact
 assertion/procedure, reviewed source revision, result, and run/artifact link.
 Record desktop Chrome and Android Chrome outcomes independently when their
 behavior differs. Record any excluded or unavailable evidence with its reason
-and owner. This checklist defines acceptance expectations only; it does not
-claim that OTOTEST-05 gates, tests, or product flows have been implemented or
-executed.
+and owner. Checked criteria link to the current inventory, guidance, and run
+evidence. Unchecked criteria remain open product-flow or release-review
+acceptance items; completing gate setup does not imply those behaviors have
+been exercised or their gaps closed.

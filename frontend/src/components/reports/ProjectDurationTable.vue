@@ -42,7 +42,13 @@ withDefaults(
           </td>
         </tr>
         <tr v-if="!categories.length">
-          <td colspan="2" class="muted">No tracked time in this period.</td>
+          <td colspan="2" class="muted">
+            {{
+              categoryLabel === "Label"
+                ? "No labels assigned in this period."
+                : "No tracked time in this period."
+            }}
+          </td>
         </tr>
       </tbody>
     </v-table>

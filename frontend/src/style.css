@@ -1,5 +1,6 @@
 html {
   scrollbar-gutter: stable;
+  scroll-padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
 :root {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
@@ -334,6 +335,9 @@ textarea:disabled {
   .page-number,
   .flat-button,
   .ghost {
+    min-height: 44px;
+  }
+  .v-field {
     min-height: 44px;
   }
   input:not([type="checkbox"]):not([type="radio"]),

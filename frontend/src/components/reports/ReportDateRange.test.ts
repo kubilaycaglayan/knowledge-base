@@ -130,6 +130,9 @@ describe("ReportDateRange", () => {
       input(value: Date[]): string;
     };
     expect(formats.input([new Date(2026, 7, 24)])).toBe("Select a range");
+    expect(
+      formats.input([new Date(2026, 4, 1), new Date(2026, 4, 2)]),
+    ).toBe("May 1, 2026 – May 2, 2026");
     await wrapper.setProps({
       modelValue: { startDate: "2026-09-01", endDate: "2026-09-07" },
     });

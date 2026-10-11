@@ -103,7 +103,7 @@ for attempt in {1..180}; do
   fi
   sleep 2
 done
-compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
+compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | node scripts/check-ototest-source-drift.mjs --openapi-stdin
 allowed_cors="$(
   compose exec -T api wget -S -O /dev/null \
     --method=OPTIONS \
@@ -468,6 +468,15 @@ fi
 smoke_date="$(date -u +%Y-%m-%d)"
 calendar_label="$(api "${header[@]}" "${content_json[@]}" --post-data='{"name":"Smoke leave","color":"#2878D5","scopes":["CALENDAR","TIME_ENTRY"]}' http://localhost:8080/api/v1/labels)"
 calendar_label_id="$(printf '%s' "$calendar_label" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+# LABEL-04: duplicate creation must not replace the existing label's scopes/color.
+labels_before_duplicate="$(api "${header[@]}" http://localhost:8080/api/v1/labels)"
+if api "${header[@]}" "${content_json[@]}" \
+  --post-data='{"name":" smoke LEAVE ","color":"#FF0000","scopes":["LOG"]}' \
+  http://localhost:8080/api/v1/labels >/dev/null; then
+  echo "duplicate label creation was allowed" >&2
+  exit 1
+fi
+[[ "$(api "${header[@]}" http://localhost:8080/api/v1/labels)" == "$labels_before_duplicate" ]]
 calendar_day="$(api "${header[@]}" "${content_json[@]}" --method=PUT \
   --body-data="{\"note\":\"Calendar smoke record\",\"labels\":[{\"labelId\":\"$calendar_label_id\",\"portion\":1.0}]}" \
   "http://localhost:8080/api/v1/calendar/days/$smoke_date")"

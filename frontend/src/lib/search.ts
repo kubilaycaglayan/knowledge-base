@@ -121,7 +121,6 @@ export const appPages: AppPage[] = [
   { id: "paths", label: "Paths", path: "/paths" },
   { id: "labels", label: "Labels", path: "/labels" },
   { id: "imports", label: "Imports", path: "/imports" },
-  { id: "development", label: "Development", path: "/development" },
   { id: "settings", label: "Settings", path: "/settings", aliases: ["preferences"] },
 ];
 

@@ -4,7 +4,10 @@ import { api } from "../lib/api";
 import { createPinia, setActivePinia } from "pinia";
 import { applyTheme } from "../lib/theme";
 
-vi.mock("../lib/api", () => ({ api: vi.fn() }));
+vi.mock("../lib/api", () => ({
+  api: vi.fn(),
+  EXPIRED_SESSION_NOTICE_KEY: "know_expired_session_notice",
+}));
 
 type GoogleTestWindow = Window &
   typeof globalThis & {

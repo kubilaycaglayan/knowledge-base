@@ -54,6 +54,11 @@ watch(
   },
 );
 const currentDate = new Date();
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 const presets: PresetDate[] = [
   { label: "Today", value: [currentDate, currentDate] },
   {
@@ -112,7 +117,7 @@ const presets: PresetDate[] = [
 const formats = {
   input: (value: Date[]) =>
     value?.length === 2
-      ? `${format(value[0], "dd/MM/yyyy")} – ${format(value[1], "dd/MM/yyyy")}`
+      ? `${dateFormatter.format(value[0])} – ${dateFormatter.format(value[1])}`
       : "Select a range",
 };
 </script>

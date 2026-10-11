@@ -2419,6 +2419,42 @@ class KnowIntegrationTest extends IntegrationTestSupport {
   }
 
   @Test
+  void undoClockifyBatchRemovesOnlyPathsCreatedByThatBatch() {
+    String token = freshToken();
+    String existingPathName = "ExistingPath-" + UUID.randomUUID();
+    String importedPathName = "ImportedPath-" + UUID.randomUUID();
+    ResponseEntity<JsonNode> existingPath =
+        post(
+            "/api/v1/paths",
+            token,
+            "{\"name\":\"" + existingPathName + "\",\"description\":\"Keep me\"}");
+    assertEquals(HttpStatus.CREATED, existingPath.getStatusCode());
+
+    String payload =
+        "{\"timeentries\":[{\"_id\":\"clockify-undo-"
+            + UUID.randomUUID()
+            + "\",\"description\":\"Undo Clockify Path\",\"projectName\":\""
+            + importedPathName
+            + "\",\"timeInterval\":{\"start\":\"2024-07-03T08:00:00Z\",\"end\":\"2024-07-03T09:00:00Z\"}}]}";
+    ResponseEntity<JsonNode> imported = post("/api/v1/imports/clockify", token, payload);
+    assertEquals(HttpStatus.OK, imported.getStatusCode());
+    String batchId = imported.getBody().get("batchId").asText();
+    assertEquals(1, imported.getBody().get("createdPaths").asInt());
+
+    ResponseEntity<JsonNode> undo =
+        delete("/api/v1/imports/clockify/batches/" + batchId, token);
+    assertEquals(HttpStatus.OK, undo.getStatusCode());
+    assertEquals(1, undo.getBody().get("deletedPaths").asInt());
+
+    JsonNode paths = get("/api/v1/paths", token).getBody();
+    assertEquals(1, paths.size());
+    assertEquals(existingPathName, paths.get(0).get("name").asText());
+    assertTrue(get("/api/v1/time-entries", token).getBody().isEmpty());
+    JsonNode batches = get("/api/v1/imports/clockify/batches", token).getBody();
+    assertTrue(batches.get(0).get("undoneAt").isTextual());
+  }
+
+  @Test
   void clockifyBatchListAndUndoAreOwnerScopedOrderedAndIdempotent() {
     String owner = freshToken();
     String other = freshToken();

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { inject, onMounted, ref, watch } from "vue";
+import { routeLocationKey, routerKey } from "vue-router";
 import { api } from "../lib/api";
 import { formatDateTime } from "../lib/date";
 type Activity = {
@@ -12,12 +13,15 @@ type Activity = {
   timeEntryId?: string;
 };
 type Path = { id: string; name: string };
+const router = inject(routerKey, undefined);
+const route = inject(routeLocationKey, undefined);
+const initialQuery = route?.query;
 const activities = ref<Activity[]>([]),
   paths = ref<Path[]>([]),
-  type = ref(""),
-  pathId = ref(""),
-  from = ref(""),
-  to = ref(""),
+  type = ref(typeof initialQuery?.type === "string" ? initialQuery.type : ""),
+  pathId = ref(typeof initialQuery?.pathId === "string" ? initialQuery.pathId : ""),
+  from = ref(typeof initialQuery?.from === "string" ? initialQuery.from : ""),
+  to = ref(typeof initialQuery?.to === "string" ? initialQuery.to : ""),
   error = ref("");
 const noteActivityId = ref(""),
   noteTitle = ref(""),
@@ -47,25 +51,65 @@ async function load() {
     if (loadId === latestLoad) error.value = "Unable to load activity.";
   }
 }
+function filterQuery() {
+  return {
+    ...(type.value ? { type: type.value } : {}),
+    ...(pathId.value ? { pathId: pathId.value } : {}),
+    ...(from.value ? { from: from.value } : {}),
+    ...(to.value ? { to: to.value } : {}),
+  };
+}
+async function applyFilters() {
+  if (from.value && to.value && from.value > to.value) {
+    await load();
+    return;
+  }
+  if (router) await router.push({ path: "/timeline", query: filterQuery() });
+  await load();
+}
+watch(
+  () => route?.fullPath,
+  () => {
+    if (!route) return;
+    const query = route.query;
+    const next = {
+      type: typeof query.type === "string" ? query.type : "",
+      pathId: typeof query.pathId === "string" ? query.pathId : "",
+      from: typeof query.from === "string" ? query.from : "",
+      to: typeof query.to === "string" ? query.to : "",
+    };
+    if (
+      next.type === type.value &&
+      next.pathId === pathId.value &&
+      next.from === from.value &&
+      next.to === to.value
+    ) return;
+    type.value = next.type;
+    pathId.value = next.pathId;
+    from.value = next.from;
+    to.value = next.to;
+    void load();
+  },
+);
 function setRange(days: number) {
   const end = new Date();
   const start = new Date(end);
   start.setUTCDate(start.getUTCDate() - days + 1);
   from.value = dateValue(start);
   to.value = dateValue(end);
-  void load();
+  void applyFilters();
 }
 function clearRange() {
   from.value = "";
   to.value = "";
-  void load();
+  void applyFilters();
 }
 function clearFilters() {
   type.value = "";
   pathId.value = "";
   from.value = "";
   to.value = "";
-  void load();
+  void applyFilters();
 }
 function openNote(activity: Activity) {
   noteActivityId.value = activity.id;
@@ -122,7 +166,7 @@ onMounted(async () => {
     <p class="lede">
       A chronological record of what you chose to spend time on.
     </p>
-    <form class="filters card" @submit.prevent="load">
+    <form class="filters card" @submit.prevent="applyFilters">
       <div class="row-actions">
         <button type="button" class="text-button" @click="setRange(7)">
           Last 7 days</button

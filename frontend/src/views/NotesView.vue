@@ -21,6 +21,7 @@ import { RICH_TEXT_CLASS, richTextEditorProps, richTextExtensions } from "../lib
 import { plainText, setLineHistory } from "../lib/line-history";
 import { Editor } from "@tiptap/core";
 import { api } from "../lib/api";
+import { vDialogFocus } from "../lib/dialog-focus";
 import NotesPageSizeSelect from "../components/NotesPageSizeSelect.vue";
 import { storeToRefs } from "pinia";
 import {
@@ -39,10 +40,16 @@ type NotePage = {
   totalItems: number;
   totalPages: number;
 };
+type NoteDraftSnapshot = {
+  title: string;
+  content: string;
+  tags: string[];
+};
 
 const route = useRoute();
 const router = useRouter();
 const notesStore = useNotesStore();
+const restoringNoteId = ref("");
 const labelsStore = useLabelsStore();
 const { notes, selected, existingLabels } = storeToRefs(notesStore);
 // ?q= and ?archived=1 make the list's search and archive view linkable.
@@ -56,8 +63,11 @@ const totalItems = ref(0);
 const loading = ref(false);
 const error = ref("");
 const title = ref("");
+const editorLoading = ref(false);
 const tags = ref<string[]>([]);
 const status = ref<"saved" | "saving" | "error">("saved");
+const conflictLatest = shallowRef<Note | null>(null);
+const savedDraft = shallowRef<NoteDraftSnapshot | null>(null);
 const editorHost = ref<HTMLElement | null>(null);
 const editor = shallowRef<Editor | null>(null);
 const draggingId = ref("");
@@ -68,6 +78,27 @@ let creating = false;
 let saveInFlight = false;
 let saveQueued = false;
 let saveInFlightPromise: Promise<void> | null = null;
+
+function currentDraftSnapshot(): NoteDraftSnapshot | null {
+  if (!editor.value) return null;
+  return {
+    title: title.value.trim(),
+    content: JSON.stringify(editor.value.getJSON()),
+    tags: [...tags.value],
+  };
+}
+function draftDiffersFromSaved() {
+  const current = currentDraftSnapshot();
+  const saved = savedDraft.value;
+  return Boolean(current && saved && (
+    current.title !== saved.title ||
+    current.content !== saved.content ||
+    JSON.stringify(current.tags) !== JSON.stringify(saved.tags)
+  ));
+}
+function conflictBodyText(note: Note) {
+  return note.contentText?.trim() || plainText(parseContent(note.content)) || "Empty note";
+}
 
 const isEditor = computed(() => route.name === "note-editor");
 // ?lines=1 shows when each body line was last edited.
@@ -189,12 +220,16 @@ async function archiveNote(note: Note) {
   }
 }
 async function restoreNote(note: Note) {
+  if (restoringNoteId.value) return;
+  restoringNoteId.value = note.id;
   try {
     await api(`/notes/${note.id}/restore`, { method: "POST" });
     notesStore.clearPages();
     await loadNotes();
   } catch {
     error.value = "Unable to restore note.";
+  } finally {
+    restoringNoteId.value = "";
   }
 }
 async function togglePinned(note: Note) {
@@ -310,17 +345,27 @@ function save(): Promise<void> {
         if (!String(cause).includes("Note changed in another window"))
           throw cause;
         const latest = await api<Note>(`/notes/${noteId}`);
-        if (selected.value?.id === noteId) notesStore.setSelected(latest);
-        saved = await api<Note>(`/notes/${noteId}`, {
-          method: "PUT",
-          body: JSON.stringify({ ...snapshot, version: latest.version }),
-        });
+        if (selected.value?.id === noteId) {
+          notesStore.upsert(latest);
+          notesStore.clearPages();
+          notesStore.setSelected(latest);
+          conflictLatest.value = latest;
+          saveQueued = false;
+          savedDraft.value = {
+            title: latest.title.trim(),
+            content: JSON.stringify(parseContent(latest.content)),
+            tags: [...(latest.tags || [])],
+          };
+          status.value = "error";
+        }
+        return;
       }
       notesStore.upsert(saved);
       notesStore.clearPages();
       // The user may have opened another note while this save was in flight.
       if (selected.value?.id !== noteId || !editor.value) return;
       notesStore.setSelected(saved);
+      savedDraft.value = snapshot;
       const stillOnSnapshot =
         title.value.trim() === snapshot.title &&
         JSON.stringify(editor.value.getJSON()) === snapshot.content &&
@@ -335,7 +380,7 @@ function save(): Promise<void> {
     } finally {
       saveInFlight = false;
       saveInFlightPromise = null;
-      if (saveQueued) {
+      if (saveQueued && !conflictLatest.value) {
         saveQueued = false;
         scheduleSave();
       }
@@ -343,33 +388,54 @@ function save(): Promise<void> {
   })();
   return saveInFlightPromise;
 }
-async function flushPendingSave() {
-  while (true) {
-    if (status.value === "error") return false;
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = null;
-      await save();
-      continue;
-    }
-    if (saveQueued) {
-      if (saveInFlightPromise) await saveInFlightPromise;
-      else {
-        saveQueued = false;
-        await save();
-      }
-      continue;
-    }
-    return status.value !== "error";
-  }
-}
 function retrySave() {
   if (status.value === "error") scheduleSave();
 }
-onBeforeRouteLeave(flushPendingSave);
+async function keepDraftAfterConflict() {
+  if (!conflictLatest.value) return;
+  conflictLatest.value = null;
+  status.value = "saved";
+  await save();
+}
+function useSavedVersionAfterConflict() {
+  const latest = conflictLatest.value;
+  if (!latest || selected.value?.id !== latest.id) return;
+  conflictLatest.value = null;
+  notesStore.upsert(latest);
+  notesStore.clearPages();
+  notesStore.setSelected(latest);
+  title.value = latest.title;
+  tags.value = [...(latest.tags || [])];
+  editor.value?.commands.setContent(parseContent(latest.content), false);
+  savedDraft.value = currentDraftSnapshot();
+  status.value = "saved";
+}
+async function confirmEditorNavigation() {
+  if (conflictLatest.value) return false;
+  if (saveInFlightPromise) await saveInFlightPromise;
+  if (!draftDiffersFromSaved()) {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = null;
+    return true;
+  }
+  if (!window.confirm("This note has unsaved changes. Leave and discard them?"))
+    return false;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  saveQueued = false;
+  const saved = savedDraft.value;
+  if (saved) {
+    title.value = saved.title;
+    tags.value = [...saved.tags];
+    editor.value?.commands.setContent(JSON.parse(saved.content), false);
+  }
+  status.value = "saved";
+  return true;
+}
+onBeforeRouteLeave(confirmEditorNavigation);
 onBeforeRouteUpdate(async (to, from) => {
   if (from.params.id && from.params.id !== to.params.id)
-    return flushPendingSave();
+    return confirmEditorNavigation();
   return true;
 });
 function keepEditorVisible() {
@@ -377,11 +443,25 @@ function keepEditorVisible() {
     const active = document.activeElement;
     if (!active?.closest(".rich-editor")) return;
     const selection = window.getSelection();
-    const anchor = selection?.anchorNode;
-    const target =
-      (anchor instanceof Element ? anchor : anchor?.parentElement) ||
-      editorHost.value?.querySelector(".ProseMirror");
-    target?.scrollIntoView({ block: "nearest", behavior: "auto" });
+    if (selection?.rangeCount) {
+      const caret = selection.getRangeAt(0).getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const top = viewport?.offsetTop ?? 0;
+      const bottom = top + (viewport?.height ?? window.innerHeight);
+      const margin = 12;
+      if (caret.bottom > bottom - margin) {
+        window.scrollBy({ top: caret.bottom - bottom + margin, behavior: "auto" });
+        return;
+      }
+      if (caret.top < top + margin) {
+        window.scrollBy({ top: caret.top - top - margin, behavior: "auto" });
+        return;
+      }
+    }
+    editorHost.value?.querySelector(".ProseMirror")?.scrollIntoView({
+      block: "nearest",
+      behavior: "auto",
+    });
   });
 }
 function keepActiveEditorSelectionVisible() {
@@ -390,6 +470,7 @@ function keepActiveEditorSelectionVisible() {
 async function loadEditor() {
   const id = route.params.id;
   if (!id || typeof id !== "string") return;
+  editorLoading.value = true;
   try {
     const fromList = await api<Note>(`/notes/${id}`);
     // Ignore a late response for a note the user has already left.
@@ -419,8 +500,11 @@ async function loadEditor() {
       onUpdate: scheduleSave,
       onFocus: keepEditorVisible,
     });
+    savedDraft.value = currentDraftSnapshot();
   } catch {
     if (route.params.id === id) error.value = "Unable to open this note.";
+  } finally {
+    if (route.params.id === id) editorLoading.value = false;
   }
 }
 async function closeEditor() {
@@ -614,8 +698,12 @@ onBeforeUnmount(() => {
               ><button
                 v-if="showArchived"
                 class="flat-button"
+                type="button"
+                :disabled="Boolean(restoringNoteId)"
+                :aria-busy="restoringNoteId === note.id"
                 @click.stop="restoreNote(note)"
               >
+                <span v-if="restoringNoteId === note.id" class="restore-spinner" aria-hidden="true"></span>
                 Restore</button
               ><button
                 v-else
@@ -680,15 +768,17 @@ onBeforeUnmount(() => {
         >
           ← Notes
         </button>
-        <span role="status" class="save-state" :class="status">{{
-          status === "saving"
-            ? "Saving…"
-            : status === "error"
-              ? "Not saved"
-              : "Saved"
+        <span role="status" class="save-state" :class="editorLoading ? 'saving' : status">{{
+          editorLoading
+            ? "Loading…"
+            : status === "saving"
+              ? "Saving…"
+              : status === "error"
+                ? "Not saved"
+                : "Saved"
         }}</span>
         <button
-          v-if="status === 'error'"
+          v-if="status === 'error' && !conflictLatest"
           class="flat-button"
           type="button"
           aria-label="Retry save"
@@ -713,6 +803,30 @@ onBeforeUnmount(() => {
           ↷
         </button>
       </div>
+      <div
+        v-if="conflictLatest"
+        v-dialog-focus
+        class="note-conflict-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="note-conflict-title"
+        aria-describedby="note-conflict-description note-conflict-preview"
+        tabindex="-1"
+        @keydown.esc.prevent
+      >
+        <section class="note-conflict-dialog card" tabindex="0">
+          <h2 id="note-conflict-title">This note changed elsewhere</h2>
+          <p id="note-conflict-description">The saved version is newer. Choose which version to keep.</p>
+          <p id="note-conflict-preview" class="note-conflict-preview" tabindex="0">
+            <strong>{{ conflictLatest.title || "Untitled note" }}</strong>
+            <span>{{ conflictBodyText(conflictLatest) }}</span>
+          </p>
+          <div class="note-conflict-actions">
+            <button class="flat-button" type="button" aria-label="Use saved version" @click="useSavedVersionAfterConflict">Use saved version</button>
+            <button class="primary" type="button" aria-label="Keep my draft" @click="keepDraftAfterConflict">Keep my draft</button>
+          </div>
+        </section>
+      </div>
       <div class="note-title-row">
         <input
           v-model="title"
@@ -720,6 +834,7 @@ onBeforeUnmount(() => {
           name="note-title"
           autocomplete="off"
           aria-label="Note title"
+          :disabled="editorLoading"
           placeholder="Title"
           maxlength="240"
           @input="scheduleSave"
@@ -979,6 +1094,51 @@ onBeforeUnmount(() => {
 .save-state.error {
   color: var(--workspace-danger);
 }
+.note-conflict-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 42%);
+}
+.note-conflict-dialog {
+  width: min(100%, 440px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+  border: 1px solid var(--workspace-border);
+  border-radius: var(--workspace-radius);
+  background: var(--workspace-surface);
+  color: var(--workspace-text);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 20%);
+}
+.note-conflict-dialog h2 {
+  margin: 0 0 10px;
+}
+.note-conflict-dialog p {
+  margin: 0 0 20px;
+  color: var(--workspace-muted);
+}
+.note-conflict-preview {
+  display: grid;
+  gap: 4px;
+  max-height: 96px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.note-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.note-conflict-actions button {
+  min-height: 44px;
+  touch-action: manipulation;
+}
 .note-title-input {
   width: 100%;
   border: 0;
@@ -1142,6 +1302,20 @@ onBeforeUnmount(() => {
 .note-row-main:hover strong {
   text-decoration: underline;
 }
+.restore-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: notes-restore-spin 0.8s linear infinite;
+}
+@keyframes notes-restore-spin {
+  to { transform: rotate(360deg); }
+}
 .note-row-meta {
   min-width: 0;
   max-width: none;
@@ -1203,6 +1377,9 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .note-row {
     transition: none;
+  }
+  .restore-spinner {
+    animation: none;
   }
 }
 </style>

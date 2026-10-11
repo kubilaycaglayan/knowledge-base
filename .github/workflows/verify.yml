@@ -58,9 +58,40 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Build web client
         working-directory: frontend
-        run: npm ci && npm test && npm run build
+        run: npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build
+      - name: Check OTOTEST inventory integrity
+        run: node scripts/check-ototest-inventory.mjs
+      - name: Test OTOTEST public API rationale policy
+        run: node --test scripts/ototest-api-public-status.test.mjs
+      - name: Test OTOTEST API client-scope ownership policy
+        run: node --test scripts/ototest-api-client-scope.test.mjs
+      - name: Test OTOTEST route and API source drift checker
+        run: node --test scripts/ototest-source-drift.test.mjs
+      - name: Test OTOTEST inventory metadata policy
+        run: node --test scripts/ototest-inventory-metadata.test.mjs
+      - name: Test OTOTEST Java evidence references
+        run: node --test scripts/ototest-java-evidence.test.mjs
+      - name: Test OTOTEST manual evidence procedures
+        run: node --test scripts/ototest-manual-evidence.test.mjs
+      - name: Test OTOTEST browser evidence references
+        run: node --test scripts/ototest-browser-evidence.test.mjs
+      - name: Test OTOTEST completion guard
+        run: node --test scripts/ototest-completion-guard.test.mjs
+      - name: Check browser artifact policy
+        run: node scripts/check-browser-artifact-policy.mjs
+      - name: Test browser failure artifact redaction
+        working-directory: frontend
+        run: node --test scripts/browser-failure-artifacts.test.mjs
       - name: Validate extension and deployment scripts
-        run: cd chrome-extension && npm ci && npm test && npm run build && node -e "const m=JSON.parse(require('fs').readFileSync('.output/chrome-mv3/manifest.json')); if(m.optional_host_permissions || m.host_permissions.some(p => p.includes('*/*'))) throw Error('extension permissions are too broad')" && cd .. && node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js chrome-extension/google-auth.test.js chrome-extension/api-config.test.js chrome-extension/clockify-validation.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && node scripts/check-hardening-status.mjs && bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+        run: cd chrome-extension && npm ci && npm test && npm run build && node -e "const m=JSON.parse(require('fs').readFileSync('.output/chrome-mv3/manifest.json')); if(m.optional_host_permissions || m.host_permissions.some(p => p.includes('*/*'))) throw Error('extension permissions are too broad')" && cd .. && node scripts/check-ototest-extension-permissions.mjs chrome-extension/.output/chrome-mv3/manifest.json && node --test scripts/ototest-extension-permissions.test.mjs && node --check chrome-extension/core.js && node --check chrome-extension/popup.js && node --check chrome-extension/options.js && node --test chrome-extension/core.test.js chrome-extension/google-auth.test.js chrome-extension/api-config.test.js chrome-extension/clockify-validation.test.js && node scripts/check-accessibility.mjs && node scripts/check-security.mjs && node scripts/check-cloudflare-waf.mjs && node scripts/check-smoke-cleanup.mjs && node scripts/check-hardening-status.mjs && bash -n scripts/run-smoke-tests.sh deployment/backup.sh deployment/preflight.sh && docker run --rm -e DOMAIN=localhost -v "$PWD/deployment/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/deployment/Caddyfile.cloudflare:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile && docker run --rm -v "$PWD/frontend/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Install Chromium for browser acceptance
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run web route and control browser acceptance
+        working-directory: frontend
+        run: npm run test:nav
+      - name: Run packaged extension browser acceptance
+        run: ./scripts/run-extension-browser-e2e.sh
 
   smoke:
     runs-on: ubuntu-latest

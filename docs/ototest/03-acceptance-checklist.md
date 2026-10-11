@@ -6,12 +6,15 @@
 
 **Status:** In progress; checked criteria have linked evidence. Unchecked
 criteria remain open. Mobile emulation evidence is identified as supplemental.
+Per user direction on 2026-10-10, Android-specific acceptance work is deferred;
+device-only criteria remain open and are not part of the current work.
 
 This checklist translates OTOTEST-03 into independently reviewable product
 flows. Each flow has one user-visible responsibility. It covers the current
-Knowledge Base web application in desktop Chrome and mobile Chrome. It does
-not cover native iOS, the Chrome extension, or test implementation/execution;
-the extension has its own scope in OTOTEST-04.
+Knowledge Base web application in desktop Chrome and phone-width browser
+emulation. Real Android Chrome checks are deferred per the scope note above.
+It does not cover native iOS, the Chrome extension, or test
+implementation/execution; the extension has its own scope in OTOTEST-04.
 
 ## Acceptance setup
 
@@ -21,18 +24,41 @@ the extension has its own scope in OTOTEST-04.
   fixtures, and uses a synthetic test token; it writes no backend or personal
   data.
 - [x] Record the application revision, Chrome version, operating system,
-  viewport, theme, and account state for each acceptance pass. Automated pass
-  record: application revision `355f784d`; Google Chrome for Testing
+  viewport, theme, and account state for each acceptance pass. Current
+  automated pass: application revision `2699b7a0`; Google Chrome for Testing
   `153.0.8010.12` (Playwright headless); Ubuntu Linux
-  `7.0.0-38-generic`, x86_64; viewports 1280×900, 1440×900, 390×900 and
-  keyboard-like 390×420; light and dark themes; synthetic signed-in token or
-  signed-out state with in-memory fixtures. Command: `cd frontend && npm run
-  test:nav` (100/100 passed). Phone viewport/touch settings are emulation.
+  `7.0.0-38-generic`, x86_64; desktop and phone-width contexts, including
+  1280×900, 1440×900, 390×900, 390×420, and 320px overflow checks; light and
+  dark themes; synthetic signed-in in-memory fixtures. `npm run test:nav`
+  passed 120/120, including touch timer start, Log-label recovery, contained
+  Log detail scrolling, and the long touch-operated Log label menu.
+  Phone viewport/touch settings are emulation.
+- [x] Record the board control acceptance pass separately. Evidence: application
+  revision `efcb84f8`; Google Chrome for Testing `153.0.8010.12` (Playwright
+  headless); Ubuntu Linux `7.0.0-38-generic`, x86_64; desktop and phone-width
+  fixtures with light theme and synthetic signed-in in-memory data. Command:
+  `cd frontend && npm run test:board` (131/131 passed). Phone touch checks use
+  desktop Chromium touch emulation, not an installed mobile Chrome device.
+- [x] Run the backend and deployed-shaped smoke gates for the current branch.
+  Evidence: at `e967d416`, Dockerized Gradle 8.13 / JDK 21 `gradle test
+  --no-daemon` completed successfully; `./scripts/run-smoke-tests.sh` passed
+  with isolated project `knowledge-base-ototest-api-smoke`; and
+  `SMOKE_FULL_STACK=1 ./scripts/run-smoke-tests.sh` passed with isolated
+  project `knowledge-base-ototest-full-smoke`, including proxy and timer
+  WebSocket checks. Cleanup was scoped to those project test volumes. These
+  gates do not close manual mobile Chrome criteria.
+- [x] Visually inspect the board manager's phone-width reorder controls.
+  Evidence: local disposable account, application UI revision `e7bddd25`,
+  Playwright Chromium mobile emulation at 390×844 with touch enabled; the
+  manager opened through the phone-width More menu, both move targets measured
+  at least 44×44px, and the modal fit within the viewport. Temporary screenshot:
+  `/tmp/ototest-board-manager-phone.png`. This remains desktop emulation.
 - [x] Check desktop Chrome at a representative laptop width and a wide desktop
   width. Evidence: the same run includes direct route, shell, and control flows
   at 1280×900 and 1440×900 in Google Chrome for Testing.
-- [ ] Check mobile Chrome on a real Android device or an explicitly identified
-  mobile Chrome profile at a phone-sized viewport. Record which was used.
+- [ ] **Deferred per user direction:** Check mobile Chrome on a real Android
+  device or an explicitly identified mobile Chrome profile at a phone-sized
+  viewport. No device-specific evidence is claimed.
 - [x] Keep mobile Chrome findings separate from desktop Chrome findings.
   Evidence: [`01-control-matrix.md`](01-control-matrix.md) labels phone-width
   results as desktop Chromium/Chrome touch emulation and the real mobile
@@ -45,7 +71,28 @@ the extension has its own scope in OTOTEST-04.
   `nav-shell.acceptance.test.mjs` includes keyboard-only navigation, keyboard
   Path/Notes reordering, keyboard Calendar selection, and keyboard Log detail
   dialog focus flows; these are recorded separately from click/touch flows.
-- [ ] Use touch-only input for the mobile Chrome flows.
+- [ ] Use touch-only input for the phone-width browser flows. Partial evidence:
+  `nav-shell.acceptance.test.mjs` / `creates a Log with phone-width controls
+  and keeps Save reachable after viewport resize` taps the body, timestamp, and
+  Save controls at 390px; `board.acceptance.test.mjs` separately taps the board,
+  status, and card reorder controls. Other phone-width flows still use browser
+  clicks or programmatic selection. Recent touch-only coverage also taps Start
+  timer, Timeline Filter, Report date navigation, Log label assignment/retry,
+  a long Log label menu selection, and Log detail close. Real mobile Chrome
+  remains unverified and deferred. `board.acceptance.test.mjs` / `moves the
+  view switch and board settings into the board menu on phones` now uses taps
+  for phone menu open, Gantt selection, Boards open, and close; keyboard menu
+  operation is covered separately. `keeps every supported primary destination
+  reachable at phone width` now taps each primary destination and asserts its
+  resulting URL. `contains long global search results and keeps Close
+  reachable on a phone` opens Search, scrolls the long result list, and closes
+  it using touch-only input. `board.acceptance.test.mjs` / `keeps Gantt date
+  and window controls operable at phone width` now taps Next and Today, then
+  checks the date and URL results. `asks before overwriting a Note changed
+  elsewhere and reloads the winning version when chosen` now uses touch for
+  the saved-version choice and return to Notes. Board card editor open and
+  body-focus actions now use touch taps at 320px and 390px portrait and compact
+  phone landscape sizes. Other phone-width flows still need a touch-only pass.
 - [x] Use records with clearly identifiable names when a flow needs saved data;
   do not alter personal or production data. Evidence: browser fixtures use
   named records such as `Directly loaded log entry` and `Phone filter activity`
@@ -55,7 +102,15 @@ the extension has its own scope in OTOTEST-04.
   dialogs, menus, native selects, date picker, and report chart readable in both
   themes` switches between light and dark and checks rendered surfaces.
 - [ ] Check narrow viewport and browser zoom/reflow without hiding actions or
-  causing unintended horizontal page overflow.
+  causing unintended horizontal page overflow. Partial evidence:
+  `nav-shell.acceptance.test.mjs` / `keeps every supported workspace free of
+  page-wide overflow at phone widths` checks all 11 workspaces at 320px and
+  390px in desktop Chromium; `keeps shell actions reachable without horizontal
+  overflow at narrow, wide, and 50%-zoom-equivalent widths` checks the shell at
+  320, 390, 1280, 1920, and 2880 CSS pixels. `keeps visible workspace actions
+  within the 50%-zoom-equivalent viewport` checks for horizontal overflow and
+  visible controls outside the viewport on all nine primary workspaces at
+  2880px. Actual browser zoom and coverage of every route remain open.
 
 ## Shared shell and route behavior
 
@@ -310,14 +365,14 @@ the extension has its own scope in OTOTEST-04.
 - [x] Closing search returns focus to the control that opened it. Evidence:
   `GlobalSearch.test.ts` / `closes with Escape and returns focus to where it was`
   verifies focus moves into the dialog and returns to its trigger on close.
-- [ ] Global search remains usable with touch and the mobile keyboard at phone
-  width. Supplemental automation: `nav-shell.acceptance.test.mjs` /
-  `keeps global search usable with touch at phone width` verifies touch opening,
-  search input hints, result visibility, and viewport bounds at 390px;
-  `keeps global search results reachable across a keyboard-like phone viewport
-  resize` checks result reachability and query retention after reducing and
-  restoring viewport height. Real Android Chrome and its software keyboard
-  still need verification.
+- [x] Global search remains usable with touch at phone width and a reduced
+  viewport height. Supplemental Chromium automation:
+  `nav-shell.acceptance.test.mjs` / `keeps global search usable with touch at
+  phone width` verifies touch opening, search input hints, result visibility,
+  and viewport bounds at 390px; `keeps global search results reachable across a
+  keyboard-like phone viewport resize` checks reachability and query retention
+  after reducing/restoring viewport height. Android software-keyboard behavior
+  remains deferred per user direction.
 
 ### Flow: Open and dismiss a dialog
 
@@ -337,10 +392,11 @@ the extension has its own scope in OTOTEST-04.
   Evidence: the same browser test sends Escape and verifies New board closes
   and the Boards dialog is restored.
 - [x] Clicking a dialog backdrop closes only dialogs that support backdrop
-  dismissal. Evidence: `closes backdrop-dismissible dialogs but keeps
-  destructive confirmations open` in `frontend/scripts/board.acceptance.test.mjs`
-  closes the Boards manager on a backdrop click, keeps Archive card open on a
-  backdrop click, then cancels without archiving the card.
+  dismissal. Evidence: `closes the Boards manager when its backdrop is
+  activated` closes the dismissible dialog; `keeps archive confirmation open
+  when its backdrop is activated` verifies the destructive alert stays open;
+  and `cancels card archive confirmation without archiving the card` verifies
+  cancel leaves the card in Kanban, all in `frontend/scripts/board.acceptance.test.mjs`.
 
 ### Flow: Receive operation feedback
 
@@ -523,6 +579,12 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `SessionsView.test.ts` / `keeps a completed session after delete
   fails and removes it on retry` checks the visible error, retained card, and
   removal after the second request.
+- [x] Removing a session from its detail dialog exposes a named alertdialog
+  and preserves or removes the record according to the user's choice.
+  Evidence: `nav-shell.acceptance.test.mjs` / `names the session removal
+  alert and preserves or removes the session as chosen` verifies the
+  alertdialog accessible name, no DELETE after Keep session, one DELETE after
+  Remove, and dialog closure.
 
 ### Flow: Reconcile live timer updates
 
@@ -541,6 +603,22 @@ the extension has its own scope in OTOTEST-04.
   Evidence: `FloatingTimeTracker.test.ts` / `recovers by polling during socket
   loss and refreshes again after reconnect` sends READY on the reconnected
   socket and verifies the refreshed server description is applied.
+- [x] A second browser tab that loses a real server start race adopts the
+  running timer and its description. Evidence: `timer-websocket.real-stack.
+  acceptance.test.mjs` / `reconciles a browser tab that loses a real server
+  timer-start race` checks HTTP 409, the active Stop timer control, and the
+  authoritative description from the disposable PostgreSQL-backed stack.
+- [x] The disposable real-stack acceptance command passes for the timer race.
+  Evidence: revision `77188776`; `./scripts/run-timer-websocket-e2e.sh` passed
+  with all 4 timer WebSocket browser tests, including the two-tab start race,
+  proxy checks, and desktop/mobile-size auth rate-limit checks. The runner
+  used and removed only its uniquely named disposable Compose project.
+- [x] A second tab that loses a timer-start race adopts the server's running
+  timer. Evidence: `nav-shell.acceptance.test.mjs` / `reconciles a second tab's
+  timer start with the running timer` opens two tabs, confirms the second
+  receives HTTP 409, then verifies it shows Stop timer and no longer offers
+  Start timer. This uses a shared browser fixture; PostgreSQL concurrency is
+  covered separately by `TimerPauseIntegrationTest`.
 
 ## Paths
 
@@ -1220,8 +1298,11 @@ the extension has its own scope in OTOTEST-04.
 - [x] Cards outside the visible interval remain discoverable in the gutter. Evidence: the same test and `shows edge arrows for dated cards outside the visible timeline`.
 - [x] A card's inclusive start/end dates occupy the intended timeline days. Evidence: `BoardView.test.ts` / `selects and saves an inclusive date range when dragging across an undated row` and `previews a one-day bar on an undated card's row and saves the hovered date on click`.
 - [x] Dragging a card bar changes its dates by whole days and shows save feedback. Evidence: `board.acceptance.test.mjs` / `moves and resizes Gantt dates and marks today across the chart` checks the exact updated date payload.
+- [x] Scheduled Gantt dates can be moved and resized with the keyboard. Evidence: `board.acceptance.test.mjs` / `moves and resizes Gantt dates and marks today across the chart` sends ArrowRight and Shift+ArrowLeft and asserts the resulting saved date payloads; `GanttCard.test.ts` checks the start and end resize handles.
+- [x] An unscheduled Gantt card can receive an inclusive range with the keyboard. Evidence: `board.acceptance.test.mjs` / `sets an inclusive date range on an unscheduled Gantt card with keyboard input` asserts the saved start and end dates; `GanttCard.test.ts` checks range preview/save behavior.
+- [x] An unscheduled Gantt card can receive one date with phone-width touch input. Supplemental evidence: `board.acceptance.test.mjs` / `sets one date on an unscheduled Gantt card with a phone-width touch tap` checks the selected date payload and 44px touch target in Chromium touch emulation; real mobile Chrome is still a separate open acceptance item.
 - [x] Resizing either edge changes the matching endpoint date. Evidence: the same test checks left and right endpoint updates.
-- [x] Cancelling a drag leaves the saved date range unchanged. Evidence: `board.acceptance.test.mjs` / `cancels a Gantt drag and restores dates after a failed save` checks cancellation sends no request and both cancellation and failed save restore the original bar.
+- [x] Cancelling a drag leaves the saved date range unchanged. Evidence: `board.acceptance.test.mjs` / `cancels a Gantt drag and restores dates after a failed save` checks lost pointer capture and Escape send no request, preserve the original bar, and a failed save restores the original range.
 - [x] Offscreen date arrows move the visible window to include that card. Evidence: `BoardView.test.ts` / `moves the timeline start to the card's start date from its edge arrow` and `moves the timeline end to the card's end date from its right edge arrow`.
 - [x] Hiding and restoring the card list preserves the user's selected view. Evidence: `BoardView.test.ts` / `hides and shows the Gantt card list from the timeline's top-left toggle` and `remembers the hidden Gantt card list in this browser`.
 - [x] Gantt date and window controls remain visible and operable at 390px where Gantt is offered. Supplemental evidence: `board.acceptance.test.mjs` / `keeps Gantt date and window controls operable at phone width` checks control visibility and viewport bounds, advances the date window, and returns to Today. This Playwright Chromium viewport check does not replace the separately tracked real mobile Chrome/device pass.
@@ -1316,6 +1397,7 @@ the extension has its own scope in OTOTEST-04.
 ### Flow: Archive one note
 
 - [x] Browser acceptance confirms the selected note is archived, leaves its neighbor active, and retains content after switching to Archive and reloading. Evidence: `nav-shell.acceptance.test.mjs` / `archives the selected Note after confirmation and keeps it in the archive after reload`.
+- [x] A failed archive keeps the note active and allows a successful retry. Evidence: `nav-shell.acceptance.test.mjs` / `keeps a Note active after archive failure and allows retry` verifies the 503 feedback, active-list membership after failure, exactly two delete attempts, and archived-list membership after retry.
 - [x] Archiving a note requires confirmation; cancelling leaves the note unchanged. Evidence: `NotesView.test.ts` / `archives a note after confirmation` and `leaves a note unchanged when archive confirmation is cancelled`.
 - [x] Confirming archive removes only the selected note from the active list. Evidence: `NotesView.test.ts` / `archives a note after confirmation` verifies the other note remains and receives no delete request.
 - [x] The archived note remains available in the archived list with its content intact. Evidence: `NotesView.test.ts` / `archives a note after confirmation` switches to Archive and verifies the archived title and body excerpt.
@@ -1341,27 +1423,46 @@ the extension has its own scope in OTOTEST-04.
 
 ### Flow: Recover unsaved note changes
 
-- [ ] Navigating away with unsaved edits warns before discarding them.
-- [ ] Choosing to stay returns the user to the unsaved editor.
-- [ ] Choosing to discard leaves the last saved version intact.
+- [x] Navigating away with unsaved edits warns before discarding them.
+  Evidence: `NotesView.test.ts` / `warns before discarding a pending edit and
+  keeps autosaving when the user stays`; `nav-shell.acceptance.test.mjs` /
+  `warns before leaving a Note with unsaved edits and keeps the last saved
+  version` checks the browser confirmation and last-saved content.
+- [x] Choosing to stay returns the user to the unsaved editor. Evidence:
+  `NotesView.test.ts` / `warns before discarding a pending edit and keeps
+  autosaving when the user stays`; `nav-shell.acceptance.test.mjs` /
+  `keeps a Note draft open when autosave fails during navigation and recovers
+  on retry` dismisses the warning, verifies the editor and draft remain, then
+  retries the save.
+- [x] Choosing to discard leaves the last saved version intact. Evidence:
+  `NotesView.test.ts` / `discards an unsaved Note draft only after the user
+  confirms navigation`; `nav-shell.acceptance.test.mjs` / `warns before leaving
+  a Note with unsaved edits and keeps the last saved version` confirms the
+  pending autosave is canceled and reloads the original title/body.
 - [x] A failed save preserves the draft and offers recovery. Evidence: `NotesView.test.ts` / `keeps a failed note draft and retries the save from an explicit action` verifies the retained draft and successful retry.
-- [ ] A conflicting newer version presents a recovery choice and does not
-  silently overwrite the winning content.
+- [x] A conflicting newer version presents a recovery choice and does not
+  silently overwrite the winning content. Evidence: `NotesView.test.ts` /
+  `asks before replaying a draft when another window saved first` verifies the
+  component shows the newer title/body preview and offers “Use saved version”
+  or “Keep my draft”, makes no second write before a choice, and uses the latest
+  version for an explicitly accepted draft; `uses the newer saved Note when the
+  user declines a conflicting draft` verifies the saved version replaces the
+  local draft without a second write; `nav-shell.acceptance.test.mjs` /
+  `asks before overwriting a Note changed elsewhere and reloads the winning
+  version when chosen` verifies the visible winner preview, no write before
+  choice, Escape recovery, saved-version selection, and persisted reload.
+  Escape leaves the choice open.
 
-Coverage note: `NotesView.test.ts` / `replays a draft when another window
-saved first` verifies automatic retry with the freshly loaded version and a
-visible Saved state. It does not offer a recovery choice, so this criterion
-remains open.
+Coverage note: a stale write fetches the latest version and pauses for an
+explicit recovery choice. It never retries the draft automatically. The user
+can use the saved version or explicitly keep the local draft against the latest
+version; Escape leaves both choices available.
 
-Coverage note: `NotesView.test.ts` / `flushes a pending autosave before
-navigating back to the note list` and `waits for an in-flight save and flushes
-a newer draft before leaving` verify pending/queued autosaves finish before
-navigation;
-`nav-shell.acceptance.test.mjs` / `keeps a Note draft open when autosave fails
-during navigation and recovers on retry` verifies a failed save keeps the user
-on the editor with the draft, then allows navigation after Retry succeeds.
-No explicit stay/discard warning is offered, so the warning and discard
-criteria remain open.
+Coverage note: leaving with unsaved edits requires an explicit confirmation.
+Staying keeps the editor open and the autosave active; discarding cancels a
+pending autosave and restores the last saved draft state. An in-flight save is
+allowed to finish before the navigation choice, and a failed save keeps the
+draft available for retry.
 
 ### Flow: Use the Notes editor in mobile Chrome
 
@@ -1434,37 +1535,97 @@ criteria remain open.
 
 ### Flow: Operate the application with a keyboard
 
-- [ ] Every navigation action is a semantic link and supports standard browser
-  link behavior.
-- [ ] Every state change can be triggered from a semantic button or form
-  control.
+- [x] Every navigation action is a semantic link and supports standard browser
+  link behavior. Evidence: audited Vue templates for navigation-like click
+  handlers; route navigation uses native anchors/`RouterLink` or keyboard
+  patterns with a specific ARIA widget role. `nav-shell.acceptance.test.mjs`
+  verifies all primary route links by accessible name, href, active state and
+  browser Back/Forward; `supports keyboard navigation and opening a primary
+  link in a new tab` verifies Enter activation and Ctrl-click new-tab behavior.
+  Global Search listbox options are keyboard-operable and intentionally use
+  `role="option"` with the active-descendant pattern.
+- [x] Every state change can be triggered from a semantic button or form
+  control. Evidence: a template audit of `frontend/src/**/*.vue` found
+  state-changing click handlers on native buttons/forms or accessible custom
+  widgets. The only other click surfaces are Global Search listbox options,
+  which are activated through the keyboard-operated combobox, and the Board
+  card surface, which also exposes a native keyboard-operable open button for
+  titled and untitled cards. `FloatingTimeTracker.test.ts` and
+  `LabelPicker.test.ts` check their named native triggers; `board.acceptance.test.mjs`
+  checks keyboard opening for both card-title states; Gantt date controls and
+  reorder actions have keyboard alternatives in the named tests below. Detailed
+  per-control outcome mapping remains open in the inventory criteria.
 - [ ] Focus remains visible and is not covered by fixed or sticky UI.
   Partial evidence: `nav-shell.acceptance.test.mjs` / `shows a visible keyboard
   focus ring that is not covered by the shell` checks the first Tab target has
   a 2px focus ring, is inside the phone viewport, and is not covered at its
-  center point. Other controls and scrolled/sticky states still need coverage.
-- [ ] Dialogs, menus, pickers, and forms have predictable focus entry and
-  return behavior.
-  Partial evidence: `nav-shell.acceptance.test.mjs` / `moves focus into and
-  returns focus from the Path create dialog` checks initial focus on the name
-  field and focus restoration after Escape; `opens the first-board dialog
-  with keyboard focus and returns focus on Escape` checks the same lifecycle
-  from the Boards workspace; `moves focus into and back from Log removal
-  confirmation in the detail dialog` covers nested destructive confirmation
-  entry and return. Other dialog/menu/picker patterns remain to be checked.
-- [ ] Drag, date-range, and reorder actions have a keyboard alternative where
-  those actions are not inherently pointer-only.
+  center point. `keeps keyboard focus visible and unobscured across desktop and
+  phone workspaces` now tabs through a complete focus cycle on all 11 supported
+  workspaces at 390px and 1440px, asserting the focused control is in the
+  viewport, has an indicator, and is not covered at its center. The run exposed
+  the fixed footer overlap on Calendar; `html` now has bottom scroll padding
+  for keyboard focus scrolling. `npm run test:nav` passed 120/120 at
+  `2699b7a0`, and the current `npm run test:board` passed 131/131, including
+  the Boards dialog keyboard return-focus check. The new
+  `keeps keyboard focus visible and unobscured in the phone-width search
+  dialog` check verifies the modal input's focus ring at a 320px viewport and
+  exposed/remedied a removed outline in Global Search. The phone-width New
+  board dialog also checks its focused field's visible 2px outline and
+  unobscured viewport position. The Note conflict dialog now checks its
+  focused, outlined scroll surface and reachable choice buttons at 320×260;
+  `contains long global search results and keeps Close reachable on a phone`
+  now tabs into the scrolled results surface and checks its visible 2px focus
+  outline and viewport position. The long Boards manager test now tabs through
+  its 20 rows and verifies Done's visible 2px focus outline after the dialog
+  scrolls. `keeps a long board confirmation scrollable with its cancel action
+  reachable on a phone` now verifies the focused Archive action has a visible
+  2px outline inside the scrolled alert dialog. `traps focus and returns it
+  after cancelling session list removal` also checks the focused Cancel and
+  Confirm actions' 2px outlines and verifies Cancel is not covered. The long
+  Log detail phone dialog now verifies keyboard focus reaches Close after
+  scrolling, with a visible 2px outline and no viewport occlusion. Other
+  modal-open states and dynamic scrolled/sticky states still need coverage.
+- [x] Dialogs, menus, pickers, and forms have predictable focus entry and
+  return behavior. Evidence: a source audit found all 21 Vue `role="dialog"`
+  and `role="alertdialog"` instances use `v-dialog-focus`; `dialog-focus.test.ts`
+  checks initial focus, Tab wrapping in both directions, and focus return.
+  Browser coverage verifies Path and Board dialog focus, board archive
+  confirmation focus/return, and Session/Log confirmation focus traps and
+  return, including the session-list confirmation. `GlobalSearch.test.ts`
+  checks focus return, `LabelPicker.test.ts`
+  checks search focus and Escape return, `board.acceptance.test.mjs` checks
+  keyboard menu entry/return, and `RichTextToolbar.test.ts` checks its roving
+  keyboard focus. Verification: four focused Vitest files passed 35/35 at
+  `d7238543`; current route-wide focus traversal passed 120/120 at `2699b7a0`,
+  and Board acceptance passed 131/131 after `e967d416`. The current
+  `opens a new-board dialog from the Boards dialog and returns there on Escape`
+  browser check also verifies keyboard return focus to the phone Board menu
+  trigger. Route-wide focus-ring
+  visibility remains a separate open criterion because modal-open and dynamic
+  scrolled/sticky states are not exhaustively covered.
+- [x] Drag, date-range, and reorder actions have a keyboard alternative where
+  those actions are not inherently pointer-only. Evidence: `nav-shell.acceptance.test.mjs`
+  checks Path and Notes reorder by keyboard and Calendar range selection by
+  keyboard; `board.acceptance.test.mjs` checks board, status, and card reorder
+  by keyboard; `GanttCard.test.ts` checks keyboard date move, resize, and
+  unscheduled date-range selection. Pointer-only drag gestures remain recorded
+  separately from their keyboard alternatives.
 
-### Flow: Operate the application with mobile Chrome touch
+### Flow: Operate the application with phone-width touch emulation
 
-- [ ] Primary touch targets are comfortably tappable at phone width.
-  Partial evidence: `nav-shell.acceptance.test.mjs` / `filters Timeline
-  activity with phone-width controls and sends the selected values` checks
-  44×44px targets for Timeline type/Path selectors and key filter actions at
-  390px; `creates a Log with phone-width controls and shows the saved record`
-  checks the Log composer and submit action at the same width. These run in
-  desktop Chromium touch emulation. Other routes and real mobile Chrome still
-  need verification.
+- [x] Primary touch targets are comfortably tappable at phone width in browser
+  emulation.
+  Supplemental evidence: `nav-shell.acceptance.test.mjs` / `keeps visible
+  interactive targets at least 44px at phone width across workspaces` checks
+  all visible buttons, links, fields, comboboxes, and options across the 11
+  supported workspaces at 390px, including populated Sessions date and paging
+  controls. Separate assertions cover the active floating timer control and
+  Calendar year visibility. It found and drove fixes for undersized Settings,
+  Calendar, Board archive, Imports, Reports, and Sessions targets; the audits
+  pass in desktop Chromium touch emulation. Real mobile Chrome remains deferred.
+  The route-specific Timeline and Log checks and Board reorder checks also
+  verify 44×44px targets and actual touch actions in desktop Chromium touch
+  emulation. Real mobile Chrome verification remains open.
 - [x] Mobile text controls use an input size that avoids unintended browser
   zoom where applicable. Supplemental Chromium evidence:
   `nav-shell.acceptance.test.mjs` / `uses at least 16px text controls on
@@ -1478,38 +1639,60 @@ criteria remain open.
   still needs verification.
 - [ ] The on-screen keyboard does not permanently obscure the active control
   or its save/recovery action.
-  Partial evidence: `nav-shell.acceptance.test.mjs` / `creates a Log with
+  **Deferred per user direction:** This item requires actual Android
+  on-screen-keyboard behavior; no Android device or keyboard work is in scope.
+  Existing supplemental evidence: `nav-shell.acceptance.test.mjs` / `creates a Log with
   phone-width controls and keeps Save reachable after viewport resize` retains
   the typed draft and scrolls Save into view at a 420px viewport height after
   focusing the timestamp field. This emulates reduced viewport height; actual
   Android keyboard behavior remains unverified.
 - [ ] Modals and drawers keep their content scroll contained and provide a
   reachable close action.
-- [ ] Gestures have a tap or keyboard alternative unless the gesture is
-  essential to the task.
+  Partial evidence: `nav-shell.acceptance.test.mjs` / `keeps a long board
+  confirmation scrollable with its cancel action reachable on a phone` checks
+  viewport-limited contained scrolling and reaches Cancel at 390px; `contains
+  long Log detail scrolling and keeps its close action reachable on a phone`
+  verifies the detail text's contained scroll, `overscroll-behavior: contain`,
+  touch-reachable Close action and visible keyboard focus; `keeps a long Log label menu scroll-contained
+  and touch-operable on a phone` verifies a long menu's contained option scroll,
+  touch selection, and Escape focus return. `asks before overwriting a Note
+  changed elsewhere and reloads the winning version when chosen` also verifies
+  a long conflict preview and dialog scroll stay contained at 320×260, with the
+  saved-version choice reachable; Axe reports no violations. Other dialog and
+  drawer patterns still need coverage. `board.acceptance.test.mjs` / `keeps a
+  long Boards dialog scroll-contained with Done reachable on a phone` checks
+  20 manager rows, `overflow-y: auto`, `overscroll-behavior: contain`, and a
+  keyboard-focusable, touch-reachable Done action at 390×320.
+  `contains long global search results and keeps Close reachable on a phone`
+  also checks a 24-result list at 390×320, keyboard-focusable contained
+  scrolling, no Axe violations, and touch-reachable Close; other dialog and
+  drawer patterns still need coverage.
+- [x] Gestures have a tap or keyboard alternative unless the gesture is
+  essential to the task. Evidence: `nav-shell.acceptance.test.mjs` verifies
+  keyboard and touch alternatives for Path reorder and Calendar range selection;
+  `board.acceptance.test.mjs` and `GanttCard.test.ts` verify keyboard
+  alternatives for board/status/card reorder and Gantt date move, resize, and
+  range selection. Touch reorder coverage remains tracked separately in the
+  control matrix.
 
 ### Flow: Display long and empty user content
 
-- [ ] Very long titles, descriptions, note bodies, and log text do not overlap
-  adjacent controls or create page-wide overflow.
-  Partial evidence: `nav-shell.acceptance.test.mjs` / `keeps long note titles
-  and paragraphs within a phone-width editor`, `wraps very long Log text
-  within the phone-width detail layout`, `keeps a long Path description
-  inside its phone-width card`, and `wraps a long Board card title inside its
-  phone-width card`; `PathsView.test.ts` / `keeps long path titles on one
-  truncated line`. Very long descriptions in other routes and route-specific
-  combinations still need explicit coverage.
-- [ ] Empty strings and empty collections render intentional empty states.
-  Partial evidence: `LogsView.test.ts` / `shows the intentional empty state
-  when no logs exist` checks the empty message without rows or an error;
-  `NotesView.test.ts` / `shows an actionable empty state when no notes exist`
-  checks the message, absence of rows/error, and Create new note action, while
-  `renders an empty rich-text body as italic Empty note` checks an empty
-  user-entered body; Labels, Imports, and a loaded empty Board list are also
-  covered by named component tests; `nav-shell.acceptance.test.mjs` / `shows
-  an add-card action for a loaded empty Board column` checks a loaded empty
-  card column and its action. Other supported collections and blank fields
-  still need explicit coverage.
+- [x] Very long titles, descriptions, note bodies, and log text do not overlap
+  adjacent controls or create page-wide overflow. Evidence: `nav-shell.acceptance.test.mjs`
+  / `keeps long note titles and paragraphs within a phone-width editor`,
+  `wraps very long Log text within the phone-width detail layout`, `keeps a
+  long Path description inside its phone-width card`, and `wraps a long Board
+  card title inside its phone-width card` check content bounds and page overflow
+  at 390px; `PathsView.test.ts` / `keeps long path titles on one truncated
+  line` checks the long Path title treatment.
+- [x] Empty strings and empty collections render intentional empty states.
+  Evidence: named component tests cover empty Sessions, Paths, Timeline, Logs,
+  Notes, Labels, Imports, Reports, and Board archive/list states; `NotesView.test.ts`
+  / `renders an empty rich-text body as italic Empty note` covers an empty
+  user-entered note body; `nav-shell.acceptance.test.mjs` / `shows an add-card
+  action for a loaded empty Board column` checks the loaded empty column and
+  its next action. These checks distinguish empty states from loading and
+  request-error states where applicable.
 
 ### Flow: Honor reduced-motion preferences
 
@@ -1534,26 +1717,57 @@ criteria remain open.
   state. Evidence: [`01-route-matrix.md`](01-route-matrix.md) reconciles all 19
   registered route entries from `frontend/src/main.ts` and records route,
   evidence, and remaining gaps.
-- [ ] Every meaningful visible control on each supported route has its own
-  action row; a page render does not count as coverage for its controls.
-- [ ] Each action row names the control, starting state, input method, visible
+- [x] Every meaningful visible control action in the source inventory has its
+  own action row; a page render does not count as coverage for its controls.
+  Evidence: `node scripts/check-ototest-03-inventory.mjs` verifies the 141
+  unique FLOW actions in [`01-acceptance-checklist.md`](01-acceptance-checklist.md)
+  each have exactly one row in [`01-control-matrix.md`](01-control-matrix.md).
+- [x] Each action row names the control, starting state, input method, visible
   result, URL or persistence outcome when applicable, and relevant failure or
-  recovery state.
-- [ ] Keyboard and touch behavior are recorded separately where input method
-  changes the interaction.
-- [ ] Desktop Chrome and mobile Chrome have distinct evidence rows where
+  recovery state. Evidence: all 129 product-action rows FLOW-01 through
+  FLOW-09 in [`01-control-matrix.md`](01-control-matrix.md) identify the
+  control/action, starting state, input method, expected visible result, named
+  assertion and URL/API/persistence outcome, plus failure/recovery state or an
+  explicit gap. The 12 FLOW-10 rows are shared-state checks rather than
+  individual control actions. `node scripts/check-ototest-03-inventory.mjs`
+  verifies the 129 action rows use the full matrix shape and each checklist
+  action ID has exactly one row.
+- [x] Keyboard and touch behavior are recorded separately where input method
+  changes the interaction. Evidence: [`01-control-matrix.md`](01-control-matrix.md)
+  records keyboard and phone-width tap/drag assertions as separate evidence in
+  the Path, Calendar, Board, Gantt, and Notes action rows; actions without a
+  tested alternative remain gaps.
+- [x] Desktop Chrome and mobile Chrome have distinct evidence rows where
   viewport, pointer, browser history, text entry, or scrolling changes the
-  behavior.
-- [ ] Each row links exact evidence identifiers only when the assertion
+  behavior. Evidence: [`01-control-matrix.md`](01-control-matrix.md) separates
+  WEB-17 through WEB-19 and labels phone-width Playwright evidence as desktop
+  Chromium emulation; real mobile Chrome remains an explicit gap.
+- [x] Each row links exact evidence identifiers only when the assertion
   establishes that behavior; otherwise mark the row as a gap, manual check,
-  unsupported behavior, or decision needed.
+  unsupported behavior, or decision needed. Evidence: all 141 FLOW action IDs
+  in [`01-acceptance-checklist.md`](01-acceptance-checklist.md) have a matching
+  row in [`01-control-matrix.md`](01-control-matrix.md), with named assertions
+  in the evidence column and uncovered behavior classified in the final
+  column.
 - [x] Fixture/mock, API/service, real-browser, and manual evidence remain
   clearly distinguished. Evidence: [`01-route-matrix.md`](01-route-matrix.md)
   and [`01-control-matrix.md`](01-control-matrix.md) label component, mocked
   browser, real-stack, API/service, and manual evidence separately.
 - [ ] Dialog and menu action rows cover the applicable open, submit, cancel,
   validation, confirmation, focus, failed-request, and retry outcomes as
-  separate responsibilities.
+  separate responsibilities. Partial evidence: `board.acceptance.test.mjs`
+  now has separate `closes the Boards manager when its backdrop is activated`,
+  `keeps archive confirmation open when its backdrop is activated`, and
+  `cancels card archive confirmation without archiving the card` tests for
+  dismissible-dialog close, destructive-confirmation backdrop safety, and
+  cancel. Session detail removal now has separate
+  `cancels session removal and returns focus to the detail action` and
+  `confirms session removal and closes the detail dialog` tests. These
+  responsibilities are linked in FLOW-01.16, FLOW-08.12, and FLOW-10.06 of
+  [`01-control-matrix.md`](01-control-matrix.md). Log removal now separates
+  cancel, failed-delete retry, and successful deletion in three named tests
+  linked from FLOW-03.12. Other dialog and menu action rows still need the same
+  outcome-by-outcome audit.
 - [x] `/development` is explicitly excluded from supported route completeness
   and absent from authenticated product navigation. Evidence:
   [`01-route-matrix.md`](01-route-matrix.md) marks the route excluded;
