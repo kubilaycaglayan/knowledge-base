@@ -27,7 +27,8 @@ matrix ownership, and milestone status consistency. It resolves qualified API
 evidence names to existing Java test methods and named frontend test
 references in the route/control matrices to declarations in their corresponding
 `frontend/src` or `frontend/scripts` test files. It deliberately makes no
-claims about assertion quality.
+claims about assertion quality. It also rejects any API operation row that
+does not name at least one qualified Java test assertion reference.
 
 The release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
 It documents passed local gates and the passing hosted `verify` run. Physical

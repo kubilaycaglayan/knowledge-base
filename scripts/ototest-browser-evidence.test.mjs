@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const declaration = 'it("creates a Path using the keyboard", async () => {});';
 const sources = { "nav-shell.acceptance.test.mjs": declaration };
@@ -120,5 +120,14 @@ test("rejects missing, unknown, or multiple evidence statuses", () => {
     { row: 1, status: "" },
     { row: 2, status: "probably covered" },
     { row: 3, status: "covered; gap" },
+  ]);
+});
+
+test("requires each API operation row to name a qualified test assertion", () => {
+  assert.deepEqual(apiRowsMissingNamedEvidence([
+    ["GET `/api/v1/paths`", "PathController.list", "`PathApiTest.listReturnsOwnedPaths`", "Owner-scoped list"],
+    ["DELETE `/api/v1/paths/{id}`", "PathController.delete", "No assertion mapped yet", "Deletion effect needs evidence"],
+  ]), [
+    { row: 2, operation: "DELETE `/api/v1/paths/{id}`" },
   ]);
 });

@@ -32,6 +32,15 @@ export function unresolvedAcceptanceReferences(controlRows, sourcesByFile) {
 
 const evidenceStatuses = new Set(["covered", "gap", "manual", "unsupported/excluded", "decision-needed"]);
 
+export function apiRowsMissingNamedEvidence(rows) {
+  return rows.flatMap((cells, index) => {
+    const evidence = cells[2] ?? "";
+    return /\b[A-Za-z][A-Za-z0-9]*Test\.[A-Za-z_][A-Za-z0-9_]*/.test(evidence)
+      ? []
+      : [{ row: index + 1, operation: cells[0] ?? "" }];
+  });
+}
+
 export function invalidEvidenceStatuses(rows, statusIndex) {
   return rows.flatMap((cells, index) => {
     const status = cells[statusIndex] ?? "";

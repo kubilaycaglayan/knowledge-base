@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
-import { invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryRoot = path.join(repositoryRoot, "docs/ototest");
@@ -97,6 +97,9 @@ for (const filename of ["01-route-matrix.md", "01-api-matrix.md", "01-control-ma
 }
 
 const apiRows = readTable("01-api-matrix.md", "| Verb + composed path |");
+for (const { row, operation } of apiRowsMissingNamedEvidence(apiRows)) {
+  problems.push(`01-api-matrix.md:row ${row} ${operation}: missing a qualified Java test assertion reference`);
+}
 const apiTestClasses = new Map();
 for (const testFile of findFiles(path.join(repositoryRoot, "backend/src/test/java"), (file) => file.endsWith(".java"))) {
   const className = path.basename(testFile, ".java");
