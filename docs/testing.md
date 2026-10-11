@@ -19,8 +19,10 @@ adjust a named behavioral assertion. Record an explicit exclusion or owner for
 an unresolved gap. Run `node scripts/check-ototest-inventory.mjs` to catch stale
 local Markdown links, unclassified rows, ownerless matrices, duplicate
 route/API keys, milestone status drift, missing source/evidence locations, and
-API evidence references that no longer resolve to Java test methods. It checks
-inventory integrity, not behavioral coverage.
+API evidence references that no longer resolve to Java test methods. It also
+rejects marking OTOTEST-05 Complete while its acceptance checklist has
+unchecked items or its evidence record lacks a passing hosted run link. It
+checks inventory and completion consistency, not behavioral coverage.
 
 | Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
 | --- | --- | --- | --- |
