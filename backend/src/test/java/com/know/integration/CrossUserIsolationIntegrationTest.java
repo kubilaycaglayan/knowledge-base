@@ -247,6 +247,7 @@ class CrossUserIsolationIntegrationTest extends IntegrationTestSupport {
     String board = "/api/v1/boards/" + ids.get("board");
     String[][] operations = {
       {"GET", "/api/v1/paths/{id}", ids.get("path"), null},
+      {"GET", "/api/v1/paths/{id}/summary", ids.get("path"), null},
       {"GET", "/api/v1/notes/{id}", ids.get("note"), null},
       {"GET", "/api/v1/logs/{id}", ids.get("log"), null},
       {"PUT", "/api/v1/labels/{id}", ids.get("label"), "{\"name\":\"Hidden\",\"scopes\":[\"NOTE\"]}"},
