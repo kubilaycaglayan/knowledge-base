@@ -21,9 +21,10 @@ local Markdown links, unclassified rows, ownerless matrices, duplicate
 route/API keys, milestone status drift, missing source/evidence locations, and
 API evidence references that no longer resolve to Java test methods. It also
 resolves named frontend component/browser assertions in the route/control
-matrices to declarations in their cited test files, and checks that each route
-row has one recognized evidence status. These are integrity/name checks, not
-assertion-quality checks. The command rejects marking OTOTEST-05 Complete
+matrices to declarations in their cited test files, requires named Java test
+evidence on each API operation, and checks one recognized evidence status on
+route, API, control, extension/feature, and cross-client journey rows. These
+are integrity/name checks, not assertion-quality checks. The command rejects marking OTOTEST-05 Complete
 while its acceptance checklist has
 unchecked items or its evidence record lacks a passing hosted run link. It
 checks inventory and completion consistency, not behavioral coverage. The
