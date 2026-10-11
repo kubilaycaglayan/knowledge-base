@@ -57,6 +57,12 @@ occurred. The archived-note label-preservation acceptance remains open.
 | Hosted `verify` after Path merge list-refresh stabilization | [`verify` run 38105402993](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38105402993) | Pass for commit `74486a2f9ad61ed969596bcb7e8dc4967bcb1b43`; all active jobs passed, including the 105-case route/control suite and packaged extension browser acceptance; historical iOS jobs skipped as configured |
 | Hosted `verify` with shared current-timer coverage | [`verify` run 38106221421](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38106221421) | Pass for commit `27707465b15e5efd33dac9a1af8220e8d74a1a1f`; all active jobs passed, including the 105-case route/control suite, current-timer service/API tests, packaged extension, backend, PostgreSQL, smoke, timer WebSocket, line-history, and Orca jobs; historical iOS jobs skipped as configured |
 
+## 2026-10-11 supplement — Android manual evidence recording procedure
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Android evidence procedure and inventory integrity | `node scripts/check-ototest-inventory.mjs` at source revision `d2c5df91`; hosted [`verify` run 38106614036](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38106614036) | Pass: the manual procedure names MOBILE-01–33, requires one status per criterion, and keeps partial sweeps explicit. Hosted active jobs passed for the pushed revision. No physical Android run is claimed; `adb` is unavailable in this environment. |
+
 ## 2026-10-11 supplement — PostgreSQL test target isolation
 
 | Evidence layer | Exact command(s) | Result |
