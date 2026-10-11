@@ -67,7 +67,7 @@ export function coveredStateClaimsMissingLayer(rows, evidenceIndex, claimIndex, 
 
 export function coveredMutationReferenceClaimsMissingOwnership(rows, identityIndex, requestIndex, claimIndex, statusIndex) {
   const mutation = /^`?(?:POST|PUT|PATCH|DELETE)\b/i;
-  const referenceField = /(?:[A-Za-z]+Request|Request)\.(?:path|label|board|status|note|activity|timeEntry|card|calendarLabel|log)(?:Ids|Id)\b/i;
+  const referenceField = /(?:[A-Za-z]+Request|Request)\.[A-Za-z]*(?:path|label|board|status|note|activity|timeEntry|card|calendarLabel|log)(?:Ids|Id)\b/i;
   const ownershipClaim = /\b(?:foreign|another user|another board|owned|ownership|owner|belong(?:s|ing)? to (?:the )?user)\b/i;
   return rows.flatMap((cells, index) => {
     if (cells[statusIndex] !== "covered"

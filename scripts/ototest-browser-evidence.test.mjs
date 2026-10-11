@@ -176,12 +176,14 @@ test("requires persisted and ownership claims to cite an integration evidence la
 test("requires covered mutations with request reference IDs to state ownership outcomes", () => {
   assert.deepEqual(coveredMutationReferenceClaimsMissingOwnership([
     ["POST `/api/v1/timers`", "`StartRequest.pathId` optional UUID", "TimerIntegrationTest.startsTimer", "Timer starts with selected path", "covered"],
+    ["POST `/api/v1/paths/{id}/merge`", "`MergePathRequest.targetPathId` required UUID", "PathIntegrationTest.mergesPaths", "Target path resolves", "covered"],
     ["POST `/api/v1/notes`", "`NoteRequest.pathId` optional UUID", "NoteIntegrationTest.rejectsForeignPath", "Foreign path is refused without changing owner data", "covered"],
     ["GET `/api/v1/reports`", "`ReportRequest.pathId` optional UUID", "ReportIntegrationTest.filtersOwnedPaths", "Results stay owner scoped", "covered"],
     ["POST `/api/v1/logs`", "`LogRequest.body` required", "LogIntegrationTest.createsLog", "Log persists", "covered"],
     ["POST `/api/v1/timers`", "`StartRequest.pathId` optional UUID", "TimerIntegrationTest.startsTimer", "Foreign path rejected", "gap"],
   ], 0, 1, 3, 4), [
     { row: 1, identity: "POST `/api/v1/timers`" },
+    { row: 2, identity: "POST `/api/v1/paths/{id}/merge`" },
   ]);
 });
 
