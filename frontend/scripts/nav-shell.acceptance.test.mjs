@@ -2249,6 +2249,9 @@ it("archives the selected Note after confirmation and keeps it in the archive af
 
   await page.reload();
   await page.locator(".note-row.archived", { hasText: "Browser archive target" }).waitFor();
+  await page.waitForFunction(() =>
+    document.querySelector(".note-row.archived")?.textContent?.includes("Keep this content in Archive"),
+  );
   assert.match(await page.locator(".note-row.archived", { hasText: "Browser archive target" }).innerText(), /Keep this content in Archive/);
 });
 
