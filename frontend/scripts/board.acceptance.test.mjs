@@ -3041,3 +3041,18 @@ for (const { name, open, menu, phoneOnly } of boardOverlays) {
     });
   }
 }
+
+// A long Kanban column scrolls under its sticky header; keyboard focus moving
+// through it in either direction must stay visible and uncovered.
+for (const [width, height] of [[390, 844], [1440, 900]]) it(`keeps keyboard focus clear of sticky Kanban column headers at ${width}×${height}`, async (t) => {
+  const { page } = await fixture(t, width, true);
+  await page.setViewportSize({ width, height });
+  await page.locator(".board-card", { hasText: "Dense card 1" }).first().waitFor();
+  const problems = [];
+  for (const key of ["Tab", "Shift+Tab"]) {
+    await page.reload();
+    await page.locator(".board-card", { hasText: "Dense card 1" }).first().waitFor();
+    problems.push(...await auditFocusCycle(page, `Kanban at ${width}×${height}`, { key, limit: 200 }));
+  }
+  assert.deepEqual(problems, [], "Kanban focus problems");
+});
