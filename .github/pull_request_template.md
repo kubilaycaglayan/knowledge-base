@@ -14,5 +14,5 @@ each changed control or gesture a distinct inventory action ID with its source,
 starting state, input method, visible result, and persisted or URL effect.
 Record dialog open/submit/cancel/validation/failure outcomes separately,
 destructive confirmation or undo, and reasons for decorative/unavailable
-controls. Record desktop Chrome and supported Android Chrome inputs separately,
+controls. Record desktop Chrome and phone-width touch inputs separately,
 plus alternatives and interrupted-input recovery for drag-dependent actions.

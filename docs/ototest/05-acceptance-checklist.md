@@ -4,10 +4,11 @@
 **Status:** In progress
 **Depends on:** OTOTEST-01 through OTOTEST-04
 **Product surfaces reviewed:** Knowledge Base web application in desktop Chrome
-and the same web application in Android Chrome
-**Excluded:** Native iOS application and iOS workflows. The installed desktop
-Chrome extension remains an OTOTEST-04 surface; its permission and integration
-changes are included below only as traceability triggers.
+**Excluded:** Native iOS application and iOS workflows. Android is not an
+optimization target, so Android-specific acceptance is out of scope. The
+installed desktop Chrome extension remains an OTOTEST-04 surface; its
+permission and integration changes are included below only as traceability
+triggers.
 
 This checklist turns the OTOTEST-05 milestone into reviewable acceptance
 criteria. Product expectations are grounded in the routes and feature tree in
@@ -31,8 +32,7 @@ claims about assertion quality. It also rejects any API operation row that
 does not name at least one qualified Java test assertion reference.
 
 The release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
-It documents passed local gates and the passing hosted `verify` run. Physical
-Android acceptance remains outstanding.
+It documents passed local gates and the passing hosted `verify` run.
 
 For every accepted route, operation, control family, gesture, permission, or
 gate below, the maintained inventory or release record must identify:
@@ -170,10 +170,6 @@ gate below, the maintained inventory or release record must identify:
 - [x] The row identifies the supported desktop Chrome input method. The
   [testing guidance](../testing.md) and PR template require desktop Chrome
   input to be recorded for changed gestures.
-- [x] The row identifies the supported Android Chrome input method when the
-  gesture is offered on a phone. The [testing guidance](../testing.md) and PR
-  template require Android Chrome input to be recorded separately where
-  offered; physical-device execution remains open in the mobile flows below.
 - [x] A drag-dependent action records its tap/click or keyboard alternative
   where that action is not inherently pointer-only. The [testing guidance](../testing.md)
   and PR template require applicable alternatives for changed gestures.
@@ -214,10 +210,6 @@ gate below, the maintained inventory or release record must identify:
   validates the resulting permission declaration. Matrix metadata supplies the
   maintainer owner and `verify / web-and-extension` builds and checks the
   generated manifest before running this reconciliation gate.
-- [x] An extension permission row is not mislabeled as Android Chrome web-app
-  evidence; mobile Chrome extension hosting is not part of this checklist. The
-  feature map keeps desktop extension permissions separate from the explicitly
-  `unsupported/excluded` Android extension surface.
 
 ## Supported route inventory freshness
 
@@ -490,8 +482,7 @@ current and link evidence at the layer that proves its behavior.
   page action. The 390px Chromium viewport assertion in `shows the floating
   tracker on eligible routes but not Sessions or focused phone inputs` verifies
   the tracker closes when the Log text input receives focus and the input
-  remains inside the viewport. This is viewport emulation, not physical
-  Android Chrome evidence.
+  remains inside the viewport.
 
 ### Flow: Receive one application notification
 
@@ -541,101 +532,6 @@ current and link evidence at the layer that proves its behavior.
   fields in the card editor; selecting a range directly on an undated row is a
   pointer convenience and the same dates can be entered in that editor.
 
-## Android Chrome product counterpart
-
-Android Chrome is the mobile web surface in scope. Record its evidence
-separately when narrow layout, touch input, browser history, keyboard, or
-scroll behavior changes the result; desktop viewport emulation alone is not a
-physical-device pass. Use the [manual evidence procedure](../testing.md#manual-and-platform-limited-evidence)
-and [execution template](evidence-template.md); record a separate result for
-each checklist item, including unrun items, together with device, Android and
-Chrome versions, viewport/orientation, and input method.
-
-### Flow: Open the authenticated app in Android Chrome
-
-- [ ] The authenticated app loads at phone width without page-wide horizontal
-  overflow.
-- [ ] Every supported destination remains reachable from responsive
-  navigation.
-- [ ] Browser zoom remains available and the content remains usable when
-  enlarged.
-- [ ] The document title and current page heading identify the current
-  destination.
-
-### Flow: Navigate one destination with touch
-
-- [ ] The destination control has a usable touch target.
-- [ ] Activating the destination displays the matching route and page.
-- [ ] Adjacent controls do not activate from the same tap.
-
-### Flow: Restore one mobile browser history entry
-
-- [ ] Chrome Back restores the prior route and corresponding visible state.
-- [ ] Chrome Forward restores the next route and corresponding visible state.
-- [ ] A query-backed filter is restored with the route when the product
-  supports that state in browser history.
-
-### Flow: Complete one mobile text-entry action
-
-- [ ] The focused input and entered text remain visible with the Android
-  on-screen keyboard open.
-- [ ] The control needed to submit, save, or recover remains reachable while
-  the keyboard is open.
-- [ ] Closing and reopening the keyboard does not discard the current draft
-  or move the caret unexpectedly.
-- [ ] Text fields accept paste and do not prevent normal browser zoom.
-
-### Flow: Use one mobile modal or drawer
-
-- [ ] The modal or drawer fits within the phone viewport or offers contained
-  scrolling.
-- [ ] The close and primary action controls remain reachable with the
-  keyboard open where text entry is present.
-- [ ] The modal or drawer does not leave the background in an unusable scroll
-  state after dismissal.
-
-### Flow: Use one mobile drag-capable feature
-
-- [ ] The feature has a tap/click or keyboard alternative where a drag is not
-  essential.
-- [ ] Touching and releasing without completing a gesture does not mutate
-  saved data.
-- [ ] A completed gesture shows the resulting selection or order clearly.
-- [ ] The final state remains correct after a fresh read when the gesture
-  changes persisted data.
-
-### Flow: Use mobile board navigation
-
-- [ ] Board selection and board-management entrypoints remain reachable at
-  phone width.
-- [ ] Opening a board card displays the selected card editor without clipping
-  the current selection.
-- [ ] Gantt and Kanban controls offered on mobile remain operable at phone
-  width.
-
-### Flow: Use mobile Reports filters
-
-- [ ] The date range control remains reachable at phone width.
-- [ ] Path and Label filters remain reachable at phone width.
-- [ ] Grouping controls remain reachable at phone width.
-- [ ] Floating timer UI does not cover the focused filter or its results.
-
-### Flow: Use mobile Notes editing
-
-- [ ] The Notes list opens the selected note editor on touch.
-- [ ] The editor preserves the active text and caret while the keyboard is
-  open.
-- [ ] Formatting controls remain usable without depending on hover.
-- [ ] Save feedback or failure recovery remains reachable after editing.
-
-### Flow: Use mobile Calendar selection
-
-- [ ] A date cell can be selected by touch without a hover prerequisite.
-- [ ] Range selection has a tap or keyboard alternative to pointer dragging.
-- [ ] The selected date or range is visibly identified before applying a
-  change.
-- [ ] A canceled range selection does not apply a partial update.
-
 ## Gate policy and evidence records
 
 ### Flow: Define one required CI gate
@@ -662,8 +558,6 @@ Chrome versions, viewport/orientation, and input method.
   acceptance by itself.
 - [x] Web-app real-browser assertions are associated with the exact browser
   workflow/job that executes them.
-- [x] Desktop Chromium and Android/mobile Chromium evidence are distinguished
-  when the covered behavior is platform-sensitive.
 
 ### Flow: Maintain the backend gate
 
@@ -684,7 +578,6 @@ Chrome versions, viewport/orientation, and input method.
 - [x] Persisted user-visible changes are confirmed after a fresh read.
 - [x] Failure artifacts are scrubbed of credentials, tokens, cookies, and
   personal data before upload or retention.
-- [x] A desktop browser result is not reported as Android-device evidence.
 
 ### Flow: Maintain the extension browser gate
 
@@ -696,7 +589,7 @@ Chrome versions, viewport/orientation, and input method.
   returned by the isolated loopback API fixture after extension actions.
 - [x] Clockify content-script routing through the extension service worker is
   covered in the packaged extension browser job and is distinct from web-app
-  and Android Chrome evidence.
+  evidence.
 - [x] The gate owner and required pull-request workflow/job are explicit in
   `docs/testing.md`; the exact local runner remains available.
 
@@ -751,7 +644,7 @@ Chrome versions, viewport/orientation, and input method.
   lacks a passing hosted run link; four focused tests exercise these outcomes.
 - [x] A closed decision names the affected scope, decision owner, and
   remaining coverage gap. The project owner's desktop-only extension support
-  decision and the separate physical Android web-acceptance gap are recorded
+  decision is recorded
   in the [extension and feature map](01-extension-and-feature-map.md#closed-support-decision).
 
 ## Consistency validation
@@ -833,10 +726,10 @@ Chrome versions, viewport/orientation, and input method.
 - [x] Required gate commands and CI job names agree with the current workflow
   definitions.
 - [x] Manual and environment-limited checks have a reproducible procedure
-  and assigned owner in `docs/testing.md` (physical Android Chrome and
-  extension permission prompts; iOS is out of scope).
+  and assigned owner in `docs/testing.md` (extension permission prompts; iOS
+  and Android are out of scope).
 - [x] Release evidence links to passing runs for every required gate.
-- [x] Desktop Chrome, Android Chrome, and desktop extension evidence are not
+- [x] Desktop Chrome web-app and desktop extension evidence are not
   conflated.
 - [x] No native iOS workflow or acceptance result is included.
 - [x] Roadmap, milestone index, testing guidance, and audit agree on the
@@ -849,9 +742,7 @@ Chrome versions, viewport/orientation, and input method.
 For each accepted criterion, record the stable inventory ID, relevant
 route/component/API mapping or workflow job, evidence layer, exact
 assertion/procedure, reviewed source revision, result, and run/artifact link.
-Record desktop Chrome and Android Chrome outcomes independently when their
-behavior differs. Record any excluded or unavailable evidence with its reason
-and owner. Checked criteria link to the current inventory, guidance, and run
+Record any excluded or unavailable evidence with its reason and owner. Checked criteria link to the current inventory, guidance, and run
 evidence. Unchecked criteria remain open product-flow or release-review
 acceptance items; completing gate setup does not imply those behaviors have
 been exercised or their gaps closed.

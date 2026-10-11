@@ -141,7 +141,7 @@ remains outside the packaged browser journey.
   navigation, rejected-save draft retention and retry, day-picker label
   creation/color/assignment removal, reversed keyboard range selection,
   cancellation, inclusive leap/year boundary readback, and equivalent touch
-  taps. Physical Android acceptance remains open.
+  taps.
 - **Reports and Settings, desktop Chromium:** `persists report range in
   navigation and theme preference after reload` in
   `frontend/scripts/reports-settings.real-stack.acceptance.test.mjs`, run with
@@ -165,7 +165,6 @@ remains outside the packaged browser journey.
   The export journey downloads and parses the CSV, checks Unicode, commas,
   quotes and multiline content, proves an other-account fixture is excluded,
   and recovers from an injected 503 without a download.
-  Physical Android remains open.
 - **Transfers, desktop Chromium:** `exports and reimports Knowledge Base CSV,
   validates input, and imports Clockify sessions` in
   `frontend/scripts/transfers.real-stack.acceptance.test.mjs`, run with

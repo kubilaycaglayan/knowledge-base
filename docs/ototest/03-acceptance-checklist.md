@@ -5,15 +5,14 @@
 **Product map:** [#ototest product test tree](product-test-tree.md)
 
 **Status:** In progress; checked criteria have linked evidence. Unchecked
-criteria remain open. Mobile emulation evidence is identified as supplemental.
-Per user direction on 2026-10-10, Android-specific acceptance work is deferred;
-device-only criteria remain open and are not part of the current work.
+criteria remain open. Phone-width checks use desktop Chromium touch
+emulation. Android is not an optimization target, so Android-device criteria
+were removed from this checklist on 2026-10-11.
 
 This checklist translates OTOTEST-03 into independently reviewable product
 flows. Each flow has one user-visible responsibility. It covers the current
 Knowledge Base web application in desktop Chrome and phone-width browser
-emulation. Real Android Chrome checks are deferred per the scope note above.
-It does not cover native iOS, the Chrome extension, or test
+emulation. It does not cover native iOS, the Chrome extension, or test
 implementation/execution; the extension has its own scope in OTOTEST-04.
 
 ## Acceptance setup
@@ -45,8 +44,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   with isolated project `knowledge-base-ototest-api-smoke`; and
   `SMOKE_FULL_STACK=1 ./scripts/run-smoke-tests.sh` passed with isolated
   project `knowledge-base-ototest-full-smoke`, including proxy and timer
-  WebSocket checks. Cleanup was scoped to those project test volumes. These
-  gates do not close manual mobile Chrome criteria.
+  WebSocket checks. Cleanup was scoped to those project test volumes.
 - [x] Visually inspect the board manager's phone-width reorder controls.
   Evidence: local disposable account, application UI revision `e7bddd25`,
   Playwright Chromium mobile emulation at 390×844 with touch enabled; the
@@ -56,17 +54,9 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 - [x] Check desktop Chrome at a representative laptop width and a wide desktop
   width. Evidence: the same run includes direct route, shell, and control flows
   at 1280×900 and 1440×900 in Google Chrome for Testing.
-- [ ] **Deferred per user direction:** Check mobile Chrome on a real Android
-  device or an explicitly identified mobile Chrome profile at a phone-sized
-  viewport. No device-specific evidence is claimed.
 - [x] Keep mobile Chrome findings separate from desktop Chrome findings.
   Evidence: [`01-control-matrix.md`](01-control-matrix.md) labels phone-width
-  results as desktop Chromium/Chrome touch emulation and the real mobile
-  Chrome items as open.
-- [x] Do not treat a desktop viewport emulation or user-agent override as proof
-  of behavior on a real mobile Chrome installation. Evidence: mobile evidence
-  rows in [`01-control-matrix.md`](01-control-matrix.md) explicitly state this
-  limitation and retain on-device checks as open.
+  results as desktop Chromium/Chrome touch emulation.
 - [x] Use keyboard-only input for flows with keyboard alternatives. Evidence:
   `nav-shell.acceptance.test.mjs` includes keyboard-only navigation, keyboard
   Path/Notes reordering, keyboard Calendar selection, and keyboard Log detail
@@ -78,8 +68,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   status, and card reorder controls. Other phone-width flows still use browser
   clicks or programmatic selection. Recent touch-only coverage also taps Start
   timer, Timeline Filter, Report date navigation, Log label assignment/retry,
-  a long Log label menu selection, and Log detail close. Real mobile Chrome
-  remains unverified and deferred. `board.acceptance.test.mjs` / `moves the
+  a long Log label menu selection, and Log detail close. `board.acceptance.test.mjs` / `moves the
   view switch and board settings into the board menu on phones` now uses taps
   for phone menu open, Gantt selection, Boards open, and close; keyboard menu
   operation is covered separately. `keeps every supported primary destination
@@ -377,8 +366,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   phone width` verifies touch opening, search input hints, result visibility,
   and viewport bounds at 390px; `keeps global search results reachable across a
   keyboard-like phone viewport resize` checks reachability and query retention
-  after reducing/restoring viewport height. Android software-keyboard behavior
-  remains deferred per user direction.
+  after reducing/restoring viewport height.
 
 ### Flow: Open and dismiss a dialog
 
@@ -695,7 +683,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   keyboard with the accessible Move up action` verifies Enter-operated up and
   down controls; `reorders Paths by touch with a 44px Move up target` verifies
   tap reorders at 390px with a 44×44px target. Touch evidence is desktop
-  Chromium emulation and does not establish Android-device behavior.
+  Chromium emulation.
 - [x] Hiding a path's board asks for confirmation before removing its board
   tab. Evidence: `cd frontend && npx vitest run src/views/PathsView.test.ts -t
   'board switch off|hide confirmation button|hide confirmation keeps'` checks
@@ -992,8 +980,6 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 - [x] Chart and filter controls remain reachable without unintended page
   horizontal overflow. Supplemental evidence: the same test checks control
   bounds, filter availability, and page overflow at 390px.
-  Real mobile Chrome remains unverified; these viewport-emulation checks do not
-  satisfy the mobile acceptance setup above.
 
 ## Calendar
 
@@ -1106,14 +1092,14 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   `scripts/nav-shell.acceptance.test.mjs` / `keeps Calendar editing controls
   reachable after a keyboard-like viewport resize` checks label picker and Save
   day bounds at 320px height and retains the note draft after restoring the
-  viewport. Real mobile keyboard behavior still needs verification.
+  viewport.
 - [x] The calendar grid and editor do not cause unintended page overflow.
   Supplemental evidence: `scripts/nav-shell.acceptance.test.mjs` /
   `edits and saves a Calendar day at phone width without horizontal overflow`
   checks editor and Save day bounds plus page overflow at 390px; the touch
   selection test above checks the selected-day state. Desktop Chromium's
   `selects a calendar day with the keyboard and retains focus` checks keyboard
-  activation and focus retention. Real mobile Chrome remains unverified.
+  activation and focus retention.
 
 ## Imports and Settings
 
@@ -1306,12 +1292,12 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 - [x] Dragging a card bar changes its dates by whole days and shows save feedback. Evidence: `board.acceptance.test.mjs` / `moves and resizes Gantt dates and marks today across the chart` checks the exact updated date payload.
 - [x] Scheduled Gantt dates can be moved and resized with the keyboard. Evidence: `board.acceptance.test.mjs` / `moves and resizes Gantt dates and marks today across the chart` sends ArrowRight and Shift+ArrowLeft and asserts the resulting saved date payloads; `GanttCard.test.ts` checks the start and end resize handles.
 - [x] An unscheduled Gantt card can receive an inclusive range with the keyboard. Evidence: `board.acceptance.test.mjs` / `sets an inclusive date range on an unscheduled Gantt card with keyboard input` asserts the saved start and end dates; `GanttCard.test.ts` checks range preview/save behavior.
-- [x] An unscheduled Gantt card can receive one date with phone-width touch input. Supplemental evidence: `board.acceptance.test.mjs` / `sets one date on an unscheduled Gantt card with a phone-width touch tap` checks the selected date payload and 44px touch target in Chromium touch emulation; real mobile Chrome is still a separate open acceptance item.
+- [x] An unscheduled Gantt card can receive one date with phone-width touch input. Supplemental evidence: `board.acceptance.test.mjs` / `sets one date on an unscheduled Gantt card with a phone-width touch tap` checks the selected date payload and 44px touch target in Chromium touch emulation.
 - [x] Resizing either edge changes the matching endpoint date. Evidence: the same test checks left and right endpoint updates.
 - [x] Cancelling a drag leaves the saved date range unchanged. Evidence: `board.acceptance.test.mjs` / `cancels a Gantt drag and restores dates after a failed save` checks lost pointer capture and Escape send no request, preserve the original bar, and a failed save restores the original range.
 - [x] Offscreen date arrows move the visible window to include that card. Evidence: `BoardView.test.ts` / `moves the timeline start to the card's start date from its edge arrow` and `moves the timeline end to the card's end date from its right edge arrow`.
 - [x] Hiding and restoring the card list preserves the user's selected view. Evidence: `BoardView.test.ts` / `hides and shows the Gantt card list from the timeline's top-left toggle` and `remembers the hidden Gantt card list in this browser`.
-- [x] Gantt date and window controls remain visible and operable at 390px where Gantt is offered. Supplemental evidence: `board.acceptance.test.mjs` / `keeps Gantt date and window controls operable at phone width` checks control visibility and viewport bounds, advances the date window, and returns to Today. This Playwright Chromium viewport check does not replace the separately tracked real mobile Chrome/device pass.
+- [x] Gantt date and window controls remain visible and operable at 390px where Gantt is offered. Supplemental evidence: `board.acceptance.test.mjs` / `keeps Gantt date and window controls operable at phone width` checks control visibility and viewport bounds, advances the date window, and returns to Today.
 
 ### Flow: Start a timer from a card
 
@@ -1336,7 +1322,7 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
 - [x] Cards can be opened and edited using touch at phone width. Supplemental evidence: `board.acceptance.test.mjs` / `moves a card with touch taps through the editor's status select` opens and closes the editor with touch taps, saves a changed title, changes its status, and checks the resulting board card.
 - [x] Card controls remain tappable without overlapping or clipping at phone width. Supplemental evidence: `board.acceptance.test.mjs` / `keeps every card editor control in its own slot on desktop and phone` checks editor control geometry and overlap at 320px and 390px; `keeps card timer actions at 44px on phones` checks minimum touch targets.
 - [x] Touch drag actions have a tap or keyboard alternative where supported. Supplemental evidence: `board.acceptance.test.mjs` / `reorders cards in a column with the keyboard alternative` verifies keyboard ordering; `moves a card with touch taps through the editor's status select` provides a touch path to change a card's column without dragging.
-- [x] The selected card remains identifiable during phone editor interaction. Supplemental evidence: `board.acceptance.test.mjs` / `moves a card with touch taps through the editor's status select` verifies the selected title remains in the editor and the card ID remains in the URL before editing; real mobile Chrome/device behavior remains part of the open platform pass.
+- [x] The selected card remains identifiable during phone editor interaction. Supplemental evidence: `board.acceptance.test.mjs` / `moves a card with touch taps through the editor's status select` verifies the selected title remains in the editor and the card ID remains in the URL before editing.
 
 ## Notes
 
@@ -1477,13 +1463,12 @@ draft available for retry.
   is open. Supplemental Chromium evidence: `nav-shell.acceptance.test.mjs` /
   `keeps the Notes draft and editor controls reachable across a keyboard-like
   viewport resize` checks the formatting control intersects the reduced
-  viewport. A real mobile keyboard still needs verification.
+  viewport.
 - [x] Long editor content scrolls without trapping the page or obscuring the
   formatting toolbar. Supplemental Chromium evidence:
   `nav-shell.acceptance.test.mjs` / `scrolls long Notes content without
   trapping the page or hiding formatting controls` checks page scroll, toolbar
-  reachability, and horizontal overflow at 390px. Real mobile Chrome still
-  needs verification. Notes saves automatically and has no manual Save button.
+  reachability, and horizontal overflow at 390px. Notes saves automatically and has no manual Save button.
 - [x] Rich-text controls have touch targets suitable for repeated editing. Evidence: the same mobile browser test checks every toolbar button is at least 44×44px.
 - [x] Closing the keyboard preserves the caret and entered content.
   Supplemental Chromium evidence: the same viewport-resize test asserts the
@@ -1628,33 +1613,22 @@ draft available for retry.
   controls. Separate assertions cover the active floating timer control and
   Calendar year visibility. It found and drove fixes for undersized Settings,
   Calendar, Board archive, Imports, Reports, and Sessions targets; the audits
-  pass in desktop Chromium touch emulation. Real mobile Chrome remains deferred.
+  pass in desktop Chromium touch emulation.
   The route-specific Timeline and Log checks and Board reorder checks also
   verify 44×44px targets and actual touch actions in desktop Chromium touch
-  emulation. Real mobile Chrome verification remains open.
+  emulation.
 - [x] Mobile text controls use an input size that avoids unintended browser
   zoom where applicable. Supplemental Chromium evidence:
   `nav-shell.acceptance.test.mjs` / `uses at least 16px text controls on
   phone-width routes` checks visible inputs, selects, textareas, and editable
-  content on Sessions, Logs, Notes, Calendar, and Settings at 390px. A real
-  mobile browser zoom interaction still needs verification.
+  content on Sessions, Logs, Notes, Calendar, and Settings at 390px.
 - [x] The page remains zoomable using browser controls. Evidence:
   `nav-shell.acceptance.test.mjs` / `does not disable browser zoom in the
   viewport configuration` checks the viewport metadata, and `stays zoomable
   with Chrome's browser zoom controls at phone width` zooms a 390px touch
   context to 200% through Chrome's zoom controller, verifies the page reflows
   to 195 CSS pixels, taps a primary destination, reloads, and verifies the
-  zoom is kept and returns to 100% on request. Android pinch zoom is part of
-  the deferred device check.
-- [ ] The on-screen keyboard does not permanently obscure the active control
-  or its save/recovery action.
-  **Deferred per user direction:** This item requires actual Android
-  on-screen-keyboard behavior; no Android device or keyboard work is in scope.
-  Existing supplemental evidence: `nav-shell.acceptance.test.mjs` / `creates a Log with
-  phone-width controls and keeps Save reachable after viewport resize` retains
-  the typed draft and scrolls Save into view at a 420px viewport height after
-  focusing the timestamp field. This emulates reduced viewport height; actual
-  Android keyboard behavior remains unverified.
+  zoom is kept and returns to 100% on request.
 - [ ] Modals and drawers keep their content scroll contained and provide a
   reachable close action.
   Partial evidence: `nav-shell.acceptance.test.mjs` / `keeps a long board
@@ -1750,7 +1724,7 @@ draft available for retry.
   viewport, pointer, browser history, text entry, or scrolling changes the
   behavior. Evidence: [`01-control-matrix.md`](01-control-matrix.md) separates
   WEB-17 through WEB-19 and labels phone-width Playwright evidence as desktop
-  Chromium emulation; real mobile Chrome remains an explicit gap.
+  Chromium emulation.
 - [x] Each row links exact evidence identifiers only when the assertion
   establishes that behavior; otherwise mark the row as a gap, manual check,
   unsupported behavior, or decision needed. Evidence: all 141 FLOW action IDs
