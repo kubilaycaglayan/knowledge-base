@@ -389,12 +389,17 @@ current and link evidence at the layer that proves its behavior.
 
 ### Flow: Use one application dialog
 
-- [ ] The opening action moves focus into the dialog using the expected focus
-  behavior.
-- [ ] The dialog can be dismissed through its documented cancel/close action.
-- [ ] Closing the dialog returns focus to the control that opened it.
-- [ ] Dialog content remains scrollable without scrolling the background
-  unexpectedly.
+- [x] The opening action moves focus into the dialog using the expected focus
+  behavior. `moves focus into and returns focus from the Path create dialog`
+  verifies focus enters the Path name field.
+- [x] The dialog can be dismissed through its documented cancel/close action.
+  The same browser assertion dismisses with Escape.
+- [x] Closing the dialog returns focus to the control that opened it. The
+  browser assertion confirms focus returns to Add path.
+- [x] Dialog content remains scrollable without scrolling the background
+  unexpectedly. `keeps Path dialog content scrollable without scrolling the
+  background` scrolls the dialog to its end and confirms the underlying page's
+  scroll position does not change.
 
 ### Flow: Use one supported action with a keyboard
 

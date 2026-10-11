@@ -1,6 +1,6 @@
 # Test coverage audit
 
-**Reviewed:** 2026-10-11 (`b324104b` route, global-search, Path merge, timer, and accessible notice/Undo browser acceptance review)
+**Reviewed:** 2026-10-11 (`ecbb6d61` route, global-search, Path merge, timer, accessible notice/Undo, and contained dialog-scroll browser acceptance review)
 **Scope:** Current `main` source and test files in `backend/`, `frontend/`,
 `chrome-extension/`, `ios/`, CI workflows, and the existing test documentation.
 
@@ -23,6 +23,11 @@ The latest browser review also verifies success and failure snackbar messages
 through an accessible status region and keeps a named Path Undo action visible
 for at least seven seconds. These assertions do not replace the remaining
 physical Android or broader manual acceptance flows.
+
+The Path creation dialog browser review verifies focus entry, Escape dismissal,
+focus return to its trigger, and inner scrolling without moving the underlying
+page. This establishes the sampled desktop dialog behavior only; other dialogs
+and physical mobile dialog behavior remain open.
 
 ## Coverage map
 

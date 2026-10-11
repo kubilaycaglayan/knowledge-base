@@ -180,3 +180,11 @@ The documentation-only hosted run [38104869153](https://github.com/kubilaycaglay
 | --- | --- | --- |
 | Accessible success/failure notification | `cd frontend && npx vitest run src/components/AppSnackbar.test.ts` at source revision `b324104b` | Pass: 1/1 test asserts failure text and error tone in `role="status"`, excludes the success message from the failure announcement, then asserts the saved message in the success status region |
 | Named Undo recovery window | `cd frontend && npm run test:nav` at source revision `b324104b` | Pass: 105/105 sequential Chromium tests; `confirms Path removal and restores it through the Undo action` waits seven seconds, asserts the Path-specific status remains visible, activates Undo, and verifies restoration |
+
+## 2026-10-11 supplement — Path dialog keyboard and scroll behavior
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Contained dialog scroll | `cd frontend && node --test --test-concurrency=1 --test-name-pattern='keeps Path dialog content scrollable without scrolling the background' scripts/nav-shell.acceptance.test.mjs` at source revision `ecbb6d61` | Pass: 1/1 Chromium assertion forces the Path dialog to overflow, scrolls its content to the end, and confirms the underlying page's scroll position stays fixed |
+| Full route/control browser acceptance | `cd frontend && npm run test:nav` at source revision `ecbb6d61` | Pass: 106/106 sequential Chromium tests; includes Path dialog focus entry, Escape dismissal, trigger focus return, and contained scrolling, plus the 105 previously passing route/control cases |
+| Hosted `verify` | [`verify` run 38108987425](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38108987425) | Pass for commit `ecbb6d616158eb3b6cd939bf2a745912e8d1da67`; all active jobs passed, including the 106-case browser suite; historical iOS jobs skipped as configured |
