@@ -59,8 +59,10 @@ gate below, the maintained inventory or release record must identify:
   inventory matrix declares its local command; the extension matrix also
   identifies the required packaged-browser CI job. The consistency check
   rejects a matrix without an exact command.
-- [ ] The last-reviewed source revision and a link to a run/artifact when
-  evidence has been executed.
+- [x] The last-reviewed source revision and a link to a run/artifact when
+  evidence has been executed. Each maintained inventory has a source revision
+  and latest hosted evidence-run link; CI rejects missing revision or run
+  metadata.
 - [ ] A limitation, explicit exclusion, or unresolved gap with an owner and
   review trigger where evidence is unavailable.
 

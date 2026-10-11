@@ -1,10 +1,11 @@
 # OTOTEST-01 — Visible control and action inventory
 
-**Source revision:** `ce622c43` (cold-cache, global-search failure-state, Path merge-refresh, shared-timer route, accessible notice/Undo, contained dialog scrolling, and keyboard Path creation).
+**Source revision:** `9bb0b8b6` (adds a visible focus-ring assertion to keyboard Path creation).
 **Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-11.
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; keep action evidence current and assign behavior gaps.
 **Test command:** `cd frontend && npm test` (Vitest) and `cd frontend && npm run test:nav` (required Chromium route/control suite in `verify / web-and-extension`); other browser suites are individual `frontend/package.json` scripts. The inventory-creation pass did not execute them; latest results are in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
+**Latest evidence run:** [verify 38115226172](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38115226172), including the route/control browser suite and packaged extension.
 
 Test source directories: [web component tests](../../frontend/src/), [web browser acceptance scripts](../../frontend/scripts/), and [shared workflow definitions](../../.github/workflows/verify.yml).
 
