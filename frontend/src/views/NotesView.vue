@@ -43,6 +43,7 @@ type NotePage = {
 const route = useRoute();
 const router = useRouter();
 const notesStore = useNotesStore();
+const restoringNoteId = ref("");
 const labelsStore = useLabelsStore();
 const { notes, selected, existingLabels } = storeToRefs(notesStore);
 // ?q= and ?archived=1 make the list's search and archive view linkable.
@@ -190,12 +191,16 @@ async function archiveNote(note: Note) {
   }
 }
 async function restoreNote(note: Note) {
+  if (restoringNoteId.value) return;
+  restoringNoteId.value = note.id;
   try {
     await api(`/notes/${note.id}/restore`, { method: "POST" });
     notesStore.clearPages();
     await loadNotes();
   } catch {
     error.value = "Unable to restore note.";
+  } finally {
+    restoringNoteId.value = "";
   }
 }
 async function togglePinned(note: Note) {
@@ -618,8 +623,12 @@ onBeforeUnmount(() => {
               ><button
                 v-if="showArchived"
                 class="flat-button"
+                type="button"
+                :disabled="Boolean(restoringNoteId)"
+                :aria-busy="restoringNoteId === note.id"
                 @click.stop="restoreNote(note)"
               >
+                <span v-if="restoringNoteId === note.id" class="restore-spinner" aria-hidden="true"></span>
                 Restore</button
               ><button
                 v-else
@@ -1149,6 +1158,20 @@ onBeforeUnmount(() => {
 .note-row-main:hover strong {
   text-decoration: underline;
 }
+.restore-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: notes-restore-spin 0.8s linear infinite;
+}
+@keyframes notes-restore-spin {
+  to { transform: rotate(360deg); }
+}
 .note-row-meta {
   min-width: 0;
   max-width: none;
@@ -1210,6 +1233,9 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .note-row {
     transition: none;
+  }
+  .restore-spinner {
+    animation: none;
   }
 }
 </style>

@@ -51,9 +51,16 @@ it("creates, edits, deep-links, archives, restores, and reloads a note with pers
   let releaseNoteRead;
   let signalNoteRead;
   let noteReadBlocked = false;
+  let archiveFailureSent = false;
   const noteReadStarted = new Promise((resolve) => { signalNoteRead = resolve; });
   const noteReadGate = new Promise((resolve) => { releaseNoteRead = resolve; });
   await page.route("**/api/v1/notes/*", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (route.request().method() === "DELETE" && pathname === `/api/v1/notes/${noteId}` && !archiveFailureSent) {
+      archiveFailureSent = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "simulated archive outage" }) });
+      return;
+    }
     if (route.request().method() === "GET" && !noteReadBlocked) {
       noteReadBlocked = true;
       signalNoteRead();
@@ -114,14 +121,40 @@ it("creates, edits, deep-links, archives, restores, and reloads a note with pers
   assert.ok(deepLinked.data.contentText.includes(body));
   await page.getByRole("button", { name: "Back to notes" }).click();
 
+  let archiveConfirmation;
+  page.once("dialog", async (dialog) => {
+    archiveConfirmation = dialog.message();
+    await dialog.accept();
+  });
+  await page.locator(".note-row").filter({ hasText: title }).getByRole("button", { name: "Archive" }).click();
+  assert.equal(archiveConfirmation, `Move “${title}” to Archive? You can restore it from the archive at any time.`);
+  await page.getByRole("alert").filter({ hasText: "Unable to archive note." }).waitFor();
+  assert.equal(await page.locator(".note-row").filter({ hasText: title }).count(), 1, "archive failure keeps the exact note visible for recovery");
+  const afterArchiveFailure = await api("/notes?page=0&size=100");
+  const failedArchiveItems = Array.isArray(afterArchiveFailure.data) ? afterArchiveFailure.data : afterArchiveFailure.data.items;
+  assert.ok(failedArchiveItems.some((item) => item.id === noteId && item.title === title), "fresh API read confirms the failed archive did not change persisted state");
+
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator(".note-row").filter({ hasText: title }).getByRole("button", { name: "Archive" }).click();
   await page.getByRole("link", { name: `Open ${title}` }).waitFor({ state: "detached" });
+  const afterArchive = await api("/notes?page=0&size=100");
+  const activeItems = Array.isArray(afterArchive.data) ? afterArchive.data : afterArchive.data.items;
+  assert.ok(!activeItems.some((item) => item.id === noteId), "fresh active collection read confirms the note is absent after archive");
+  const archivedRead = await api("/notes?page=0&size=100&archived=true");
+  const archivedItems = Array.isArray(archivedRead.data) ? archivedRead.data : archivedRead.data.items;
+  assert.ok(archivedItems.some((item) => item.id === noteId && item.title === title && (item.contentText || "").includes(body)), "fresh archive collection read confirms exact identity and retained content");
   await page.reload();
   await page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }).click();
   await page.getByText(title, { exact: true }).waitFor();
 
-  await page.locator(".note-row").filter({ hasText: title }).getByRole("button", { name: "Restore" }).click();
+  const restoreButton = page.locator(".note-row").filter({ hasText: title }).getByRole("button", { name: "Restore" });
+  const restoreRequests = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === `/api/v1/notes/${noteId}/restore`) restoreRequests.push(request);
+  });
+  await restoreButton.click();
+  await page.locator(".note-row").filter({ hasText: title }).waitFor({ state: "detached" });
+  assert.equal(restoreRequests.length, 1, "restoring sends one request and removes the note from the archive");
   await page.getByRole("button", { name: "Active notes", exact: true }).click();
   await page.getByRole("link", { name: `Open ${title}` }).waitFor();
   await page.reload();
@@ -130,6 +163,12 @@ it("creates, edits, deep-links, archives, restores, and reloads a note with pers
   assert.equal(restored.status, 200);
   assert.equal(restored.data.title, title);
   assert.ok(restored.data.contentText.includes(body));
+  const activeAfterRestore = await api("/notes?page=0&size=100");
+  const activeAfterRestoreItems = Array.isArray(activeAfterRestore.data) ? activeAfterRestore.data : activeAfterRestore.data.items;
+  assert.equal(activeAfterRestoreItems.filter((item) => item.id === noteId).length, 1, "fresh active collection contains the restored note exactly once");
+  const archiveAfterRestore = await api("/notes?page=0&size=100&archived=true");
+  const archiveAfterRestoreItems = Array.isArray(archiveAfterRestore.data) ? archiveAfterRestore.data : archiveAfterRestore.data.items;
+  assert.ok(!archiveAfterRestoreItems.some((item) => item.id === noteId), "fresh archive collection no longer lists the restored note");
 });
 
 it("rejects foreign note reads and keeps missing or foreign deep links private", async () => {

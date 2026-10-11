@@ -1336,4 +1336,47 @@ describe("NotesView", () => {
     expect(wrapper.get(".note-row").text()).toContain("Learning");
     expect(wrapper.get(".note-row").text()).toContain("Graph theory");
   });
+
+  it("prevents duplicate restore requests while a restore is pending", async () => {
+    let finishRestore!: () => void;
+    const restorePending = new Promise<void>((resolve) => { finishRestore = resolve; });
+    let restored = false;
+    vi.mocked(api).mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === "/notes/note-1/restore" && options?.method === "POST") {
+        await restorePending;
+        restored = true;
+        return undefined;
+      }
+      if (path.startsWith("/notes?")) {
+        const archived = new URLSearchParams(path.split("?")[1]).get("archived") === "true";
+        if (archived) return page(restored ? [] : [{ ...note, deletedAt: "2026-09-03T10:00:00Z" }]);
+        return page([note]);
+      }
+      return undefined;
+    });
+    const r = router();
+    await r.push("/notes");
+    await r.isReady();
+    const wrapper = mountNotes(r);
+    await flushPromises();
+    await wrapper.get(".notes-pagination-summary button").trigger("click");
+    await flushPromises();
+
+    const restoreButton = wrapper.get(".note-row button");
+    await restoreButton.trigger("click");
+    await flushPromises();
+    expect(restoreButton.attributes("disabled")).toBeDefined();
+    expect(restoreButton.attributes("aria-busy")).toBe("true");
+    expect(restoreButton.find(".restore-spinner").exists()).toBe(true);
+    await restoreButton.trigger("click");
+    expect(vi.mocked(api).mock.calls.filter(([path, options]) =>
+      path === "/notes/note-1/restore" && options?.method === "POST",
+    )).toHaveLength(1);
+
+    finishRestore();
+    await flushPromises();
+    expect(wrapper.findAll(".note-row")).toHaveLength(0);
+    expect(wrapper.text()).toContain("No archived notes.");
+    expect(wrapper.text()).not.toContain("Unable to restore note.");
+  });
 });
