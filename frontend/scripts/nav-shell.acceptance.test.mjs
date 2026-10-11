@@ -18,7 +18,22 @@ before(async () => {
   // Use a cold Vite cache so dependency optimization cannot make the first
   // browser assertions race a page reload on CI but pass with a warm local cache.
   viteCacheDir = await mkdtemp(join(tmpdir(), "knowledge-base-nav-vite-"));
-  server = await createServer({ cacheDir: viteCacheDir, server: { host: "127.0.0.1", port: 0 } });
+  server = await createServer({
+    cacheDir: viteCacheDir,
+    optimizeDeps: {
+      include: [
+        "vuetify/components/VBtn",
+        "vuetify/components/VIcon",
+        "vuetify/components/VList",
+        "vuetify/components/VSelect",
+        "vuetify/components/VSnackbar",
+        "vuetify/components/VMenu",
+        "vuetify/components/VChip",
+        "vuetify/components/VTable",
+      ],
+    },
+    server: { host: "127.0.0.1", port: 0 },
+  });
   await server.listen();
   browser = await chromium.launch({ headless: true });
 });
@@ -29,8 +44,9 @@ after(async () => {
 });
 
 it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", async () => {
-  await server.environments.client.depsOptimizer.scanProcessing;
-  const optimized = server.environments.client.depsOptimizer.metadata.optimized;
+  const optimizer = server.environments.client.depsOptimizer;
+  await Promise.all(Object.values(optimizer.metadata.discovered).map(({ processing }) => processing));
+  const optimized = optimizer.metadata.optimized;
   for (const dependency of [
     "vuetify/components/VBtn",
     "vuetify/components/VIcon",
