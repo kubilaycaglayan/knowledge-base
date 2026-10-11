@@ -1,6 +1,6 @@
 # Test coverage audit
 
-**Reviewed:** 2026-10-11 (`74486a2f` route, global-search, and Path merge browser acceptance review)
+**Reviewed:** 2026-10-11 (`27707465` route, global-search, Path merge, and timer browser acceptance review)
 **Scope:** Current `main` source and test files in `backend/`, `frontend/`,
 `chrome-extension/`, `ios/`, CI workflows, and the existing test documentation.
 
