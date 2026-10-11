@@ -301,8 +301,11 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Reconcile one coverage status
 
-- [ ] Every row has one evidence status: covered, gap, manual,
-  unsupported/excluded, or decision-needed.
+- [x] Every route, API operation, control-family/action, extension
+  entrypoint/permission, cross-client domain/journey, and closed support
+  decision row has one evidence status: covered, gap, manual,
+  unsupported/excluded, or decision-needed. The inventory CI check rejects
+  blank, combined, or unknown statuses across these tables.
 - [x] Every route row has exactly one status from that set; the inventory CI
   check rejects blank, combined, or unknown route statuses. Remaining route
   gaps are assigned to Knowledge Base maintainers in the matrix metadata.
@@ -320,13 +323,13 @@ load, and route-state evidence must remain individually identifiable.
 - [x] Each cross-client feature-domain and ordered-journey row has one `gap`
   status while its final column lists unproven behavior; CI rejects invalid
   statuses and duplicate journey IDs.
-- [ ] `covered` is used only when linked evidence asserts the behavior at the
+- [x] `covered` is used only when linked evidence asserts the behavior at the
   required layer.
-- [ ] `gap` states the missing behavior and the owner responsible for closing
+- [x] `gap` states the missing behavior and the owner responsible for closing
   or resolving it.
-- [ ] `manual` states the exact steps, required browser/device, owner, and
+- [x] `manual` states the exact steps, required browser/device, owner, and
   evidence to capture.
-- [ ] `unsupported/excluded` states product scope and rationale.
+- [x] `unsupported/excluded` states product scope and rationale.
 - [x] `decision-needed` states the decision owner and review trigger.
 
 ## Desktop Chrome product counterpart

@@ -48,6 +48,34 @@ function readControlEvidenceRows() {
   return rows;
 }
 
+function readControlStatusRows() {
+  const lines = fs.readFileSync(path.join(inventoryRoot, "01-control-matrix.md"), "utf8").split("\n");
+  const rows = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].startsWith("| Checklist ID |")) continue;
+    const headings = lines[index].split("|").slice(1, -1).map((cell) => cell.trim());
+    const statusIndex = headings.indexOf("Evidence status");
+    if (statusIndex < 0) {
+      problems.push(`01-control-matrix.md:table at line ${index + 1}: missing Evidence status column`);
+      continue;
+    }
+    if (!/^-+$/.test(lines[index + 1]?.split("|").slice(1, -1)[statusIndex]?.trim() ?? "")) {
+      problems.push(`01-control-matrix.md:table at line ${index + 1}: Evidence status column is missing from the separator`);
+      continue;
+    }
+    for (let rowIndex = index + 2; rowIndex < lines.length && lines[rowIndex].startsWith("|"); rowIndex += 1) {
+      const cells = lines[rowIndex].split("|").slice(1, -1).map((cell) => cell.trim());
+      if (cells.every((cell) => /^-+$/.test(cell))) continue;
+      if (cells.length !== headings.length) {
+        problems.push(`01-control-matrix.md:row ${rows.length + 1}: expected ${headings.length} cells, found ${cells.length}`);
+      }
+      rows.push({ cells, statusIndex, row: rows.length + 1 });
+      index = rowIndex;
+    }
+  }
+  return rows;
+}
+
 const routeEvidenceRows = readTable("01-route-matrix.md", "| Route / state |").map((cells, index) => ({
   cells,
   evidenceIndex: 2,
@@ -96,6 +124,10 @@ checkTable("01-control-matrix.md", "| Checklist IDs |", { classifiedColumn: 5 })
 for (const { row, status } of invalidEvidenceStatuses(readTable("01-control-matrix.md", "| Checklist IDs |"), 6)) {
   problems.push(`01-control-matrix.md:family row ${row}: invalid evidence status ${JSON.stringify(status)}`);
 }
+for (const { row, cells, statusIndex } of readControlStatusRows()) {
+  const [invalid] = invalidEvidenceStatuses([cells], statusIndex);
+  if (invalid) problems.push(`01-control-matrix.md:action row ${row} ${cells[0]}: invalid evidence status ${JSON.stringify(invalid.status)}`);
+}
 checkTable("01-extension-and-feature-map.md", "| Entry point / capability |", { classifiedColumn: 3 });
 checkTable("01-extension-and-feature-map.md", "| Feature domain |", { classifiedColumn: 3 });
 for (const [header, statusIndex, label] of [
@@ -108,6 +140,10 @@ for (const [header, statusIndex, label] of [
   }
 }
 checkTable("01-extension-and-feature-map.md", "| Journey | Ordered transitions and shared operation |", { classifiedColumn: 3 });
+for (const { row, status } of invalidEvidenceStatuses(readTable("01-extension-and-feature-map.md", "| Affected scope |"), 4)) {
+  problems.push(`01-extension-and-feature-map.md:support-decision row ${row}: invalid evidence status ${JSON.stringify(status)}`);
+}
+checkTable("01-extension-and-feature-map.md", "| Affected scope |", { classifiedColumn: 3 });
 for (const filename of ["01-route-matrix.md", "01-api-matrix.md", "01-control-matrix.md", "01-extension-and-feature-map.md"]) {
   checkInventoryOwner(filename);
 }

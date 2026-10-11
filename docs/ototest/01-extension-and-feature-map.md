@@ -90,6 +90,6 @@ Native iOS is excluded because the repository roadmap says the app is inactive a
 
 ### Closed support decision
 
-| Affected scope | Decision and owner | Remaining gap | Review trigger |
-| --- | --- | --- | --- |
-| Chrome extension on Android Chrome | Excluded from supported platforms; the project owner confirmed desktop Chrome-only support on 2026-10-09. The responsive Knowledge Base web app is the supported mobile Chrome client. | Physical Android Chrome acceptance for the web app remains open and is tracked by MOBILE-01–33 in the OTOTEST-04 acceptance checklist. No Android extension result is claimed. | Revisit if the project owner changes the supported-client decision or Android gains supported extension hosting. |
+| Affected scope | Decision and owner | Remaining gap | Review trigger | Evidence status |
+| --- | --- | --- | --- | --- |
+| Chrome extension on Android Chrome | Excluded from supported platforms; the project owner confirmed desktop Chrome-only support on 2026-10-09. The responsive Knowledge Base web app is the supported mobile Chrome client. | Physical Android Chrome acceptance for the web app remains open and is tracked by MOBILE-01–33 in the OTOTEST-04 acceptance checklist. No Android extension result is claimed. | Revisit if the project owner changes the supported-client decision or Android gains supported extension hosting. | unsupported/excluded |
