@@ -1,6 +1,6 @@
 # Test coverage audit
 
-**Reviewed:** 2026-10-10
+**Reviewed:** 2026-10-11 (`30d93f70` Notes archive/restore source review)
 **Scope:** Current `main` source and test files in `backend/`, `frontend/`,
 `chrome-extension/`, `ios/`, CI workflows, and the existing test documentation.
 
@@ -104,3 +104,10 @@ contains the source reconciliation snapshot and passing local suite results;
 the linked hosted `verify` run passed for the current branch. Remaining
 behavior-specific and physical Android evidence is still tracked in the
 matrices and acceptance checklist.
+
+The Notes archive/restore evidence now also covers a simulated archive failure
+with fresh active-state confirmation and retry, archived/active persisted
+membership, and duplicate Restore activation prevention. The route/control
+inventories and [OTOTEST-05 run record](ototest/runs/2026-10-10-ototest-05-local-gates.md)
+link the exact tests and source revision. Archived-note label preservation and
+archived deep-link UI behavior remain open.
