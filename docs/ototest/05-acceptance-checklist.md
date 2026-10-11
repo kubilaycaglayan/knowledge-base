@@ -48,13 +48,24 @@ gate below, the maintained inventory or release record must identify:
 - [x] The responsible owner for keeping the row current. Each route, API,
   control, and extension/feature matrix declares its Knowledge Base
   maintainer owner; `check-ototest-inventory.mjs` rejects a missing owner.
-- [ ] The expected user-visible result and URL or persisted state when
-  applicable.
-- [ ] Applicable failure, ownership, validation, empty, loading, and recovery
-  behavior.
-- [ ] Evidence layer: unit/component, service/API, persistence/PostgreSQL,
-  real browser, or manual review.
-- [ ] Exact assertion/test or manual procedure and its current status.
+- [x] The expected user-visible result and URL or persisted state when
+  applicable. Route, API, and action rows record the expected behavior and
+  resulting route or state; feature rows identify the product outcome and
+  remaining risk.
+- [x] Applicable failure, ownership, validation, empty, loading, and recovery
+  behavior. Each matrix row describes the relevant failure outcomes or records
+  them in its gap column; the API matrix additionally gates owner-scoped read
+  and referenced-ID mutation claims on integration evidence.
+- [x] Evidence layer: unit/component, service/API, persistence/PostgreSQL,
+  real browser, or manual review. Route/control/API rows classify their
+  evidence layer; extension and cross-client rows distinguish unit, packaged
+  browser, real-stack, and manual evidence, with unsupported or unproven
+  layers retained as gaps.
+- [x] Exact assertion/test or manual procedure and its current status. The
+  inventory gate resolves named frontend and Java assertions, rejects stale
+  references, requires manual-status rows to link procedures, and validates
+  each row’s evidence classification. Gaps remain classified instead of being
+  counted as covered.
 - [x] Exact local command or CI workflow/job that runs the evidence. Each
   inventory matrix declares its local command; the extension matrix also
   identifies the required packaged-browser CI job. The consistency check
