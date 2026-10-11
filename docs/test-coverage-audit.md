@@ -1,6 +1,6 @@
 # Test coverage audit
 
-**Reviewed:** 2026-10-11 (`30d93f70` Notes archive/restore source review)
+**Reviewed:** 2026-10-11 (`8a9ee57f` route and global-search browser acceptance review)
 **Scope:** Current `main` source and test files in `backend/`, `frontend/`,
 `chrome-extension/`, `ios/`, CI workflows, and the existing test documentation.
 
