@@ -22,7 +22,10 @@ make the required test layers visible in local guidance and CI.
 - [x] Extend the consistency check to flag unclassified rows, ownerless
   matrices, duplicate route
   and API row identities, stale local Markdown links, status drift, and API
-  evidence references that no longer resolve to Java test methods.
+  evidence references that no longer resolve to Java test methods. It also
+  resolves named `nav-shell.acceptance.test.mjs` references in the control
+  matrix to current browser test declarations; this is a name check, not an
+  assertion-quality review.
   Control-matrix IDs are cross-references shared with the feature checklist,
   so those references are checked for presence/classification but are not
   treated as unique row definitions.

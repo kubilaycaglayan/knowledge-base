@@ -61,6 +61,8 @@ jobs:
         run: npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build
       - name: Check OTOTEST inventory integrity
         run: node scripts/check-ototest-inventory.mjs
+      - name: Test OTOTEST browser evidence references
+        run: node --test scripts/ototest-browser-evidence.test.mjs
       - name: Test OTOTEST completion guard
         run: node --test scripts/ototest-completion-guard.test.mjs
       - name: Check browser artifact policy
