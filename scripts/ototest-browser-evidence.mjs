@@ -1,3 +1,5 @@
+import { qualifiedJavaEvidenceReferences } from "./ototest-java-evidence.mjs";
+
 export function unresolvedAcceptanceReferences(controlRows, sourcesByFile) {
   const unresolved = [];
 
@@ -45,7 +47,7 @@ export function rowsMissingNamedAssertions(rows, evidenceIndex, statusIndex) {
   return rows.flatMap((cells, index) => {
     if (cells[statusIndex] !== "covered") return [];
     const evidence = cells[evidenceIndex] ?? "";
-    const hasJavaMethod = /\b[A-Za-z][A-Za-z0-9]*Test\.[A-Za-z_][A-Za-z0-9_]*/.test(evidence);
+    const hasJavaMethod = qualifiedJavaEvidenceReferences(evidence).length > 0;
     const hasNamedJsAssertion = /(?:test|spec)\.(?:ts|tsx|js|mjs)(?:`\]\([^)]*\))?`?\s*:?\s*`[^`]+`/i.test(evidence);
     return hasJavaMethod || hasNamedJsAssertion
       ? []

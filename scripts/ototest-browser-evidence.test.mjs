@@ -152,9 +152,11 @@ test("requires covered inventory rows to name an assertion rather than only a te
   assert.deepEqual(rowsMissingNamedAssertions([
     ["covered frontend", "[`example.test.mjs`](example.test.mjs): `saves the item`", "covered"],
     ["covered Java", "ThingApiTest.savesTheItem", "covered"],
+    ["Java filename only", "ThingApiTest.java", "covered"],
     ["filename only", "`example.test.mjs` verifies the flow", "covered"],
     ["gap may cite file", "`example.test.mjs`", "gap"],
   ], 1, 2), [
-    { row: 3, identity: "filename only" },
+    { row: 3, identity: "Java filename only" },
+    { row: 4, identity: "filename only" },
   ]);
 });
