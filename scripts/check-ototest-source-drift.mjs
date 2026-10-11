@@ -59,11 +59,16 @@ export function sourceDrift(openApi, apiMatrix, routeSource, routeMatrix) {
 }
 
 async function main() {
-  const apiPort = process.env.API_DEV_PORT || "8080";
-  const openApiUrl = process.env.OTOTEST_OPENAPI_URL || `http://127.0.0.1:${apiPort}/v3/api-docs`;
-  const response = await fetch(openApiUrl);
-  assert.equal(response.ok, true, `OpenAPI request failed with HTTP ${response.status}`);
-  const spec = await response.json();
+  let spec;
+  if (process.argv.includes("--openapi-stdin")) {
+    spec = JSON.parse(fs.readFileSync(0, "utf8"));
+  } else {
+    const apiPort = process.env.API_DEV_PORT || "8080";
+    const openApiUrl = process.env.OTOTEST_OPENAPI_URL || `http://127.0.0.1:${apiPort}/v3/api-docs`;
+    const response = await fetch(openApiUrl);
+    assert.equal(response.ok, true, `OpenAPI request failed with HTTP ${response.status}`);
+    spec = await response.json();
+  }
   const result = sourceDrift(
     spec,
     fs.readFileSync(path.join(repositoryRoot, "docs/ototest/01-api-matrix.md"), "utf8"),

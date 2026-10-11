@@ -103,8 +103,7 @@ for attempt in {1..180}; do
   fi
   sleep 2
 done
-compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | grep -q '"openapi"'
-node scripts/check-ototest-source-drift.mjs
+compose exec -T api wget -qO- http://localhost:8080/v3/api-docs | node scripts/check-ototest-source-drift.mjs --openapi-stdin
 allowed_cors="$(
   compose exec -T api wget -S -O /dev/null \
     --method=OPTIONS \

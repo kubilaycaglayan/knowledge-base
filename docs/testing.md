@@ -50,7 +50,8 @@ The deployed-shaped smoke run also compares the live generated OpenAPI method
 and path pairs with `docs/ototest/01-api-matrix.md`, and the registered Vue
 route patterns with `docs/ototest/01-route-matrix.md`. The source comparison is
 implemented by `node scripts/check-ototest-source-drift.mjs` and runs after the
-smoke API becomes healthy. Parser regressions run with
+smoke API becomes healthy; the smoke step streams OpenAPI from inside the
+isolated API container without publishing its port to the host. Parser regressions run with
 `node --test scripts/ototest-source-drift.test.mjs` in `verify / web-and-extension`.
 
 | Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
