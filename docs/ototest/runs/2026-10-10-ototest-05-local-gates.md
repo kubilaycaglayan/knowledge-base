@@ -328,3 +328,11 @@ The security checklist now records the reference-ownership boundary and its inte
 | Hosted `verify` after ownership-claim gate | [`verify` run 38120471512](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38120471512) | Pass for commit `7c76da7e`; all active jobs passed, including inventory gates, route/control and packaged extension browser suites, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
 
 Hosted run [`38120306604`](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38120306604) failed one web route/control browser assertion while restoring a protected Reports deep link; the log showed Vite proxy connection refusals and a timeout waiting for `.reports-page`. The subsequent full run above passed that suite.
+
+## 2026-10-11 supplement — path summary read ownership outcomes
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Cross-user path summary assertion | `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --tests com.know.integration.CrossUserIsolationIntegrationTest --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"` | Pass. `CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse` now compares the summary response for a foreign path with a missing path; both return 404. |
+| Inventory integrity | `node scripts/check-ototest-inventory.mjs` | Pass: 18 documents, 107 API rows, and 309 qualified Java test references. The Path summary row records successful owned reads and equivalent missing/foreign outcomes. |
+| Hosted `verify` for the read ownership assertion | [`verify` run 38120953794](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38120953794) | Pass for commit `ad570751`; all active jobs passed, including inventory gates, route/control and packaged extension browser suites, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |

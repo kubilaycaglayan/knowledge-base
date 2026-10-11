@@ -7,7 +7,7 @@
 **Review trigger:** Reconcile when controller mappings, request/response contracts, authentication/ownership behavior, or supported-client scope changes, and before release readiness.
 **Evidence candidates:** [controller/API tests](../../backend/src/test/java/com/know/api/), [integration tests](../../backend/src/test/java/com/know/integration/), and [service tests](../../backend/src/test/java/com/know/service/)
 **Execution commands:** `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"`; PostgreSQL-specific integration tests use the guarded disposable PostgreSQL path. OTOTEST-01 itself did not run these suites; the latest local results are recorded in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
-**Latest evidence run:** [verify 38120471512](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38120471512), including backend and PostgreSQL/Flyway jobs.
+**Latest evidence run:** [verify 38120953794](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38120953794), including backend and PostgreSQL/Flyway jobs.
 
 **OpenAPI reconciliation:** On 2026-10-10 at source revision `80fecc6c`, the
 generated development `/v3/api-docs` document contained 107 method/path pairs,
