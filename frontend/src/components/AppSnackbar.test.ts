@@ -18,16 +18,21 @@ describe("AppSnackbar", () => {
     await flushPromises();
     const snackbar = document.querySelector(".app-snackbar");
     expect(snackbar?.textContent).toContain("Could not start a session. Try again.");
-    expect(document.querySelector('.app-snackbar [role="status"]')).not.toBeNull();
+    const errorStatus = document.querySelector('.app-snackbar [role="status"]');
+    expect(errorStatus?.textContent).toContain("Could not start a session. Try again.");
+    expect(snackbar?.classList.contains("tone-error")).toBe(true);
+    expect(errorStatus?.textContent).not.toContain("Path saved.");
     (document.querySelector('.app-snackbar button[aria-label="Dismiss message"]') as HTMLButtonElement).click();
     await flushPromises();
     expect(notices.current).toBeNull();
 
     notices.notify("Path saved.", "info");
     await flushPromises();
-    expect(document.querySelector(".app-snackbar")?.textContent).toContain("Path saved.");
-    expect(document.querySelector('.app-snackbar [role="status"]')).not.toBeNull();
-    expect(document.querySelector(".app-snackbar")?.classList.contains("tone-info")).toBe(true);
+    const successSnackbar = document.querySelector(".app-snackbar");
+    const successStatus = document.querySelector('.app-snackbar [role="status"]');
+    expect(successSnackbar?.textContent).toContain("Path saved.");
+    expect(successStatus?.textContent).toContain("Path saved.");
+    expect(successSnackbar?.classList.contains("tone-info")).toBe(true);
     wrapper.unmount();
   });
 });

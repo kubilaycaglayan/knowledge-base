@@ -1227,6 +1227,8 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   const snackbar = page.getByRole("status").filter({ hasText: "Removed “Undo path”." });
   await snackbar.waitFor();
   assert.equal(paths.length, 0);
+  await page.waitForTimeout(7000);
+  assert.equal(await snackbar.isVisible(), true, "the named Undo action remains available for at least seven seconds");
   await snackbar.getByRole("button", { name: "Undo" }).click();
   await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
   assert.deepEqual(paths.map(({ id }) => id), ["undo-path"]);

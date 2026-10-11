@@ -376,11 +376,16 @@ current and link evidence at the layer that proves its behavior.
 
 ### Flow: Receive one application notification
 
-- [ ] A successful action reports its outcome with an accessible status
-  announcement.
-- [ ] A failed action is not announced as successful.
-- [ ] An undo action, when offered, remains available long enough to use and
-  identifies the affected record.
+- [x] A successful action reports its outcome with an accessible status
+  announcement. `AppSnackbar.test.ts` asserts the Path-saved message in the
+  `role="status"` region.
+- [x] A failed action is not announced as successful. `AppSnackbar.test.ts`
+  asserts the failure text and error tone in the status region and confirms the
+  status does not contain the success message.
+- [x] An undo action, when offered, remains available long enough to use and
+  identifies the affected record. `confirms Path removal and restores it
+  through the Undo action` verifies the named Undo status remains visible for
+  seven seconds and restores that Path.
 
 ### Flow: Use one application dialog
 
