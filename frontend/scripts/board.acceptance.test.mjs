@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { createServer } from "vite";
 import { chromium, devices, webkit } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
-import { auditCloseAction, auditContainment, auditFocusCycle } from "./overlay-audit.mjs";
+import { activate, auditCloseAction, auditContainment, auditFocusCycle, chooseNativeOption, requireTouchInput } from "./overlay-audit.mjs";
 
 let server, browser;
 const browserEngine = process.env.BOARD_BROWSER === "webkit" ? webkit : chromium;
@@ -19,7 +19,7 @@ const inclusiveDays = (from, to) => Math.round((Date.parse(to) - Date.parse(from
 const cards = [{ id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: dateOnly(), dueDate: dateOnly(2), position: 0, archived: false, pathIds: ["path-1"], labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"] }];
 const boardLabels = [["label-design", "Design"], ["label-docs", "Docs"], ["label-research", "Research"], ["label-backend", "Backend"], ["label-frontend", "Frontend"], ["label-ops", "Operations"], ["label-bug", "Bug"]].map(([id, name]) => ({ id, name, color: null, scopes: ["BOARD"] }));
 
-for (const width of [390, 1440]) it(`scrolls time continuously with native horizontal wheel input at ${width}px`, async (t) => {
+for (const width of [390, 1440]) it(`scrolls time continuously with desktop wheel input at ${width}px`, async (t) => {
   const { page } = await fixture(t, width);
   await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `wheel-${i}`, title: `Wheel card ${i}`, position: i })) }));
   await boardAction(page, "Gantt");
@@ -87,7 +87,7 @@ for (const width of [390, 1440]) it(`scrolls time continuously with native horiz
 it("keeps the full-width Gantt card list inside the visible shell", async (t) => {
   const { page } = await fixture(t, 1600);
   await boardAction(page, "Gantt");
-  await page.getByRole("button", { name: "Expand timeline to full width", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Expand timeline to full width", exact: true }));
   const heading = page.locator(".timeline-label-heading");
   await heading.waitFor();
   const visible = await heading.evaluate((element) => {
@@ -136,7 +136,7 @@ for (const width of [1440, 1600]) it(`keeps the Gantt width toggle and vertical 
     };
   });
   for (const [mode, name] of [["page width", "Expand timeline to full width"], ["full width", "Collapse timeline to page width"]]) {
-    if (mode === "full width") { await page.getByRole("button", { name: "Expand timeline to full width", exact: true }).click(); await page.getByRole("button", { name, exact: true }).waitFor(); await page.waitForTimeout(100); }
+    if (mode === "full width") { await activate(page.getByRole("button", { name: "Expand timeline to full width", exact: true })); await page.getByRole("button", { name, exact: true }).waitFor(); await page.waitForTimeout(100); }
     const state = await check();
     assert.equal(state.toggleInside, true, `The width toggle must sit inside the Gantt's clipping box at ${mode}`);
     assert.equal(state.toggleHit, true, `The whole width toggle must be visible and clickable at ${mode}`);
@@ -187,7 +187,7 @@ for (const width of [390, 1440]) it(`hides the Gantt card list from the timeline
   if (width <= 700) assert.ok(shown.touchTarget >= 44, `The phone touch target must be at least 44px (${shown.touchTarget})`);
   await page.screenshot({ path: join(screenshotDir, `gantt-card-list-shown-${width}.png`) });
 
-  await page.getByRole("button", { name: "Hide card list", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Hide card list", exact: true }));
   await page.getByRole("button", { name: "Show card list", exact: true }).waitFor();
   await page.waitForTimeout(100);
   const hidden = await measure();
@@ -205,7 +205,7 @@ for (const width of [390, 1440]) it(`hides the Gantt card list from the timeline
   await page.screenshot({ path: join(screenshotDir, `gantt-card-list-hidden-${width}.png`) });
 
   await page.locator(".timeline-scroll").evaluate((element) => { element.scrollTop = 300; element.dispatchEvent(new Event("scroll")); });
-  await page.getByRole("button", { name: "Show card list", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Show card list", exact: true }));
   await page.getByRole("button", { name: "Hide card list", exact: true }).waitFor();
   await page.waitForTimeout(100);
   const again = await measure();
@@ -213,7 +213,7 @@ for (const width of [390, 1440]) it(`hides the Gantt card list from the timeline
   assert.ok(again.timelineTop > 0 && Math.abs(again.paneTop - again.timelineTop) <= 1, `The card list must scroll with the timeline (${again.paneTop} vs ${again.timelineTop})`);
   assert.equal(page.url(), url);
   if (width > 700) {
-    await page.getByRole("button", { name: "Expand timeline to full width", exact: true }).click();
+    await activate(page.getByRole("button", { name: "Expand timeline to full width", exact: true }));
     await page.getByRole("button", { name: "Collapse timeline to page width", exact: true }).waitFor();
     await page.waitForTimeout(100);
     const wide = await measure();
@@ -313,12 +313,12 @@ for (const width of [390, 1440]) it(`previews automatic and custom path text col
   const { page } = await fixture(t, width);
   await page.goto(new URL("/paths", page.url()).toString());
   await page.getByRole("heading", { name: "Paths" }).waitFor();
-  await page.getByRole("button", { name: "Add path", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Add path", exact: true }));
   await page.locator(".path-create-dialog").waitFor();
-  await page.getByRole("button", { name: "Choose path color: Blue (#3B82F6)" }).click();
+  await activate(page.getByRole("button", { name: "Choose path color: Blue (#3B82F6)" }));
   const preview = page.locator(".path-create-dialog .path-text-color-preview");
   assert.equal(await preview.evaluate((element) => getComputedStyle(element).color), "rgb(0, 0, 0)");
-  await page.locator("#new-path-text-color-custom").check();
+  await activate(page.locator("#new-path-text-color-custom"));
   await page.locator('.path-create-dialog input[aria-label="Custom path text color"]').fill("#102030");
   assert.equal(await preview.evaluate((element) => getComputedStyle(element).color), "rgb(16, 32, 48)");
   await page.screenshot({ path: join(screenshotDir, `path-text-color-${width}.png`) });
@@ -393,7 +393,7 @@ it("highlights an unscheduled Gantt card after it gets a date", async (t) => {
   const track = page.getByRole("button", { name: "Choose a date for Ship timeline" });
   await track.waitFor();
   const saved = cardSaved(page);
-  await track.click();
+  await activate(track);
   await saved;
   await page.waitForFunction(() => document.querySelector(".timeline-row")?.classList.contains("last-changed") && document.querySelector(".timeline-label")?.classList.contains("last-changed"));
 });
@@ -500,7 +500,7 @@ for (const width of [390, 1440]) it(`pins off-screen card arrows to the timeline
   await page.keyboard.press("Shift"); // Keyboard modality, so programmatic focus matches :focus-visible.
   await earlierArrow.focus();
   assert.notEqual(await earlierArrow.evaluate((element) => getComputedStyle(element).outlineStyle), "none", "Focused arrows show a focus ring");
-  await earlierArrow.click();
+  await activate(earlierArrow);
   await page.waitForFunction((from) => new URL(location.href).searchParams.get("from") === from, dateOnly(-20));
   assert.equal(await page.locator(".board-gantt-start-date").inputValue(), dateOnly(-20));
   await page.locator(".timeline-row").nth(0).locator(".timeline-card").waitFor();
@@ -515,7 +515,7 @@ for (const width of [390, 1440]) it(`ends the timeline at a future card from its
   await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: [{ ...cards[0], id: "later", title: "Later card", startDate: dateOnly(60), dueDate: dateOnly(61), position: 0 }] }));
   await boardAction(page, "Gantt");
   const laterArrow = page.getByRole("button", { name: `Show Later card on the timeline, starting ${dateOnly(60)}` });
-  await laterArrow.click();
+  await activate(laterArrow);
   await page.waitForFunction((to) => new URL(location.href).searchParams.get("to") === to, dateOnly(61));
   const url = new URL(page.url());
   assert.equal(inclusiveDays(url.searchParams.get("from"), url.searchParams.get("to")), 14, "The range keeps its length");
@@ -538,6 +538,7 @@ async function fixture(t, width = 390, dense = false, failBoard = false, archive
   const iphoneWebKit = process.env.BOARD_BROWSER === "webkit" && width <= 390;
   const context = await browser.newContext({ ...(iphoneWebKit ? devices["iPhone 13"] : {}), viewport: { width, height: 900 }, ...(iphoneWebKit ? { screen: { width, height: 900 } } : {}), hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
+  if (width <= 390) await requireTouchInput(t, context);
   // Each fixture owns its board so a rename cannot leak into another test.
   const board = { ...boardTemplate };
   const fixtureCards = dense ? Array.from({ length: 21 }, (_, index) => ({ id: `dense-${index}`, statusId: "status-0", title: `Dense card ${index + 1}`, body: "{}", priority: "MEDIUM", position: index, archived: false, pathIds: [], labelIds: [] })) : cards.map((card, index) => ({ ...card, ...(index === 0 ? { statusId: firstCardStatus } : {}) }));
@@ -674,14 +675,14 @@ const selectedTab = (page) => page.locator(".board-tab.selected");
 // screens and in the board menu (the tab bar's More button) on phones.
 async function boardAction(page, name) {
   const direct = page.getByRole("button", { name, exact: true });
-  if (await direct.isVisible().catch(() => false)) return direct.click();
+  if (await direct.isVisible().catch(() => false)) return activate(direct);
   const ganttMenu = page.locator(".board-gantt-selector button.board-all-menu");
   if (await ganttMenu.isVisible().catch(() => false)) {
-    await ganttMenu.click();
-    return page.getByRole("menuitemradio", { name, exact: true }).click();
+    await activate(ganttMenu);
+    return activate(page.getByRole("menuitemradio", { name, exact: true }));
   }
-  await page.locator("button.board-tab-more").click();
-  await page.locator('.board-more-menu [role^="menuitem"]', { hasText: new RegExp(`^${name}`) }).click();
+  await activate(page.locator("button.board-tab-more"));
+  await activate(page.locator('.board-more-menu [role^="menuitem"]', { hasText: new RegExp(`^${name}`) }));
 }
 // Card play buttons only show in the In Progress column (CT-06), so play tests put the card there.
 const inProgressFixture = (t, width) => fixture(t, width, false, false, false, false, false, 409, false, 0, "status-2");
@@ -691,45 +692,48 @@ const cardSaved = (page) => page.waitForResponse((response) => response.request(
 
 // The card path picker is a Vuetify select: open it and pick an option by name.
 async function pickCardPath(page, name) {
-  await page.locator(".card-editor .card-path-picker .v-field").click();
-  await page.locator(".card-path-menu .v-list-item", { hasText: new RegExp(`^${name}$`) }).click();
+  await activate(page.locator(".card-editor .card-path-picker .v-field"));
+  await activate(page.locator(".card-path-menu .v-list-item", { hasText: new RegExp(`^${name}$`) }));
   await page.locator(".card-path-menu").waitFor({ state: "detached" });
 }
 const cardPathText = (page) => page.locator(".card-editor .card-path-picker .v-select__selection-text").innerText().then((text) => text.trim());
 
 // The card editor saves itself; closing it flushes the pending save.
 async function closeCard(page) {
-  await page.getByRole("button", { name: "Close card" }).click();
+  await activate(page.getByRole("button", { name: "Close card" }));
   await page.locator(".card-editor").waitFor({ state: "detached" });
 }
 
 // Picks an inclusive range in the editor's date-range picker, paging months as needed.
 async function pickCardDates(page, start, end) {
-  await page.getByRole("textbox", { name: "Card dates" }).click();
+  await activate(page.getByRole("textbox", { name: "Card dates" }));
   for (const date of [start, end]) {
     const cell = page.locator(`.dp__menu [data-test-id="dp-${date}"]`).first();
     for (let step = 0; step < 24 && !(await cell.count()); step += 1) {
       const shown = (await page.locator(".dp__menu .dp__calendar_item").nth(15).getAttribute("data-test-id")).slice(3, 10);
-      await page.locator(".dp__menu").getByRole("button", { name: date.slice(0, 7) > shown ? "Next month" : "Previous month" }).click();
+      await activate(page.locator(".dp__menu").getByRole("button", { name: date.slice(0, 7) > shown ? "Next month" : "Previous month" }));
     }
-    await cell.click();
+    await activate(cell);
     if (start === end) break;
   }
   // Picking dates never closes the picker; OK confirms them.
-  await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
+  await activate(page.locator(".dp__menu").getByRole("button", { name: "OK" }));
   await page.locator(".dp__menu").waitFor({ state: "detached" });
 }
 
 // Status and archival are changed from inside the card editor.
 async function setCardStatus(page, title, status) {
-  await page.locator(".board-card", { hasText: title }).click();
-  await page.getByRole("combobox", { name: "Status" }).selectOption({ label: status });
+  await activate(page.locator(".board-card", { hasText: title }));
+  const select = page.getByRole("combobox", { name: "Status" });
+  const value = await select.locator("option").evaluateAll((options, label) => options.find((option) => option.textContent.trim() === label)?.value, status);
+  if (value === undefined) throw new Error(`Status select does not contain ${status}`);
+  await chooseNativeOption(select, value);
   await closeCard(page);
 }
 async function archiveCardFromEditor(page, title) {
-  await page.locator(".board-card", { hasText: title }).click();
-  await page.getByRole("button", { name: "Archive card" }).click();
-  await page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }).click();
+  await activate(page.locator(".board-card", { hasText: title }));
+  await activate(page.getByRole("button", { name: "Archive card" }));
+  await activate(page.getByRole("alertdialog", { name: "Archive card?" }).getByRole("button", { name: "Archive" }));
   await page.locator(".card-editor").waitFor({ state: "detached" });
 }
 
@@ -738,7 +742,7 @@ async function archiveCardFromEditor(page, title) {
 async function openBoardSettings(page) {
   const name = (await page.locator(".board-tab.selected").innerText()).trim();
   await boardAction(page, "Manage boards");
-  await page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name, exact: true }).click();
+  await activate(page.getByRole("dialog", { name: "Boards" }).getByRole("button", { name, exact: true }));
   const dialog = page.getByRole("dialog", { name: "Board settings" });
   await dialog.waitFor();
   return dialog;
@@ -748,21 +752,22 @@ async function openBoardSettings(page) {
 async function openArchive(page) {
   const footer = page.locator("footer.board-footer");
   await footer.scrollIntoViewIfNeeded();
-  await footer.getByRole("link", { name: "Archived items" }).click();
+  await activate(footer.getByRole("link", { name: "Archived items" }));
   await page.getByRole("heading", { name: "Archive", exact: true }).waitFor();
 }
 async function restoreFromArchive(page, label) {
   await openArchive(page);
-  await page.getByRole("button", { name: `Restore ${label}` }).click();
+  await activate(page.getByRole("button", { name: `Restore ${label}` }));
   await page.getByRole("button", { name: `Restore ${label}` }).waitFor({ state: "detached" });
-  await page.getByRole("link", { name: "Back to board" }).click();
+  await activate(page.getByRole("link", { name: "Back to board" }));
   await page.getByRole("heading", { name: "Boards" }).waitFor();
 }
 
 describe("board browser acceptance", { concurrency: 4 }, () => {
   it("does not expose board data before authentication", async (t) => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 }, hasTouch: true });
     t.after(() => context.close());
+    await requireTouchInput(t, context);
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/board`);
     await page.getByRole("heading", { name: "Sign in" }).waitFor();
@@ -888,7 +893,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const initialUrl = new URL(page.url());
     const initialFrom = initialUrl.searchParams.get("from");
     const initialTo = initialUrl.searchParams.get("to");
-    await page.getByRole("button", { name: "Next timeline window" }).click();
+    await activate(page.getByRole("button", { name: "Next timeline window" }));
     await page.waitForFunction((previousFrom) => new URL(location.href).searchParams.get("from") !== previousFrom, initialFrom);
     await page.goBack();
     await page.waitForFunction(() => new URL(location.href).searchParams.get("view") === "gantt");
@@ -921,7 +926,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("removes an edited out-of-window card from Gantt but keeps it in Kanban", async (t) => {
     const { page } = await fixture(t);
     await boardAction(page, "Gantt");
-    await page.locator(".timeline-bar", { hasText: "Ship timeline" }).click();
+    await activate(page.locator(".timeline-bar", { hasText: "Ship timeline" }));
     await pickCardDates(page, dateOnly(40), dateOnly(42));
     await closeCard(page);
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
@@ -961,7 +966,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("shows a newly created dated card after switching to Gantt", async (t) => {
     const { page } = await fixture(t);
-    await page.getByRole("button", { name: "Add card to Backlog" }).click();
+    await activate(page.getByRole("button", { name: "Add card to Backlog" }));
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timeline from Kanban");
     await pickCardDates(page, dateOnly(1), dateOnly(3));
     await closeCard(page);
@@ -971,7 +976,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("keeps one card present through edit, move, archive, and restore", async (t) => {
     const { page } = await fixture(t);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Never disappears");
     await pickCardDates(page, dateOnly(), dateOnly(2));
     await closeCard(page);
@@ -993,19 +998,19 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("persists card path, priority, dates, and labels after reload", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     await pickCardPath(page, "Research");
     await page.getByRole("combobox", { name: "Priority" }).selectOption("LOW");
     await pickCardDates(page, dateOnly(4), dateOnly(6));
     const picker = page.locator(".card-labels-picker-wrap");
-    await picker.getByRole("button", { name: "Open label picker" }).click();
+    await activate(picker.getByRole("button", { name: "Open label picker" }));
     const bug = page.locator(".label-picker-menu [role=option]").filter({ has: page.locator(".option-name", { hasText: "Bug" }) });
-    await bug.click();
+    await activate(bug);
     await page.keyboard.press("Escape");
     await closeCard(page);
 
     await page.reload();
-    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
+    await activate(page.locator(".board-card", { hasText: "Ship timeline" }));
     assert.equal(await cardPathText(page), "Research");
     assert.equal(await page.getByRole("combobox", { name: "Priority" }).inputValue(), "LOW");
     const shownDate = (offset) => new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }).format(new Date(`${dateOnly(offset)}T12:00:00Z`));
@@ -1051,7 +1056,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.getByRole("heading", { name: "Timeline" }).waitFor();
     await page.getByLabel("Timeline start date").fill("2020-01-01");
     await page.getByLabel("Timeline end date").fill("2020-01-07");
-    await page.getByRole("button", { name: "Today", exact: true }).click();
+    await activate(page.getByRole("button", { name: "Today", exact: true }));
     const today = await page.evaluate(() => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; });
     assert.equal(await page.getByLabel("Timeline start date").inputValue(), today);
     const end = new Date(`${today}T12:00:00Z`);
@@ -1079,12 +1084,12 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t);
     const edges = (locator) => locator.evaluate((element) => { const style = getComputedStyle(element); return [style.borderTopColor, style.borderLeftColor, style.borderTopWidth, style.borderLeftWidth]; });
     assert.deepEqual(await edges(page.locator(".board-card").first()), ["rgb(18, 171, 120)", "rgb(18, 171, 120)", "6px", "6px"]);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     // A card carries one path, so the editor offers a single-select Vuetify dropdown.
     assert.equal(await page.locator('.card-editor select[name="cardPaths"]').count(), 0, "The path picker is not a native select");
     assert.equal(await cardPathText(page), "Product");
     assert.deepEqual((await edges(page.locator(".card-editor"))).slice(0, 2), ["rgb(18, 171, 120)", "rgb(18, 171, 120)"]);
-    await page.locator(".card-editor .card-path-picker .v-field").click();
+    await activate(page.locator(".card-editor .card-path-picker .v-field"));
     await page.locator(".card-path-menu .v-list-item").first().waitFor();
     assert.deepEqual((await page.locator(".card-path-menu .v-list-item-title").allInnerTexts()).map((name) => name.trim()), ["No path", "Product", "Research"]);
     await page.keyboard.press("Escape");
@@ -1096,13 +1101,13 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("does not expose archived paths or deleted BOARD labels in the editor", async (t) => {
     const { page } = await fixture(t);
-    await page.locator(".board-card").first().click();
-    await page.locator(".card-editor .card-path-picker .v-field").click();
+    await activate(page.locator(".board-card").first());
+    await activate(page.locator(".card-editor .card-path-picker .v-field"));
     await page.locator(".card-path-menu .v-list-item").first().waitFor();
     assert.equal(await page.locator(".card-path-menu .v-list-item", { hasText: "Archived path" }).count(), 0);
     await page.keyboard.press("Escape");
     await page.locator(".card-path-menu").waitFor({ state: "detached" });
-    await page.locator(".card-labels-picker-wrap").getByRole("button", { name: "Open label picker" }).click();
+    await activate(page.locator(".card-labels-picker-wrap").getByRole("button", { name: "Open label picker" }));
     const options = (await page.locator(".label-picker-menu .option-name").allInnerTexts()).map((name) => name.trim());
     assert.deepEqual(options.sort(), boardLabels.map((label) => label.name).sort(), "Only the live BOARD labels are offered");
   });
@@ -1136,8 +1141,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("restores an archived board and selects its cards", async (t) => {
     const { page } = await fixture(t, 390, false, false, false, true);
     await openArchive(page);
-    await page.getByRole("button", { name: "Restore Product board" }).click();
-    await page.getByRole("link", { name: "Back to board" }).click();
+    await activate(page.getByRole("button", { name: "Restore Product board" }));
+    await activate(page.getByRole("link", { name: "Back to board" }));
     await page.getByRole("heading", { name: "Boards" }).waitFor();
     await selectedTab(page).waitFor();
     assert.equal(await selectedTab(page).textContent(), "Product");
@@ -1149,11 +1154,11 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const boardMenu = page.getByRole("button", { name: "Board menu", exact: true });
     assert.equal(await page.getByRole("textbox", { name: "New board name" }).count(), 0, "No inline board input on the page");
     assert.equal(await page.getByRole("button", { name: "Add board" }).count(), 0, "No Add board button on the page");
-    await page.getByRole("button", { name: "Board menu", exact: true }).click();
+    await activate(page.getByRole("button", { name: "Board menu", exact: true }));
     await page.keyboard.press("End");
     await page.keyboard.press("Enter");
     const manager = page.getByRole("dialog", { name: "Boards" });
-    await manager.getByRole("button", { name: "Add board" }).click();
+    await activate(manager.getByRole("button", { name: "Add board" }));
     const dialog = page.getByRole("dialog", { name: "New board" });
     await dialog.waitFor();
     assert.equal(await manager.count(), 0, "The Boards dialog gives way to New board");
@@ -1173,39 +1178,39 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await boardAction(page, "Manage boards");
     const manager = page.getByRole("dialog", { name: "Boards" });
     await manager.waitFor();
-    await page.locator(".dialog-backdrop").click({ position: { x: 8, y: 8 } });
+    await activate(page.locator(".dialog-backdrop"), { position: { x: 8, y: 8 } });
     await manager.waitFor({ state: "detached" });
   });
 
   it("keeps archive confirmation open when its backdrop is activated", async (t) => {
     const { page } = await fixture(t);
-    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
-    await page.getByRole("button", { name: "Archive card" }).click();
+    await activate(page.locator(".board-card", { hasText: "Ship timeline" }));
+    await activate(page.getByRole("button", { name: "Archive card" }));
     const confirmation = page.getByRole("alertdialog", { name: "Archive card?" });
     await confirmation.waitFor();
-    await page.locator(".dialog-backdrop.confirm-layer").click({ position: { x: 8, y: 8 } });
+    await activate(page.locator(".dialog-backdrop.confirm-layer"), { position: { x: 8, y: 8 } });
     await confirmation.waitFor();
   });
 
   it("cancels card archive confirmation without archiving the card", async (t) => {
     const { page } = await fixture(t);
-    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
-    await page.getByRole("button", { name: "Archive card" }).click();
+    await activate(page.locator(".board-card", { hasText: "Ship timeline" }));
+    await activate(page.getByRole("button", { name: "Archive card" }));
     const confirmation = page.getByRole("alertdialog", { name: "Archive card?" });
     await confirmation.waitFor();
-    await confirmation.getByRole("button", { name: "Cancel" }).click();
+    await activate(confirmation.getByRole("button", { name: "Cancel" }));
     await confirmation.waitFor({ state: "detached" });
     assert.equal(await page.locator(".board-card", { hasText: "Ship timeline" }).count(), 1);
   });
 
   it("renames the selected board from board settings, without losing its active view", async (t) => {
     const { page } = await fixture(t);
-    await selectedTab(page).click();
+    await activate(selectedTab(page));
     assert.equal(await page.getByRole("textbox", { name: "Board name", exact: true }).count(), 0, "A tab click must not start a rename");
     const settings = await openBoardSettings(page);
     await settings.getByRole("textbox", { name: "Name", exact: true }).fill("Renamed board");
     await settings.getByRole("textbox", { name: "Name", exact: true }).press("Enter");
-    await settings.getByRole("button", { name: "Done", exact: true }).click();
+    await activate(settings.getByRole("button", { name: "Done", exact: true }));
     await selectedTab(page).filter({ hasText: /^Renamed board$/ }).waitFor();
     assert.equal(new URL(page.url()).searchParams.get("board"), "board-1");
     assert.equal(new URL(page.url()).searchParams.get("view"), "kanban");
@@ -1215,7 +1220,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("creates a blank-title card from a column and edits it in a flat editor", async (t) => {
     const { page } = await fixture(t);
     assert.equal(await page.getByRole("textbox", { name: "New card title" }).count(), 0, "No page-level add-card input");
-    await page.getByRole("button", { name: "Add card to Pending" }).click();
+    await activate(page.getByRole("button", { name: "Add card to Pending" }));
     await page.locator(".kanban-column", { hasText: "Pending" }).locator('.board-card[aria-label="Untitled card"]').waitFor();
     assert.equal(await page.getByText("Untitled card").count(), 0, "No visible Untitled card placeholder");
     const editor = page.getByRole("dialog", { name: "Edit card" });
@@ -1239,14 +1244,14 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       window.__boardUnhandledRejections = [];
       window.addEventListener("unhandledrejection", (event) => window.__boardUnhandledRejections.push(String(event.reason?.message || event.reason)));
     });
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const saved = cardSaved(page);
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Saved by itself");
     await saved;
     assert.equal(getCardUpdateRequests(), 1, "Rapid typing coalesces into one save");
     await page.getByRole("heading", { name: "Saved by itself" }).waitFor();
 
-    await page.locator(".card-editor .ProseMirror").click();
+    await activate(page.locator(".card-editor .ProseMirror"));
     await page.keyboard.type("Body line");
     await page.keyboard.press("ControlOrMeta+Enter");
     await page.locator(".card-editor").waitFor({ state: "detached" });
@@ -1257,8 +1262,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("uses the note body line height and paragraph spacing in the card body", async (t) => {
     const { page } = await fixture(t);
-    await page.locator(".board-card").first().click();
-    await page.locator(".card-editor .ProseMirror").click();
+    await activate(page.locator(".board-card").first());
+    await activate(page.locator(".card-editor .ProseMirror"));
     await page.keyboard.type("First line");
     await page.keyboard.press("Enter");
     await page.keyboard.type("Second line");
@@ -1274,10 +1279,10 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   // RT-07
   it("starts the card body's first line at the top for every block type", async (t) => {
     const { page } = await fixture(t);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const body = page.locator(".card-editor .ProseMirror");
     for (const [block, shortcut] of [["P", ""], ["H1", "# "], ["H2", "## "], ["H3", "### "], ["UL", "- "], ["OL", "1. "], ["BLOCKQUOTE", "> "]]) {
-      await body.click();
+      await activate(body);
       await page.keyboard.press("ControlOrMeta+a");
       await page.keyboard.press("Delete");
       await page.keyboard.type(`${shortcut}Text`);
@@ -1293,7 +1298,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("formats a card body from the toolbar on desktop and phone", async (t) => {
     for (const width of [1280, 390, 320]) {
       const { page } = await fixture(t, width);
-      await page.locator(".board-card").first().click();
+      await activate(page.locator(".board-card").first());
       const body = page.locator(".card-editor .ProseMirror");
       const toolbar = page.getByRole("toolbar", { name: "Formatting" });
       await toolbar.waitFor();
@@ -1301,23 +1306,31 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       assert.ok(toolbarBox.y >= bodyBox.y + bodyBox.height - toolbarBox.height - 1 && toolbarBox.y + toolbarBox.height <= bodyBox.y + bodyBox.height + 1, `${width}px: the toolbar sits at the bottom of the text box`);
       // The dialog focuses its title on open; wait for the body to hold focus before typing.
       await page.getByRole("textbox", { name: "Title", exact: true }).evaluate((element) => element === document.activeElement || new Promise((resolve) => element.addEventListener("focus", resolve, { once: true })));
-      await body.click();
+      await activate(body);
       await page.waitForFunction(() => Boolean(document.activeElement?.closest(".card-editor .ProseMirror")));
-      const saved = cardSaved(page);
-      await page.keyboard.type("Make this bold");
-      await saved;
-      // Select the line with a mouse drag, then wait for the editor to take the selection.
-      const line = await body.getByText("Make this bold").boundingBox();
-      await page.mouse.move(line.x + 1, line.y + line.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(line.x + line.width + 20, line.y + line.height / 2, { steps: 5 });
-      await page.mouse.up();
-      await page.waitForFunction(() => { const selection = document.querySelector(".card-editor .ProseMirror").editor.state.selection; return selection.to - selection.from === "Make this bold".length; });
-      await toolbar.getByRole("button", { name: "Bold" }).click();
+      if (width <= 390) {
+        // On a phone, tap Bold at the caret before typing instead of selecting
+        // existing text with a mouse drag or a keyboard selection.
+        const saved = cardSaved(page);
+        await activate(toolbar.getByRole("button", { name: "Bold" }));
+        await page.keyboard.type("Make this bold");
+        await saved;
+      } else {
+        const saved = cardSaved(page);
+        await page.keyboard.type("Make this bold");
+        await saved;
+        const line = await body.getByText("Make this bold").boundingBox();
+        await page.mouse.move(line.x + 1, line.y + line.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(line.x + line.width + 20, line.y + line.height / 2, { steps: 5 });
+        await page.mouse.up();
+        await page.waitForFunction(() => { const selection = document.querySelector(".card-editor .ProseMirror").editor.state.selection; return selection.to - selection.from === "Make this bold".length; });
+        await activate(toolbar.getByRole("button", { name: "Bold" }));
+      }
       await body.locator("strong", { hasText: "Make this bold" }).waitFor();
       assert.equal(await toolbar.getByRole("button", { name: "Bold" }).getAttribute("aria-pressed"), "true");
-      await toolbar.getByRole("button", { name: /^Text style/ }).click();
-      await page.locator(".rich-text-style-menu").getByRole("menuitemradio", { name: "Heading 2" }).click();
+      await activate(toolbar.getByRole("button", { name: /^Text style/ }));
+      await activate(page.locator(".rich-text-style-menu").getByRole("menuitemradio", { name: "Heading 2" }));
       await body.locator("h2", { hasText: "Make this bold" }).waitFor();
       const heights = await toolbar.locator("button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
       if (width === 390) assert.ok(heights.every((height) => height >= 44), `Touch targets are 44px (${heights})`);
@@ -1332,15 +1345,15 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   // Clicking Checklist used to freeze the page.
   it("turns a card body line into a checklist from the toolbar", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const body = page.locator(".card-editor .ProseMirror");
     const toolbar = page.getByRole("toolbar", { name: "Formatting" });
     await toolbar.waitFor();
     await page.getByRole("textbox", { name: "Title", exact: true }).evaluate((element) => element === document.activeElement || new Promise((resolve) => element.addEventListener("focus", resolve, { once: true })));
-    await body.click();
+    await activate(body);
     await page.waitForFunction(() => Boolean(document.activeElement?.closest(".card-editor .ProseMirror")));
     await page.keyboard.type("Buy milk");
-    await toolbar.getByRole("button", { name: "Checklist" }).click({ timeout: 5000 });
+    await activate(toolbar.getByRole("button", { name: "Checklist" }), { timeout: 5000 });
     const responsive = await Promise.race([page.evaluate(() => true), new Promise((resolve) => setTimeout(() => resolve(false), 3000))]);
     assert.ok(responsive, "The page must stay responsive after clicking Checklist");
     await body.locator("ul[data-type='taskList'] li", { hasText: "Buy milk" }).waitFor({ timeout: 3000 });
@@ -1359,40 +1372,40 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("keeps the date picker open until OK and shows a single confirmed day once", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const day = dateOnly(5);
-    await page.getByRole("textbox", { name: "Card dates" }).click();
+    await activate(page.getByRole("textbox", { name: "Card dates" }));
     const cell = page.locator(`.dp__menu [data-test-id="dp-${day}"]`).first();
-    if (!(await cell.count())) await page.locator(".dp__menu").getByRole("button", { name: "Next month" }).click();
-    await cell.click();
-    await cell.click();
+    if (!(await cell.count())) await activate(page.locator(".dp__menu").getByRole("button", { name: "Next month" }));
+    await activate(cell);
+    await activate(cell);
     assert.equal(await page.locator(".dp__menu").count(), 1, "Picking a range leaves the picker open");
     const okBox = await page.locator(".dp__menu").getByRole("button", { name: "OK" }).boundingBox();
     assert.ok(okBox.height >= 32 && okBox.width >= 44, `OK is a comfortable target (${okBox.width}x${okBox.height})`);
-    await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
+    await activate(page.locator(".dp__menu").getByRole("button", { name: "OK" }));
     await page.locator(".dp__menu").waitFor({ state: "detached" });
     const input = page.getByRole("textbox", { name: "Card dates" });
     assert.doesNotMatch(await input.inputValue(), /–/, "A single day is not shown as a range");
 
-    await input.click();
+    await activate(input);
     await page.locator(".dp__menu").waitFor();
     const body = page.locator(".card-body-editor");
     const box = await body.boundingBox();
-    await body.click({ position: { x: box.width - 20, y: box.height - 20 } });
+    await activate(body, { position: { x: box.width - 20, y: box.height - 20 } });
     await page.locator(".dp__menu").waitFor({ state: "detached" });
     assert.equal(await page.locator(".card-editor").count(), 1, "An outside click closes only the picker");
   });
 
   it("confirms a single picked day without expecting a range end", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const day = dateOnly(6);
-    await page.getByRole("textbox", { name: "Card dates" }).click();
+    await activate(page.getByRole("textbox", { name: "Card dates" }));
     const cell = page.locator(`.dp__menu [data-test-id="dp-${day}"]`).first();
-    if (!(await cell.count())) await page.locator(".dp__menu").getByRole("button", { name: "Next month" }).click();
-    await cell.click();
+    if (!(await cell.count())) await activate(page.locator(".dp__menu").getByRole("button", { name: "Next month" }));
+    await activate(cell);
     const saved = cardSaved(page);
-    await page.locator(".dp__menu").getByRole("button", { name: "OK" }).click();
+    await activate(page.locator(".dp__menu").getByRole("button", { name: "OK" }));
     await page.locator(".dp__menu").waitFor({ state: "detached" });
     await saved;
     await closeCard(page);
@@ -1404,7 +1417,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("keeps the card title at the top of the editor, level with the close button", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const editor = page.locator(".card-editor");
     await editor.waitFor();
     assert.equal(await editor.evaluate((element) => getComputedStyle(element).paddingTop), "0px");
@@ -1424,15 +1437,15 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const card = await page.locator(".board-card").first().boundingBox();
     const box = await play.boundingBox();
     assert.ok(box.x + box.width >= card.x + card.width - 16 && box.y <= card.y + 16, "The play button sits at the card's top right");
-    await play.click();
+    await activate(play);
     await page.locator(".board-card-play").first().waitFor({ state: "hidden" });
     assert.deepEqual(timerStarts, [{ pathId: "path-1", labelIds: ["label-design", "label-docs", "label-research", "label-backend", "label-frontend", "label-ops"], description: "Ship timeline" }]);
     assert.equal(await page.locator(".card-editor").count(), 0, "Starting a session does not open the card");
     await page.getByRole("button", { name: "Stop timer" }).waitFor();
 
-    await page.getByRole("button", { name: "Stop timer" }).click();
+    await activate(page.getByRole("button", { name: "Stop timer" }));
     await play.waitFor();
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const header = page.locator(".card-editor-header");
     assert.deepEqual(await header.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))), ["Start a session for Ship timeline", "Close card"]);
   });
@@ -1442,7 +1455,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const boardPlay = page.locator(".kanban .board-card-play").first();
     const boardBox = await boardPlay.boundingBox();
     assert.ok(boardBox.width >= 44 && boardBox.height >= 44, `The card timer action is a 44px phone target (${boardBox.width}×${boardBox.height})`);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const editorPlay = page.locator(".card-editor-header .board-card-play");
     const editorBox = await editorPlay.boundingBox();
     assert.ok(editorBox.width >= 44 && editorBox.height >= 44, `The editor timer action is a 44px phone target (${editorBox.width}×${editorBox.height})`);
@@ -1561,8 +1574,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page, timerStarts } = await fixture(t, 1280);
     const card = page.locator(".board-card", { hasText: "Ship timeline" });
     assert.equal(await card.evaluate((element) => element.closest(".kanban-column").querySelector("h2").textContent.trim()), "Backlog");
-    await card.click();
-    await page.locator(".card-editor-header").getByRole("button", { name: "Start a session for Ship timeline" }).click();
+    await activate(card);
+    await activate(page.locator(".card-editor-header").getByRole("button", { name: "Start a session for Ship timeline" }));
     await page.getByRole("button", { name: "Stop timer" }).waitFor();
     await page.getByRole("combobox", { name: "Status" }).locator("option:checked", { hasText: "In Progress" }).waitFor({ state: "attached" });
     await closeCard(page);
@@ -1579,17 +1592,17 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(column, "In Progress");
     const boxes = () => page.locator(".board-card, .kanban-column").evaluateAll((items) => items.map((item) => { const box = item.getBoundingClientRect(); return [box.x, box.y, box.width, box.height].map(Math.round).join(","); }));
     const before = await boxes();
-    await play.click();
+    await activate(play);
     await page.getByRole("button", { name: "Stop timer" }).waitFor();
     await page.locator(".board-card-play").first().waitFor({ state: "hidden" });
     assert.deepEqual(await boxes(), before, "Starting a timer does not move or resize cards");
     assert.equal(await page.locator(".board-card").first().getByRole("button", { name: /Start a session for/ }).count(), 0, "The hidden play slot is not a button to assistive tech");
-    await page.getByRole("button", { name: "Stop timer" }).click();
+    await activate(page.getByRole("button", { name: "Stop timer" }));
     await play.waitFor();
     assert.deepEqual(await boxes(), before, "Stopping a timer does not move or resize cards");
 
     // Moving a path card out of In Progress takes its play button away.
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     await page.getByRole("combobox", { name: "Status" }).selectOption({ label: "Backlog" });
     await closeCard(page);
     await page.locator(".kanban-column").first().locator(".board-card", { hasText: "Ship timeline" }).waitFor();
@@ -1613,7 +1626,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const shown = await gap();
     assert.ok(Math.abs(shown.gap - expected) < 0.5, `Labels sit right under the priority (${shown.gap}px, expected ${expected}px)`);
     assert.ok(shown.labels.y >= shown.play.y + shown.play.height || shown.labels.x + shown.labels.width <= shown.play.x, "Labels never run under the play button");
-    await card.locator(".board-card-play").click();
+    await activate(card.locator(".board-card-play"));
     await page.getByRole("button", { name: "Stop timer" }).waitFor();
     assert.deepEqual(await gap().then(({ gap }) => gap), shown.gap, "Hiding the play button keeps the labels in place");
   });
@@ -1670,10 +1683,10 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("opens the card path menu under its field on desktop and phone", async (t) => {
     for (const width of [1280, 390, 320]) {
       const { page } = await fixture(t, width);
-      await page.locator(".board-card").first().click();
+      await activate(page.locator(".board-card").first());
       const header = page.locator(".card-editor-header");
       const field = page.locator(".card-editor-header .card-path-picker .v-field");
-      await field.click();
+      await activate(field);
       const menu = page.locator(".card-path-menu");
       await menu.locator(".v-list-item").first().waitFor();
       await page.waitForTimeout(50);
@@ -1698,13 +1711,13 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("keeps every card editor control in its own slot on desktop and phone", async (t) => {
     for (const width of [1280, 390, 320]) {
       const { page } = await fixture(t, width);
-      await page.locator(".board-card").first().click();
+      await activate(page.locator(".board-card").first());
       const editor = page.locator(".card-editor");
       await page.waitForFunction(() => document.querySelectorAll(".card-editor .label-picker-control .selected-chip").length > 0);
       const chipNames = (await editor.locator(".label-picker-control .selected-chip .chip-name").allInnerTexts()).map((name) => name.trim());
       assert.ok(chipNames.length && chipNames.every((name) => name.length > 0), `${width}px: label chips show their names (${JSON.stringify(chipNames)})`);
       const saved = cardSaved(page);
-      await editor.locator(".ProseMirror").click();
+      await activate(editor.locator(".ProseMirror"));
       await page.keyboard.type("Edited");
       await saved;
       await page.waitForTimeout(100);
@@ -1733,7 +1746,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "The phone editor does not create page overflow");
       }
       if (width === 390) {
-        await editor.locator(".ProseMirror").click();
+        await activate(editor.locator(".ProseMirror"));
         await page.setViewportSize({ width, height: 520 });
         await page.waitForFunction(() => {
           const dialog = document.querySelector(".card-editor");
@@ -1775,9 +1788,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("searches and picks card labels, then shows them on the card", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const picker = page.locator(".card-labels-picker-wrap");
-    await picker.getByRole("button", { name: "Open label picker" }).click();
+    await activate(picker.getByRole("button", { name: "Open label picker" }));
     const input = page.getByRole("combobox", { name: "Card labels" });
     await input.fill("bu");
     const options = page.locator(".label-picker-menu [role=option]");
@@ -1785,7 +1798,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await bugOption.waitFor();
     assert.equal(await bugOption.locator(".option-name").textContent(), "Bug", "Typing searches the labels");
     const saved = cardSaved(page);
-    await bugOption.click();
+    await activate(bugOption);
     // Bug is the seventh label, so it joins the count rather than a visible chip.
     const moreChip = picker.locator(".label-picker-control > .more-chip");
     await moreChip.waitFor();
@@ -1799,7 +1812,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("keeps the label picker to one row with a count and lists selected labels first", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const picker = page.locator(".card-labels-picker-wrap");
     const moreChip = picker.locator(".label-picker-control > .more-chip");
     await moreChip.waitFor();
@@ -1810,7 +1823,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.ok(chips.length >= 1 && chips.length < 6, `Only the chips that fit are shown (${chips.length})`);
     assert.ok(chips.every((top) => Math.abs(top - chips[0]) < 1), "Chips stay on one row");
     assert.equal((await moreChip.innerText()).trim(), `+${6 - chips.length}`);
-    await picker.getByRole("button", { name: "Open label picker" }).click();
+    await activate(picker.getByRole("button", { name: "Open label picker" }));
     const options = (await page.locator(".label-picker-menu .option-name").allInnerTexts()).map((name) => name.trim());
     assert.deepEqual(options.slice(0, 6).sort(), ["Backend", "Design", "Docs", "Frontend", "Operations", "Research"], "Selected labels come first");
     assert.equal(options[6], "Bug");
@@ -1818,8 +1831,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("turns off browser completions on the board's inputs", async (t) => {
     const { page } = await fixture(t, 1280);
-    await page.locator(".board-card").first().click();
-    await page.locator(".card-labels-picker-wrap").getByRole("button", { name: "Open label picker" }).click();
+    await activate(page.locator(".board-card").first());
+    await activate(page.locator(".card-labels-picker-wrap").getByRole("button", { name: "Open label picker" }));
     const fields = await page.locator("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea").evaluateAll((items) => items.map((item) => `${item.getAttribute("aria-label") || item.name || item.className}:${item.getAttribute("autocomplete")}`));
     assert.ok(fields.length >= 3, `Title, dates, and labels at least (${fields})`);
     assert.deepEqual(fields.filter((field) => !field.endsWith(":off")), [], "Every field opts out of browser completions");
@@ -1876,7 +1889,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("reports a failed action in a snackbar above the floating tracker", async (t) => {
     const { page, context } = await inProgressFixture(t, 390);
     await context.route("**/api/v1/timers", (route) => (route.request().method() === "POST" ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.fallback()));
-    await page.locator(".board-card-play").first().click();
+    await activate(page.locator(".board-card-play").first());
     const snackbar = page.locator(".app-snackbar").filter({ hasText: "Could not start a session. Try again." });
     await snackbar.waitFor();
     assert.equal(await page.locator(".board-error").count(), 0, "Action errors do not use the inline banner");
@@ -1885,7 +1898,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const tracker = await page.locator(".floating-tracker").boundingBox();
     assert.ok(box.y + box.height <= tracker.y - 4, `The snackbar sits above the tracker (${box.y + box.height} <= ${tracker.y})`);
     assert.ok(box.x >= 0 && box.x + box.width <= 390, "The snackbar fits the phone screen");
-    await snackbar.getByRole("button", { name: "Dismiss message" }).click();
+    await activate(snackbar.getByRole("button", { name: "Dismiss message" }));
     await snackbar.waitFor({ state: "detached" });
   });
 
@@ -1894,9 +1907,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page, sortRequests, firstPageRequests } = await fixture(t, 1280);
     await page.locator(".board-card").first().waitFor();
     const reloadsBefore = firstPageRequests.filter((id) => id === "status-0").length;
-    await page.getByRole("button", { name: "Sort Backlog: unsorted" }).click();
+    await activate(page.getByRole("button", { name: "Sort Backlog: unsorted" }));
     await page.getByRole("button", { name: "Sort Backlog: priority first" }).waitFor();
-    await page.getByRole("button", { name: "Sort Backlog: priority first" }).click();
+    await activate(page.getByRole("button", { name: "Sort Backlog: priority first" }));
     await page.getByRole("button", { name: "Sort Backlog: priority last" }).waitFor();
     assert.deepEqual(sortRequests, ["status-0:PRIORITY", "status-0:PRIORITY_LAST"]);
     // The header label updates before the column's first page is re-requested.
@@ -1913,7 +1926,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const ring = () => card.evaluate((element) => { const style = getComputedStyle(element, "::after"); return { content: style.content, name: style.animationName, duration: style.animationDuration, property: style.transitionProperty, opacity: Number(style.opacity), events: style.pointerEvents, marked: element.classList.contains("just-closed") }; });
     await page.emulateMedia({ reducedMotion: "no-preference" });
     const before = await card.boundingBox();
-    await card.click();
+    await activate(card);
     await closeCard(page);
     let now = await ring();
     assert.ok(now.marked && now.content !== "none", "The closed card is ringed");
@@ -1928,7 +1941,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal((await ring()).marked, false, "The ring is gone after 3 seconds");
 
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await card.click();
+    await activate(card);
     await closeCard(page);
     now = await ring();
     assert.ok(now.marked);
@@ -1941,7 +1954,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("restores focus to the card after closing its editor", async (t) => {
     const { page } = await fixture(t);
     const card = page.locator(".board-card").first();
-    await card.click();
+    await activate(card);
     await page.keyboard.press("Escape");
     await page.waitForSelector(".card-editor", { state: "detached" });
     assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("board-card")), true);
@@ -1949,7 +1962,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("warns before unloading a card with unsaved changes", async (t) => {
     const { page } = await fixture(t);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Unsaved navigation");
     const unloadResult = await page.evaluate(() => {
       const event = new Event("beforeunload", { cancelable: true });
@@ -1961,21 +1974,21 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
 
   it("keeps a conflicted card editor open and allows a retry", async (t) => {
     const { page } = await fixture(t, 390, false, false, false, false, true);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry this save");
     await page.getByRole("alert").filter({ hasText: "changed elsewhere" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry this save", "The draft is kept");
-    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await activate(page.getByRole("button", { name: "Retry", exact: true }));
     await page.getByRole("heading", { name: "Retry this save" }).waitFor();
   });
 
   it("keeps a failed card save retryable without losing the draft", async (t) => {
     const { page } = await fixture(t, 390, false, false, false, false, true, 503);
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Retry after outage");
     await page.getByRole("alert").filter({ hasText: "Could not save card" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Title", exact: true }).inputValue(), "Retry after outage");
-    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await activate(page.getByRole("button", { name: "Retry", exact: true }));
     await page.getByRole("heading", { name: "Retry after outage" }).waitFor();
   });
 
@@ -1984,7 +1997,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     // The API client aborts after 15 seconds; a fake clock skips that wait
     // instead of sitting through it.
     await page.clock.install();
-    await page.locator(".board-card").first().click();
+    await activate(page.locator(".board-card").first());
     const save = page.waitForRequest((request) => request.method() === "PUT" && request.url().includes("/cards/"));
     await page.getByRole("textbox", { name: "Title", exact: true }).fill("Timed out draft");
     await save;
@@ -1998,10 +2011,10 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     // evaluateAll does not wait, so let the card render first.
     await page.locator(".board-card", { hasText: "Ship timeline" }).waitFor();
     assert.equal(await page.locator(".board-card-play").count(), 0, "Cards outside In Progress carry no timer actions");
-    await page.locator(".board-card", { hasText: "Ship timeline" }).click();
-    await page.getByRole("button", { name: "Archive card" }).click();
+    await activate(page.locator(".board-card", { hasText: "Ship timeline" }));
+    await activate(page.getByRole("button", { name: "Archive card" }));
     await page.getByRole("alertdialog", { name: "Archive card?" }).waitFor();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
+    await activate(page.getByRole("alertdialog").getByRole("button", { name: "Archive" }));
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor({ state: "detached" });
 
     await openArchive(page);
@@ -2009,8 +2022,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await restore.waitFor();
     // Only the archived card is listed; active cards stay on the board.
     assert.deepEqual(await page.locator(".archive-row strong").allInnerTexts(), ["Ship timeline"]);
-    await restore.click();
-    await page.getByRole("link", { name: "Back to board" }).click();
+    await activate(restore);
+    await activate(page.getByRole("link", { name: "Back to board" }));
     await page.getByRole("heading", { name: "Ship timeline" }).waitFor();
   });
 
@@ -2033,7 +2046,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t);
     const settings = await openBoardSettings(page);
     const trigger = settings.getByRole("button", { name: "Archive Backlog status" });
-    await trigger.click();
+    await activate(trigger);
     const dialog = page.getByRole("alertdialog", { name: "Archive status?" });
     await dialog.waitFor();
     const cancel = dialog.getByRole("button", { name: "Cancel" });
@@ -2044,10 +2057,10 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     assert.equal(await archive.evaluate((element) => element === document.activeElement), true, "Shift+Tab wraps to Archive");
     await archive.press("Tab");
     assert.equal(await cancel.evaluate((element) => element === document.activeElement), true, "Tab wraps back to Cancel");
-    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await activate(dialog.getByRole("button", { name: "Cancel" }));
     assert.equal(await page.getByRole("alertdialog", { name: "Archive status?" }).count(), 0);
     assert.equal(await trigger.evaluate((element) => element === document.activeElement), true, "Cancel restores focus to the archive-status action");
-    await trigger.click();
+    await activate(trigger);
     await page.keyboard.press("Escape");
     assert.equal(await page.getByRole("alertdialog", { name: "Archive status?" }).count(), 0, "Escape cancels the confirmation");
     assert.equal(await trigger.evaluate((element) => element === document.activeElement), true, "Escape restores focus to the archive-status action");
@@ -2070,8 +2083,8 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.route("**/api/v1/boards/board-1/statuses/status-0/archive", (route) => route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "A board must keep one active status." }) }));
 
     const settings = await openBoardSettings(page);
-    await settings.getByRole("button", { name: "Archive Backlog status" }).click();
-    await page.getByRole("alertdialog", { name: "Archive status?" }).getByRole("button", { name: "Archive" }).click();
+    await activate(settings.getByRole("button", { name: "Archive Backlog status" }));
+    await activate(page.getByRole("alertdialog", { name: "Archive status?" }).getByRole("button", { name: "Archive" }));
 
     await page.getByRole("alert").filter({ hasText: "A board must keep one active status." }).waitFor();
     assert.equal(await settings.getByRole("textbox", { name: "Status name Backlog" }).count(), 1);
@@ -2081,10 +2094,10 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("reassigns cards when a status is archived", async (t) => {
     const { page } = await fixture(t);
     const settings = await openBoardSettings(page);
-    await settings.getByRole("button", { name: "Archive Backlog status" }).click();
-    await page.getByRole("alertdialog", { name: "Archive status?" }).getByRole("button", { name: "Archive" }).click();
+    await activate(settings.getByRole("button", { name: "Archive Backlog status" }));
+    await activate(page.getByRole("alertdialog", { name: "Archive status?" }).getByRole("button", { name: "Archive" }));
     await settings.getByRole("textbox", { name: "Status name Backlog" }).waitFor({ state: "detached" });
-    await settings.getByRole("button", { name: "Done", exact: true }).click();
+    await activate(settings.getByRole("button", { name: "Done", exact: true }));
     await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Pending" }).waitFor();
     await page.locator(".kanban-column").nth(0).getByRole("heading", { name: "Ship timeline" }).waitFor();
     // The archived status is listed on the archive page, not inline on the board.
@@ -2103,7 +2116,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.mouse.down();
     await page.mouse.move(target.x + target.width / 2, target.y + 4, { steps: 8 });
     await page.mouse.up();
-    await settings.getByRole("button", { name: "Done", exact: true }).click();
+    await activate(settings.getByRole("button", { name: "Done", exact: true }));
     await page.locator(".kanban-column").first().locator("h2").filter({ hasText: "Pending" }).waitFor();
     assert.equal(await page.locator(".kanban-column").nth(0).locator("h2").innerText(), "Pending");
     assert.equal(await page.locator(".kanban-column").nth(1).locator("h2").innerText(), "Backlog");
@@ -2119,7 +2132,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
       const names = [...document.querySelectorAll(".settings-statuses input")].map((input) => input.getAttribute("aria-label")?.replace("Status name ", ""));
       return names.join(",") === "Pending,Backlog,In Progress,Done";
     });
-    await settings.getByRole("button", { name: "Done", exact: true }).click();
+    await activate(settings.getByRole("button", { name: "Done", exact: true }));
     await page.waitForFunction(() => [...document.querySelectorAll(".kanban-column h2")].map((heading) => heading.textContent?.trim()).join(",") === "Pending,Backlog,In Progress,Done");
 
     await page.reload();
@@ -2197,7 +2210,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const saved = cardSaved(page);
     await title.fill("Touch edited card");
     await saved;
-    await page.getByRole("combobox", { name: "Status" }).selectOption({ label: "Pending" });
+    const status = page.getByRole("combobox", { name: "Status" });
+    const pending = await status.locator("option").evaluateAll((options) => options.find((option) => option.textContent.trim() === "Pending")?.value);
+    await chooseNativeOption(status, pending);
     await page.getByRole("button", { name: "Close card" }).tap();
     await page.locator(".kanban-column").nth(1).getByRole("heading", { name: "Touch edited card" }).waitFor();
   });
@@ -2239,9 +2254,9 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.locator(".kanban-column").first().waitFor();
     assert.equal(await page.locator(".kanban-column").count(), 3, "The archived status is hidden from the board");
     await openArchive(page);
-    await page.getByRole("button", { name: "Restore Done status" }).click();
+    await activate(page.getByRole("button", { name: "Restore Done status" }));
     await page.getByRole("button", { name: "Restore Done status" }).waitFor({ state: "detached" });
-    await page.getByRole("link", { name: "Back to board" }).click();
+    await activate(page.getByRole("link", { name: "Back to board" }));
     await page.locator(".kanban-column").filter({ has: page.locator("h2", { hasText: "Done" }) }).waitFor();
   });
 
@@ -2273,7 +2288,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page } = await fixture(t, 800, true);
     const column = page.locator(".kanban-column").first();
     await page.getByRole("heading", { name: "Dense card 20", exact: true }).waitFor();
-    await column.getByRole("button", { name: "Sort Backlog: unsorted" }).click();
+    await activate(column.getByRole("button", { name: "Sort Backlog: unsorted" }));
     await column.getByRole("button", { name: "Sort Backlog: priority first" }).waitFor();
     await column.locator(".load-more-sentinel").evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.getByRole("heading", { name: "Dense card 21", exact: true }).waitFor();
@@ -2287,7 +2302,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     await page.locator(".load-more-sentinel").first().evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.getByRole("button", { name: "Retry loading cards" }).waitFor();
     assert.equal(await page.locator(".kanban-column").first().locator(".board-card").count(), 20);
-    await page.getByRole("button", { name: "Retry loading cards" }).click();
+    await activate(page.getByRole("button", { name: "Retry loading cards" }));
     await page.getByRole("heading", { name: "Dense card 21", exact: true }).waitFor();
   });
 
@@ -2303,7 +2318,7 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
   it("lets the user dismiss a recoverable board-load error", async (t) => {
     const { page } = await fixture(t, 390, false, true);
     await page.getByRole("alert").waitFor();
-    await page.getByRole("button", { name: "Dismiss board error" }).click();
+    await activate(page.getByRole("button", { name: "Dismiss board error" }));
     assert.equal(await page.getByRole("alert").count(), 0);
   });
 
@@ -2311,14 +2326,14 @@ describe("board browser acceptance", { concurrency: 4 }, () => {
     const { page, getBoardArchiveRequests } = await fixture(t);
     assert.equal(await page.locator("footer.board-footer").getByRole("button").count(), 0, "Board archival is not a page-level control");
     const settings = await openBoardSettings(page);
-    await settings.getByRole("button", { name: "Archive board" }).click();
+    await activate(settings.getByRole("button", { name: "Archive board" }));
     await page.getByRole("alertdialog", { name: "Archive board?" }).waitFor();
     assert.equal(getBoardArchiveRequests(), 0);
-    await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
+    await activate(page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }));
     assert.equal(await page.getByRole("alertdialog").count(), 0);
     assert.equal(getBoardArchiveRequests(), 0);
-    await settings.getByRole("button", { name: "Archive board" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
+    await activate(settings.getByRole("button", { name: "Archive board" }));
+    await activate(page.getByRole("alertdialog").getByRole("button", { name: "Archive" }));
     await settings.waitFor({ state: "detached" });
     await page.getByRole("heading", { name: "Create your first board" }).waitFor();
     assert.equal(await page.locator(".board-card").count(), 0);
@@ -2331,6 +2346,7 @@ describe("path boards", { concurrency: 4 }, () => {
   async function pathBoardFixture(t, width = 1280, height = 900, boardCount = 2) {
     const context = await browser.newContext({ viewport: { width, height }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
     t.after(() => context.close());
+    if (width <= 390) await requireTouchInput(t, context);
     const paths = [];
     const boards = Array.from({ length: boardCount }, (_, index) => ({ id: `custom-${index + 1}`, name: index === 0 ? "Custom" : index === 1 ? "Second" : `Board ${index + 1}`, archived: false, pathId: null, hidden: false, pinned: false }));
     const boardStatuses = {};
@@ -2398,9 +2414,9 @@ describe("path boards", { concurrency: 4 }, () => {
   it("creates a board with each path and hides it from the Paths page after confirmation", async (t) => {
     const { page, origin, visibilityRequests } = await pathBoardFixture(t);
     await page.goto(`${origin}/paths`);
-    await page.getByRole("button", { name: "Add path" }).first().click();
+    await activate(page.getByRole("button", { name: "Add path" }).first());
     await page.getByRole("textbox", { name: "New path name" }).fill("Launch");
-    await page.locator(".path-create-form").getByRole("button", { name: "Add path" }).click();
+    await activate(page.locator(".path-create-form").getByRole("button", { name: "Add path" }));
     await page.getByRole("heading", { name: "Launch" }).waitFor();
 
     await page.goto(`${origin}/board`);
@@ -2409,27 +2425,27 @@ describe("path boards", { concurrency: 4 }, () => {
     await launchTab.waitFor();
     assert.equal(await page.locator(".board-tab-dot").count(), 1);
 
-    await launchTab.click();
-    await page.getByRole("button", { name: "Add card to Backlog" }).click();
+    await activate(launchTab);
+    await activate(page.getByRole("button", { name: "Add card to Backlog" }));
     await page.locator(".card-editor").waitFor();
     assert.equal(await page.locator(".card-editor .card-path-picker").count(), 0);
-    await page.getByRole("button", { name: "Close card" }).click();
+    await activate(page.getByRole("button", { name: "Close card" }));
     await page.locator(".card-editor").waitFor({ state: "detached" });
 
     await page.goto(`${origin}/paths`);
-    await page.getByRole("button", { name: "Edit" }).first().click();
+    await activate(page.getByRole("button", { name: "Edit" }).first());
     const toggle = page.getByRole("switch", { name: "Show on board" });
     assert.equal(await toggle.isChecked(), true);
-    await toggle.click();
+    await activate(toggle);
     const dialog = page.locator(".prompt-dialog");
     await dialog.waitFor();
     assert.match(await dialog.innerText(), /Hide the “Launch” board\?/);
-    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await activate(dialog.getByRole("button", { name: "Cancel" }));
     assert.equal(await toggle.isChecked(), true);
     assert.equal(visibilityRequests.length, 0);
 
-    await toggle.click();
-    await page.locator(".prompt-dialog").getByRole("button", { name: "Hide board" }).click();
+    await activate(toggle);
+    await activate(page.locator(".prompt-dialog").getByRole("button", { name: "Hide board" }));
     await page.getByText("Launch board is hidden").waitFor();
     assert.deepEqual(visibilityRequests, [{ hidden: true }]);
 
@@ -2476,16 +2492,16 @@ describe("path boards", { concurrency: 4 }, () => {
     await page.waitForFunction(() => document.querySelector(".boards-manager-name")?.textContent?.trim() === "Custom");
     assert.deepEqual(orderRequests.at(-1), ["custom-1", "custom-2"]);
 
-    await manager.getByRole("button", { name: "Pin Second" }).click();
+    await activate(manager.getByRole("button", { name: "Pin Second" }));
     await manager.getByRole("button", { name: "Unpin Second" }).waitFor();
     assert.equal((await manager.locator(".boards-manager-name").first().innerText()).trim(), "Second");
 
-    await manager.getByRole("button", { name: "Custom", exact: true }).click();
+    await activate(manager.getByRole("button", { name: "Custom", exact: true }));
     const settings = page.getByRole("dialog", { name: "Board settings" });
     await settings.waitFor();
     assert.equal(await settings.getByRole("textbox", { name: "Name", exact: true }).inputValue(), "Custom");
 
-    await settings.getByRole("button", { name: "Back to boards" }).click();
+    await activate(settings.getByRole("button", { name: "Back to boards" }));
     await manager.waitFor();
     assert.equal(await settings.count(), 0);
 
@@ -2604,6 +2620,7 @@ describe("board tab overflow", { concurrency: 4 }, () => {
   async function overflowFixture(t, width = 1280, touch = width <= 390) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: touch, colorScheme: "light", reducedMotion: "reduce" });
     t.after(() => context.close());
+    if (width <= 390) await requireTouchInput(t, context);
     const boards = names.map((name, index) => ({ id: `board-${index}`, name, archived: false, pathId: null, hidden: false, pinned: false }));
     await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
     await context.route("**/api/**", async (route) => {
@@ -2631,7 +2648,7 @@ describe("board tab overflow", { concurrency: 4 }, () => {
       await more.waitFor();
       const shown = await tabNames(page);
       assert.equal(shown[0], "Launch plan", "The open board comes first");
-      await more.click();
+      await activate(more);
       const menu = page.getByRole("menu", { name: "More boards" });
       // On phones the menu also holds the views and Manage boards…
       const hidden = (await menu.getByRole("menuitem").allInnerTexts()).map((text) => text.trim()).filter((text) => text !== "Manage boards…");
@@ -2650,7 +2667,7 @@ describe("board tab overflow", { concurrency: 4 }, () => {
     it(`opens the More menu right under its button (${width}px)`, async (t) => {
       const page = await overflowFixture(t, width);
       const more = page.getByRole("button", { name: /^More boards/ });
-      await more.click();
+      await activate(more);
       const menu = page.getByRole("menu", { name: "More boards" });
       await menu.waitFor();
       const button = await more.boundingBox();
@@ -2674,16 +2691,16 @@ describe("board tab overflow", { concurrency: 4 }, () => {
     const page = await overflowFixture(t);
     const slot = page.locator(".board-tab-current");
     const before = await slot.boundingBox();
-    await page.getByRole("button", { name: /^More boards/ }).click();
+    await activate(page.getByRole("button", { name: /^More boards/ }));
     const menu = page.getByRole("menu", { name: "More boards" });
-    await menu.getByRole("menuitem", { name: "Sales" }).click();
+    await activate(menu.getByRole("menuitem", { name: "Sales" }));
     await menu.waitFor({ state: "detached" });
     await page.waitForFunction(() => document.querySelector(".board-tab-current .board-tab")?.textContent?.trim() === "Sales");
     assert.equal(new URL(page.url()).searchParams.get("board"), "board-13");
     const after = await slot.boundingBox();
     assert.deepEqual([after.x, after.width], [before.x, before.width], "The reserved slot does not move or resize");
     assert.equal((await tabNames(page)).filter((name) => name === "Sales").length, 1);
-    await page.getByRole("button", { name: /^More boards/ }).click();
+    await activate(page.getByRole("button", { name: /^More boards/ }));
     assert.ok((await menu.getByRole("menuitem").allInnerTexts()).every((text) => text.trim() !== "Sales"));
   });
 
@@ -2702,7 +2719,7 @@ describe("board tab overflow", { concurrency: 4 }, () => {
     await menu.waitFor({ state: "detached" });
     assert.equal(await more.evaluate((button) => document.activeElement === button), true, "Escape returns focus to More");
 
-    await more.click();
+    await activate(more);
     await menu.waitFor();
     await page.mouse.click(5, 600);
     await menu.waitFor({ state: "detached" });
@@ -2710,10 +2727,10 @@ describe("board tab overflow", { concurrency: 4 }, () => {
 
   it("shows a very long open board name truncated in its slot", async (t) => {
     const page = await overflowFixture(t);
-    await page.getByRole("button", { name: /^More boards/ }).click();
+    await activate(page.getByRole("button", { name: /^More boards/ }));
     const item = page.getByRole("menu", { name: "More boards" }).getByRole("menuitem", { name: "A board with a rather long name for its tab" });
-    if (await item.count()) await item.click();
-    else await page.locator(".board-tabs .board-tab", { hasText: "A board with a rather long" }).click();
+    if (await item.count()) await activate(item);
+    else await activate(page.locator(".board-tabs .board-tab", { hasText: "A board with a rather long" }));
     const current = page.locator(".board-tab-current .board-tab");
     await page.waitForFunction(() => document.querySelector(".board-tab-current .board-tab")?.textContent?.includes("rather long"));
     assert.equal(await current.getAttribute("title"), "A board with a rather long name for its tab");
@@ -2726,6 +2743,7 @@ describe("All boards view", { concurrency: 4 }, () => {
   async function allBoardsFixture(t, width = 1280) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
     t.after(() => context.close());
+    if (width <= 390) await requireTouchInput(t, context);
     await context.addInitScript(() => localStorage.setItem("know_token", "board-test-token"));
     const boards = [{ id: "work", name: "Work", archived: false, pathId: null, hidden: false, pinned: false }, { id: "home", name: "Home improvement projects for the whole year", archived: false, pathId: "path-1", hidden: false, pinned: false }];
     const statuses = [["w-todo", "work", "To Do"], ["w-done", "work", "Done"], ["h-todo", "home", "To do"], ["h-wait", "home", "Waiting"]].map(([id, boardId, name], index) => ({ id, boardId, name, position: index % 2, archived: false, cardSort: "MANUAL" }));
@@ -2830,7 +2848,7 @@ describe("All boards view", { concurrency: 4 }, () => {
     const { page, boardReads } = await allBoardsFixture(t);
     const all = page.getByRole("button", { name: "All boards" });
     assert.equal((await all.textContent()).trim(), "");
-    await all.click();
+    await activate(all);
     await page.waitForURL(/board=all/);
     assert.equal(await all.getAttribute("aria-current"), "true");
     await page.locator(".kanban-column h2", { hasText: "Waiting" }).waitFor();
@@ -2841,7 +2859,7 @@ describe("All boards view", { concurrency: 4 }, () => {
     assert.equal(results.violations.length, 0, results.violations.map((item) => item.id).join(", "));
     await page.screenshot({ path: join(screenshotDir, "all-boards-desktop.png"), fullPage: true });
 
-    await page.getByRole("button", { name: "Sort To Do: unsorted" }).click();
+    await activate(page.getByRole("button", { name: "Sort To Do: unsorted" }));
     await page.getByRole("button", { name: "Sort To Do: priority first" }).waitFor();
 
     await dragCard(page, "Work first", ".kanban-column:nth-child(3)");
@@ -2849,11 +2867,11 @@ describe("All boards view", { concurrency: 4 }, () => {
     await page.locator(".kanban-column").nth(2).getByRole("heading", { name: "Work first" }).waitFor();
 
     const reads = boardReads.length;
-    await page.getByRole("link", { name: "Paths" }).click();
+    await activate(page.getByRole("link", { name: "Paths" }));
     await page.waitForURL(/\/paths/);
     await page.goBack();
     await page.locator(".kanban-column").nth(2).getByRole("heading", { name: "Work first" }).waitFor();
-    await page.locator(".board-tab", { hasText: "Work" }).click();
+    await activate(page.locator(".board-tab", { hasText: "Work" }));
     await page.locator(".kanban-column h2", { hasText: "Waiting" }).waitFor();
     assert.deepEqual(boardReads.slice(reads), [], "Coming back and switching to a loaded board fetches nothing");
   });
@@ -2864,7 +2882,7 @@ describe("All boards view", { concurrency: 4 }, () => {
     const all = page.getByRole("button", { name: "All boards" });
     const box = await all.boundingBox();
     assert.ok(box.width >= 44 && box.height >= 44, "The All boards button is a 44px target on phones");
-    await all.click();
+    await activate(all);
     const homeCard = page.locator(".board-card", { hasText: "Home first" });
     await homeCard.waitFor();
     const badge = homeCard.locator(".board-card-board");
@@ -2880,20 +2898,20 @@ describe("All boards view", { concurrency: 4 }, () => {
   // BS-03, BS-04
   it("keeps the board state across pages and reloads", async (t) => {
     const { page, preferences } = await allBoardsFixture(t);
-    await page.getByRole("button", { name: "All boards" }).click();
-    await page.getByRole("button", { name: "Gantt" }).click();
-    await page.getByRole("button", { name: "Search cards" }).click();
+    await activate(page.getByRole("button", { name: "All boards" }));
+    await activate(page.getByRole("button", { name: "Gantt" }));
+    await activate(page.getByRole("button", { name: "Search cards" }));
     await page.locator("#board-search-input").fill("Home");
     for (let attempt = 0; attempt < 40 && preferences.board?.search !== "Home"; attempt += 1) await page.waitForTimeout(50);
     assert.deepEqual({ ...preferences.board, ganttFrom: Boolean(preferences.board.ganttFrom), ganttTo: Boolean(preferences.board.ganttTo) }, { boardId: null, view: "gantt", ganttFrom: true, ganttTo: true, ganttSorts: [], ganttShowPriority: false, ganttShowStatus: false, ganttShowPath: false, search: "Home" });
     const expected = { board: "all", view: "gantt", from: preferences.board.ganttFrom, to: preferences.board.ganttTo, q: "Home" };
     const query = () => Object.fromEntries(new URL(page.url()).searchParams);
 
-    await page.getByRole("link", { name: "Reports", exact: true }).click();
+    await activate(page.getByRole("link", { name: "Reports", exact: true }));
     await page.waitForURL(/\/reports/);
     await page.waitForTimeout(300);
     assert.equal(new URL(page.url()).search, "", "Leaving the board keeps its state off other pages");
-    await page.getByRole("link", { name: "Board", exact: true }).click();
+    await activate(page.getByRole("link", { name: "Board", exact: true }));
     await page.waitForFunction(() => new URL(location.href).searchParams.get("q") === "Home");
     assert.deepEqual(query(), expected);
     assert.equal(await page.locator("#board-search-input").inputValue(), "Home");
@@ -2909,8 +2927,8 @@ describe("All boards view", { concurrency: 4 }, () => {
   // AB-16, AB-17
   it("adds and moves cards across boards from the All boards view", async (t) => {
     const { page, preferences } = await allBoardsFixture(t);
-    await page.getByRole("button", { name: "All boards" }).click();
-    await page.locator(".board-card", { hasText: "Home first" }).click();
+    await activate(page.getByRole("button", { name: "All boards" }));
+    await activate(page.locator(".board-card", { hasText: "Home first" }));
     const editor = page.locator(".card-editor");
     assert.deepEqual(await editor.locator('select[name="status"] optgroup').evaluateAll((groups) => groups.map((group) => group.label)), ["Home improvement projects for the whole year", "Other columns"]);
     await editor.locator('select[name="board"]').selectOption("work");
@@ -2918,20 +2936,20 @@ describe("All boards view", { concurrency: 4 }, () => {
     assert.equal(preferences.lastCardBoardId, "work");
     await editor.locator('select[name="status"]').selectOption({ label: "Waiting" });
     await page.getByText("Added “Waiting” to “Work”.").waitFor();
-    await page.getByRole("button", { name: "Close card" }).click();
+    await activate(page.getByRole("button", { name: "Close card" }));
     await editor.waitFor({ state: "detached" });
 
-    await page.getByRole("button", { name: "Add card to Done" }).click();
+    await activate(page.getByRole("button", { name: "Add card to Done" }));
     await editor.waitFor();
     assert.equal(await editor.locator('select[name="board"]').inputValue(), "work", "New cards go to the last chosen board");
-    await page.getByRole("button", { name: "Close card" }).click();
+    await activate(page.getByRole("button", { name: "Close card" }));
     await page.locator(".kanban-column").nth(1).locator(".board-card").first().waitFor();
   });
 });
 
 // Every Board dialog and menu: keyboard focus stays visible and unobscured,
 // overscroll stays contained, and the dismiss action is reachable.
-const tapOrClick = (locator, touch) => (touch ? locator.tap() : locator.click());
+const tapOrClick = (locator, touch) => (touch ? locator.tap() : activate(locator));
 async function openManager(page, touch) {
   const gear = page.getByRole("button", { name: "Manage boards", exact: true });
   if (await gear.isVisible().catch(() => false)) await tapOrClick(gear, touch);

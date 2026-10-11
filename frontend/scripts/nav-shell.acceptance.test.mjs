@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { after, before, it } from "node:test";
 import { createServer } from "vite";
 import { chromium } from "playwright";
-import { auditCloseAction, auditContainment, auditFocusCycle } from "./overlay-audit.mjs";
+import { activate, auditCloseAction, auditContainment, auditFocusCycle, chooseNativeOption, requireTouchInput } from "./overlay-audit.mjs";
 
 // Mocked API only: no real credentials, backend writes, or personal data.
 let server, browser, viteCacheDir;
@@ -67,6 +67,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   const context = browserZoom ? await zoomableContext(t, contextOptions) : await browser.newContext(contextOptions);
   context.routeWebSocket("**/ws/timers", (webSocket) => webSocket.close());
   t.after(() => context.close());
+  if (contextOptions.hasTouch) await requireTouchInput(t, context);
   const requests = [];
   const reportQueries = [];
   const pathOrderWrites = [];
@@ -441,10 +442,10 @@ async function visit(page, path) {
 
 async function openGantt(page) {
   const direct = page.getByRole("button", { name: "Gantt", exact: true });
-  if (await direct.isVisible().catch(() => false)) await direct.click();
+  if (await direct.isVisible().catch(() => false)) await activate(direct);
   else {
-    await page.locator("button.board-tab-more").click();
-    await page.locator('.board-more-menu [role^="menuitem"]', { hasText: /^Gantt/ }).click();
+    await activate(page.locator("button.board-tab-more"));
+    await activate(page.locator('.board-more-menu [role^="menuitem"]', { hasText: /^Gantt/ }));
   }
   await page.locator(".board-page-gantt").waitFor();
   await page.waitForTimeout(150);
@@ -655,7 +656,7 @@ const overlayFixture = {
   noteSeeds: [{ id: "conflict-note", title: "Conflict note", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Original" }] }] }), contentText: "Original", createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", version: 1, tags: [], pinned: false }],
   noteConflictOnce: { title: "Saved elsewhere", content: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: longText }] }] }), contentText: longText },
 };
-const press = (locator, touch) => (touch ? locator.tap() : locator.click());
+const press = (locator, touch) => (touch ? locator.tap() : activate(locator));
 const dialogNamed = (page, name) => page.getByRole("dialog", { name });
 const overlays = [
   { name: "Global search dialog", path: "/", open: async (page) => {
@@ -750,7 +751,7 @@ const overlays = [
   } },
   { name: "Note conflict dialog", path: "/notes/conflict-note", open: async (page) => {
     const editor = page.getByRole("textbox", { name: "Note content" });
-    await editor.click();
+    await activate(editor);
     await page.keyboard.type(" changed here");
     const overlay = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Keep my draft" }) });
     await overlay.waitFor({ timeout: 10000 });
@@ -773,7 +774,7 @@ const overlays = [
     await page.getByRole("button", { name: "Expand tracker" }).focus();
     await page.keyboard.press("Enter");
     return page.locator("#floating-tracker-panel");
-  }, keyboardClose: (page) => page.getByRole("button", { name: "Collapse tracker" }).click(), open: async (page, touch) => {
+  }, keyboardClose: (page) => activate(page.getByRole("button", { name: "Collapse tracker" })), open: async (page, touch) => {
     await press(page.getByRole("button", { name: "Expand tracker" }), touch);
     const overlay = page.locator("#floating-tracker-panel");
     return { overlay, close: page.getByRole("button", { name: "Collapse tracker" }) };
@@ -871,14 +872,14 @@ it("keeps the Gantt timeline full width while the nav bar stays standard", async
 it("navigates home from the logo without a page reload and reuses cached sessions", async (t) => {
   const { page, requests } = await fixture(t, 1440);
   await until(() => requests.includes("/time-entries"));
-  await page.getByRole("link", { name: "Logs" }).click();
+  await activate(page.getByRole("link", { name: "Logs" }));
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.evaluate(() => { window.__noReload = true; });
   const homeData = ["/time-entries", "/paths", "/labels"];
   const before = requests.filter((path) => homeData.includes(path)).length;
   const brand = page.getByRole("link", { name: "Knowledge Base" });
   assert.equal(await brand.getAttribute("href"), "/");
-  await brand.click();
+  await activate(brand);
   await page.waitForFunction(() => location.pathname === "/");
   await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__noReload), true, "Logo click must use client-side routing");
@@ -901,7 +902,7 @@ it("opens the Sessions workspace directly with its empty state and inline tracke
 it("keeps a running timer active after route navigation and browser reload", async (t) => {
   const { page, requests } = await fixture(t, 1440);
   await page.getByRole("textbox", { name: "Timer description" }).fill("Persist across views");
-  await page.getByRole("button", { name: "Start timer" }).click();
+  await activate(page.getByRole("button", { name: "Start timer" }));
   await page.getByRole("button", { name: "Stop timer" }).waitFor();
 
   await visit(page, "/board");
@@ -921,8 +922,8 @@ it("keeps a running timer active after route navigation and browser reload", asy
 it("keeps a paused session understandable after route navigation and reload", async (t) => {
   const { page } = await fixture(t, 1440);
   await page.getByRole("textbox", { name: "Timer description" }).fill("Paused browser session");
-  await page.getByRole("button", { name: "Start timer" }).click();
-  await page.getByRole("button", { name: "Pause session" }).click();
+  await activate(page.getByRole("button", { name: "Start timer" }));
+  await activate(page.getByRole("button", { name: "Pause session" }));
   await page.getByText("Paused", { exact: true }).waitFor();
 
   await visit(page, "/board");
@@ -999,15 +1000,15 @@ it("reaches milestone-four destinations from mobile navigation", async (t) => {
   ];
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   for (const [name, path, selector] of destinations) {
-    await nav.getByRole("link", { name, exact: true }).click();
+    await activate(nav.getByRole("link", { name, exact: true }));
     await page.waitForFunction((expectedPath) => location.pathname === expectedPath, path);
     await page.locator(selector).waitFor();
   }
 
-  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await activate(page.getByRole("link", { name: "Settings", exact: true }));
   await page.waitForFunction(() => location.pathname === "/settings");
   await page.locator(".settings-view").waitFor();
-  await page.getByRole("tab", { name: "Import", exact: true }).click();
+  await activate(page.getByRole("tab", { name: "Import", exact: true }));
   await page.getByRole("tabpanel", { name: "Import" }).waitFor();
   await page.getByRole("textbox", { name: "Knowledge Base CSV" }).waitFor();
 });
@@ -1074,7 +1075,7 @@ it("shows a safe not-found page for unknown URLs", async (t) => {
     const sessionsLink = page.getByRole("link", { name: "Go to Sessions" });
     const bounds = await sessionsLink.boundingBox();
     assert.ok(bounds && bounds.height >= 44, `Sessions recovery link is at least 44px tall at ${width}px`);
-    await sessionsLink.click();
+    await activate(sessionsLink);
     await page.locator(".session-list").waitFor();
     assert.equal(new URL(page.url()).pathname, "/");
   }
@@ -1091,7 +1092,7 @@ it("keeps protected deep-link content hidden while signed out and restores it af
 
   await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
   await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await activate(page.getByRole("button", { name: "Sign in" }));
   await page.locator(".reports-page").waitFor();
 
   assert.equal(new URL(page.url()).pathname, "/reports");
@@ -1106,7 +1107,7 @@ it("rejects external and protocol-relative post-login redirects", async (t) => {
     await page.getByRole("heading", { name: "Sign in" }).waitFor();
     await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
     await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await activate(page.getByRole("button", { name: "Sign in" }));
     await page.waitForFunction(() => location.pathname === "/");
     assert.equal(new URL(page.url()).origin, new URL(server.resolvedUrls.local[0]).origin);
     assert.equal(new URL(page.url()).pathname, "/");
@@ -1117,7 +1118,7 @@ it("clears authentication on sign-out and keeps protected routes gated on Back a
   const { page } = await fixture(t, 1440);
   await visit(page, "/reports");
   await page.locator(".reports-page").waitFor();
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await activate(page.getByRole("button", { name: "Sign out" }));
   await page.getByRole("heading", { name: "Sign in" }).waitFor();
   assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), null);
 
@@ -1140,7 +1141,7 @@ it("returns to sign-in after a saved session is rejected and permits authenticat
 
   await page.getByRole("textbox", { name: "Email" }).fill("nav-test@example.test");
   await page.getByRole("textbox", { name: "Password" }).fill("nav-test-password");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await activate(page.getByRole("button", { name: "Sign in" }));
   await page.locator(".reports-page").waitFor();
   assert.equal(await page.evaluate(() => localStorage.getItem("know_token")), "signed-in-nav-test-token");
 });
@@ -1162,7 +1163,7 @@ it("opens each primary navigation route and updates the active link and title", 
     const link = nav.getByRole("link", { name: label, exact: true });
     assert.equal(await link.evaluate((element) => element.tagName), "A");
     assert.equal(await link.getAttribute("href"), path);
-    await link.click();
+    await activate(link);
     await page.waitForFunction((expected) => location.pathname === expected, path);
     await page.locator(selector).waitFor();
     const activeLink = nav.getByRole("link", { name: label, exact: true });
@@ -1171,9 +1172,9 @@ it("opens each primary navigation route and updates the active link and title", 
     await page.getByRole("main").getByRole("heading", { name: heading, level: 1, exact: true }).waitFor();
   }
 
-  await nav.getByRole("link", { name: "Board", exact: true }).click();
+  await activate(nav.getByRole("link", { name: "Board", exact: true }));
   await page.waitForFunction(() => location.pathname === "/board");
-  await nav.getByRole("link", { name: "Logs", exact: true }).click();
+  await activate(nav.getByRole("link", { name: "Logs", exact: true }));
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.goBack();
   await page.waitForFunction(() => location.pathname === "/board");
@@ -1190,7 +1191,7 @@ it("preserves browser-native new-tab behavior for primary navigation links", asy
   assert.equal(await boardLink.getAttribute("href"), "/board");
 
   const opened = page.context().waitForEvent("page");
-  await boardLink.click({ modifiers: ["Control"] });
+  await activate(boardLink, { modifiers: ["Control"] });
   const newTab = await opened;
   await newTab.locator(".board-page").waitFor();
   assert.equal(new URL(newTab.url()).pathname, "/board");
@@ -1238,7 +1239,7 @@ it("creates a Log with phone-width controls and keeps Save reachable after viewp
     const payload = request.postDataJSON();
     return payload.body === "A log created from the phone layout" && payload.occurredAt === "2026-10-01T09:30:00.000Z";
   });
-  await save.click();
+  await activate(save);
   await createRequest;
   await page.locator(".log-entry", { hasText: "A log created from the phone layout" }).waitFor();
 
@@ -1260,10 +1261,10 @@ it("edits a Log in the browser and reloads the saved text", async (t) => {
   await page.goto(`${server.resolvedUrls.local[0]}logs`);
   const entry = page.locator("#log-edit-log");
   await entry.getByText("Original browser log text", { exact: true }).waitFor();
-  await entry.getByRole("button", { name: /^Edit log from / }).click();
+  await activate(entry.getByRole("button", { name: /^Edit log from / }));
   const editor = entry.getByRole("textbox", { name: /^Edit log text from / });
   await editor.fill("Saved browser log edit");
-  await entry.getByRole("button", { name: "Save", exact: true }).click();
+  await activate(entry.getByRole("button", { name: "Save", exact: true }));
   await page.locator(".log-entry", { hasText: "Saved browser log edit" }).waitFor();
 
   await page.reload();
@@ -1316,7 +1317,7 @@ it("confirms Log removal, preserves it on cancel or failure, then retries succes
   await visit(page, "/logs");
   const entry = page.locator(".log-entry", { hasText: "Keep or remove this browser log" });
   const remove = entry.getByRole("button", { name: /^Remove log from / });
-  await remove.click();
+  await activate(remove);
   const dialog = page.getByRole("dialog", { name: "Remove this log? This cannot be undone." });
   await dialog.waitFor();
   assert.equal(await dialog.getAttribute("aria-modal"), "true");
@@ -1324,21 +1325,21 @@ it("confirms Log removal, preserves it on cancel or failure, then retries succes
   await entry.waitFor();
   assert.equal(requests.includes("/logs/remove-log"), false, "Escape cancels without sending a delete request");
 
-  await remove.click();
+  await activate(remove);
   await dialog.waitFor();
-  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await activate(dialog.getByRole("button", { name: "Cancel" }));
   await entry.waitFor();
   assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Cancel returns focus to the Remove log control");
   assert.equal(requests.includes("/logs/remove-log"), false, "Cancel sends no delete request");
 
-  await remove.click();
-  await page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }).click();
+  await activate(remove);
+  await activate(page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }));
   await page.getByRole("alert").filter({ hasText: "Unable to remove this log. Please try again." }).waitFor();
   await entry.waitFor();
   assert.equal(requests.filter((path) => path === "/logs/remove-log").length, 1, "The failed attempt leaves the record in the list");
 
-  await remove.click();
-  await page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }).click();
+  await activate(remove);
+  await activate(page.getByRole("dialog", { name: "Remove this log? This cannot be undone." }).getByRole("button", { name: "Confirm" }));
   await entry.waitFor({ state: "detached" });
   await page.locator(".log-entry", { hasText: "Untouched browser log" }).waitFor();
   assert.equal(requests.filter((path) => path === "/logs/remove-log").length, 2);
@@ -1347,9 +1348,9 @@ it("confirms Log removal, preserves it on cancel or failure, then retries succes
 it("downloads the Knowledge Base export from Settings in the browser", async (t) => {
   const { page, requests } = await fixture(t, 1440);
   await visit(page, "/settings");
-  await page.getByRole("tab", { name: "Export" }).click();
+  await activate(page.getByRole("tab", { name: "Export" }));
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download Knowledge Base CSV" }).click();
+  await activate(page.getByRole("button", { name: "Download Knowledge Base CSV" }));
   const file = await download;
   assert.equal(file.suggestedFilename(), "knowledge-base-export.csv");
   await page.getByRole("status").filter({ hasText: "Your Knowledge Base export is ready." }).waitFor();
@@ -1379,7 +1380,7 @@ it("opens the Imports route directly and switches import sources", async (t) => 
   assert.match(await page.title(), /Knowledge Base.*Import/);
   assert.equal(await page.getByRole("tab", { name: "Knowledge Base" }).getAttribute("aria-selected"), "true");
 
-  await page.getByRole("tab", { name: "Clockify" }).click();
+  await activate(page.getByRole("tab", { name: "Clockify" }));
   await page.locator("#imports-panel-clockify").waitFor();
   assert.equal(await page.getByRole("tab", { name: "Clockify" }).getAttribute("aria-selected"), "true");
   assert.ok(requests.includes("/imports/knowledge-base/batches"));
@@ -1391,7 +1392,7 @@ it("submits a Knowledge Base import and reloads its batch result", async (t) => 
   await page.goto(`${server.resolvedUrls.local[0]}imports`);
   await page.locator("#imports-panel-knowledge-base").waitFor();
   await page.getByRole("textbox", { name: "Knowledge Base CSV" }).fill("type,id\\nPATH,p1");
-  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await activate(page.getByRole("button", { name: "Import Knowledge Base data" }));
   await page.getByRole("status").filter({ hasText: "Imported 2 records, skipped 1 duplicates, and created 1 paths." }).waitFor();
   await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
   assert.ok(requests.includes("/imports/knowledge-base"));
@@ -1407,12 +1408,12 @@ it("keeps Knowledge Base import data available after a failed request and retrie
   await page.locator("#imports-panel-knowledge-base").waitFor();
   const csv = page.getByRole("textbox", { name: "Knowledge Base CSV" });
   await csv.fill("type,id\\nPATH,retry-path");
-  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await activate(page.getByRole("button", { name: "Import Knowledge Base data" }));
   await page.getByRole("alert").filter({ hasText: "Could not import Knowledge Base data." }).waitFor();
   assert.equal(await csv.inputValue(), "type,id\\nPATH,retry-path", "A rejected request keeps the entered CSV");
   assert.equal(await page.getByText(/2 imported · 1 skipped · 1 paths/).count(), 0, "A failed request creates no visible batch");
 
-  await page.getByRole("button", { name: "Import Knowledge Base data" }).click();
+  await activate(page.getByRole("button", { name: "Import Knowledge Base data" }));
   await page.getByRole("status").filter({ hasText: "Imported 2 records, skipped 1 duplicates, and created 1 paths." }).waitFor();
   await page.getByText(/2 imported · 1 skipped · 1 paths/).waitFor();
   assert.equal(requests.filter((path) => path === "/imports/knowledge-base").length, 2);
@@ -1479,7 +1480,7 @@ it("supports keyboard navigation and opening a primary link in a new tab", async
 
   const calendarLink = nav.getByRole("link", { name: "Calendar", exact: true });
   const newTab = page.context().waitForEvent("page");
-  await calendarLink.click({ modifiers: ["Control"] });
+  await activate(calendarLink, { modifiers: ["Control"] });
   const opened = await newTab;
   await opened.locator(".calendar-page").waitFor();
   assert.equal(new URL(opened.url()).pathname, "/calendar");
@@ -1489,7 +1490,7 @@ it("shows the floating tracker on eligible routes but not Sessions or focused ph
   const { page } = await fixture(t, 390);
   const floatingTracker = page.locator(".floating-tracker-host:not(.inline)");
   await page.getByRole("textbox", { name: "Timer description" }).fill("Visible floating session");
-  await page.getByRole("button", { name: "Start timer" }).click();
+  await activate(page.getByRole("button", { name: "Start timer" }));
   await page.getByRole("button", { name: "Stop timer" }).waitFor();
   const eligibleRoutes = [...pages.filter((path) => path !== "/"), "/timeline", "/imports", "/board/archive"];
   for (const path of eligibleRoutes) {
@@ -1537,9 +1538,9 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   const { page, requests } = await fixture(t, 1440);
   await visit(page, "/paths");
   await page.locator(".paths-page").waitFor();
-  await page.getByRole("button", { name: "Add path" }).click();
+  await activate(page.getByRole("button", { name: "Add path" }));
   await page.getByRole("textbox", { name: "New path name" }).fill("Reading");
-  await page.locator("form.path-create-form button[type=submit]").click();
+  await activate(page.locator("form.path-create-form button[type=submit]"));
   await page.locator(".path-title", { hasText: "Reading" }).waitFor();
   assert.ok(requests.includes("/paths"));
 
@@ -1611,7 +1612,7 @@ it("pins a Path and keeps the saved state after browser reload", async (t) => {
   await visit(page, "/paths");
   const pin = page.getByRole("button", { name: "Pin Reading" });
   await pin.waitFor();
-  await pin.click();
+  await activate(pin);
   const unpin = page.getByRole("button", { name: "Unpin Reading" });
   await unpin.waitFor();
   assert.equal(await unpin.getAttribute("aria-pressed"), "true");
@@ -1631,9 +1632,9 @@ it("updates the board tab name when its Path is renamed", async (t) => {
   await page.goto(`${appUrl}paths`);
   await page.locator(".paths-page").waitFor();
   const pathCard = page.locator("article.path").filter({ hasText: "Reading" });
-  await pathCard.getByRole("button", { name: "Edit" }).click();
+  await activate(pathCard.getByRole("button", { name: "Edit" }));
   await page.getByRole("textbox", { name: "Edit path name" }).fill("Writing");
-  await page.getByRole("button", { name: "Save path" }).click();
+  await activate(page.getByRole("button", { name: "Save path" }));
   await page.getByRole("heading", { name: "Writing", level: 2 }).waitFor();
 
   await page.goto(`${appUrl}board`);
@@ -1973,14 +1974,14 @@ it("changes and persists an existing Path color using only the keyboard", async 
   const { page, paths } = await fixture(t, 1440, { pathSeeds: [initialPath] });
   page.setDefaultTimeout(4000);
   await visit(page, "/paths");
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Edit", exact: true }));
   const editColorButton = page.getByRole("button", { name: "Choose edit path color" });
-  await editColorButton.click();
+  await activate(editColorButton);
   const blue = page.getByRole("button", { name: "Set edit path color: Blue (#3B82F6)" });
   await blue.focus();
   await page.keyboard.press("Enter");
   assert.equal(await editColorButton.evaluate((element) => getComputedStyle(element).backgroundColor), "rgb(59, 130, 246)");
-  await page.locator("form.path-edit button.primary").click();
+  await activate(page.locator("form.path-edit button.primary"));
   await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
   assert.equal(paths[0]?.color, "#3B82F6");
 
@@ -2002,27 +2003,27 @@ it("merges Paths into the selected target after destructive confirmation", async
   });
   await page.goto(`${server.resolvedUrls.local[0]}paths`);
   await page.locator(".paths-page").waitFor();
-  await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+  await activate(page.getByRole("button", { name: "Edit", exact: true }).first());
   const mergeTrigger = page.locator("form.path-edit").getByRole("button", { name: "Merge", exact: true });
-  await mergeTrigger.click();
+  await activate(mergeTrigger);
 
   const chooser = page.getByRole("dialog", { name: "Merge “Algorithms” into…" });
   await chooser.waitFor();
   await page.keyboard.press("Escape");
   await chooser.waitFor({ state: "detached" });
   assert.equal(await mergeTrigger.evaluate((button) => button === document.activeElement), true, "Escape returns focus to the Merge control");
-  await mergeTrigger.click();
+  await activate(mergeTrigger);
   await chooser.waitFor();
   const search = chooser.getByRole("searchbox", { name: "Find a target path" });
   await search.fill("Drafting");
   const target = chooser.getByRole("radio", { name: /Writing/ });
   await target.check();
-  await chooser.getByRole("button", { name: "OK" }).click();
+  await activate(chooser.getByRole("button", { name: "OK" }));
 
   const confirmation = page.getByRole("dialog", { name: "Merge Algorithms into Writing? All sessions will move and Algorithms will be removed." });
   await confirmation.waitFor();
   assert.equal(await confirmation.getAttribute("aria-modal"), "true");
-  await confirmation.getByRole("button", { name: "Confirm" }).click();
+  await activate(confirmation.getByRole("button", { name: "Confirm" }));
 
   await page.locator(".path-title", { hasText: "Writing" }).waitFor();
   await page.locator(".path-title", { hasText: "Algorithms" }).waitFor({ state: "detached" });
@@ -2070,22 +2071,22 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   });
   await page.goto(`${server.resolvedUrls.local[0]}paths`);
   const row = page.locator(".path", { hasText: "Undo path" });
-  await row.getByRole("button", { name: "Remove", exact: true }).click();
+  await activate(row.getByRole("button", { name: "Remove", exact: true }));
   const dialog = page.getByRole("dialog", { name: "Remove Undo path? You can undo this for a few seconds." });
   await dialog.waitFor();
   await page.keyboard.press("Escape");
   await row.waitFor();
   assert.equal(requests.includes("/paths/undo-path"), false, "Escape cancels without deleting the Path");
 
-  await row.getByRole("button", { name: "Remove", exact: true }).click();
-  await page.getByRole("dialog", { name: "Remove Undo path? You can undo this for a few seconds." }).getByRole("button", { name: "Confirm" }).click();
+  await activate(row.getByRole("button", { name: "Remove", exact: true }));
+  await activate(page.getByRole("dialog", { name: "Remove Undo path? You can undo this for a few seconds." }).getByRole("button", { name: "Confirm" }));
   await row.waitFor({ state: "detached" });
   const snackbar = page.getByRole("status").filter({ hasText: "Removed “Undo path”." });
   await snackbar.waitFor();
   assert.equal(paths.length, 0);
   await page.waitForTimeout(7000);
   assert.equal(await snackbar.isVisible(), true, "the named Undo action remains available for at least seven seconds");
-  await snackbar.getByRole("button", { name: "Undo" }).click();
+  await activate(snackbar.getByRole("button", { name: "Undo" }));
   await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
   assert.deepEqual(paths.map(({ id }) => id), ["undo-path"]);
   assert.ok(requests.includes("/paths/undo-path/restore"));
@@ -2129,17 +2130,17 @@ it("preserves a Timeline activity note after failure and saves it on retry", asy
   });
   await page.goto(`${server.resolvedUrls.local[0]}timeline`);
   const activity = page.locator(".timeline-entry", { hasText: "Browser activity for notes" });
-  await activity.getByRole("button", { name: "Add note" }).click();
+  await activate(activity.getByRole("button", { name: "Add note" }));
   const editor = activity.locator(".note-editor");
   await editor.getByRole("textbox", { name: "Activity note title" }).fill("A retryable reflection");
   await editor.getByRole("textbox", { name: "Activity note content" }).fill("Keep this draft after the first request fails.");
-  await editor.getByRole("button", { name: "Save note" }).click();
+  await activate(editor.getByRole("button", { name: "Save note" }));
 
   await page.getByRole("alert").filter({ hasText: "Could not save activity note." }).waitFor();
   assert.equal(await editor.getByRole("textbox", { name: "Activity note title" }).inputValue(), "A retryable reflection");
   assert.equal(await editor.getByRole("textbox", { name: "Activity note content" }).inputValue(), "Keep this draft after the first request fails.");
 
-  await editor.getByRole("button", { name: "Save note" }).click();
+  await activate(editor.getByRole("button", { name: "Save note" }));
   await editor.waitFor({ state: "detached" });
   assert.equal(requests.filter((path) => path === "/notes").length, 2, "Retry issues the second note request after the 503");
   await activity.waitFor();
@@ -2156,8 +2157,8 @@ it("filters Timeline activity with phone-width controls and sends the selected v
   const path = page.getByRole("combobox", { name: "Path" });
   const from = page.getByRole("textbox", { name: "From date" });
   const to = page.getByRole("textbox", { name: "To date" });
-  await activityType.selectOption("TIME_TRACKED");
-  await path.selectOption("timeline-path");
+  await chooseNativeOption(activityType, "TIME_TRACKED");
+  await chooseNativeOption(path, "timeline-path");
   await from.fill("2026-09-30");
   await to.fill("2026-10-01");
 
@@ -2169,7 +2170,7 @@ it("filters Timeline activity with phone-width controls and sends the selected v
       url.searchParams.get("from") === "2026-09-30T00:00:00Z" &&
       url.searchParams.get("to") === "2026-10-01T23:59:59Z";
   });
-  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Filter", exact: true }));
   await filterRequest;
   await page.getByRole("heading", { name: "Phone filter activity" }).waitFor();
 
@@ -2194,7 +2195,7 @@ it("restores a hidden Path board tab after showing it from Paths", async (t) => 
   const appUrl = server.resolvedUrls.local[0];
   await page.goto(`${appUrl}paths`);
   await page.getByRole("heading", { name: "Paths" }).waitFor();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Edit", exact: true }));
 
   const boardSwitch = page.getByRole("switch", { name: "Show on board" });
   assert.equal(await boardSwitch.isChecked(), false);
@@ -2232,10 +2233,10 @@ it("restores report filters after navigation and browser Back/Forward", async (t
   };
   await assertReportQuery();
 
-  await page.locator('a[href="/logs"]').first().click();
+  await activate(page.locator('a[href="/logs"]').first());
   await page.waitForFunction(() => location.pathname === "/logs");
   await page.locator(".logs-page").waitFor();
-  await page.locator('a[href="/reports"]').first().click();
+  await activate(page.locator('a[href="/reports"]').first());
   await page.waitForFunction(() => location.pathname === "/reports");
   await page.locator(".reports-page").waitFor();
   await assertReportQuery();
@@ -2382,7 +2383,7 @@ it("switches report aggregation by keyboard and preserves Path and Label filters
     return { start: iso(start), end: iso(end) };
   });
   const aggregation = page.getByRole("combobox", { name: "Report aggregation" });
-  await aggregation.click();
+  await activate(aggregation);
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
 
@@ -2453,7 +2454,7 @@ it("keeps report date and total controls reachable on a phone viewport", async (
     date.setDate(date.getDate() - 2);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   });
-  await page.getByRole("button", { name: "Previous date range" }).click();
+  await activate(page.getByRole("button", { name: "Previous date range" }));
   await page.waitForFunction((expected) => {
     const params = new URL(location.href).searchParams;
     return params.get("startDate") === expected && params.get("endDate") === expected;
@@ -2815,7 +2816,7 @@ it("reloads a saved Calendar note from its selected day record", async (t) => {
     response.url().includes("/calendar/days/") &&
     response.request().method() === "PUT",
   );
-  await page.getByRole("button", { name: "Save day" }).click();
+  await activate(page.getByRole("button", { name: "Save day" }));
   await saved;
 
   await page.reload();
@@ -2844,7 +2845,7 @@ it("reloads a saved Calendar label assignment on its selected day", async (t) =>
     response.url().includes("/calendar/days/") &&
     response.request().method() === "PUT",
   );
-  await page.getByRole("button", { name: "Save day" }).click();
+  await activate(page.getByRole("button", { name: "Save day" }));
   await saved;
 
   await page.reload();
@@ -2887,13 +2888,13 @@ it("creates a Calendar label with default scopes and reloads its assignment", as
   const { page } = await fixture(t, 1440);
   await page.goto(`${server.resolvedUrls.local[0]}calendar`);
   await page.locator(".calendar-page").waitFor();
-  await page.getByRole("button", { name: "Open label picker" }).click();
+  await activate(page.getByRole("button", { name: "Open label picker" }));
   const input = page.locator('.label-picker-menu input[aria-label="Add or create calendar label"]');
   await input.fill("Vacation");
   const createdLabelResponse = page.waitForResponse((response) =>
     response.url().includes("/labels") && response.request().method() === "POST",
   );
-  await page.getByRole("option", { name: "Create Vacation" }).click();
+  await activate(page.getByRole("option", { name: "Create Vacation" }));
   const createdLabel = await createdLabelResponse;
   assert.equal(createdLabel.ok(), true, "Calendar label creation completes before checking its defaults");
 
@@ -2907,7 +2908,7 @@ it("creates a Calendar label with default scopes and reloads its assignment", as
     response.url().includes("/calendar/days/") &&
     response.request().method() === "PUT",
   );
-  await page.getByRole("button", { name: "Save day" }).click();
+  await activate(page.getByRole("button", { name: "Save day" }));
   await saved;
 
   await page.reload();
@@ -2965,7 +2966,7 @@ it("moves focus into and back from Log removal confirmation in the detail dialog
   await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
   const remove = dialog.getByRole("button", { name: "Remove…", exact: true });
 
-  await remove.click();
+  await activate(remove);
   const confirmation = page.getByRole("alertdialog");
   const keep = confirmation.getByRole("button", { name: "Keep log" });
   await confirmation.waitFor();
@@ -2975,9 +2976,9 @@ it("moves focus into and back from Log removal confirmation in the detail dialog
   assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Escape returns focus to the Remove trigger");
   assert.equal(requests.filter((path) => path === "/logs/log-deep-link").length, 1, "Cancellation sends no delete request");
 
-  await remove.click();
+  await activate(remove);
   await confirmation.waitFor();
-  await keep.click();
+  await activate(keep);
   assert.equal(await remove.evaluate((button) => button === document.activeElement), true, "Keep log returns focus to the Remove trigger");
   assert.equal(requests.filter((path) => path === "/logs/log-deep-link").length, 1, "Button cancellation sends no delete request");
 });
@@ -2988,12 +2989,12 @@ it("returns focus to Edit after cancelling a Log detail edit", async (t) => {
   const dialog = page.getByRole("dialog");
   await dialog.getByText("Directly loaded log entry", { exact: true }).waitFor();
   const edit = dialog.getByRole("button", { name: "Edit", exact: true });
-  await edit.click();
+  await activate(edit);
   const editor = dialog.getByRole("textbox", { name: "Text" });
   await editor.waitFor();
   assert.equal(await editor.evaluate((field) => field === document.activeElement), true, "Edit opens with focus in the text field");
 
-  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await activate(dialog.getByRole("button", { name: "Cancel", exact: true }));
   await edit.waitFor();
   assert.equal(await edit.evaluate((button) => button === document.activeElement), true, "Cancel returns focus to the Edit action");
 });
@@ -3157,7 +3158,7 @@ it("restores the Notes list and editor through browser Back and Forward", async 
   };
   const { page } = await fixture(t, 1440, { noteSeeds: [note] });
   await visit(page, "/notes");
-  await page.getByRole("link", { name: "Open History browser note" }).click();
+  await activate(page.getByRole("link", { name: "Open History browser note" }));
   await page.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/notes/history-note");
 
@@ -3191,15 +3192,15 @@ it("keeps a Note draft open when autosave fails during navigation and recovers o
   await content.fill("Draft preserved after failed autosave");
   await page.getByRole("status").filter({ hasText: "Not saved" }).waitFor();
 
-  await page.getByRole("link", { name: "Logs", exact: true }).click();
+  await activate(page.getByRole("link", { name: "Logs", exact: true }));
   await page.waitForTimeout(100);
   assert.equal(new URL(page.url()).pathname, "/notes/note-recovery", "Failed save blocks navigation away from the editor");
   assert.match(await content.innerText(), /Draft preserved after failed autosave/);
 
-  await page.getByRole("button", { name: "Retry save" }).click();
+  await activate(page.getByRole("button", { name: "Retry save" }));
   await page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
   assert.equal(requests.filter((path) => path === "/notes/note-recovery").length, 3, "One detail read and two update attempts prove the retry");
-  await page.getByRole("link", { name: "Logs", exact: true }).click();
+  await activate(page.getByRole("link", { name: "Logs", exact: true }));
   await page.locator(".logs-page").waitFor();
   assert.equal(new URL(page.url()).pathname, "/logs");
 
@@ -3257,14 +3258,14 @@ it("archives the selected Note after confirmation and keeps it in the archive af
   const archiveRequest = page.waitForRequest((request) =>
     request.method() === "DELETE" && new URL(request.url()).pathname.endsWith("/notes/archive-target"),
   );
-  await target.getByRole("button", { name: "Archive", exact: true }).click();
+  await activate(target.getByRole("button", { name: "Archive", exact: true }));
   await archiveRequest;
   await target.waitFor({ state: "detached" });
   await page.locator(".note-row", { hasText: "Browser archive neighbor" }).waitFor();
   assert.equal(confirmationMessage, "Move “Browser archive target” to Archive? You can restore it from the archive at any time.");
   assert.equal(requests.filter((path) => path === "/notes/archive-target").length, 1);
 
-  await page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }).click();
+  await activate(page.locator(".notes-pagination").getByRole("button", { name: "Archive", exact: true }));
   const archivedTarget = page.locator(".note-row.archived", { hasText: "Browser archive target" });
   await archivedTarget.waitFor();
   await page.waitForFunction(() =>
@@ -3499,7 +3500,7 @@ it("keeps the active-notes recovery action in an empty archive", async (t) => {
   await page.goto(`${server.resolvedUrls.local[0]}notes?archived=1`);
   await page.locator(".notes-page").waitFor();
   await page.getByText("No archived notes.", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Active notes", exact: true }).click();
+  await activate(page.getByRole("button", { name: "Active notes", exact: true }));
 
   await page.getByText("Your notes will appear here.", { exact: true }).waitFor();
   assert.equal(new URL(page.url()).searchParams.has("archived"), false);
@@ -3552,8 +3553,7 @@ it("changes the appearance preference with the native select at phone width", as
   const bounds = await preference.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390 && bounds.height >= 44, JSON.stringify(bounds));
   assert.equal(await preference.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize) >= 16), true);
-  await preference.tap();
-  await preference.selectOption("dark");
+  await chooseNativeOption(preference, "dark");
   assert.equal(await preference.inputValue(), "dark");
   assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
   assert.equal(await page.evaluate(() => localStorage.getItem("knowledge-base-theme")), "dark");
@@ -3563,7 +3563,7 @@ it("suppresses global search motion when reduced motion is preferred", async (t)
   const { page } = await fixture(t, 1440);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(server.resolvedUrls.local[0]);
-  await page.locator(".global-search-trigger").click();
+  await activate(page.locator(".global-search-trigger"));
   const dialog = page.locator(".global-search");
   await dialog.waitFor();
   const motion = await dialog.evaluate((element) => {
@@ -3609,15 +3609,15 @@ it("keeps dialogs, menus, native selects, date picker, and report chart readable
 
     await page.goto(`${server.resolvedUrls.local[0]}board`);
     await page.locator(".board-page").waitFor();
-    await page.getByRole("button", { name: "Manage boards" }).click();
+    await activate(page.getByRole("button", { name: "Manage boards" }));
     const dialog = page.locator(".confirm-dialog[role=dialog]");
     await dialog.waitFor();
     const dialogColors = await surfaceColors(".confirm-dialog[role=dialog]");
     assertReadable(dialogColors.foreground, dialogColors.background, `${themeName} dialog`);
-    await dialog.getByRole("button", { name: "Done" }).click();
+    await activate(dialog.getByRole("button", { name: "Done" }));
 
     await openGantt(page);
-    await page.getByRole("button", { name: /^Choose board:/ }).click();
+    await activate(page.getByRole("button", { name: /^Choose board:/ }));
     await page.getByRole("menu", { name: "Choose board" }).waitFor();
     const menu = await surfaceColors(".board-more-menu");
     const menuItem = await surfaceColors(".board-more-menu .board-more-item");
@@ -3638,7 +3638,7 @@ it("keeps dialogs, menus, native selects, date picker, and report chart readable
     assertReadable(chartColors.foreground, chartColors.background, `${themeName} report chart labels`);
 
     const dateRange = page.getByLabel("Report date range");
-    await dateRange.click();
+    await activate(dateRange);
     const dateMenu = page.locator(".report-date-range .dp__menu");
     await dateMenu.waitFor();
     const dateColors = await page.evaluate(() => {
@@ -3661,12 +3661,12 @@ it("opens global search from the header or shortcut and lists matching pages bef
   const { page } = await fixture(t, 1440);
   await page.goto(server.resolvedUrls.local[0]);
   const trigger = page.locator(".global-search-trigger");
-  await trigger.click();
+  await activate(trigger);
   const dialog = page.getByRole("dialog", { name: "Search everything" });
   await dialog.waitFor();
   const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
   assert.equal(await input.evaluate((element) => element === document.activeElement), true);
-  await dialog.locator(".global-search-close").click();
+  await activate(dialog.locator(".global-search-close"));
   await page.keyboard.press("Control+k");
   await dialog.waitFor();
   await input.fill("Reports");
@@ -3777,7 +3777,7 @@ it("recovers from a failed global search request with the in-dialog retry", asyn
   await input.fill("Reports");
   const alert = dialog.getByRole("alert");
   await alert.waitFor();
-  await alert.getByRole("button", { name: "Try again" }).click();
+  await activate(alert.getByRole("button", { name: "Try again" }));
   await page.getByRole("option", { name: /Reports research note/ }).waitFor();
   assert.equal(await dialog.getByRole("alert").count(), 0);
   assert.equal(requests.filter((path) => path === "/search").length, 2, "Retry issues one fresh search request");
@@ -3833,7 +3833,7 @@ it("opens the active global search result in a new tab with Control+Enter and na
   assert.equal(await note.evaluate((element) => element.tagName), "A");
   assert.equal(await note.getAttribute("href"), "/notes/search-note");
   const modifiedClickTab = page.context().waitForEvent("page");
-  await note.click({ modifiers: ["Control"] });
+  await activate(note, { modifiers: ["Control"] });
   const linkTab = await modifiedClickTab;
   await linkTab.getByRole("textbox", { name: "Note title" }).waitFor();
   assert.equal(new URL(linkTab.url()).pathname, "/notes/search-note");
@@ -3844,7 +3844,7 @@ it("opens the active global search result in a new tab with Control+Enter and na
       window.__navContextMenuAllowed = !event.defaultPrevented;
     }, { once: true });
   });
-  await note.click({ button: "right" });
+  await activate(note, { button: "right" });
   assert.equal(await page.evaluate(() => window.__navContextMenuAllowed), true);
   assert.equal(new URL(page.url()).pathname, "/");
 });
@@ -3859,13 +3859,13 @@ it("loads more global search results only for the selected record type", async (
   await page.getByRole("option", { name: /Show 2 more notes/ }).waitFor();
   await page.getByRole("option", { name: /Show 1 more logs/ }).waitFor();
 
-  await page.getByRole("option", { name: /Show 2 more notes/ }).click();
+  await activate(page.getByRole("option", { name: /Show 2 more notes/ }));
   await page.locator("#global-search-note-more-note-2").waitFor();
   await page.locator("#global-search-note-more-note-3").waitFor();
   assert.equal(await page.locator("#global-search-log-more-log-2").count(), 0);
   assert.equal(await page.getByRole("option", { name: /Show 1 more logs/ }).count(), 1);
 
-  await page.getByRole("option", { name: /Show 1 more logs/ }).click();
+  await activate(page.getByRole("option", { name: /Show 1 more logs/ }));
   await page.locator("#global-search-log-more-log-2").waitFor();
   assert.equal(await page.locator("#global-search-note-more-note-2").count(), 1);
   assert.equal(await page.locator("#global-search-note-more-note-3").count(), 1);
@@ -3881,20 +3881,20 @@ it("WU-10: warms the other pages once, then reloads inside the cooldown send no 
   const boardRequests = () => requests.filter((path) => path.startsWith("/boards")).length;
   const warmedBoard = boardRequests();
 
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board" }).click();
+  await activate(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board" }));
   await page.waitForFunction(() => location.pathname === "/board");
   await page.locator(".board-page").waitFor();
   await page.getByRole("button", { name: "Gantt", exact: true }).or(page.locator("button.board-tab-more")).first().waitFor();
   await openGantt(page);
   assert.equal(boardRequests(), warmedBoard, "A warmed Board page and its Gantt view must not refetch boards");
 
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Reports" }).click();
+  await activate(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Reports" }));
   await page.waitForFunction(() => location.pathname === "/reports");
   await page.locator(".reports-page").waitFor();
   await page.waitForTimeout(300);
   assert.equal(count("/reports"), 1, "A warmed Reports page must not refetch its report");
 
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Calendar" }).click();
+  await activate(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Calendar" }));
   await page.waitForFunction(() => location.pathname === "/calendar");
   await page.waitForTimeout(300);
   assert.equal(count("/calendar/days"), 1, "A warmed Calendar must not refetch its month");

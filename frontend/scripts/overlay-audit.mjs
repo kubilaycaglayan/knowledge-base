@@ -141,3 +141,46 @@ export async function auditCloseAction(page, overlay, close, label, { touch }) {
   }
   return problems;
 }
+
+// Phone-width flows must be driven by touch. Records every trusted mouse
+// pointerdown in the context and fails the test if any occurred, so a stray
+// click() in a phone flow cannot pass as touch evidence.
+const touchContexts = new WeakSet();
+export async function requireTouchInput(t, context) {
+  touchContexts.add(context);
+  const mouseInputs = [];
+  await context.exposeBinding("__reportMouseInput", ({ page }, target) => mouseInputs.push(`${new URL(page.url()).pathname}: ${target}`));
+  await context.addInitScript(() => {
+    addEventListener("pointerdown", (event) => {
+      if (!event.isTrusted || event.pointerType !== "mouse") return;
+      const target = event.target instanceof Element ? event.target : null;
+      const label = target?.closest("[aria-label]")?.getAttribute("aria-label") || target?.textContent?.trim().slice(0, 40) || target?.tagName;
+      window.__reportMouseInput(`${target?.tagName.toLowerCase()} “${label}”`);
+    }, true);
+  });
+  t.after(() => {
+    if (mouseInputs.length) throw new Error(`Phone-width flow used mouse input instead of touch: ${mouseInputs.join("; ")}`);
+  });
+}
+
+// Activates a control the way the context's user would: a tap on touch
+// (phone-width) contexts and a click elsewhere.
+export function activate(locator, options) {
+  return touchContexts.has(locator.page().context()) ? locator.tap(options) : locator.click(options);
+}
+
+// Native select popups are browser chrome rather than page content, so they
+// cannot be tapped as DOM options in headless Chromium. Focus the select with
+// the context's normal pointer input, then choose the visible option with the
+// native keyboard controls instead of Playwright's programmatic selectOption.
+export async function chooseNativeOption(locator, expectedValue) {
+  const options = await locator.locator("option").evaluateAll((items) => items.map((item) => item.value));
+  const targetIndex = options.indexOf(expectedValue);
+  if (targetIndex < 0) throw new Error(`Native select does not contain option value ${expectedValue}`);
+  await activate(locator);
+  await locator.press("Home");
+  for (let index = 0; index < targetIndex; index += 1) await locator.press("ArrowDown");
+  await locator.press("Enter");
+  const actualValue = await locator.inputValue();
+  if (actualValue !== expectedValue) throw new Error(`Native select chose ${actualValue}, expected ${expectedValue}`);
+}

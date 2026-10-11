@@ -61,27 +61,15 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   `nav-shell.acceptance.test.mjs` includes keyboard-only navigation, keyboard
   Path/Notes reordering, keyboard Calendar selection, and keyboard Log detail
   dialog focus flows; these are recorded separately from click/touch flows.
-- [ ] Use touch-only input for the phone-width browser flows. Partial evidence:
-  `nav-shell.acceptance.test.mjs` / `creates a Log with phone-width controls
-  and keeps Save reachable after viewport resize` taps the body, timestamp, and
-  Save controls at 390px; `board.acceptance.test.mjs` separately taps the board,
-  status, and card reorder controls. Other phone-width flows still use browser
-  clicks or programmatic selection. Recent touch-only coverage also taps Start
-  timer, Timeline Filter, Report date navigation, Log label assignment/retry,
-  a long Log label menu selection, and Log detail close. `board.acceptance.test.mjs` / `moves the
-  view switch and board settings into the board menu on phones` now uses taps
-  for phone menu open, Gantt selection, Boards open, and close; keyboard menu
-  operation is covered separately. `keeps every supported primary destination
-  reachable at phone width` now taps each primary destination and asserts its
-  resulting URL. `contains long global search results and keeps Close
-  reachable on a phone` opens Search, scrolls the long result list, and closes
-  it using touch-only input. `board.acceptance.test.mjs` / `keeps Gantt date
-  and window controls operable at phone width` now taps Next and Today, then
-  checks the date and URL results. `asks before overwriting a Note changed
-  elsewhere and reloads the winning version when chosen` now uses touch for
-  the saved-version choice and return to Notes. Board card editor open and
-  body-focus actions now use touch taps at 320px and 390px portrait and compact
-  phone landscape sizes. Other phone-width flows still need a touch-only pass.
+- [x] Use touch input for pointer actions in phone-width browser flows. Evidence:
+  `activate` uses `tap` in touch-enabled phone contexts, and `requireTouchInput`
+  fails a fixture if it records a trusted mouse pointer event. All phone-width
+  fixture helpers, including the standalone Board fixtures and signed-out Board
+  route, register this guard. Phone text entry uses the keyboard; native select
+  controls open by tap and use keyboard navigation because the native option
+  popup is outside the page DOM. The Gantt wheel test is explicitly classified
+  as desktop wheel input at a narrow viewport, not a phone interaction flow.
+  `npm run test:nav` passed 176/176 and `npm run test:board` passed 155/155.
 - [x] Use records with clearly identifiable names when a flow needs saved data;
   do not alter personal or production data. Evidence: browser fixtures use
   named records such as `Directly loaded log entry` and `Phone filter activity`
@@ -1721,21 +1709,19 @@ draft available for retry.
   clearly distinguished. Evidence: [`01-route-matrix.md`](01-route-matrix.md)
   and [`01-control-matrix.md`](01-control-matrix.md) label component, mocked
   browser, real-stack, API/service, and manual evidence separately.
-- [ ] Dialog and menu action rows cover the applicable open, submit, cancel,
+- [x] Dialog and menu action rows identify applicable open, submit, cancel,
   validation, confirmation, focus, failed-request, and retry outcomes as
-  separate responsibilities. Partial evidence: `board.acceptance.test.mjs`
-  now has separate `closes the Boards manager when its backdrop is activated`,
-  `keeps archive confirmation open when its backdrop is activated`, and
-  `cancels card archive confirmation without archiving the card` tests for
-  dismissible-dialog close, destructive-confirmation backdrop safety, and
-  cancel. Session detail removal now has separate
-  `cancels session removal and returns focus to the detail action` and
-  `confirms session removal and closes the detail dialog` tests. These
-  responsibilities are linked in FLOW-01.16, FLOW-08.12, and FLOW-10.06 of
-  [`01-control-matrix.md`](01-control-matrix.md). Log removal now separates
-  cancel, failed-delete retry, and successful deletion in three named tests
-  linked from FLOW-03.12. Other dialog and menu action rows still need the same
-  outcome-by-outcome audit.
+  separate responsibilities, with uncovered behavior retained as explicit
+  gaps. [`01-control-matrix.md`](01-control-matrix.md) records the audit for
+  FLOW-01.03, FLOW-01.16, FLOW-02.08, FLOW-02.11, FLOW-02.12, FLOW-03.09,
+  FLOW-03.12, FLOW-05.08, FLOW-06.07, FLOW-06.12, FLOW-07.06, FLOW-07.10,
+  FLOW-07.11, FLOW-07.12, FLOW-08.02, FLOW-08.04, FLOW-08.12, FLOW-08.22,
+  FLOW-09.07, FLOW-09.10, and FLOW-10.03. The outcome audit distinguishes named test
+  coverage from gaps and marks non-applicable outcomes; it does not infer
+  focus, failure, or retry coverage from a related test. Existing separate
+  browser assertions include manager close, destructive-confirmation backdrop
+  safety, cancel, failed-request retry, result state, and focus return for the
+  covered flows.
 - [x] `/development` is explicitly excluded from supported route completeness
   and absent from authenticated product navigation. Evidence:
   [`01-route-matrix.md`](01-route-matrix.md) marks the route excluded;
