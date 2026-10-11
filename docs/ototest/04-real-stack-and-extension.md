@@ -90,8 +90,11 @@ remains outside the packaged browser journey.
   `frontend/scripts/notes.real-stack.acceptance.test.mjs`, run with
   `./scripts/run-notes-e2e.sh`. It delays the initial note read to verify the
   title stays unavailable until the saved value has loaded, then checks the
-  saved title/body through a fresh API read and verifies archive/restore across
-  reloads.
+  saved title/body through fresh API reads. It checks the exact Archive
+  confirmation, a simulated UI-layer 503 with retained active state and retry,
+  active/archive collection membership after archive, and exactly one active
+  copy with no archived copy after restore across reloads. The component test
+  covers duplicate Restore activation while the request is pending.
 - **Notes ownership, mobile-sized Chromium:** `rejects a second browser account
   reading the first user's note` in the same real-stack Notes suite. A second
   disposable account requests the first account's note ID and receives 404.

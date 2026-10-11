@@ -10,6 +10,19 @@
 | Result | Listed automated checks passed locally unless a limitation is stated below |
 | CI run/artifact URL | [Hosted `verify` run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246), passed for commit `f7a9b6ba6aabc6819835a67f0fda0c8452272898` |
 
+## 2026-10-11 supplement — Notes archive recovery and restore state
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Notes component restore duplicate guard | `cd frontend && npx vitest run src/views/NotesView.test.ts` at source revision `30d93f70` | Pass: 43/43 tests; a delayed restore disables the control, shows its spinner, and a repeated activation does not issue a second POST |
+| Notes archive and restore real-stack acceptance | `./scripts/run-notes-e2e.sh` at source revision `30d93f70` | Pass: 2/2 tests in the isolated disposable Compose project; desktop Chromium confirms exact archive prompt, forced UI-layer 503 with retained active state and successful retry, fresh active/archive membership reads, then one active copy and no archived copy after restore and reload |
+| Frontend production build | `cd frontend && npm run build` at source revision `30d93f70` | Pass: TypeScript and Vite build; existing large Reports chunk warning remains |
+| OTOTEST inventory integrity | `node scripts/check-ototest-inventory.mjs` after evidence reconciliation | Pass: 18 documents, 107 API rows, and 307 qualified API test references |
+
+The archive failure is deliberately simulated at the browser/API boundary; it
+verifies UI recovery while fresh server reads confirm no persisted archive
+occurred. The archived-note label-preservation acceptance remains open.
+
 ## 2026-10-11 supplement — unknown URL fallback
 
 | Evidence layer | Exact command(s) | Result |

@@ -243,21 +243,30 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Record evidence for one deletion or archive action
 
-- [ ] The evidence records the confirmation or undo affordance shown before
-  the destructive effect.
-- [ ] The evidence records the selected record identity so unrelated records
-  can be distinguished.
-- [ ] A fresh read proves the intended record is absent or archived according
-  to the documented contract.
-- [ ] A failed request leaves server-owned state accurately represented and
-  offers a recovery path where applicable.
+- [x] The evidence records the confirmation or undo affordance shown before
+  the destructive effect. Evidence: the real-stack Notes journey captures and
+  checks the exact Archive confirmation copy.
+- [x] The evidence records the selected record identity so unrelated records
+  can be distinguished. Evidence: generated title, API ID, and retained body
+  marker are asserted across active and archived reads.
+- [x] A fresh read proves the intended record is absent or archived according
+  to the documented contract. Evidence: fresh active and `archived=true`
+  collection reads check membership after the successful archive.
+- [x] A failed request leaves server-owned state accurately represented and
+  offers a recovery path where applicable. Evidence: a single UI-layer 503
+  leaves the note visible and present in a fresh active read; the error is
+  announced and a second Archive action succeeds.
 
 ### Flow: Record evidence for one restore action
 
 - [x] The evidence identifies the archived record and destination context.
 - [x] The visible result shows the record in its restored state.
 - [x] A fresh read proves the restored state persists.
-- [ ] Repeating the restore does not misrepresent the final state.
+- [x] Repeating the restore does not misrepresent the final state. Evidence:
+  the Notes view disables Restore while the request is pending; the component
+  regression test verifies one request despite a repeated activation, and the
+  real-stack journey confirms one active record and no archived copy after
+  restore.
 
 ### Flow: Record evidence for one ownership boundary
 

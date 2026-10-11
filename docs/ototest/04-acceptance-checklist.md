@@ -134,9 +134,9 @@ and `ImportsView.vue`; and `chrome-extension/wxt.config.ts`,
 
 #### Flow: Archive a note
 
-- [ ] **NOTE-18** Archive a disposable note; confirm it leaves the active
+- [x] **NOTE-18** Archive a disposable note; confirm it leaves the active
   list and the product identifies the archive action clearly.
-- [ ] **NOTE-19** Reload the active Notes list; confirm the archived note does
+- [x] **NOTE-19** Reload the active Notes list; confirm the archived note does
   not reappear among active notes.
 
 #### Flow: Restore an archived note
@@ -144,7 +144,7 @@ and `ImportsView.vue`; and `chrome-extension/wxt.config.ts`,
 - [ ] **NOTE-20** Open archived notes and restore one disposable archived
   note; confirm it returns to the active list with its content and labels
   intact.
-- [ ] **NOTE-21** Reload the active list; confirm the restored note remains
+- [x] **NOTE-21** Reload the active list; confirm the restored note remains
   active and its archived copy is not duplicated.
 
 #### Flow: Search for a note
