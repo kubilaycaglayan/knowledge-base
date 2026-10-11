@@ -1,6 +1,6 @@
 # OTOTEST-01 — Visible control and action inventory
 
-**Source revision:** `f500ae47` (authenticated navigation and Labels heading gate update).
+**Source revision:** `b21347f8` (cold-cache route acceptance stabilization).
 **Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-11.
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; keep action evidence current and assign behavior gaps.
