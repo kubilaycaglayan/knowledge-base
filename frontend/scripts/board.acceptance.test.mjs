@@ -3056,3 +3056,18 @@ for (const [width, height] of [[390, 844], [1440, 900]]) it(`keeps keyboard focu
   }
   assert.deepEqual(problems, [], "Kanban focus problems");
 });
+
+// The Gantt timeline header is sticky over 40 scrolling rows.
+for (const [width, height] of [[390, 844], [1440, 900]]) it(`keeps keyboard focus clear of the sticky Gantt timeline header at ${width}×${height}`, async (t) => {
+  const { page } = await fixture(t, width);
+  await page.setViewportSize({ width, height });
+  await page.route("**/api/v1/boards/board-1/gantt*", (route) => route.fulfill({ json: Array.from({ length: 40 }, (_, i) => ({ ...cards[0], id: `focus-${i}`, title: `Focus card ${i}`, position: i })) }));
+  await boardAction(page, "Gantt");
+  await page.locator(".timeline-row").nth(39).waitFor();
+  const problems = [];
+  for (const key of ["Tab", "Shift+Tab"]) {
+    await page.locator(".board-page-gantt").evaluate(() => document.activeElement?.blur());
+    problems.push(...await auditFocusCycle(page, `Gantt at ${width}×${height}`, { key, limit: 300 }));
+  }
+  assert.deepEqual(problems, [], "Gantt focus problems");
+});
