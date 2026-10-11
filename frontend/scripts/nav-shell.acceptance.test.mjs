@@ -1013,6 +1013,25 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
   assert.equal(new URL(page.url()).pathname, "/paths");
 });
 
+it("creates and reloads a Path using only the keyboard", async (t) => {
+  const { page, requests } = await fixture(t, 1440);
+  await visit(page, "/paths");
+  const trigger = page.getByRole("button", { name: "Add path" });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+
+  const name = page.getByRole("textbox", { name: "New path name" });
+  await name.waitFor();
+  await page.keyboard.insertText("Keyboard path");
+  await page.keyboard.press("Enter");
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.ok(requests.includes("/paths"), "Enter submits the focused Path form");
+
+  await page.reload();
+  await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/paths");
+});
+
 it("pins a Path and keeps the saved state after browser reload", async (t) => {
   const { page, requests } = await fixture(t, 1440, {
     pathSeeds: [{ id: "path-reading", name: "Reading", status: "ACTIVE", pinned: false }],
