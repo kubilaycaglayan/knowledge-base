@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, it } from "node:test";
@@ -61,8 +61,9 @@ it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", as
   }
 });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
-  const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false } = {}) {
+  const contextOptions = { viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" };
+  const context = browserZoom ? await zoomableContext(t, contextOptions) : await browser.newContext(contextOptions);
   context.routeWebSocket("**/ws/timers", (webSocket) => webSocket.close());
   t.after(() => context.close());
   const requests = [];
@@ -373,7 +374,38 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   await page.goto(server.resolvedUrls.local[0]);
   if (authenticated) await page.locator(".dashboard-shell > header nav").waitFor();
   else await page.locator(".auth").waitFor();
-  return { page, requests, reportQueries, calendarLabels, paths, pathOrderWrites, pathMergeWrites };
+  return { page, requests, reportQueries, calendarLabels, paths, pathOrderWrites, pathMergeWrites, setBrowserZoom: browserZoom ? (factor) => setBrowserZoom(page, factor) : null };
+}
+
+// Chrome's own zoom controller (the one behind Ctrl+Plus and the zoom menu) is
+// only scriptable through chrome.tabs, so load a one-permission probe extension.
+async function zoomableContext(t, options) {
+  const root = await mkdtemp(join(tmpdir(), "knowledge-base-zoom-"));
+  const extension = join(root, "extension");
+  await mkdir(extension);
+  await writeFile(join(extension, "manifest.json"), JSON.stringify({ manifest_version: 3, name: "Zoom probe", version: "1.0", background: { service_worker: "worker.js" }, permissions: ["tabs"] }));
+  await writeFile(join(extension, "worker.js"), "// Zoom is driven from the test through chrome.tabs.\n");
+  const context = await chromium.launchPersistentContext(join(root, "profile"), {
+    ...options,
+    channel: "chromium",
+    headless: true,
+    args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  });
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const page of context.pages()) await page.close();
+  return context;
+}
+
+async function setBrowserZoom(page, factor) {
+  const context = page.context();
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker", { timeout: 15000 });
+  const zoom = await worker.evaluate(async ({ url, zoomFactor }) => {
+    const tab = (await chrome.tabs.query({})).find((candidate) => candidate.url === url);
+    await chrome.tabs.setZoom(tab.id, zoomFactor);
+    return chrome.tabs.getZoom(tab.id);
+  }, { url: page.url(), zoomFactor: factor });
+  await page.waitForFunction((expected) => Math.abs(devicePixelRatio - expected) < 0.01, factor);
+  return zoom;
 }
 
 async function until(condition) {
@@ -468,6 +500,94 @@ it("does not disable browser zoom in the viewport configuration", async (t) => {
   assert.ok(content);
   assert.doesNotMatch(content, /user-scalable\s*=\s*no/i);
   assert.doesNotMatch(content, /maximum-scale\s*=\s*1(?:\.0+)?(?:\s|,|$)/i);
+});
+
+// Every supported route state from 01-route-matrix.md; /development is excluded there.
+const zoomRoutes = [
+  ["/", ".session-list"],
+  ["/sessions/s1", '[role="dialog"]'],
+  ["/board", ".board-page"],
+  ["/board/archive", ".archive-page"],
+  ["/logs", ".logs-page"],
+  ["/logs/log-deep-link", '[role="dialog"]'],
+  ["/notes", ".notes-page"],
+  ["/notes/n1", ".notes-page"],
+  ["/timeline", 'h1:text-is("Timeline")'],
+  ["/calendar", ".calendar-page"],
+  ["/reports", ".reports-page"],
+  ["/paths", ".paths-page"],
+  ["/paths/path-deep-link", ".path-history-dialog"],
+  ["/labels", ".labels-view"],
+  ["/labels/label-deep-link", '[role="dialog"]'],
+  ["/imports", 'h1:text-is("Imports")'],
+  ["/settings", ".settings-view"],
+  ["/no-such-page", "main"],
+];
+
+const zoomedLayout = (page) => page.evaluate(() => {
+  const viewport = document.documentElement.clientWidth;
+  const visible = (element) => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden";
+  const name = (element) => element.getAttribute("aria-label") || element.textContent.trim().replace(/\s+/g, " ") || element.tagName;
+  const actions = [...document.querySelectorAll("button, a[href], input, select, textarea, [role='button']")].filter(visible);
+  return {
+    viewport,
+    pageWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    // Actions in a horizontal scroller (such as the note formatting row) count
+    // only when scrolling brings them fully into the viewport.
+    outside: actions.filter((element) => {
+      const outsideViewport = () => {
+        const { left, right, width } = element.getBoundingClientRect();
+        return width > 0 && (left < -1 || right > viewport + 1);
+      };
+      if (!outsideViewport()) return false;
+      element.scrollIntoView({ block: "nearest", inline: "nearest" });
+      return outsideViewport() || document.documentElement.scrollWidth > viewport;
+    }).map(name),
+    hiddenNavigation: [...document.querySelectorAll('nav[aria-label="Main navigation"] a[href]')].filter((link) => !visible(link)).map(name),
+    mainHeight: document.querySelector("#main-content")?.getBoundingClientRect().height ?? 0,
+  };
+});
+
+it("stays zoomable with Chrome's browser zoom controls at phone width", async (t) => {
+  const { page, setBrowserZoom } = await fixture(t, 390, { browserZoom: true });
+  assert.equal(await page.evaluate(() => [innerWidth, devicePixelRatio].join("x")), "390x1");
+
+  assert.equal(Math.round(await setBrowserZoom(2) * 100), 200);
+  assert.equal(await page.evaluate(() => [innerWidth, devicePixelRatio].join("x")), "195x2", "the page reflows to the zoomed CSS width");
+
+  // The app must not reset or fight the browser zoom across navigation or reload.
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Logs" }).tap();
+  await page.waitForURL(/\/logs$/);
+  await page.getByRole("heading", { name: "Logs", exact: true }).waitFor();
+  await page.reload();
+  await page.locator(".logs-page").waitFor();
+  assert.equal(await page.evaluate(() => devicePixelRatio), 2, "browser zoom survives navigation and reload");
+
+  assert.equal(Math.round(await setBrowserZoom(1) * 100), 100);
+  assert.equal(await page.evaluate(() => innerWidth), 390, "zooming back out restores the phone layout");
+});
+
+for (const zoom of [2, 4]) it(`reflows every supported route at ${zoom * 100}% Chrome browser zoom without hiding actions`, async (t) => {
+  const { page, setBrowserZoom } = await fixture(t, 1280, {
+    browserZoom: true,
+    pathSeeds: [{ id: "path-deep-link", name: "Writing", status: "ACTIVE" }],
+  });
+  await setBrowserZoom(zoom);
+  assert.equal(await page.evaluate(() => innerWidth), 1280 / zoom);
+  const problems = [];
+  for (const [path, ready] of zoomRoutes) {
+    await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
+    await page.locator(ready).first().waitFor({ state: "attached" });
+    await page.waitForTimeout(150);
+    const layout = await zoomedLayout(page);
+    if (layout.viewport !== 1280 / zoom) problems.push(`${path}: viewport ${layout.viewport}px`);
+    if (layout.pageWidth > layout.viewport) problems.push(`${path}: page overflows to ${layout.pageWidth}px`);
+    if (layout.outside.length) problems.push(`${path}: actions outside the viewport: ${layout.outside.join(", ")}`);
+    if (layout.hiddenNavigation.length) problems.push(`${path}: hidden navigation: ${layout.hiddenNavigation.join(", ")}`);
+    // A collapsed main region hides the workspace behind the shell chrome.
+    if (layout.mainHeight < 44) problems.push(`${path}: main content collapses to ${layout.mainHeight}px`);
+  }
+  assert.deepEqual(problems, [], `Reflow problems at ${zoom * 100}% browser zoom`);
 });
 
 it("keeps core mobile routes readable without horizontal page overflow at enlarged text", async (t) => {
