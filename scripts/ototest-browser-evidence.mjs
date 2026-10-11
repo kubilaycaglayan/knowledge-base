@@ -78,6 +78,22 @@ export function coveredMutationReferenceClaimsMissingOwnership(rows, identityInd
   });
 }
 
+export function coveredRecordReadClaimsMissingOutcomes(rows, identityIndex, claimIndex, statusIndex) {
+  const recordRead = /^`?GET\b.*\/\{(?:id|[A-Za-z]+Id)\}/i;
+  const outcomes = [
+    /\b(?:owned|owner)\b/i,
+    /\b(?:missing|not found|absent)\b/i,
+    /\b(?:foreign|another user|another board|cross-user)\b/i,
+  ];
+  return rows.flatMap((cells, index) => {
+    const claim = cells[claimIndex] ?? "";
+    if (cells[statusIndex] !== "covered"
+        || !recordRead.test(cells[identityIndex] ?? "")
+        || outcomes.every((outcome) => outcome.test(claim))) return [];
+    return [{ row: index + 1, identity: cells[identityIndex] ?? "" }];
+  });
+}
+
 export function invalidEvidenceStatuses(rows, statusIndex) {
   return rows.flatMap((cells, index) => {
     const status = cells[statusIndex] ?? "";

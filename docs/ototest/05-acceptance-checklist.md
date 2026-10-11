@@ -126,8 +126,12 @@ gate below, the maintained inventory or release record must identify:
 
 - [ ] A new or changed route guard records signed-out and authenticated
   outcomes separately.
-- [ ] A record read records owned, missing, and foreign-ID outcomes where the
-  route accepts a record identifier.
+- [x] A record read records owned, missing, and foreign-ID outcomes where the
+  route accepts a record identifier. Covered ID-addressed GET rows state the
+  three outcomes, and `CrossUserIsolationIntegrationTest.foreignAndMissingDirectIdsHaveTheSameNotFoundResponse`
+  compares foreign and missing responses for paths, label histories, boards,
+  card lists/pages, and Gantt reads; resource-specific integration tests prove
+  owned results.
 - [x] A mutation that references another record records ownership checks for
   each referenced Path, Label, board, status, note, or activity identifier
   used by that behavior. `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData` exercises foreign Path, Label, status, and board references across time entries, timers, notes, logs, cards, and calendar assignments; the API matrix records the integration layer and unchanged-owner-state assertion.
@@ -686,6 +690,8 @@ Chrome versions, viewport/orientation, and input method.
   and has regression coverage for a renamed assertion reference.
 - [x] Covered API mutations whose request DTOs carry another record’s ID
   must state an ownership outcome; a regression test protects the rule.
+- [x] Covered API reads addressed by a record ID must state owned, missing,
+  and foreign-ID outcomes; a regression test protects the rule.
 - [x] The consistency review identifies a row with no source, matrix owner, or
   evidence classification.
 - [x] A source scan is treated only as drift detection, never as behavioral

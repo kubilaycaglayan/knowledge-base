@@ -27,7 +27,9 @@ make the required test layers visible in local guidance and CI.
   declarations in their corresponding frontend test files; this is a name
   check, not an assertion-quality review. Covered API mutations whose request
   DTOs contain another record’s ID must state the ownership outcome; persisted
-  and ownership claims must cite an integration evidence layer. Route, API, detailed control,
+  and ownership claims must cite an integration evidence layer. Covered API
+  reads addressed by record IDs must state owned, missing, and foreign-ID
+  outcomes. Route, API, detailed control,
   extension/feature, and cross-client journey rows each have one recognized
   evidence status; CI rejects missing, combined, or unknown status values and
   malformed detailed control table rows.

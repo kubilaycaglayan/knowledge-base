@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
-import { apiRowsMissingNamedEvidence, coveredMutationReferenceClaimsMissingOwnership, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, coveredMutationReferenceClaimsMissingOwnership, coveredRecordReadClaimsMissingOutcomes, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 import { missingInventoryMetadata } from "./ototest-inventory-metadata.mjs";
 import { qualifiedJavaEvidenceReferences } from "./ototest-java-evidence.mjs";
 import { manualRowsMissingProcedureLink } from "./ototest-manual-evidence.mjs";
@@ -224,6 +224,9 @@ for (const { row, cells, evidenceIndex, statusIndex } of readControlStatusRows()
 
 for (const { row, identity } of coveredMutationReferenceClaimsMissingOwnership(apiRows, 0, 1, 3, 4)) {
   problems.push(`01-api-matrix.md:row ${row} ${identity}: covered mutations with referenced record IDs must state their ownership outcome`);
+}
+for (const { row, identity } of coveredRecordReadClaimsMissingOutcomes(apiRows, 0, 3, 4)) {
+  problems.push(`01-api-matrix.md:row ${row} ${identity}: covered ID reads must state owned, missing, and foreign-ID outcomes`);
 }
 
 for (const [filename, rows, evidenceIndex, claimIndex, statusIndex] of [

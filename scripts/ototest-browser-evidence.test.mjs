@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { apiRowsMissingNamedEvidence, coveredMutationReferenceClaimsMissingOwnership, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { apiRowsMissingNamedEvidence, coveredMutationReferenceClaimsMissingOwnership, coveredRecordReadClaimsMissingOutcomes, coveredStateClaimsMissingLayer, invalidEvidenceStatuses, rowsMissingNamedAssertions, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const declaration = 'it("creates a Path using the keyboard", async () => {});';
 const sources = { "nav-shell.acceptance.test.mjs": declaration };
@@ -182,5 +182,16 @@ test("requires covered mutations with request reference IDs to state ownership o
     ["POST `/api/v1/timers`", "`StartRequest.pathId` optional UUID", "TimerIntegrationTest.startsTimer", "Foreign path rejected", "gap"],
   ], 0, 1, 3, 4), [
     { row: 1, identity: "POST `/api/v1/timers`" },
+  ]);
+});
+
+test("requires covered record ID reads to state owned, missing, and foreign outcomes", () => {
+  assert.deepEqual(coveredRecordReadClaimsMissingOutcomes([
+    ["GET `/api/v1/notes/{id}`", "NoteController.get", "Persisted owned note; missing and foreign IDs return 404", "covered"],
+    ["GET `/api/v1/paths/{id}/summary`", "PathController.summary", "Owned summary and missing IDs return 404", "covered"],
+    ["GET `/api/v1/paths`", "PathController.list", "Owner-scoped list", "covered"],
+    ["GET `/api/v1/logs/{id}`", "LogController.get", "Owned, missing, foreign", "gap"],
+  ], 0, 2, 3), [
+    { row: 2, identity: "GET `/api/v1/paths/{id}/summary`" },
   ]);
 });
