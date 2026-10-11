@@ -1,18 +1,49 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, it } from "node:test";
 import { createServer } from "vite";
 import { chromium } from "playwright";
 
 // Mocked API only: no real credentials, backend writes, or personal data.
-let server, browser;
+let server, browser, viteCacheDir;
 const pages = ["/", "/board", "/logs", "/notes", "/calendar", "/reports", "/paths", "/labels", "/settings"];
 const today = new Date().toISOString().slice(0, 10);
 const statuses = ["Backlog", "In Progress", "Done"].map((name, position) => ({ id: `status-${position}`, name, position, archived: false, cardSort: "MANUAL" }));
 const card = { id: "card-1", statusId: "status-0", title: "Ship timeline", body: "{}", priority: "HIGH", startDate: today, dueDate: today, position: 0, archived: false, pathIds: [], labelIds: [] };
 const searchResult = (id, type, title, snippet) => ({ id, type, title, snippet, at: "2026-10-01T10:00:00Z", date: null, archived: false, via: null, viaName: null, color: null, pathId: null, pathName: null, pathColor: null, boardId: null, boardName: null, statusName: null, endedAt: null, durationSeconds: null });
 
-before(async () => { server = await createServer({ server: { host: "127.0.0.1", port: 0 } }); await server.listen(); browser = await chromium.launch({ headless: true }); });
-after(async () => { await browser?.close(); await server?.close(); });
+before(async () => {
+  // Use a cold Vite cache so dependency optimization cannot make the first
+  // browser assertions race a page reload on CI but pass with a warm local cache.
+  viteCacheDir = await mkdtemp(join(tmpdir(), "knowledge-base-nav-vite-"));
+  server = await createServer({ cacheDir: viteCacheDir, server: { host: "127.0.0.1", port: 0 } });
+  await server.listen();
+  browser = await chromium.launch({ headless: true });
+});
+after(async () => {
+  await browser?.close();
+  await server?.close();
+  if (viteCacheDir) await rm(viteCacheDir, { recursive: true, force: true });
+});
+
+it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", async () => {
+  await server.environments.client.depsOptimizer.scanProcessing;
+  const optimized = server.environments.client.depsOptimizer.metadata.optimized;
+  for (const dependency of [
+    "vuetify/components/VBtn",
+    "vuetify/components/VIcon",
+    "vuetify/components/VList",
+    "vuetify/components/VSelect",
+    "vuetify/components/VSnackbar",
+    "vuetify/components/VMenu",
+    "vuetify/components/VChip",
+    "vuetify/components/VTable",
+  ]) {
+    assert.ok(optimized[dependency], `${dependency} must be ready before Chromium tests can trigger a dev-server reload`);
+  }
+});
 
 async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
