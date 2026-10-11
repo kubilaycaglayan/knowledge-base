@@ -20,13 +20,28 @@ const focusSnapshot = (scopeSelector) => {
   const id = element.getAttribute("data-focus-audit-id") || crypto.randomUUID();
   element.setAttribute("data-focus-audit-id", id);
   const scope = scopeSelector ? document.querySelector(scopeSelector) : null;
+  // Only fixed or sticky layers count as obscuring focus; in-flow siblings such
+  // as a card footer over a stretched card link are part of the design.
+  const pinnedLayer = (node) => {
+    for (let current = node; current instanceof Element; current = current.parentElement) {
+      if (/^(fixed|sticky)$/.test(getComputedStyle(current).position)) return current;
+    }
+    return null;
+  };
+  const layer = center instanceof Element && center !== visualTarget && !visualTarget.contains(center) ? pinnedLayer(center) : null;
+  // A region taller or wider than the usable viewport (after the page's scroll
+  // padding, which keeps focus clear of the fixed footer) only has to overlap it.
+  const rootStyle = getComputedStyle(document.documentElement);
+  const usableHeight = innerHeight - (Number.parseFloat(rootStyle.scrollPaddingTop) || 0) - (Number.parseFloat(rootStyle.scrollPaddingBottom) || 0);
+  const fits = rect.top >= -1 && rect.bottom <= innerHeight + 1 && rect.left >= -1 && rect.right <= innerWidth + 1;
+  const overlapsOversized = (rect.height > usableHeight || rect.width > innerWidth) && rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth;
   return {
     id,
     name: element.getAttribute("aria-label") || element.textContent?.trim().replace(/\s+/g, " ").slice(0, 60) || element.tagName,
     inScope: !scope || scope.contains(element),
-    visible: rect.width > 0 && rect.height > 0 && rect.top >= -1 && rect.bottom <= innerHeight + 1 && rect.left >= -1 && rect.right <= innerWidth + 1,
+    visible: rect.width > 0 && rect.height > 0 && (fits || overlapsOversized),
     ring: element.matches(":focus-visible") && hasRing,
-    covered: Boolean(center) && center !== visualTarget && !visualTarget.contains(center),
+    covered: Boolean(layer) && !layer.contains(visualTarget),
     coveredBy: center instanceof Element ? `${center.tagName.toLowerCase()}.${[...center.classList].join(".")}` : String(center),
   };
 };
@@ -40,6 +55,8 @@ export async function auditFocusCycle(page, label, { key = "Tab", scope = null, 
   let completed = false;
   for (let index = 0; index < limit; index += 1) {
     await page.keyboard.press(key);
+    // Let focus-driven scrolling settle before measuring.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const focus = await page.evaluate(focusSnapshot, scope);
     if (focus.body) {
       completed = seen.size > 0;

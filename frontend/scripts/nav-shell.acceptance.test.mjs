@@ -620,6 +620,21 @@ it("reflows every supported route at 320px and 390px phone widths without hiding
   assert.deepEqual(problems, [], "Phone-width reflow problems");
 });
 
+const focusWorkspaces = ["/", "/board", "/logs", "/notes", "/calendar", "/reports", "/paths", "/labels", "/settings", "/timeline", "/imports"];
+for (const width of [390, 1440]) it(`keeps keyboard focus visible and unobscured on every workspace in both Tab directions at ${width}px`, async (t) => {
+  // Populated lists make phone pages scroll, so Shift+Tab from the end of the
+  // page starts in a scrolled state beneath the sticky and fixed shell UI.
+  const { page } = await fixture(t, width, overlayFixture);
+  const problems = [];
+  for (const route of focusWorkspaces) {
+    for (const key of ["Tab", "Shift+Tab"]) {
+      await visit(page, route);
+      problems.push(...await auditFocusCycle(page, `${route} at ${width}px`, { key }));
+    }
+  }
+  assert.deepEqual(problems, [], `Focus problems at ${width}px`);
+});
+
 // Every dialog, menu, and drawer pattern outside the Board workspace
 // (board.acceptance.test.mjs covers the Board overlays). Each entry opens one
 // overlay state and names the action that dismisses it.
