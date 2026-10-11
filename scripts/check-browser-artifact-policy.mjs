@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const workflow = readFileSync(".github/workflows/verify.yml", "utf8");
 const testingGuide = readFileSync("docs/testing.md", "utf8");
+const routeSuite = readFileSync("frontend/scripts/nav-shell.acceptance.test.mjs", "utf8");
 const helper = readFileSync("frontend/scripts/browser-failure-artifacts.mjs", "utf8");
 const scrubber = readFileSync("frontend/scripts/scrub-playwright-trace.py", "utf8");
 
@@ -30,6 +31,9 @@ requireUploadPolicy(
 assert.match(workflow, /Failure logs and scrubbed browser evidence are attached to this \[workflow run\]\(\$RUN_URL\) and retained for 14 days\./);
 assert.match(workflow, /- name: Run web route and control browser acceptance\n        working-directory: frontend\n        run: npm run test:nav/);
 assert.match(testingGuide, /verify \/ web-and-extension.*Run web route and control browser acceptance.*npm run test:nav/);
+assert.match(routeSuite, /cacheDir: viteCacheDir/);
+assert.match(routeSuite, /server: \{ host: "127\.0\.0\.1", port: 0, hmr: false \}/);
+assert.match(routeSuite, /pre-optimizes lazy Vuetify shell dependencies before browser assertions/);
 
 for (const filename of ["scripts/run-timer-websocket-e2e.sh", "scripts/run-line-history-e2e.sh"]) {
   const runner = readFileSync(filename, "utf8");
