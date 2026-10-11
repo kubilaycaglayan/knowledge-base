@@ -206,10 +206,10 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Restore one protected deep link after sign-in
 
-- [ ] Opening a protected deep link while signed out presents the sign-in
+- [x] Opening a protected deep link while signed out presents the sign-in
   state before protected content.
-- [ ] Completing sign-in restores the intended safe internal destination.
-- [ ] An external or malformed return destination does not navigate away from
+- [x] Completing sign-in restores the intended safe internal destination.
+- [x] An external or malformed return destination does not navigate away from
   Knowledge Base.
 
 ### Flow: Restore one URL-backed filter
