@@ -10,6 +10,15 @@
 | Result | Listed automated checks passed locally unless a limitation is stated below |
 | CI run/artifact URL | [Hosted `verify` run 38094837246](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38094837246), passed for commit `f7a9b6ba6aabc6819835a67f0fda0c8452272898` |
 
+## 2026-10-11 supplement — unknown URL fallback
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Unknown URL browser acceptance | `cd frontend && node --test --test-concurrency=1 --test-name-pattern='shows a safe not-found page' scripts/nav-shell.acceptance.test.mjs` at source revision `11a887ce` | Pass: 1/1 Chromium assertion at 1440px desktop and 390px phone-width emulation; page title and identity are explicit, unrelated protected views are absent, Sessions recovery works, and its target is at least 44px high |
+| Navigation and route browser suite | `cd frontend && npm run test:nav` at source revision `11a887ce` | Pass: 102/102 sequential Chromium tests. Two prior suite runs exposed an immediate Notes archive excerpt assertion before asynchronous rendering completed; the assertion now waits for the excerpt, and the full suite passed after that change. |
+| Frontend production build | `cd frontend && npm run build` at source revision `11a887ce` | Pass: TypeScript and Vite build; existing large Reports chunk warning remains |
+| Accessibility and inventory | `node scripts/check-accessibility.mjs`; `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: 38 accessibility checks; inventory integrity across 18 docs, 107 API rows, and 307 qualified API references |
+
 ## Gate results
 
 | Evidence layer | Exact command(s) | Result |
@@ -51,9 +60,9 @@ The first hosted run, [38094630686](https://github.com/kubilaycaglayan/knowledge
 
 ## Source reconciliation
 
-- `frontend/src/main.ts` contains 19 route declarations and
-  `01-route-matrix.md` has 19 route rows. The route registry is unchanged
-  since the recorded inventory baseline.
+- At the 2026-10-10 baseline, `frontend/src/main.ts` had 19 route declarations.
+  Revision `11a887ce` adds the catch-all not-found route; `01-route-matrix.md`
+  now records all 20 route entries/patterns.
 - The API matrix has 107 composed method/path rows, matching the 107 pairs in
   the generated `/v3/api-docs` reconciliation recorded at `80fecc6c`. API
   controller sources have no changes between that reconciliation and this
