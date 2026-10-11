@@ -7,6 +7,7 @@ import { apiRowsMissingNamedEvidence, coveredMutationReferenceClaimsMissingOwner
 import { missingInventoryMetadata } from "./ototest-inventory-metadata.mjs";
 import { qualifiedJavaEvidenceReferences } from "./ototest-java-evidence.mjs";
 import { manualRowsMissingProcedureLink } from "./ototest-manual-evidence.mjs";
+import { publicOperationsMissingRationale } from "./ototest-api-public-status.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryRoot = path.join(repositoryRoot, "docs/ototest");
@@ -164,6 +165,9 @@ for (const filename of ["01-route-matrix.md", "01-api-matrix.md", "01-control-ma
 }
 
 const apiRows = readTable("01-api-matrix.md", "| Verb + composed path |");
+for (const problem of publicOperationsMissingRationale(fs.readFileSync(path.join(inventoryRoot, "01-api-matrix.md"), "utf8"))) {
+  problems.push(`01-api-matrix.md: ${problem}`);
+}
 for (const { row, operation } of apiRowsMissingNamedEvidence(apiRows)) {
   problems.push(`01-api-matrix.md:row ${row} ${operation}: missing a qualified Java test assertion reference`);
 }

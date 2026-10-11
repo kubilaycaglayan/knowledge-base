@@ -37,6 +37,10 @@ matrix owner, reviewed source revision, review trigger, exact command, and
 latest hosted-run metadata are checked with
 `node --test scripts/ototest-inventory-metadata.test.mjs` and
 `node scripts/check-ototest-inventory.mjs`.
+Every operation marked public in the API matrix must state its authentication
+bypass reason; its regression cases run with
+`node --test scripts/ototest-api-public-status.test.mjs` in
+`verify / web-and-extension`.
 Java test references in API and detailed control rows resolve to method
 declarations; the reference parser tests run with
 `node --test scripts/ototest-java-evidence.test.mjs`.

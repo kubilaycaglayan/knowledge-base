@@ -61,6 +61,8 @@ jobs:
         run: npm ci && npm test && node --test scripts/vitest-scope.test.mjs && npm run build
       - name: Check OTOTEST inventory integrity
         run: node scripts/check-ototest-inventory.mjs
+      - name: Test OTOTEST public API rationale policy
+        run: node --test scripts/ototest-api-public-status.test.mjs
       - name: Test OTOTEST route and API source drift checker
         run: node --test scripts/ototest-source-drift.test.mjs
       - name: Test OTOTEST inventory metadata policy

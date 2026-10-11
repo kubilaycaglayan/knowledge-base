@@ -160,8 +160,10 @@ gate below, the maintained inventory or release record must identify:
 - [x] A mutation that references another record records ownership checks for
   each referenced Path, Label, board, status, note, or activity identifier
   used by that behavior. `CrossUserIsolationIntegrationTest.intruderCannotReferenceOwnedResourcesFromTheirOwnData` exercises foreign Path, Label, status, and board references across time entries, timers, notes, logs, cards, and calendar assignments; the API matrix records the integration layer and unchanged-owner-state assertion.
-- [ ] A new public API route records its deliberate public status and the
-  reason for bypassing authentication.
+- [x] A new public API route records its deliberate public status and the
+  reason for bypassing authentication. Each current public operation names its
+  unauthenticated purpose; the inventory check and public-status regression
+  reject public rows without a rationale.
 - [x] Security evidence identifies the layer proving the boundary rather
   than inferring it from a UI-hidden control.
 
