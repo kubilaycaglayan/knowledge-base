@@ -314,6 +314,12 @@ load, and route-state evidence must remain individually identifiable.
   are `gap` because each family has remaining behavior listed, and CI rejects
   a blank, combined, or unknown family status. Detailed action rows remain
   individually open in the acceptance inventory.
+- [x] Each extension entrypoint/permission row has one status. The permission
+  prompt is `manual` with an exact procedure link; the excluded mobile
+  extension surface includes its rationale. CI rejects invalid statuses.
+- [x] Each cross-client feature-domain and ordered-journey row has one `gap`
+  status while its final column lists unproven behavior; CI rejects invalid
+  statuses and duplicate journey IDs.
 - [ ] `covered` is used only when linked evidence asserts the behavior at the
   required layer.
 - [ ] `gap` states the missing behavior and the owner responsible for closing

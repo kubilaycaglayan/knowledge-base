@@ -98,6 +98,16 @@ for (const { row, status } of invalidEvidenceStatuses(readTable("01-control-matr
 }
 checkTable("01-extension-and-feature-map.md", "| Entry point / capability |", { classifiedColumn: 3 });
 checkTable("01-extension-and-feature-map.md", "| Feature domain |", { classifiedColumn: 3 });
+for (const [header, statusIndex, label] of [
+  ["| Entry point / capability |", 4, "entrypoint"],
+  ["| Feature domain |", 5, "feature domain"],
+  ["| Journey | Ordered transitions and shared operation |", 4, "cross-client journey"],
+]) {
+  for (const { row, status } of invalidEvidenceStatuses(readTable("01-extension-and-feature-map.md", header), statusIndex)) {
+    problems.push(`01-extension-and-feature-map.md:${label} row ${row}: invalid evidence status ${JSON.stringify(status)}`);
+  }
+}
+checkTable("01-extension-and-feature-map.md", "| Journey | Ordered transitions and shared operation |", { classifiedColumn: 3 });
 for (const filename of ["01-route-matrix.md", "01-api-matrix.md", "01-control-matrix.md", "01-extension-and-feature-map.md"]) {
   checkInventoryOwner(filename);
 }
