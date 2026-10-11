@@ -318,3 +318,13 @@ The checklist item rejecting rendering-only evidence for mutation, persistence, 
 | Hosted `verify` for foreign-reference evidence | [`verify` run 38119978826](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38119978826) | Pass for commit `e6c4e61d`; all active jobs passed, including inventory gates, route/control and packaged extension browser suites, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
 
 The security checklist now records the reference-ownership boundary and its integration evidence layer. The API matrix links the test to each covered mutation operation.
+
+## 2026-10-11 supplement — enforce ownership claims for referenced IDs
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Inventory-gate unit tests | `node --test scripts/ototest-browser-evidence.test.mjs scripts/ototest-java-evidence.test.mjs scripts/ototest-manual-evidence.test.mjs scripts/ototest-inventory-metadata.test.mjs scripts/ototest-completion-guard.test.mjs` at source revision `7c76da7e` | Pass: 25/25. Regression coverage requires covered mutation rows with request DTO reference IDs to state an ownership outcome. |
+| Inventory integrity | `node scripts/check-ototest-inventory.mjs` at source revision `7c76da7e` | Pass: 18 documents, 107 API rows, and 308 qualified Java test references; all currently covered API mutation rows with reference IDs state an ownership outcome, and stateful claims cite an integration layer. |
+| Hosted `verify` after ownership-claim gate | [`verify` run 38120471512](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38120471512) | Pass for commit `7c76da7e`; all active jobs passed, including inventory gates, route/control and packaged extension browser suites, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+
+Hosted run [`38120306604`](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38120306604) failed one web route/control browser assertion while restoring a protected Reports deep link; the log showed Vite proxy connection refusals and a timeout waiting for `.reports-page`. The subsequent full run above passed that suite.
