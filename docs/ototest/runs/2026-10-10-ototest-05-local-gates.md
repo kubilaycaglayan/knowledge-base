@@ -290,4 +290,15 @@ The checklist criterion rejecting filename-only evidence is now checked. Renderi
 | Inventory integrity | `node scripts/check-ototest-inventory.mjs` at source revision `a4533ddc` | Pass: all covered rows name assertions, and browser/extension test titles and Java method declarations resolve. |
 | Hosted `verify` for the Java filename guard | [`verify` run 38117192498](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38117192498) | Pass for commit `a4533ddc4b329fd17a6368a026663adf2bc3d6ab`; all active jobs passed, including the evidence gates, route/control suite, packaged extension, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
 
-The four inventory matrices now link this latest hosted evidence run. The separate criterion against rendering-only evidence for mutations, persistence, and ownership remains open for audit.
+The four inventory matrices now link this latest hosted evidence run. The next supplement audits persisted-state and ownership claims and closes the rendering-only evidence criterion.
+
+## 2026-10-11 supplement — stateful evidence for persistence and ownership claims
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Stateful evidence policy tests | `node --test scripts/ototest-browser-evidence.test.mjs scripts/ototest-java-evidence.test.mjs scripts/ototest-manual-evidence.test.mjs scripts/ototest-inventory-metadata.test.mjs scripts/ototest-completion-guard.test.mjs` at source revision `f7efa6fd` | Pass: 24/24. Covered persistence, readback, and ownership claims must cite a Java integration test or real-stack/real-browser acceptance; rendering-only UI references fail. |
+| Inventory integrity | `node scripts/check-ototest-inventory.mjs` at source revision `f7efa6fd` | Pass: 18 documents, 107 API operations, and 308 qualified Java test references. Covered stateful claims meet the required evidence layer, and all links resolve. |
+| Corrected stateful evidence links | `docs/ototest/01-api-matrix.md` and `docs/ototest/01-control-matrix.md` | Password replacement now cites `KnowIntegrationTest.changingPasswordRequiresTheCurrentPasswordAndInvalidatesTheOldOne`, which authenticates with the replacement after rejecting the old password. Status reorder cites `BoardStatusOrderIntegrationTest.statusOrderPersistsCompleteOrderAndRejectsDuplicateMissingAndForeignIds`, which verifies the saved order by reading it back. |
+| Hosted `verify` with stateful evidence policy | [`verify` run 38118196679](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38118196679) | Pass for commit `f7efa6fd7d9f4b605283ebe0a276cd1e445f4bc8`; all active jobs passed, including inventory/evidence policy checks, route/control browser acceptance, packaged extension, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+
+The checklist item rejecting rendering-only evidence for mutation, persistence, or ownership is now checked. Evidence-layer policy improves traceability; the product behavior gaps remain individually classified in the matrices.
