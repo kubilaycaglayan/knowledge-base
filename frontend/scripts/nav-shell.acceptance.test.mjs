@@ -1015,9 +1015,29 @@ it("creates a Path in the browser and reloads it from the API fixture", async (t
 
 it("creates and reloads a Path using only the keyboard", async (t) => {
   const { page, requests } = await fixture(t, 1440);
-  await visit(page, "/paths");
+  await visit(page, "/");
+  const pathsLink = page.getByRole("link", { name: "Paths", exact: true });
+  let pathsReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await pathsLink.evaluate((element) => element === document.activeElement)) {
+      pathsReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(pathsReachedByTab, true, "Tab reaches the Paths navigation link");
+  await page.keyboard.press("Enter");
+  await page.locator(".paths-page").waitFor();
   const trigger = page.getByRole("button", { name: "Add path" });
-  await trigger.focus();
+  let addPathReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await trigger.evaluate((element) => element === document.activeElement)) {
+      addPathReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(addPathReachedByTab, true, "Tab reaches the Add path button");
   await page.keyboard.press("Enter");
 
   const name = page.getByRole("textbox", { name: "New path name" });
@@ -1026,19 +1046,23 @@ it("creates and reloads a Path using only the keyboard", async (t) => {
   const nameFocus = await name.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
+    const center = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
     return {
       outlineStyle: style.outlineStyle,
       outlineWidth: style.outlineWidth,
       visible: rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight,
+      covered: center !== element && !element.contains(center),
     };
   });
   assert.equal(nameFocus.outlineStyle, "solid", "keyboard-focused Path name input shows a visible focus ring");
   assert.equal(nameFocus.outlineWidth, "2px");
   assert.equal(nameFocus.visible, true, JSON.stringify(nameFocus));
+  assert.equal(nameFocus.covered, false, JSON.stringify(nameFocus));
   await page.keyboard.insertText("Keyboard path");
   await page.keyboard.press("Enter");
   await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
   assert.ok(requests.includes("/paths"), "Enter submits the focused Path form");
+  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true, "focus returns to Add path after creation");
 
   await page.reload();
   await page.locator(".path-title", { hasText: "Keyboard path" }).waitFor();
@@ -1094,12 +1118,28 @@ it("reorders Paths by keyboard with the accessible Move up action", async (t) =>
   await up.waitFor();
   assert.equal(await page.getByRole("button", { name: "Move Algorithms up" }).isDisabled(), true);
   assert.equal(await page.getByRole("button", { name: "Move Writing down" }).isDisabled(), true);
-  await up.focus();
+  let moveUpReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await up.evaluate((element) => element === document.activeElement)) {
+      moveUpReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(moveUpReachedByTab, true, "Tab reaches the accessible Move up action");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Writing,Algorithms");
   const down = page.getByRole("button", { name: "Move Writing down" });
   assert.equal(await down.isDisabled(), false);
-  await down.focus();
+  let moveDownReachedByTab = false;
+  for (let tab = 0; tab < 30; tab += 1) {
+    await page.keyboard.press("Tab");
+    if (await down.evaluate((element) => element === document.activeElement)) {
+      moveDownReachedByTab = true;
+      break;
+    }
+  }
+  assert.equal(moveDownReachedByTab, true, "Tab reaches the accessible Move down action");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => [...document.querySelectorAll(".path-title")].map((node) => node.textContent?.trim()).join(",") === "Algorithms,Writing");
   assert.deepEqual(pathOrderWrites, [["path-b", "path-a"], ["path-a", "path-b"]]);

@@ -453,16 +453,24 @@ current and link evidence at the layer that proves its behavior.
 
 ### Flow: Use one supported action with a keyboard
 
-- [ ] Each state-changing action can be reached and activated with a
-  keyboard-operable semantic control.
+- [x] Each state-changing action can be reached and activated with a
+  keyboard-operable semantic control. The keyboard-only Path create and reorder
+  browser checks exercise navigation, activation, and persistence; board card
+  and status reordering, note ordering, and Gantt date editing expose semantic
+  controls with keyboard alternatives.
 - [x] Focus remains visibly indicated during navigation and form entry. The
   `shows a visible keyboard focus ring that is not covered by the shell`
   browser assertion checks the first Tab target; `creates and reloads a Path
   using only the keyboard` asserts a visible 2px ring remains on the focused
   Path name input before keyboard entry and submission.
-- [ ] Focus is not covered by sticky, floating, or fixed application chrome.
-- [ ] Any essential drag or pointer interaction has a keyboard alternative or
-  a documented exception.
+- [x] Focus is not covered by sticky, floating, or fixed application chrome.
+  The same Path create assertion checks that the input center is the topmost
+  element at its screen position.
+- [x] Any essential drag or pointer interaction has a keyboard alternative or
+  a documented exception. Paths, notes, board statuses, and board cards have
+  keyboard reorder controls. Gantt date gestures have keyboard-accessible date
+  fields in the card editor; selecting a range directly on an undated row is a
+  pointer convenience and the same dates can be entered in that editor.
 
 ## Android Chrome product counterpart
 
