@@ -1,12 +1,12 @@
 # OTOTEST-01 — Web route evidence matrix
 
-**Source revision:** `b324104b` (cold-cache, global-search failure-state, Path merge-refresh, shared-timer route, and accessible Path Undo acceptance)
+**Source revision:** `c66533c6` (temporary Development page shortcut exclusion and browser assertion)
 **Source review:** `frontend/src/main.ts`, `frontend/src/views/NotFoundView.vue`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`, 2026-10-11
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; maintain route evidence and assign follow-up gaps.
 **Review trigger:** Reconcile when route registration, guard, redirect, path/query state, or page identity changes, and at each release inventory review.
 **Evidence command:** `cd frontend && npm test` (Vitest) and `cd frontend && npm run test:nav` (required Chromium route/control suite in `verify / web-and-extension`); other browser suites use their named npm scripts. The latest local results are recorded in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
-**Latest evidence run:** [verify 38124758610](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38124758610), with the route/control browser suite passing.
+**Latest evidence run:** [verify 38125772310](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38125772310), with the route/control browser suite passing.
 
 “Component” means a Vue/Vitest assertion; it does not prove browser history,
 real API persistence, or visual layout. A `gap` row may have some assertions,

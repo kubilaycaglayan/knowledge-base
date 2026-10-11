@@ -1,12 +1,12 @@
 # OTOTEST-01 — Visible control and action inventory
 
-**Source revision:** `9bb0b8b6` (adds a visible focus-ring assertion to keyboard Path creation).
+**Source revision:** `c66533c6` (temporary Development shortcut exclusion from authenticated search).
 **Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-11.
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; keep action evidence current and assign behavior gaps.
 **Review trigger:** Reconcile when a visible action, control, dialog, input method, or persisted result changes, and at each release inventory review.
 **Test command:** `cd frontend && npm test` (Vitest) and `cd frontend && npm run test:nav` (required Chromium route/control suite in `verify / web-and-extension`); other browser suites are individual `frontend/package.json` scripts. The inventory-creation pass did not execute them; latest results are in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
-**Latest evidence run:** [verify 38124758610](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38124758610), including the route/control browser suite and packaged extension.
+**Latest evidence run:** [verify 38125772310](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38125772310), including the route/control browser suite and packaged extension.
 
 Test source directories: [web component tests](../../frontend/src/), [web browser acceptance scripts](../../frontend/scripts/), and [shared workflow definitions](../../.github/workflows/verify.yml).
 
