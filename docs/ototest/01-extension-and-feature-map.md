@@ -4,6 +4,7 @@
 **Source review:** `chrome-extension/wxt.config.ts`, `chrome-extension/entrypoints/`, popup/options source and tests, `.github/workflows/verify.yml`, `scripts/run-smoke-tests.sh`; reviewed 2026-10-11.
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; maintain permission and cross-client evidence and own support decisions.
+**Review trigger:** Reconcile when the manifest, permissions, extension entrypoints, client integrations, or provider support changes, and before client-scope decisions.
 **Execution commands:** `(cd frontend && npx playwright install --with-deps chromium) && ./scripts/run-extension-browser-e2e.sh` (isolated packaged-browser runner); required CI gate: `verify / web-and-extension` — Run packaged extension browser acceptance.
 **Latest evidence run:** [verify 38115226172](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38115226172), including the packaged extension browser job.
 

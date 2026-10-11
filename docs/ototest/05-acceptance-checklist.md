@@ -63,8 +63,10 @@ gate below, the maintained inventory or release record must identify:
   evidence has been executed. Each maintained inventory has a source revision
   and latest hosted evidence-run link; CI rejects missing revision or run
   metadata.
-- [ ] A limitation, explicit exclusion, or unresolved gap with an owner and
-  review trigger where evidence is unavailable.
+- [x] A limitation, explicit exclusion, or unresolved gap with an owner and
+  review trigger where evidence is unavailable. Matrix-level owners and
+  review triggers apply to their rows; the metadata gate rejects a missing
+  review trigger.
 
 ## Inventory freshness and product-change flows
 

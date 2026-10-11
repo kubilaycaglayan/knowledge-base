@@ -30,8 +30,8 @@ unchecked items or its evidence record lacks a passing hosted run link. It
 checks inventory and completion consistency, not behavioral coverage. The
 guard's open-checklist, missing-run, in-progress, and valid-completion cases
 run with `node --test scripts/ototest-completion-guard.test.mjs`. The required
-matrix owner, reviewed source revision, exact command, and latest hosted-run
-metadata are checked with
+matrix owner, reviewed source revision, review trigger, exact command, and
+latest hosted-run metadata are checked with
 `node --test scripts/ototest-inventory-metadata.test.mjs` and
 `node scripts/check-ototest-inventory.mjs`.
 
