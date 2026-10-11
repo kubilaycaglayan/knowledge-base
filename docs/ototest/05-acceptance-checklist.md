@@ -305,10 +305,14 @@ load, and route-state evidence must remain individually identifiable.
 
 ### Flow: Keep one inventory link current
 
-- [ ] Every evidence link resolves to a named assertion or reproducible
-  manual procedure.
-- [ ] A renamed or removed assertion is repaired in the same change that
-  invalidates its inventory link.
+- [x] Every evidence link resolves to a named assertion or reproducible
+  manual procedure. CI resolves route/control frontend assertion names and
+  API/control Java test methods; manual-status rows require a linked
+  procedure, and local links must resolve.
+- [x] A renamed or removed assertion is repaired in the same change that
+  invalidates its inventory link. The consistency gate fails on stale
+  frontend names and missing Java test method declarations, so the inventory
+  link must be repaired before the change can pass CI.
 - [ ] A test filename alone is not treated as proof of a particular behavior.
 - [ ] An assertion that only checks rendering is not used to claim mutation,
   persistence, or ownership coverage.

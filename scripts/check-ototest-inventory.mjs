@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
 import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 import { missingInventoryMetadata } from "./ototest-inventory-metadata.mjs";
+import { qualifiedJavaEvidenceReferences } from "./ototest-java-evidence.mjs";
+import { manualRowsMissingProcedureLink } from "./ototest-manual-evidence.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryRoot = path.join(repositoryRoot, "docs/ototest");
@@ -164,23 +166,23 @@ for (const testFile of findFiles(path.join(repositoryRoot, "backend/src/test/jav
   const className = path.basename(testFile, ".java");
   apiTestClasses.set(className, [...(apiTestClasses.get(className) ?? []), testFile]);
 }
-const apiEvidenceReferences = new Set();
-for (const row of apiRows) {
-  for (const [, className, methodName] of row[2].matchAll(/\b([A-Za-z][A-Za-z0-9]*Test)\.([A-Za-z_][A-Za-z0-9_]*)/g)) {
-    apiEvidenceReferences.add(`${className}.${methodName}`);
-  }
-}
-for (const reference of apiEvidenceReferences) {
+const controlEvidenceRows = readControlEvidenceRows();
+const apiEvidenceReferences = new Set(apiRows.flatMap((row) =>
+  qualifiedJavaEvidenceReferences(row[2]).map(({ className, methodName }) => `${className}.${methodName}`)));
+const controlEvidenceReferences = new Set(controlEvidenceRows.flatMap(({ cells, evidenceIndex }) =>
+  qualifiedJavaEvidenceReferences(cells[evidenceIndex] ?? "")
+    .map(({ className, methodName }) => `${className}.${methodName}`)));
+for (const reference of new Set([...apiEvidenceReferences, ...controlEvidenceReferences])) {
   const [className, methodName] = reference.split(".");
   const classFiles = apiTestClasses.get(className) ?? [];
   if (classFiles.length !== 1) {
-    problems.push(`01-api-matrix.md: ${reference} resolves to ${classFiles.length} test classes`);
+    problems.push(`Java evidence: ${reference} resolves to ${classFiles.length} test classes`);
     continue;
   }
   const source = fs.readFileSync(classFiles[0], "utf8");
   const escapedMethod = methodName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   if (!new RegExp(`(?:void|[\\w<>.?\\[\\]]+)\\s+${escapedMethod}\\s*\\(`).test(source)) {
-    problems.push(`01-api-matrix.md: ${reference} does not resolve to a method declaration`);
+    problems.push(`Java evidence: ${reference} does not resolve to a method declaration`);
   }
 }
 
@@ -190,10 +192,29 @@ const frontendTestSources = Object.fromEntries(
     .map((file) => [path.basename(file), fs.readFileSync(file, "utf8")]),
 );
 for (const { document, row, file, reference } of unresolvedAcceptanceReferences(
-  [...routeEvidenceRows, ...readControlEvidenceRows()],
+  [...routeEvidenceRows, ...controlEvidenceRows],
   frontendTestSources,
 )) {
   problems.push(`${document}:row ${row}: ${file} assertion ${JSON.stringify(reference)} does not resolve`);
+}
+
+for (const [filename, header, statusIndex] of [
+  ["01-route-matrix.md", "| Route / state |", 4],
+  ["01-api-matrix.md", "| Verb + composed path |", 4],
+  ["01-control-matrix.md", "| Checklist IDs |", 6],
+  ["01-extension-and-feature-map.md", "| Entry point / capability |", 4],
+  ["01-extension-and-feature-map.md", "| Feature domain |", 5],
+  ["01-extension-and-feature-map.md", "| Journey | Ordered transitions and shared operation |", 4],
+  ["01-extension-and-feature-map.md", "| Affected scope |", 4],
+]) {
+  for (const { row, identity } of manualRowsMissingProcedureLink(readTable(filename, header), statusIndex)) {
+    problems.push(`${filename}:row ${row} ${identity}: manual evidence has no linked procedure`);
+  }
+}
+for (const { row, cells, statusIndex } of readControlStatusRows()) {
+  for (const missingProcedure of manualRowsMissingProcedureLink([cells], statusIndex)) {
+    problems.push(`01-control-matrix.md:action row ${row} ${missingProcedure.identity}: manual evidence has no linked procedure`);
+  }
 }
 
 const milestoneIndex = fs.readFileSync(path.join(inventoryRoot, "README.md"), "utf8");

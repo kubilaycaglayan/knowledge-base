@@ -34,6 +34,11 @@ matrix owner, reviewed source revision, review trigger, exact command, and
 latest hosted-run metadata are checked with
 `node --test scripts/ototest-inventory-metadata.test.mjs` and
 `node scripts/check-ototest-inventory.mjs`.
+Java test references in API and detailed control rows resolve to method
+declarations; the reference parser tests run with
+`node --test scripts/ototest-java-evidence.test.mjs`.
+Manual-status inventory rows must link to a reproducible procedure; those
+policy cases run with `node --test scripts/ototest-manual-evidence.test.mjs`.
 
 | Evidence layer | Required CI gate | Local / extended evidence | Observed local runtime and setup |
 | --- | --- | --- | --- |

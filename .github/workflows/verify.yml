@@ -63,6 +63,10 @@ jobs:
         run: node scripts/check-ototest-inventory.mjs
       - name: Test OTOTEST inventory metadata policy
         run: node --test scripts/ototest-inventory-metadata.test.mjs
+      - name: Test OTOTEST Java evidence references
+        run: node --test scripts/ototest-java-evidence.test.mjs
+      - name: Test OTOTEST manual evidence procedures
+        run: node --test scripts/ototest-manual-evidence.test.mjs
       - name: Test OTOTEST browser evidence references
         run: node --test scripts/ototest-browser-evidence.test.mjs
       - name: Test OTOTEST completion guard
