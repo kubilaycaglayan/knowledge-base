@@ -269,4 +269,25 @@ The owner and exact-command acceptance items are checked in OTOTEST-05. This val
 | Hosted `verify` with Java and manual evidence gates | [`verify` run 38116150134](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38116150134) | Pass for commit `02d7164da96465cbf513f2f6e4d57355d4d53438`; all active jobs passed, including the five inventory/evidence policy tests, route/control browser acceptance, packaged extension acceptance, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
 | Extension matrix assertion audit | `docs/ototest/01-extension-and-feature-map.md` at source revision `4c4abae7` | Worker and storage rows now name the specific browser and module assertions. The worker row is `gap` because sender validation and timeout behavior have no explicit assertion mapping; storage remains `covered` for the named persistence assertions. |
 
-The remaining general criterion that a test filename alone is not proof stays open until assertion references are enforced and reviewed across all evidence tables. The extension map update is documentation traceability, not a claim that its full behaviors are covered.
+The extension map update is documentation traceability, not a claim that its full behaviors are covered. The next supplement records the broader assertion gate and closes the filename-only checklist criterion.
+
+## 2026-10-11 supplement — named assertion requirement for covered rows
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Named assertion policy regression cases | `node --test scripts/ototest-browser-evidence.test.mjs scripts/ototest-java-evidence.test.mjs scripts/ototest-manual-evidence.test.mjs scripts/ototest-inventory-metadata.test.mjs scripts/ototest-completion-guard.test.mjs` at source revision `5264830b` | Pass: 23/23. Includes filename-only rejection, renamed frontend/extension assertion failure, and parameterized assertion titles. |
+| Inventory integrity and detailed action audit | `node scripts/check-ototest-inventory.mjs` at source revision `5264830b` | Pass: 18 documents, 107 API operations, 307 qualified Java test references; every covered route/API/control/extension row names an assertion, every detailed covered action is checked, and browser/extension titles plus Java methods resolve. |
+| Corrected stale or imprecise citations | `docs/ototest/01-route-matrix.md`; `docs/ototest/01-control-matrix.md` | Updated the archived-board test filename and cited the declared parameterized templates for activity-note keyboard submission and Calendar label portions. The new gate caught these references before the correction. |
+| Hosted `verify` with covered-row assertion policy | [`verify` run 38116810994](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38116810994) | Pass for commit `5264830b63ef8ee5135547bce14b843017430de4`; all active jobs passed, including expanded inventory integrity, route/control and packaged extension browser acceptance, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+
+The checklist criterion rejecting filename-only evidence is now checked. Rendering-only assertions are still insufficient for mutation, persistence, or ownership claims; that separate criterion remains open.
+
+## 2026-10-11 supplement — reject Java filenames as method evidence
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Java filename regression | `node --test scripts/ototest-browser-evidence.test.mjs scripts/ototest-java-evidence.test.mjs scripts/ototest-manual-evidence.test.mjs scripts/ototest-inventory-metadata.test.mjs scripts/ototest-completion-guard.test.mjs` at source revision `a4533ddc` | Pass: 23/23. `ThingApiTest.java` is rejected as a filename-only reference; qualified Java method references remain valid. |
+| Inventory integrity | `node scripts/check-ototest-inventory.mjs` at source revision `a4533ddc` | Pass: all covered rows name assertions, and browser/extension test titles and Java method declarations resolve. |
+| Hosted `verify` for the Java filename guard | [`verify` run 38117192498](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38117192498) | Pass for commit `a4533ddc4b329fd17a6368a026663adf2bc3d6ab`; all active jobs passed, including the evidence gates, route/control suite, packaged extension, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+
+The four inventory matrices now link this latest hosted evidence run. The separate criterion against rendering-only evidence for mutations, persistence, and ownership remains open for audit.
