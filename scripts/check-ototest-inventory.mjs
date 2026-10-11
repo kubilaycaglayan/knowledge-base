@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
 import { apiRowsMissingNamedEvidence, invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { missingInventoryMetadata } from "./ototest-inventory-metadata.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryRoot = path.join(repositoryRoot, "docs/ototest");
@@ -51,6 +52,7 @@ function readControlEvidenceRows() {
 function readControlStatusRows() {
   const lines = fs.readFileSync(path.join(inventoryRoot, "01-control-matrix.md"), "utf8").split("\n");
   const rows = [];
+  const identities = new Set();
   for (let index = 0; index < lines.length; index += 1) {
     if (!lines[index].startsWith("| Checklist ID |")) continue;
     const headings = lines[index].split("|").slice(1, -1).map((cell) => cell.trim());
@@ -69,6 +71,11 @@ function readControlStatusRows() {
       if (cells.length !== headings.length) {
         problems.push(`01-control-matrix.md:row ${rows.length + 1}: expected ${headings.length} cells, found ${cells.length}`);
       }
+      const identity = cells[0] ?? "";
+      if (!identity) problems.push(`01-control-matrix.md:row ${rows.length + 1}: missing checklist ID`);
+      else if (identities.has(identity)) problems.push(`01-control-matrix.md:row ${rows.length + 1}: duplicate checklist ID ${identity}`);
+      else identities.add(identity);
+      if (!cells[1]) problems.push(`01-control-matrix.md:row ${rows.length + 1}: missing source and expected behavior`);
       rows.push({ cells, statusIndex, row: rows.length + 1 });
       index = rowIndex;
     }
@@ -105,10 +112,10 @@ function checkTable(filename, headerText, { identityColumn = 0, sourceColumn = 1
   }
 }
 
-function checkInventoryOwner(filename) {
+function checkInventoryMetadata(filename) {
   const source = fs.readFileSync(path.join(inventoryRoot, filename), "utf8");
-  if (!/^\*\*Inventory owner:\*\*\s+\S/m.test(source)) {
-    problems.push(`${filename}: missing inventory owner`);
+  for (const missingField of missingInventoryMetadata(source)) {
+    problems.push(`${filename}: missing ${missingField}`);
   }
 }
 
@@ -145,7 +152,7 @@ for (const { row, status } of invalidEvidenceStatuses(readTable("01-extension-an
 }
 checkTable("01-extension-and-feature-map.md", "| Affected scope |", { classifiedColumn: 3 });
 for (const filename of ["01-route-matrix.md", "01-api-matrix.md", "01-control-matrix.md", "01-extension-and-feature-map.md"]) {
-  checkInventoryOwner(filename);
+  checkInventoryMetadata(filename);
 }
 
 const apiRows = readTable("01-api-matrix.md", "| Verb + composed path |");

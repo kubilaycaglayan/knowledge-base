@@ -37,10 +37,17 @@ Android acceptance remains outstanding.
 For every accepted route, operation, control family, gesture, permission, or
 gate below, the maintained inventory or release record must identify:
 
-- [ ] A stable row ID and one clearly stated behavior.
-- [ ] The product source: route, component/control, controller operation,
-  permission declaration, or workflow/job.
-- [ ] The responsible owner for keeping the row current.
+- [x] A stable row ID and one clearly stated behavior. Route/API/feature rows
+  have unique nonempty identities and behavior/source fields; each detailed
+  control action has a unique checklist ID and nonempty source/expected
+  behavior cell. CI rejects missing or duplicate row identities.
+- [x] The product source: route, component/control, controller operation,
+  permission declaration, or workflow/job. The inventory check requires a
+  nonempty source field on each row and checks the source/evidence cell on
+  every detailed control action.
+- [x] The responsible owner for keeping the row current. Each route, API,
+  control, and extension/feature matrix declares its Knowledge Base
+  maintainer owner; `check-ototest-inventory.mjs` rejects a missing owner.
 - [ ] The expected user-visible result and URL or persisted state when
   applicable.
 - [ ] Applicable failure, ownership, validation, empty, loading, and recovery
@@ -48,7 +55,10 @@ gate below, the maintained inventory or release record must identify:
 - [ ] Evidence layer: unit/component, service/API, persistence/PostgreSQL,
   real browser, or manual review.
 - [ ] Exact assertion/test or manual procedure and its current status.
-- [ ] Exact local command or CI workflow/job that runs the evidence.
+- [x] Exact local command or CI workflow/job that runs the evidence. Each
+  inventory matrix declares its local command; the extension matrix also
+  identifies the required packaged-browser CI job. The consistency check
+  rejects a matrix without an exact command.
 - [ ] The last-reviewed source revision and a link to a run/artifact when
   evidence has been executed.
 - [ ] A limitation, explicit exclusion, or unresolved gap with an owner and

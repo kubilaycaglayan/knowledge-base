@@ -4,7 +4,7 @@
 **Source review:** `frontend/src/main.ts`, `frontend/src/views/NotFoundView.vue`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`, 2026-10-11
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; maintain route evidence and assign follow-up gaps.
-**Evidence command:** `cd frontend && npm test` (Vitest) and `cd frontend && npm run test:nav` (required Chromium route/control suite); other browser suites use their named npm scripts. The latest local results are recorded in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
+**Evidence command:** `cd frontend && npm test` (Vitest) and `cd frontend && npm run test:nav` (required Chromium route/control suite in `verify / web-and-extension`); other browser suites use their named npm scripts. The latest local results are recorded in the [OTOTEST-05 run record](runs/2026-10-10-ototest-05-local-gates.md).
 
 “Component” means a Vue/Vitest assertion; it does not prove browser history,
 real API persistence, or visual layout. A `gap` row may have some assertions,
