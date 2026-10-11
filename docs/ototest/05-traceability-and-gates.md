@@ -25,7 +25,8 @@ make the required test layers visible in local guidance and CI.
   evidence references that no longer resolve to Java test methods. It also
   resolves named component/browser references in the route/control matrices to
   declarations in their corresponding frontend test files; this is a name
-  check, not an assertion-quality review.
+  check, not an assertion-quality review. Route evidence statuses use the
+  declared vocabulary and contain exactly one value.
   Control-matrix IDs are cross-references shared with the feature checklist,
   so those references are checked for presence/classification but are not
   treated as unique row definitions.

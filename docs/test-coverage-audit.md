@@ -105,10 +105,11 @@ for its recorded evidence and boundaries. OTOTEST-05 adds a CI check for
 stale local inventory links, duplicate route/API keys, missing row
 classifications or matrix owners, milestone-status drift, unresolved Java API
 test names, and stale named frontend component/browser references in the
-route and control matrices. These
-checks establish reference freshness, not assertion quality. It also adds a
-same-review inventory update rule, explicit evidence-layer gate guidance, and
-a reusable run-record template. This does not close the remaining
+route and control matrices. Route rows also have a single recognized evidence
+status. These checks establish reference freshness, not assertion quality.
+OTOTEST-05 also adds a same-review inventory update rule, explicit
+evidence-layer gate guidance, and a reusable run-record template. This does
+not close the remaining
 route/API/control behavior gaps or
 claim that these additional browser suites have run in CI; those remain
 tracked in the matrices until their behavior-specific evidence is added.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const declaration = 'it("creates a Path using the keyboard", async () => {});';
 const sources = { "nav-shell.acceptance.test.mjs": declaration };
@@ -99,4 +99,26 @@ test("matches apostrophes and parameterized unit-test titles", () => {
     "LabelHistoryRecords.test.ts": 'it.each([[0]])("links a related record kind to its route", async () => {});',
     "apostrophe.test.ts": 'it("keeps a user\'s path name", async () => {});',
   }), []);
+});
+
+test("accepts one recognized evidence status per row", () => {
+  assert.deepEqual(invalidEvidenceStatuses([
+    ["/a", "src", "evidence", "class", "covered", "gap note"],
+    ["/b", "src", "evidence", "class", "gap", "gap note"],
+    ["/c", "src", "procedure", "manual", "manual", "steps"],
+    ["/d", "src", "decision", "excluded", "unsupported/excluded", "reason"],
+    ["/e", "src", "decision", "decision-needed", "decision-needed", "owner"],
+  ], 4), []);
+});
+
+test("rejects missing, unknown, or multiple evidence statuses", () => {
+  assert.deepEqual(invalidEvidenceStatuses([
+    ["/a", "src", "evidence", "class", "", "gap note"],
+    ["/b", "src", "evidence", "class", "probably covered", "gap note"],
+    ["/c", "src", "evidence", "class", "covered; gap", "gap note"],
+  ], 4), [
+    { row: 1, status: "" },
+    { row: 2, status: "probably covered" },
+    { row: 3, status: "covered; gap" },
+  ]);
 });

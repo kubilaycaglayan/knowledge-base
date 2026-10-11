@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { completionGuardProblems } from "./ototest-completion-guard.mjs";
-import { unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
+import { invalidEvidenceStatuses, unresolvedAcceptanceReferences } from "./ototest-browser-evidence.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryRoot = path.join(repositoryRoot, "docs/ototest");
@@ -85,6 +85,9 @@ function checkInventoryOwner(filename) {
 }
 
 checkTable("01-route-matrix.md", "| Route / state |", { classifiedColumn: 3 });
+for (const { row, status } of invalidEvidenceStatuses(readTable("01-route-matrix.md", "| Route / state |"), 4)) {
+  problems.push(`01-route-matrix.md:row ${row}: invalid evidence status ${JSON.stringify(status)}`);
+}
 checkTable("01-api-matrix.md", "| Verb + composed path |", { classifiedColumn: 2 });
 checkTable("01-control-matrix.md", "| Checklist IDs |", { classifiedColumn: 5 });
 checkTable("01-extension-and-feature-map.md", "| Entry point / capability |", { classifiedColumn: 3 });

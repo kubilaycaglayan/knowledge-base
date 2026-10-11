@@ -29,3 +29,12 @@ export function unresolvedAcceptanceReferences(controlRows, sourcesByFile) {
 
   return unresolved;
 }
+
+const evidenceStatuses = new Set(["covered", "gap", "manual", "unsupported/excluded", "decision-needed"]);
+
+export function invalidEvidenceStatuses(rows, statusIndex) {
+  return rows.flatMap((cells, index) => {
+    const status = cells[statusIndex] ?? "";
+    return evidenceStatuses.has(status) ? [] : [{ row: index + 1, status }];
+  });
+}

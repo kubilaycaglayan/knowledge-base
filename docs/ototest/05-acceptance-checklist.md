@@ -302,6 +302,9 @@ load, and route-state evidence must remain individually identifiable.
 
 - [ ] Every row has one evidence status: covered, gap, manual,
   unsupported/excluded, or decision-needed.
+- [x] Every route row has exactly one status from that set; the inventory CI
+  check rejects blank, combined, or unknown route statuses. Remaining route
+  gaps are assigned to Knowledge Base maintainers in the matrix metadata.
 - [ ] `covered` is used only when linked evidence asserts the behavior at the
   required layer.
 - [ ] `gap` states the missing behavior and the owner responsible for closing
