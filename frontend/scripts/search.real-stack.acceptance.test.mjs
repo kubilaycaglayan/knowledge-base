@@ -241,7 +241,7 @@ describe("search and direct routes against disposable real stack", () => {
       ["Notes", "notes", "/notes"], ["Calendar", "calendar", "/calendar"],
       ["Reports", "reports", "/reports"], ["Timeline", "timeline", "/timeline"],
       ["Paths", "paths", "/paths"], ["Labels", "labels", "/labels"],
-      ["Imports", "imports", "/imports"], ["Development", "development", "/development"],
+      ["Imports", "imports", "/imports"],
       ["Settings", "settings", "/settings"],
     ];
     for (const [label, id, path] of shortcuts) {

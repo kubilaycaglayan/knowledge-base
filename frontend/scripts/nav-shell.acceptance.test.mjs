@@ -2643,6 +2643,18 @@ it("opens global search from the header or shortcut and lists matching pages bef
   assert.equal(await pageResult.evaluate((element, record) => Boolean(element.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING), await recordResult.elementHandle()), true);
 });
 
+it("keeps temporary Development tooling out of authenticated search navigation", async (t) => {
+  const { page } = await fixture(t, 1440);
+  await page.goto(server.resolvedUrls.local[0]);
+  assert.equal(await page.getByRole("link", { name: "Development", exact: true }).count(), 0);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = dialog.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  await input.fill("Development");
+  await dialog.locator(".global-search-empty").waitFor();
+  assert.equal(await dialog.getByRole("option", { name: "Development, page" }).count(), 0);
+});
+
 it("distinguishes no matches from failed search and clears stale results", async (t) => {
   const { page } = await fixture(t, 1440, { failSearchQuery: "offline" });
   await page.keyboard.press("Control+k");

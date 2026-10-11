@@ -7,7 +7,8 @@
   Notes, Calendar, Reports, Settings, …) lists it under Pages above the
   record results, matched instantly in the browser; Enter on the top match
   goes straight there without waiting for the record search. Cards follow
-  Pages and precede the other record groups.
+  Pages and precede the other record groups. Temporary `/development` tooling
+  is excluded from authenticated navigation and page shortcuts.
 - [x] Global search: ⌘K/Ctrl+K (or the header Search button) opens a search
   of every owned path, board, label, note, card, log, session, and calendar
   day from any page. Results are grouped by type with highlighted matches,

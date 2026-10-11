@@ -97,8 +97,11 @@ gate below, the maintained inventory or release record must identify:
 - [ ] The route row describes direct loading, page identity, authentication
   behavior, query state, and invalid or unavailable resource behavior as
   applicable.
-- [ ] `/development` remains explicitly classified as temporary tooling and
+- [x] `/development` remains explicitly classified as temporary tooling and
   excluded from supported route completeness and authenticated navigation.
+  The route matrix retains its `unsupported/excluded` row, and the component
+  and browser assertions verify that no navbar or global-search shortcut
+  exposes the route.
 
 ### Flow: Classify one changed web control
 
