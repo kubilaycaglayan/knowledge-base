@@ -1546,36 +1546,25 @@ draft available for retry.
   checks keyboard opening for both card-title states; Gantt date controls and
   reorder actions have keyboard alternatives in the named tests below. Detailed
   per-control outcome mapping remains open in the inventory criteria.
-- [ ] Focus remains visible and is not covered by fixed or sticky UI.
-  Partial evidence: `nav-shell.acceptance.test.mjs` / `shows a visible keyboard
-  focus ring that is not covered by the shell` checks the first Tab target has
-  a 2px focus ring, is inside the phone viewport, and is not covered at its
-  center point. `keeps keyboard focus visible and unobscured across desktop and
-  phone workspaces` now tabs through a complete focus cycle on all 11 supported
-  workspaces at 390px and 1440px, asserting the focused control is in the
-  viewport, has an indicator, and is not covered at its center. The run exposed
-  the fixed footer overlap on Calendar; `html` now has bottom scroll padding
-  for keyboard focus scrolling. `npm run test:nav` passed 120/120 at
-  `2699b7a0`, and the current `npm run test:board` passed 131/131, including
-  the Boards dialog keyboard return-focus check. The new
-  `keeps keyboard focus visible and unobscured in the phone-width search
-  dialog` check verifies the modal input's focus ring at a 320px viewport and
-  exposed/remedied a removed outline in Global Search. The phone-width New
-  board dialog also checks its focused field's visible 2px outline and
-  unobscured viewport position. The Note conflict dialog now checks its
-  focused, outlined scroll surface and reachable choice buttons at 320×260;
-  `contains long global search results and keeps Close reachable on a phone`
-  now tabs into the scrolled results surface and checks its visible 2px focus
-  outline and viewport position. The long Boards manager test now tabs through
-  its 20 rows and verifies Done's visible 2px focus outline after the dialog
-  scrolls. `keeps a long board confirmation scrollable with its cancel action
-  reachable on a phone` now verifies the focused Archive action has a visible
-  2px outline inside the scrolled alert dialog. `traps focus and returns it
-  after cancelling session list removal` also checks the focused Cancel and
-  Confirm actions' 2px outlines and verifies Cancel is not covered. The long
-  Log detail phone dialog now verifies keyboard focus reaches Close after
-  scrolling, with a visible 2px outline and no viewport occlusion. Other
-  modal-open states and dynamic scrolled/sticky states still need coverage.
+- [x] Focus remains visible and is not covered by fixed or sticky UI.
+  Evidence: the shared [`overlay-audit.mjs`](../../frontend/scripts/overlay-audit.mjs)
+  focus audit walks a complete keyboard focus cycle and requires every stop
+  to be inside the viewport (or, for regions taller than the usable viewport,
+  to overlap it), to draw a 2px focus indicator, and not to be covered by a
+  fixed or sticky layer. `nav-shell.acceptance.test.mjs` / `keeps keyboard
+  focus visible and unobscured on every workspace in both Tab directions` runs
+  it forwards and backwards on all 11 workspaces with populated data at 390px
+  and 1440px, so Shift+Tab starts in a scrolled page under the shell UI. The
+  `keeps the … focus visible, scroll contained, and closable at …` sweeps run
+  it inside every modal-open state at 390×320 and 1440×900: 21 overlay states
+  in `nav-shell.acceptance.test.mjs` and 9 Board overlays in
+  `board.acceptance.test.mjs`. `keeps keyboard focus clear of sticky Kanban
+  column headers` and `keeps keyboard focus clear of the sticky Gantt timeline
+  header` cover the scrolled sticky Board states. These checks found and drove
+  fixes for date fields losing their focus ring on Shift+Tab, focus hidden
+  under Kanban and Gantt sticky headers, the floating tracker unmounting while
+  its own fields had focus on phones, and an unnamed desktop Global search
+  Close button.
 - [x] Dialogs, menus, pickers, and forms have predictable focus entry and
   return behavior. Evidence: a source audit found all 21 Vue `role="dialog"`
   and `role="alertdialog"` instances use `v-dialog-focus`; `dialog-focus.test.ts`
@@ -1629,27 +1618,23 @@ draft available for retry.
   context to 200% through Chrome's zoom controller, verifies the page reflows
   to 195 CSS pixels, taps a primary destination, reloads, and verifies the
   zoom is kept and returns to 100% on request.
-- [ ] Modals and drawers keep their content scroll contained and provide a
-  reachable close action.
-  Partial evidence: `nav-shell.acceptance.test.mjs` / `keeps a long board
-  confirmation scrollable with its cancel action reachable on a phone` checks
-  viewport-limited contained scrolling and reaches Cancel at 390px; `contains
-  long Log detail scrolling and keeps its close action reachable on a phone`
-  verifies the detail text's contained scroll, `overscroll-behavior: contain`,
-  touch-reachable Close action and visible keyboard focus; `keeps a long Log label menu scroll-contained
-  and touch-operable on a phone` verifies a long menu's contained option scroll,
-  touch selection, and Escape focus return. `asks before overwriting a Note
-  changed elsewhere and reloads the winning version when chosen` also verifies
-  a long conflict preview and dialog scroll stay contained at 320×260, with the
-  saved-version choice reachable; Axe reports no violations. Other dialog and
-  drawer patterns still need coverage. `board.acceptance.test.mjs` / `keeps a
-  long Boards dialog scroll-contained with Done reachable on a phone` checks
-  20 manager rows, `overflow-y: auto`, `overscroll-behavior: contain`, and a
-  keyboard-focusable, touch-reachable Done action at 390×320.
-  `contains long global search results and keeps Close reachable on a phone`
-  also checks a 24-result list at 390×320, keyboard-focusable contained
-  scrolling, no Axe violations, and touch-reachable Close; other dialog and
-  drawer patterns still need coverage.
+- [x] Modals and drawers keep their content scroll contained and provide a
+  reachable close action. Evidence: the overlay sweeps in
+  `nav-shell.acceptance.test.mjs` and `board.acceptance.test.mjs` open every
+  dialog, alert dialog, menu, and drawer pattern (Global search, Session and
+  Log detail and removal, Log label picker, Path create/history/session
+  edit/merge/removal, Label create/edit/history/removal, Note conflict, Note
+  text style menu, floating tracker panel and start-time prompt, Boards
+  manager, New board, Board settings, board/status/card archive
+  confirmations, card editor, board menu, and Gantt board chooser) at
+  390×320 touch and 1440×900. For each they assert the overlay fits the
+  viewport or scrolls internally with `overscroll-behavior: contain`, that a
+  wheel past the scroller's end leaves the page scroll unchanged, and that
+  the close or cancel action (or Escape for menus) is in view, unobscured,
+  at least 24px on touch, and dismisses the overlay. The sweeps found and drove
+  fixes for the Note conflict preview's uncontained overscroll, the phone
+  tracker panel pushing its Collapse toggle off a short screen, and the phone
+  Board menu running past a short viewport.
 - [x] Gestures have a tap or keyboard alternative unless the gesture is
   essential to the task. Evidence: `nav-shell.acceptance.test.mjs` verifies
   keyboard and touch alternatives for Path reorder and Calendar range selection;
