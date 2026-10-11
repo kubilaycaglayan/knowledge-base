@@ -1,6 +1,6 @@
 # OTOTEST-01 — Web route evidence matrix
 
-**Source revision:** `b21347f8` (cold-cache route acceptance stabilization)
+**Source revision:** `7a647a42` (cold-cache and real-navigation route acceptance stabilization)
 **Source review:** `frontend/src/main.ts`, `frontend/src/views/NotFoundView.vue`, page tests, `frontend/scripts/*acceptance*`, `frontend/src/App.vue`, 2026-10-11
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; maintain route evidence and assign follow-up gaps.
