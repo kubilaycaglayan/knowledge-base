@@ -437,7 +437,10 @@ current and link evidence at the layer that proves its behavior.
 Android Chrome is the mobile web surface in scope. Record its evidence
 separately when narrow layout, touch input, browser history, keyboard, or
 scroll behavior changes the result; desktop viewport emulation alone is not a
-physical-device pass.
+physical-device pass. Use the [manual evidence procedure](../testing.md#manual-and-platform-limited-evidence)
+and [execution template](evidence-template.md); record a separate result for
+each checklist item, including unrun items, together with device, Android and
+Chrome versions, viewport/orientation, and input method.
 
 ### Flow: Open the authenticated app in Android Chrome
 

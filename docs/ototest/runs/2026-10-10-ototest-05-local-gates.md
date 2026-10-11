@@ -224,3 +224,13 @@ The Orca job in [run 38111266260](https://github.com/kubilaycaglayan/knowledge-b
 | Hosted `verify` with archive reload synchronization | [`verify` run 38112563567](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38112563567) | Pass for commit `0003201be2312190c534aa494b9be6b2ff54eb3d`; all active web/extension, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca jobs passed; historical iOS jobs skipped. |
 
 Physical Android Chrome acceptance remains open. Phone-width desktop emulation does not establish keyboard, touch, zoom, history, or gesture behavior on a device. The detailed unresolved product behavior gaps retain their status and owner in the matrices; this audit records classification completeness rather than claiming those behaviors are covered.
+
+## 2026-10-11 supplement — latest hosted gate and Android sweep procedure
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Hosted `verify` | [`verify` run 38112860825](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38112860825) | Pass for commit `a902ebb1848ee34d3e18ad61f2797f209d0fe67f`; all active jobs passed, including the 107-case route/control browser suite, packaged extension, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+| Physical Android evidence procedure | `docs/testing.md` → Manual and platform-limited evidence; `docs/ototest/05-acceptance-checklist.md` → Android Chrome product counterpart; `docs/ototest/evidence-template.md` | Procedure now directs maintainers to record OTOTEST-04 MOBILE-01 through MOBILE-33 alongside each OTOTEST-05 Android flow, with per-ID pass/fail/blocked/not-run status, device and browser versions, viewport/orientation, input method, and redacted evidence. This prepares the sweep; it does not claim that a device run occurred. |
+| Inventory integrity after procedure update | `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: 18 documents, 107 API rows, 307 qualified Java test references, local links and status consistency. |
+
+The device sweep itself remains outstanding pending access to physical Android Chrome. Maintain separate desktop Chromium and on-device evidence records.

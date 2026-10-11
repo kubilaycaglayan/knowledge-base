@@ -13,10 +13,17 @@ browser artifacts out of the repository.
 | Exact command or workflow/job URL |  |
 | Evidence layer | Unit/component / API / PostgreSQL / real browser / extension browser / manual |
 | Browser and profile |  |
+| Device / OS / browser version, viewport and orientation |  |
+| Input method (mouse / keyboard / touch / on-screen keyboard) |  |
 | Test names or assertions |  |
 | Result and duration |  |
 | Artifact or run link |  |
 | Limitations / follow-up owner |  |
+
+For a manual checklist sweep, add one result per acceptance ID. Record
+`pass`, `fail`, `blocked`, or `not run`; include a short observation for each
+failure or blocked item and list every unrun ID. Keep screenshots and logs
+redacted, and do not store account credentials or tokens.
 
 For local runs, identify the disposable test stack/account and confirm cleanup.
 Do not record secret values or include artifacts containing tokens or personal

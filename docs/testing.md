@@ -65,9 +65,11 @@ commands and outcomes.
 - **Physical Android Chrome:** Knowledge Base maintainers use a disposable
   account and local isolated environment, open the app from Android Chrome,
   and execute the relevant **MOBILE-01 through MOBILE-33** criteria in the
-  [OTOTEST-04 acceptance checklist](ototest/04-acceptance-checklist.md),
-  alongside the matching route/control flow where those criteria depend on
-  it. Record each criterion separately as pass, fail, blocked, or not run; a
+  [OTOTEST-04 acceptance checklist](ototest/04-acceptance-checklist.md), plus
+  the Android Chrome flows in the
+  [OTOTEST-05 acceptance checklist](ototest/05-acceptance-checklist.md).
+  Follow the matching route/control flow where those criteria depend on it.
+  Record every criterion separately as pass, fail, blocked, or not run; a
   partial sweep must list the unrun IDs and cannot be reported as complete.
   For each result, use the
   [execution template](ototest/evidence-template.md) to record device,
