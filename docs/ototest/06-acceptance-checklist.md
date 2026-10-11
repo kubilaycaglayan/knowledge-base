@@ -25,8 +25,8 @@ Keep raw reports out of the repository.
 | Frontend `npm test` | 70 | 866 | 23.54 | 653 | NotesView.test.ts 18.5 | Three warm runs on art |
 | Frontend `npm run build` | — | — | | | — | |
 | `npm run test:tracker` | | | | | | |
-| `npm run test:board` | | | | | | |
-| `npm run test:nav` | | | | | | |
+| `npm run test:board` | 1 | 155 | 120.08 | 80 | browser acceptance | Three baseline runs; one known lazy-boundary flake in one run |
+| `npm run test:nav` | 1 | 176 | 313.28 | 70 | browser acceptance | Three serial baseline runs; no known failures |
 | `npm run test:ui` | | | | | | |
 | Extension `npm test` + build + `node --test` files | | | | | | |
 | Repository checks (`check-*`, shell syntax, Caddy) | — | — | | | | |
@@ -52,9 +52,9 @@ value is an improvement.
 | Task | Change (commit) | Suite measured | Tests before → after | Baseline (s) | After (s) | Δ (s) | Δ % | 5× green | Kept? |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | T1 | Fake NotesView timers (7fc67590) | Frontend `npm test` | 866 → 866 | 23.54 | 11.25 | -12.29 | -52.2% | Yes; focused suite 5/5 | Yes |
-| T2 | Vitest `threads` pool (pending commit) | Frontend `npm test` | 866 → 866 | 11.25 | 10.89 | -0.36 | -3.2% | Yes; full suite 5/5 | Yes |
-| T3 | | `test:board`, `test:nav` | | | | | | | |
-| T4 | | `test:board`, `test:nav` | | | | | | | |
+| T2 | Vitest `threads` pool (29786515) | Frontend `npm test` | 866 → 866 | 11.25 | 10.90 | -0.35 | -3.1% | Yes; full suite 5/5 | Yes |
+| T3 | Playwright controlled clocks (e89f6926) | `test:board`, `test:nav` | 155 → 155; 176 → 176 | 120.08; 313.28 | 124.36; 295.69 | +4.28; -17.59 | +3.6%; -5.6% | Board 5/5; nav covered in T4 5/5 | Yes; the board ring test fell from 7.1s to 0.8s, though suite wall time varied |
+| T4 | Parallel nav browser cases (7 workers) | `test:nav` | 176 → 176 | 295.69 (serial after T3) | 91.10 | -204.59 | -69.1% | Yes; full suite 5/5 | Yes; 30 workers was slower and flaky; board 8/12-worker probes were not retained |
 | T5 | | Backend Gradle, CI backend jobs | | | | | | | |
 | T6 | | Smoke, real-stack runners, CI e2e jobs | | | | | | | |
 | T7 | | CI `verify` workflow | | | | | | | |

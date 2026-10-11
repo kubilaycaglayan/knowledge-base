@@ -1,7 +1,7 @@
 # OTOTEST-06 — Test runtime efficiency
 
 **Priority:** Medium
-**Status:** Proposed
+**Status:** In progress
 **Dependencies:** None to start. Coordinate edits to
 `frontend/scripts/nav-shell.acceptance.test.mjs` and
 `frontend/scripts/board.acceptance.test.mjs` with the in-progress OTOTEST-03
@@ -169,29 +169,38 @@ Tasks are ordered by expected gain per effort; T0 must come first.
 
 ### OTOTEST-06-T3 — Controlled clock in mocked browser suites
 
-- [ ] Replace fixed `page.waitForTimeout(...)` calls in
+- [x] Replace fixed `page.waitForTimeout(...)` calls in
   `board.acceptance.test.mjs` and `nav-shell.acceptance.test.mjs` with
   condition waits (`locator.waitFor`, `expect.poll`-style polling, or
   `page.waitForFunction`) when they wait for state.
-- [ ] Use Playwright's clock API (`page.clock.install()` /
+- [x] Use Playwright's clock API (`page.clock.install()` /
   `page.clock.runFor()`) for waits that test time-based behavior, such as the
   3-second highlight-ring fade and the `waitForTimeout(6000)` in
   `nav-shell`. Assert the same intermediate and final states.
-- [ ] Expected effect: removes about 10 s of fixed waits from `test:board` and
+- [x] Expected effect: removes about 10 s of fixed waits from `test:board` and
   6 s from `test:nav` before any parallelism.
 
 ### OTOTEST-06-T4 — Parallel mocked browser suites
 
-- [ ] Find out why `test:nav` and `test:board` use `--test-concurrency=1`
+- [x] Find out why `test:nav` and `test:board` use `--test-concurrency=1`
   (shared Vite server, shared browser, port, or mocked-route state). Record
   the reason.
-- [ ] If tests are independent per browser context, run them with a bounded
+- [x] If tests are independent per browser context, run them with a bounded
   concurrency (for example 4–8 locally, matching CI vCPUs in CI) or split each
   file into several files that share the Vite server setup through a helper.
-- [ ] Reuse one Vite dev server and one Chromium process per worker; keep a
+- [x] Reuse one Vite dev server and one Chromium process per worker; keep a
   fresh context per test for isolation.
-- [ ] Run each suite five times at the new concurrency; any order-dependent
+- [x] Run each suite five times at the new concurrency; any order-dependent
   failure blocks the change.
+
+Measured outcome: `test:nav` keeps one Vite server and Chromium process, gives
+each case a fresh browser context, and runs the independent acceptance cases
+at concurrency 7. Five runs passed (176 tests each), with a 91.10 s median
+versus 295.69 s after T3 at the original serial setting. A 30-worker probe was
+slower and exposed render, focus, and request-order races; those assertions
+were made readiness-based where possible, while auth and browser tab cases
+remain serial. The board suite already had four concurrency-4 groups, so
+raising them to 8 and 12 did not produce a repeatable enough gain to keep.
 
 ### OTOTEST-06-T5 — Backend Gradle runtime
 
