@@ -310,6 +310,10 @@ load, and route-state evidence must remain individually identifiable.
   inventory CI check rejects blank, combined, or unknown API statuses. Rows
   with unresolved supported-client use are `decision-needed` and retain their
   maintainer-owned decision in the matrix.
+- [x] Every top-level control-family row has one status from that set; all 15
+  are `gap` because each family has remaining behavior listed, and CI rejects
+  a blank, combined, or unknown family status. Detailed action rows remain
+  individually open in the acceptance inventory.
 - [ ] `covered` is used only when linked evidence asserts the behavior at the
   required layer.
 - [ ] `gap` states the missing behavior and the owner responsible for closing

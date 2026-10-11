@@ -93,6 +93,9 @@ for (const { row, status } of invalidEvidenceStatuses(readTable("01-api-matrix.m
   problems.push(`01-api-matrix.md:row ${row}: invalid evidence status ${JSON.stringify(status)}`);
 }
 checkTable("01-control-matrix.md", "| Checklist IDs |", { classifiedColumn: 5 });
+for (const { row, status } of invalidEvidenceStatuses(readTable("01-control-matrix.md", "| Checklist IDs |"), 6)) {
+  problems.push(`01-control-matrix.md:family row ${row}: invalid evidence status ${JSON.stringify(status)}`);
+}
 checkTable("01-extension-and-feature-map.md", "| Entry point / capability |", { classifiedColumn: 3 });
 checkTable("01-extension-and-feature-map.md", "| Feature domain |", { classifiedColumn: 3 });
 for (const filename of ["01-route-matrix.md", "01-api-matrix.md", "01-control-matrix.md", "01-extension-and-feature-map.md"]) {
