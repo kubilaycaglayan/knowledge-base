@@ -363,8 +363,8 @@ async function until(condition) {
 }
 
 async function visit(page, path) {
-  await page.evaluate((target) => { history.pushState({}, "", target); dispatchEvent(new PopStateEvent("popstate")); }, path);
-  await page.waitForFunction((target) => location.pathname === target, path);
+  await page.goto(new URL(path, page.url()).href);
+  await page.locator(".dashboard-shell > main").waitFor();
   await page.waitForTimeout(150);
 }
 
@@ -456,7 +456,8 @@ it("keeps the Gantt timeline full width while the nav bar stays standard", async
 it("navigates home from the logo without a page reload and reuses cached sessions", async (t) => {
   const { page, requests } = await fixture(t, 1440);
   await until(() => requests.includes("/time-entries"));
-  await visit(page, "/logs");
+  await page.getByRole("link", { name: "Logs" }).click();
+  await page.waitForFunction(() => location.pathname === "/logs");
   await page.evaluate(() => { window.__noReload = true; });
   const homeData = ["/time-entries", "/paths", "/labels"];
   const before = requests.filter((path) => homeData.includes(path)).length;
@@ -2690,18 +2691,21 @@ it("WU-10: warms the other pages once, then reloads inside the cooldown send no 
   const boardRequests = () => requests.filter((path) => path.startsWith("/boards")).length;
   const warmedBoard = boardRequests();
 
-  await visit(page, "/board");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Board" }).click();
+  await page.waitForFunction(() => location.pathname === "/board");
   await page.locator(".board-page").waitFor();
   await page.getByRole("button", { name: "Gantt", exact: true }).or(page.locator("button.board-tab-more")).first().waitFor();
   await openGantt(page);
   assert.equal(boardRequests(), warmedBoard, "A warmed Board page and its Gantt view must not refetch boards");
 
-  await visit(page, "/reports");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Reports" }).click();
+  await page.waitForFunction(() => location.pathname === "/reports");
   await page.locator(".reports-page").waitFor();
   await page.waitForTimeout(300);
   assert.equal(count("/reports"), 1, "A warmed Reports page must not refetch its report");
 
-  await visit(page, "/calendar");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Calendar" }).click();
+  await page.waitForFunction(() => location.pathname === "/calendar");
   await page.waitForTimeout(300);
   assert.equal(count("/calendar/days"), 1, "A warmed Calendar must not refetch its month");
 
