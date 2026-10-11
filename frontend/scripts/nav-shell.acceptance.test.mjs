@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { after, before, it } from "node:test";
+import { after, before, describe, it } from "node:test";
 import { createServer } from "vite";
 import { chromium } from "playwright";
 import { activate, auditCloseAction, auditContainment, auditFocusCycle, chooseNativeOption, requireTouchInput } from "./overlay-audit.mjs";
@@ -62,7 +62,7 @@ it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", as
   }
 });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false, sessionSeeds = [], pathActivity = [], noteConflictOnce = null } = {}) {
+async function fixture(t, width, { warmup = false, clock = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failLogUpdateOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null, browserZoom = false, sessionSeeds = [], pathActivity = [], noteConflictOnce = null } = {}) {
   const contextOptions = { viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" };
   const context = browserZoom ? await zoomableContext(t, contextOptions) : await browser.newContext(contextOptions);
   context.routeWebSocket("**/ws/timers", (webSocket) => webSocket.close());
@@ -383,6 +383,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     await route.fulfill({ status: rejectedSession ? 401 : missingRecord ? 404 : 200, json: rejectedSession ? { message: "Session expired" } : missingRecord ? { message: "Not found" } : body });
   });
   const page = await context.newPage();
+  if (clock) await page.clock.install();
   await page.goto(server.resolvedUrls.local[0]);
   if (authenticated) await page.locator(".dashboard-shell > header nav").waitFor();
   else await page.locator(".auth").waitFor();
@@ -471,6 +472,7 @@ for (const width of [390, 1440]) it(`uses one nav bar size and a 10px bottom mar
   assert.deepEqual(await header(page), expected, "Nav bar in the Gantt view must match the other pages");
 });
 
+describe("nav shell browser acceptance", { concurrency: 2 }, () => {
 it("keeps shell actions reachable without horizontal overflow at narrow, wide, and 50%-zoom-equivalent widths", async (t) => {
   const { page } = await fixture(t, 1440);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
@@ -2070,6 +2072,7 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   const { page, paths, requests } = await fixture(t, 1440, {
     pathSeeds: [{ id: "undo-path", name: "Undo path", description: "Keep this path recoverable", status: "ACTIVE", pinned: false }],
   });
+  await page.clock.install();
   await page.goto(`${server.resolvedUrls.local[0]}paths`);
   const row = page.locator(".path", { hasText: "Undo path" });
   await activate(row.getByRole("button", { name: "Remove", exact: true }));
@@ -2085,7 +2088,7 @@ it("confirms Path removal and restores it through the Undo action", async (t) =>
   const snackbar = page.getByRole("status").filter({ hasText: "Removed “Undo path”." });
   await snackbar.waitFor();
   assert.equal(paths.length, 0);
-  await page.waitForTimeout(7000);
+  await page.clock.fastForward(7000);
   assert.equal(await snackbar.isVisible(), true, "the named Undo action remains available for at least seven seconds");
   await activate(snackbar.getByRole("button", { name: "Undo" }));
   await page.locator(".path-title", { hasText: "Undo path" }).waitFor();
@@ -2097,6 +2100,7 @@ it("keeps Path removal Undo visible and tappable at phone width", async (t) => {
   const { page, paths, requests } = await fixture(t, 390, {
     pathSeeds: [{ id: "phone-undo-path", name: "Phone Undo path", description: "Restore from the snackbar", status: "ACTIVE", pinned: false }],
   });
+  await page.clock.install();
   await page.setViewportSize({ width: 390, height: 844 });
   await visit(page, "/paths");
   const row = page.locator("article.path").first();
@@ -2109,7 +2113,7 @@ it("keeps Path removal Undo visible and tappable at phone width", async (t) => {
   const snackbar = page.getByRole("status").filter({ hasText: "Removed “Phone Undo path”." });
   const undo = snackbar.getByRole("button", { name: "Undo" });
   await undo.waitFor();
-  await page.waitForTimeout(1200);
+  await page.clock.fastForward(1200);
   const bounds = await undo.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390 && bounds.y >= 0 && bounds.y + bounds.height <= 844, JSON.stringify(bounds));
   const unobscured = await undo.evaluate((element) => {
@@ -3876,9 +3880,10 @@ it("loads more global search results only for the selected record type", async (
 });
 
 it("WU-10: warms the other pages once, then reloads inside the cooldown send no warm-up", async (t) => {
-  const { page, requests } = await fixture(t, 1440, { warmup: true });
+  const { page, requests } = await fixture(t, 1440, { warmup: true, clock: true });
   const warmed = ["/notes", "/calendar/days", "/reports", "/logs"];
   const count = (path) => requests.filter((value) => value === path).length;
+  await page.clock.fastForward(6000);
   await until(() => requests.includes("/logs"));
   for (const path of warmed) assert.equal(count(path), 1, `${path} must be warmed exactly once`);
   await until(() => requests.includes("/boards/all/gantt"));
@@ -3905,6 +3910,7 @@ it("WU-10: warms the other pages once, then reloads inside the cooldown send no 
 
   await page.goto(server.resolvedUrls.local[0]);
   await page.locator(".dashboard-shell > header nav").waitFor();
-  await page.waitForTimeout(6000);
+  await page.clock.fastForward(6000);
   for (const path of warmed) assert.equal(count(path), 1, `A reload inside the cooldown must not warm ${path} again`);
+});
 });
