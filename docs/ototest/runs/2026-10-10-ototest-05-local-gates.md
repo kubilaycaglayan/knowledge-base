@@ -188,3 +188,11 @@ The documentation-only hosted run [38104869153](https://github.com/kubilaycaglay
 | Contained dialog scroll | `cd frontend && node --test --test-concurrency=1 --test-name-pattern='keeps Path dialog content scrollable without scrolling the background' scripts/nav-shell.acceptance.test.mjs` at source revision `ecbb6d61` | Pass: 1/1 Chromium assertion forces the Path dialog to overflow, scrolls its content to the end, and confirms the underlying page's scroll position stays fixed |
 | Full route/control browser acceptance | `cd frontend && npm run test:nav` at source revision `ecbb6d61` | Pass: 106/106 sequential Chromium tests; includes Path dialog focus entry, Escape dismissal, trigger focus return, and contained scrolling, plus the 105 previously passing route/control cases |
 | Hosted `verify` | [`verify` run 38108987425](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38108987425) | Pass for commit `ecbb6d616158eb3b6cd939bf2a745912e8d1da67`; all active jobs passed, including the 106-case browser suite; historical iOS jobs skipped as configured |
+
+## 2026-10-11 supplement — keyboard Path creation
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Keyboard-only create and persisted reload | `cd frontend && node --test --test-concurrency=1 --test-name-pattern='creates and reloads a Path using only the keyboard' scripts/nav-shell.acceptance.test.mjs` at source revision `ce622c43` | Pass: 1/1 desktop Chromium assertion opens the Path dialog with Enter, enters the value, submits with Enter, and confirms the created Path remains after reload |
+| Full route/control browser acceptance | `cd frontend && npm run test:nav` at source revision `ce622c43` | Pass: 107/107 sequential Chromium tests |
+| Inventory and browser artifact policies | `node scripts/check-ototest-inventory.mjs`; `node scripts/check-browser-artifact-policy.mjs` at source revision `ce622c43` | Pass: OTOTEST inventory integrity and browser run/commit linkage, failure-only artifact upload, retention, and trace scrubbing checks |
