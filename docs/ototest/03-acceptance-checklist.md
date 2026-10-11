@@ -101,16 +101,22 @@ implementation/execution; the extension has its own scope in OTOTEST-04.
   controls and dialogs. Evidence: `nav-shell.acceptance.test.mjs` / `keeps
   dialogs, menus, native selects, date picker, and report chart readable in both
   themes` switches between light and dark and checks rendered surfaces.
-- [ ] Check narrow viewport and browser zoom/reflow without hiding actions or
-  causing unintended horizontal page overflow. Partial evidence:
-  `nav-shell.acceptance.test.mjs` / `keeps every supported workspace free of
-  page-wide overflow at phone widths` checks all 11 workspaces at 320px and
-  390px in desktop Chromium; `keeps shell actions reachable without horizontal
-  overflow at narrow, wide, and 50%-zoom-equivalent widths` checks the shell at
-  320, 390, 1280, 1920, and 2880 CSS pixels. `keeps visible workspace actions
-  within the 50%-zoom-equivalent viewport` checks for horizontal overflow and
-  visible controls outside the viewport on all nine primary workspaces at
-  2880px. Actual browser zoom and coverage of every route remain open.
+- [x] Check narrow viewport and browser zoom/reflow without hiding actions or
+  causing unintended horizontal page overflow. Evidence:
+  `nav-shell.acceptance.test.mjs` / `reflows every supported route at 200%
+  Chrome browser zoom without hiding actions` and `reflows every supported
+  route at 400% Chrome browser zoom without hiding actions` drive Chrome's own
+  zoom controller (`chrome.tabs.setZoom` through a test-only probe extension)
+  in a 1280×900 window, so 400% reflows to 320 CSS pixels. Both sweep all 18
+  supported route states from the [route matrix](01-route-matrix.md),
+  including session, Log, Path, Label, and Note deep links, Board archive, and
+  the not-found page, and assert no page-wide overflow, every visible action
+  inside the viewport (or scrolled into it within its own scroller), visible
+  primary navigation, and a non-collapsed main region. `reflows every
+  supported route at 320px and 390px phone widths without hiding actions`
+  applies the same checks to the same routes at phone widths. The 400% pass
+  exposed Board and Board archive collapsing to a 0px main region; the shell
+  now locks to the viewport only at heights of 320px or more.
 
 ## Shared shell and route behavior
 
@@ -1632,11 +1638,14 @@ draft available for retry.
   phone-width routes` checks visible inputs, selects, textareas, and editable
   content on Sessions, Logs, Notes, Calendar, and Settings at 390px. A real
   mobile browser zoom interaction still needs verification.
-- [ ] The page remains zoomable using browser controls.
-  Partial evidence: `nav-shell.acceptance.test.mjs` / `does not disable browser
-  zoom in the viewport configuration` checks the viewport metadata omits
-  `user-scalable=no` and a 1.0 maximum scale. Actual browser zoom interaction
-  still needs verification.
+- [x] The page remains zoomable using browser controls. Evidence:
+  `nav-shell.acceptance.test.mjs` / `does not disable browser zoom in the
+  viewport configuration` checks the viewport metadata, and `stays zoomable
+  with Chrome's browser zoom controls at phone width` zooms a 390px touch
+  context to 200% through Chrome's zoom controller, verifies the page reflows
+  to 195 CSS pixels, taps a primary destination, reloads, and verifies the
+  zoom is kept and returns to 100% on request. Android pinch zoom is part of
+  the deferred device check.
 - [ ] The on-screen keyboard does not permanently obscure the active control
   or its save/recovery action.
   **Deferred per user direction:** This item requires actual Android

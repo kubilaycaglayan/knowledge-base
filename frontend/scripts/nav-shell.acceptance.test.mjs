@@ -590,6 +590,25 @@ for (const zoom of [2, 4]) it(`reflows every supported route at ${zoom * 100}% C
   assert.deepEqual(problems, [], `Reflow problems at ${zoom * 100}% browser zoom`);
 });
 
+it("reflows every supported route at 320px and 390px phone widths without hiding actions", async (t) => {
+  const { page } = await fixture(t, 390, { pathSeeds: [{ id: "path-deep-link", name: "Writing", status: "ACTIVE" }] });
+  const problems = [];
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const [path, ready] of zoomRoutes) {
+      await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
+      await page.locator(ready).first().waitFor({ state: "attached" });
+      await page.waitForTimeout(150);
+      const layout = await zoomedLayout(page);
+      if (layout.pageWidth > layout.viewport) problems.push(`${width}px ${path}: page overflows to ${layout.pageWidth}px`);
+      if (layout.outside.length) problems.push(`${width}px ${path}: actions outside the viewport: ${layout.outside.join(", ")}`);
+      if (layout.hiddenNavigation.length) problems.push(`${width}px ${path}: hidden navigation: ${layout.hiddenNavigation.join(", ")}`);
+      if (layout.mainHeight < 44) problems.push(`${width}px ${path}: main content collapses to ${layout.mainHeight}px`);
+    }
+  }
+  assert.deepEqual(problems, [], "Phone-width reflow problems");
+});
+
 it("keeps core mobile routes readable without horizontal page overflow at enlarged text", async (t) => {
   const { page } = await fixture(t, 390);
   for (const path of ["/logs", "/notes", "/calendar", "/settings", "/imports"]) {
