@@ -306,6 +306,10 @@ load, and route-state evidence must remain individually identifiable.
 - [x] Every route row has exactly one status from that set; the inventory CI
   check rejects blank, combined, or unknown route statuses. Remaining route
   gaps are assigned to Knowledge Base maintainers in the matrix metadata.
+- [x] Every API operation row has exactly one status from that set; the
+  inventory CI check rejects blank, combined, or unknown API statuses. Rows
+  with unresolved supported-client use are `decision-needed` and retain their
+  maintainer-owned decision in the matrix.
 - [ ] `covered` is used only when linked evidence asserts the behavior at the
   required layer.
 - [ ] `gap` states the missing behavior and the owner responsible for closing

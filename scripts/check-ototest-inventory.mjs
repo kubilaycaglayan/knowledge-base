@@ -89,6 +89,9 @@ for (const { row, status } of invalidEvidenceStatuses(readTable("01-route-matrix
   problems.push(`01-route-matrix.md:row ${row}: invalid evidence status ${JSON.stringify(status)}`);
 }
 checkTable("01-api-matrix.md", "| Verb + composed path |", { classifiedColumn: 2 });
+for (const { row, status } of invalidEvidenceStatuses(readTable("01-api-matrix.md", "| Verb + composed path |"), 4)) {
+  problems.push(`01-api-matrix.md:row ${row}: invalid evidence status ${JSON.stringify(status)}`);
+}
 checkTable("01-control-matrix.md", "| Checklist IDs |", { classifiedColumn: 5 });
 checkTable("01-extension-and-feature-map.md", "| Entry point / capability |", { classifiedColumn: 3 });
 checkTable("01-extension-and-feature-map.md", "| Feature domain |", { classifiedColumn: 3 });
