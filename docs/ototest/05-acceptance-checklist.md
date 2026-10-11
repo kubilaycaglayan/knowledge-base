@@ -606,12 +606,20 @@ physical-device pass.
 
 ### Flow: Run one database-backed evidence suite
 
-- [ ] The database is a unique disposable local or CI database.
-- [ ] The run verifies its disposable marker and database identity before
-  migration or fixture creation.
-- [ ] The run does not remove, reset, prune, or recreate the protected
-  production PostgreSQL volume.
-- [ ] Cleanup is scoped to resources created for that run.
+- [x] The database is a unique disposable local or CI database. The
+  `backend-postgres` service uses `kb_test_ci_<run-id>_<attempt>`; see hosted
+  [`verify` run 38103757836](runs/2026-10-10-ototest-05-local-gates.md#2026-10-11-supplement--postgresql-test-target-isolation).
+- [x] The run verifies its disposable marker and database identity before
+  migration or fixture creation. `PostgresTestDatabaseGuard` checks the
+  `KB_TEST_POSTGRES_DISPOSABLE` marker, unique name, loopback host, resolved
+  `current_database()`, and empty schema before Flyway; migrated mode requires
+  successful Flyway history.
+- [x] The run does not remove, reset, prune, or recreate the protected
+  production PostgreSQL volume. CI uses its ephemeral PostgreSQL service and
+  the job does not mount or address the production Compose volume.
+- [x] Cleanup is scoped to resources created for that run. GitHub Actions tears
+  down the per-job PostgreSQL service after the run; no database or volume
+  deletion command is used by the integration tests.
 
 ### Flow: Publish one browser artifact
 

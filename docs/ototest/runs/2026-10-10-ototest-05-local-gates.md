@@ -53,6 +53,12 @@ occurred. The archived-note label-preservation acceptance remains open.
 | Hosted `verify` after cold-start and extension event repairs | [`verify` run 38102026152](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38102026152) | Pass for commit `3f05a587f6f61306b12a285bf4423c467903b8ba`; the cold-cache route/control suite and packaged extension browser acceptance both passed, as did all active smoke, timer, line-history, Orca, backend, and PostgreSQL/Flyway jobs; historical iOS jobs skipped as configured |
 | Hosted `verify` after route-harness repair | [`verify` run 38103365529](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38103365529) | Pass for commit `7a647a42d854d4bda8fd3d398b63063ffd674a19`; all active web/extension, backend, PostgreSQL, smoke, timer, line-history, and Orca jobs passed; historical iOS jobs skipped as configured |
 
+## 2026-10-11 supplement — PostgreSQL test target isolation
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| PostgreSQL empty-database suite and migrated-schema startup | [`verify / backend-postgres`, run 38103757836](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38103757836/job/114364831764) | Pass: service database `kb_test_ci_38103757836_1`; the test guard validates the disposable marker, loopback host, resolved database identity and empty schema before migration, then validates successful Flyway history for migrated startup (v67). The PostgreSQL service is scoped to the CI job and is removed by job teardown. |
+
 ## 2026-10-11 supplement — unknown URL fallback
 
 | Evidence layer | Exact command(s) | Result |
