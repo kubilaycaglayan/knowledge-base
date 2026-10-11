@@ -23,6 +23,12 @@ The archive failure is deliberately simulated at the browser/API boundary; it
 verifies UI recovery while fresh server reads confirm no persisted archive
 occurred. The archived-note label-preservation acceptance remains open.
 
+## 2026-10-11 supplement — referenced identifier ownership
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Foreign Label reference rejection and unchanged owner state | `docker run --rm -v "$PWD/backend:/app" -w /app gradle:8.13-jdk21 gradle test --tests com.know.integration.LogLabelsIntegrationTest --no-daemon --project-cache-dir "/tmp/knowledge-base-gradle-project-cache-${USER:-agent}-${PPID}"` at source revision `91e97d13` | Pass: the two-account integration test rejects the foreign Label ID with 400, then rereads the owner's Log to confirm its prior Label remains and confirms the foreign owner's Label remains in its own catalog |
+
 ## 2026-10-11 supplement — unknown URL fallback
 
 | Evidence layer | Exact command(s) | Result |

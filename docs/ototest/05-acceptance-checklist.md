@@ -273,8 +273,11 @@ load, and route-state evidence must remain individually identifiable.
 - [x] The evidence uses two isolated disposable accounts or an equivalent
   isolated ownership fixture at the appropriate layer.
 - [x] A foreign record read does not disclose protected content.
-- [ ] A foreign referenced identifier is rejected without changing either
-  account's data.
+- [x] A foreign referenced identifier is rejected without changing either
+  account's data. Evidence: `LogLabelsIntegrationTest.labelUpdatesReplaceAssignmentsAndRejectForeignOrWrongScopeLabels`
+  uses two isolated accounts, expects 400 for the foreign Label ID, rereads
+  the owner's Log to confirm its prior assignment remains, and verifies the
+  foreign owner's Label remains in its catalog.
 - [x] The evidence record contains no account password, token, personal data,
   or unredacted authorization header.
 

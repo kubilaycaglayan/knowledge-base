@@ -319,7 +319,10 @@ browser interaction evidence remains a separate layer.
 - [x] `PUT /api/v1/logs/{id}/labels` covers replacement semantics and requires
   owned labels with LOG scope; missing/null lists, non-array values, malformed
   UUID items, and 101 IDs return 400 before service execution, while exactly
-  100 IDs pass request validation
+  100 IDs pass request validation. After a foreign Label ID is rejected,
+  `LogLabelsIntegrationTest.labelUpdatesReplaceAssignmentsAndRejectForeignOrWrongScopeLabels`
+  rereads the Log to confirm its existing assignment remains and checks that
+  the foreign owner's label still exists
   (`LogApiTest.logLabelAssignmentRequiresACollectionOfAtMostOneHundredIds`).
 - [x] `DELETE /api/v1/logs/{id}` covers permanent removal and subsequent
   absence.
