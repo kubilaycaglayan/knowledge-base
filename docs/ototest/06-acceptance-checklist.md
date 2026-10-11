@@ -51,8 +51,8 @@ value is an improvement.
 
 | Task | Change (commit) | Suite measured | Tests before → after | Baseline (s) | After (s) | Δ (s) | Δ % | 5× green | Kept? |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T1 | Fake NotesView timers (pending commit) | Frontend `npm test` | 866 → 866 | 23.54 | 11.25 | -12.29 | -52.2% | Yes; focused suite 5/5 | Yes |
-| T2 | | Frontend `npm test` | | | | | | | |
+| T1 | Fake NotesView timers (7fc67590) | Frontend `npm test` | 866 → 866 | 23.54 | 11.25 | -12.29 | -52.2% | Yes; focused suite 5/5 | Yes |
+| T2 | Vitest `threads` pool (pending commit) | Frontend `npm test` | 866 → 866 | 11.25 | 10.89 | -0.36 | -3.2% | Yes; full suite 5/5 | Yes |
 | T3 | | `test:board`, `test:nav` | | | | | | | |
 | T4 | | `test:board`, `test:nav` | | | | | | | |
 | T5 | | Backend Gradle, CI backend jobs | | | | | | | |

@@ -16,6 +16,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    pool: "threads",
     css: true,
     exclude: [
       "node_modules",
