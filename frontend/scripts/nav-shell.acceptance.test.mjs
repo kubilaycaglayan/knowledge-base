@@ -1123,6 +1123,36 @@ it("moves focus into and returns focus from the Path create dialog", async (t) =
   assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
 });
 
+it("keeps Path dialog content scrollable without scrolling the background", async (t) => {
+  const { page } = await fixture(t, 1280);
+  await visit(page, "/paths");
+  await page.addStyleTag({ content: ".dashboard-shell > main { min-height: 1600px; } .path-create-dialog { max-height: 180px !important; }" });
+  await page.evaluate(() => window.scrollTo(0, 300));
+  const { scrollY: beforeDialog } = await page.evaluate(() => ({ scrollY: window.scrollY }));
+  assert.ok(beforeDialog > 0, "the underlying page is scrollable before the dialog opens");
+
+  const trigger = page.getByRole("button", { name: "Add path" });
+  await trigger.evaluate((element) => element.click());
+  const dialog = page.getByRole("dialog", { name: "Add a path" });
+  await dialog.waitFor();
+  const box = await dialog.boundingBox();
+  assert.ok(box);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 500);
+  await page.waitForFunction(() => {
+    const element = document.querySelector(".path-create-dialog");
+    return element !== null && element.scrollTop > 0;
+  });
+  assert.equal(await page.evaluate(() => window.scrollY), beforeDialog);
+
+  await page.mouse.wheel(0, 2000);
+  await page.waitForFunction(() => {
+    const element = document.querySelector(".path-create-dialog");
+    return element !== null && element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
+  });
+  assert.equal(await page.evaluate(() => window.scrollY), beforeDialog);
+});
+
 it("opens path history when the browser loads its deep link directly", async (t) => {
   const { page, requests } = await fixture(t, 1440, {
     pathSeeds: [{ id: "path-deep-link", name: "Writing", status: "ACTIVE" }],
