@@ -105,6 +105,12 @@ the linked hosted `verify` run passed for the current branch. Remaining
 behavior-specific and physical Android evidence is still tracked in the
 matrices and acceptance checklist.
 
+The required desktop Chromium route suite now distinguishes an empty global
+search result from a failed request and confirms that prior results are not
+shown as current after the next request fails. It also verifies the retry
+feedback and successful retry path. This is fixture-backed browser evidence;
+it does not claim backend search persistence or physical Android behavior.
+
 The Notes archive/restore evidence now also covers a simulated archive failure
 with fresh active-state confirmation and retry, archived/active persisted
 membership, and duplicate Restore activation prevention. The route/control

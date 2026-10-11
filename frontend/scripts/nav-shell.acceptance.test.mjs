@@ -61,7 +61,7 @@ it("pre-optimizes lazy Vuetify shell dependencies before browser assertions", as
   }
 });
 
-async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
+async function fixture(t, width, { warmup = false, authenticated = true, rejectReportsAuth = false, failSearchOnce = false, failSearchQuery = null, failImportOnce = false, failLogDeleteOnce = false, failNoteUpdateOnce = false, failTimelineNoteOnce = false, calendarLabels = [], pathSeeds = [], themeSurfaces = false, noteSeeds = [], timelineSeeds = [], logSeeds = [], logBody = "Directly loaded log entry", boardCardTitle = card.title, boardCards = [card], boardList = null } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width <= 390, colorScheme: "light", reducedMotion: "reduce" });
   t.after(() => context.close());
   const requests = [];
@@ -79,6 +79,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
   let pausedTimer = {};
   let rejectNextReportsRequest = rejectReportsAuth;
   let searchFailurePending = failSearchOnce;
+  let failedSearchQueryPending = failSearchQuery;
   let importFailurePending = failImportOnce;
   let logDeleteFailurePending = failLogDeleteOnce;
   let noteUpdateFailurePending = failNoteUpdateOnce;
@@ -100,6 +101,11 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
     if (rejectedSession) rejectNextReportsRequest = false;
     if (searchFailurePending && path === "/search") {
       searchFailurePending = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary search failure" }) });
+      return;
+    }
+    if (failedSearchQueryPending && path === "/search" && url.searchParams.get("q") === failedSearchQueryPending) {
+      failedSearchQueryPending = null;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary search failure" }) });
       return;
     }
@@ -306,7 +312,7 @@ async function fixture(t, width, { warmup = false, authenticated = true, rejectR
           : moreType === "LOG"
             ? [{ type: "LOG", total: 2, capped: false, results: logResults }]
             : [{ type: "NOTE", total: 3, capped: false, results: noteResults }, { type: "LOG", total: 2, capped: false, results: logResults }]
-        : reportsResults;
+        : query?.toLocaleLowerCase() === "reports" ? reportsResults : [];
       body = { groups, fuzzy: false, incomplete: false };
     }
     else if (path.startsWith("/reports")) {
@@ -2521,6 +2527,27 @@ it("opens global search from the header or shortcut and lists matching pages bef
   assert.equal(await page.getByRole("heading", { name: "Pages" }).count(), 1);
   assert.equal(await page.getByRole("heading", { name: /Notes/ }).count(), 1);
   assert.equal(await pageResult.evaluate((element, record) => Boolean(element.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING), await recordResult.elementHandle()), true);
+});
+
+it("distinguishes no matches from failed search and clears stale results", async (t) => {
+  const { page } = await fixture(t, 1440, { failSearchQuery: "offline" });
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search everything" });
+  const input = page.getByRole("combobox", { name: "Search sessions, boards, notes, labels, paths, and logs" });
+  const oldResult = page.getByRole("option", { name: /Reports research note/ });
+
+  await input.fill("Reports");
+  await oldResult.waitFor();
+  await input.fill("zzqx");
+  await dialog.locator(".global-search-empty").getByText(/No results for “zzqx”/).waitFor();
+  assert.equal(await dialog.getByRole("alert").count(), 0, "No matches are not reported as a request failure");
+
+  await input.fill("offline");
+  const alert = dialog.getByRole("alert");
+  await alert.waitFor();
+  assert.match(await alert.innerText(), /Try again/);
+  assert.equal(await oldResult.count(), 0, "results for an earlier query are not shown as current after failure");
+  assert.equal(await dialog.locator(".global-search-empty").count(), 0, "a failed request is not presented as a no-match result");
 });
 
 it("keeps global search usable with touch at phone width", async (t) => {

@@ -332,12 +332,23 @@ current and link evidence at the layer that proves its behavior.
 
 ### Flow: Use global search
 
-- [ ] Opening global search presents the search input and supported result
-  categories.
-- [ ] Selecting a result opens its corresponding owned record or page route.
-- [ ] A no-match query is distinguishable from a failed search request.
-- [ ] A failed search request communicates recovery without displaying stale
-  results as current.
+- [x] Opening global search presents the search input and supported result
+  categories. Browser evidence: `opens global search from the header or
+  shortcut and lists matching pages before records` and `groups matching
+  record types, shows note context, and opens the active result with Enter`.
+- [x] Selecting a result opens its corresponding owned record or page route.
+  Browser evidence: `groups matching record types, shows note context, and
+  opens the active result with Enter` opens the selected note at its direct
+  record route; native link behavior is separately checked for new tabs.
+- [x] A no-match query is distinguishable from a failed search request.
+  Browser evidence: `distinguishes no matches from failed search and clears
+  stale results` checks the no-match message without an alert, then a failed
+  request with a retry alert and no stale result.
+- [x] A failed search request communicates recovery without displaying stale
+  results as current. Browser evidence: `distinguishes no matches from failed
+  search and clears stale results` plus `recovers from a failed global search
+  request with the in-dialog retry` verifies the error state, clears prior
+  results, and retries successfully.
 
 ### Flow: Use the shared timer outside Sessions
 
