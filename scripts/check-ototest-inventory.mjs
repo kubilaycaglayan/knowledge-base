@@ -24,6 +24,37 @@ function readTable(filename, headerText) {
   return tableLines.slice(2).map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim()));
 }
 
+function readControlEvidenceRows() {
+  const lines = fs.readFileSync(path.join(inventoryRoot, "01-control-matrix.md"), "utf8").split("\n");
+  const rows = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].startsWith("|")) continue;
+    const headings = lines[index].split("|").slice(1, -1).map((cell) => cell.trim());
+    const evidenceIndex = headings.findIndex((heading) => [
+      "Evidence candidate",
+      "Existing named assertion and evidence class",
+      "Existing evidence and exact assertion",
+      "Applicable source/evidence inventory",
+    ].includes(heading));
+    if (evidenceIndex < 0) continue;
+
+    for (let rowIndex = index + 2; rowIndex < lines.length && lines[rowIndex].startsWith("|"); rowIndex += 1) {
+      const cells = lines[rowIndex].split("|").slice(1, -1).map((cell) => cell.trim());
+      if (cells.every((cell) => /^-+$/.test(cell))) continue;
+      rows.push({ cells, evidenceIndex, row: rows.length + 1, document: "01-control-matrix.md" });
+      index = rowIndex;
+    }
+  }
+  return rows;
+}
+
+const routeEvidenceRows = readTable("01-route-matrix.md", "| Route / state |").map((cells, index) => ({
+  cells,
+  evidenceIndex: 2,
+  row: index + 1,
+  document: "01-route-matrix.md",
+}));
+
 function findFiles(directory, predicate) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const fullPath = path.join(directory, entry.name);
@@ -88,15 +119,16 @@ for (const reference of apiEvidenceReferences) {
   }
 }
 
-const acceptanceSources = Object.fromEntries(
-  findFiles(path.join(repositoryRoot, "frontend/scripts"), (file) => file.endsWith(".acceptance.test.mjs"))
+const frontendTestSources = Object.fromEntries(
+  ["frontend/src", "frontend/scripts"]
+    .flatMap((directory) => findFiles(path.join(repositoryRoot, directory), (file) => /\.(?:test|spec)\.(?:ts|tsx|js|mjs)$/.test(file)))
     .map((file) => [path.basename(file), fs.readFileSync(file, "utf8")]),
 );
-for (const { row, file, reference } of unresolvedAcceptanceReferences(
-  readTable("01-control-matrix.md", "| Checklist IDs |"),
-  acceptanceSources,
+for (const { document, row, file, reference } of unresolvedAcceptanceReferences(
+  [...routeEvidenceRows, ...readControlEvidenceRows()],
+  frontendTestSources,
 )) {
-  problems.push(`01-control-matrix.md:row ${row}: ${file} assertion ${JSON.stringify(reference)} does not resolve`);
+  problems.push(`${document}:row ${row}: ${file} assertion ${JSON.stringify(reference)} does not resolve`);
 }
 
 const milestoneIndex = fs.readFileSync(path.join(inventoryRoot, "README.md"), "utf8");

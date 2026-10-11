@@ -24,9 +24,9 @@ is cited as completion evidence. The automated inventory check is
 `node scripts/check-ototest-inventory.mjs`; it verifies local Markdown links,
 unique route/API row keys, nonempty source/evidence and classification fields,
 matrix ownership, and milestone status consistency. It resolves qualified API
-evidence names to existing Java test methods and named browser acceptance
-references in the control matrix to declarations in their corresponding
-`frontend/scripts/*.acceptance.test.mjs` files. It deliberately makes no
+evidence names to existing Java test methods and named frontend test
+references in the route/control matrices to declarations in their corresponding
+`frontend/src` or `frontend/scripts` test files. It deliberately makes no
 claims about assertion quality.
 
 The release gate record is [2026-10-10 OTOTEST-05 evidence](runs/2026-10-10-ototest-05-local-gates.md).
@@ -630,9 +630,9 @@ physical-device pass.
   classification.
 - [x] The consistency review identifies duplicate route and API row keys.
 - [x] The CI check identifies broken local Markdown inventory links.
-- [x] The CI check resolves named browser assertions in the control matrix to
-  declarations in their corresponding acceptance scripts and has regression
-  coverage for a renamed assertion reference.
+- [x] The CI check resolves named component and browser assertions in the
+  route/control matrices to declarations in their cited frontend test files
+  and has regression coverage for a renamed assertion reference.
 - [x] The consistency review identifies a row with no source, matrix owner, or
   evidence classification.
 - [x] A source scan is treated only as drift detection, never as behavioral

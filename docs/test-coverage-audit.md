@@ -1,6 +1,6 @@
 # Test coverage audit
 
-**Reviewed:** 2026-10-11 (`ecbb6d61` route, global-search, Path merge, timer, accessible notice/Undo, and contained dialog-scroll browser acceptance review)
+**Reviewed:** 2026-10-11 (`ce622c43` route, global-search, Path merge, timer, accessible notice/Undo, contained dialog-scroll, and keyboard Path creation review)
 **Scope:** Current `main` source and test files in `backend/`, `frontend/`,
 `chrome-extension/`, `ios/`, CI workflows, and the existing test documentation.
 
@@ -104,7 +104,8 @@ extension browser journey. See the [OTOTEST-04 acceptance checklist](ototest/04-
 for its recorded evidence and boundaries. OTOTEST-05 adds a CI check for
 stale local inventory links, duplicate route/API keys, missing row
 classifications or matrix owners, milestone-status drift, unresolved Java API
-test names, and stale named browser acceptance references. These
+test names, and stale named frontend component/browser references in the
+route and control matrices. These
 checks establish reference freshness, not assertion quality. It also adds a
 same-review inventory update rule, explicit evidence-layer gate guidance, and
 a reusable run-record template. This does not close the remaining
