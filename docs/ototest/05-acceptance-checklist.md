@@ -237,8 +237,8 @@ load, and route-state evidence must remain individually identifiable.
 - [x] The evidence records the visible successful result.
 - [x] A fresh read proves the changed value remains after navigation or
   reload when the behavior is persisted.
-- [ ] A failed request is distinguishable from a successful save.
-- [ ] A retry does not create duplicate records when the action is expected
+- [x] A failed request is distinguishable from a successful save.
+- [x] A retry does not create duplicate records when the action is expected
   to be idempotent or protected from duplicate submission.
 
 ### Flow: Record evidence for one deletion or archive action

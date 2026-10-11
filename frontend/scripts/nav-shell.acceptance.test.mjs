@@ -2054,6 +2054,7 @@ it("keeps a Note draft open when autosave fails during navigation and recovers o
 
   await page.goto(`${server.resolvedUrls.local[0]}notes`);
   await page.getByText("Draft preserved after failed autosave", { exact: true }).waitFor();
+  assert.equal(await page.locator(".note-row").count(), 1, "Retrying the Note update leaves one record in the collection");
   assert.equal(await title.count(), 0, "The editor is closed after the saved draft is recovered");
 });
 
