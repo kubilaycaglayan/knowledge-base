@@ -1,6 +1,6 @@
 # OTOTEST-01 — Visible control and action inventory
 
-**Source revision:** `8a9ee57f` (cold-cache, real-navigation, and global-search failure-state acceptance).
+**Source revision:** `74486a2f` (cold-cache, real-navigation, global-search failure-state, and Path merge-refresh acceptance).
 **Source review:** `frontend/src/views/*.vue`, shared components, and `product-test-tree.md`, 2026-10-11.
 **Inventory reviewer:** Codex source inventory; project owner confirmed desktop-only extension support on 2026-10-09.
 **Inventory owner:** Knowledge Base maintainers; keep action evidence current and assign behavior gaps.
