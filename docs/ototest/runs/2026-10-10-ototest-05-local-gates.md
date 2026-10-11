@@ -197,3 +197,16 @@ The documentation-only hosted run [38104869153](https://github.com/kubilaycaglay
 | Full route/control browser acceptance | `cd frontend && npm run test:nav` at source revision `ce622c43` | Pass: 107/107 sequential Chromium tests |
 | Inventory and browser artifact policies | `node scripts/check-ototest-inventory.mjs`; `node scripts/check-browser-artifact-policy.mjs` at source revision `ce622c43` | Pass: OTOTEST inventory integrity and browser run/commit linkage, failure-only artifact upload, retention, and trace scrubbing checks |
 | Hosted `verify` | [`verify` run 38109782044](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38109782044) | Pass for commit `28591f280bf0bba16945b21457219134c8c443af`; all active jobs passed, including the 107-case route/control browser suite; historical iOS jobs skipped as configured |
+
+## 2026-10-11 supplement — API evidence rows and status validation
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| API evidence-reference and status gate | `node --test scripts/ototest-browser-evidence.test.mjs`; `node scripts/check-ototest-inventory.mjs` at source revision `3bc4e8ff` | Pass: 10/10 evidence-helper tests; inventory integrity verifies 107 API rows, one recognized status per row, and 307 qualified API test references. The API matrix classifies 100 behavior-evidenced rows as `covered` and seven supported-client decisions as `decision-needed`. |
+| Hosted `verify` | [`verify` run 38111436017](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38111436017) | Pass for commit `3bc4e8ff45577915f01b7e306cf1054813713a47`; all active jobs passed, including web/extension, backend, guarded PostgreSQL, smoke, timer WebSocket, line-history browser, and Orca; historical iOS jobs skipped as configured |
+
+### Non-reproducing hosted browser failures
+
+The route/control browser step in [run 38111035271](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38111035271) failed the Note archive/reload case because the archived row's body text was empty at the final assertion. The focused local Chromium case passed 1/1 without a code change, and the full 107-case route/control suite passed in run 38111436017. No product fix is claimed; retain the case for observation on later runs.
+
+The Orca job in [run 38111266260](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38111266260) did not announce the first edited-line timestamp during that run, while it announced the later line-history states. The Orca job passed in run 38111436017 without a code change. This is recorded as a non-reproducing hosted failure, not as a verified fix.

@@ -317,8 +317,7 @@ load, and route-state evidence must remain individually identifiable.
 - [ ] `manual` states the exact steps, required browser/device, owner, and
   evidence to capture.
 - [ ] `unsupported/excluded` states product scope and rationale.
-- [ ] `decision-needed` states the decision owner and review deadline or
-  trigger.
+- [x] `decision-needed` states the decision owner and review trigger.
 
 ## Desktop Chrome product counterpart
 

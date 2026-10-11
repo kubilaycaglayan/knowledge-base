@@ -22,8 +22,10 @@ API behavior has a named assertion at the backend/API or persistence layer;
 it does not claim every serialized field is asserted. `decision-needed` marks
 an operation whose API behavior has evidence but whose supported-client use is
 unresolved. The seven such rows identify the client-scope decision and owner
-in the final behavior column. Other status values are reserved for a concrete
-evidence gap, manual procedure, or explicit exclusion.
+in the final behavior column. Review those decisions during the next
+supported-client scope review and before deprecating an affected route. Other
+status values are reserved for a concrete evidence gap, manual procedure, or
+explicit exclusion.
 
 Source reconciliation at the recorded baseline found 107 composed controller mapping variants, including route aliases; every verb/path variant is represented below. API-01 through API-12 in the acceptance checklist map to the complete inventory and its evidence classifications. Tests not explicitly named in a row remain a gap. Client use and unsupported/internal operations are reviewed in [the extension and feature map](01-extension-and-feature-map.md). The [controller source directory](../../backend/src/main/java/com/know/api/) defines each method's declared inputs, response type, and default/explicit status.
 
