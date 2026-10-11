@@ -36,6 +36,13 @@ occurred. The archived-note label-preservation acceptance remains open.
 | Trace redaction and failure capture | `cd frontend && node --test scripts/browser-failure-artifacts.test.mjs` at source revision `4f2c8ec8` | Pass: 2/2 tests redact authorization/bearer/basic values, cookies, passwords, access tokens, and email addresses; failure capture disables screenshot recording and deletes an unsanitizable trace |
 | Artifact policy and OTOTEST inventory | `node scripts/check-browser-artifact-policy.mjs`; `node scripts/check-ototest-inventory.mjs`; `git diff --check`; `bash -n scripts/run-line-history-e2e.sh scripts/run-timer-websocket-e2e.sh` | Pass: workflow run/attempt and commit linkage, failure-only upload, 14-day retention, trace redaction, inventory integrity (18 docs, 107 API rows, 307 qualified API references), whitespace, and shell syntax |
 
+## 2026-10-11 supplement — required packaged extension browser gate
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Packaged extension browser acceptance | `./scripts/run-extension-browser-e2e.sh` at source revision `2e0e4450` | Pass: 3/3 Chromium tests against the built Manifest V3 package and isolated loopback API fixture; checks popup/options and manifest host permissions, Clockify content-script to service-worker delivery, timer and Notes fixture state, unavailable API recovery, and worker restart in the temporary persistent profile |
+| CI registration and reconciled inventory | `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: inventory integrity across 18 docs, 107 API rows, and 307 qualified API references; `verify / web-and-extension` now runs the packaged extension browser suite as a pull-request gate |
+
 ## 2026-10-11 supplement — unknown URL fallback
 
 | Evidence layer | Exact command(s) | Result |

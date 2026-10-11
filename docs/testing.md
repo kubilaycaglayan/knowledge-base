@@ -28,15 +28,16 @@ inventory integrity, not behavioral coverage.
 | Backend unit and API integration | `verify / backend` | `gradle test` in the documented Gradle container | About 1–2 minutes; Docker and Gradle 8.13/JDK 21 container |
 | PostgreSQL and Flyway | `verify / backend-postgres` (fresh disposable DB and migrated startup) | Guarded local disposable PostgreSQL procedure above | About 2–3 minutes for empty-database full suite plus migrated startup; Docker and PostgreSQL 16 |
 | Browser real-stack | `verify / smoke`, `verify / timer-websocket-e2e`, `verify / line-history-e2e`, and `verify / line-history-orca`; browser acceptance scripts also run with their dedicated `scripts/run-*-e2e.sh` wrappers | Fixture-backed `npm run test:*` suites and domain real-stack wrappers are opt-in; install Playwright Chromium and use only disposable stacks | Around 1–2 minutes for smoke, 10–30 seconds per domain wrapper after images are built, and about 20–40 seconds for line-history/Orca; cold Docker builds take longer. Wrappers share HTTPS port 26443 and run sequentially. |
-| Packaged extension browser | No dedicated CI gate yet; module tests and build run in `verify / web-and-extension` | Owner: Knowledge Base maintainers; `./scripts/run-extension-browser-e2e.sh` (desktop Chromium, Xvfb on headless Linux) | About 5 seconds after dependencies are installed; Chromium, Playwright, and Xvfb on headless Linux |
+| Packaged extension browser | `verify / web-and-extension` — **Run packaged extension browser acceptance** | `(cd frontend && npx playwright install --with-deps chromium) && ./scripts/run-extension-browser-e2e.sh` (desktop Chromium under Xvfb; isolated temporary profile and loopback API fixture) | About 5 seconds after browser dependencies are installed; Chromium, Playwright, Xvfb, Node 22 |
 | Repository safety and accessibility | `verify / web-and-extension` runs accessibility, security, cleanup, and hardening-status checks | Same named `node scripts/check-*.mjs` commands | A few seconds; Node 22 |
 | iOS | Out of scope while the app is inactive; historical jobs remain disabled | Manual macOS workflow only if the supported-client decision changes | No current gate/runtime |
 
 Browser suites that need a local application or installed extension remain
-opt-in unless they are listed in the CI gates above. The timer WebSocket and
-line-history jobs upload artifacts only on failure. Artifact names include the
-workflow run ID and attempt, runner evidence records the source commit, and the
-workflow summary links the run. Uploads expire after 14 days. Browser traces
+opt-in unless they are listed in the CI gates above. The packaged extension
+browser journey is now part of `verify / web-and-extension`; the timer WebSocket
+and line-history jobs upload artifacts only on failure. Artifact names include
+the workflow run ID and attempt, runner evidence records the source commit, and
+the workflow summary links the run. Uploads expire after 14 days. Browser traces
 retain DOM snapshots but disable screenshot capture; trace JSON is scrubbed for
 credentials, tokens, cookies, and email addresses before upload. If scrubbing
 fails, the trace is deleted. Diagnostics contain request paths and status codes,

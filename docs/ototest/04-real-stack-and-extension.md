@@ -70,15 +70,20 @@ persistence boundaries.
   permission prompts are not automated in this Chromium harness.
 - [x] Capture browser console errors and fail on unexpected extension/runtime
   errors; keep secrets out of logs and artifacts.
+- [x] Run the packaged desktop Chromium extension acceptance journey in the
+  required `verify / web-and-extension` job using a fresh temporary profile and
+  loopback fixture. Browser-native permission prompt rendering remains manual.
 - [x] Keep fast Node module tests as the primary location for exhaustive edge
   cases; browser tests should focus on browser integration and critical
   journeys.
 
-The packaged browser suite verifies install, manifest permissions, popup and
-options rendering, saved API configuration, a Clockify content-script request
-through the service worker, signed-in timer start/stop, note creation/editing,
-expired-session return to sign-in, recovery UI for an unavailable API, and a
-fresh packaged worker after restarting the persistent Chromium profile.
+The packaged browser suite runs in the required `verify / web-and-extension`
+job and verifies install, manifest permissions, popup and options rendering,
+saved API configuration, a Clockify content-script request through the service
+worker, signed-in timer start/stop, note creation/editing, expired-session
+return to sign-in, recovery UI for an unavailable API, and a fresh packaged
+worker after restarting the persistent Chromium profile. Local runs use the
+same harness and an isolated temporary profile.
 Unexpected console and page errors fail the suite. Denied host-permission
 behavior is asserted by the Options module suite; Chromium prompt rendering
 remains outside the packaged browser journey.

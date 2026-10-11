@@ -469,8 +469,9 @@ physical-device pass.
   testing guidance.
 - [x] The gate is assigned to its evidence layer: frontend unit/component,
   backend unit/API, PostgreSQL/migration, real-stack browser, extension
-  browser, or repository checks. The extension browser is identified as local
-  opt-in because it has no dedicated workflow job.
+  browser, or repository checks. The packaged extension browser suite is a
+  required pull-request job; native permission prompt rendering remains
+  manual.
 - [x] The gate specifies its trigger: pull request, push, scheduled, opt-in,
   or manual. Existing `verify` workflow jobs run on push and pull request.
 - [x] The gate states approximate observed local runtime and setup for each
@@ -512,14 +513,17 @@ physical-device pass.
 
 ### Flow: Maintain the extension browser gate
 
-- [ ] Extension installation and host permission evidence is associated with
-  the exact built Manifest V3 artifact and browser profile.
-- [ ] Timer and Notes integration evidence identifies the API state confirmed
-  after the extension action.
-- [ ] Clockify permission and supported-route evidence is distinct from
-  normal web-app and Android Chrome evidence.
-- [x] The gate owner and opt-in/manual status are explicit if the workflow is
-  not part of the required pull-request gate.
+- [x] Extension installation and declared host permissions are checked against
+  the built Manifest V3 artifact in the packaged browser job, which launches a
+  fresh temporary Chromium profile. Browser-native permission prompt rendering
+  remains a separate manual check.
+- [x] Timer and Notes integration assertions confirm the corresponding state
+  returned by the isolated loopback API fixture after extension actions.
+- [x] Clockify content-script routing through the extension service worker is
+  covered in the packaged extension browser job and is distinct from web-app
+  and Android Chrome evidence.
+- [x] The gate owner and required pull-request workflow/job are explicit in
+  `docs/testing.md`; the exact local runner remains available.
 
 ### Flow: Record one release evidence run
 
