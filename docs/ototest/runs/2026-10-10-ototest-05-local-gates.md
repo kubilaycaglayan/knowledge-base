@@ -234,3 +234,12 @@ Physical Android Chrome acceptance remains open. Phone-width desktop emulation d
 | Inventory integrity after procedure update | `node scripts/check-ototest-inventory.mjs`; `git diff --check` | Pass: 18 documents, 107 API rows, 307 qualified Java test references, local links and status consistency. |
 
 The device sweep itself remains outstanding pending access to physical Android Chrome. Maintain separate desktop Chromium and on-device evidence records.
+
+## 2026-10-11 supplement — keyboard Path focus visibility
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Keyboard Path creation and focus visibility | `cd frontend && node --test --test-concurrency=1 --test-name-pattern='creates and reloads a Path using only the keyboard' scripts/nav-shell.acceptance.test.mjs` at source revision `9bb0b8b6` | Pass: 1/1. The browser uses Enter to open and submit the Path form, asserts the named input retains focus and has a visible 2px outline before text entry, then verifies the saved Path after reload. This supports one specific keyboard flow; it does not establish keyboard operation for every state-changing control. |
+| Inventory integrity | `node scripts/check-ototest-inventory.mjs`; `git diff --check` at source revision `9bb0b8b6` | Pass: 18 documents, 107 API rows, and 307 qualified Java test references; the updated FLOW-02.03 reference resolves to the named browser assertion. |
+
+The OTOTEST-05 focus visibility item now links this form-entry evidence and the separate shell focus-ring assertion. The universal keyboard-action and drag-alternative criteria remain open.
