@@ -47,11 +47,23 @@ const focusedTextInput = ref(false);
 const handleFocusOut = () => requestAnimationFrame(() => updateFocusedTextInput());
 const isMobileViewport = () =>
   window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+// Typing inside the tracker itself (its fields, prompt, or teleported label
+// menu) must not hide the tracker the user is editing.
+function insideFloatingTracker(target: HTMLElement) {
+  if (target.closest(".floating-tracker-host, .tracker-prompt-host")) return true;
+  const menu = target.closest(".label-picker-menu");
+  const listboxId = menu?.querySelector("[role='listbox']")?.id;
+  return Boolean(
+    listboxId &&
+      document.querySelector(`.floating-tracker-host [aria-controls="${CSS.escape(listboxId)}"]`),
+  );
+}
 function updateFocusedTextInput(event?: FocusEvent) {
   const target = (event?.target || document.activeElement) as HTMLElement | null;
   focusedTextInput.value = Boolean(
     isMobileViewport() &&
       target &&
+      !insideFloatingTracker(target) &&
       ((target instanceof HTMLInputElement && target.type !== "button") ||
         target instanceof HTMLTextAreaElement ||
         target.isContentEditable ||

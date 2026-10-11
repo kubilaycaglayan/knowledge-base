@@ -477,7 +477,7 @@ const status = computed(() => {
             @keydown="onInputKeydown"
           />
           <span v-if="loading" class="global-search-spinner" aria-hidden="true"></span>
-          <button type="button" class="global-search-close" @click="close">
+          <button type="button" class="global-search-close" aria-label="Close search" @click="close">
             <span class="global-search-close-text">Close</span>
             <kbd aria-hidden="true">Esc</kbd>
           </button>

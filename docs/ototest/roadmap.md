@@ -66,8 +66,9 @@ units, including leap-February and differing destination lengths.
 
 The latest OTOTEST-05 local gate evidence is recorded in
 [`runs/2026-10-10-ototest-05-local-gates.md`](runs/2026-10-10-ototest-05-local-gates.md).
-Hosted `verify` passed for the current branch (run 38125772310); physical Android and the
-remaining product acceptance flows are still outstanding.
+Hosted `verify` passed for the current branch (run 38125772310); the remaining
+OTOTEST-03 product acceptance flows are still outstanding. Android is not an
+optimization target, so Android-device acceptance is out of scope.
 
 Each milestone has its own task and acceptance document:
 

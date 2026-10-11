@@ -208,6 +208,13 @@ textarea:disabled {
   outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;
 }
+/* When Shift+Tab enters the last segment of a date field, Chromium matches
+   only :focus-within on the input, not :focus or :focus-visible. Typed fields
+   always show focus, so draw the ring for either state. */
+input:is([type="date"], [type="datetime-local"], [type="time"], [type="month"]):is(:focus, :focus-within) {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 3px;
+}
 .add {
   display: flex;
   align-items: center;

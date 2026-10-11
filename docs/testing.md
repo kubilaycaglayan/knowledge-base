@@ -47,11 +47,11 @@ URL effect. Split dialog opening, successful submission, cancellation,
 applicable validation, and recoverable request failure into separately
 reviewable actions; record confirmation or undo for destructive actions. Mark
 decorative or unavailable controls non-interactive with a reason. For browser
-gestures, identify desktop Chrome input and Android Chrome input when offered,
-include a tap/click or keyboard alternative for drag-dependent actions where
-applicable, and record recovery from interrupted pointer input. Keep gaps and
-platform-specific evidence status explicit; desktop phone-width emulation does
-not establish physical Android Chrome behavior.
+gestures, identify desktop Chrome input and phone-width touch input when
+offered, include a tap/click or keyboard alternative for drag-dependent actions
+where applicable, and record recovery from interrupted pointer input. Keep gaps
+and platform-specific evidence status explicit. Android is not an optimization
+target; Android-device acceptance is out of scope.
 Every operation marked public in the API matrix must state its authentication
 bypass reason; its regression cases run with
 `node --test scripts/ototest-api-public-status.test.mjs` in
@@ -114,21 +114,6 @@ commands and outcomes.
 
 ## Manual and platform-limited evidence
 
-- **Physical Android Chrome:** Knowledge Base maintainers use a disposable
-  account and local isolated environment, open the app from Android Chrome,
-  and execute the relevant **MOBILE-01 through MOBILE-33** criteria in the
-  [OTOTEST-04 acceptance checklist](ototest/04-acceptance-checklist.md), plus
-  the Android Chrome flows in the
-  [OTOTEST-05 acceptance checklist](ototest/05-acceptance-checklist.md).
-  Follow the matching route/control flow where those criteria depend on it.
-  Record every criterion separately as pass, fail, blocked, or not run; a
-  partial sweep must list the unrun IDs and cannot be reported as complete.
-  For each result, use the
-  [execution template](ototest/evidence-template.md) to record device,
-  Android/Chrome versions, viewport/orientation, input method, route/action,
-  outcome, and redacted evidence. Verify saved mutations after reload or a
-  fresh API read. Desktop viewport emulation is supplemental and must not be
-  recorded as a device run.
 - **Extension permission prompt:** Knowledge Base maintainers build the
   packaged extension with `npm run build --prefix chrome-extension`, load
   `chrome-extension/.output/chrome-mv3` in a fresh desktop Chrome profile,

@@ -761,10 +761,20 @@ onUnmounted(() => {
     min-height: 44px;
     font-size: 16px;
   }
+  /* Cap the bar and panel together so the Collapse toggle stays on screen;
+     the panel takes the remaining height and scrolls. */
+  .floating-tracker-host:not(.inline) .floating-tracker {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(var(--tracker-viewport-height, 100dvh) - 24px);
+  }
+  .floating-tracker-host:not(.inline) .floating-tracker-bar {
+    flex: none;
+  }
   .floating-tracker-panel {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
-    max-height: calc(var(--tracker-viewport-height, 100dvh) - 24px);
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;

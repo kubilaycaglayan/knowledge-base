@@ -3,21 +3,26 @@
    page reserves room below its last row (the archive footer) to keep it tappable. */
 /* Keep the board title and controls aligned with the shared shell content. */
 .board-page { position:relative; box-sizing:border-box; width:100%; max-width:1200px; margin:0 auto; padding:0 0 7.5rem; }
-/* Kanban columns own vertical scrolling, so keep the board shell in the
-   viewport and let the measured columns use the remaining height. */
-:global(.dashboard-shell:has(.board-page:not(.board-page-gantt))) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
-:global(.dashboard-shell:has(.board-page:not(.board-page-gantt)) > header) { flex:0 0 auto; width:100%; }
-:global(.dashboard-shell:has(.board-page:not(.board-page-gantt)) > main) { flex:1 1 auto; width:100%; max-width:none; min-height:0; padding-bottom:0; overflow:hidden; }
-.board-page:not(.board-page-gantt) { height:100%; min-height:0; padding-bottom:0; }
-/* In Gantt mode, keep the shell and board controls in place while the timeline
-   owns both scroll axes. */
-:global(.dashboard-shell:has(.board-page-gantt)) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
-/* Auto inline margins stop flex items from stretching, so the header keeps the
-   standard nav width explicitly. */
-:global(.dashboard-shell:has(.board-page-gantt) > header) { flex:0 0 auto; width:100%; }
-/* The full-width timeline extends beyond the centered board. Its clipping
-   ancestor must span the shell so the left card pane stays visible. */
-:global(.dashboard-shell:has(.board-page-gantt) > main) { flex:1 1 auto; width:100%; max-width:none; min-height:0; padding-bottom:0; overflow:hidden; }
+/* Lock the shell to the viewport only when it is tall enough to show the
+   board below the header; shorter windows (such as 400% browser zoom) scroll
+   the page instead of collapsing the board to zero height. */
+@media (min-height: 320px) {
+  /* Kanban columns own vertical scrolling, so keep the board shell in the
+     viewport and let the measured columns use the remaining height. */
+  :global(.dashboard-shell:has(.board-page:not(.board-page-gantt))) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
+  :global(.dashboard-shell:has(.board-page:not(.board-page-gantt)) > header) { flex:0 0 auto; width:100%; }
+  :global(.dashboard-shell:has(.board-page:not(.board-page-gantt)) > main) { flex:1 1 auto; width:100%; max-width:none; min-height:0; padding-bottom:0; overflow:hidden; }
+  .board-page:not(.board-page-gantt) { height:100%; min-height:0; padding-bottom:0; }
+  /* In Gantt mode, keep the shell and board controls in place while the timeline
+     owns both scroll axes. */
+  :global(.dashboard-shell:has(.board-page-gantt)) { display:flex; flex-direction:column; height:100dvh; min-height:0; overflow:hidden; }
+  /* Auto inline margins stop flex items from stretching, so the header keeps the
+     standard nav width explicitly. */
+  :global(.dashboard-shell:has(.board-page-gantt) > header) { flex:0 0 auto; width:100%; }
+  /* The full-width timeline extends beyond the centered board. Its clipping
+     ancestor must span the shell so the left card pane stays visible. */
+  :global(.dashboard-shell:has(.board-page-gantt) > main) { flex:1 1 auto; width:100%; max-width:none; min-height:0; padding-bottom:0; overflow:hidden; }
+}
 .board-page-gantt { display:flex; flex-direction:column; height:100%; min-height:0; padding-bottom:0; }
 .board-search-overlay { position:absolute; z-index:5; top:0; right:1.25rem; display:flex; align-items:center; gap:.5rem; min-width:min(420px, calc(100vw - 2rem)); padding:.35rem .5rem .35rem .8rem; border:1px solid var(--border-color); border-radius:12px; background:var(--surface-color); box-shadow:0 8px 28px #0003; }
 .board-search-overlay input { flex:1; min-width:0; border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
