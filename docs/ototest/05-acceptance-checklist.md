@@ -167,13 +167,19 @@ gate below, the maintained inventory or release record must identify:
 
 ### Flow: Classify one changed extension permission
 
-- [ ] A changed Manifest V3 permission or host permission receives a stable
+- [x] A changed Manifest V3 permission or host permission receives a stable
   extension inventory row and product purpose.
-- [ ] The row states the feature affected when permission is absent or denied.
-- [ ] The row records the review owner and the extension build/job that
-  validates the resulting permission declaration.
-- [ ] An extension permission row is not mislabeled as Android Chrome web-app
-  evidence; mobile Chrome extension hosting is not part of this checklist.
+- [x] The row states the feature affected when permission is absent or denied.
+  `check-ototest-extension-permissions.mjs` reconciles the built manifest with
+  the matrix and requires a denied/absent outcome for each declaration.
+- [x] The row records the review owner and the extension build/job that
+  validates the resulting permission declaration. Matrix metadata supplies the
+  maintainer owner and `verify / web-and-extension` builds and checks the
+  generated manifest before running this reconciliation gate.
+- [x] An extension permission row is not mislabeled as Android Chrome web-app
+  evidence; mobile Chrome extension hosting is not part of this checklist. The
+  feature map keeps desktop extension permissions separate from the explicitly
+  `unsupported/excluded` Android extension surface.
 
 ## Supported route inventory freshness
 

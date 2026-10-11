@@ -40,6 +40,10 @@ make the required test layers visible in local guidance and CI.
   patterns against their matrices during the deployed-shaped smoke run. The
   parser regressions cover missing/extra entries and intentionally excluded
   retired routes; see `scripts/check-ototest-source-drift.mjs`.
+- [x] Reconcile generated Manifest V3 permissions and host permissions with
+  the extension matrix, including the affected behavior when access is
+  absent or denied. See `scripts/check-ototest-extension-permissions.mjs` and
+  its regression tests.
 - [x] Define required CI suites by evidence layer: unit/component, backend
   integration, PostgreSQL, browser real-stack, and extension browser.
 - [x] Keep slower or environment-limited suites clearly marked as scheduled,

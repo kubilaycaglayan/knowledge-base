@@ -45,6 +45,11 @@ ownership claims that cite only frontend rendering evidence; run them with
 `node --test scripts/ototest-browser-evidence.test.mjs`.
 Manual-status inventory rows must link to a reproducible procedure; those
 policy cases run with `node --test scripts/ototest-manual-evidence.test.mjs`.
+The built Manifest V3 permission set is reconciled with the extension feature
+map by `node scripts/check-ototest-extension-permissions.mjs <built-manifest.json>`;
+its mapping and denied-permission regression cases run with
+`node --test scripts/ototest-extension-permissions.test.mjs` in
+`verify / web-and-extension`.
 
 The deployed-shaped smoke run also compares the live generated OpenAPI method
 and path pairs with `docs/ototest/01-api-matrix.md`, and the registered Vue
