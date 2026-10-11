@@ -246,3 +246,13 @@ The device sweep itself remains outstanding pending access to physical Android C
 | Hosted `verify` after final evidence-record update | [`verify` run 38113613144](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38113613144) | Pass for commit `7a89e17073d07575ce8793e5d42b3a1573143c85`; all active jobs passed, including the route/control browser suite and packaged extension; historical iOS jobs skipped. |
 
 The OTOTEST-05 focus visibility item now links this form-entry evidence and the separate shell focus-ring assertion. The universal keyboard-action and drag-alternative criteria remain open.
+
+## 2026-10-11 supplement — inventory metadata and source identity gate
+
+| Evidence layer | Exact command(s) | Result |
+| --- | --- | --- |
+| Inventory metadata policy regression cases | `node --test scripts/ototest-inventory-metadata.test.mjs scripts/ototest-browser-evidence.test.mjs scripts/ototest-completion-guard.test.mjs` at source revision `decf9219` | Pass: 17/17. New cases reject inventory metadata missing an owner or exact local command and accept the supported route, control, API, and extension command field labels. |
+| Matrix row integrity | `node scripts/check-ototest-inventory.mjs` at source revision `decf9219` | Pass: all four matrices declare an owner and exact runnable evidence command; detailed control rows have unique IDs and nonempty source/expected-behavior fields. Full inventory: 18 documents, 107 API rows, and 307 qualified Java test references. |
+| Hosted `verify` with metadata policy gate | [`verify` run 38114585073](https://github.com/kubilaycaglayan/knowledge-base/actions/runs/38114585073) | Pass for commit `decf921952c8246eb712f6b640edfb9d6a84f102`; all active jobs passed, including inventory integrity, the metadata policy tests, route/control browser acceptance, packaged extension, backend, PostgreSQL/Flyway, smoke, timer WebSocket, line-history, and Orca; historical iOS jobs skipped. |
+
+The owner and exact-command acceptance items are checked in OTOTEST-05. This validates traceability metadata and source-row integrity; it does not establish assertion relevance or close the remaining behavioral gaps.
